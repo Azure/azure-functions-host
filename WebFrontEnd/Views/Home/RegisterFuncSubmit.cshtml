@@ -1,0 +1,13 @@
+﻿@using WebFrontEnd.Controllers
+@model RegisterFuncSubmitModel
+@{
+    ViewBag.Title = "RegisterFuncSubmit";
+}
+
+<h2>RegisterFuncSubmit</h2>
+
+<p>Queued registration for functions in account=@Model.AccountName , container = @Model.ContainerName</p>
+
+<p>Check URI for indexing results: <a href="@Model.Writeback">@Model.Writeback</a></p>
+
+<p>[ @Html.ActionLink("List of registered functions", "ListAllFunctions") ] </p>

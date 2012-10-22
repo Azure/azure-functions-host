@@ -1,0 +1,51 @@
+﻿@using WebFrontEnd.Controllers
+@using Executor
+@model LogIndexModel
+@{
+    ViewBag.Title = "ListFunctionInstances";
+}
+
+<h2>Log of recently executed functions</h2>
+
+<p>
+[@Html.ActionLink("Home", "Index", "Home") ]
+[@Html.ActionLink("Summary of count of invocations per function type", "Summary")]
+</p>
+
+<p>
+    <b>@Model.Description</b>
+</p>
+
+<table border="1">
+    <tr>
+        <td>Name</td>
+        <td>Status</td>
+        <td>output</td>
+    </tr>
+    @foreach(var log in Model.Logs)
+    {
+        <tr>
+            <td>
+                @{
+        string color = null;
+        switch (@log.GetStatus())
+        { 
+            case FunctionInstanceStatus.CompletedFailed:
+                color = "red"; break;
+            case FunctionInstanceStatus.CompletedSuccess:
+                color = "green"; break;
+            case FunctionInstanceStatus.Running:
+                color = "blue"; break;
+                // don't colorize others.                 
+        }       
+        }                
+                @Html.FunctionInstanceLogLink(log)
+            </td>
+            <td>
+                                <font color="@color">
+                @log.GetRunStatusString()
+                                    </font> </td>             
+            <td>@Html.FunctionOutputLink(log)</td>
+        </tr>
+    }
+</table>

@@ -1,0 +1,362 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.Services.Client;
+using System.Data.Services.Common;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
+using RunnerInterfaces;
+using SimpleBatch;
+
+namespace Orchestrator
+{
+    // Go down and build an index
+    public class Indexer
+    {
+        private readonly IIndexerSettings _settings;
+
+        // Account for where index lives 
+        public Indexer(IIndexerSettings settings)
+        {
+            _settings = settings;
+        }
+
+        // $$$ Move this somewhere else. Indexer is just writing to the location. 
+        public void CleanFunctionIndex()
+        {
+            _settings.CleanFunctionIndex();
+        }
+
+        // Index all things in the container 
+        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot)
+        {
+            // Locally copy 
+            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot))
+            {
+                string localCache = helper.LocalCachePrivate;
+
+                RemoveStaleFunctions(containerDescriptor, localCache);                
+
+                // Copying funcs out of a container, apply locations to that container.
+                Action<MethodInfo, FunctionIndexEntity> funcApplyLocation =
+                    (method, func) => ApplyLocationInfoFromContainer(containerDescriptor, method, func);
+
+                IndexLocalDir(funcApplyLocation, localCache);
+            }
+        }
+
+        private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
+        {
+            FunctionIndexEntity[] funcs = _settings.ReadFunctionTable();
+
+            string connection = containerDescriptor.AccountConnectionString;
+            string containerName = containerDescriptor.ContainerName;
+
+            foreach (var file in Directory.EnumerateFiles(localCache))
+            {
+                string name = Path.GetFileName(file);
+
+                foreach (FunctionIndexEntity func in funcs)
+                {
+                    var loc = func.Location;
+                    if (loc.Blob.BlobName == name && loc.Blob.ContainerName == containerName && loc.Blob.AccountConnectionString == connection)
+                    {
+                        _settings.Delete(func);
+                    }
+                }
+            }
+        }
+
+        // AssemblyName doesn't implement GetHashCode().
+        Dictionary<AssemblyName, string> _fileLocations = new Dictionary<AssemblyName, string>(new AssemblyNameComparer());
+
+        Assembly CurrentDomain_ReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            // Name is "SimpleBatch, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+
+            var name = new AssemblyName(args.Name);
+
+            string file;
+            if (_fileLocations.TryGetValue(name, out file))
+            {
+                return Assembly.ReflectionOnlyLoadFrom(file);
+            }
+            else
+            {
+                return System.Reflection.Assembly.ReflectionOnlyLoad(args.Name);
+            }
+        }
+
+        // Look at each assembly 
+        public void IndexLocalDir(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, string localDirectory)
+        {
+            // See http://blogs.msdn.com/b/jmstall/archive/2006/11/22/reflection-type-load-exception.aspx
+
+            var handler = new ResolveEventHandler(CurrentDomain_ReflectionOnlyAssemblyResolve);
+            AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += handler;
+            try
+            {
+                IndexLocalDirWorker(funcApplyLocation, localDirectory);
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= handler;
+            }
+        }
+        
+        private void IndexLocalDirWorker(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, string localDirectory)
+        {                        
+            var filesDll = Directory.EnumerateFiles(localDirectory, "*.dll");
+            var filesExe = Directory.EnumerateFiles(localDirectory, "*.exe");
+
+            
+            foreach (string file in filesExe.Concat(filesDll))
+            {
+                //string name = Path.GetFileNameWithoutExtension(file);
+                var name = AssemblyName.GetAssemblyName(file);
+                _fileLocations[name] = file;
+            }
+
+            foreach (string file in filesExe.Concat(filesDll))
+            {
+                Assembly a = Assembly.ReflectionOnlyLoadFrom(file);
+                if (string.Compare(a.Location, file, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    // $$$
+                    // Stupid loader, loaded the assembly from the wrong spot.
+                    // This is important when an assembly has been updated and recompiled, 
+                    // but it still has the same identity, and so the loader foolishly pulls the old
+                    // assembly.
+                    // This goes away when the process is recycled. 
+                    // Get a warning now so that we don't have subtle bugs from processing the wrong assembly.
+                    throw new InvalidOperationException("CLR Loaded assembly from wrong spot");
+                }
+
+
+                // The hosts and binders are IL-only and running in 64-bit environments. 
+                // So the entry point can't require 32-bit. 
+                {
+                    var mainModule = a.GetLoadedModules(false)[0];
+                    PortableExecutableKinds peKind;
+                    ImageFileMachine machine;
+                    mainModule.GetPEKind(out peKind, out machine);
+                    if (peKind != PortableExecutableKinds.ILOnly)
+                    {                        
+                        throw new InvalidOperationException("Indexing must be in IL-only entry points.");
+                    }
+                }
+
+
+                IndexAssembly(funcApplyLocation, a);
+            }
+        }
+
+        public void IndexAssembly(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, Assembly a)
+        {
+            foreach (var type in a.GetTypes())
+            {
+                IndexType(funcApplyLocation, type);
+            }
+        }
+
+        public void IndexType(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, Type type)
+        {
+            foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            {
+                IndexMethod(funcApplyLocation, method);
+            }
+        }
+
+        // Default policy, assumes that the function originally came from the container. 
+        private void ApplyLocationInfoFromContainer(CloudBlobDescriptor container, MethodInfo method, FunctionIndexEntity index)
+        {
+            Type type = method.DeclaringType;
+            
+            // This is effectively serializing out a MethodInfo.
+            index.Location = new FunctionLocation
+            {
+                Blob = new CloudBlobDescriptor
+                {
+                     AccountConnectionString = container.AccountConnectionString,
+                     ContainerName = container.ContainerName,
+                     BlobName = Path.GetFileName(type.Assembly.Location)
+                },
+                MethodName = method.Name,
+                TypeName = type.FullName
+            };
+        }
+
+        // Container is where the method lived on the cloud. 
+        public void IndexMethod(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, MethodInfo method)
+        {            
+            FunctionIndexEntity index = GetDescriptionForMethod(method);
+            if (index != null)
+            {
+                funcApplyLocation(method, index);
+
+                index.SetRowKey(); // may use location info
+
+                _settings.Add(index);
+            }            
+        }
+
+
+        // Get any bindings that can be explicitly deduced. 
+        // This always returns a non-null array, but array may have null elements
+        // for bindings that can't be determined.
+        // - either those bindings are user supplied parameters (which means this function 
+        //   can't be invoked by an automatic trigger)
+        // - or the function shouldn't be indexed at all.
+        // Caller will make that distinction.
+        public static ParameterStaticBinding[] GetExplicitBindings(MethodInfo method)
+        {
+            ParameterInfo[] ps = method.GetParameters();
+
+            ParameterStaticBinding[] flows = Array.ConvertAll(ps, FlowBinder.Bind);
+
+            // Populate input names
+            HashSet<string> paramNames = new HashSet<string>();
+            foreach (var flow in flows)
+            {
+                if (flow != null)
+                {
+                    paramNames.UnionWith(flow.ProducedRouteParameters);
+                }
+            }
+
+            // Take a second pass to bind params diretly to {key} in the attributes above,.
+            // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")], 
+            // then we'll bind 'string name' to the {name} value.
+            foreach (ParameterInfo p in ps)
+            {
+                if (paramNames.Contains(p.Name))
+                {
+                    flows[p.Position] = new NameParameterStaticBinding { KeyName = p.Name, Name = p.Name };
+                }
+            }
+
+            return flows;
+        }
+
+        // Note any remaining unbound parameters must be provided by the user. 
+        // Return true if any parameters were unbound. Else false.
+        public static bool MarkUnboundParameters(MethodInfo method, ParameterStaticBinding[] flows)
+        {
+            ParameterInfo[] ps = method.GetParameters();
+
+            bool hasUnboundParams = false;
+            for(int i = 0; i < flows.Length; i++)
+            {
+                if (flows[i] == null)
+                {
+                    string name = ps[i].Name;
+                    flows[i] = new NameParameterStaticBinding { KeyName = name, Name = name,  UserSupplied = true };
+                    hasUnboundParams = true;
+                }
+            }
+            return hasUnboundParams;
+        }
+
+        // Provide an index entity for the method. If method does not support Simple Batch, then just return null.        
+        public static FunctionIndexEntity GetDescriptionForMethod(MethodInfo method)
+        {
+            string description = null;
+            TimeSpan? interval = null;
+            
+            NoAutomaticTriggerAttribute triggerAttr = null;
+            
+            var attrs = method.GetCustomAttributesData();
+            foreach (var attrData in attrs)
+            {
+                triggerAttr = triggerAttr ?? NoAutomaticTriggerAttribute.Build(attrData);
+
+                var descriptionAttr = DescriptionAttribute.Build(attrData);
+                if (descriptionAttr != null)
+                {
+                    description = descriptionAttr.Description;
+                }
+                var timerAttr = TimerAttribute.Build(attrData);
+                if (timerAttr != null)
+                {
+                    interval = timerAttr.TimeSpan;
+                }
+            }            
+
+            // $$$ Lots of other static checks to add. 
+            if ((triggerAttr != null) && (interval.HasValue))
+            {
+                throw new InvalidOperationException("Illegal trigger binding. Can't have both timer and notrigger attributes");
+            }
+
+
+            // Look at parameters. 
+            bool required = interval.HasValue;
+            
+            ParameterStaticBinding[] parameterBindings = GetExplicitBindings(method);
+
+            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
+            bool hasUnboundParams = MarkUnboundParameters(method, parameterBindings);
+
+            //
+            // We now have all the explicitly provided information. Put it together.
+            //
+
+            // Get trigger:
+            // - (default) listen on blobs. Use this if there are flow attributes present. 
+            // - Timer
+            // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
+
+            FunctionTrigger trigger;
+            if (interval.HasValue)
+            {
+                // Timer supercedes listening on blobs
+                trigger = new FunctionTrigger { TimerInterval = interval.ToString(), ListenOnBlobs = false };
+            }
+            else if (triggerAttr != null)
+            {
+                // Explicit [NoTrigger] attribute.
+                trigger = new FunctionTrigger(); // no triggers
+            }
+            else if (hasAnyBindings)
+            {
+                // Can't tell teh difference between unbound parameters and modelbound parameters.
+                // Assume any unknonw parameters will be solved with model binding, and that if the user didn't
+                // want an invoke, they would have used the [NoTrigger] attribute.
+                trigger = new FunctionTrigger { ListenOnBlobs = true };
+#if false
+                // Unbound parameters mean this can't be automatically invoked. 
+                // The only reason we listen on blob is for automatic invoke.
+                trigger = new FunctionTrigger { ListenOnBlobs = !hasUnboundParams };
+#endif
+            }
+            else if (description != null)
+            {
+                // Only [Description] attribute, no other binding information. 
+                trigger = new FunctionTrigger();
+            }            
+            else
+            {
+                // Still no trigger (not even automatic), then ignore this function completely. 
+                return null;
+            }
+
+            FunctionIndexEntity index = new FunctionIndexEntity
+            {
+                Description = description,
+                Trigger = trigger,
+                Flow = new FunctionFlow
+                {
+                    Bindings = parameterBindings                    
+                }
+            };
+            
+            return index;
+        }
+    }
+}

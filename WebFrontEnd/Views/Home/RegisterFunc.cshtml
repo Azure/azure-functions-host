@@ -1,0 +1,28 @@
+﻿@{
+    ViewBag.Title = "RegisterFunc";
+}
+
+<h2>RegisterFunc</h2>
+
+<p>1. Upload your assmeblies to an azure container.</p>
+<p>2. Specify the container here: </p>
+@using (Html.BeginForm("RegisterFuncSubmit", "Home"))
+{
+    <table>
+        <tr>
+            <td>Storage name:</td>
+            <td><input type="text" name="AccountName"/></td>
+        </tr>
+        <tr>
+            <td>Storage key:</td>
+            <td><input type="password" size="80" name="AccountKey"/></td>
+        </tr>
+        <tr>
+            <td>Container name:</td>
+            <td><input type="text" size="80" name="ContainerName"/></td>
+        </tr>        
+    </table>
+    <p>
+    <input type="submit" value="Register function" />
+    </p>
+}

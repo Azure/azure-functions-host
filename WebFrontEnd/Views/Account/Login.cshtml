@@ -1,0 +1,16 @@
+﻿@using WebFrontEnd.Controllers
+@model LogOnViewModel
+@{
+    ViewBag.Title = "LogOn";
+}
+
+<h2>Log On</h2>
+
+<p>Ask Mike for credentials. </p>
+
+@using (Html.BeginForm())
+{
+    @Html.ValidationSummary()
+    @Html.EditorForModel()
+    <input type="submit" value = "Log in" />                             
+}

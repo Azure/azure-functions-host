@@ -1,0 +1,98 @@
+﻿@using WebFrontEnd.Controllers;
+@model OverviewModel
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Dashboard</h2>
+
+
+<h3>Administration commands</h3>
+<ul>
+    <li>@Html.ActionLink("List all registered functions", "ListAllFunctions");</li>    
+    <li>@Html.ActionLink("Register (or update) new functions", "RegisterFunc");</li>
+    <li>@Html.ActionLink("Scan a blob container and execute functions", "RequestScan");</li>
+</ul>
+
+
+<h3>Health of service</h3>
+<p>        
+    [@Html.ActionLink("Summary of recent invokes", "Summary", "Log")]
+    [@Html.ActionLink("Log of recent invokes", "ListAllInstances", "Log")]
+
+Current queue depth for execution: 
+@if (Model.QueueDepth.HasValue)
+{
+    <b> @Model.QueueDepth.Value.ToString() </b>
+}
+else
+{
+    <span> Unknown</span>
+}    
+</p>
+
+    @{
+        var now = DateTime.UtcNow;
+    }
+<p>
+Status from roles (as of @now.ToLongTimeString()) :
+</p>
+<table border="1">
+
+    <tr>
+        <td>role</td>
+        <td>Current action</td>
+        <td>last update</td>
+        <td>node uptime</td>
+        <td>last cache reset</td>
+        <td>other</td>
+    </tr>
+@foreach (var kv in Model.HealthStatus.Executors)
+{
+    <tr>
+        
+        <td>@kv.Key</td>
+        <td>@Html.FunctionInstanceLogLink(kv.Value.FunctionInstanceId)</td>
+        <td>@Html.TimeLapse(now, kv.Value.Heartbeat)</td>
+        <td>@Html.TimeLapse(now, kv.Value.Uptime)</td>
+        <td>@Html.TimeLapse(now, kv.Value.LastCacheReset)</td>
+        <td>@if (kv.Value.CriticalErrors > 0)
+            {
+                <font color="red">@kv.Value.CriticalErrors critical errors!</font>
+            }
+        </td>        
+    </tr>    
+}
+
+<p>
+    @{
+        var orch = Model.HealthStatus.Orchestrator;
+    }
+    @if (orch != null)
+    {
+    <tr>
+        <td>Orchestrator</td>
+        <td></td>
+        <td>@Html.TimeLapse(now, orch.Heartbeat)</td>
+        <td>@Html.TimeLapse(now, orch.Uptime)</td>
+        <td>@Html.TimeLapse(now, orch.LastCacheReset)</td>
+        <td></td>    
+    </tr>
+    }
+</p>
+
+</table>    
+
+
+
+<h3>Configuration settings for service</h3>
+<table border="1">
+    <tr><td>Account name</td><td>@Secrets.GetAccount().Credentials.AccountName</td></tr>
+    <tr><td>Function table name</td><td>@Secrets.FunctionIndexTableName</td></tr>
+    <tr><td>Function stats table name</td><td>@Secrets.FunctionInvokeStatsTableName</td></tr>
+    <tr><td>Execution queue name</td><td>@Secrets.ExecutionQueueName</td></tr>        
+    <tr><td>Orch control queue name</td><td>@Secrets.OrchestratorControlQueue</td></tr>        
+    <tr><td>Health log container name</td><td>@Secrets.HealthLogContainerName</td></tr>        
+    <tr><td>Log container name</td><td>@Secrets.ExecutionLogName</td></tr>        
+    <tr><td>Data control container name</td><td>@Secrets.DaasControlContainerName</td></tr>        
+</table>

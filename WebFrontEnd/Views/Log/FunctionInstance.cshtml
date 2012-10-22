@@ -1,0 +1,56 @@
+﻿@using WebFrontEnd.Controllers
+@using Executor
+@model LogFunctionModel
+
+@{
+    ViewBag.Title = "FunctionInstance";
+}
+
+<h2>Function Invocation Details</h2>
+
+This page shows details on a specific execution instance of function: @Html.FunctionFullNameLink(Model.Descriptor)</b>
+
+<ul>
+    @{
+        var log = Model.Instance;
+    }
+    <li>
+        @log.GetRunStatusString()
+
+
+        @if (log.GetStatus() == FunctionInstanceStatus.Running)
+        {
+            using(Html.BeginForm("AbortFunction", "Log", new { instance = @log.FunctionInstance.Id } ))
+            {
+                <input type="submit" value ="Abort" />
+            }
+            <span>(abort may take a few minutes)</span>
+        }
+    </li>
+    <li>Timestamp: @(log.Timestamp) UTC time</li>             
+    <li>Logging: @Html.FunctionOutputLink(log) </li>
+    <li>Reason this function was executed: @log.FunctionInstance.TriggerReason </li>
+</ul>
+
+<p>Values for the parameters for this invocation:</p>
+<table border="1">
+    <tr>
+        <td><b>Name</b></td>
+        <td><b>Description</b></td>
+        <td><b>Value</b></td>
+        <td><b>Runtime info</b></td>
+    </tr>
+
+@foreach (var param in Model.Parameters)
+{ 
+    <tr>
+        <td>@param.Name</td>
+        <td>@param.Description</td>
+        <td>@Html.ParamArgValueLink(param)</td>
+        <td>@param.SelfWatch</td>
+    </tr>
+}
+    </table>
+
+
+<p>@Html.ReplayFunctionInstance(log) Click this link to replay the function with the same parameters.</p>

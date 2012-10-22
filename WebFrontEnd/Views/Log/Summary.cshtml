@@ -1,0 +1,62 @@
+﻿@using WebFrontEnd.Controllers
+@model LogSummaryModel
+@{
+    ViewBag.Title = "Summary";
+}
+
+<h2>Function Invocation Summary</h2>
+
+<p>
+  [@Html.ActionLink("Home", "Index", "Home") ]
+  [@Html.ActionLink("Log of most recent invokes", "ListAllInstances", "Log")]
+</p>
+
+<p>Total number of times each function was executed:</p>
+<table border="1">
+    <tr>
+        <td>Function name</td>
+        <td>Completed successfully</td>
+        <td>Failures</td>
+        <td>Average run length</td>
+    </tr>
+    @foreach (var kv in Model.Summary)
+    {
+        <tr>
+            <td>
+                @Html.FunctionLogLink(kv.Key)
+            </td>
+            <td>
+                @{
+                    var val = kv.Value;
+                    int count = val.CountCompleted;
+
+                    string avgSpanString = string.Empty;
+                    if (count > 0)
+                    {
+                        var seconds = val.Runtime.TotalSeconds;
+                        var avgSeconds = seconds / count;
+                        var avgSpan = TimeSpan.FromSeconds(avgSeconds);
+                        avgSpanString = avgSpan.ToString();
+                    }        
+                }
+                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountCompleted.ToString(), failuresOnly: false)
+            </td>         
+            <td>
+                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountErrors.ToString(), failuresOnly:  true)
+            </td>
+            <td>
+                @avgSpanString
+            </td>
+        </tr>        
+    }
+</table>
+
+<p>Queue depth: @Model.QueueDepth</p>
+<p>Top items from execution queue:</p>
+
+<ol>
+    @foreach (var instance in Model.QueuedInstances)
+    {
+        <li>@Html.FunctionInstanceLogLink(instance)</li>
+    }
+</ol>

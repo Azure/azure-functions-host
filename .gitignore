@@ -1,0 +1,13 @@
+
+bin
+obj
+csx
+
+*.user
+*.suo
+
+/packages
+/WebFrontEnd/Properties/PublishProfiles
+/TestResults
+/Secrets/Secrets.Password.cs
+/tests/LiveAzureTests/config.password.cs

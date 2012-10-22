@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceDefinition name="DaasService" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition" schemaVersion="2012-05.1.7">
+  <WorkerRole name="ExecutionRole" vmsize="ExtraSmall">
+    <Imports>
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <LocalResources>
+      <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
+    </LocalResources>
+  </WorkerRole>
+  <WorkerRole name="OrchestratorRole" vmsize="ExtraSmall">
+    <Imports>
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <LocalResources>
+      <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
+    </LocalResources>
+  </WorkerRole>
+</ServiceDefinition>

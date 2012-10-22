@@ -1,0 +1,41 @@
+﻿@using WebFrontEnd.Controllers
+@model LogBlobModel
+@{
+    ViewBag.Title = "Blob";
+}
+
+<h2>Blob</h2>
+
+<p>Usage details on blob: <b>@Model.BlobPath</b> </p>
+
+<p>Last modified time: @Model.LastModifiedTime (current time: @DateTime.Now )</p>
+<p>Uri: <a href="@Model.Uri">@Model.Uri</a></p>
+
+<p>Function instances that <b>wrote</b> this blob:</p>
+@if (Model.Writer.Length == 0)
+{
+    <ul>
+        <li>Can't identify writer for this blob. May have been an initial input by the user, or written by an external component.</li>
+    </ul>
+}
+else
+{
+<ul>
+    @foreach (var log in Model.Writer)
+    {
+        <li>
+            @Html.FunctionInstanceLogLink(log)
+        </li>
+    }
+</ul>
+}
+
+<p>Function instances that <b>read</b> this blob:</p>
+<ul>
+    @foreach (var log in Model.Readers)
+    {
+        <li>            
+            @Html.FunctionInstanceLogLink(log)
+        </li>
+    }
+</ul>
