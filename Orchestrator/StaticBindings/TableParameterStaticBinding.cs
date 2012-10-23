@@ -54,19 +54,5 @@ namespace Orchestrator
                 return string.Format("Access table: {0}", this.TableName);
             }
         }    
-
-        public override TriggerType GetTriggerType()
-        {
-            if (this.IsReadOnly)
-            {
-                // A true read-only table is side-effect free. It's like a giant literal. 
-                return TriggerType.Ignore;
-            }
-            else
-            {
-                // Mutable tables have unknown side-effects.
-                return TriggerType.Unknown; 
-            }
-        }
     }
 }

@@ -350,8 +350,8 @@ namespace Orchestrator
                 throw new ArgumentException("arrays should be same length");
             }
 
-            DateTime newestInput = DateTime.MinValue;
-            DateTime oldestOutput = DateTime.MaxValue;
+            DateTime newestInput = DateTime.MinValue; // Old
+            DateTime oldestOutput = DateTime.MaxValue; // New
 
             for (int i = 0; i < argsRuntime.Length; i++)            
             {
@@ -360,15 +360,8 @@ namespace Orchestrator
 
                 // Input, Output, Ignore, Unknown
 
-                // Ignore vs. Unknown?
                 var t = flow.GetTriggerType();
 
-                if (t == TriggerType.Unknown)                
-                {
-                    // There are bindings we can't reason about. Perhaps we can't track the output time (TableWriter). 
-                    // Skip the optimization. 
-                    return null; 
-                }
                 if (t == TriggerType.Ignore)
                 {
                     continue;
@@ -403,6 +396,17 @@ namespace Orchestrator
                         oldestOutput = time.Value;
                     }
                 }                
+            }
+
+            if (newestInput == DateTime.MinValue)
+            {
+                return null;
+            }
+
+            if (oldestOutput == DateTime.MaxValue)
+            {
+                // No outputs. So question is moot.
+                return null;
             }
 
             // All inputs and outputs are already present. 

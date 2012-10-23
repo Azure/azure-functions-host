@@ -148,7 +148,7 @@ namespace OrchestratorUnitTests
             FunctionIndexEntity func = Get("HasBlobAndUnboundParameter");
 
             Assert.AreEqual(false, func.Trigger.GetTimerInterval().HasValue); // no timer
-            Assert.AreEqual(false, func.Trigger.ListenOnBlobs); // no blobs
+            Assert.AreEqual(true, func.Trigger.ListenOnBlobs); // no blobs
 
             var flows = func.Flow.Bindings;
             Assert.AreEqual(2, flows.Length);

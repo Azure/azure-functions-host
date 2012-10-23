@@ -15,6 +15,42 @@ namespace OrchestratorUnitTests
         static DateTime Newer = new DateTime(1900, 1, 3);
 
         [TestMethod]
+        public void NoOutputs()
+        {
+            // Only have input. This is scary case because it's like a short circuit.
+            // Have to be able to run input at least once. But nothing to prevent us from re-running.
+            var x = Worker.CheckBlobTimes(
+                Runtime(Blob(Old)),
+                Static(
+                    new BlobParameterStaticBinding { IsInput = true }
+                )
+                );
+
+            // No outputs, so call the issue moot.
+            // This means function can get rerun arbitrary number of times. 
+            // (possibly as frequently as the container is scanned)
+            Assert.AreEqual(null, x);
+        }
+
+        [TestMethod]
+        public void NoInputs()
+        {
+            // Only have input. This is scary case because it's like a short circuit.
+            // Have to be able to run input at least once. But nothing to prevent us from re-running.
+            var x = Worker.CheckBlobTimes(
+                Runtime(Blob(Old)),
+                Static(
+                    new BlobParameterStaticBinding { IsInput = false }
+                )
+                );
+
+            // No outputs, so call the issue moot.
+            // This means function can get rerun arbitrary number of times. 
+            // (possibly as frequently as the container is scanned)
+            Assert.AreEqual(null, x);
+        }
+
+        [TestMethod]
         public void NewerInput()
         {
             // Input is newer than output. Execute

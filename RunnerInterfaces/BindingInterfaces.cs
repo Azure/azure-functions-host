@@ -69,7 +69,7 @@ namespace RunnerInterfaces
         // Function to avoid being serialized. WCF hangs on seing Enums in a serialization payload.  
         public virtual TriggerType GetTriggerType()
         {
-            return TriggerType.Unknown; // By default, we can't reason anything.
+            return TriggerType.Ignore;
         }
     }
 
@@ -80,9 +80,6 @@ namespace RunnerInterfaces
 
         // Parameter is an output that we can reason about  (eg [BlobOutput])
         Output,
-
-        // Parameter can't be reasoned about. Avoid any optimizations. 
-        Unknown,
 
         // Parameter does not cause triggering. 
         Ignore

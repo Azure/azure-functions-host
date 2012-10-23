@@ -74,18 +74,5 @@ namespace Orchestrator
                 }
             }
         }
-
-        public override TriggerType GetTriggerType()
-        {
-            if (this.IsInput)
-            {
-                return TriggerType.Ignore; // Constants
-            }
-            else
-            {
-                return TriggerType.Unknown;
-            }
-
-        }
     }
 }
