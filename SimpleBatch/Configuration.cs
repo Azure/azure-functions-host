@@ -52,14 +52,14 @@ namespace SimpleBatch
     {
         // Get a stream for the given blob. The storage account is relative to binder.AccountConnetionString,
         // and the container and blob name are specified.
-        public static BindResult<Stream> BindReadStream(this IBinder binder, string containerName, string blobName)
+        public static BindResult<T> BindReadStream<T>(this IBinder binder, string containerName, string blobName)
         {
-            return binder.Bind<Stream>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
         }
 
-        public static BindResult<Stream> BindWriteStream(this IBinder binder, string containerName, string blobName)
+        public static BindResult<T> BindWriteStream<T>(this IBinder binder, string containerName, string blobName)
         {
-            return binder.Bind<Stream>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
         }
     }
 

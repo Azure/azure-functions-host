@@ -34,7 +34,7 @@ namespace SimpleBatch
 
                 public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
                 {
-                    var bindStream = binder.BindReadStream(containerName, blobName);
+                    var bindStream = binder.BindReadStream<Stream>(containerName, blobName);
                     T obj = _inner.ReadFromStream(bindStream.Result);
                     return new BindResult<T>(obj, bindStream);
                 }
@@ -45,7 +45,7 @@ namespace SimpleBatch
 
                 public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
                 {
-                    var bindStream = binder.BindWriteStream(containerName, blobName);
+                    var bindStream = binder.BindWriteStream<Stream>(containerName, blobName);
 
                     return new BindResult<T>(default(T), bindStream)
                     {

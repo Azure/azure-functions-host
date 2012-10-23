@@ -13,6 +13,64 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
+    // Bind to IBinder
+    // All return results get tracked on a cleanup list. 
+    public class BinderBinderProvider : ICloudBinderProvider
+    {
+        class BinderWrapper : IBinder
+        {
+            private readonly List<BindResult> _results = new List<BindResult>();
+            private readonly IBinder _inner;
+
+            public BinderWrapper(IBinder inner)
+            {
+                _inner = inner;
+            }
+
+            public BindResult<T> Bind<T>(Attribute a)
+            {
+                var result = _inner.Bind<T>(a);
+                _results.Add(result);
+                return result;
+            }
+
+            public string AccountConnectionString
+            {
+                get { return _inner.AccountConnectionString; }
+            }
+
+            public void Cleanup()
+            { 
+                foreach(var result in _results)
+                {
+                    result.OnPostAction();
+                }
+            }
+        }
+
+        class BinderBinder : ICloudBinder
+        {
+            public BindResult Bind(IBinder bindingContext, ParameterInfo parameter)
+            {
+                var wrapper = new BinderWrapper(bindingContext);
+                return new BindResult<IBinder>(wrapper)
+                {
+                    Cleanup = _ => wrapper.Cleanup()
+                };
+            }
+        }
+
+        public ICloudBinder TryGetBinder(Type targetType)
+        {
+            if (targetType == typeof(IBinder))
+            {
+                return new BinderBinder(); 
+            }
+            return null;
+        }
+    }
+
+
     class BindingContext : IBinder
     {
         private string _accountConnectionString;

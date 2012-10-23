@@ -8,6 +8,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.Reflection;
 using Orchestrator;
 using SimpleBatch;
+using System.IO;
 
 namespace OrchestratorUnitTests
 {
@@ -17,6 +18,20 @@ namespace OrchestratorUnitTests
     [TestClass]
     public class ModelBindingTests
     {
+        [TestMethod]
+        public void TestBindToIBinder()
+        {
+            var account = TestStorage.GetAccount();
+
+            Utility.DeleteContainer(account, "daas-test-input");
+            
+            MethodInfo m = typeof(Program).GetMethod("TestBinder");                        
+            LocalOrchestrator.Invoke(account, m);
+
+            string content = Utility.ReadBlob(account, "daas-test-input", "directout.txt");
+            Assert.AreEqual("output", content);
+        }
+
         [TestMethod]
         public void TestModelBinding()
         {
@@ -111,6 +126,20 @@ namespace OrchestratorUnitTests
 
         class Program
         {
+            [SimpleBatch.Description("Invoke with an IBinder")]
+            public static void TestBinder(IBinder binder)
+            {
+                var output = binder.BindWriteStream<TextWriter>("daas-test-input", "directout.txt");
+
+                // ### Just want result. Not self-watch or cleanup. Those could be handled automatically. 
+                var tw = output.Result;
+
+                tw.Write("output");
+
+                // closed automatically 
+            }
+
+
             public static void Func(
                 [BlobInput(@"daas-test-input\input.txt")] Model input,
                 [BlobOutput(@"daas-test-input\output.txt")] out Model output)

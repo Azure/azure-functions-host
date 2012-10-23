@@ -211,6 +211,8 @@
     <None Include="Properties\PublishProfiles\daas - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\daas2 - FTP.pubxml" />
     <None Include="Properties\PublishProfiles\daas2 - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\simplebatch - FTP.pubxml" />
+    <None Include="Properties\PublishProfiles\simplebatch - Web Deploy.pubxml" />
     <None Include="Scripts\jquery-1.7.1.intellisense.js" />
     <Content Include="Scripts\jquery-1.7.1.js" />
     <Content Include="Scripts\jquery-1.7.1.min.js" />

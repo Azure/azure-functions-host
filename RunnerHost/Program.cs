@@ -187,6 +187,8 @@ namespace RunnerHost
             // Other
             config.Binders.Add(new QueueOutputProvider());
 
+            config.Binders.Add(new BinderBinderProvider()); // for IBinder
+
             return config;
         }
 
