@@ -39,7 +39,17 @@ namespace Orchestrator
 
         public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
         {
-            throw new NotImplementedException();
+            var path = new CloudBlobPath(invokeString);
+
+            return new BlobAggregateParameterRuntimeBinding
+            {                 
+                BlobPathPattern = new CloudBlobDescriptor
+                {
+                    AccountConnectionString = Utility.GetConnectionString(account),
+                    ContainerName = path.ContainerName,
+                    BlobName = path.BlobName
+                }
+            };
         }
 
         public override string Description
