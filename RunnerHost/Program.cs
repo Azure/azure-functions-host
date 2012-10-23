@@ -318,6 +318,11 @@ namespace RunnerHost
         // May update the object with a Selfwatch wrapper.
         static ISelfWatch GetWatcher(BindResult bind, ParameterInfo targetParameter)
         {
+            return GetWatcher(bind, targetParameter.ParameterType);
+        }
+
+        public static ISelfWatch GetWatcher(BindResult bind, Type targetType)
+        {
             ISelfWatch watch = bind.Watcher;
             if (watch != null)
             { 
@@ -332,7 +337,7 @@ namespace RunnerHost
             }
 
             // See if we can apply a watcher on the result
-            var t = IsIEnumerableT(targetParameter.ParameterType);
+            var t = IsIEnumerableT(targetType);
             if (t != null)
             {
                 var tWatcher = typeof(WatchableEnumerable<>).MakeGenericType(t);

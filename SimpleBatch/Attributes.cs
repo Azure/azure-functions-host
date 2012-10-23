@@ -43,7 +43,12 @@ namespace SimpleBatch
             }
             string arg = (string)attr.ConstructorArguments[0].Value;
             return new TableAttribute(arg);
-        }    
+        }
+
+        public override string ToString()
+        {
+            return string.Format("[Table{0})]", TableName);
+        }
     }
 
     [AttributeUsage(AttributeTargets.Method)]
@@ -147,6 +152,11 @@ namespace SimpleBatch
             string arg = (string)attr.ConstructorArguments[0].Value;
             return new BlobInputsAttribute(arg);
         }
+
+        public override string ToString()
+        {
+            return string.Format("[BlobInputs({0})]", BlobPathPattern);
+        }
     }
 
 
@@ -173,6 +183,11 @@ namespace SimpleBatch
             string arg = (string)attr.ConstructorArguments[0].Value;
             return new BlobInputAttribute(arg);
         }
+
+        public override string ToString()
+        {
+            return string.Format("[BlobInput({0})]", ContainerName);
+        }
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
@@ -194,6 +209,11 @@ namespace SimpleBatch
 
             string arg = (string)attr.ConstructorArguments[0].Value;
             return new BlobOutputAttribute(arg);
+        }
+
+        public override string ToString()
+        {
+            return string.Format("[BlobOutput({0})]", ContainerName);
         }
     }
 }
