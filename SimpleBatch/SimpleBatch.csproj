@@ -32,6 +32,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Attributes.cs" />
+    <Compile Include="Call.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Configuration.StreamBinder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

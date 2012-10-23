@@ -8,6 +8,12 @@ using System.Threading.Tasks;
 
 namespace SimpleBatch.Client
 {
+    public interface ICall
+    {
+        Task InvokeAsync(string function, object args = null); // no return value
+        Task<T> InvokeAsync<T>(string function, object args = null);
+    }
+
     public class Client
     {
         const string defaultUri = @"http://daas2.azurewebsites.net/";
