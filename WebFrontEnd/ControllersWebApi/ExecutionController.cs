@@ -59,7 +59,6 @@ namespace WebFrontEnd
             parameters.Remove("func"); //  remove query parameter that we added for the function id
 
             // Bind and queue. 
-            // $$$ How does caller get the result? Give back something to poll for?
             // Queue could be an hour deep
             var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
             instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
