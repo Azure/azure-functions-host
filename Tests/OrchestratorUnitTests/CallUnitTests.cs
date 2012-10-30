@@ -26,7 +26,7 @@ namespace OrchestratorUnitTests
             var account = TestStorage.GetAccount();
             Utility.DeleteContainer(account, "daas-test-input");
 
-            var l = new LocalCallImpl(account, typeof(Program));
+            var l = new ReflectionFunctionInvoker(account, typeof(Program));
             l.Invoke("Chain1", new { inheritedArg = "xyz" }); // blocks
 
             string log = Program._sb.ToString();

@@ -90,6 +90,10 @@
     <Compile Include="UnitTest1.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\SimpleBatch.Client\SimpleBatch.Client.csproj">
+      <Project>{0f2424ff-7502-4bc7-87cd-a477b88fa054}</Project>
+      <Name>SimpleBatch.Client</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\SimpleBatch\SimpleBatch.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>SimpleBatch</Name>

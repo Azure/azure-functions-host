@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Data.Services.Common;
 using AzureTables;
+using SimpleBatch.Client;
 
 namespace ConsoleApplication1
 {
@@ -54,7 +55,8 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            Watch();
+            Invoke();
+            //Watch();
             //Stats();
             //Log();
             //Table();
@@ -69,6 +71,19 @@ namespace ConsoleApplication1
             //Dict();
             // Dustin();
             //Walk();
+        }
+
+        static void Invoke()
+        {
+            // Invoke: mike\daas-test-functions\TestApp1.exe\TestApp1.Program\T
+            var c = new WebFunctionInvoker(
+                @"mike\daas-test-functions\TestApp1.exe\TestApp1.Program\",
+                @"http://daas2.azurewebsites.net/"
+                //@"http://localhost:44498/"
+                );
+
+            c.Invoke("T"); // blocks
+
         }
 
         private static void Watch()

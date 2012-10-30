@@ -11,65 +11,22 @@ using SimpleBatch;
 namespace SimpleBatch.Client
 {
     // Implementation of ICall for local execution (great for unit testing)
-    public class LocalCallImpl : CallImpl
+    public class ReflectionFunctionInvoker : LocalFunctionInvoker
     {
         private readonly Type _scope;
-        private readonly CloudStorageAccount _account;
 
-        public IConfiguration Configuration { get; private set; }
-
-        public LocalCallImpl(CloudStorageAccount account, Type scope)
+        public ReflectionFunctionInvoker(CloudStorageAccount account, Type scope) 
+            : base(account, scope)
         {
             if (scope == null)
             {
                 throw new ArgumentNullException("scope");
             }
-            if (account == null)
-            {
-                throw new ArgumentNullException("account");
-            }
+
             _scope = scope;
-            _account = account;
-
-            // Initialize the configuration. Bind ICall to ourselves. 
-            this.Configuration = RunnerHost.Program.InitBinders();
-            this.Configuration.Binders.Insert(0, new LocalCallBinderProvider { _outer = this }); 
-            RunnerHost.Program.ApplyHooks(scope, this.Configuration);
         }
-
-        public class LocalCallBinderProvider : ICloudBinderProvider
-        {
-            public LocalCallImpl _outer;
-
-            class CallBinder : ICloudBinder
-            {
-                public LocalCallImpl _outer;
-
-                public BindResult Bind(IBinder bindingContext, System.Reflection.ParameterInfo parameter)
-                {
-                    return new BindResultTransaction
-                    {
-                        Result = _outer,
-                        Cleanup = () =>
-                        {
-                            _outer.Flush();
-                        }
-                    };
-                }
-            }
-            public ICloudBinder TryGetBinder(Type targetType)
-            {
-                if (targetType == typeof(ICall))
-                {
-                    return new CallBinder { _outer = _outer };
-                }
-                return null;
-            }
-        }
-    
-
-        // Rather than call to Website and queue over internet, just queue locally. 
-        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)
+        
+        protected override MethodInfo ResolveMethod(string functionShortName)
         {
             MethodInfo method = _scope.GetMethod(functionShortName, BindingFlags.Static | BindingFlags.Public);
             if (method == null)
@@ -77,6 +34,63 @@ namespace SimpleBatch.Client
                 string msg = string.Format("Can't resolve function '{0}' in type '{1}", functionShortName, _scope.FullName);
                 throw new InvalidOperationException(msg);
             }
+            return method;
+        }
+
+        // Initialize the configuration. Bind ICall to ourselves. 
+        public static IConfiguration GetConfiguration(CloudStorageAccount account, Type scope)
+        {
+            var caller = new ReflectionFunctionInvoker(account, scope);
+            return caller.Configuration;
+        }
+    }
+
+    public abstract class LocalFunctionInvoker : FunctionInvoker
+    {
+        private readonly CloudStorageAccount _account;
+
+        public IConfiguration Configuration { get; private set; }
+
+        public LocalFunctionInvoker(CloudStorageAccount account, Type scope)
+        {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+            _account = account;
+
+            this.Configuration = GetConfiguration(scope, this);
+        }
+
+        public static IConfiguration GetConfiguration(Type scope, LocalFunctionInvoker caller)
+        {
+            if (caller == null)
+            {
+                throw new ArgumentNullException("caller");
+            }
+
+            var config = RunnerHost.Program.InitBinders();
+            InsertCallBinderProvider(caller, config);
+
+            if (scope != null)
+            {
+                RunnerHost.Program.ApplyHooks(scope, config);
+            }
+
+            return config;
+        }
+
+        public static void InsertCallBinderProvider(LocalFunctionInvoker caller, IConfiguration config)
+        {
+            CallBinderProvider.Insert( () => caller, config);
+        }
+
+        protected abstract MethodInfo ResolveMethod(string functionShortName);
+        
+        // Rather than call to Website and queue over internet, just queue locally. 
+        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)
+        {
+            var method = ResolveMethod(functionShortName);
 
             // Runs synchronously
             Orchestrator.LocalOrchestrator.Invoke(_account, this.Configuration, method, parameters);

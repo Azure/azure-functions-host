@@ -127,7 +127,9 @@ namespace Executor
                 TypeName = remoteInstance.Location.TypeName,
                 MethodName = remoteInstance.Location.MethodName,
                 Args = remoteInstance.Args,
-                ParameterLogBlob = remoteInstance.ParameterLogBlob
+                ParameterLogBlob = remoteInstance.ParameterLogBlob,
+                Location = remoteInstance.Location,
+                ServiceUrl = remoteInstance.ServiceUrl
             };
 
             return x;

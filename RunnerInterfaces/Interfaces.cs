@@ -21,6 +21,14 @@ namespace RunnerInterfaces
 
         // Blob to write live parameter logging too. 
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
+
+        // ServiceURL. This can be used if the function needs to queue other execution requests.
+        public string ServiceUrl { get; set; }
+
+        // Location of this function in the cloud. This is useful to:
+        // - provide a storage container that everything gets resolved against.
+        // - provide a scope for resolving other execution requests (account/container/blob/assembly/type/method).
+        public FunctionLocation Location { get; set; }
     }
 
     // Results from function execution, produced by runner host. 
@@ -141,7 +149,7 @@ namespace RunnerInterfaces
 
         // 3: Switched arguments to use polymorphism
         // 4: uses structured types in declarations.
-        public const int CurrentSchema = 4;
+        public const int CurrentSchema = 5;
 
         // Guid provides unique id to recognize function invocation instance.
         // This should get set once the function is queued. 
@@ -165,6 +173,9 @@ namespace RunnerInterfaces
         {
             return Location.GetId() + "," + Id.ToString();
         }
+
+        // ServiceURL. This can be used if the function needs to queue other execution requests.
+        public string ServiceUrl { get; set; }
     }
 
 

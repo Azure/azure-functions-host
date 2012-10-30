@@ -10,6 +10,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using RunnerInterfaces;
 using SimpleBatch;
+using SimpleBatch.Client;
 
 namespace RunnerHost
 {
@@ -69,9 +70,29 @@ namespace RunnerHost
 
         public static void Invoke(LocalFunctionInstance invoke)
         {
-            MethodInfo m = GetLocalMethod(invoke);
+            MethodInfo method = GetLocalMethod(invoke);
 
-            Invoke(m, invoke.Args);
+            // GEt standard config. 
+            // Use an ICall that binds against the WebService provided by the local function instance.
+            IConfiguration config = InitBinders();
+            ApplyHooks(method, config);
+            CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
+
+            Invoke(config, method, invoke.Args);
+        }
+
+        static FunctionInvoker GetWebInvoker(LocalFunctionInstance instance)
+        {
+            string url = instance.ServiceUrl;
+
+            // Scope = caller's scope minus the method name at the end.
+            string scope = instance.Location.GetId();
+            int len = instance.Location.MethodName.Length;
+            scope = scope.Substring(0, scope.Length - len - 1);
+
+            var result = new WebFunctionInvoker(scope, url);
+
+            return result;
         }
 
         private static MethodInfo GetLocalMethod(LocalFunctionInstance invoke)
@@ -188,7 +209,6 @@ namespace RunnerHost
             config.Binders.Add(new QueueOutputProvider());
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
-            config.Binders.Add(new CallBinderProvider()); // for ICall
 
             return config;
         }
@@ -214,17 +234,8 @@ namespace RunnerHost
             }
         }
 
-        public static void Invoke(MethodInfo m, ParameterRuntimeBinding[] argDescriptors)
-        {
-            IConfiguration config = InitBinders();
-
-            ApplyHooks(m, config);
-
-            Invoke(config, m, argDescriptors);
-        }
-
         // ###
-        // Need a better way to get this
+        // Get this from the LocalFunctionInstance instead.
         private static string GetAccountString(ParameterRuntimeBinding[] argDescriptors)
         {
             foreach (var param in argDescriptors)

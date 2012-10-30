@@ -58,6 +58,7 @@ namespace LiveAzureTests
             Pear,
         }
 
+        // This test takes 2 mins.
         [TestMethod]
         public void AzureTableClassDelete()
         {

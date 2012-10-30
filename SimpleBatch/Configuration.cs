@@ -40,8 +40,7 @@ namespace SimpleBatch
             // default is nop
         }
     }
-
-    // ### Pass this in. 
+        
     public interface IBinder
     {
         BindResult<T> Bind<T>(Attribute a);

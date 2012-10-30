@@ -7,6 +7,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
 using SimpleBatch;
+using SimpleBatch.Client;
 
 namespace Orchestrator
 {
@@ -15,7 +16,7 @@ namespace Orchestrator
         // Build by indexing all methods in type
         public static Worker Build(CloudStorageAccount account, Type typeClass)
         {
-            IndexInMemory store = new IndexInMemory { AccountConnectionString = Utility.GetConnectionString(account) };
+            IndexInMemory store = new IndexInMemory(account);
             Indexer i = new Indexer(store);
 
             i.IndexType(store.OnApplyLocationInfo, typeClass);
@@ -90,13 +91,16 @@ namespace Orchestrator
         {
             FunctionIndexEntity func = GetFunction(account, method);
             FunctionInstance instance = fpGetInstance(func);
-            RunnerHost.Program.Invoke(method, instance.Args);
+
+            var config = ReflectionFunctionInvoker.GetConfiguration(account, method.DeclaringType);
+
+            RunnerHost.Program.Invoke(config, method, instance.Args);
         }
 
         // Convert MethodInfo --> FunctionIndexEntity
         private static FunctionIndexEntity GetFunction(CloudStorageAccount account, MethodInfo method)
         {
-            IndexInMemory store = new IndexInMemory { AccountConnectionString = Utility.GetConnectionString(account) };
+            IndexInMemory store = new IndexInMemory(account);
             Indexer i = new Indexer(store);
 
             i.IndexMethod(store.OnApplyLocationInfo, method);
@@ -113,8 +117,34 @@ namespace Orchestrator
     {
         List<FunctionIndexEntity> _funcs = new List<FunctionIndexEntity>();
         List<MethodInfo> _mapping = new List<MethodInfo>();
+        
+        public IndexInMemory(CloudStorageAccount account)
+        {
+            this.Account = account;
+            this.AccountConnectionString = Utility.GetConnectionString(account);
 
-        public string AccountConnectionString { get; set; }
+            _config = RunnerHost.Program.InitBinders();
+            var caller = new InMemoryIndexFunctionInvoker(this);
+            LocalFunctionInvoker.InsertCallBinderProvider(caller, _config);
+        }
+
+        private IConfiguration _config;
+
+        public CloudStorageAccount Account { get; private set; }
+        public string AccountConnectionString { get; private set; }
+
+        public MethodInfo GetMethod(string functionShortName)
+        {
+            foreach(var method in _mapping)
+            {
+                if (method.Name == functionShortName)
+                {
+                    return method;
+                }
+            }
+            string msg = string.Format("Can't resolve function '{0}'.", functionShortName);
+            throw new InvalidOperationException(msg); 
+        }
 
         public void OnApplyLocationInfo(MethodInfo method, FunctionIndexEntity func)
         {
@@ -168,15 +198,33 @@ namespace Orchestrator
         {
             int idx = int.Parse(instance.Location.TypeName);
             MethodInfo m = _mapping[idx];
-
+                                    
             // run immediately 
-            RunnerHost.Program.Invoke(m, instance.Args);
+            RunnerHost.Program.Invoke(_config, m, instance.Args);
         }
 
 
         public DateTime? GetLastExecutionTime(FunctionLocation func)
         {
             return null;
+        }
+    }
+
+
+    class InMemoryIndexFunctionInvoker : LocalFunctionInvoker
+    {
+        private readonly IndexInMemory _indexer;
+
+        public InMemoryIndexFunctionInvoker(IndexInMemory indexer)
+             : base(indexer.Account, null) 
+        {
+            // null scope means we don't invoke hooks.
+            _indexer = indexer;
+        }
+
+        protected override MethodInfo ResolveMethod(string functionShortName)
+        {
+            return _indexer.GetMethod(functionShortName);
         }
     }
 

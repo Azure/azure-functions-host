@@ -103,6 +103,7 @@ public partial class Services
     public static ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInstance instance)
     {
         instance.Id = Guid.NewGuid(); // used for logging. 
+        instance.ServiceUrl = Secrets.WebDashboardUri;
 
         // Log that the function is now queued.
         // Do this before queueing to avoid racing with execution 
@@ -114,13 +115,10 @@ public partial class Services
 
         logger.Log(logItem);        
 
-        // ### MAke instance be pure-request, so queue doesn't need to modify. 
-        // Mutatable state should get moved to ExecutionInstanceLogEntity
-        // Queue. This will set information on instance. 
         ExecutorClient.Queue(GetExecutionQueueSettings(), instance);
 
-        // At this point, execution node may pick up the queue item and start running it, 
-        // and loggin against it.
+        // Now that it's queued, execution node may immediately pick up the queue item and start running it, 
+        // and logging against it.
         
         return logItem;                
     }
