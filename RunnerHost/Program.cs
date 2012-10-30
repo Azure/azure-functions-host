@@ -188,6 +188,7 @@ namespace RunnerHost
             config.Binders.Add(new QueueOutputProvider());
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
+            config.Binders.Add(new CallBinderProvider()); // for ICall
 
             return config;
         }
@@ -198,6 +199,11 @@ namespace RunnerHost
             // Look for Initialize(IConfiguration c) in the same type?
 
             var t = method.DeclaringType;
+            ApplyHooks(t, config);
+        }
+        
+        public static void ApplyHooks(Type t, IConfiguration config)
+        {
             var methodInit = t.GetMethod("Initialize", new Type[] { typeof(IConfiguration) } );
             if (methodInit != null)
             {
@@ -262,11 +268,13 @@ namespace RunnerHost
                 }
             }
 
+            bool success = false;
             Console.WriteLine("Parameters bound. Invoking user function.");
             Console.WriteLine("--------");
             try
             {
                 InvokeWorker(m, binds, ps);
+                success = true;
             }
             finally
             {
@@ -277,6 +285,18 @@ namespace RunnerHost
                 foreach(var bind in binds)
                 {
                     bind.OnPostAction();
+                }
+
+                if (success)
+                {
+                    foreach (var bind in binds)
+                    {
+                        var a = bind as IPostActionTransaction;
+                        if (a != null)
+                        {
+                            a.OnSuccessAction();
+                        }                        
+                    }
                 }
             }            
         }

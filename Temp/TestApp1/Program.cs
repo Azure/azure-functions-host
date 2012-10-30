@@ -19,6 +19,19 @@ namespace TestApp1
         {
         }
 
+        [NoAutomaticTrigger]
+        public static void Chain1(ICall caller, string inheritedArg)
+        {
+            caller.QueueCall("Chain2", new { arg = "abc" } );
+        }
+
+        [NoAutomaticTrigger]
+        public static void Chain2(string arg, string inheritedArg)
+        {
+            Console.WriteLine("new arg:{0}", arg);
+            Console.WriteLine("inherited arg:{0}", inheritedArg);
+        }
+
 
         public static void LongRunning2(
             [BlobInput(@"dtx-table-upload\a.csv")] IEnumerable<ValueRow> foo)

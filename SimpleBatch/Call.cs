@@ -14,6 +14,6 @@ namespace SimpleBatch
         // Queues a call to the given function. Function is resolved against the current "scope". 
         // $$$ Inherits all named args from caller. 
         // Return a tag for logging and stuff?
-        Guid InvokeAsync(string functionName, object arguments = null);
-    }
+        void QueueCall(string functionName, object arguments = null);
+    }    
 }

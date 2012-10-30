@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SimpleBatch.Client
 {
-    public interface ICall
+    public interface ISyncCall
     {
         Task InvokeAsync(string function, object args = null); // no return value
         Task<T> InvokeAsync<T>(string function, object args = null);

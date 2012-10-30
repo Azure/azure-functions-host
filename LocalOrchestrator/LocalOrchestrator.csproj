@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="LocalCallImpl.cs" />
     <Compile Include="LocalOrchestrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

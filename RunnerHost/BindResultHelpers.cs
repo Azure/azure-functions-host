@@ -5,7 +5,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // Helper to include a cleanup function with bind result
-    class BindCleanupResult : BindResult
+    public class BindCleanupResult : BindResult
     {
         public Action Cleanup;
         public ISelfWatch SelfWatch;

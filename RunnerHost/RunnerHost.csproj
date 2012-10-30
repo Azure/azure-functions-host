@@ -64,8 +64,10 @@
     <Compile Include="Binder.cs" />
     <Compile Include="BindResultHelpers.cs" />
     <Compile Include="BlobBinderProviders.cs" />
+    <Compile Include="CallImpl.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="DictionaryTableBinder.cs" />
+    <Compile Include="IPostActionTransaction.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RuntimeBindings\BlobParameterRuntimeBinding.cs" />

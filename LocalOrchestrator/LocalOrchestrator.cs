@@ -25,6 +25,16 @@ namespace Orchestrator
         }
 
         // Run the method for the given blob parameter.
+        public static void Invoke(CloudStorageAccount account, IConfiguration config, MethodInfo method, IDictionary<string, string> parameters)
+        {
+            InvokeWorker(account, method, config,
+               func =>
+               {
+                   // No blob input information. 
+                   return Worker.GetFunctionInvocation(func, parameters);
+               });
+        }
+
         public static void Invoke(CloudStorageAccount account, MethodInfo method, IDictionary<string, string> parameters)
         {
             InvokeWorker(account, method,
@@ -67,6 +77,8 @@ namespace Orchestrator
                 });
         }
 
+        // Common call point. 
+
         private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionIndexEntity, FunctionInstance> fpGetInstance)
         {            
             FunctionIndexEntity func = GetFunction(account, method);
@@ -93,8 +105,6 @@ namespace Orchestrator
             FunctionIndexEntity func = funcs[0];
             return func;
         }
-
-
     }
 
     // Provide in-memory settings that can glue an indexer, orchestrator, and execution.
