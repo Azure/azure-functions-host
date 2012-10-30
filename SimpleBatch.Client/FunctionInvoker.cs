@@ -29,6 +29,7 @@ namespace SimpleBatch.Client
         // Defers calls to avoid races.
         public void QueueCall(string functionShortName, object arguments = null)
         {
+            _countQueued++;
             var args = ResolveArgs(arguments);
 
             _queue.Add(() =>
@@ -55,7 +56,6 @@ namespace SimpleBatch.Client
         {
             Guid guid = MakeWebCall(functionShortName, args);
 
-            _count++;
             return guid;
         }
 
@@ -102,11 +102,11 @@ namespace SimpleBatch.Client
             return args;
         }
 
-        volatile int _count;
+        volatile int _countQueued;
 
         public string GetStatus()
         {
-            return string.Format("Made {0} calls", _count);
+            return string.Format("Queued {0} calls", _countQueued);
         }
 
         protected abstract Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters);

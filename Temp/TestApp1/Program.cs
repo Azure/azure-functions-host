@@ -19,6 +19,7 @@ namespace TestApp1
         {
         }
 
+       
         [NoAutomaticTrigger]
         public static void LongRunning2(
             [BlobInput(@"dtx-table-upload\a.csv")] IEnumerable<ValueRow> foo)
@@ -80,6 +81,7 @@ namespace TestApp1
         }
 #endif
 
+        [NoAutomaticTrigger]
         public static void Average(
             [BlobInput("daas-test-input")] IEnumerable<Result> scores,
             [BlobOutput("daas-test-output")] TextWriter result)

@@ -21,7 +21,7 @@ namespace OrchestratorUnitTests
     public class CallUnitTests
     {
         [TestMethod]
-        public void InvokeWithParams()
+        public void InvokeChain()
         {            
             var account = TestStorage.GetAccount();
             Utility.DeleteContainer(account, "daas-test-input");
@@ -87,6 +87,57 @@ namespace OrchestratorUnitTests
                 Console.WriteLine("new arg:{0}", arg);
                 Assert.AreEqual("def", arg);
                 _sb.Append(",7");
+            }
+        }
+
+
+        [TestMethod]
+        public void InvokeDelete()
+        {
+            // Test invoking a delete operation 
+            var account = TestStorage.GetAccount();
+            Utility.DeleteContainer(account, "daas-test-input");
+            Utility.DeleteContainer(account, "daas-test-archive");
+
+            Utility.WriteBlob(account, "daas-test-input", "foo-input.txt", "12");
+
+            var l = new ReflectionFunctionInvoker(account, typeof(Program2));
+            l.Invoke("Chain1", new { name = "foo" }); // blocks
+
+
+            Assert.IsFalse(Utility.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
+            
+            string content = Utility.ReadBlob(account, "daas-test-input", "foo-output.txt");
+            Assert.AreEqual("13", content); // ouput
+
+            string content2 = Utility.ReadBlob(account, "daas-test-archive", "foo-input.txt");
+            Assert.AreEqual("12", content2); // archive of input
+        }
+
+        class Program2
+        {
+            [NoAutomaticTrigger]
+            public static void Chain1(
+                [BlobOutput(@"daas-test-input\{name}-input.txt")] TextReader tr,
+                [BlobOutput(@"daas-test-input\{name}-output.txt")] TextWriter tw,
+                string name,
+                ICall caller)
+            {
+                int i = int.Parse(tr.ReadToEnd());
+                tw.Write(i+1);
+
+                caller.QueueCall("ArchiveInput", new { name = name });
+            }
+
+            // Move a blob out of the listening folder and into an archive folder
+            [NoAutomaticTrigger]
+            public static void ArchiveInput(
+                [BlobOutput(@"daas-test-input\{name}-input.txt")] CloudBlob original,
+                [BlobOutput(@"daas-test-archive\{name}-input.txt")] CloudBlob archive
+                )
+            {
+                archive.CopyFromBlob(original); // blocks           
+                original.Delete();
             }
         }
     }

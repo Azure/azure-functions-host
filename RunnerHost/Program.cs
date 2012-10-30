@@ -195,6 +195,7 @@ namespace RunnerHost
             Configuration config = new Configuration();
 
             // Blobs
+            config.BlobBinders.Add(new CloudBlobBinderProvider());
             config.BlobBinders.Add(new EnumerableBlobBinderProvider());
             config.BlobBinders.Add(new BlobStreamBinderProvider());
             config.BlobBinders.Add(new TextReaderProvider());
@@ -282,9 +283,11 @@ namespace RunnerHost
             bool success = false;
             Console.WriteLine("Parameters bound. Invoking user function.");
             Console.WriteLine("--------");
+
+            Action fpStopWatcher = null;
             try
             {
-                InvokeWorker(m, binds, ps);
+                fpStopWatcher = InvokeWorker(m, binds, ps);
                 success = true;
             }
             finally
@@ -309,10 +312,18 @@ namespace RunnerHost
                         }                        
                     }
                 }
+
+                // Stop the watches last. PostActions may do things that should show up in the watches.
+                // PostActions could also take a long time (flushing large caches), and so it's useful to have
+                // watches still running.                
+                if (fpStopWatcher != null)
+                {
+                    fpStopWatcher();
+                }      
             }            
         }
 
-        public static void InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
+        public static Action InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
         {
             Action fpStopWatcher = StartSelfWatcher(binds, ps);
 
@@ -337,13 +348,10 @@ namespace RunnerHost
                 for (int i = 0; i < binds.Length; i++)
                 {
                     binds[i].Result = args[i];
-                }
-
-                if (fpStopWatcher != null)
-                {
-                    fpStopWatcher();
-                }             
+                }       
             }
+
+            return fpStopWatcher;
         }
 
         // May update the object with a Selfwatch wrapper.
