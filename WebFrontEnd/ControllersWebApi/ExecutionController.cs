@@ -16,11 +16,12 @@ namespace WebFrontEnd
 {
     public class ExecutionController : ApiController
     {
-        private void ThrowUserError(string format, params string[] args)
+        // caller should throw the exception so we analyze control flow
+        private Exception NewUserError(string format, params string[] args)
         {
             string msg = string.Format(format, args);
             var response = this.Request.CreateErrorResponse(HttpStatusCode.BadRequest, msg);
-            throw new HttpResponseException(response);            
+            return new HttpResponseException(response);            
         }
 
         [HttpGet]
@@ -35,7 +36,7 @@ namespace WebFrontEnd
             FunctionIndexEntity f = Services.Lookup(func);
             if (f == null)
             {
-                ThrowUserError("Function not found. Do you need to add it to the index? '{0}'", func);
+                throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
             }
 
             var account = f.GetAccount();
@@ -50,7 +51,7 @@ namespace WebFrontEnd
             FunctionIndexEntity f = Services.Lookup(func);
             if (f == null)
             {
-                ThrowUserError("Function not found. Do you need to add it to the index? '{0}'", func);                                
+                throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);                                
             }
 
             // Get query parameters
@@ -60,12 +61,19 @@ namespace WebFrontEnd
 
             // Bind and queue. 
             // Queue could be an hour deep
-            var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
-            instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
+            try
+            {
+                var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
+                instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
 
-            ExecutionInstanceLogEntity result = Services.QueueExecutionRequest(instance);
+                ExecutionInstanceLogEntity result = Services.QueueExecutionRequest(instance);
 
-            return new BeginRunResult { Instance = result.FunctionInstance.Id };
+                return new BeginRunResult { Instance = result.FunctionInstance.Id };
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw NewUserError(ex.Message);
+            }
         }
 
         [HttpGet]
