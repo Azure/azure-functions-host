@@ -63,6 +63,7 @@
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="Logger.cs" />
+    <Compile Include="ModelBinderManifest.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueueBinder.cs" />

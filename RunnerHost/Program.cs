@@ -19,9 +19,6 @@ namespace RunnerHost
     {
         public static void Main(string[] args)
         {
-            var x = System.Diagnostics.Stopwatch.StartNew();
-            var s = x.ToString();
-
             var client = new Utility.ProcessExecuteArgs<LocalFunctionInstance, FunctionExecutionResult>(args);
 
             LocalFunctionInstance descr = client.Input;
@@ -79,6 +76,35 @@ namespace RunnerHost
             CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
 
             Invoke(config, method, invoke.Args);
+        }
+
+        static void ApplyManifestBinders(LocalFunctionInstance invoke, IConfiguration config)
+        {
+            // Is there a manifest file?
+            string file = Path.Combine(Path.GetDirectoryName(invoke.AssemblyPath), "manifest.txt"); 
+            if (!File.Exists(file))
+            {
+                return;
+            }
+            string json = File.ReadAllText(file);
+            var manifest  = JsonConvert.DeserializeObject<ModelBinderManifest>(json);
+
+            ApplyManifestBinders(manifest, config);
+        }
+
+        static void ApplyManifestBinders(ModelBinderManifest manifest, IConfiguration config)
+        {
+            foreach (var entry in manifest.Entries)
+            {
+                var assembly = Assembly.Load(entry.AssemblyName);
+                var t = assembly.GetType(entry.TypeName);
+                if (t == null)
+                {
+                    throw new InvalidOperationException(string.Format("Type '{0}' does not exist.", entry.TypeName));
+                }
+
+                ApplyHooks(t, config);
+            }
         }
 
         static FunctionInvoker GetWebInvoker(LocalFunctionInstance instance)

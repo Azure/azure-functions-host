@@ -385,6 +385,7 @@ namespace RunnerInterfaces
 
             public static void Split(string input, out string container, out string blob)
             {
+                input = input.Replace('/', '\\');
                 container = null;
                 blob = null;
 

@@ -208,6 +208,13 @@ namespace Orchestrator
         {
             return null;
         }
+
+
+        public void RequestBinder(Type t)
+        {
+            // Nop. In-memory doesn't pull binders down from cloud. 
+            // Binders must be already set in the IConfiguration
+        }
     }
 
 

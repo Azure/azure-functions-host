@@ -11,12 +11,13 @@ namespace Orchestrator
     {
         public CloudStorageAccount Account { get; set; }
 
+        // $$$ Should be changed to use an AzureTable<FunctionIndexEntity>
         // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
         public string FunctionIndexTableName { get; set; }
 
         public virtual void Add(FunctionIndexEntity func)
         {
-            // $$$ Batch this
+            // $$$ Batch this (AzureTable would handle that)
             Utility.AddTableRow(Account, FunctionIndexTableName, func);
         }
 

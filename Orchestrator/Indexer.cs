@@ -34,12 +34,15 @@ namespace Orchestrator
         }
 
         // Index all things in the container 
-        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot)
+        // account - account that binderLookupTable paths resolve to. ($$$ move account info int ot he table too?)
+        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable, CloudStorageAccount account)
         {
             // Locally copy 
-            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot))
+            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot, uploadNewFiles : true))
             {
                 string localCache = helper.LocalCachePrivate;
+
+                BinderLookup binderLookup = new BinderLookup(binderLookupTable, account, localCache);
 
                 RemoveStaleFunctions(containerDescriptor, localCache);                
 
@@ -48,6 +51,42 @@ namespace Orchestrator
                     (method, func) => ApplyLocationInfoFromContainer(containerDescriptor, method, func);
 
                 IndexLocalDir(funcApplyLocation, localCache);
+
+                CopyCloudModelBinders(binderLookup);
+            }
+        }
+        
+        private void CopyCloudModelBinders(BinderLookup b)
+        {
+            int countCustom = 0;
+            
+            var types = _binderTypes;
+
+            bool first = true;
+
+
+            foreach (var t in types)
+            {
+                bool found = b.Lookup(t);
+
+                if (found)
+                {
+                    if (first)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Using custom binders:");
+                        first = false;
+                    }
+
+                    Console.WriteLine("  {0}", t.FullName);
+                    countCustom++;
+                }
+            }                            
+
+            if (countCustom > 0)
+            {
+                Console.WriteLine();
+                b.WriteManifest("manifest.txt");
             }
         }
 
@@ -93,6 +132,8 @@ namespace Orchestrator
             }
         }
 
+        HashSet<Type> _binderTypes = new HashSet<Type>();
+
         // Look at each assembly 
         public void IndexLocalDir(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, string localDirectory)
         {
@@ -102,7 +143,7 @@ namespace Orchestrator
             AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += handler;
             try
             {
-                IndexLocalDirWorker(funcApplyLocation, localDirectory);
+                IndexLocalDirWorker(funcApplyLocation, localDirectory);             
             }
             finally
             {
@@ -159,6 +200,26 @@ namespace Orchestrator
 
         public void IndexAssembly(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, Assembly a)
         {
+            // Only try to index assemblies that reference SimpleBatch.
+            // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
+            {
+                bool skip = true;
+                var names = a.GetReferencedAssemblies();
+                foreach (var name in names)
+                {
+                    if (string.Compare(name.Name, "SimpleBatch", StringComparison.OrdinalIgnoreCase) == 0)
+                    {
+                        skip = false;
+                        break;
+                    }
+                }
+
+                if (skip)
+                {
+                    return;
+                }
+            }
+
             foreach (var type in a.GetTypes())
             {
                 IndexType(funcApplyLocation, type);
@@ -203,9 +264,33 @@ namespace Orchestrator
                 index.SetRowKey(); // may use location info
 
                 _settings.Add(index);
+
+
+                // Add custom binders for parameter types
+                foreach (var parameter in method.GetParameters())
+                {
+                    var t = parameter.ParameterType;
+                    MaybeAddBinderType(t);                    
+                }
             }            
         }
 
+        // Determine if we should check for a custom binder for the given type.
+        void MaybeAddBinderType(Type type)
+        {
+            if (type.IsPrimitive || type == typeof(string))
+            {
+                return;
+            }
+            if (type.IsByRef)
+            {
+                // T& --> T
+                MaybeAddBinderType(type.GetElementType());
+                return;
+            }
+
+            _binderTypes.Add(type);            
+        }
 
         // Get any bindings that can be explicitly deduced. 
         // This always returns a non-null array, but array may have null elements

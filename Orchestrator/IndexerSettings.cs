@@ -15,6 +15,6 @@ namespace Orchestrator
 
         FunctionIndexEntity[] ReadFunctionTable(); 
 
-        void CleanFunctionIndex();
+        void CleanFunctionIndex();       
     }  
 }

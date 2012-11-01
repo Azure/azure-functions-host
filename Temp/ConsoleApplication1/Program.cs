@@ -16,6 +16,7 @@ using System.Threading;
 using System.Data.Services.Common;
 using AzureTables;
 using SimpleBatch.Client;
+using IndexDriver;
 
 namespace ConsoleApplication1
 {
@@ -55,14 +56,14 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            Invoke();
+            //Invoke();
             //Watch();
             //Stats();
             //Log();
             //Table();
             //TimerFunc();
             //Execute();
-            //Indexing();
+            Indexing();
             //Listener();
             //Orch();
             //Run();
@@ -71,6 +72,19 @@ namespace ConsoleApplication1
             //Dict();
             // Dustin();
             //Walk();
+        }
+
+        private static void Indexing()
+        {
+            IndexDriverInput input = new IndexDriverInput {
+                 Request = new IndexRequestPayload
+                 {
+                      AccountConnectionString = Secrets.AccountConnectionString,
+                      Blobpath = "daas-test-images-functions2"
+                 },
+                 LocalCache = @"c:\temp\45"
+            };
+            var result = IndexDriver.Program.MainWorker(input);
         }
 
         static void Invoke()

@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BinderLookup.cs" />
     <Compile Include="BlobListener.cs" />
     <Compile Include="BlobListener2.cs" />
     <Compile Include="FlowBinder.cs" />

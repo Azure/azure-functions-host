@@ -75,6 +75,10 @@
       <Project>{91956a5e-25b9-469b-bf3e-57bf7c547ff2}</Project>
       <Name>Secrets</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
+      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
+      <Name>SimpleBatch</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

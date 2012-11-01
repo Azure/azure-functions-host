@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using AzureTables;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
@@ -13,7 +14,8 @@ namespace IndexDriver
     // $$$ Use this
     public class IndexDriverInput
     {
-        // Describes the cloud resource for waht to be indexed.
+        // Describes the cloud resource for what to be indexed.
+        // This includes a blob download (or upload!) location 
         public IndexRequestPayload Request { get; set; }
 
         // This can be used to download assemblies locally for inspection.
@@ -48,7 +50,7 @@ namespace IndexDriver
             client.Result = result;
         }
 
-        private static IndexResults MainWorker(IndexDriverInput input)
+        public static IndexResults MainWorker(IndexDriverInput input)
         {
             string urlLogger = null;
             StringWriter buffer = null;                        
@@ -75,11 +77,14 @@ namespace IndexDriver
                                 
                 Console.WriteLine("indexing: {0}", payload.Blobpath);
 
+                var account = Secrets.GetAccount();
                 var settings = new LoggingCloudIndexerSettings
                 {
-                    Account = Secrets.GetAccount(),
+                    Account = account,
                     FunctionIndexTableName = Secrets.FunctionIndexTableName
                 };
+
+                var binderLookupTable = new AzureTable<BinderEntry>(account, "SimpleBatchBinders");
 
                 HashSet<string> funcsBefore = settings.GetFuncSet();
 
@@ -94,7 +99,7 @@ namespace IndexDriver
                     BlobName = path.BlobName
                 };
 
-                i.IndexContainer(cd, localCache);
+                i.IndexContainer(cd, localCache, binderLookupTable, account);
 
                 // Log what changes happned (added, removed, updated)
                 // Compare before and after
@@ -102,7 +107,7 @@ namespace IndexDriver
 
                 var funcsTouched = from func in settings._funcsTouched select func.ToString();
                 PrintDifferences(funcsBefore, funcsAfter, funcsTouched);
-                                
+             
                 Console.WriteLine("DONE: SUCCESS");
             }
             catch (InvalidOperationException e)
@@ -127,11 +132,14 @@ namespace IndexDriver
             }
 
             return new IndexResults();
-        }
+        }       
 
         class LoggingCloudIndexerSettings : CloudIndexerSettings
         {
             public List<FunctionIndexEntity> _funcsTouched  = new List<FunctionIndexEntity>();
+
+            public List<Type> BinderTypes = new List<Type>();
+
             public override void Add(FunctionIndexEntity func)
             {
                 _funcsTouched.Add(func);
@@ -143,7 +151,7 @@ namespace IndexDriver
                 HashSet<string> funcsAfter = new HashSet<string>();
                 funcsAfter.UnionWith(from func in this.ReadFunctionTable() select func.ToString());
                 return funcsAfter;
-            }
+            }          
         }
 
         static void PrintDifferences(IEnumerable<string> funcsBefore, IEnumerable<string> funcsAfter, IEnumerable<string> funcsTouched)
