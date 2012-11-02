@@ -21,7 +21,8 @@ namespace Orchestrator
         // We'll download and write back here, and then the caller can do a smart upload.
         private readonly string _localCache;
 
-        private readonly List<ModelBinderManifest.Entry> _list = new List<ModelBinderManifest.Entry>();
+        // Hash instead of list since we may have multiple types all pointing to the same binder. 
+        private readonly HashSet<ModelBinderManifest.Entry> _list = new HashSet<ModelBinderManifest.Entry>();
 
         public BinderLookup(IAzureTableReader<BinderEntry> table, string localCache)
         {
@@ -32,6 +33,13 @@ namespace Orchestrator
         // Return true if resolved, else false
         public bool Lookup(Type t)
         {
+            // If they ask for a generic interface, look for the definition. 
+            // Binder is responsible for handling generics. 
+            if (t.IsGenericType)
+            {
+                t = t.GetGenericTypeDefinition();
+            }
+
             string key = t.FullName;
 
             var entry = _table.Lookup("1", key);

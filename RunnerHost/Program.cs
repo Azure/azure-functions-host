@@ -225,7 +225,6 @@ namespace RunnerHost
 
             // Blobs
             config.BlobBinders.Add(new CloudBlobBinderProvider());
-            config.BlobBinders.Add(new EnumerableBlobBinderProvider());
             config.BlobBinders.Add(new BlobStreamBinderProvider());
             config.BlobBinders.Add(new TextReaderProvider());
             config.BlobBinders.Add(new TextWriterProvider());

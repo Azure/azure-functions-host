@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using DataAccess;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
@@ -12,47 +11,6 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    // Bind IEnumerable<T> using a CSV reader and strong model binder
-    class EnumerableBlobBinderProvider : ICloudBlobBinderProvider
-    {
-        private class EnumerableBlobBinder : ICloudBlobBinder
-        {
-            public Type ElementType;
-
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
-            {
-                CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
-
-                // RowAs<T> doesn't take System.Type, so need to use some reflection. 
-                Stream blobStream = blob.OpenRead();
-                var data = DataTable.New.ReadLazy(blobStream);
-
-                var mi = data.GetType().GetMethod("RowsAs");
-                var mi2 = mi.MakeGenericMethod(ElementType);
-
-                object result = mi2.Invoke(data, new object[0]);
-                return new BindCleanupResult
-                { 
-                    Result = result,
-                    Cleanup = () => blobStream.Close()
-                } ;
-            }
-        }
-
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
-        {
-            if (!isInput)
-            {
-                return null;
-            }
-            var rowType = Program.IsIEnumerableT(targetType);
-            if (rowType != null)
-            {
-                return new EnumerableBlobBinder { ElementType = rowType };
-            }
-            return null;
-        }
-    }
 
     // Bind directly to a CloudBlob. 
     class CloudBlobBinderProvider : ICloudBlobBinderProvider

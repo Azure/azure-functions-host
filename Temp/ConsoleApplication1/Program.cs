@@ -56,6 +56,7 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
+            //Ref();
             //Invoke();
             //Watch();
             //Stats();
@@ -72,6 +73,20 @@ namespace ConsoleApplication1
             //Dict();
             // Dustin();
             //Walk();
+        }
+
+        class Derived<T> : Base<T>
+        {
+        }
+
+        class Base<T>
+        {
+        }
+
+        private static void Ref()
+        {
+            var t = typeof(Derived<int>);
+            var t1 = typeof(IEnumerable<>);
         }
 
         private static void Indexing()

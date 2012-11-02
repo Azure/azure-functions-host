@@ -23,6 +23,25 @@ namespace RunnerInterfaces
         {
             public string AssemblyName { get; set; }
             public string TypeName { get; set; }
+
+            public override bool Equals(object obj)
+            {
+                Entry x = obj as Entry;
+                if (x == null)
+                {
+                    return false;
+                }
+                return (string.Compare(this.AssemblyName, x.AssemblyName, true) == 0) &&
+                       (string.Compare(this.TypeName, x.TypeName, true) == 0);
+            }
+            public override int GetHashCode()
+            {
+                return this.AssemblyName.GetHashCode();
+            }
+            public override string ToString()
+            {
+                return this.TypeName;
+            }
         }
     }
 
