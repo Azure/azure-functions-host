@@ -296,7 +296,7 @@ namespace AzureTables
 
         // Enumerate, providing the PartRow key as well as the strongly-typed value. 
         // This is a compatible signature with IDictionary
-        public IEnumerable<KeyValuePair<Tuple<string, string>, TValue>> EnumerateDict(string partitionKey)
+        public IEnumerable<KeyValuePair<Tuple<string, string>, TValue>> EnumerateDict(string partitionKey = null)
         {
             foreach (var dict in this.Enumerate(partitionKey))
             {

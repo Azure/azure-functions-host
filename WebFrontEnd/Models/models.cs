@@ -57,4 +57,18 @@ namespace WebFrontEnd.Controllers
     {
         public FunctionIndexEntity[] Functions { get; set; }
     }
+
+
+    public class BinderListModel
+    {
+        public Entry[] Binders { get; set; }
+
+        public class Entry
+        {
+            public string TypeName { get; set; } // type this binder applies to
+            public string AccountName { get; set; }
+            public CloudBlobPath Path { get; set; }
+            public string EntryPoint { get; set; }
+        }
+    }
 }

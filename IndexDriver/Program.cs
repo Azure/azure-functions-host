@@ -84,7 +84,7 @@ namespace IndexDriver
                     FunctionIndexTableName = Secrets.FunctionIndexTableName
                 };
 
-                var binderLookupTable = new AzureTable<BinderEntry>(account, "SimpleBatchBinders");
+                var binderLookupTable = Services.GetBinderTable();
 
                 HashSet<string> funcsBefore = settings.GetFuncSet();
 
@@ -99,7 +99,7 @@ namespace IndexDriver
                     BlobName = path.BlobName
                 };
 
-                i.IndexContainer(cd, localCache, binderLookupTable, account);
+                i.IndexContainer(cd, localCache, binderLookupTable);
 
                 // Log what changes happned (added, removed, updated)
                 // Compare before and after

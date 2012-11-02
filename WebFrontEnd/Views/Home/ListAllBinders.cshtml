@@ -1,0 +1,34 @@
+﻿@using WebFrontEnd.Controllers
+@model BinderListModel
+@{
+    ViewBag.Title = "ListAllBinders";
+}
+
+<h2>List All Binders</h2>
+
+<p>This is a list of pre-existing binders on the cloud. This provides default binders for the following types. 
+    If your function uses these types, the binders are automatically pulled down from the cloud for your function to use.</p>
+
+<p>
+    [ @Html.ActionLink("List all registered functions", "ListAllFunctions") ]
+</p>
+
+<table border="1">
+
+    <tr>
+        <td>Type</td>
+        <td>account</td>
+        <td>path to binder</td>
+        <td>entry point</td>
+    </tr>
+
+@foreach (var entry in Model.Binders)
+{
+    <tr>
+        <td>@entry.TypeName</td>
+        <td>@entry.AccountName</td>
+        <td>@entry.Path</td>
+        <td>@entry.EntryPoint</td>
+    </tr>
+}   
+</table>

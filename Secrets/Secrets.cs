@@ -35,6 +35,8 @@ public partial class Secrets
 
     public const string FunctionInvokeStatsTableName = "DaasFunctionInvokeStats";
 
+    public const string BindersTableName = "SimpleBatchBinders";
+
     // Where all function instance logging is written.
     // Table is indexed by FunctionInstance.Guid
     public const string FunctionInvokeLogTableName = prefix + "functionlogs";

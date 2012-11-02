@@ -9,6 +9,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace WebFrontEnd.Controllers
 {
@@ -35,6 +36,27 @@ namespace WebFrontEnd.Controllers
             var model = new FunctionListModel
             {
                 Functions = Services.GetFunctions()
+            };
+
+            return View(model);
+        }
+
+
+        public ActionResult ListAllBinders()
+        {
+            var binderLookupTable = Services.GetBinderTable();
+
+            var x = from kv in binderLookupTable.EnumerateDict() select new BinderListModel.Entry 
+            {
+                 AccountName = Utility.GetAccountName(kv.Value.AccountConnectionString),
+                 TypeName = kv.Key.Item2,
+                 Path = kv.Value.Path,
+                 EntryPoint = string.Format("{0}!{1}", kv.Value.InitAssembly, kv.Value.InitType)
+            };
+
+            var model = new BinderListModel
+            {
+                Binders = x.ToArray()
             };
 
             return View(model);

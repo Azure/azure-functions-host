@@ -72,7 +72,8 @@ namespace RunnerHost
             // GEt standard config. 
             // Use an ICall that binds against the WebService provided by the local function instance.
             IConfiguration config = InitBinders();
-            ApplyHooks(method, config);
+            ApplyManifestBinders(invoke, config);
+            ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
             CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
 
             Invoke(config, method, invoke.Args);
@@ -81,7 +82,8 @@ namespace RunnerHost
         static void ApplyManifestBinders(LocalFunctionInstance invoke, IConfiguration config)
         {
             // Is there a manifest file?
-            string file = Path.Combine(Path.GetDirectoryName(invoke.AssemblyPath), "manifest.txt"); 
+            string path = Path.GetDirectoryName(invoke.AssemblyPath);
+            string file = Path.Combine(path, "manifest.txt"); 
             if (!File.Exists(file))
             {
                 return;
@@ -89,14 +91,15 @@ namespace RunnerHost
             string json = File.ReadAllText(file);
             var manifest  = JsonConvert.DeserializeObject<ModelBinderManifest>(json);
 
-            ApplyManifestBinders(manifest, config);
+            ApplyManifestBinders(manifest, path, config);
         }
 
-        static void ApplyManifestBinders(ModelBinderManifest manifest, IConfiguration config)
+        // Path is the local path that the model binder assemblies are relative too. 
+        static void ApplyManifestBinders(ModelBinderManifest manifest, string path, IConfiguration config)
         {
             foreach (var entry in manifest.Entries)
             {
-                var assembly = Assembly.Load(entry.AssemblyName);
+                var assembly = Assembly.LoadFrom(Path.Combine(path, entry.AssemblyName));
                 var t = assembly.GetType(entry.TypeName);
                 if (t == null)
                 {

@@ -35,14 +35,14 @@ namespace Orchestrator
 
         // Index all things in the container 
         // account - account that binderLookupTable paths resolve to. ($$$ move account info int ot he table too?)
-        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable, CloudStorageAccount account)
+        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable)
         {
             // Locally copy 
             using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot, uploadNewFiles : true))
             {
                 string localCache = helper.LocalCachePrivate;
 
-                BinderLookup binderLookup = new BinderLookup(binderLookupTable, account, localCache);
+                BinderLookup binderLookup = new BinderLookup(binderLookupTable, localCache);
 
                 RemoveStaleFunctions(containerDescriptor, localCache);                
 

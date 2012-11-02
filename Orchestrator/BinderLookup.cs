@@ -17,19 +17,15 @@ namespace Orchestrator
         // The locations all live _account
         private readonly IAzureTableReader<BinderEntry> _table;
 
-        // Used to resolve where the model binders live.
-        private readonly CloudStorageAccount _account;
-
         // Where it's copied to locally
         // We'll download and write back here, and then the caller can do a smart upload.
         private readonly string _localCache;
 
         private readonly List<ModelBinderManifest.Entry> _list = new List<ModelBinderManifest.Entry>();
 
-        public BinderLookup(IAzureTableReader<BinderEntry> table, CloudStorageAccount account, string localCache)
+        public BinderLookup(IAzureTableReader<BinderEntry> table, string localCache)
         {
             _table = table;
-            _account = account;
             _localCache = localCache;
         }
 
@@ -45,10 +41,12 @@ namespace Orchestrator
                 return false;
             }
 
+            CloudStorageAccount account = Utility.GetAccount(entry.AccountConnectionString);
+
             // Copy down.
             // $$$ This is a huge deal. What about version conflicts? Or naming conflicts? 
             // Caller is responsible for detecting the new files and uploading them back to the Cloud .
-            foreach (CloudBlob blob in entry.Path.ListBlobsInDir(_account))
+            foreach (CloudBlob blob in entry.Path.ListBlobsInDir(account))
             {
                 string name = Path.GetFileName(blob.Name); // $$$ Assumes flat directory 
                 string localPath = Path.Combine(_localCache, name);

@@ -154,6 +154,11 @@ public partial class Services
     {
         return new AzureTables.AzureTable(Secrets.GetAccount(), Secrets.FunctionInvokeLogIndexTime);
     }
+
+    public static AzureTable<BinderEntry> GetBinderTable()
+    {
+        return new AzureTable<BinderEntry>(Secrets.GetAccount(), Secrets.BindersTableName);
+    }
 }
 
 

@@ -48,6 +48,12 @@ namespace RunnerInterfaces
             return account;
         }
 
+        public static string GetAccountName(string accountConnectionString)
+        {
+            var a = GetAccount(accountConnectionString);
+            return a.Credentials.AccountName;
+        }
+
         [DebuggerNonUserCode]
         public static void DeleteDirectory(string localPath)
         {
