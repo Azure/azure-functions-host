@@ -7,6 +7,9 @@
     <LocalResources>
       <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
     </LocalResources>
+    <ConfigurationSettings>
+      <Setting name="MainStorage" />
+    </ConfigurationSettings>
   </WorkerRole>
   <WorkerRole name="OrchestratorRole" vmsize="ExtraSmall">
     <Imports>
@@ -15,5 +18,26 @@
     <LocalResources>
       <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
     </LocalResources>
+    <ConfigurationSettings>
+      <Setting name="MainStorage" />
+    </ConfigurationSettings>
   </WorkerRole>
+  <WebRole name="WebFrontEnd" vmsize="ExtraSmall">
+    <Sites>
+      <Site name="Web">
+        <Bindings>
+          <Binding name="Endpoint1" endpointName="Endpoint1" />
+        </Bindings>
+      </Site>
+    </Sites>
+    <Endpoints>
+      <InputEndpoint name="Endpoint1" protocol="http" port="80" />
+    </Endpoints>
+    <Imports>
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <ConfigurationSettings>
+      <Setting name="MainStorage" />
+    </ConfigurationSettings>
+  </WebRole>
 </ServiceDefinition>

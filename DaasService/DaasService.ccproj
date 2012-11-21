@@ -33,8 +33,10 @@
   <!-- Items for the project -->
   <ItemGroup>
     <ServiceDefinition Include="ServiceDefinition.csdef" />
+    <ServiceConfiguration Include="ServiceConfiguration.Cloud-Daas.cscfg" />
+    <ServiceConfiguration Include="ServiceConfiguration.Cloud-SimpleBatch.cscfg" />
     <ServiceConfiguration Include="ServiceConfiguration.Local.cscfg" />
-    <ServiceConfiguration Include="ServiceConfiguration.Cloud.cscfg" />
+    <ServiceConfiguration Include="ServiceConfiguration.Cloud-Mike.cscfg" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OrchestratorRole\OrchestratorRole.csproj">
@@ -43,6 +45,14 @@
       <Private>True</Private>
       <RoleType>Worker</RoleType>
       <RoleName>OrchestratorRole</RoleName>
+      <UpdateDiagnosticsConnectionStringOnPublish>True</UpdateDiagnosticsConnectionStringOnPublish>
+    </ProjectReference>
+    <ProjectReference Include="..\WebFrontEnd\WebFrontEnd.csproj">
+      <Name>WebFrontEnd</Name>
+      <Project>{45974999-9c53-48ad-83b9-519ecc8ab8f4}</Project>
+      <Private>True</Private>
+      <RoleType>Web</RoleType>
+      <RoleName>WebFrontEnd</RoleName>
       <UpdateDiagnosticsConnectionStringOnPublish>True</UpdateDiagnosticsConnectionStringOnPublish>
     </ProjectReference>
     <ProjectReference Include="..\WorkerRole1\ExecutionRole.csproj">

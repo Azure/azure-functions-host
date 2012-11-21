@@ -9,6 +9,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
+using Microsoft.WindowsAzure.ServiceRuntime;
 
 // Despite the name, this is not an IOC container. 
 // This provides a global view of the distributed application (service, webpage, logging, tooling, etc)
@@ -97,8 +98,7 @@ public partial class Services
     {
         var settings = GetOrchestratorSettings();
         return new Orchestrator.Worker(settings);
-    }    
-
+    }
 
     public static ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInstance instance)
     {

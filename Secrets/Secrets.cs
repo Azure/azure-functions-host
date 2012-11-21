@@ -11,17 +11,9 @@ using Microsoft.WindowsAzure.StorageClient;
 // This does not describe the schemas, payloads, etc for those endpoints. 
 public partial class Secrets
 {
-    public static string AccountConnectionString 
-    {
-        get
-        {
-            return GetAccount().ToString(exportSecrets: true);
-        }    
-    }
-
     public static CloudStorageAccount GetAccount()
     {
-        return new CloudStorageAccount(new StorageCredentialsAccountAndKey(accountName, accountKey), false);
+        return CloudStorageAccount.Parse(AccountConnectionString);
     }
 
     // Suffix for quickly switching betten production and private runs.
