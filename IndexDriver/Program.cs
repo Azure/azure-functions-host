@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using AzureTables;
+using DaasEndpoints;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
@@ -77,14 +78,16 @@ namespace IndexDriver
                                 
                 Console.WriteLine("indexing: {0}", payload.Blobpath);
 
-                var account = Secrets.GetAccount();
+                IAccountInfo accountInfo =new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
+                var services = new Services(accountInfo);
+
                 var settings = new LoggingCloudIndexerSettings
                 {
-                    Account = account,
-                    FunctionIndexTableName = Secrets.FunctionIndexTableName
+                    Account = services.Account,
+                    FunctionIndexTableName = EndpointNames.FunctionIndexTableName
                 };
 
-                var binderLookupTable = Services.GetBinderTable();
+                var binderLookupTable = services.GetBinderTable();
 
                 HashSet<string> funcsBefore = settings.GetFuncSet();
 
@@ -94,7 +97,7 @@ namespace IndexDriver
 
                 var cd = new CloudBlobDescriptor
                 {
-                    AccountConnectionString = payload.AccountConnectionString,
+                    AccountConnectionString = payload.UserAccountConnectionString,
                     ContainerName = path.ContainerName,
                     BlobName = path.BlobName
                 };

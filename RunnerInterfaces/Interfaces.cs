@@ -72,7 +72,12 @@ namespace RunnerInterfaces
     // Queue message payload to request that orchestrator rescan a blob path 
     public class IndexRequestPayload
     {
-        public string AccountConnectionString { get; set; }
+        // Account that the service is using.
+        // Thi sis where the function entries are written. 
+        public string ServiceAccountConnectionString { get; set; }
+
+        // User account that the Blobpath is resolved against
+        public string UserAccountConnectionString { get; set; }
 
         public string Blobpath { get; set; }
 

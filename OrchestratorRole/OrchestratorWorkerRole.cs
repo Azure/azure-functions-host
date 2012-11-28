@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using DaasEndpoints;
 using Executor;
 using IndexDriver;
 using Microsoft.WindowsAzure;
@@ -23,6 +24,7 @@ namespace OrchestratorRole
         DateTime _startTime;
 
         private ExecutionStatsAggregator _stats;
+        private Services _services;
 
         public override void Run()
         {
@@ -32,14 +34,18 @@ namespace OrchestratorRole
             _startTime = DateTime.UtcNow;
             _localCacheRoot = RoleEnvironment.GetLocalResource("localStore").RootPath;
 
+            IAccountInfo accountInfo = new AzureRoleAccountInfo();
+            _services = new Services(accountInfo);
+
+
             // This thread owns the function table. 
-            var settings = Services.GetOrchestratorSettings();
+            var settings = _services.GetOrchestratorSettings();
 
             Worker worker = null;
 
-            Services.ResetHealthStatus();
+            _services.ResetHealthStatus();
 
-            _stats = Services.GetStatsAggregator();
+            _stats = _services.GetStatsAggregator();
 
             CancellationTokenSource cancelSource = new CancellationTokenSource();
             while (true)
@@ -63,7 +69,7 @@ namespace OrchestratorRole
                     worker.Heartbeat.Uptime = _startTime;
                 }
 
-                Services.WriteHealthStatus(worker.Heartbeat);
+                _services.WriteHealthStatus(worker.Heartbeat);
 
                 UpdateStats();
                
@@ -78,7 +84,7 @@ namespace OrchestratorRole
         // Aggregate the stats from any exuection instances that have completed. 
         void UpdateStats()
         {
-            var queue = Secrets.GetExecutionCompleteQueue();
+            var queue = _services.GetExecutionCompleteQueue();
             while (true)
             {
                 var msg = queue.GetMessage();
@@ -101,15 +107,15 @@ namespace OrchestratorRole
 
         private void ResetExecutors()
         {
-            Services.ResetHealthStatus();
+            _services.ResetHealthStatus();
 
             string msg = string.Format("Reset at {0} by {1}", DateTime.Now, RoleEnvironment.CurrentRoleInstance.Id);
-            Secrets.GetExecutorResetControlBlob().UploadText(msg);
+            _services.GetExecutorResetControlBlob().UploadText(msg);
         }
 
         bool PollForIndexRequest()
         {
-            var queue = Secrets.GetOrchestratorControlQueue();
+            var queue = _services.GetOrchestratorControlQueue();
 
             var msg = queue.GetMessage();
             if (msg != null)
@@ -151,8 +157,4 @@ namespace OrchestratorRole
             return base.OnStart();
         }     
     }
-
-
-  
-
 }

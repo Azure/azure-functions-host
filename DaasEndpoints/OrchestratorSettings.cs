@@ -9,6 +9,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using Microsoft.WindowsAzure;
+using DaasEndpoints;
 
 // Despite the name, this is not an IOC container. 
 // This provides a global view of the distributed application (service, webpage, logging, tooling, etc)
@@ -20,15 +21,22 @@ namespace Orchestrator
     // Settings that bind against real cloud services.
     public class OrchestratorSettings : IOrchestratorSettings
     {
+        Services _services;
+
+        public OrchestratorSettings(Services services)
+        {
+            _services = services;
+        }
+
         public FunctionIndexEntity[] ReadFunctionTable()
         {
-            var funcs = Services.GetFunctions();
+            var funcs = _services.GetFunctions();
             return funcs;
         }
 
         public void QueueFunction(FunctionInstance instance)
         {
-            Services.QueueExecutionRequest(instance);
+            _services.QueueExecutionRequest(instance);
         }      
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using DaasEndpoints;
 using Executor;
 using Orchestrator;
 using RunnerHost;
@@ -26,6 +27,12 @@ namespace WebFrontEnd.Controllers
     // $$$ Analysis can be expensive. Use a cache?
     public class LogAnalysis
     {
+        private static Services GetServices()
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);
+        }
+
         // Gets static information
         public static ParamModel[] GetParamInfo(FunctionIndexEntity func)
         {
@@ -154,7 +161,7 @@ namespace WebFrontEnd.Controllers
             {
                 FunctionInstance instance = log.FunctionInstance;
                 ParameterRuntimeBinding[] args = instance.Args;
-                var descriptor = Services.Lookup(instance.Location);
+                var descriptor = GetServices().Lookup(instance.Location);
                 var flows = descriptor.Flow.Bindings;
 
                 for (int i = 0; i < args.Length; i++)

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using DaasEndpoints;
 using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Diagnostics;
@@ -17,11 +18,17 @@ namespace WorkerRole1
     public class WorkerRole : RoleEntryPoint
     {
         DateTime _startTime;
-        DateTime _lastResetTime;
-
-        
+        DateTime _lastResetTime;        
 
         public override void Run()
+        {
+            ServiceContainer container = new ServiceContainer();
+            container.SetService<IAccountInfo>(new AzureRoleAccountInfo());
+
+            Run(container);
+        }
+
+        void Run(IServiceContainer serviceContainer)
         {
             _startTime = DateTime.UtcNow;
             
@@ -30,15 +37,17 @@ namespace WorkerRole1
 
             var local = RoleEnvironment.GetLocalResource("localStore");
 
-            var settings = Services.GetExecutionQueueSettings();
+            IAccountInfo accountInfo = serviceContainer.GetService<IAccountInfo>();
+            var services = new Services(accountInfo);
+            CloudQueue executionQueue = services.GetExecutionQueue();
             ExecutorListener e = null;
 
-            var outputLogger = new WebExecutionLogger(LogRole);
+            var outputLogger = new WebExecutionLogger(services, LogRole);
                                     
             while (true)
             {
                 bool reset = false;
-                if (CheckForReset())
+                if (CheckForReset(services))
                 {
                     reset = true;
                 }
@@ -53,7 +62,7 @@ namespace WorkerRole1
                 }
                 if (e == null)
                 {
-                    e = new ExecutorListener(local.RootPath, settings);
+                    e = new ExecutorListener(local.RootPath, executionQueue);
                     e.Stats.LastCacheReset = _lastResetTime;
                     e.Stats.Uptime = _startTime;
                 }
@@ -78,9 +87,10 @@ namespace WorkerRole1
             }            
         }
 
-        private bool CheckForReset()
+        private bool CheckForReset(Services services)
         {
-            DateTime? last = Utility.GetBlobModifiedUtcTime(Secrets.GetExecutorResetControlBlob());
+            var blob = services.GetExecutorResetControlBlob();
+            DateTime? last = Utility.GetBlobModifiedUtcTime(blob);
             if (!last.HasValue)
             {
                 // if no control blob, then don't reset. Else we could be reseting on every poll.
@@ -117,16 +127,22 @@ namespace WorkerRole1
     public class WebExecutionLogger : IExecutionLogger
     {
         // Logging function for adding header info to the start of each log.
-        Action<TextWriter> _addHeaderInfo;
+        private readonly Action<TextWriter> _addHeaderInfo;
+        private readonly Services _services;
 
-        public WebExecutionLogger(Action<TextWriter> addHeaderInfo)
+        private readonly FunctionInvokeLogger _invokeLogger;
+
+        public WebExecutionLogger(Services services, Action<TextWriter> addHeaderInfo)
         {
+            _services = services;
             _addHeaderInfo = addHeaderInfo;
+
+            _invokeLogger = services.GetFunctionInvokeLogger();
         }
 
         public FunctionOutputLog GetLogStream(FunctionInstance f)
         {
-            CloudBlobContainer c = Secrets.GetExecutionLogContainer();
+            CloudBlobContainer c = _services.GetExecutionLogContainer();
             string name = f.ToString() + ".txt";
             CloudBlob blob = c.GetBlobReference(name);
             
@@ -147,30 +163,27 @@ namespace WorkerRole1
                 Output = tw,
                 ParameterLogBlob = new CloudBlobDescriptor
                 {
-                     AccountConnectionString = Secrets.AccountConnectionString,
-                     ContainerName = Secrets.ExecutionLogName,
+                     AccountConnectionString = _services.AccountConnectionString,
+                     ContainerName = EndpointNames.ExecutionLogName,
                      BlobName = f.ToString() + ".params.txt"
                 }
             };
         }
 
-
         public void LogFatalError(string info, Exception e)
         {
-            Services.LogFatalError(info, e);
+            _services.LogFatalError(info, e);
         }    
-
-        FunctionInvokeLogger invokeLogger = Services.GetFunctionInvokeLogger();
 
         public void UpdateInstanceLog(ExecutionInstanceLogEntity instance)
         {
-            invokeLogger.Log(instance);
+            _invokeLogger.Log(instance);
 
             // If complete, then queue a message to the orchestrator so it can aggregate stats. 
 
             if (instance.IsCompleted())
             {
-                var queue = Secrets.GetExecutionCompleteQueue();
+                var queue = _services.GetExecutionCompleteQueue();
                 var json = JsonCustom.SerializeObject(new ExecutionFinishedPayload { Instances = new Guid[] { instance.FunctionInstance.Id } });
                 CloudQueueMessage msg = new CloudQueueMessage(json);
                 queue.AddMessage(msg);
@@ -179,13 +192,12 @@ namespace WorkerRole1
 
         public void WriteHeartbeat(ExecutionRoleHeartbeat stats)
         {
-            Services.WriteHealthStatus(RoleEnvironment.CurrentRoleInstance.Id, stats);
+            _services.WriteHealthStatus(RoleEnvironment.CurrentRoleInstance.Id, stats);
         }
-
 
         public bool IsDeleteRequested(Guid id)
         {
-            return Services.IsDeleteRequested(id);
+            return _services.IsDeleteRequested(id);
         }
     }
 }

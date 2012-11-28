@@ -93,11 +93,11 @@ namespace Executor
     public class ExecutorListener : IDisposable
     {
         readonly private Executor _executor;
-        readonly private ExecutionQueueSettings _queueSettings;
+        readonly private CloudQueue _executionQueue;
 
-        public ExecutorListener(string localCache, ExecutionQueueSettings queueSettings)
+        public ExecutorListener(string localCache, CloudQueue executionQueue)
         {
-            _queueSettings = queueSettings;
+            _executionQueue = executionQueue;
             _executor = new Executor(localCache);
         }
 
@@ -116,7 +116,7 @@ namespace Executor
         // Return true if it did work. False if nothing happened (which can trigger the caller to sleep before retry)
         public bool Poll(IExecutionLogger logger)
         {
-            CloudQueue q = _queueSettings.GetQueue();
+            CloudQueue q = _executionQueue;
 
 #if true
             TimeSpan refreshRate = TimeSpan.FromMinutes(1); // renew at this rate. 

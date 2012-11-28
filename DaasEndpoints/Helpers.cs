@@ -14,9 +14,9 @@ namespace DaasEndpoints
         // Queue execution for any blobs in the given path
         // conatiner\blob1\blobsubdir
         // Returns count scanned
-        public static int ScanBlobDir(CloudStorageAccount account, CloudBlobPath path)
+        public static int ScanBlobDir(Services services, CloudStorageAccount account, CloudBlobPath path)
         {
-            var settings = Services.GetOrchestratorSettings();
+            var settings = services.GetOrchestratorSettings();
             var worker = new Orchestrator.Worker(settings);     
 
             int count = 0;            

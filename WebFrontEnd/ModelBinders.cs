@@ -6,6 +6,7 @@ using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
+using DaasEndpoints;
 using Executor;
 using Microsoft.WindowsAzure;
 using Orchestrator;
@@ -43,8 +44,6 @@ namespace WebFrontEnd
     // Bind FunctionIndexEntity
     public class ExecutionInstanceLogEntityBinder : StringHelperModelBinder
     {
-        FunctionInvokeLogger _logger = Services.GetFunctionInvokeLogger();
-
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
         {
             return ParseWorker(value, modelName, modelState);
@@ -58,7 +57,13 @@ namespace WebFrontEnd
                 modelState.AddModelError(modelName, "Invalid function log format");
                 return null;
             }
-            ExecutionInstanceLogEntity log = _logger.Get(g);
+
+
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            var services = new Services(accountInfo);
+            FunctionInvokeLogger logger = services.GetFunctionInvokeLogger();
+            
+            ExecutionInstanceLogEntity log = logger.Get(g);
             if (log == null)
             {
                 modelState.AddModelError(modelName, "Invalid function log entry. Has it been deleted from the server?");
@@ -96,8 +101,11 @@ namespace WebFrontEnd
     public class FunctionIndexEntityBinder : StringHelperModelBinder
     {
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
-        { 	
-            FunctionIndexEntity func = Services.Lookup(value);
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            var services = new Services(accountInfo);
+
+            FunctionIndexEntity func = services.Lookup(value);
             if (func == null)
             {
                 modelState.AddModelError(modelName, "Invalid function id");

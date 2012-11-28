@@ -10,161 +10,219 @@ using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
 using Microsoft.WindowsAzure.ServiceRuntime;
+using Microsoft.WindowsAzure;
 
-// Despite the name, this is not an IOC container. 
-// This provides a global view of the distributed application (service, webpage, logging, tooling, etc)
-// Anything that needs an azure endpoint can go here.
-// This access the raw settings (especially account name) from Secrets, but then also provides the 
-// policy and references to stitch everything together. 
-public partial class Services
+namespace DaasEndpoints
 {
-    // Get list of all registered functions.     
-    // $$$ Merge with CloudIndexerSettings
-    public static FunctionIndexEntity[] GetFunctions()
+    // Despite the name, this is not an IOC container. 
+    // This provides a global view of the distributed application (service, webpage, logging, tooling, etc)
+    // Anything that needs an azure endpoint can go here.
+    // This access the raw settings (especially account name) from Secrets, but then also provides the 
+    // policy and references to stitch everything together. 
+    public partial class Services
     {
-        var funcs = Utility.ReadTable<FunctionIndexEntity>(Secrets.GetAccount(), Secrets.FunctionIndexTableName);
-        return funcs;
-    }
+        private readonly IAccountInfo _accountInfo;
+        private readonly CloudStorageAccount _account;
 
-    public static void PostDeleteRequest(FunctionInstance instance)
-    {
-        Utility.WriteBlob(Secrets.GetAccount(), "abort-requests", instance.Id.ToString(), "delete requested");        
-    }
-
-    public static bool IsDeleteRequested(Guid instanceId)
-    {
-        bool x = Utility.DoesBlobExist(Secrets.GetAccount(), "abort-requests", instanceId.ToString());        
-        return x;
-    }
-
-    public static void LogFatalError(string message, Exception e)
-    {
-        StringWriter sw = new StringWriter();
-        sw.WriteLine(message);
-        sw.WriteLine(DateTime.Now);
-
-        while (e != null)
+        public Services(IAccountInfo accountInfo)
         {
-            sw.WriteLine("Exception:{0}", e.GetType().FullName);
-            sw.WriteLine("Message:{0}", e.Message);
-            sw.WriteLine(e.StackTrace);
-            sw.WriteLine();
-            e = e.InnerException;
+            _accountInfo = accountInfo;
+            _account = CloudStorageAccount.Parse(accountInfo.AccountConnectionString);
         }
 
-        string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
-        Utility.WriteBlob(Secrets.GetAccount(), Secrets.ExecutionLogName, path, sw.ToString());
-    }
-
-    public static FunctionInvokeLogger GetFunctionInvokeLogger()
-    {
-        var account = Secrets.GetAccount();
-        return new FunctionInvokeLogger { _account = account, _tableName = Secrets.FunctionInvokeLogTableName,
-                                          _tableMRU = GetFunctionLogTableIndexTime()
-        };
-    }
-
-    public static FunctionIndexEntity Lookup(FunctionLocation location)
-    {
-        string rowKey = FunctionIndexEntity.GetRowKey(location);
-        return Services.Lookup(rowKey);
-    }
-
-    public static FunctionIndexEntity Lookup(string functionId)
-    {
-        FunctionIndexEntity func = Utility.Lookup<FunctionIndexEntity>(
-            Secrets.GetAccount(), 
-            Secrets.FunctionIndexTableName, 
-            FunctionIndexEntity.PartionKey,
-            functionId);
-        return func;
-    }
-
-    public static void QueueIndexRequest(IndexRequestPayload payload)
-    {
-        string json = JsonCustom.SerializeObject(payload);
-        Secrets.GetOrchestratorControlQueue().AddMessage(new CloudQueueMessage(json));
-    }
-
-    // Important to get a quick, estimate of the depth of the execution queu. 
-    public static int? GetExecutionQueueDepth()
-    {
-        var q = GetExecutionQueueSettings().GetQueue();
-
-        return q.RetrieveApproximateMessageCount();
-    }
-
-    public static Worker GetOrchestrationWorker()
-    {
-        var settings = GetOrchestratorSettings();
-        return new Orchestrator.Worker(settings);
-    }
-
-    public static ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInstance instance)
-    {
-        instance.Id = Guid.NewGuid(); // used for logging. 
-        instance.ServiceUrl = Secrets.WebDashboardUri;
-
-        // Log that the function is now queued.
-        // Do this before queueing to avoid racing with execution 
-        var logger = GetFunctionInvokeLogger();
-
-        var logItem = new ExecutionInstanceLogEntity();
-        logItem.FunctionInstance = instance;
-        logItem.QueueTime = DateTime.UtcNow; // don't set starttime until a role actually executes it.
-
-        logger.Log(logItem);        
-
-        ExecutorClient.Queue(GetExecutionQueueSettings(), instance);
-
-        // Now that it's queued, execution node may immediately pick up the queue item and start running it, 
-        // and logging against it.
-        
-        return logItem;                
-    }
-
-    public static ExecutionQueueSettings GetExecutionQueueSettings()
-    {
-        var settings = new ExecutionQueueSettings
+        public CloudStorageAccount Account
         {
-            Account = Secrets.GetAccount(),
-            QueueName = Secrets.ExecutionQueueName
-        };
-        return settings;
+            get { return _account; }
+        }
+
+        public string AccountConnectionString
+        {
+            get { return _accountInfo.AccountConnectionString; }
+        }
+
+        // This blob is used by orchestrator to signal to all the executor nodes to reset.
+        // THis is needed when orchestrator makes an update (like upgrading a funcioin) and needs 
+        // the executors to clear their caches.
+        public CloudBlob GetExecutorResetControlBlob()
+        {
+            CloudBlobClient client = _account.CreateCloudBlobClient();
+            CloudBlobContainer c = client.GetContainerReference(EndpointNames.DaasControlContainerName);
+            c.CreateIfNotExist();
+            CloudBlob b = c.GetBlobReference("executor-reset");
+            return b;
+        }
+
+        public CloudQueue GetExecutionCompleteQueue()
+        {
+            CloudQueueClient client = _account.CreateCloudQueueClient();
+            var queue = client.GetQueueReference(EndpointNames.FunctionInvokeDoneQueue);
+            queue.CreateIfNotExist();
+            return queue;
+        }
+
+        // Get list of all registered functions.     
+        // $$$ Merge with CloudIndexerSettings
+        public FunctionIndexEntity[] GetFunctions()
+        {
+            var funcs = Utility.ReadTable<FunctionIndexEntity>(_account, EndpointNames.FunctionIndexTableName);
+            return funcs;
+        }
+
+        public void PostDeleteRequest(FunctionInstance instance)
+        {
+            Utility.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
+        }
+
+        public bool IsDeleteRequested(Guid instanceId)
+        {
+            bool x = Utility.DoesBlobExist(_account, "abort-requests", instanceId.ToString());
+            return x;
+        }
+
+        public void LogFatalError(string message, Exception e)
+        {
+            StringWriter sw = new StringWriter();
+            sw.WriteLine(message);
+            sw.WriteLine(DateTime.Now);
+
+            while (e != null)
+            {
+                sw.WriteLine("Exception:{0}", e.GetType().FullName);
+                sw.WriteLine("Message:{0}", e.Message);
+                sw.WriteLine(e.StackTrace);
+                sw.WriteLine();
+                e = e.InnerException;
+            }
+
+            string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
+            Utility.WriteBlob(_account, EndpointNames.ExecutionLogName, path, sw.ToString());
+        }
+
+        public FunctionInvokeLogger GetFunctionInvokeLogger()
+        {
+            return new FunctionInvokeLogger
+            {
+                _account = _account,
+                _tableName = EndpointNames.FunctionInvokeLogTableName,
+                _tableMRU = GetFunctionLogTableIndexTime()
+            };
+        }
+
+        public FunctionIndexEntity Lookup(FunctionLocation location)
+        {
+            string rowKey = FunctionIndexEntity.GetRowKey(location);
+            return Lookup(rowKey);
+        }
+
+        public FunctionIndexEntity Lookup(string functionId)
+        {
+            FunctionIndexEntity func = Utility.Lookup<FunctionIndexEntity>(
+                _account,
+                EndpointNames.FunctionIndexTableName,
+                FunctionIndexEntity.PartionKey,
+                functionId);
+            return func;
+        }
+
+        public void QueueIndexRequest(IndexRequestPayload payload)
+        {
+            string json = JsonCustom.SerializeObject(payload);
+            GetOrchestratorControlQueue().AddMessage(new CloudQueueMessage(json));
+        }
+        
+        public CloudQueue GetOrchestratorControlQueue()
+        {
+            CloudQueueClient client = _account.CreateCloudQueueClient();
+            var queue = client.GetQueueReference(EndpointNames.OrchestratorControlQueue);
+            queue.CreateIfNotExist();
+            return queue;
+        }
+
+        // Important to get a quick, estimate of the depth of the execution queu. 
+        public int? GetExecutionQueueDepth()
+        {            
+            var q = GetExecutionQueue();
+            return q.RetrieveApproximateMessageCount();
+        }
+        
+        public CloudQueue GetExecutionQueue()
+        {
+            CloudQueueClient queueClient = _account.CreateCloudQueueClient();
+            var queue = queueClient.GetQueueReference(EndpointNames.ExecutionQueueName);
+            queue.CreateIfNotExist();
+            return queue;
+        }
+
+        public Worker GetOrchestrationWorker()
+        {
+            var settings = GetOrchestratorSettings();
+            return new Orchestrator.Worker(settings);
+        }
+
+        public ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInstance instance)
+        {
+            instance.Id = Guid.NewGuid(); // used for logging. 
+            instance.ServiceUrl =  _accountInfo.WebDashboardUri;
+
+            // Log that the function is now queued.
+            // Do this before queueing to avoid racing with execution 
+            var logger = GetFunctionInvokeLogger();
+
+            var logItem = new ExecutionInstanceLogEntity();
+            logItem.FunctionInstance = instance;
+            logItem.QueueTime = DateTime.UtcNow; // don't set starttime until a role actually executes it.
+
+            logger.Log(logItem);
+
+            ExecutorClient.Queue(GetExecutionQueue(), instance);
+
+            // Now that it's queued, execution node may immediately pick up the queue item and start running it, 
+            // and logging against it.
+
+            return logItem;
+        }
+
+        public OrchestratorSettings GetOrchestratorSettings()
+        {
+            return new OrchestratorSettings(this);
+        }
+
+        public ExecutionStatsAggregator GetStatsAggregator()
+        {
+            var table = GetInvokeStatsTable();
+            var logger = GetFunctionInvokeLogger(); // for reading logs
+            return new ExecutionStatsAggregator(table, logger, GetFunctionLogTableIndexTime());
+        }
+
+        public AzureTable GetInvokeStatsTable()
+        {
+            return new AzureTables.AzureTable(_account, EndpointNames.FunctionInvokeStatsTableName);
+        }
+
+        public AzureTable GetFunctionLogTableIndexTime()
+        {
+            return new AzureTables.AzureTable(_account, EndpointNames.FunctionInvokeLogIndexTime);
+        }
+
+        public AzureTable<BinderEntry> GetBinderTable()
+        {
+            return new AzureTable<BinderEntry>(_account, EndpointNames.BindersTableName);
+        }
+
+        public CloudBlobContainer GetExecutionLogContainer()
+        {
+            CloudBlobClient client = _account.CreateCloudBlobClient();
+            CloudBlobContainer c = client.GetContainerReference(EndpointNames.ExecutionLogName);
+            c.CreateIfNotExist();
+            return c;
+        }
     }
 
-    public static OrchestratorSettings GetOrchestratorSettings()
+
+    public class ExecutionFinishedPayload
     {
-        return new OrchestratorSettings();
+        // FunctionInstance Ids for functions that we just finished. 
+        // Orchestrator cna look these up and apply the deltas. 
+        public Guid[] Instances { get; set; }
     }
-
-    public static ExecutionStatsAggregator GetStatsAggregator()
-    {
-        var table = GetInvokeStatsTable();
-        var logger = Services.GetFunctionInvokeLogger(); // for reading logs
-        return new ExecutionStatsAggregator(table, logger, GetFunctionLogTableIndexTime());
-    }
-
-    public static AzureTable GetInvokeStatsTable()
-    {
-        return new AzureTables.AzureTable(Secrets.GetAccount(), Secrets.FunctionInvokeStatsTableName);
-    }
-
-    public static AzureTable GetFunctionLogTableIndexTime()
-    {
-        return new AzureTables.AzureTable(Secrets.GetAccount(), Secrets.FunctionInvokeLogIndexTime);
-    }
-
-    public static AzureTable<BinderEntry> GetBinderTable()
-    {
-        return new AzureTable<BinderEntry>(Secrets.GetAccount(), Secrets.BindersTableName);
-    }
-}
-
-
-public class ExecutionFinishedPayload
-{
-    // FunctionInstance Ids for functions that we just finished. 
-    // Orchestrator cna look these up and apply the deltas. 
-    public Guid[] Instances { get; set; }
 }

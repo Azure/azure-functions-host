@@ -89,10 +89,6 @@
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Secrets\Secrets.csproj">
-      <Project>{91956a5e-25b9-469b-bf3e-57bf7c547ff2}</Project>
-      <Name>Secrets</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

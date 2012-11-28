@@ -13,17 +13,14 @@ namespace Executor
     {
         // Queue a message to run the given function instance
         // This just queus it and does not do any logging. 
-        public static void Queue(ExecutionQueueSettings queueSettings, FunctionInstance instance)
+        public static void Queue(CloudQueue queue, FunctionInstance instance)
         {
             // Queue tutorial here:
             //   http://www.developerfusion.com/article/120197/using-the-queuing-service-in-windows-azure/ 
 
             instance.SchemaNumber = FunctionInstance.CurrentSchema;
             
-            // Caller should have set ID. 
-            
-            var queue = queueSettings.GetQueue();
-
+            // Caller should have set ID.             
             string json = JsonCustom.SerializeObject(instance);
             var msg = new CloudQueueMessage(json);
             queue.AddMessage(msg);

@@ -55,9 +55,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FunctionTableIndexerSettings.cs" />
+    <Compile Include="AzureRoleAccountInfo.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="IndexerSettings.cs" />
+    <Compile Include="Names.cs" />
     <Compile Include="OrchestratorSettings.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -79,10 +80,6 @@
     <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Secrets\Secrets.csproj">
-      <Project>{91956a5e-25b9-469b-bf3e-57bf7c547ff2}</Project>
-      <Name>Secrets</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

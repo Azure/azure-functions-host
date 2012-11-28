@@ -16,6 +16,12 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class HomeController : Controller
     {
+        private static Services GetServices()
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);
+        }
+
         //
         // GET: /Home/
 
@@ -25,8 +31,9 @@ namespace WebFrontEnd.Controllers
             OverviewModel model = new OverviewModel();
             
             // Get health 
-            model.QueueDepth = Services.GetExecutionQueueDepth();
-            model.HealthStatus = Services.GetHealthStatus();
+            var services = GetServices();
+            model.QueueDepth = services.GetExecutionQueueDepth();
+            model.HealthStatus = services.GetHealthStatus();
             
             return View(model);
         }
@@ -35,7 +42,7 @@ namespace WebFrontEnd.Controllers
         {
             var model = new FunctionListModel
             {
-                Functions = Services.GetFunctions()
+                Functions = GetServices().GetFunctions()
             };
 
             return View(model);
@@ -44,7 +51,7 @@ namespace WebFrontEnd.Controllers
 
         public ActionResult ListAllBinders()
         {
-            var binderLookupTable = Services.GetBinderTable();
+            var binderLookupTable = GetServices().GetBinderTable();
 
             var x = from kv in binderLookupTable.EnumerateDict() select new BinderListModel.Entry 
             {
@@ -68,7 +75,7 @@ namespace WebFrontEnd.Controllers
         {
             var model = new FunctionListModel
             {
-                Functions = Services.GetFunctions()
+                Functions = GetServices().GetFunctions()
             };
             return View(model);
         }
@@ -97,7 +104,7 @@ namespace WebFrontEnd.Controllers
             {
                 account = GetAccount(accountname, accountkey);
             }
-            int count = Helpers.ScanBlobDir(account, containerpath);
+            int count = Helpers.ScanBlobDir(GetServices(), account, containerpath);
 
             RequestScanSubmitModel model = new RequestScanSubmitModel();
             model.CountScanned = count;
@@ -115,7 +122,7 @@ namespace WebFrontEnd.Controllers
         internal static string TryLookupConnectionString(string accountName)
         {
             // If account key is blank, see if we can look it up
-            var funcs = Services.GetFunctions();
+            var funcs = GetServices().GetFunctions();
             foreach (var func in funcs)
             {
                 var cred = func.GetAccount().Credentials;

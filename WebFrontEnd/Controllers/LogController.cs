@@ -5,6 +5,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using AzureTables;
+using DaasEndpoints;
 using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
@@ -17,8 +18,12 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class LogController : Controller
     {
-        FunctionInvokeLogger _logger = Services.GetFunctionInvokeLogger();
-        
+        private static Services GetServices()
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);
+        }
+                        
         protected override void OnActionExecuting(ActionExecutingContext filterContext)
         {
             if (!this.ModelState.IsValid)
@@ -43,8 +48,10 @@ namespace WebFrontEnd.Controllers
         // List Function invocations 
         public ActionResult ListAllInstances()
         {
+            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+
             var model = new LogIndexModel();
-            model.Logs = _logger.GetRecent(100);
+            model.Logs = logger.GetRecent(100);
             model.Description = "All executed functions";
 
             return View("ListFunctionInstances", model);
@@ -53,8 +60,10 @@ namespace WebFrontEnd.Controllers
         // List all invocation of a specific function. 
         public ActionResult ListFunctionInstances(FunctionIndexEntity func)
         {
+            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+
             var model = new LogIndexModel();
-            IEnumerable<ExecutionInstanceLogEntity> logs = _logger.GetRecent(100);
+            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(100);
             model.Logs = (from log in logs 
                           where log.FunctionInstance.Location.Equals(func.Location) 
                           select log).ToArray();
@@ -67,8 +76,10 @@ namespace WebFrontEnd.Controllers
         // $$$ Are there queries here? (filter on status, timestamp, etc).
         public ActionResult ListFunctionInstancesFailures(FunctionIndexEntity func)
         {
+            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+
             var model = new LogIndexModel();
-            IEnumerable<ExecutionInstanceLogEntity> logs = _logger.GetRecent(100);
+            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(100);
             model.Logs = (from log in logs
                           let instance = log.FunctionInstance
                           where instance.Location.Equals(func.Location) && (log.GetStatus() == FunctionInstanceStatus.CompletedFailed)
@@ -90,7 +101,7 @@ namespace WebFrontEnd.Controllers
             model.Instance = func;
 
             var instance = model.Instance.FunctionInstance;
-            model.Descriptor = Services.Lookup(instance.Location);
+            model.Descriptor = GetServices().Lookup(instance.Location);
 
             // Parallel arrays of static descriptor and actual instance info 
             ParameterRuntimeBinding[] args = instance.Args;
@@ -106,7 +117,7 @@ namespace WebFrontEnd.Controllers
         [HttpPost]
         public ActionResult AbortFunction(FunctionInstance instance)
         {
-            Services.PostDeleteRequest(instance);
+            GetServices().PostDeleteRequest(instance);
 
             // Redict so we swithc verbs from Post to Get
             return RedirectToAction("FunctionInstance", new { func = instance.Id });
@@ -115,16 +126,18 @@ namespace WebFrontEnd.Controllers
         // How many times each function has been executed
         public ActionResult Summary()
         {
+            var services = GetServices();
+
             var model = new LogSummaryModel();
-            
-            var table = Services.GetInvokeStatsTable();
+
+            var table = services.GetInvokeStatsTable();
             model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => Services.Lookup(rowKey).Location ); // $$$ very inefficient
+                rowKey => services.Lookup(rowKey).Location); // $$$ very inefficient
 
             // Populate queue. 
             model.QueuedInstances = PeekQueuedInstances();
 
-            model.QueueDepth = Services.GetExecutionQueueDepth();
+            model.QueueDepth = services.GetExecutionQueueDepth();
 
             return View(model);
         }
@@ -159,9 +172,10 @@ namespace WebFrontEnd.Controllers
 
         private FunctionInstance[] PeekQueuedInstances()
         {
+            var services = GetServices();
             List<FunctionInstance> list = new List<RunnerInterfaces.FunctionInstance>();
 
-            var q = Services.GetExecutionQueueSettings().GetQueue();
+            var q = services.GetExecutionQueue();
             var msgs = q.PeekMessages(messageCount: 30);
             foreach (var msg in msgs)
             {
@@ -177,7 +191,8 @@ namespace WebFrontEnd.Controllers
         // View current value. 
         public ActionResult Blob(CloudStorageAccount accountName, CloudBlobPath path)
         {
-            var logs = _logger.GetAll();
+            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+            var logs = logger.GetAll();
             
             var desc = new CloudBlobDescriptor
             {

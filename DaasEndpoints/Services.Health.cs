@@ -10,72 +10,83 @@ using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
 
-public partial class Services
+namespace DaasEndpoints
 {
-    public static ServiceHealthStatus GetHealthStatus()
+    public partial class Services
     {
-        var stats = new ServiceHealthStatus();
+        private CloudBlobContainer GetHealthLogContainer()
+        {
+            CloudBlobClient client = _account.CreateCloudBlobClient();
+            CloudBlobContainer c = client.GetContainerReference(EndpointNames.HealthLogContainerName);
+            c.CreateIfNotExist();
+            return c;
+        }
 
-        stats.Executors = new Dictionary<string, ExecutionRoleHeartbeat>();
+        public ServiceHealthStatus GetHealthStatus()
+        {
+            var stats = new ServiceHealthStatus();
 
-        BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
-        foreach (CloudBlob blob in Secrets.GetHealthLogContainer().ListBlobs(opts))
+            stats.Executors = new Dictionary<string, ExecutionRoleHeartbeat>();
+
+            BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
+            foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
+            {
+                try
+                {
+                    string json = blob.DownloadText();
+                    if (blob.Name.StartsWith(@"orch", StringComparison.OrdinalIgnoreCase))
+                    {
+                        stats.Orchestrator = JsonCustom.DeserializeObject<OrchestratorRoleHeartbeat>(json);
+                    }
+                    else
+                    {
+                        stats.Executors[blob.Name] = JsonCustom.DeserializeObject<ExecutionRoleHeartbeat>(json);
+                    }
+                }
+                catch (JsonSerializationException)
+                {
+                    // Ignore serialization errors. This is just health status. 
+                }
+            }
+
+            return stats;
+        }
+
+        public void WriteHealthStatus(OrchestratorRoleHeartbeat status)
+        {
+            string content = JsonCustom.SerializeObject(status);
+            GetHealthLogContainer().GetBlobReference(@"orch\role.txt").UploadText(content);
+        }
+
+        public void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
+        {
+            string content = JsonCustom.SerializeObject(status);
+            GetHealthLogContainer().GetBlobReference(@"exec\" + role + ".txt").UploadText(content);
+        }
+
+        // Delete all the blobs in the hleath status container. This will clear out stale entries.
+        // active nodes will refresh. 
+        public void ResetHealthStatus()
         {
             try
             {
-                string json = blob.DownloadText();
-                if (blob.Name.StartsWith(@"orch", StringComparison.OrdinalIgnoreCase))
+                BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
+                foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
                 {
-                    stats.Orchestrator = JsonCustom.DeserializeObject<OrchestratorRoleHeartbeat>(json);
-                }
-                else
-                {
-                    stats.Executors[blob.Name] = JsonCustom.DeserializeObject<ExecutionRoleHeartbeat>(json);
+                    blob.DeleteIfExists();
                 }
             }
-            catch (JsonSerializationException)
+            catch
             {
-                // Ignore serialization errors. This is just health status. 
             }
         }
-
-        return stats;
     }
 
-    public static void WriteHealthStatus(OrchestratorRoleHeartbeat status)
-    {
-        string content = JsonCustom.SerializeObject(status);
-        Secrets.GetHealthLogContainer().GetBlobReference(@"orch\role.txt").UploadText(content);
-    }
 
-    public static void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
+    public class ServiceHealthStatus
     {
-        string content = JsonCustom.SerializeObject(status);
-        Secrets.GetHealthLogContainer().GetBlobReference(@"exec\" + role + ".txt").UploadText(content);
-    }
+        public IDictionary<string, ExecutionRoleHeartbeat> Executors { get; set; }
 
-    // Delete all the blobs in the hleath status container. This will clear out stale entries.
-    // active nodes will refresh. 
-    public static void ResetHealthStatus()
-    {
-        try
-        {
-            BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
-            foreach (CloudBlob blob in Secrets.GetHealthLogContainer().ListBlobs(opts))
-            {
-                blob.DeleteIfExists();
-            }
-        }
-        catch
-        {
-        }
+        public OrchestratorRoleHeartbeat Orchestrator { get; set; }
     }
 }
-
-public class ServiceHealthStatus
-{
-    public IDictionary<string, ExecutionRoleHeartbeat> Executors { get; set; }
-
-    public OrchestratorRoleHeartbeat Orchestrator { get; set; }
-}
-

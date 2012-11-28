@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using DaasEndpoints;
 using Executor;
 using Orchestrator;
 using RunnerInterfaces;
@@ -24,6 +25,12 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class FunctionController : Controller
     {
+        private Services GetServices()
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);
+        }
+
         //
         // GET: /Function/
 
@@ -57,7 +64,7 @@ namespace WebFrontEnd.Controllers
         [HttpGet]
         public ActionResult InvokeFunctionReplay(FunctionInstance instance)
         {
-            FunctionIndexEntity func = Services.Lookup(instance.Location);
+            FunctionIndexEntity func = GetServices().Lookup(instance.Location);
             return RenderInvokePageWorker(func, instance.Args);
         }
 
@@ -109,7 +116,7 @@ namespace WebFrontEnd.Controllers
             instance.TriggerReason = "Explicitly requested via web dashboard";
 
             // Get instance ID from queuing. Use that to redict to view 
-            var instanceLog = Services.QueueExecutionRequest(instance);
+            var instanceLog = GetServices().QueueExecutionRequest(instance);
 
             // We got here via a POST. 
             // Switch to a GET so that users can do a page refresh as the function updates. 

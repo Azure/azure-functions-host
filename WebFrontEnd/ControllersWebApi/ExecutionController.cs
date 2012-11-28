@@ -33,14 +33,14 @@ namespace WebFrontEnd
         [HttpPost]        
         public void Scan(string func, string container)
         {
-            FunctionIndexEntity f = Services.Lookup(func);
+            FunctionIndexEntity f = GetServices().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
             }
 
             var account = f.GetAccount();
-            Helpers.ScanBlobDir(account, new CloudBlobPath(container));
+            Helpers.ScanBlobDir(GetServices(), account, new CloudBlobPath(container));
         }
 
         // Execute the given function. 
@@ -48,7 +48,7 @@ namespace WebFrontEnd
         [HttpPost]
         public BeginRunResult Run(string func)
         {
-            FunctionIndexEntity f = Services.Lookup(func);
+            FunctionIndexEntity f = GetServices().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);                                
@@ -66,7 +66,7 @@ namespace WebFrontEnd
                 var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
                 instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
 
-                ExecutionInstanceLogEntity result = Services.QueueExecutionRequest(instance);
+                ExecutionInstanceLogEntity result = GetServices().QueueExecutionRequest(instance);
 
                 return new BeginRunResult { Instance = result.FunctionInstance.Id };
             }
@@ -79,7 +79,7 @@ namespace WebFrontEnd
         [HttpGet]
         public FunctionInstanceStatusResult GetStatus(Guid id)
         {
-            FunctionInvokeLogger logger = Services.GetFunctionInvokeLogger();
+            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
             var instance = logger.Get(id);
             return new FunctionInstanceStatusResult
             {
@@ -139,10 +139,19 @@ namespace WebFrontEnd
             public string ResultUri { get; set; }
         }
 
-        internal static WebFrontEnd.Controllers.RegisterFuncSubmitModel RegisterFuncSubmitworker(string accountConnectionString, string ContainerName)
+        private static Services GetServices()
+        {            
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);            
+        }
+
+        // Container is relative to accountConnectionString
+        internal static WebFrontEnd.Controllers.RegisterFuncSubmitModel RegisterFuncSubmitworker(
+            string accountConnectionString, string ContainerName)
         {
             string AccountName = Utility.GetAccount(accountConnectionString).Credentials.AccountName;
 
+            var services = GetServices();
 #if false
             try
             {
@@ -156,7 +165,7 @@ namespace WebFrontEnd
                 ModelState.AddModelError(
             }
 #endif
-            var container = Secrets.GetExecutionLogContainer();
+            var container = services.GetExecutionLogContainer();
             string blobResultName = string.Format(@"index\{0}\{1}.{2}.txt", AccountName, ContainerName, DateTime.Now.ToFileTimeUtc());
             var blobResults = container.GetBlobReference(blobResultName);
 
@@ -169,7 +178,8 @@ namespace WebFrontEnd
 
             IndexRequestPayload payload = new IndexRequestPayload
             {
-                AccountConnectionString = accountConnectionString,
+                ServiceAccountConnectionString = services.AccountConnectionString,
+                UserAccountConnectionString = accountConnectionString,
                 Blobpath = ContainerName,
                 Writeback = blobResults.Uri.AbsoluteUri + sasQueryString
             };
@@ -182,7 +192,7 @@ namespace WebFrontEnd
                 blob.UploadText(msgStart);
             }
 
-            Services.QueueIndexRequest(payload);
+            services.QueueIndexRequest(payload);
 
             var model = new WebFrontEnd.Controllers.RegisterFuncSubmitModel
             {
