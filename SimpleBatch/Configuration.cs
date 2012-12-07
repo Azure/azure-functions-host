@@ -166,5 +166,47 @@ namespace SimpleBatch
 
         // General type binding. 
         IList<ICloudBinderProvider> Binders { get; }
+
+        // Code-based configuration option
+        IFluentConfig Register(string functionName);
+    }
+
+    public interface IFluentConfig
+    {
+        IFluentConfig Bind(string parameterName, Attribute binderAttribute);
+    }
+    
+    // Extension methods to provide a convenience operation over binding
+    public static class IFluentConfigExtensions
+    {
+        public static IFluentConfig Description(this IFluentConfig config, string description)
+        {
+            return config.Bind(null, new DescriptionAttribute(description));
+        }
+
+        public static IFluentConfig TriggerNoAutomatic(this IFluentConfig config)
+        {
+            return config.Bind(null, new NoAutomaticTriggerAttribute());
+        }
+
+        public static IFluentConfig TriggerTimer(this IFluentConfig config, TimeSpan interval)
+        {
+            return config.Bind(null, new TimerAttribute(interval.ToString()));
+        }
+
+        public static IFluentConfig BindBlobInput(this IFluentConfig config, string parameterName, string path)
+        {
+            return config.Bind(parameterName, new BlobInputAttribute(path));
+        }
+
+        public static IFluentConfig BindBlobOutput(this IFluentConfig config, string parameterName, string path)
+        {
+            return config.Bind(parameterName, new BlobOutputAttribute(path));
+        }
+
+        public static IFluentConfig BindTable(this IFluentConfig config, string parameterName, string tableName)
+        {
+            return config.Bind(parameterName, new TableAttribute(tableName));
+        }
     }
 }

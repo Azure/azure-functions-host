@@ -13,28 +13,27 @@ namespace RunnerHost
     public class BlobParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudBlobDescriptor Blob { get; set; }
+        public bool IsInput { get; set; }
 
         public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
         {
-            bool input = Binder.IsInputParameter(targetParameter);            
-
             var type = targetParameter.ParameterType;
 
             if (targetParameter.IsOut)
             {
-                if (input)
+                if (IsInput)
                 {
                     throw new InvalidOperationException("Input blob paramater can't have [Out] keyword");
                 }
                 type = type.GetElementType();
             }
 
-            return Bind(config, bindingContext, type, input);
+            return Bind(config, bindingContext, type);
         }
 
-        public BindResult Bind(IConfiguration config, IBinder bindingContext, Type type, bool input)
+        public BindResult Bind(IConfiguration config, IBinder bindingContext, Type type)
         {            
-            ICloudBlobBinder blobBinder = config.GetBlobBinder(type, input);
+            ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
             if (blobBinder == null)
             {
                 throw new InvalidOperationException(string.Format("Not supported binding to a parameter of type '{0}'", type.FullName));
@@ -43,7 +42,7 @@ namespace RunnerHost
             CloudBlob blob = this.Blob.GetBlob();
 
             // Verify that blob exists. Give a friendly error up front.
-            if (input && !Utility.DoesBlobExist(blob))
+            if (IsInput && !Utility.DoesBlobExist(blob))
             {
                 string msg = string.Format("Input blob is not found: {0}", blob.Uri);
                 throw new InvalidOperationException(msg);                    

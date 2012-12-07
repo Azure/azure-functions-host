@@ -34,7 +34,7 @@ namespace Orchestrator
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };
-            return new BlobParameterRuntimeBinding { Blob = arg };
+            return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput};
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
@@ -46,7 +46,7 @@ namespace Orchestrator
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };
-            return new BlobParameterRuntimeBinding { Blob = arg };
+            return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput };
         }
 
         public override string Description

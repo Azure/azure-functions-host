@@ -146,19 +146,21 @@ namespace Orchestrator
             throw new InvalidOperationException(msg); 
         }
 
-        public void OnApplyLocationInfo(MethodInfo method, FunctionIndexEntity func)
+        public FunctionLocation OnApplyLocationInfo(MethodInfo method)
         {
+            int idx = _mapping.Count;
+            _mapping.Add(method);
+
             // Still need account information because blob inputs are relative to these accounts.
-            func.Location = new FunctionLocation
+            return new FunctionLocation
             {
                 Blob = new CloudBlobDescriptor
                 {
                      AccountConnectionString = this.AccountConnectionString
                 },
                 MethodName = method.Name,
-                TypeName = _mapping.Count.ToString()
+                TypeName = idx.ToString()
             };
-            _mapping.Add(method);
         }
 
         void IIndexerSettings.Add(FunctionIndexEntity func)

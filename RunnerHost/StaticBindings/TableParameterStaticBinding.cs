@@ -20,6 +20,7 @@ namespace Orchestrator
     {
         public string TableName { get; set; }
 
+        // $$$ don't think we use this anymore. 
         // True iff we know we have read-only access to the table. 
         // This is used for optimizations. 
         public bool IsReadOnly { get; set; }

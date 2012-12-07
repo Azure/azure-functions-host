@@ -258,7 +258,18 @@ namespace RunnerHost
             {
                 if (methodInit.IsStatic && methodInit.IsPublic)
                 {
-                    methodInit.Invoke(null, new object[] { config });
+                    try
+                    {
+                        methodInit.Invoke(null, new object[] { config });
+                    }
+                    catch (TargetInvocationException ex)
+                    {
+                        // This will lose original callstack. Hopefully message is complete enough. 
+                        if (ex.InnerException is InvalidOperationException)
+                        {
+                            throw ex.InnerException;
+                        }
+                    }
                 }
             }
         }

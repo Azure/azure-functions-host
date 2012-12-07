@@ -55,18 +55,13 @@
     <Compile Include="BinderLookup.cs" />
     <Compile Include="BlobListener.cs" />
     <Compile Include="BlobListener2.cs" />
-    <Compile Include="FlowBinder.cs" />
     <Compile Include="FunctionFlow.cs" />
     <Compile Include="FunctionIndexEntity.cs" />
     <Compile Include="Indexer.cs" />
+    <Compile Include="IndexerConfig.cs" />
     <Compile Include="IndexerSettings.cs" />
     <Compile Include="OrchestratorSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="StaticBindings\BlobAggregateParameterStaticBinding.cs" />
-    <Compile Include="StaticBindings\BlobParameterStaticBinding.cs" />
-    <Compile Include="StaticBindings\NameParameterStaticBinding.cs" />
-    <Compile Include="StaticBindings\QueueParameterStaticBinding.cs" />
-    <Compile Include="StaticBindings\TableParameterStaticBinding.cs" />
     <Compile Include="Worker.cs" />
   </ItemGroup>
   <ItemGroup>

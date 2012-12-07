@@ -11,11 +11,21 @@ using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
+using RunnerHost;
 using RunnerInterfaces;
 using SimpleBatch;
 
 namespace Orchestrator
 {
+    // Abstraction over a MethodInfo so that we can bind from either 
+    // attributes or code-config.
+    public class MethodDescriptor
+    {
+        public string Name; 
+        public Attribute[] MethodAttributes;
+        public ParameterInfo[] Parameters;
+    }
+
     // Go down and build an index
     public class Indexer
     {
@@ -47,8 +57,7 @@ namespace Orchestrator
                 RemoveStaleFunctions(containerDescriptor, localCache);                
 
                 // Copying funcs out of a container, apply locations to that container.
-                Action<MethodInfo, FunctionIndexEntity> funcApplyLocation =
-                    (method, func) => ApplyLocationInfoFromContainer(containerDescriptor, method, func);
+                Func<MethodInfo, FunctionLocation> funcApplyLocation = method => GetLocationInfoFromContainer(containerDescriptor, method);
 
                 IndexLocalDir(funcApplyLocation, localCache);
 
@@ -124,34 +133,35 @@ namespace Orchestrator
             string file;
             if (_fileLocations.TryGetValue(name, out file))
             {
-                return Assembly.ReflectionOnlyLoadFrom(file);
+                return Assembly.LoadFrom(file);
             }
             else
             {
-                return System.Reflection.Assembly.ReflectionOnlyLoad(args.Name);
+                return Assembly.Load(args.Name);
             }
         }
 
         HashSet<Type> _binderTypes = new HashSet<Type>();
 
         // Look at each assembly 
-        public void IndexLocalDir(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, string localDirectory)
+        public void IndexLocalDir(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
         {
             // See http://blogs.msdn.com/b/jmstall/archive/2006/11/22/reflection-type-load-exception.aspx
 
+            // Use live loading (not just reflection-only) so that we can invoke teh Initialization method. 
             var handler = new ResolveEventHandler(CurrentDomain_ReflectionOnlyAssemblyResolve);
-            AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += handler;
+            AppDomain.CurrentDomain.AssemblyResolve += handler;
             try
             {
                 IndexLocalDirWorker(funcApplyLocation, localDirectory);             
             }
             finally
             {
-                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= handler;
+                AppDomain.CurrentDomain.AssemblyResolve -= handler;
             }
         }
         
-        private void IndexLocalDirWorker(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, string localDirectory)
+        private void IndexLocalDirWorker(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
         {                        
             var filesDll = Directory.EnumerateFiles(localDirectory, "*.dll");
             var filesExe = Directory.EnumerateFiles(localDirectory, "*.exe");
@@ -166,7 +176,7 @@ namespace Orchestrator
 
             foreach (string file in filesExe.Concat(filesDll))
             {
-                Assembly a = Assembly.ReflectionOnlyLoadFrom(file);
+                Assembly a = Assembly.LoadFrom(file);
                 if (string.Compare(a.Location, file, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // $$$
@@ -198,7 +208,7 @@ namespace Orchestrator
             }
         }
 
-        public void IndexAssembly(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, Assembly a)
+        public void IndexAssembly(Func<MethodInfo, FunctionLocation> funcApplyLocation, Assembly a)
         {
             // Only try to index assemblies that reference SimpleBatch.
             // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
@@ -226,21 +236,71 @@ namespace Orchestrator
             }
         }
 
-        public void IndexType(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, Type type)
+
+        static BindingFlags MethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+        private static MethodInfo ResolveMethod(Type type, string name)
         {
-            foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            var method = type.GetMethod(name, MethodFlags);
+            if (method == null)
+            {
+                string msg = string.Format("No method '{0}' found on type '{1}'", name, type.FullName);
+                throw new InvalidOperationException(msg);
+            }
+            return method;
+        }
+
+        public void IndexType(Func<MethodInfo, FunctionLocation> funcApplyLocation, Type type)
+        {
+            InvokeInitMethodOnType(type, funcApplyLocation);
+
+            // Now register any declaritive methods 
+            foreach (MethodInfo method in type.GetMethods(MethodFlags))
             {
                 IndexMethod(funcApplyLocation, method);
             }
         }
+                
+        // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
+        // Register any functions provided by code-configuration. 
+        void InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        {
+            // Invoke initialization function on this type.
+            // This may register functions imperatively. 
+            Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
+            IndexerConfig config = new IndexerConfig(fpFuncLookup);
+
+            RunnerHost.Program.ApplyHooks(type, config);
+            
+
+            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);                
+
+            foreach (var descr in config.GetRegisteredMethods())
+            {
+                IndexMethod(funcApplyLocation2, descr);
+            }
+        }
+
+        // Helper to convert delegates. 
+        private Func<MethodDescriptor, FunctionLocation> Convert(Func<string, MethodInfo> fpFuncLookup, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        {
+            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 =
+             (descr) =>
+             {
+                 MethodInfo method = fpFuncLookup(descr.Name);
+                 return funcApplyLocation(method);
+             };
+
+            return funcApplyLocation2;
+        }
 
         // Default policy, assumes that the function originally came from the container. 
-        private void ApplyLocationInfoFromContainer(CloudBlobDescriptor container, MethodInfo method, FunctionIndexEntity index)
+        private FunctionLocation GetLocationInfoFromContainer(CloudBlobDescriptor container, MethodInfo method)
         {
             Type type = method.DeclaringType;
             
             // This is effectively serializing out a MethodInfo.
-            index.Location = new FunctionLocation
+            return new FunctionLocation
             {
                 Blob = new CloudBlobDescriptor
                 {
@@ -253,27 +313,38 @@ namespace Orchestrator
             };
         }
 
+        // Entry-point from reflection-based configuration. This is looking at inline attributes.
+        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method)
+        {
+            MethodDescriptor descr = GetFromMethod(method);
+
+            Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(method.DeclaringType, name);
+            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
+            
+            IndexMethod(funcApplyLocation2, descr);
+        }
+
         // Container is where the method lived on the cloud. 
-        public void IndexMethod(Action<MethodInfo, FunctionIndexEntity> funcApplyLocation, MethodInfo method)
-        {            
-            FunctionIndexEntity index = GetDescriptionForMethod(method);
+        // Common path for both attribute-cased and code-based configuration. 
+        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr)
+        {
+            FunctionIndexEntity index = GetDescriptionForMethod(descr);
             if (index != null)
             {
-                funcApplyLocation(method, index);
-
+                FunctionLocation loc = funcApplyLocation(descr);
+                index.Location = loc;
                 index.SetRowKey(); // may use location info
 
                 _settings.Add(index);
 
-
                 // Add custom binders for parameter types
-                foreach (var parameter in method.GetParameters())
+                foreach (var parameter in descr.Parameters)
                 {
                     var t = parameter.ParameterType;
-                    MaybeAddBinderType(t);                    
+                    MaybeAddBinderType(t);
                 }
             }            
-        }
+        }    
 
         // Determine if we should check for a custom binder for the given type.
         void MaybeAddBinderType(Type type)
@@ -299,11 +370,11 @@ namespace Orchestrator
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
-        public static ParameterStaticBinding[] GetExplicitBindings(MethodInfo method)
+        public static ParameterStaticBinding[] GetExplicitBindings(MethodDescriptor descr)
         {
-            ParameterInfo[] ps = method.GetParameters();
-
-            ParameterStaticBinding[] flows = Array.ConvertAll(ps, FlowBinder.Bind);
+            ParameterInfo[] ps = descr.Parameters;
+                        
+            ParameterStaticBinding[] flows = Array.ConvertAll(ps,  BindParameter);
 
             // Populate input names
             HashSet<string> paramNames = new HashSet<string>();
@@ -318,22 +389,37 @@ namespace Orchestrator
             // Take a second pass to bind params diretly to {key} in the attributes above,.
             // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")], 
             // then we'll bind 'string name' to the {name} value.
+            int pos = 0;
             foreach (ParameterInfo p in ps)
             {
                 if (paramNames.Contains(p.Name))
                 {
-                    flows[p.Position] = new NameParameterStaticBinding { KeyName = p.Name, Name = p.Name };
+                    flows[pos] = new NameParameterStaticBinding { KeyName = p.Name, Name = p.Name };
                 }
+                pos++;
             }
 
             return flows;
         }
 
+        private static ParameterStaticBinding BindParameter(ParameterInfo parameter)
+        {
+            foreach (Attribute attr in parameter.GetCustomAttributes(true))
+            {
+                var bind = StaticBinder.DoStaticBind(attr, parameter);
+                if (bind != null)
+                {
+                    return bind;
+                }
+            }
+            return null;
+        }
+
         // Note any remaining unbound parameters must be provided by the user. 
         // Return true if any parameters were unbound. Else false.
-        public static bool MarkUnboundParameters(MethodInfo method, ParameterStaticBinding[] flows)
+        public static bool MarkUnboundParameters(MethodDescriptor descr, ParameterStaticBinding[] flows)
         {
-            ParameterInfo[] ps = method.GetParameters();
+            ParameterInfo[] ps = descr.Parameters;
 
             bool hasUnboundParams = false;
             for(int i = 0; i < flows.Length; i++)
@@ -348,30 +434,49 @@ namespace Orchestrator
             return hasUnboundParams;
         }
 
-        // Provide an index entity for the method. If method does not support Simple Batch, then just return null.        
+        static MethodDescriptor GetFromMethod(MethodInfo method)
+        {
+            var descr = new MethodDescriptor();
+            descr.Name = method.Name;
+            descr.MethodAttributes = Array.ConvertAll(method.GetCustomAttributes(true), attr => (Attribute) attr);
+            descr.Parameters = method.GetParameters();
+
+            return descr;           
+        }
+
+
         public static FunctionIndexEntity GetDescriptionForMethod(MethodInfo method)
+        {
+            MethodDescriptor descr = GetFromMethod(method);
+            return GetDescriptionForMethod(descr);
+        }
+
+        // Returns a partially instantiated FunctionIndexEntity. 
+        // Caller must add Location information. 
+        public static FunctionIndexEntity GetDescriptionForMethod(MethodDescriptor descr)
         {
             string description = null;
             TimeSpan? interval = null;
             
             NoAutomaticTriggerAttribute triggerAttr = null;
-            
-            var attrs = method.GetCustomAttributesData();
-            foreach (var attrData in attrs)
-            {
-                triggerAttr = triggerAttr ?? NoAutomaticTriggerAttribute.Build(attrData);
+                        
+            foreach (var attr in descr.MethodAttributes)
+            {                
+                triggerAttr = triggerAttr ?? (attr as NoAutomaticTriggerAttribute);
 
-                var descriptionAttr = DescriptionAttribute.Build(attrData);
+                var descriptionAttr = attr as DescriptionAttribute;
                 if (descriptionAttr != null)
                 {
                     description = descriptionAttr.Description;
                 }
-                var timerAttr = TimerAttribute.Build(attrData);
+
+                var timerAttr = attr as TimerAttribute;
                 if (timerAttr != null)
                 {
                     interval = timerAttr.TimeSpan;
                 }
-            }            
+            }
+
 
             // $$$ Lots of other static checks to add. 
             if ((triggerAttr != null) && (interval.HasValue))
@@ -379,14 +484,13 @@ namespace Orchestrator
                 throw new InvalidOperationException("Illegal trigger binding. Can't have both timer and notrigger attributes");
             }
 
-
             // Look at parameters. 
             bool required = interval.HasValue;
-            
-            ParameterStaticBinding[] parameterBindings = GetExplicitBindings(method);
+
+            ParameterStaticBinding[] parameterBindings = GetExplicitBindings(descr);
 
             bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
-            bool hasUnboundParams = MarkUnboundParameters(method, parameterBindings);
+            bool hasUnboundParams = MarkUnboundParameters(descr, parameterBindings);
 
             //
             // We now have all the explicitly provided information. Put it together.

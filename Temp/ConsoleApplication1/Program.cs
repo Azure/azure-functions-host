@@ -17,6 +17,7 @@ using System.Data.Services.Common;
 using AzureTables;
 using SimpleBatch.Client;
 using IndexDriver;
+using System.Reflection;
 
 namespace ConsoleApplication1
 {
@@ -55,7 +56,42 @@ namespace ConsoleApplication1
     class Program
     {
         static void Main()
-        {           
-        }      
+        {
+            TestIndex();
+        }
+
+        static void TestIndex()
+        {
+            IIndexerSettings x = new IndexerSettings();
+            Indexer i = new Indexer(x);
+
+
+            Func<MethodInfo, FunctionLocation> funcApplyLocation = method => null;
+                    
+
+            string dir = @"C:\CodePlex\azuresimplebatch\Temp\TestApp1\bin\Debug";
+            i.IndexLocalDir(funcApplyLocation, dir);
+        }
+
+
+        class IndexerSettings : IIndexerSettings
+        {
+            public void Add(FunctionIndexEntity func)
+            {
+            }
+
+            public void Delete(FunctionIndexEntity func)
+            {
+            }
+
+            public FunctionIndexEntity[] ReadFunctionTable()
+            {
+                return new FunctionIndexEntity[0];
+            }
+
+            public void CleanFunctionIndex()
+            {
+            }
+        }
     }
 }

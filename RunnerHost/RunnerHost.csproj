@@ -67,6 +67,12 @@
     <Compile Include="RuntimeBindings\LiteralParameterRuntimeBinding.cs" />
     <Compile Include="RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />
     <Compile Include="RuntimeBindings\TableParameterRuntimeBinding.cs" />
+    <Compile Include="StaticBinder.cs" />
+    <Compile Include="StaticBindings\BlobAggregateParameterStaticBinding.cs" />
+    <Compile Include="StaticBindings\BlobParameterStaticBinding.cs" />
+    <Compile Include="StaticBindings\NameParameterStaticBinding.cs" />
+    <Compile Include="StaticBindings\QueueParameterStaticBinding.cs" />
+    <Compile Include="StaticBindings\TableParameterStaticBinding.cs" />
     <Compile Include="TableBinderProvider.cs" />
     <Compile Include="WatchableEnumerable.cs" />
     <Compile Include="WatchableStream.cs" />

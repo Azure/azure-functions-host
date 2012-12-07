@@ -59,7 +59,7 @@ namespace LiveAzureTests
         }
 
         // This test takes 2 mins.
-        [TestMethod]
+        //[TestMethod]
         public void AzureTableClassDelete()
         {
             var tableName = "testTable" + DateTime.Now.Ticks.ToString();
@@ -109,7 +109,7 @@ namespace LiveAzureTests
         }
 
         // Azure storage emulator is doesn't support Upsert, so table won't work. 
-        [TestMethod]
+        //[TestMethod]
         public void Table()
         {
             var account =  AzureConfig.GetAccount(); // Need live account for this test to work.

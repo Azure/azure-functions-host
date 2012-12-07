@@ -19,6 +19,20 @@ namespace TestApp1
         {
         }
 
+        public static void Initialize(IConfiguration config)
+        {
+            config.Register("TestReg").
+                BindBlobInput("input", @"daas-test-input3\{name}.csv").
+                BindBlobOutput("output", @"daas-test-input3\{name}.output.csv");
+        }
+
+        
+        public static void TestReg(TextReader input, TextWriter output)
+        {
+            string content = input.ReadToEnd();
+            output.Write(input);
+        }
+
        
         [NoAutomaticTrigger]
         public static void LongRunning2(

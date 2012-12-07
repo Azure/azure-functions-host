@@ -36,6 +36,20 @@ namespace RunnerHost
         public IList<ICloudTableBinderProvider> TableBinders
         {
             get { return _tableBinders; }
-        }    
+        }
+
+
+        public IFluentConfig Register(string functionName)
+        {
+            return new FluentConfig(); // nop
+        }
+    }
+
+    class FluentConfig : IFluentConfig
+    {
+        public IFluentConfig Bind(string parameterName, Attribute binderAttribute)
+        {
+            return this; // Nop
+        }
     }
 }

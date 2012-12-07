@@ -80,6 +80,7 @@
   <ItemGroup>
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUnitTests.cs" />
+    <Compile Include="CodeConfigFlowUnitTests.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="ModelBindingTests.cs" />
