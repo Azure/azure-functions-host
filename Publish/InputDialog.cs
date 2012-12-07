@@ -19,6 +19,16 @@ namespace Publish
         public InputDialog()
         {
             InitializeComponent();
+
+
+            try
+            {
+                string path = Path.Combine(Path.GetDirectoryName(this.GetType().Assembly.Location), "default.txt");
+                _textBoxServiceURL.Text = File.ReadAllText(path).Trim();
+            }
+            catch
+            {
+            }
         }
 
         private void _buttonBrowseLocalDir_Click(object sender, EventArgs e)

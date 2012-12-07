@@ -141,7 +141,6 @@
             this._textBoxServiceURL.Name = "_textBoxServiceURL";
             this._textBoxServiceURL.Size = new System.Drawing.Size(275, 20);
             this._textBoxServiceURL.TabIndex = 10;
-            this._textBoxServiceURL.Text = "http://daas2.azurewebsites.net/";
             // 
             // label5
             // 
