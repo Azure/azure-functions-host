@@ -61,36 +61,30 @@ namespace WebFrontEnd.Controllers
         }
 
         // List all invocation of a specific function. 
-        public ActionResult ListFunctionInstances(FunctionIndexEntity func)
+        public ActionResult ListFunctionInstances(FunctionIndexEntity func, bool? success = null)
         {
             var logger = GetServices().GetFunctionInvokeQuery();
 
             var model = new LogIndexModel();
             int N = 100;
-            var query = new FunctionInstanceQueryFilter { Location = func.Location };
-            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(N, query);
-            model.Description = string.Format("Last {0} execution instances of: {0}", N, func);
-
-            return View("ListFunctionInstances", model);
-        }
-
-        // List all invocation of a specific function. 
-        // $$$ Are there queries here? (filter on status, timestamp, etc).
-        public ActionResult ListFunctionInstancesFailures(FunctionIndexEntity func)
-        {
-            var logger = GetServices().GetFunctionInvokeQuery();
-
-            var model = new LogIndexModel();
-            int N = 100;
-            var query = new FunctionInstanceQueryFilter
-            {
+            var query = new FunctionInstanceQueryFilter 
+            { 
                 Location = func.Location,
-                Succeeded = false
+                Succeeded = success
             };
+            model.Logs = logger.GetRecent(N, query).ToArray();
 
-            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(N, query);
-
-            model.Description = string.Format("Last {0} Failed execution instances of: {0}", N, func);
+            if (success.HasValue)
+            {
+                model.Description = string.Format("Last {0} {1} execution instances of: {2}", 
+                    N, 
+                    (success.Value ? "successful" : "failed"),
+                    func);
+            }
+            else
+            {
+                model.Description = string.Format("Last {0} execution instances of: {1}", N, func);
+            }
 
             return View("ListFunctionInstances", model);
         }

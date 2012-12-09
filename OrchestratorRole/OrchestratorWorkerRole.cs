@@ -47,6 +47,7 @@ namespace OrchestratorRole
             _services.ResetHealthStatus();
 
             _stats = _services.GetStatsAggregator();
+            _lookup = _services.GetFunctionInvokeLookup();
 
             var _statsBridge = _services.GetStatsAggregatorBridge();
 

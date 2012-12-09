@@ -27,7 +27,9 @@ namespace DaasEndpoints
             };
         }
 
-        public IFunctionInstanceQuery GetFunctionInvokeQuery()
+        // Streamlined case if we just need to lookup specific function instances.
+        // In this case, we don't need all the secondary indices.
+        public IFunctionInstanceLookup GetFunctionInvokeLookup()
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
             return new ExecutionStatsAggregator(tableLookup);
@@ -40,9 +42,19 @@ namespace DaasEndpoints
             var queue = this.GetExecutionCompleteQueue();
             return new ExecutionStatsAggregatorBridge(queue);
         }
-        
+
+        public IFunctionInstanceQuery GetFunctionInvokeQuery()
+        {
+            return GetStatsAggregatorInternal();
+        }
+
         // Actually does the aggregation. Receives a message from the bridge.
         public IFunctionCompleteLogger GetStatsAggregator()
+        {
+            return GetStatsAggregatorInternal();
+        }
+
+        private ExecutionStatsAggregator GetStatsAggregatorInternal()
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
             var tableStatsSummary = GetInvokeStatsTable();

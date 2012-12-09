@@ -7,6 +7,9 @@ namespace RunnerInterfaces
 {    
     public static class ObjectBinderHelpers
     {
+        // Beware, we deserializing, DateTimes may arbitrarily be Local or UTC time.
+        // Callers can normalize via DateTime.ToUniversalTime()
+        // Can't really normalize here because DateTimes could be embedded deep in the target type.
         public static object BindFromString(string input, Type target)
         {
             if (target == typeof(string))
@@ -45,10 +48,9 @@ namespace RunnerInterfaces
                 return Enum.Parse(target, input, ignoreCase: true);
             }
 
-            {
-                string msg = string.Format("Can't bind from string to type '{0}'", target.FullName);
-                throw new InvalidOperationException(msg);
-            }
+            // Use JSON deserialization 
+            // This may throw if the input string is not valid json. 
+            return JsonCustom.DeserializeObject(input, target);
         }
 
 

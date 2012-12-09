@@ -112,6 +112,7 @@ namespace WebFrontEnd.Controllers
                 null);
         }
 
+        // Lists the static information about the given function type.
         public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
             FunctionLocation func)
         {
@@ -128,18 +129,21 @@ namespace WebFrontEnd.Controllers
         public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
             FunctionLocation func)
         {
-            return FunctionLogInvokeHistoryLink(htmlHelper, func, null, false);
+            return FunctionLogInvokeHistoryLink(htmlHelper, func, null);
         }
 
         public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
-            FunctionLocation func, string linkText, bool failuresOnly)
+            FunctionLocation func, string linkText, bool? success = null)
         {
             string msg = linkText ?? string.Format("{0} invoke history", func.MethodName);
             return LinkExtensions.ActionLink(
                 htmlHelper,
                 msg,
-                failuresOnly ? "ListFunctionInstancesFailures" : "ListFunctionInstances", "Log",
-                new { func = FunctionIndexEntity.GetRowKey(func) },
+                "ListFunctionInstances", "Log",
+                new { 
+                    func = FunctionIndexEntity.GetRowKey(func),
+                    success = success
+                },
                 null);
         }
 

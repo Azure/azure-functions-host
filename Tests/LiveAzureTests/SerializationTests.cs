@@ -97,11 +97,25 @@ namespace LiveAzureTests
 
             AssertEqual(log.FunctionInstance, log2.FunctionInstance);
 
-            Assert.AreEqual(log.QueueTime, log2.QueueTime);
-            Assert.AreEqual(log.StartTime, log2.StartTime);
-            Assert.AreEqual(log.EndTime, log2.EndTime);
+            AssertEqual(log.QueueTime, log2.QueueTime);
+            AssertEqual(log.StartTime, log2.StartTime);
+            AssertEqual(log.EndTime, log2.EndTime);
 
             Assert.AreEqual(log.ToString(), log2.ToString());
+        }
+
+        void AssertEqual(DateTime? a, DateTime? b)
+        {
+            if (a.HasValue != b.HasValue)
+            {
+                Assert.AreEqual(a, b); // will fail
+            }
+            if (!a.HasValue)
+            {
+                Assert.IsNull(b);
+                return;
+            }
+            Assert.AreEqual(a.Value.ToUniversalTime(), b.Value.ToUniversalTime());
         }
 
         void AssertEqual(FunctionInstance instance1, FunctionInstance instance2)

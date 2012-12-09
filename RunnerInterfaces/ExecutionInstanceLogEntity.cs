@@ -20,7 +20,7 @@ namespace Executor
         public override string ToString()
         {
             var name = this.FunctionInstance.Location.MethodName;
-            return string.Format("{0} @ {1}", name, this.QueueTime);
+            return string.Format("{0} @ {1}", name, this.QueueTime.Value.ToUniversalTime());
         }
 
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 

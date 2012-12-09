@@ -23,7 +23,7 @@
     {
         <tr>
             <td>
-                @Html.FunctionLogLink(kv.Key)
+                @Html.FunctionLogInvokeHistoryLink(kv.Key)
             </td>
             <td>
                 @{
@@ -39,10 +39,10 @@
                         avgSpanString = avgSpan.ToString();
                     }        
                 }
-                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountCompleted.ToString(), failuresOnly: false)
+                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountCompleted.ToString(), success: true)
             </td>         
             <td>
-                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountErrors.ToString(), failuresOnly:  true)
+                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountErrors.ToString(), success: false)
             </td>
             <td>
                 @avgSpanString
