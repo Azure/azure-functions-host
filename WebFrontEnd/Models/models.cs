@@ -34,6 +34,7 @@ namespace WebFrontEnd.Controllers
 
     public class OverviewModel
     {
+        public string AccountName { get; set; }
         public int? QueueDepth { get; set; }
 
         public ServiceHealthStatus HealthStatus { get; set; }

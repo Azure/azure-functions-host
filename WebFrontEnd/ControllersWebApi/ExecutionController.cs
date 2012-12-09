@@ -79,8 +79,8 @@ namespace WebFrontEnd
         [HttpGet]
         public FunctionInstanceStatusResult GetStatus(Guid id)
         {
-            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
-            var instance = logger.Get(id);
+            IFunctionInstanceLookup logger = GetServices().GetFunctionInvokeQuery();
+            var instance = logger.Lookup(id);
             return new FunctionInstanceStatusResult
             {
                  Status = instance.GetStatus(),

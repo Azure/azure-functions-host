@@ -60,14 +60,6 @@ namespace DaasEndpoints
             return queue;
         }
 
-        // Get list of all registered functions.     
-        // $$$ Merge with CloudIndexerSettings
-        public FunctionIndexEntity[] GetFunctions()
-        {
-            var funcs = Utility.ReadTable<FunctionIndexEntity>(_account, EndpointNames.FunctionIndexTableName);
-            return funcs;
-        }
-
         public void PostDeleteRequest(FunctionInstance instance)
         {
             Utility.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
@@ -96,32 +88,6 @@ namespace DaasEndpoints
 
             string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
             Utility.WriteBlob(_account, EndpointNames.ExecutionLogName, path, sw.ToString());
-        }
-
-        public FunctionInvokeLogger GetFunctionInvokeLogger()
-        {
-            return new FunctionInvokeLogger
-            {
-                _account = _account,
-                _tableName = EndpointNames.FunctionInvokeLogTableName,
-                _tableMRU = GetFunctionLogTableIndexTime()
-            };
-        }
-
-        public FunctionIndexEntity Lookup(FunctionLocation location)
-        {
-            string rowKey = FunctionIndexEntity.GetRowKey(location);
-            return Lookup(rowKey);
-        }
-
-        public FunctionIndexEntity Lookup(string functionId)
-        {
-            FunctionIndexEntity func = Utility.Lookup<FunctionIndexEntity>(
-                _account,
-                EndpointNames.FunctionIndexTableName,
-                FunctionIndexEntity.PartionKey,
-                functionId);
-            return func;
         }
 
         public void QueueIndexRequest(IndexRequestPayload payload)
@@ -166,7 +132,7 @@ namespace DaasEndpoints
 
             // Log that the function is now queued.
             // Do this before queueing to avoid racing with execution 
-            var logger = GetFunctionInvokeLogger();
+            IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
 
             var logItem = new ExecutionInstanceLogEntity();
             logItem.FunctionInstance = instance;
@@ -187,23 +153,6 @@ namespace DaasEndpoints
             return new OrchestratorSettings(this);
         }
 
-        public ExecutionStatsAggregator GetStatsAggregator()
-        {
-            var table = GetInvokeStatsTable();
-            var logger = GetFunctionInvokeLogger(); // for reading logs
-            return new ExecutionStatsAggregator(table, logger, GetFunctionLogTableIndexTime());
-        }
-
-        public AzureTable GetInvokeStatsTable()
-        {
-            return new AzureTables.AzureTable(_account, EndpointNames.FunctionInvokeStatsTableName);
-        }
-
-        public AzureTable GetFunctionLogTableIndexTime()
-        {
-            return new AzureTables.AzureTable(_account, EndpointNames.FunctionInvokeLogIndexTime);
-        }
-
         public AzureTable<BinderEntry> GetBinderTable()
         {
             return new AzureTable<BinderEntry>(_account, EndpointNames.BindersTableName);
@@ -216,13 +165,5 @@ namespace DaasEndpoints
             c.CreateIfNotExist();
             return c;
         }
-    }
-
-
-    public class ExecutionFinishedPayload
-    {
-        // FunctionInstance Ids for functions that we just finished. 
-        // Orchestrator cna look these up and apply the deltas. 
-        public Guid[] Instances { get; set; }
     }
 }

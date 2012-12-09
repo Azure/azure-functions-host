@@ -267,7 +267,7 @@ namespace AzureTables
 
     // Wrapper for when we want to read as a strong type.
     // $$$ Should this implement IDictionary<Tuple<string,string>, TValue> ?
-    public class AzureTable<TValue> : AzureTable, IAzureTableReader<TValue> where TValue : new()
+    public class AzureTable<TValue> : AzureTable, IAzureTable<TValue> where TValue : new()
     {
         public AzureTable(CloudStorageAccount account, string tableName)
             : base(account, tableName)

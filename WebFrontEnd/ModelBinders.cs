@@ -61,9 +61,9 @@ namespace WebFrontEnd
 
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
             var services = new Services(accountInfo);
-            FunctionInvokeLogger logger = services.GetFunctionInvokeLogger();
+            IFunctionInstanceLookup logger = services.GetFunctionInvokeQuery();
             
-            ExecutionInstanceLogEntity log = logger.Get(g);
+            ExecutionInstanceLogEntity log = logger.Lookup(g);
             if (log == null)
             {
                 modelState.AddModelError(modelName, "Invalid function log entry. Has it been deleted from the server?");

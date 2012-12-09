@@ -48,11 +48,14 @@ namespace WebFrontEnd.Controllers
         // List Function invocations 
         public ActionResult ListAllInstances()
         {
-            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+            var logger = GetServices().GetFunctionInvokeQuery();
 
             var model = new LogIndexModel();
-            model.Logs = logger.GetRecent(100);
-            model.Description = "All executed functions";
+
+            int N = 100;
+            var query = new FunctionInstanceQueryFilter();
+            model.Logs = logger.GetRecent(N, query).ToArray();
+            model.Description = string.Format("Last {0} executed functions", N);
 
             return View("ListFunctionInstances", model);
         }
@@ -60,14 +63,13 @@ namespace WebFrontEnd.Controllers
         // List all invocation of a specific function. 
         public ActionResult ListFunctionInstances(FunctionIndexEntity func)
         {
-            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+            var logger = GetServices().GetFunctionInvokeQuery();
 
             var model = new LogIndexModel();
-            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(100);
-            model.Logs = (from log in logs 
-                          where log.FunctionInstance.Location.Equals(func.Location) 
-                          select log).ToArray();
-            model.Description = string.Format("Execution instances of: {0}", func);
+            int N = 100;
+            var query = new FunctionInstanceQueryFilter { Location = func.Location };
+            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(N, query);
+            model.Description = string.Format("Last {0} execution instances of: {0}", N, func);
 
             return View("ListFunctionInstances", model);
         }
@@ -76,15 +78,19 @@ namespace WebFrontEnd.Controllers
         // $$$ Are there queries here? (filter on status, timestamp, etc).
         public ActionResult ListFunctionInstancesFailures(FunctionIndexEntity func)
         {
-            FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
+            var logger = GetServices().GetFunctionInvokeQuery();
 
             var model = new LogIndexModel();
-            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(100);
-            model.Logs = (from log in logs
-                          let instance = log.FunctionInstance
-                          where instance.Location.Equals(func.Location) && (log.GetStatus() == FunctionInstanceStatus.CompletedFailed)
-                          select log).ToArray();
-            model.Description = string.Format("Failed execution instances of: {0}", func);
+            int N = 100;
+            var query = new FunctionInstanceQueryFilter
+            {
+                Location = func.Location,
+                Succeeded = false
+            };
+
+            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(N, query);
+
+            model.Description = string.Format("Last {0} Failed execution instances of: {0}", N, func);
 
             return View("ListFunctionInstances", model);
         }
@@ -132,7 +138,7 @@ namespace WebFrontEnd.Controllers
 
             var table = services.GetInvokeStatsTable();
             model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => services.Lookup(rowKey).Location); // $$$ very inefficient
+                rowKey => services.Lookup(rowKey).Location); // !!! very inefficient
 
             // Populate queue. 
             model.QueuedInstances = PeekQueuedInstances();
@@ -191,6 +197,9 @@ namespace WebFrontEnd.Controllers
         // View current value. 
         public ActionResult Blob(CloudStorageAccount accountName, CloudBlobPath path)
         {
+            // !!!
+            throw new NotImplementedException("Viewing blob dependencies not implemented");
+#if false
             FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
             var logs = logger.GetAll();
             
@@ -208,6 +217,7 @@ namespace WebFrontEnd.Controllers
             model.Uri = blob.Uri;
 
             return View(model);
+#endif
         }    
     }
 

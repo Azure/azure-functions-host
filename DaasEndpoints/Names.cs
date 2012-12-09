@@ -27,7 +27,10 @@ namespace DaasEndpoints
         public const string FunctionInvokeLogTableName = prefix + "functionlogs";
 
         // 2ndary table for FunctionInvokeLogTableName, providing an index by time.
-        public const string FunctionInvokeLogIndexTime = "functionlogsIndextime";
+        public const string FunctionInvokeLogIndexMru = "functionlogsIndexMRU";
+        public const string FunctionInvokeLogIndexMruFunction = "functionlogsIndexMRUByFunction";
+        public const string FunctionInvokeLogIndexMruFunctionSucceeded = "functionlogsIndexMRUByFunctionSucceeded";
+        public const string FunctionInvokeLogIndexMruFunctionFailed = "functionlogsIndexMRUByFunctionFailed";
 
         // Queuenames must be all lowercase. 
         public const string ExecutionQueueName = prefix + "-execution";

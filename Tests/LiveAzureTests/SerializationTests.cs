@@ -1,4 +1,5 @@
 ﻿using System;
+using AzureTables;
 using Executor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Orchestrator;
@@ -80,12 +81,17 @@ namespace LiveAzureTests
 
             string tableName = "functionlogtest";
             Utility.DeleteTable(AzureConfig.GetAccount(), tableName);
-            var logger = new FunctionInvokeLogger { _account = AzureConfig.GetAccount(), _tableName = tableName };
+
+            IFunctionUpdatedLogger logger = new FunctionInvokeLogger { _account = AzureConfig.GetAccount(), _tableName = tableName };
 
             logger.Log(log);
 
 
-            var log2 = logger.Get(g);
+            var lookupTable = new AzureTable<ExecutionInstanceLogEntity>(
+                 AzureConfig.GetAccount(), tableName);                 
+            IFunctionInstanceLookup lookup = new ExecutionStatsAggregator(lookupTable);
+
+            var log2 = lookup.Lookup(g);
 
             Assert.IsNotNull(log2);
 

@@ -34,6 +34,7 @@ namespace WebFrontEnd.Controllers
             var services = GetServices();
             model.QueueDepth = services.GetExecutionQueueDepth();
             model.HealthStatus = services.GetHealthStatus();
+            model.AccountName = services.Account.Credentials.AccountName;
             
             return View(model);
         }

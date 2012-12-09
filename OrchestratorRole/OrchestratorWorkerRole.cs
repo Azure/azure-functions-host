@@ -23,8 +23,9 @@ namespace OrchestratorRole
         string _localCacheRoot;
         DateTime _startTime;
 
-        private ExecutionStatsAggregator _stats;
+        private IFunctionCompleteLogger _stats;
         private Services _services;
+        private IFunctionInstanceLookup _lookup;
 
         public override void Run()
         {
@@ -46,6 +47,8 @@ namespace OrchestratorRole
             _services.ResetHealthStatus();
 
             _stats = _services.GetStatsAggregator();
+
+            var _statsBridge = _services.GetStatsAggregatorBridge();
 
             CancellationTokenSource cancelSource = new CancellationTokenSource();
             while (true)
@@ -71,7 +74,7 @@ namespace OrchestratorRole
 
                 _services.WriteHealthStatus(worker.Heartbeat);
 
-                UpdateStats();
+                _statsBridge.DrainQueue(_stats, _lookup);
                
                 // Polling walks all blobs. Could take a long time for a large container.
                 worker.Poll(cancelSource.Token);                
@@ -80,31 +83,7 @@ namespace OrchestratorRole
                 Thread.Sleep(1*1000);                
             }
         }        
-
-        // Aggregate the stats from any exuection instances that have completed. 
-        void UpdateStats()
-        {
-            var queue = _services.GetExecutionCompleteQueue();
-            while (true)
-            {
-                var msg = queue.GetMessage();
-                if (msg == null)
-                {
-                    break;
-                }
-
-                queue.DeleteMessage(msg);
-
-                var payload = JsonCustom.DeserializeObject<ExecutionFinishedPayload>(msg.AsString);
-                foreach (var instance in payload.Instances)
-                {
-                    _stats.OnFunctionComplete(instance);
-                }
-            }
-
-            _stats.Flush();
-        }
-
+    
         private void ResetExecutors()
         {
             _services.ResetHealthStatus();

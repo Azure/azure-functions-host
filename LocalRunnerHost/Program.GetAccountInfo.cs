@@ -7,7 +7,7 @@ using System;
 namespace LocalRunnerHost
 {
     // Test harness for lcoally replyaing a failed job. 
-    partial class Program
+    public partial class Program
     {
         // Get the storage account that the service is running against. 
         // This is that the Function Instance Guids get resolved against.         

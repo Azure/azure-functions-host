@@ -130,7 +130,8 @@ namespace WorkerRole1
         private readonly Action<TextWriter> _addHeaderInfo;
         private readonly Services _services;
 
-        private readonly FunctionInvokeLogger _invokeLogger;
+        private readonly ExecutionStatsAggregatorBridge _statsBridge;
+        private readonly IFunctionUpdatedLogger _invokeLogger;
 
         public WebExecutionLogger(Services services, Action<TextWriter> addHeaderInfo)
         {
@@ -138,6 +139,7 @@ namespace WorkerRole1
             _addHeaderInfo = addHeaderInfo;
 
             _invokeLogger = services.GetFunctionInvokeLogger();
+            _statsBridge = services.GetStatsAggregatorBridge();
         }
 
         public FunctionOutputLog GetLogStream(FunctionInstance f)
@@ -177,17 +179,8 @@ namespace WorkerRole1
 
         public void UpdateInstanceLog(ExecutionInstanceLogEntity instance)
         {
-            _invokeLogger.Log(instance);
-
-            // If complete, then queue a message to the orchestrator so it can aggregate stats. 
-
-            if (instance.IsCompleted())
-            {
-                var queue = _services.GetExecutionCompleteQueue();
-                var json = JsonCustom.SerializeObject(new ExecutionFinishedPayload { Instances = new Guid[] { instance.FunctionInstance.Id } });
-                CloudQueueMessage msg = new CloudQueueMessage(json);
-                queue.AddMessage(msg);
-            }
+            _invokeLogger.Log(instance);            
+            _statsBridge.EnqueueCompletedFunction(instance);
         }
 
         public void WriteHeartbeat(ExecutionRoleHeartbeat stats)
@@ -200,4 +193,6 @@ namespace WorkerRole1
             return _services.IsDeleteRequested(id);
         }
     }
+
+
 }

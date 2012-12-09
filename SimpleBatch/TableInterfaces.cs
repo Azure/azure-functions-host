@@ -54,4 +54,8 @@ namespace SimpleBatch
     public interface IAzureTable : IAzureTableReader, IAzureTableWriter
     {
     }
+
+    public interface IAzureTable<TValue> : IAzureTableReader<TValue>, IAzureTableWriter
+    {
+    }
 }

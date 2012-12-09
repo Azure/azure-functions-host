@@ -8,17 +8,19 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace Executor
 {
     // ### This should just be an azure table (maybe with trivial wrapper for Row/Part key)
-    public class FunctionInvokeLogger
+    public class FunctionInvokeLogger : IFunctionUpdatedLogger
     {
         public CloudStorageAccount _account;
+        
+        // Table that lists all functions. 
         public string _tableName;
-
-        public AzureTable _tableMRU;
-
+                
+        // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
         public void Log(ExecutionInstanceLogEntity log)
         {
             // $$$ Should be a merge. Is there a table operation for merge?
@@ -48,41 +50,5 @@ namespace Executor
                 }
             }
         }
-
-        // Lookup a given execution instance. 
-        public ExecutionInstanceLogEntity Get(Guid rowKey)
-        {
-            return Utility.Lookup<ExecutionInstanceLogEntity>(_account, _tableName, "1", rowKey.ToString());
-        }
-
-        // Sorted from newest to oldest
-        public IEnumerable<ExecutionInstanceLogEntity> GetAll()
-        {
-            return GetRecent(int.MaxValue);
-        }
-
-        public ExecutionInstanceLogEntity[] GetRecent(int n)
-        {
-            var entries = _tableMRU.Enumerate().Take(n);
-
-            List<ExecutionInstanceLogEntity> list = new List<ExecutionInstanceLogEntity>();
-            foreach (var entry in entries)
-            {
-                Guid g = Guid.Parse(entry["instance"]);
-
-                list.Add(Get(g));
-            }
-            return list.ToArray();
-
-#if false
-            var logs = Utility.ReadTable<ExecutionInstanceLogEntity>(_account, _tableName);
-
-            DateTime[] time = Array.ConvertAll(logs, log => log.Timestamp);
-            Array.Sort(time, logs); // sorts oldest to newest
-            Array.Reverse(logs);
-
-            return logs;
-#endif
-        }
-    }
+    }    
 }

@@ -62,7 +62,9 @@
     <Compile Include="OrchestratorSettings.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services.FunctionStaticInfo.cs" />
     <Compile Include="Services.Health.cs" />
+    <Compile Include="Services.Logger.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">

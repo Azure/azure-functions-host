@@ -11,7 +11,7 @@ using RunnerInterfaces;
 namespace LocalRunnerHost
 {
     // Test harness for lcoally replyaing a failed job. 
-    partial class Program
+    public partial class Program
     {
         static void Main(string[] args)
         {
@@ -38,8 +38,8 @@ namespace LocalRunnerHost
         {
             var services = new Services(accountInfo);
 
-            FunctionInvokeLogger l = services.GetFunctionInvokeLogger();
-            ExecutionInstanceLogEntity log = l.Get(id);
+            var l = services.GetFunctionInvokeQuery();
+            ExecutionInstanceLogEntity log = l.Lookup(id);
             if (log == null)
             {
                 string name = accountInfo.GetAccountName();

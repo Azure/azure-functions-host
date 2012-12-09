@@ -88,12 +88,5 @@ Status from roles (as of @now.ToLongTimeString()) :
 
 <h3>Configuration settings for service</h3>
 <table border="1">
-    <tr><td>Account name</td><td>@Secrets.GetAccount().Credentials.AccountName</td></tr>
-    <tr><td>Function table name</td><td>@Secrets.FunctionIndexTableName</td></tr>
-    <tr><td>Function stats table name</td><td>@Secrets.FunctionInvokeStatsTableName</td></tr>
-    <tr><td>Execution queue name</td><td>@Secrets.ExecutionQueueName</td></tr>        
-    <tr><td>Orch control queue name</td><td>@Secrets.OrchestratorControlQueue</td></tr>        
-    <tr><td>Health log container name</td><td>@Secrets.HealthLogContainerName</td></tr>        
-    <tr><td>Log container name</td><td>@Secrets.ExecutionLogName</td></tr>        
-    <tr><td>Data control container name</td><td>@Secrets.DaasControlContainerName</td></tr>        
+    <tr><td>Account name</td><td>@Model.AccountName</td></tr>
 </table>
