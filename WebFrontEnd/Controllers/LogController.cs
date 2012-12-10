@@ -115,7 +115,7 @@ namespace WebFrontEnd.Controllers
         }
 
         [HttpPost]
-        public ActionResult AbortFunction(FunctionInstance instance)
+        public ActionResult AbortFunction(FunctionInvokeRequest instance)
         {
             GetServices().PostDeleteRequest(instance);
 
@@ -170,16 +170,16 @@ namespace WebFrontEnd.Controllers
             return dict;
         }
 
-        private FunctionInstance[] PeekQueuedInstances()
+        private FunctionInvokeRequest[] PeekQueuedInstances()
         {
             var services = GetServices();
-            List<FunctionInstance> list = new List<RunnerInterfaces.FunctionInstance>();
+            List<FunctionInvokeRequest> list = new List<RunnerInterfaces.FunctionInvokeRequest>();
 
             var q = services.GetExecutionQueue();
             var msgs = q.PeekMessages(messageCount: 30);
             foreach (var msg in msgs)
             {
-                var instance = JsonCustom.DeserializeObject<FunctionInstance>(msg.AsString);
+                var instance = JsonCustom.DeserializeObject<FunctionInvokeRequest>(msg.AsString);
 
                 list.Add(instance);
             }
@@ -243,7 +243,7 @@ namespace WebFrontEnd.Controllers
         public IDictionary<FunctionLocation, FunctionStatsEntity> Summary { get; set; }
 
         // Top N function instances in the queued. Live values from reading the queue,not from the logs.
-        public FunctionInstance[] QueuedInstances { get; set; }
+        public FunctionInvokeRequest[] QueuedInstances { get; set; }
 
         public int? QueueDepth { get; set; }
     }

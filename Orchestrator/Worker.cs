@@ -305,7 +305,7 @@ namespace Orchestrator
                 // Invoke all these functions
                 foreach (FunctionIndexEntity func in list)
                 {
-                    FunctionInstance instance = GetFunctionInvocation(func, blob);
+                    FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
                     if (instance != null)
                     {
                         if (!alwaysRun)
@@ -337,7 +337,7 @@ namespace Orchestrator
         // Return null if we can't reason about it.
         // Return True is inputs are newer than outputs, and so function should be executed again.
         // Else return false (meaning function execution can be skipped)
-        public static bool? CheckBlobTimes(FunctionInstance instance, FunctionIndexEntity func)
+        public static bool? CheckBlobTimes(FunctionInvokeRequest instance, FunctionIndexEntity func)
         {
             return CheckBlobTimes(instance.Args, func.Flow.Bindings);
         }
@@ -414,7 +414,7 @@ namespace Orchestrator
             return inputsAreNewerThanOutputs;
         }
 
-        public static FunctionInstance GetFunctionInvocation(FunctionIndexEntity func, IDictionary<string, string> parameters)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func, IDictionary<string, string> parameters)
         {
             var ctx = new RuntimeBindingInputs
             {
@@ -427,7 +427,7 @@ namespace Orchestrator
 
         // Invoke a function that is completely self-describing.
         // This means all inputs can be bound without any additional information. 
-        public static FunctionInstance GetFunctionInvocation(FunctionIndexEntity func)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func)
         {
             var ctx = new RuntimeBindingInputs
             {
@@ -439,7 +439,7 @@ namespace Orchestrator
 
 
         // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.
-        public static FunctionInstance GetFunctionInvocation(FunctionIndexEntity func, CloudBlob blobInput)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func, CloudBlob blobInput)
         {
             // blobInput was the one that triggered it.
             // Get the path from the first blob input parameter.
@@ -468,14 +468,14 @@ namespace Orchestrator
         }
 
         // Bind the entire flow to an instance
-        public static FunctionInstance BindParameters(RuntimeBindingInputs ctx, FunctionIndexEntity func)
+        public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionIndexEntity func)
         {
             FunctionFlow flow = func.Flow;
             int len = flow.Bindings.Length;
 
             var args = Array.ConvertAll(flow.Bindings, staticBinding => staticBinding.Bind(ctx));
 
-            FunctionInstance instance = new FunctionInstance
+            FunctionInvokeRequest instance = new FunctionInvokeRequest
             {
                 Location = func.Location,
                 Args = args

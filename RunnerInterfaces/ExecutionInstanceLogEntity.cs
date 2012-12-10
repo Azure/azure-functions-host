@@ -25,9 +25,9 @@ namespace Executor
 
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
-        private FunctionInstance _functionInstance;
+        private FunctionInvokeRequest _functionInstance;
 
-        public FunctionInstance FunctionInstance
+        public FunctionInvokeRequest FunctionInstance
         {
             get
             {
@@ -53,6 +53,7 @@ namespace Executor
         public string ExceptionMessage { get; set; }
 
         // For retrieving the console output.
+        // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
 
         // Set to once we've been queued. This should always been set since queuing is essentially initialization.

@@ -51,7 +51,7 @@ namespace WebFrontEnd.Controllers
 
         public static MvcHtmlString FunctionInstanceLogLink(
             this HtmlHelper htmlHelper,
-            FunctionInstance instance,
+            FunctionInvokeRequest instance,
             string textLink = null)
         {
             if (textLink == null)

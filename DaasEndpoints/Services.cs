@@ -60,7 +60,7 @@ namespace DaasEndpoints
             return queue;
         }
 
-        public void PostDeleteRequest(FunctionInstance instance)
+        public void PostDeleteRequest(FunctionInvokeRequest instance)
         {
             Utility.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
         }
@@ -125,7 +125,7 @@ namespace DaasEndpoints
             return new Orchestrator.Worker(settings);
         }
 
-        public ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInstance instance)
+        public ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInvokeRequest instance)
         {
             instance.Id = Guid.NewGuid(); // used for logging. 
             instance.ServiceUrl =  _accountInfo.WebDashboardUri;

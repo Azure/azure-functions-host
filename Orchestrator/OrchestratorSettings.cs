@@ -14,6 +14,6 @@ namespace Orchestrator
     public interface IOrchestratorSettings
     {
         FunctionIndexEntity[] ReadFunctionTable();        
-        void QueueFunction(FunctionInstance instance);        
+        void QueueFunction(FunctionInvokeRequest instance);        
     }
 }

@@ -26,7 +26,7 @@ namespace LiveAzureTests
         {
             Guid g = Guid.Parse("508B5DE1-C1B8-431C-81E6-DDC7D7E195DC");
 
-            var instance = new FunctionInstance
+            var instance = new FunctionInvokeRequest
             {
                 Id =  g, 
                 TriggerReason = "from test",
@@ -118,7 +118,7 @@ namespace LiveAzureTests
             Assert.AreEqual(a.Value.ToUniversalTime(), b.Value.ToUniversalTime());
         }
 
-        void AssertEqual(FunctionInstance instance1, FunctionInstance instance2)
+        void AssertEqual(FunctionInvokeRequest instance1, FunctionInvokeRequest instance2)
         {
             Assert.AreEqual(instance1.Id, instance2.Id);
             Assert.AreEqual(instance1.Args.Length, instance2.Args.Length);

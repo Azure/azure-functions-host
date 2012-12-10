@@ -23,7 +23,7 @@ namespace WebFrontEnd
             ModelBinders.Binders.Add(typeof(CloudStorageAccount), new CloudStorageAccountBinder());
             ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
             ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder());
-            ModelBinders.Binders.Add(typeof(FunctionInstance), new FunctionInstanceBinder());
+            ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder());
         }
     }
 

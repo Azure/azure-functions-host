@@ -34,7 +34,7 @@ namespace RunnerInterfaces
 
     public static class IFunctionInstanceLookupExtensions
     {
-        static ExecutionInstanceLogEntity Lookup(this IFunctionInstanceLookup lookup, FunctionInstance instance)
+        static ExecutionInstanceLogEntity Lookup(this IFunctionInstanceLookup lookup, FunctionInvokeRequest instance)
         {
             return lookup.Lookup(instance.Id);
         }

@@ -142,7 +142,7 @@ namespace WorkerRole1
             _statsBridge = services.GetStatsAggregatorBridge();
         }
 
-        public FunctionOutputLog GetLogStream(FunctionInstance f)
+        public FunctionOutputLog GetLogStream(FunctionInvokeRequest f)
         {
             CloudBlobContainer c = _services.GetExecutionLogContainer();
             string name = f.ToString() + ".txt";

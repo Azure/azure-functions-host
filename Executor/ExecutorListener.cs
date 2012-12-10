@@ -31,7 +31,7 @@ namespace Executor
     public interface IExecutionLogger
     {
         // Returns TextWriter and a "done" action.
-        FunctionOutputLog GetLogStream(FunctionInstance f);
+        FunctionOutputLog GetLogStream(FunctionInvokeRequest f);
 
         void LogFatalError(string info, Exception e);
 
@@ -64,7 +64,7 @@ namespace Executor
     // Default logger, just goes to console.
     public class EmptyExecutionLogger : IExecutionLogger
     {
-        public FunctionOutputLog GetLogStream(FunctionInstance f)
+        public FunctionOutputLog GetLogStream(FunctionInvokeRequest f)
         {
             return new FunctionOutputLog();
         }
@@ -249,7 +249,7 @@ namespace Executor
             _stats.RunCount++;
 
             string json = msg.AsString;
-            FunctionInstance instance = JsonCustom.DeserializeObject<FunctionInstance>(json);
+            FunctionInvokeRequest instance = JsonCustom.DeserializeObject<FunctionInvokeRequest>(json);
 
             _stats.FunctionInstanceId = instance.Id;
             WriteHeartbeat(logger);

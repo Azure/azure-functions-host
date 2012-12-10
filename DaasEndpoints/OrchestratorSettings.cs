@@ -34,7 +34,7 @@ namespace Orchestrator
             return funcs;
         }
 
-        public void QueueFunction(FunctionInstance instance)
+        public void QueueFunction(FunctionInvokeRequest instance)
         {
             _services.QueueExecutionRequest(instance);
         }      

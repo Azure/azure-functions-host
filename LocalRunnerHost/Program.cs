@@ -21,7 +21,7 @@ namespace LocalRunnerHost
             string configPath = args[1];
 
             IAccountInfo accountInfo = GetAccountInfo(configPath);
-            FunctionInstance instance = GetFunctionInstance(accountInfo, id);
+            FunctionInvokeRequest instance = GetFunctionInstance(accountInfo, id);
 
             //string temp = Path.Combine(Path.GetTempFileName(), "simplebatch");
             string tempPath = @"c:\temp\localtest";
@@ -34,7 +34,7 @@ namespace LocalRunnerHost
             var result = e.Execute(instance, Console.Out, CancellationToken.None);
         }
 
-        static FunctionInstance GetFunctionInstance(IAccountInfo accountInfo, Guid id)
+        static FunctionInvokeRequest GetFunctionInstance(IAccountInfo accountInfo, Guid id)
         {
             var services = new Services(accountInfo);
 
@@ -47,7 +47,7 @@ namespace LocalRunnerHost
                     id, name);
                 throw new InvalidOperationException(msg);
             }
-            FunctionInstance instance = log.FunctionInstance;
+            FunctionInvokeRequest instance = log.FunctionInstance;
 
             return instance;
         }

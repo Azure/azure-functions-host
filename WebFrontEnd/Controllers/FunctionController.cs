@@ -62,7 +62,7 @@ namespace WebFrontEnd.Controllers
 
         // Called to get a run request that would "replay" a previous execution instance.
         [HttpGet]
-        public ActionResult InvokeFunctionReplay(FunctionInstance instance)
+        public ActionResult InvokeFunctionReplay(FunctionInvokeRequest instance)
         {
             FunctionIndexEntity func = GetServices().Lookup(instance.Location);
             return RenderInvokePageWorker(func, instance.Args);
@@ -110,7 +110,7 @@ namespace WebFrontEnd.Controllers
                 }
             }
 
-            FunctionInstance instance = new FunctionInstance();
+            FunctionInvokeRequest instance = new FunctionInvokeRequest();
             instance.Args = args;
             instance.Location = func.Location;
             instance.TriggerReason = "Explicitly requested via web dashboard";

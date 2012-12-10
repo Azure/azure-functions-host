@@ -24,13 +24,13 @@ namespace Executor
             _localCacheRoot = Path.Combine(localCache, "daas-exec");
         }
 
-        public void Execute(FunctionInstance instance)
+        public void Execute(FunctionInvokeRequest instance)
         {
             Execute(instance, Console.Out, CancellationToken.None);
         }
 
         // Execute the function and block. 
-        public FunctionExecutionResult Execute(FunctionInstance instance, TextWriter outputLogging, CancellationToken token)
+        public FunctionExecutionResult Execute(FunctionInvokeRequest instance, TextWriter outputLogging, CancellationToken token)
         {
             string localCache = GetLocalCopy(instance.Location);
 
@@ -93,7 +93,7 @@ namespace Executor
             _localCopy = localCopy;
         }
 
-        internal FunctionExecutionResult Execute(FunctionInstance instance, CancellationToken token)
+        internal FunctionExecutionResult Execute(FunctionInvokeRequest instance, CancellationToken token)
         {
             Console.WriteLine("# Executing: {0}", instance.Location.GetId());
             
@@ -117,7 +117,7 @@ namespace Executor
         }
 
         // Copy a remote function instance to be local, in preparation for invoking. 
-        private LocalFunctionInstance ConvertToLocal(FunctionInstance remoteInstance)
+        private LocalFunctionInstance ConvertToLocal(FunctionInvokeRequest remoteInstance)
         {
             string assemblyEntryPoint = Path.Combine(_localCopy, remoteInstance.Location.Blob.BlobName);
 

@@ -80,17 +80,17 @@ namespace Orchestrator
 
         // Common call point. 
 
-        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionIndexEntity, FunctionInstance> fpGetInstance)
+        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
         {            
             FunctionIndexEntity func = GetFunction(account, method);
-            FunctionInstance instance = fpGetInstance(func);
+            FunctionInvokeRequest instance = fpGetInstance(func);
             RunnerHost.Program.Invoke(config, method, instance.Args);
         }
 
-        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionIndexEntity, FunctionInstance> fpGetInstance)
+        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
         {
             FunctionIndexEntity func = GetFunction(account, method);
-            FunctionInstance instance = fpGetInstance(func);
+            FunctionInvokeRequest instance = fpGetInstance(func);
 
             var config = ReflectionFunctionInvoker.GetConfiguration(account, method.DeclaringType);
 
@@ -196,7 +196,7 @@ namespace Orchestrator
             return _funcs.ToArray();
         }
 
-        void IOrchestratorSettings.QueueFunction(FunctionInstance instance)
+        void IOrchestratorSettings.QueueFunction(FunctionInvokeRequest instance)
         {
             int idx = int.Parse(instance.Location.TypeName);
             MethodInfo m = _mapping[idx];

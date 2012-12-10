@@ -80,7 +80,7 @@ namespace WebFrontEnd.Controllers
             }
         }
 
-        public static void ApplySelfWatchInfo(FunctionInstance instance, ParamModel[] ps)
+        public static void ApplySelfWatchInfo(FunctionInvokeRequest instance, ParamModel[] ps)
         {
             // Get selfwatch information
             string[] selfwatch = GetParameterSelfWatch(instance);
@@ -97,7 +97,7 @@ namespace WebFrontEnd.Controllers
         }
 
         // Get Live information from current self-watch values. 
-        public static string[] GetParameterSelfWatch(FunctionInstance instance)
+        public static string[] GetParameterSelfWatch(FunctionInvokeRequest instance)
         {
             if (instance.ParameterLogBlob == null)
             {
@@ -159,7 +159,7 @@ namespace WebFrontEnd.Controllers
 
             foreach (var log in logs)
             {
-                FunctionInstance instance = log.FunctionInstance;
+                FunctionInvokeRequest instance = log.FunctionInstance;
                 ParameterRuntimeBinding[] args = instance.Args;
                 var descriptor = GetServices().Lookup(instance.Location);
                 var flows = descriptor.Flow.Bindings;
