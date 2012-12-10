@@ -6,11 +6,11 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace RunnerInterfaces
-{
-    // Function Descriptor vs. Instance    
+{   
+    // Request information to invoke a function. 
+    // This is just request information and doesn't contain any response information
     // This can be serialized. 
-    // This has private information (account keys via Args)
-    // ### Rename this to "request".
+    // This has private information (account keys via Args) 
     public class FunctionInvokeRequest
     {
         // Versioning, to help detect against stale queue entries

@@ -37,6 +37,19 @@ namespace TestApp1
         {
             Console.WriteLine("Executed:{0}", value);
         }
+
+
+        public static void YaoFunc(
+            [BlobInput(@"yao-input\{name}.txt")] TextReader input,
+            string name, 
+            [BlobOutput(@"yao-input\{name}.output")] TextWriter output)
+        {
+            Console.WriteLine("Hello!");
+            Console.WriteLine(name);
+            string reader = input.ReadToEnd();
+            Console.WriteLine(reader);
+            output.WriteLine(reader.Length);
+        }
         
         public static void TestReg(TextReader input, TextWriter output)
         {
