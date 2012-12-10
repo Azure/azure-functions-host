@@ -37,7 +37,7 @@ namespace Orchestrator
             _settings = settings;
         }
 
-        // !!! Should never be calling this. Nukes the whole table!!
+        // $$$ Should never be calling this. Nukes the whole table!!
         // $$$ Move this somewhere else. Indexer is just writing to the location. 
         public void CleanFunctionIndex()
         {

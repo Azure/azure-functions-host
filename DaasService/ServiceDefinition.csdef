@@ -15,11 +15,16 @@
     <Imports>
       <Import moduleName="Diagnostics" />
     </Imports>
+    <Endpoints>
+      <!-- Must define an endpoint in order to discover other roles -->
+      <InternalEndpoint name="InternalEndpoint1" protocol="http" />
+    </Endpoints>
     <LocalResources>
       <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
     </LocalResources>
     <ConfigurationSettings>
       <Setting name="MainStorage" />
+      <Setting name="WebRoleEndpoint"/>
     </ConfigurationSettings>
   </WorkerRole>
   <WebRole name="WebFrontEnd" vmsize="ExtraSmall">
@@ -32,6 +37,9 @@
     </Sites>
     <Endpoints>
       <InputEndpoint name="Endpoint1" protocol="http" port="80" />
+
+      <!-- Must define an endpoint in order to discover other roles -->
+      <InternalEndpoint name="InternalEndpoint2" protocol="http"/>
     </Endpoints>
     <Imports>
       <Import moduleName="Diagnostics" />

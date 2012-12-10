@@ -135,6 +135,8 @@ namespace Executor
                 ptrs = table.Enumerate();
             }
 
+            ptrs = ptrs.Take(N);
+
             IFunctionInstanceLookup lookup = this;
             return from ptr in ptrs select lookup.Lookup(ptr.Instance);
         }

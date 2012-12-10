@@ -49,8 +49,7 @@ namespace RunnerInterfaces
         IEnumerable<ExecutionInstanceLogEntity> GetRecent(int N, FunctionInstanceQueryFilter filter);
     }
 
-    // !!! Filter to storage container? Function, Date? Success status?
-    // Becomes a full-fledged database!
+    // $$$ Filter to storage container? Function, Date? Success status? Becomes a full-fledged database!
     public class FunctionInstanceQueryFilter
     {
         // Only return functions in the given account name

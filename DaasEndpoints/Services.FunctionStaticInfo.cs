@@ -14,7 +14,7 @@ using Microsoft.WindowsAzure;
 
 namespace DaasEndpoints
 {
-    // !!! Used for IIndexerSettings (read/write function table), IOrchestratorSettings (Read function table)  
+    // $$$ Used for IIndexerSettings (read/write function table), IOrchestratorSettings (Read function table)  
     // Services related to logging
     public partial class Services
     {
@@ -26,7 +26,6 @@ namespace DaasEndpoints
             return funcs;
         }
 
-        // !!! Static lookups
         public FunctionIndexEntity Lookup(FunctionLocation location)
         {
             string rowKey = FunctionIndexEntity.GetRowKey(location);

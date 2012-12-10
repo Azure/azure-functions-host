@@ -54,12 +54,7 @@ namespace DaasEndpoints
             {
                 if (_webDashboard == null)
                 {
-                    // $$$ Better way to discover this endpoint? Make sure we're really on the Http listener. 
-                    var i = RoleEnvironment.Roles["WebFrontEnd"];
-                    RoleInstance x = i.Instances.First();
-                    RoleInstanceEndpoint endpoint = x.InstanceEndpoints.First().Value;
-
-                    _webDashboard = string.Format("{0}://{1}/", endpoint.Protocol, endpoint.IPEndpoint);
+                    _webDashboard = RoleEnvironment.GetConfigurationSettingValue("WebRoleEndpoint");
                 }
                 return _webDashboard;
             }

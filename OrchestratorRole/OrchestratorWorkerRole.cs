@@ -27,16 +27,48 @@ namespace OrchestratorRole
         private Services _services;
         private IFunctionInstanceLookup _lookup;
 
+        // Check that the connection to the webservice is working.
+        void CheckServiceUrl(IAccountInfo accountInfo)
+        {
+            string serviceUrl = accountInfo.WebDashboardUri;
+            string uri = string.Format(@"{0}/Api/Execution/Heartbeat", serviceUrl);
+
+            WebRequest request = WebRequest.Create(uri);
+            request.Method = "GET";
+            request.ContentType = "application/json";
+            request.ContentLength = 0;
+
+            var response = request.GetResponse(); // throws on errors and 404
+        }
+
         public override void Run()
         {
             // This is a sample worker implementation. Replace with your logic.
             Trace.WriteLine("OrchestratorRole entry point called", "Information");
+            
+            IAccountInfo accountInfo = new AzureRoleAccountInfo();
+            _services = new Services(accountInfo);
+
+
+            try
+            {                
+                CheckServiceUrl(accountInfo);
+
+                RunWorker();
+            }
+            catch (Exception e)
+            {
+                _services.LogFatalError("OrchError", e);
+            }
+        }
+        
+        void RunWorker()
+        {
 
             _startTime = DateTime.UtcNow;
             _localCacheRoot = RoleEnvironment.GetLocalResource("localStore").RootPath;
 
-            IAccountInfo accountInfo = new AzureRoleAccountInfo();
-            _services = new Services(accountInfo);
+
 
 
             // This thread owns the function table. 

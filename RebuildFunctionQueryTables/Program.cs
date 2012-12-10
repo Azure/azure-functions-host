@@ -47,6 +47,10 @@ namespace RebuildFunctionQueryTables
                     f.Flush();
                     Console.Write(".");
                 }
+                if (count % 2000 == 0)
+                {
+                    Console.WriteLine("time: {0}", sw.Elapsed);            
+                }
             }
             f.Flush();
 

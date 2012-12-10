@@ -132,7 +132,7 @@ namespace WebFrontEnd.Controllers
 
             var table = services.GetInvokeStatsTable();
             model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => services.Lookup(rowKey).Location); // !!! very inefficient
+                rowKey => services.Lookup(rowKey).Location); // $$$ very inefficient
 
             // Populate queue. 
             model.QueuedInstances = PeekQueuedInstances();
@@ -191,7 +191,6 @@ namespace WebFrontEnd.Controllers
         // View current value. 
         public ActionResult Blob(CloudStorageAccount accountName, CloudBlobPath path)
         {
-            // !!!
             throw new NotImplementedException("Viewing blob dependencies not implemented");
 #if false
             FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();

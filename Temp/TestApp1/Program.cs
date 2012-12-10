@@ -26,6 +26,17 @@ namespace TestApp1
                 BindBlobOutput("output", @"daas-test-input3\{name}.output.csv");
         }
 
+        [NoAutomaticTrigger]
+        public static void TestCall(ICall call, int value)
+        {
+            call.QueueCall("TestCall2", new { value = value});
+        }
+
+        [NoAutomaticTrigger]
+        public static void TestCall2(int value)
+        {
+            Console.WriteLine("Executed:{0}", value);
+        }
         
         public static void TestReg(TextReader input, TextWriter output)
         {
