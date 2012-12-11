@@ -16,8 +16,7 @@ namespace DaasEndpoints
         // Returns count scanned
         public static int ScanBlobDir(Services services, CloudStorageAccount account, CloudBlobPath path)
         {
-            var settings = services.GetOrchestratorSettings();
-            var worker = new Orchestrator.Worker(settings);     
+            var worker = services.GetOrchestrationWorker();
 
             int count = 0;            
             foreach (IListBlobItem blobItem in path.ListBlobsInDir(account))

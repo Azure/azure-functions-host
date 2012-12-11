@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
@@ -21,7 +22,9 @@ namespace Orchestrator
 
             i.IndexType(store.OnApplyLocationInfo, typeClass);
 
-            var worker = new Worker(store);
+            IFunctionTable functionTable = store;
+            IQueueFunction executor = store;
+            var worker = new Worker(functionTable, executor);
             return worker;        
         }
 
@@ -105,7 +108,8 @@ namespace Orchestrator
 
             i.IndexMethod(store.OnApplyLocationInfo, method);
 
-            var funcs = ((IOrchestratorSettings)store).ReadFunctionTable();
+            IFunctionTable functionTable = store;
+            var funcs = functionTable.ReadAll();
             FunctionIndexEntity func = funcs[0];
             return func;
         }
@@ -113,7 +117,7 @@ namespace Orchestrator
 
     // Provide in-memory settings that can glue an indexer, orchestrator, and execution.
     // Executes via in-memory MethodInfos without azure. 
-    class IndexInMemory : IIndexerSettings, IOrchestratorSettings
+    class IndexInMemory : IFunctionTable, IQueueFunction
     {
         List<FunctionIndexEntity> _funcs = new List<FunctionIndexEntity>();
         List<MethodInfo> _mapping = new List<MethodInfo>();
@@ -163,17 +167,12 @@ namespace Orchestrator
             };
         }
 
-        void IIndexerSettings.Add(FunctionIndexEntity func)
+        void IFunctionTable.Add(FunctionIndexEntity func)
         {
             _funcs.Add(func);
         }
 
-        void IIndexerSettings.CleanFunctionIndex()
-        {
-            throw new NotImplementedException();
-        }
-
-        void IIndexerSettings.Delete(FunctionIndexEntity func)
+        void IFunctionTable.Delete(FunctionIndexEntity func)
         {
             string funcString = func.ToString();
             foreach (var x in _funcs)
@@ -186,23 +185,20 @@ namespace Orchestrator
             }
         }
 
-        FunctionIndexEntity[] IIndexerSettings.ReadFunctionTable()
+        FunctionIndexEntity[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();
         }
 
-        FunctionIndexEntity[] IOrchestratorSettings.ReadFunctionTable()
-        {
-            return _funcs.ToArray();
-        }
-
-        void IOrchestratorSettings.QueueFunction(FunctionInvokeRequest instance)
+        ExecutionInstanceLogEntity IQueueFunction.Queue(FunctionInvokeRequest instance)
         {
             int idx = int.Parse(instance.Location.TypeName);
             MethodInfo m = _mapping[idx];
                                     
             // run immediately 
             RunnerHost.Program.Invoke(_config, m, instance.Args);
+
+            return null;
         }
 
 
@@ -216,6 +212,11 @@ namespace Orchestrator
         {
             // Nop. In-memory doesn't pull binders down from cloud. 
             // Binders must be already set in the IConfiguration
+        }
+
+        public FunctionIndexEntity Lookup(string functionId)
+        {
+            throw new NotImplementedException();
         }
     }
 

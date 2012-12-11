@@ -72,8 +72,6 @@ namespace OrchestratorRole
 
 
             // This thread owns the function table. 
-            var settings = _services.GetOrchestratorSettings();
-
             Worker worker = null;
 
             _services.ResetHealthStatus();
@@ -101,7 +99,7 @@ namespace OrchestratorRole
                 {
                     ResetExecutors();
 
-                    worker = new Worker(settings);
+                    worker = _services.GetOrchestrationWorker();
                     worker.Heartbeat.Uptime = _startTime;
                 }
 

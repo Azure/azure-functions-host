@@ -29,19 +29,16 @@ namespace Orchestrator
     // Go down and build an index
     public class Indexer
     {
-        private readonly IIndexerSettings _settings;
+        private readonly IFunctionTable _functionTable;
 
         // Account for where index lives 
-        public Indexer(IIndexerSettings settings)
+        public Indexer(IFunctionTable functionTable)
         {
-            _settings = settings;
-        }
-
-        // $$$ Should never be calling this. Nukes the whole table!!
-        // $$$ Move this somewhere else. Indexer is just writing to the location. 
-        public void CleanFunctionIndex()
-        {
-            _settings.CleanFunctionIndex();
+            if (functionTable == null)
+            {
+                throw new ArgumentNullException("functionTable");
+            }
+            _functionTable = functionTable;
         }
 
         // Index all things in the container 
@@ -102,7 +99,7 @@ namespace Orchestrator
 
         private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
         {
-            FunctionIndexEntity[] funcs = _settings.ReadFunctionTable();
+            FunctionIndexEntity[] funcs = _functionTable.ReadAll();
 
             string connection = containerDescriptor.AccountConnectionString;
             string containerName = containerDescriptor.ContainerName;
@@ -116,7 +113,7 @@ namespace Orchestrator
                     var loc = func.Location;
                     if (loc.Blob.BlobName == name && loc.Blob.ContainerName == containerName && loc.Blob.AccountConnectionString == connection)
                     {
-                        _settings.Delete(func);
+                        _functionTable.Delete(func);
                     }
                 }
             }
@@ -336,7 +333,7 @@ namespace Orchestrator
                 index.Location = loc;
                 index.SetRowKey(); // may use location info
 
-                _settings.Add(index);
+                _functionTable.Add(index);
 
                 // Add custom binders for parameter types
                 foreach (var parameter in descr.Parameters)

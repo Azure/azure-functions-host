@@ -161,7 +161,7 @@ namespace WebFrontEnd.Controllers
             {
                 FunctionInvokeRequest instance = log.FunctionInstance;
                 ParameterRuntimeBinding[] args = instance.Args;
-                var descriptor = GetServices().Lookup(instance.Location);
+                var descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
                 var flows = descriptor.Flow.Bindings;
 
                 for (int i = 0; i < args.Length; i++)

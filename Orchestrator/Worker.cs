@@ -20,15 +20,6 @@ namespace Orchestrator
         // ??? Add something about progress through listening on a large container?
     }
 
-    // $$$ Move this into attributes as well. 
-    public class OrchestratorConfiguration
-    {
-        // Don't listen to these containers. 
-        // This means we must get some other trigger to execute these.
-        // AccountName\Container
-        public string[] ContainersToIgnore { get; set; }
-    }
-
     public class Worker : IDisposable
     {
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
@@ -40,15 +31,21 @@ namespace Orchestrator
         private BlobListener _blobListener;
         
         // Settings is for wiring up Azure endpoints for the distributed app.
-        private IOrchestratorSettings _settings;
+        private readonly IFunctionTable _functionTable;
+        private readonly IQueueFunction _execute;
 
-        // Config is tweaking how the orchestrator behaves (like ignoring containers)
-        private OrchestratorConfiguration _config;
-
-        public Worker(IOrchestratorSettings settings, OrchestratorConfiguration config = null)
+        public Worker(IFunctionTable functionTable, IQueueFunction execute)
         {
-            _config = config ?? new OrchestratorConfiguration();
-            _settings = settings;
+            if (functionTable == null)
+            {
+                throw new ArgumentNullException("functionTable");
+            }
+            if (execute == null)
+            {
+                throw new ArgumentNullException("execute");
+            }
+            _functionTable = functionTable;
+            _execute = execute;
 
             _map = new Dictionary<CloudBlobContainer, List<FunctionIndexEntity>>(new CloudContainerComparer());
             _mapQueues = new Dictionary<CloudQueue, List<FunctionIndexEntity>>(new CloudQueueComparer());
@@ -67,7 +64,7 @@ namespace Orchestrator
         // This is just retrieving the data structures created by the Indexer.
         private void CreateInputMap()
         {
-            FunctionIndexEntity[] funcs = _settings.ReadFunctionTable();
+            FunctionIndexEntity[] funcs = _functionTable.ReadAll();
 
             CreateInputMap(funcs);
         }
@@ -136,17 +133,6 @@ namespace Orchestrator
 
                             bool ignore = false;
                             string accountContainerName = account.Credentials.AccountName + "\\" + containerName;
-                            if (_config.ContainersToIgnore != null)
-                            {
-                                foreach (var ignoreName in _config.ContainersToIgnore)
-                                {
-                                    if (string.Compare(accountContainerName, ignoreName, ignoreCase: true) == 0)
-                                    {
-                                        ignore = true;
-                                        break;
-                                    }
-                                }
-                            }
 
                             if (!ignore)
                             {
@@ -226,7 +212,7 @@ namespace Orchestrator
                     instance.TriggerReason = "Timer fired";
 
                     Console.WriteLine("# Queuing function from Timer: {0}", func);
-                    _settings.QueueFunction(instance);
+                    _execute.Queue(instance);
                 }
             }
         }
@@ -278,7 +264,7 @@ namespace Orchestrator
             if (instance != null)
             {
                 Console.WriteLine("# Queuing function: {0}", func);
-                _settings.QueueFunction(instance);
+                _execute.Queue(instance);
             }
         }
 
@@ -324,7 +310,7 @@ namespace Orchestrator
                         instance.TriggerReason = "New blob input detected: " + new CloudBlobPath(blob).ToString();
 
                         Console.WriteLine("# Queuing function: {0}", func);
-                        _settings.QueueFunction(instance);
+                        _execute.Queue(instance);
                     }
                 }
             }

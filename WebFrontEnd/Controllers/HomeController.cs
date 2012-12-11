@@ -43,7 +43,7 @@ namespace WebFrontEnd.Controllers
         {
             var model = new FunctionListModel
             {
-                Functions = GetServices().GetFunctions()
+                Functions = GetServices().GetFunctionTable().ReadAll()
             };
 
             return View(model);
@@ -76,7 +76,7 @@ namespace WebFrontEnd.Controllers
         {
             var model = new FunctionListModel
             {
-                Functions = GetServices().GetFunctions()
+                Functions = GetServices().GetFunctionTable().ReadAll()
             };
             return View(model);
         }
@@ -123,7 +123,7 @@ namespace WebFrontEnd.Controllers
         internal static string TryLookupConnectionString(string accountName)
         {
             // If account key is blank, see if we can look it up
-            var funcs = GetServices().GetFunctions();
+            var funcs = GetServices().GetFunctionTable().ReadAll();
             foreach (var func in funcs)
             {
                 var cred = func.GetAccount().Credentials;

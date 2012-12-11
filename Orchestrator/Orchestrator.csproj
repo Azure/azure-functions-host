@@ -57,10 +57,9 @@
     <Compile Include="BlobListener2.cs" />
     <Compile Include="FunctionFlow.cs" />
     <Compile Include="FunctionIndexEntity.cs" />
+    <Compile Include="IFunctionTable.cs" />
     <Compile Include="Indexer.cs" />
     <Compile Include="IndexerConfig.cs" />
-    <Compile Include="IndexerSettings.cs" />
-    <Compile Include="OrchestratorSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Worker.cs" />
   </ItemGroup>

@@ -41,11 +41,11 @@ namespace OrchestratorUnitTests
             
             i.IndexType(funcApplyLocation, type);
 
-            var funcs = x.ReadFunctionTable();
+            var funcs = x.ReadAll();
             return funcs[0];
         }
-        
-        class IndexerSettings : IIndexerSettings
+
+        class IndexerSettings : IFunctionTable
         {
             private List<FunctionIndexEntity> _funcs = new List<FunctionIndexEntity>();
 
@@ -59,12 +59,12 @@ namespace OrchestratorUnitTests
                 throw new NotImplementedException();
             }
 
-            public FunctionIndexEntity[] ReadFunctionTable()
+            public FunctionIndexEntity[] ReadAll()
             {
                 return _funcs.ToArray();
             }
 
-            public void CleanFunctionIndex()
+            public FunctionIndexEntity Lookup(string functionId)
             {
                 throw new NotImplementedException();
             }

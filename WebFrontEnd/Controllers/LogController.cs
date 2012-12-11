@@ -101,7 +101,7 @@ namespace WebFrontEnd.Controllers
             model.Instance = func;
 
             var instance = model.Instance.FunctionInstance;
-            model.Descriptor = GetServices().Lookup(instance.Location);
+            model.Descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
 
             // Parallel arrays of static descriptor and actual instance info 
             ParameterRuntimeBinding[] args = instance.Args;
@@ -132,7 +132,7 @@ namespace WebFrontEnd.Controllers
 
             var table = services.GetInvokeStatsTable();
             model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => services.Lookup(rowKey).Location); // $$$ very inefficient
+                rowKey => services.GetFunctionTable().Lookup(rowKey).Location); // $$$ very inefficient
 
             // Populate queue. 
             model.QueuedInstances = PeekQueuedInstances();

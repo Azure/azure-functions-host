@@ -105,7 +105,7 @@ namespace WebFrontEnd
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
             var services = new Services(accountInfo);
 
-            FunctionIndexEntity func = services.Lookup(value);
+            FunctionIndexEntity func = services.GetFunctionTable().Lookup(value);
             if (func == null)
             {
                 modelState.AddModelError(modelName, "Invalid function id");

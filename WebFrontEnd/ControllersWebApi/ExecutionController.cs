@@ -33,7 +33,7 @@ namespace WebFrontEnd
         [HttpPost]        
         public void Scan(string func, string container)
         {
-            FunctionIndexEntity f = GetServices().Lookup(func);
+            FunctionIndexEntity f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
@@ -48,7 +48,7 @@ namespace WebFrontEnd
         [HttpPost]
         public BeginRunResult Run(string func)
         {
-            FunctionIndexEntity f = GetServices().Lookup(func);
+            FunctionIndexEntity f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);                                
@@ -66,7 +66,8 @@ namespace WebFrontEnd
                 var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
                 instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
 
-                ExecutionInstanceLogEntity result = GetServices().QueueExecutionRequest(instance);
+                IQueueFunction executor = GetServices().GetExecutionClient();
+                ExecutionInstanceLogEntity result = executor.Queue(instance);
 
                 return new BeginRunResult { Instance = result.FunctionInstance.Id };
             }

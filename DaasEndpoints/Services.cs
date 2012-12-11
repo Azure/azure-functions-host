@@ -121,36 +121,22 @@ namespace DaasEndpoints
 
         public Worker GetOrchestrationWorker()
         {
-            var settings = GetOrchestratorSettings();
-            return new Orchestrator.Worker(settings);
+            var functionTable = this.GetFunctionTable();
+            var executor = this.GetExecutionClient();
+
+            return new Orchestrator.Worker(functionTable, executor);
         }
 
-        public ExecutionInstanceLogEntity QueueExecutionRequest(FunctionInvokeRequest instance)
+        public IQueueFunction GetExecutionClient()
         {
-            instance.Id = Guid.NewGuid(); // used for logging. 
-            instance.ServiceUrl =  _accountInfo.WebDashboardUri;
-
-            // Log that the function is now queued.
-            // Do this before queueing to avoid racing with execution 
             IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
-
-            var logItem = new ExecutionInstanceLogEntity();
-            logItem.FunctionInstance = instance;
-            logItem.QueueTime = DateTime.UtcNow; // don't set starttime until a role actually executes it.
-
-            logger.Log(logItem);
-
-            ExecutorClient.Queue(GetExecutionQueue(), instance);
-
-            // Now that it's queued, execution node may immediately pick up the queue item and start running it, 
-            // and logging against it.
-
-            return logItem;
+            string uri = _accountInfo.WebDashboardUri;
+            return new ExecutionClient(GetExecutionQueue(), logger, uri);
         }
 
-        public OrchestratorSettings GetOrchestratorSettings()
+        public IFunctionTable GetFunctionTable()
         {
-            return new OrchestratorSettings(this);
+            return new FunctionTable(_account, EndpointNames.FunctionIndexTableName);
         }
 
         public AzureTable<BinderEntry> GetBinderTable()

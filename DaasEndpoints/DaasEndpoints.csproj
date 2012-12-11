@@ -56,13 +56,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AzureRoleAccountInfo.cs" />
+    <Compile Include="ExecutionClient.cs" />
     <Compile Include="Helpers.cs" />
-    <Compile Include="IndexerSettings.cs" />
     <Compile Include="Names.cs" />
-    <Compile Include="OrchestratorSettings.cs" />
     <Compile Include="Services.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services.FunctionStaticInfo.cs" />
+    <Compile Include="FunctionTable.cs" />
     <Compile Include="Services.Health.cs" />
     <Compile Include="Services.Logger.cs" />
   </ItemGroup>

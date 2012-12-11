@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using AzureTables;
 using DaasEndpoints;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
@@ -81,11 +82,8 @@ namespace IndexDriver
                 IAccountInfo accountInfo =new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
                 var services = new Services(accountInfo);
 
-                var settings = new LoggingCloudIndexerSettings
-                {
-                    Account = services.Account,
-                    FunctionIndexTableName = EndpointNames.FunctionIndexTableName
-                };
+
+                LoggingCloudIndexerSettings settings = new LoggingCloudIndexerSettings(services.Account, EndpointNames.FunctionIndexTableName);
 
                 var binderLookupTable = services.GetBinderTable();
 
@@ -135,13 +133,18 @@ namespace IndexDriver
             }
 
             return new IndexResults();
-        }       
+        }
 
-        class LoggingCloudIndexerSettings : CloudIndexerSettings
+        class LoggingCloudIndexerSettings : FunctionTable
         {
             public List<FunctionIndexEntity> _funcsTouched  = new List<FunctionIndexEntity>();
 
             public List<Type> BinderTypes = new List<Type>();
+
+            public LoggingCloudIndexerSettings(CloudStorageAccount account, string tableName)
+                : base(account, tableName)
+            {
+            }
 
             public override void Add(FunctionIndexEntity func)
             {
@@ -152,7 +155,7 @@ namespace IndexDriver
             public HashSet<string> GetFuncSet()
             {
                 HashSet<string> funcsAfter = new HashSet<string>();
-                funcsAfter.UnionWith(from func in this.ReadFunctionTable() select func.ToString());
+                funcsAfter.UnionWith(from func in this.ReadAll() select func.ToString());
                 return funcsAfter;
             }          
         }

@@ -64,7 +64,7 @@ namespace WebFrontEnd.Controllers
         [HttpGet]
         public ActionResult InvokeFunctionReplay(FunctionInvokeRequest instance)
         {
-            FunctionIndexEntity func = GetServices().Lookup(instance.Location);
+            FunctionIndexEntity func = GetServices().GetFunctionTable().Lookup(instance.Location);
             return RenderInvokePageWorker(func, instance.Args);
         }
 
@@ -116,7 +116,8 @@ namespace WebFrontEnd.Controllers
             instance.TriggerReason = "Explicitly requested via web dashboard";
 
             // Get instance ID from queuing. Use that to redict to view 
-            var instanceLog = GetServices().QueueExecutionRequest(instance);
+            IQueueFunction executor = GetServices().GetExecutionClient();
+            var instanceLog = executor.Queue(instance);
 
             // We got here via a POST. 
             // Switch to a GET so that users can do a page refresh as the function updates. 

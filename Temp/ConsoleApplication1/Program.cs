@@ -62,7 +62,7 @@ namespace ConsoleApplication1
 
         static void TestIndex()
         {
-            IIndexerSettings x = new IndexerSettings();
+            IFunctionTable x = new FuncTable();
             Indexer i = new Indexer(x);
 
 
@@ -73,8 +73,7 @@ namespace ConsoleApplication1
             i.IndexLocalDir(funcApplyLocation, dir);
         }
 
-
-        class IndexerSettings : IIndexerSettings
+        class FuncTable : IFunctionTable
         {
             public void Add(FunctionIndexEntity func)
             {
@@ -84,13 +83,14 @@ namespace ConsoleApplication1
             {
             }
 
-            public FunctionIndexEntity[] ReadFunctionTable()
+            public FunctionIndexEntity Lookup(string functionId)
             {
-                return new FunctionIndexEntity[0];
+                throw new NotImplementedException();
             }
 
-            public void CleanFunctionIndex()
+            public FunctionIndexEntity[] ReadAll()
             {
+                return new FunctionIndexEntity[0];
             }
         }
     }

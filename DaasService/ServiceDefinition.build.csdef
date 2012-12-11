@@ -54,6 +54,7 @@
     </Imports>
     <ConfigurationSettings>
       <Setting name="MainStorage" />
+      <Setting name="WebRoleEndpoint" />
     </ConfigurationSettings>
   </WebRole>
 </ServiceDefinition>
