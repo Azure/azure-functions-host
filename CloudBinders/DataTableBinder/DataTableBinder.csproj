@@ -33,13 +33,16 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CsvReader">
-      <HintPath>X:\Mike\dev\gitstuff\DataTable\Sources\DataAccess\bin\Debug\CsvReader.dll</HintPath>
+    <Reference Include="CsvReader, Version=0.9.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\CsvTools.1.0.8\lib\CsvReader.dll</HintPath>
     </Reference>
-    <Reference Include="CsvReader.Excel">
-      <HintPath>..\..\packages\CsvTools.Excel.1.0.1\lib\CsvReader.Excel.dll</HintPath>
+    <Reference Include="CsvReader.Excel, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\CsvTools.Excel.1.0.2\lib\CsvReader.Excel.dll</HintPath>
     </Reference>
-    <Reference Include="DocumentFormat.OpenXml">
+    <Reference Include="DocumentFormat.OpenXml, Version=2.0.5022.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\DocumentFormat.OpenXml.1.0\lib\DocumentFormat.OpenXml.dll</HintPath>
     </Reference>
     <Reference Include="System" />
