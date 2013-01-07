@@ -132,7 +132,14 @@ namespace RunnerInterfaces
                 object value = prop.GetValue(obj, null);
                 if (value != null)
                 {
-                    d[prop.Name] = value.ToString();
+                    if (Utility.IsSimpleType(prop.PropertyType))
+                    {
+                        d[prop.Name] = value.ToString();
+                    }
+                    else
+                    {
+                        d[prop.Name] = JsonCustom.SerializeObject(value);
+                    }
                 }
             }
             return d;
