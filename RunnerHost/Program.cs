@@ -27,7 +27,7 @@ namespace RunnerHost
             client.Result = result;
         }
         
-        private static FunctionExecutionResult MainWorker(LocalFunctionInstance descr)
+        public static FunctionExecutionResult MainWorker(LocalFunctionInstance descr)
         {                       
             Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
             Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());

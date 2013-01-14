@@ -4,18 +4,18 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{D2AEDB8B-2C25-4108-8ED1-2E6C294A0923}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{D2664C68-7644-4FB4-928B-AA65D56DEDAE}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>RunnerInterfaces</RootNamespace>
-    <AssemblyName>RunnerInterfaces</AssemblyName>
+    <RootNamespace>AzureTaskRunnerHost</RootNamespace>
+    <AssemblyName>AzureTaskRunnerHost</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -25,6 +25,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -41,51 +42,32 @@
       <HintPath>..\packages\WindowsAzure.Storage.1.7.0.0\lib\net35-full\Microsoft.WindowsAzure.StorageClient.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\packages\Newtonsoft.Json.4.5.8\lib\net35\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.4.5.8\lib\net40\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Data.Services.Client" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Data" />
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BindingInterfaces.cs" />
-    <Compile Include="BlobTextWriter.cs" />
-    <Compile Include="CloudBlobPath.cs" />
-    <Compile Include="Comparers.cs" />
-    <Compile Include="Config.cs" />
-    <Compile Include="ContainerDownloader.cs" />
-    <Compile Include="ExecutionInstanceLogEntity.cs" />
-    <Compile Include="FunctionInvokeRequest.cs" />
-    <Compile Include="FunctionLocation.cs" />
-    <Compile Include="IAccountInfo.cs" />
-    <Compile Include="Interfaces.cs" />
-    <Compile Include="Json.cs" />
-    <Compile Include="Logger.cs" />
-    <Compile Include="LoggingInterfaces.cs" />
-    <Compile Include="ModelBinderManifest.cs" />
-    <Compile Include="ObjectBinderHelpers.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="QueueBinder.cs" />
-    <Compile Include="ServiceContainer.cs" />
-    <Compile Include="TableBinder.cs" />
-    <Compile Include="Utility.Blob.cs" />
-    <Compile Include="Utility.cs" />
-    <Compile Include="Utility.Process.cs" />
-    <Compile Include="Utility.Queues.cs" />
-    <Compile Include="Utility.Table.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RunnerHost\RunnerHost.csproj">
+      <Project>{494580b8-1c81-41df-9eb7-bd5a887258ab}</Project>
+      <Name>RunnerHost</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
+      <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
+      <Name>RunnerInterfaces</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
-      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
-      <Name>SimpleBatch</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

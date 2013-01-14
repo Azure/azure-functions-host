@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure;
@@ -45,5 +46,23 @@ namespace RunnerInterfaces
 
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
+
+
+        public LocalFunctionInstance GetLocalFunctionInstance(string localDir)
+        {
+            string assemblyEntryPoint = Path.Combine(localDir, this.Location.Blob.BlobName);
+
+            LocalFunctionInstance x = new LocalFunctionInstance
+            {
+                AssemblyPath = assemblyEntryPoint,
+                TypeName = this.Location.TypeName,
+                MethodName = this.Location.MethodName,
+                Args = this.Args,
+                ParameterLogBlob = this.ParameterLogBlob,
+                Location = this.Location,
+                ServiceUrl = this.ServiceUrl
+            };
+            return x;
+        }
     }
 }

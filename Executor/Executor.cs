@@ -105,7 +105,7 @@ namespace Executor
             }
             _output.WriteLine();
 
-            LocalFunctionInstance localInstance = ConvertToLocal(instance);
+            LocalFunctionInstance localInstance = instance.GetLocalFunctionInstance(_localCopy);
 
             var result = Utility.ProcessExecute<LocalFunctionInstance, FunctionExecutionResult>(
                 typeof(RunnerHost.Program),
@@ -115,29 +115,5 @@ namespace Executor
 
             return result;
         }
-
-        // Copy a remote function instance to be local, in preparation for invoking. 
-        private LocalFunctionInstance ConvertToLocal(FunctionInvokeRequest remoteInstance)
-        {
-            string assemblyEntryPoint = Path.Combine(_localCopy, remoteInstance.Location.Blob.BlobName);
-
-            LocalFunctionInstance x = new LocalFunctionInstance
-            {
-                AssemblyPath = assemblyEntryPoint,
-                TypeName = remoteInstance.Location.TypeName,
-                MethodName = remoteInstance.Location.MethodName,
-                Args = remoteInstance.Args,
-                ParameterLogBlob = remoteInstance.ParameterLogBlob,
-                Location = remoteInstance.Location,
-                ServiceUrl = remoteInstance.ServiceUrl
-            };
-
-            return x;
-        }
     }
-
-
-  
-
-   
 }

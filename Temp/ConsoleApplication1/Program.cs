@@ -57,7 +57,87 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            TestIndex();
+            //TestIndex();
+            TestTask();
+        }
+
+#if false
+        
+        Use a real IFunctionUpdatedLogger
+            - need to pass more config in. 
+
+
+        Get real orchestrator using it!
+
+        - When do we delete Work items?
+
+        A) ATHost can pull workers.  (But this means its own queue. Fighting AT model)
+        B) Use AT queuing mechanism. 
+#endif
+
+        static void TestTask()
+        {
+            // Get account that service operates with
+            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Mike.cscfg");
+            
+            // !!! Move to config file or something
+            var taskConfig = new TaskConfig
+            {
+                TenantUrl = "https://task.core.windows-int.net",
+                AccountName = "simplebatch1",
+                Key = "???",
+                PoolName = "SimpleBatchPool123"
+            };
+        
+
+            var e = new TaskExecutor(account, new NullLogger(), taskConfig);
+
+            //e.DeletePool();
+            //e.CreatePool(1);
+
+
+
+            string userAccountConnectionString = account.AccountConnectionString; // account for user functions
+
+            FunctionInvokeRequest request = new FunctionInvokeRequest
+            {
+                Location = new FunctionLocation
+                {
+                    Blob = new CloudBlobDescriptor
+                        {
+                            AccountConnectionString = userAccountConnectionString,
+                            ContainerName = "daas-test-functions",
+                            BlobName = "TestApp1.exe"
+                        },
+                    TypeName = "TestApp1.Program",
+                    MethodName = "TestCall2"
+                },
+                TriggerReason = "test for Azure Tasks",
+                Args = new ParameterRuntimeBinding[]
+                  {
+                       new LiteralStringParameterRuntimeBinding { Value = "172" }
+                  },
+                ServiceUrl = account.WebDashboardUri
+            };
+            e.Queue(request);
+
+
+            // Wait for execution
+            while (true)
+            {
+                Thread.Sleep(1000);
+            }
+
+            
+        }
+
+        
+
+        class NullLogger : IFunctionUpdatedLogger
+        {
+            public void Log(ExecutionInstanceLogEntity func)
+            {                
+            }
         }
 
         static void TestIndex()

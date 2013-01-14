@@ -142,6 +142,37 @@ namespace RunnerInterfaces
         {
             return GetId();
         }
+
+        // Get an absolute URL that's a Shared Access Signature for the given blob.        
+        public string GetContainerSasSig(SharedAccessPermissions permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write)
+        {
+            CloudBlobContainer container = this.GetContainer();
+
+            string sasQueryString = container.GetSharedAccessSignature(
+                new SharedAccessPolicy
+                {
+                    Permissions = permissions,
+                    SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
+                });
+
+            var uri = container.Uri.ToString() + sasQueryString;
+            return uri;
+        }
+
+        public string GetBlobSasSig(SharedAccessPermissions permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write)
+        {
+            var blob = this.GetBlob();
+
+            string sasQueryString = blob.GetSharedAccessSignature(
+                new SharedAccessPolicy
+                {
+                    Permissions = permissions,
+                    SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
+                });
+
+            var uri = blob.Uri.ToString() + sasQueryString;
+            return uri;
+        }
     }
 
     // Submit a function for execution.

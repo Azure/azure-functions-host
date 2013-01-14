@@ -53,6 +53,9 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\LocalRunnerHost\Program.GetAccountInfo.cs">
+      <Link>Program.GetAccountInfo.cs</Link>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TableBinder.cs" />
@@ -90,6 +93,10 @@
     <ProjectReference Include="..\..\RunnerHost\RunnerHost.csproj">
       <Project>{494580b8-1c81-41df-9eb7-bd5a887258ab}</Project>
       <Name>RunnerHost</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\TaskExecutor\TaskExecutor.csproj">
+      <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
+      <Name>TaskExecutor</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
