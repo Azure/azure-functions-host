@@ -82,7 +82,7 @@ namespace LiveAzureTests
             string tableName = "functionlogtest";
             Utility.DeleteTable(AzureConfig.GetAccount(), tableName);
 
-            IFunctionUpdatedLogger logger = new FunctionInvokeLogger { _account = AzureConfig.GetAccount(), _tableName = tableName };
+            IFunctionUpdatedLogger logger = new FunctionInvokeLogger { Account = AzureConfig.GetAccount(), TableName = tableName };
 
             logger.Log(log);
 

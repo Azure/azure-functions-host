@@ -22,8 +22,8 @@ namespace DaasEndpoints
         {
             return new FunctionInvokeLogger
             {
-                _account = _account,
-                _tableName = EndpointNames.FunctionInvokeLogTableName,
+                Account = _account,
+                TableName = EndpointNames.FunctionInvokeLogTableName,
             };
         }
 

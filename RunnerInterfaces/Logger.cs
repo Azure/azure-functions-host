@@ -15,17 +15,17 @@ namespace Executor
     // ### This should just be an azure table (maybe with trivial wrapper for Row/Part key)
     public class FunctionInvokeLogger : IFunctionUpdatedLogger
     {
-        public CloudStorageAccount _account;
+        public CloudStorageAccount Account { get; set; }
         
         // Table that lists all functions. 
-        public string _tableName;
+        public string TableName { get; set; }
                 
         // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
         public void Log(ExecutionInstanceLogEntity log)
         {
             // $$$ Should be a merge. Is there a table operation for merge?
 
-            var l2 = Utility.Lookup<ExecutionInstanceLogEntity>(_account, _tableName, log.PartitionKey, log.RowKey);
+            var l2 = Utility.Lookup<ExecutionInstanceLogEntity>(Account, TableName, log.PartitionKey, log.RowKey);
             if (l2 == null)
             {
                 l2 = log;
@@ -36,7 +36,7 @@ namespace Executor
                 Merge(l2, log);
             }
 
-            Utility.AddTableRow(_account, _tableName, l2);
+            Utility.AddTableRow(Account, TableName, l2);
         }
 
         static void Merge<T>(T mutate, T delta)

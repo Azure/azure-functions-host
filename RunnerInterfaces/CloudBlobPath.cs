@@ -434,38 +434,12 @@ namespace RunnerInterfaces
         } // end class PArser
     }
 
-    // See example: http://stackoverflow.com/questions/7585593/how-do-i-configure-json-net-custom-serialization
-    public class CloudBlobPathConverter : JsonConverter
+    public class CloudBlobPathConverter : StringConverter<CloudBlobPath>
     {
-        public override bool CanConvert(Type objectType)
+        public override object ReadFromString(string value)
         {
-            return true;
-        }
-
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-        {
-            if (objectType != typeof(CloudBlobPath))
-            {
-                throw new InvalidOperationException("Illegal objectType");
-            }
-            var t1 = reader.TokenType;
-            if (t1 == JsonToken.Null || t1 == JsonToken.None)
-            {
-                return null; // missing. common case.
-            }
-            if (t1 == JsonToken.String)
-            {
-                string value = (string)reader.Value;
-                return new CloudBlobPath(value);
-            }
-            throw new InvalidOperationException("Illegal JSON. Expecting string token for CloudBlobPath item");
-        }
-
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-        {
-            CloudBlobPath path = (CloudBlobPath)value;
-            writer.WriteValue(path.ToString());
-        }
+            return new CloudBlobPath(value);
+        }        
     }
 }
 

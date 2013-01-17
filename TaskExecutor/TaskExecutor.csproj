@@ -42,6 +42,10 @@
     <Reference Include="Microsoft.WindowsAzure.TaskClient">
       <HintPath>..\external\Microsoft.WindowsAzure.TaskClient.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Newtonsoft.Json.4.5.8\lib\net40\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Services.Client" />
@@ -58,6 +62,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\AzureTaskRunnerHost\AzureTaskRunnerHost.csproj">
+      <Project>{d2664c68-7644-4fb4-928b-aa65d56dedae}</Project>
+      <Name>AzureTaskRunnerHost</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>

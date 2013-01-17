@@ -8,13 +8,12 @@ using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure.TaskClient.Protocol;
+using Newtonsoft.Json;
 using RunnerInterfaces;
 
 namespace Executor
 {
-    // !!! Invoke this from ConsoleApp1
-
-    // Queue a function invokation request via AzureTasks.
+    // Queue a function invocation request via AzureTasks.
     public class TaskExecutor : IQueueFunction
     {
         // Container name used for communication 
@@ -26,10 +25,14 @@ namespace Executor
 
 
         private readonly IFunctionUpdatedLogger _logger;
+        private readonly string _loggerJson; // json serialization of _logger, passed ot host process.
         private readonly IAccountInfo _account;
         private readonly TaskConfig _config;
 
-        // !!! Pass in IAccountInfo
+        // account - this is the internal storage account for using the service. 
+        // logger - used for updating the status of the function that gets queued. This must be serializable with JSon since
+        //          it will get passed to the host process in an azure task.
+        // config - configuration information for using AzureTasks. 
         public TaskExecutor(IAccountInfo account, IFunctionUpdatedLogger logger, TaskConfig config)
         {
             if (config == null)
@@ -44,6 +47,18 @@ namespace Executor
             {
                 throw new ArgumentNullException("account");
             }
+
+            // Verify that logger can be serialized, since we'll serialize it into our separate host process. 
+            // If it doesn't serialize, let's find out now!
+            {
+                var settings = JsonCustom.NewSettings();
+                settings.TypeNameHandling = TypeNameHandling.Objects; // needed 
+
+                _loggerJson = JsonConvert.SerializeObject(logger, settings);
+
+                logger = JsonCustom.DeserializeObject<IFunctionUpdatedLogger>(_loggerJson);
+            }
+
             _config = config;
             _logger = logger;
             _account = account;
@@ -78,7 +93,9 @@ namespace Executor
             var logItem = new ExecutionInstanceLogEntity();
             logItem.FunctionInstance = instance;
             logItem.QueueTime = DateTime.UtcNow; // don't set starttime until a role actually executes it.
-            
+
+            _logger.Log(logItem);
+
             Work(instance);
 
             _logger.Log(logItem);
@@ -114,31 +131,21 @@ namespace Executor
             // Naturally avoid this since user code and host code go in separate directories.
             res.AddRange(GetUserFiles(instance.Location));
 
-            // We'll pass the Request object via a file (input.txt).
-            // Need to upload that file to a blob, and then pass the SAS to a ResourceFile
+            // Write out logger file.            
             {
-                var localInstance = instance.GetLocalFunctionInstance(@".\user");
-                string content = JsonCustom.SerializeObject(localInstance);
-                string blobName = string.Format("{0}.txt", instance.Id);
-
-                var accountConnectionString = _account.AccountConnectionString;
-
-                var blob = new CloudBlobDescriptor
+                var inputs = new AzureTaskRunnerHost.ServiceInputs
                 {
-                    AccountConnectionString = accountConnectionString,
-                    ContainerName = CommContainerName,
-                    BlobName = blobName
+                     Logger = this._logger,
+                     Instance = instance,
+                     LocalDir = @".\user",
+                     AccountConnectionString = _account.AccountConnectionString, // !!! share with DaasEndpoints
+                     QueueName = "daas-invoke-done"
                 };
-                var sas = blob.GetBlobSasSig();
-                var blob2 = new CloudBlob(sas); // exercise sas
 
-                blob2.UploadText(content);
+                string json = JsonCustom.SerializeObject(inputs);
 
-                res.Add(new ResourceFile
-                {
-                    BlobSource = sas,
-                    FileName = "input.txt", // local filename that the blob gets copied to.
-                });
+                string blobName = string.Format("{0}.logger.txt", instance.Id);
+                AddFile("input.logger.txt", blobName, json, res);
             }
 
             task.Files = res;
@@ -153,6 +160,7 @@ namespace Executor
             // - command line
             // - resources 
 
+            // !!! Debugging code to wait for the task. 
             {
                 Task resp = taskRequestDispatcher.WaitForTaskReachTargetState(workitemName, jobName, "Task1", TaskState.Completed);
 
@@ -162,6 +170,29 @@ namespace Executor
                 TaskUtils.ReadStdErrOrOutputBasedOnExitCode(workitemName,
                     jobName, resp, taskRequestDispatcher);
             }
+        }
+
+        // Upload to our blob, and pass SAS as a ResourceFile to the task. 
+        void AddFile(string localFilename, string blobName, string content, List<ResourceFile> res)
+        {  
+            var accountConnectionString = _account.AccountConnectionString;
+
+            var blob = new CloudBlobDescriptor
+            {
+                AccountConnectionString = accountConnectionString,
+                ContainerName = CommContainerName,
+                BlobName = blobName
+            };
+            var sas = blob.GetBlobSasSig();
+            var blob2 = new CloudBlob(sas); // exercise sas
+
+            blob2.UploadText(content);
+
+            res.Add(new ResourceFile
+            {
+                BlobSource = sas,
+                FileName = localFilename, // local filename that the blob gets copied to.
+            });
         }
 
 

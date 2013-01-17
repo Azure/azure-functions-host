@@ -4,17 +4,47 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Executor;
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
 
 namespace AzureTaskRunnerHost
 {
+    public class ServiceInputs
+    {
+        public IFunctionUpdatedLogger Logger { get; set; }
+
+        public FunctionInvokeRequest Instance { get; set; }
+        public string LocalDir { get; set; } // Local dir (relative) that function dlls were xcopied too. 
+
+        public LocalFunctionInstance GetLocalInstance()
+        {
+            return this.Instance.GetLocalFunctionInstance(this.LocalDir);
+        }
+
+        // For producing a ExecutionStatsAggregatorBridge
+        public string AccountConnectionString { get; set; }
+        public string QueueName { get; set; }
+
+        public ExecutionStatsAggregatorBridge GetBridge()
+        {
+            var account = CloudStorageAccount.Parse(this.AccountConnectionString);
+            CloudQueueClient client = account.CreateCloudQueueClient();
+            var queue = client.GetQueueReference(this.QueueName);
+            return new ExecutionStatsAggregatorBridge(queue);
+        }
+    }
+
     class Program
     {
+        // command-line entry point for Azure Task host. 
+        // Doesnt need args since inputs are well-known files (named input.*.txt).
         static void Main(string[] args)
         {
+#if true
+            // Diagnostic information for Azure Tasks
             Console.WriteLine("-------------------------------");
             Console.WriteLine("Hello!");
-            Console.WriteLine(args[0]);
 
             string dir = Environment.CurrentDirectory;
             Console.WriteLine("Current dir: {0}", dir);
@@ -28,7 +58,8 @@ namespace AzureTaskRunnerHost
             {
                 Console.WriteLine(file);
             }
-                
+#endif         
+       
 #if true
 
             // Sharing code with ExecutorListener
@@ -37,57 +68,47 @@ namespace AzureTaskRunnerHost
             // - check for abort
             // - 
 
-
             // !!! Update logger, mark that function has begun executing
 
-            IFunctionUpdatedLogger logger = GetLogger(); 
+            ServiceInputs inputs = GetLogger("input.logger.txt");
+
+            var bridge = inputs.GetBridge();
+
+            IFunctionUpdatedLogger logger = inputs.Logger;
             var logItem = new ExecutionInstanceLogEntity();
+
+            logItem.FunctionInstance = inputs.Instance;
             logItem.StartTime = DateTime.UtcNow;
             logger.Log(logItem);
 
-
-            // !!! Read via input.txt, already placed there by Azure Task infrastructure
-            string filename = "input.txt"; // args[0]
-            LocalFunctionInstance descr = ReadFromFile(filename);
+            LocalFunctionInstance descr = inputs.GetLocalInstance();
 
             // main work happens here. !!!
-            Console.WriteLine("Got function! {0}", descr.MethodName);
-            
+            Console.WriteLine("Got function! {0}", descr.MethodName);            
 #if true
             FunctionExecutionResult result = RunnerHost.Program.MainWorker(descr);
-            
-            
+                        
             // User errors returned via results.
             logItem.EndTime = DateTime.UtcNow;
             logItem.ExceptionType = result.ExceptionType;
             logItem.ExceptionMessage = result.ExceptionMessage;
             logger.Log(logItem);
 
-
             // Now we're done. Results are saved off to blobs. Can delete the work item. 
+            // Do we want to keep work item around for better AzureTask integration?
             // !!! Some auto-delete option?
 #endif
 #endif
+            // !!!
+            // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
+            bridge.EnqueueCompletedFunction(logItem);
+            Console.WriteLine("Done, Queued to Bridge!");
         }
 
-        // $$$ Needs azure service credentials.
-        private static IFunctionUpdatedLogger GetLogger()
+        private static ServiceInputs GetLogger(string filename)
         {
-            return new NullLogger();
-        }
-
-        // !!! Remove this. 
-        class NullLogger : IFunctionUpdatedLogger
-        {
-            public void Log(ExecutionInstanceLogEntity func)
-            {
-            }
-        }
-
-        private static LocalFunctionInstance ReadFromFile(string filename)
-        {
-            string content = File.ReadAllText(filename);
-            return JsonCustom.DeserializeObject<LocalFunctionInstance>(content);
-        }
+            string json = File.ReadAllText(filename);
+            return JsonCustom.DeserializeObject<ServiceInputs>(json);
+        }        
     }
 }

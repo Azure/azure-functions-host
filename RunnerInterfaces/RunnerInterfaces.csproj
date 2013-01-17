@@ -59,6 +59,7 @@
     <Compile Include="Config.cs" />
     <Compile Include="ContainerDownloader.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
+    <Compile Include="ExecutionStatsAggregatorBridge.cs" />
     <Compile Include="FunctionInvokeRequest.cs" />
     <Compile Include="FunctionLocation.cs" />
     <Compile Include="IAccountInfo.cs" />

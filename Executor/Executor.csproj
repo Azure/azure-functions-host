@@ -52,7 +52,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ExecutionStatsAggregatorBridge.cs" />
     <Compile Include="ExecutorClient.cs" />
     <Compile Include="ExecutorListener.cs" />
     <Compile Include="Executor.cs" />

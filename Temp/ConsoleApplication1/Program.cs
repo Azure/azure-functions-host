@@ -62,10 +62,11 @@ namespace ConsoleApplication1
         }
 
 #if false
-        
-        Use a real IFunctionUpdatedLogger
-            - need to pass more config in. 
+        Verify it still works locally (update host)
 
+        ExecutionStatsAggregatorBridge on func complete. 
+        - share with Executor?
+        - realy should be part of IFunctionUpdatedLogger
 
         Get real orchestrator using it!
 
@@ -75,11 +76,13 @@ namespace ConsoleApplication1
         B) Use AT queuing mechanism. 
 #endif
 
+
+
         static void TestTask()
         {
             // Get account that service operates with
             IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Mike.cscfg");
-            
+
             // !!! Move to config file or something
             var taskConfig = new TaskConfig
             {
@@ -88,9 +91,12 @@ namespace ConsoleApplication1
                 Key = "???",
                 PoolName = "SimpleBatchPool123"
             };
-        
 
-            var e = new TaskExecutor(account, new NullLogger(), taskConfig);
+
+            //IFunctionUpdatedLogger logger = new NullLogger();
+            IFunctionUpdatedLogger logger = new FunctionInvokeLogger { Account = account.GetAccount(), TableName = "daasfunctionlogs" };
+            
+            var e = new TaskExecutor(account, logger, taskConfig);
 
             //e.DeletePool();
             //e.CreatePool(1);
@@ -128,7 +134,7 @@ namespace ConsoleApplication1
                 Thread.Sleep(1000);
             }
 
-            
+
         }
 
         
