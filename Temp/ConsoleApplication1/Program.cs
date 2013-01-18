@@ -81,17 +81,18 @@ namespace ConsoleApplication1
         static void TestTask()
         {
             // Get account that service operates with
-            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Mike.cscfg");
+            string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Mike.cscfg";
+            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(configFile);
+            var config = LocalRunnerHost.Program.GetConfigAsDictionary(configFile);
 
             // !!! Move to config file or something
             var taskConfig = new TaskConfig
             {
-                TenantUrl = "https://task.core.windows-int.net",
-                AccountName = "simplebatch1",
-                Key = "???",
-                PoolName = "SimpleBatchPool123"
+                TenantUrl = config["AzureTaskTenantUrl"],
+                AccountName = config["AzureTaskAccountName"],
+                Key = config["AzureTaskKey"],
+                PoolName = config["AzureTaskPoolName"]
             };
-
 
             //IFunctionUpdatedLogger logger = new NullLogger();
             IFunctionUpdatedLogger logger = new FunctionInvokeLogger { Account = account.GetAccount(), TableName = "daasfunctionlogs" };

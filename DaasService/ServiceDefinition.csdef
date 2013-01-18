@@ -25,6 +25,16 @@
     <ConfigurationSettings>
       <Setting name="MainStorage" />
       <Setting name="WebRoleEndpoint"/>
+
+
+      <!-- For Azure Task Config 
+      Key is secret. Poolname was precreated. 
+      -->
+      <Setting name="AzureTaskTenantUrl"/>
+      <Setting name="AzureTaskAccountName"/>
+      <Setting name="AzureTaskKey"/>
+      <Setting name="AzureTaskPoolName"/>
+
     </ConfigurationSettings>
   </WorkerRole>
   <WebRole name="WebFrontEnd" vmsize="ExtraSmall">

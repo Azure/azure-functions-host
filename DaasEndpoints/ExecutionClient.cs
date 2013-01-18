@@ -5,15 +5,16 @@ using RunnerInterfaces;
 
 namespace DaasEndpoints
 {
+    // Execution client using WorkerRoles (submits to an Azure Queue that's picked up by a worker role).
     // Class for submitting a function to be executed.
     // This must enqueue the function, update the logging to mark that we have a function in queue. 
-    class ExecutionClient : IQueueFunction
+    public class WorkerRoleExecutionClient : IQueueFunction
     {
         private readonly IFunctionUpdatedLogger _logger;
         private readonly CloudQueue _queue;
         private readonly string _dashboardUri;
 
-        public ExecutionClient(CloudQueue queue, IFunctionUpdatedLogger logger, string dashboardUri)
+        public WorkerRoleExecutionClient(CloudQueue queue, IFunctionUpdatedLogger logger, string dashboardUri)
         {
             _logger = logger;
             _queue = queue;

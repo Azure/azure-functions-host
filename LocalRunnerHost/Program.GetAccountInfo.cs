@@ -3,6 +3,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System;
 using RunnerInterfaces;
+using System.Collections.Generic;
 
 namespace LocalRunnerHost
 {
@@ -39,6 +40,36 @@ namespace LocalRunnerHost
             }
 
             throw new InvalidOperationException("No account configuration in file: " + configPath);
+        }
+
+        public static IDictionary<string,string> GetConfigAsDictionary(string configPath)
+        {
+            var d = new Dictionary<string, string>();
+
+            XDocument doc = XDocument.Load(configPath);
+
+            var settings = from XElement x in doc.Descendants()
+                           where x.Name.LocalName == "Setting"
+                           select x;
+
+            foreach (var setting in settings)
+            {
+                var attr = setting.Attribute("name");
+                if (attr != null)
+                {
+                    string key = attr.Value;
+
+                    var attrValue = setting.Attribute("value");
+                    if (attrValue != null)
+                    {
+                        string value = attrValue.Value;
+
+                        d[key] = value;
+                    }
+                }
+            }
+
+            return d;
         }
     }
 }

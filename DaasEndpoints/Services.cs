@@ -40,6 +40,11 @@ namespace DaasEndpoints
             get { return _accountInfo.AccountConnectionString; }
         }
 
+        public IAccountInfo AccountInfo
+        {
+            get { return _accountInfo; }
+        }
+
         // This blob is used by orchestrator to signal to all the executor nodes to reset.
         // THis is needed when orchestrator makes an update (like upgrading a funcioin) and needs 
         // the executors to clear their caches.
@@ -122,7 +127,7 @@ namespace DaasEndpoints
         public Worker GetOrchestrationWorker()
         {
             var functionTable = this.GetFunctionTable();
-            var executor = this.GetExecutionClient();
+            IQueueFunction executor = this.GetExecutionClient();
 
             return new Orchestrator.Worker(functionTable, executor);
         }
@@ -131,7 +136,7 @@ namespace DaasEndpoints
         {
             IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
             string uri = _accountInfo.WebDashboardUri;
-            return new ExecutionClient(GetExecutionQueue(), logger, uri);
+            return new WorkerRoleExecutionClient(GetExecutionQueue(), logger, uri);
         }
 
         public IFunctionTable GetFunctionTable()

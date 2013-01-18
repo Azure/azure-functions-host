@@ -99,7 +99,7 @@ namespace OrchestratorRole
                 {
                     ResetExecutors();
 
-                    worker = _services.GetOrchestrationWorker();
+                    worker = CreateWorker();
                     worker.Heartbeat.Uptime = _startTime;
                 }
 
@@ -113,7 +113,39 @@ namespace OrchestratorRole
                 // Delay before looping
                 Thread.Sleep(1*1000);                
             }
-        }        
+        }
+
+        private Worker CreateWorker()
+        {
+            IFunctionTable functionTable = _services.GetFunctionTable();
+
+            IAccountInfo account = _services.AccountInfo;
+            IFunctionUpdatedLogger logger = _services.GetFunctionInvokeLogger();
+#if false
+            // Based on AzureTasks
+            TaskConfig taskConfig = GetAzureTaskConfig();
+            IQueueFunction exec = new TaskExecutor(account, logger, taskConfig);
+#else
+            // Based on WorkerRoles (submitted via a Queue)
+            var queue = _services.GetExecutionQueue();
+            IQueueFunction exec = new WorkerRoleExecutionClient(queue, logger, account.WebDashboardUri);            
+#endif
+
+            return new Orchestrator.Worker(functionTable, exec);
+        }
+
+        // Gets AzureTask configuration from the Azure config settings
+        private TaskConfig GetAzureTaskConfig()
+        {
+            var taskConfig = new TaskConfig
+            {
+                TenantUrl = RoleEnvironment.GetConfigurationSettingValue("AzureTaskTenantUrl"),
+                AccountName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskAccountName"),
+                Key = RoleEnvironment.GetConfigurationSettingValue("AzureTaskKey"),
+                PoolName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskPoolName")
+            };
+            return taskConfig;
+        }
     
         private void ResetExecutors()
         {
