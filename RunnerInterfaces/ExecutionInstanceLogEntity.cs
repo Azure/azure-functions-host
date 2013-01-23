@@ -69,6 +69,10 @@ namespace Executor
         // To avoid clocksqew,  start and end time should be set by the same execution node. 
         // Set StartTime before the user code (including bindings) starts to run, set EndTime after it finishes. 
         public DateTime? EndTime { get; set; }
+
+        // String that serves as a backpointer to the execution substrate.
+        // Eg, if this was runas an azure task, this string can retrieve an azure task.
+        public string Backpointer { get; set; }
     }
 
     public enum FunctionInstanceStatus

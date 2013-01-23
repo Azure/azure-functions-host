@@ -96,14 +96,16 @@ namespace Executor
 
             _logger.Log(logItem);
 
-            Work(instance);
+            SubmitToAzureTasks(logItem);
 
             _logger.Log(logItem);
             return logItem;
         }
 
-        void Work(FunctionInvokeRequest instance)
+        void SubmitToAzureTasks(ExecutionInstanceLogEntity logItem)
         {
+            FunctionInvokeRequest instance = logItem.FunctionInstance;
+
             var taskRequestDispatcher = GetDispatcher();
 
             string workitemName = "SimpleBatch" + NewGuid();
@@ -152,24 +154,37 @@ namespace Executor
             task.CommandLine = string.Format("AzureTaskRunnerHost.exe 15");
             task.TVMType = TVMType.Dedicated; // !!! what does this mean ???
 
-            taskRequestDispatcher.AddTask(workitemName, jobName, "task1", task);
+            string taskName = "Task0";
+            taskRequestDispatcher.AddTask(workitemName, jobName, taskName, task);
 
-            // Assume pool is already created
-            // Create a WorkItem / Job / Task
-            // Task:
-            // - command line
-            // - resources 
+            // Mark backpointer so that we can retrieve the Azure Task from this.
+            logItem.Backpointer = string.Join("|", workitemName, jobName, taskName);
+        }
 
-            // !!! Debugging code to wait for the task. 
-            {
-                Task resp = taskRequestDispatcher.WaitForTaskReachTargetState(workitemName, jobName, "Task1", TaskState.Completed);
+        // Diangostics helper to block on a task and print its output
 
-                Console.Write("Task {0} reached completed state. ", "Task0");
+        public void WaitAndPrintOutput(ExecutionInstanceLogEntity logItem)
+        {
+            string ptr = logItem.Backpointer;
+            string[] parts = ptr.Split('|');
 
-                TaskUtils.PrintExitCodeOrSchedulingError(resp);
-                TaskUtils.ReadStdErrOrOutputBasedOnExitCode(workitemName,
-                    jobName, resp, taskRequestDispatcher);
-            }
+            string workitemName = parts[0];
+            string jobName = parts[1];
+            string taskName = parts[2];
+
+            WaitAndPrintOutput(workitemName, jobName, taskName);
+        }
+
+        private void WaitAndPrintOutput(string workitemName, string jobName, string taskName)
+        {
+            TaskRequestDispatcher taskRequestDispatcher = GetDispatcher();
+            Task resp = taskRequestDispatcher.WaitForTaskReachTargetState(workitemName, jobName, taskName, TaskState.Completed);
+
+            Console.Write("Task {0} reached completed state. ", taskName);
+
+            TaskUtils.PrintExitCodeOrSchedulingError(resp);
+            TaskUtils.ReadStdErrOrOutputBasedOnExitCode(workitemName,
+                jobName, resp, taskRequestDispatcher);
         }
 
         // Upload to our blob, and pass SAS as a ResourceFile to the task. 

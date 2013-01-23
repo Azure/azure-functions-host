@@ -37,11 +37,8 @@ namespace AzureTaskRunnerHost
 
     class Program
     {
-        // command-line entry point for Azure Task host. 
-        // Doesnt need args since inputs are well-known files (named input.*.txt).
-        static void Main(string[] args)
+        static void PrintDiagInfo()
         {
-#if true
             // Diagnostic information for Azure Tasks
             Console.WriteLine("-------------------------------");
             Console.WriteLine("Hello!");
@@ -58,9 +55,13 @@ namespace AzureTaskRunnerHost
             {
                 Console.WriteLine(file);
             }
-#endif         
-       
-#if true
+        }
+
+        // command-line entry point for Azure Task host. 
+        // Doesnt need args since inputs are well-known files (named input.*.txt).
+        static void Main(string[] args)
+        {
+            PrintDiagInfo();
 
             // Sharing code with ExecutorListener
             // Other functionality:
@@ -68,7 +69,7 @@ namespace AzureTaskRunnerHost
             // - check for abort
             // - 
 
-            // !!! Update logger, mark that function has begun executing
+            // Update logger, mark that function has begun executing
 
             ServiceInputs inputs = GetLogger("input.logger.txt");
 
@@ -83,9 +84,9 @@ namespace AzureTaskRunnerHost
 
             LocalFunctionInstance descr = inputs.GetLocalInstance();
 
-            // main work happens here. !!!
+            // main work happens here.
             Console.WriteLine("Got function! {0}", descr.MethodName);            
-#if true
+
             FunctionExecutionResult result = RunnerHost.Program.MainWorker(descr);
                         
             // User errors returned via results.
@@ -97,9 +98,7 @@ namespace AzureTaskRunnerHost
             // Now we're done. Results are saved off to blobs. Can delete the work item. 
             // Do we want to keep work item around for better AzureTask integration?
             // !!! Some auto-delete option?
-#endif
-#endif
-            // !!!
+
             // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
             bridge.EnqueueCompletedFunction(logItem);
             Console.WriteLine("Done, Queued to Bridge!");

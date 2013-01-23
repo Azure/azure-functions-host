@@ -124,6 +124,7 @@ namespace DaasEndpoints
             return queue;
         }
 
+        // uses a WorkerRole for the backend execution. 
         public Worker GetOrchestrationWorker()
         {
             var functionTable = this.GetFunctionTable();

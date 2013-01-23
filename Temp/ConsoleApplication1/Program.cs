@@ -85,7 +85,6 @@ namespace ConsoleApplication1
             IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(configFile);
             var config = LocalRunnerHost.Program.GetConfigAsDictionary(configFile);
 
-            // !!! Move to config file or something
             var taskConfig = new TaskConfig
             {
                 TenantUrl = config["AzureTaskTenantUrl"],
@@ -126,16 +125,9 @@ namespace ConsoleApplication1
                   },
                 ServiceUrl = account.WebDashboardUri
             };
-            e.Queue(request);
+            ExecutionInstanceLogEntity entry = e.Queue(request);
 
-
-            // Wait for execution
-            while (true)
-            {
-                Thread.Sleep(1000);
-            }
-
-
+            e.WaitAndPrintOutput(entry);
         }
 
         
