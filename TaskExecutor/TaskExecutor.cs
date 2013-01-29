@@ -14,7 +14,7 @@ using RunnerInterfaces;
 namespace Executor
 {
     // Queue a function invocation request via AzureTasks.
-    public class TaskExecutor : IQueueFunction
+    public class TaskExecutor : QueueFunctionBase, IQueueFunction
     {
         // Container name used for communication 
         const string CommContainerName = @"sbat-comm";
@@ -22,32 +22,18 @@ namespace Executor
         // Container where runner host is saved. This must have been copied up as part of deployment. 
         const string RunnerHostContainerName = @"sbat-runnerhost";
 
-
-
-        private readonly IFunctionUpdatedLogger _logger;
         private readonly string _loggerJson; // json serialization of _logger, passed ot host process.
-        private readonly IAccountInfo _account;
         private readonly TaskConfig _config;
 
-        // account - this is the internal storage account for using the service. 
-        // logger - used for updating the status of the function that gets queued. This must be serializable with JSon since
-        //          it will get passed to the host process in an azure task.
         // config - configuration information for using AzureTasks. 
         public TaskExecutor(IAccountInfo account, IFunctionUpdatedLogger logger, TaskConfig config)
+            : base(account, logger)
         {
             if (config == null)
             {
                 throw new ArgumentNullException("config");
             }
-            if (logger == null)
-            {
-                throw new ArgumentNullException("logger");
-            }
-            if (account == null)
-            {
-                throw new ArgumentNullException("account");
-            }
-
+            
             // Verify that logger can be serialized, since we'll serialize it into our separate host process. 
             // If it doesn't serialize, let's find out now!
             {
@@ -60,8 +46,6 @@ namespace Executor
             }
 
             _config = config;
-            _logger = logger;
-            _account = account;
         }
 
         public void CreatePool(int poolSize)
@@ -83,26 +67,7 @@ namespace Executor
             taskRequestDispatcher.DeletePool(poolName);
         }
 
-
-        public ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
-        {
-            instance.Id = Guid.NewGuid(); // used for logging. 
-            instance.ServiceUrl = _account.WebDashboardUri;
-            // Log that the function is now queued.
-            // Do this before queueing to avoid racing with execution 
-            var logItem = new ExecutionInstanceLogEntity();
-            logItem.FunctionInstance = instance;
-            logItem.QueueTime = DateTime.UtcNow; // don't set starttime until a role actually executes it.
-
-            _logger.Log(logItem);
-
-            SubmitToAzureTasks(logItem);
-
-            _logger.Log(logItem);
-            return logItem;
-        }
-
-        void SubmitToAzureTasks(ExecutionInstanceLogEntity logItem)
+        protected override void Work(ExecutionInstanceLogEntity logItem)
         {
             FunctionInvokeRequest instance = logItem.FunctionInstance;
 
@@ -140,8 +105,8 @@ namespace Executor
                      Logger = this._logger,
                      Instance = instance,
                      LocalDir = @".\user",
-                     AccountConnectionString = _account.AccountConnectionString, // !!! share with DaasEndpoints
-                     QueueName = "daas-invoke-done"
+                     AccountConnectionString = _account.AccountConnectionString,
+                     QueueName = "daas-invoke-done" // !!! share with DaasEndpoints
                 };
 
                 string json = JsonCustom.SerializeObject(inputs);
@@ -151,14 +116,15 @@ namespace Executor
             }
 
             task.Files = res;
-            task.CommandLine = string.Format("AzureTaskRunnerHost.exe 15");
-            task.TVMType = TVMType.Dedicated; // !!! what does this mean ???
+            task.CommandLine = string.Format("AzureTaskRunnerHost.exe");
+            task.TVMType = TVMType.Dedicated; // what does this mean ???
 
             string taskName = "Task0";
             taskRequestDispatcher.AddTask(workitemName, jobName, taskName, task);
 
             // Mark backpointer so that we can retrieve the Azure Task from this.
             logItem.Backpointer = string.Join("|", workitemName, jobName, taskName);
+            _logger.Log(logItem); // Persists update to Backpointer 
         }
 
         // Diangostics helper to block on a task and print its output

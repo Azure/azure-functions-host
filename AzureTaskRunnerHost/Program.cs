@@ -125,9 +125,9 @@ namespace AzureTaskRunnerHost
             logItem.ExceptionMessage = result.ExceptionMessage;
             logger.Log(logItem);
 
+            // $$$ When do we delete the WorkItems?
             // Now we're done. Results are saved off to blobs. Can delete the work item. 
-            // Do we want to keep work item around for better AzureTask integration?
-            // !!! Some auto-delete option?
+            // Do we want to keep work item around for better AzureTask integration?           
 
             // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
             bridge.EnqueueCompletedFunction(logItem);

@@ -31,14 +31,6 @@ namespace RunnerInterfaces
         // - provide a scope for resolving other execution requests (account/container/blob/assembly/type/method).
         public FunctionLocation Location { get; set; }
     }
-
-    // Results from function execution, produced by runner host. 
-    public class FunctionExecutionResult
-    {
-        // null on success. Type.FullName if the function threw an exception.
-        public string ExceptionType { get; set; }
-        public string ExceptionMessage { get; set; }
-    }
         
     // Full permission to a queue
     public class CloudQueueDescriptor
@@ -173,11 +165,5 @@ namespace RunnerInterfaces
             var uri = blob.Uri.ToString() + sasQueryString;
             return uri;
         }
-    }
-
-    // Submit a function for execution.
-    public interface IQueueFunction
-    {
-        ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance);
     }
 }

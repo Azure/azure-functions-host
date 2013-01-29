@@ -136,8 +136,7 @@ namespace DaasEndpoints
         public IQueueFunction GetExecutionClient()
         {
             IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
-            string uri = _accountInfo.WebDashboardUri;
-            return new WorkerRoleExecutionClient(GetExecutionQueue(), logger, uri);
+            return new WorkerRoleExecutionClient(GetExecutionQueue(), _accountInfo, logger);
         }
 
         public IFunctionTable GetFunctionTable()

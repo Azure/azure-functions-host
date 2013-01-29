@@ -128,7 +128,7 @@ namespace OrchestratorRole
 #else
             // Based on WorkerRoles (submitted via a Queue)
             var queue = _services.GetExecutionQueue();
-            IQueueFunction exec = new WorkerRoleExecutionClient(queue, logger, account.WebDashboardUri);            
+            IQueueFunction exec = new WorkerRoleExecutionClient(queue, account, logger);            
 #endif
 
             return new Orchestrator.Worker(functionTable, exec);

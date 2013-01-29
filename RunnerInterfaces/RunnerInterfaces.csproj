@@ -59,11 +59,14 @@
     <Compile Include="Config.cs" />
     <Compile Include="ContainerDownloader.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
-    <Compile Include="ExecutionStatsAggregatorBridge.cs" />
+    <Compile Include="Execution\ExecutionStatsAggregatorBridge.cs" />
+    <Compile Include="Execution\FunctionExecutionResult.cs" />
+    <Compile Include="Execution\IQueueFunction.cs" />
+    <Compile Include="Execution\QueueFunctionBase.cs" />
     <Compile Include="FunctionInvokeRequest.cs" />
     <Compile Include="FunctionLocation.cs" />
-    <Compile Include="FunctionOutputLog.cs" />
-    <Compile Include="IAccountInfo.cs" />
+    <Compile Include="Execution\FunctionOutputLog.cs" />
+    <Compile Include="Execution\IAccountInfo.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="Logger.cs" />

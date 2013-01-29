@@ -7,6 +7,9 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace RunnerInterfaces
 {
+    // Wrap facilities for logging a function's output. 
+    // This means capturing console out, redirecting to a textwriter that is available at a blob.
+    // Handle incremental updates to get real-time updates for long running functions. 
     public class FunctionOutputLog
     {
         static Action empty = () => { };
