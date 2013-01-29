@@ -162,7 +162,6 @@ namespace Executor
         }
 
         // Diangostics helper to block on a task and print its output
-
         public void WaitAndPrintOutput(ExecutionInstanceLogEntity logItem)
         {
             string ptr = logItem.Backpointer;

@@ -62,6 +62,7 @@
     <Compile Include="ExecutionStatsAggregatorBridge.cs" />
     <Compile Include="FunctionInvokeRequest.cs" />
     <Compile Include="FunctionLocation.cs" />
+    <Compile Include="FunctionOutputLog.cs" />
     <Compile Include="IAccountInfo.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />

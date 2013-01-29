@@ -41,25 +41,7 @@ namespace Executor
         void WriteHeartbeat(ExecutionRoleHeartbeat stats);
 
         bool IsDeleteRequested(Guid id);
-    }
-
-    public class FunctionOutputLog
-    {
-        static Action empty = () => { };
-
-        public FunctionOutputLog()
-        {
-            this.Output = Console.Out;
-            this.CloseOutput = empty;
-        }
-
-        public TextWriter Output { get; set ; }
-        public Action CloseOutput { get; set; }
-        public string Uri { get; set; } // Uri to refer to output 
-
-        // Separate channel for logging structured (and updating) information about parameters
-        public CloudBlobDescriptor ParameterLogBlob { get; set; }
-    }
+    }    
 
     // Default logger, just goes to console.
     public class EmptyExecutionLogger : IExecutionLogger

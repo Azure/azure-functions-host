@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -10,6 +11,7 @@ using RunnerInterfaces;
 
 namespace AzureTaskRunnerHost
 {
+    // Inputs for running the task. 
     public class ServiceInputs
     {
         public IFunctionUpdatedLogger Logger { get; set; }
@@ -23,6 +25,7 @@ namespace AzureTaskRunnerHost
         }
 
         // For producing a ExecutionStatsAggregatorBridge
+        // This is the storage account that the service is using (not the user's account that the function is in)
         public string AccountConnectionString { get; set; }
         public string QueueName { get; set; }
 
@@ -78,16 +81,43 @@ namespace AzureTaskRunnerHost
             IFunctionUpdatedLogger logger = inputs.Logger;
             var logItem = new ExecutionInstanceLogEntity();
 
+            string containerName = "daas" + "-invoke-log"; // !!! Share with EndpointNames?
+            FunctionOutputLog logInfo = FunctionOutputLog.GetLogStream(
+                inputs.Instance, 
+                inputs.AccountConnectionString,
+                containerName);
+
+            inputs.Instance.ParameterLogBlob = logInfo.ParameterLogBlob;
+
             logItem.FunctionInstance = inputs.Instance;
+            logItem.OutputUrl = logInfo.Uri;
             logItem.StartTime = DateTime.UtcNow;
             logger.Log(logItem);
+
+            Console.WriteLine("Logging to: {0}", logInfo.Uri);
 
             LocalFunctionInstance descr = inputs.GetLocalInstance();
 
             // main work happens here.
-            Console.WriteLine("Got function! {0}", descr.MethodName);            
+            Console.WriteLine("Got function! {0}", descr.MethodName);
 
-            FunctionExecutionResult result = RunnerHost.Program.MainWorker(descr);
+            Stopwatch sw = new Stopwatch(); // Provide higher resolution timer for function
+            sw.Start();
+
+            var oldOutput = Console.Out;
+            FunctionExecutionResult result;
+            try
+            {
+                Console.SetOut(logInfo.Output);
+                result = RunnerHost.Program.MainWorker(descr);
+                // worker will print exception information to console. 
+            }
+            finally
+            {
+                logInfo.CloseOutput();
+                Console.SetOut(oldOutput);
+                sw.Stop();
+            }
                         
             // User errors returned via results.
             logItem.EndTime = DateTime.UtcNow;

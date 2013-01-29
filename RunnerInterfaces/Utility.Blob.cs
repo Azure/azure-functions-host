@@ -116,6 +116,13 @@ namespace RunnerInterfaces
         }
 
         // GEt container, and validate the name.
+
+        public static CloudBlobContainer GetContainer(string accountConnectionString, string containerName)
+        {
+            CloudBlobClient client = Utility.GetAccount(accountConnectionString).CreateCloudBlobClient();
+            return GetContainer(client, containerName);
+        }
+    
         public static CloudBlobContainer GetContainer(CloudBlobClient client, string containerName)
         {
             ValidateContainerName(containerName);

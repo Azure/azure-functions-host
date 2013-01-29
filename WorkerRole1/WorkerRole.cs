@@ -144,32 +144,10 @@ namespace WorkerRole1
 
         public FunctionOutputLog GetLogStream(FunctionInvokeRequest f)
         {
-            CloudBlobContainer c = _services.GetExecutionLogContainer();
-            string name = f.ToString() + ".txt";
-            CloudBlob blob = c.GetBlobReference(name);
-            
-            var period = TimeSpan.FromMinutes(1); // frequency to refresh
-            var x = new BlobIncrementalTextWriter(blob, period);
+            var result  = FunctionOutputLog.GetLogStream(f, _services.AccountConnectionString, EndpointNames.ExecutionLogName);
+            _addHeaderInfo(result.Output);
 
-            TextWriter tw = x.Writer;
-                        
-            _addHeaderInfo(tw);
-
-            return new FunctionOutputLog
-            {
-                CloseOutput = () =>
-                {
-                    x.Close();
-                },
-                Uri = blob.Uri.ToString(),
-                Output = tw,
-                ParameterLogBlob = new CloudBlobDescriptor
-                {
-                     AccountConnectionString = _services.AccountConnectionString,
-                     ContainerName = EndpointNames.ExecutionLogName,
-                     BlobName = f.ToString() + ".params.txt"
-                }
-            };
+            return result;
         }
 
         public void LogFatalError(string info, Exception e)
