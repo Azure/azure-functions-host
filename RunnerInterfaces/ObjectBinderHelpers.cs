@@ -132,7 +132,7 @@ namespace RunnerInterfaces
                 object value = prop.GetValue(obj, null);
                 if (value != null)
                 {
-                    if (Utility.IsSimpleType(prop.PropertyType))
+                    if (UseToStringParser(prop.PropertyType))
                     {
                         d[prop.Name] = value.ToString();
                     }
@@ -158,12 +158,31 @@ namespace RunnerInterfaces
                 var prop = typeof(T).GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance);
                 if (prop != null)
                 {
-                    object value = BindFromString(kv.Value, prop.PropertyType);
+                    object value;
+                    string str = kv.Value;
+                    Type type = prop.PropertyType;
+                    if (UseToStringParser(prop.PropertyType))
+                    {
+                        value = BindFromString(str, type);
+                    }
+                    else
+                    {
+                        value = JsonCustom.DeserializeObject(str, type);
+                    }
                     prop.SetValue(obj, value, null);
                 }
             }
 
             return obj;
+        }
+
+        // We have 2 parsing formats:
+        // - ToString / TryParse
+        // - JSON 
+        // Make sure serialization/Deserialization agree on the types.
+        private static bool UseToStringParser(Type t)
+        {
+            return Utility.IsSimpleType(t) || (t == typeof(TimeSpan));
         }
     }
 }

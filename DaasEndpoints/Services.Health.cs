@@ -43,6 +43,9 @@ namespace DaasEndpoints
                         stats.Executors[blob.Name] = JsonCustom.DeserializeObject<ExecutionRoleHeartbeat>(json);
                     }
                 }
+                catch (StorageClientException)
+                {
+                }
                 catch (JsonSerializationException)
                 {
                     // Ignore serialization errors. This is just health status. 
