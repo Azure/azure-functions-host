@@ -72,9 +72,10 @@ namespace AzureTaskRunnerHost
             LocalFunctionInstance descr = inputs.GetLocalInstance();
 
             IAccountInfo account = new AccountInfo { AccountConnectionString = inputs.AccountConnectionString };
+
             var ctx = new FunctionExecutionContext
             {
-                Account = account,
+                OutputLogDispenser = new FunctionOutputLogDispenser(account, null, AzureExecutionEndpointNames.ConsoleOuputLogContainerName), 
                 Bridge = inputs.GetBridge(),
                 Logger = inputs.Logger
             };

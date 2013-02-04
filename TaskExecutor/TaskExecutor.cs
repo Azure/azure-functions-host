@@ -106,7 +106,7 @@ namespace Executor
                      Instance = instance,
                      LocalDir = @".\user",
                      AccountConnectionString = _account.AccountConnectionString,
-                     QueueName = "daas-invoke-done" // !!! share with DaasEndpoints
+                     QueueName = AzureExecutionEndpointNames.FunctionInvokeDoneQueue
                 };
 
                 string json = JsonCustom.SerializeObject(inputs);

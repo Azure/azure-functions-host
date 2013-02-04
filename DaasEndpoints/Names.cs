@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using RunnerInterfaces;
 
 namespace DaasEndpoints
 {
@@ -37,14 +38,14 @@ namespace DaasEndpoints
 
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs
-        public const string ExecutionLogName = prefix + "-invoke-log";
+        public const string ConsoleOuputLogContainerName = AzureExecutionEndpointNames.ConsoleOuputLogContainerName;
 
         // Container where various roles write critical health status. 
         public const string HealthLogContainerName = prefix + "-health-log";
 
         public const string OrchestratorControlQueue = prefix + "-orch-control";
 
-        public const string FunctionInvokeDoneQueue = prefix + "-invoke-done";
+        public const string FunctionInvokeDoneQueue = AzureExecutionEndpointNames.FunctionInvokeDoneQueue;
 
         public const string DaasControlContainerName = prefix + "-control";        
     }

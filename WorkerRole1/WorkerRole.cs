@@ -139,8 +139,11 @@ namespace WorkerRole1
 
             _ctx = new FunctionExecutionContext
             {
-                Account = _services.AccountInfo,
-                FPAddHeaderInfo = addHeaderInfo,                 
+                OutputLogDispenser = new FunctionOutputLogDispenser( 
+                    _services.AccountInfo, 
+                    addHeaderInfo, 
+                    AzureExecutionEndpointNames.ConsoleOuputLogContainerName
+                ),
                 Bridge = _services.GetStatsAggregatorBridge(),
                 Logger = _services.GetFunctionInvokeLogger()
             };

@@ -92,7 +92,7 @@ namespace DaasEndpoints
             }
 
             string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
-            Utility.WriteBlob(_account, EndpointNames.ExecutionLogName, path, sw.ToString());
+            Utility.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
         }
 
         public void QueueIndexRequest(IndexRequestPayload payload)
@@ -152,7 +152,7 @@ namespace DaasEndpoints
         public CloudBlobContainer GetExecutionLogContainer()
         {
             CloudBlobClient client = _account.CreateCloudBlobClient();
-            CloudBlobContainer c = client.GetContainerReference(EndpointNames.ExecutionLogName);
+            CloudBlobContainer c = client.GetContainerReference(EndpointNames.ConsoleOuputLogContainerName);
             c.CreateIfNotExist();
             return c;
         }
