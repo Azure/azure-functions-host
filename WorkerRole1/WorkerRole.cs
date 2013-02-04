@@ -123,44 +123,39 @@ namespace WorkerRole1
         }
     }
 
-    // Log execution instances to blob storage.
+
+    // Provide services for executing a function on a Worker Role.
+    // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
+    // Everything else is worker role specific. 
     public class WebExecutionLogger : IExecutionLogger
     {
         // Logging function for adding header info to the start of each log.
-        private readonly Action<TextWriter> _addHeaderInfo;
         private readonly Services _services;
-
-        private readonly ExecutionStatsAggregatorBridge _statsBridge;
-        private readonly IFunctionUpdatedLogger _invokeLogger;
+        private readonly FunctionExecutionContext _ctx;
 
         public WebExecutionLogger(Services services, Action<TextWriter> addHeaderInfo)
         {
             _services = services;
-            _addHeaderInfo = addHeaderInfo;
 
-            _invokeLogger = services.GetFunctionInvokeLogger();
-            _statsBridge = services.GetStatsAggregatorBridge();
+            _ctx = new FunctionExecutionContext
+            {
+                Account = _services.AccountInfo,
+                FPAddHeaderInfo = addHeaderInfo,                 
+                Bridge = _services.GetStatsAggregatorBridge(),
+                Logger = _services.GetFunctionInvokeLogger()
+            };
         }
-
-        public FunctionOutputLog GetLogStream(FunctionInvokeRequest f)
+                 
+        public FunctionExecutionContext GetExecutionContext()
         {
-            var result  = FunctionOutputLog.GetLogStream(f, _services.AccountConnectionString, EndpointNames.ExecutionLogName);
-            _addHeaderInfo(result.Output);
-
-            return result;
+            return _ctx;
         }
-
+        
         public void LogFatalError(string info, Exception e)
         {
             _services.LogFatalError(info, e);
         }    
-
-        public void UpdateInstanceLog(ExecutionInstanceLogEntity instance)
-        {
-            _invokeLogger.Log(instance);            
-            _statsBridge.EnqueueCompletedFunction(instance);
-        }
-
+                
         public void WriteHeartbeat(ExecutionRoleHeartbeat stats)
         {
             _services.WriteHealthStatus(RoleEnvironment.CurrentRoleInstance.Id, stats);

@@ -28,48 +28,21 @@ namespace Executor
         
     }
 
+    // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
+    // Everything else is worker role specific. 
     public interface IExecutionLogger
     {
-        // Returns TextWriter and a "done" action.
-        FunctionOutputLog GetLogStream(FunctionInvokeRequest f);
+        FunctionExecutionContext GetExecutionContext();
 
         void LogFatalError(string info, Exception e);
-
-        // Called to update the function instance.  This can be called multiple times as the function progresses.
-        void UpdateInstanceLog(ExecutionInstanceLogEntity instance);
-
+                
+        // Write health status for the worker role. 
         void WriteHeartbeat(ExecutionRoleHeartbeat stats);
 
+        // Check if a delete is requested and then set a Cancellation token 
+        // The communication here could be from detecting a blob; or it could be from WorkerRole-WorkerRole communication.
         bool IsDeleteRequested(Guid id);
     }    
-
-    // Default logger, just goes to console.
-    public class EmptyExecutionLogger : IExecutionLogger
-    {
-        public FunctionOutputLog GetLogStream(FunctionInvokeRequest f)
-        {
-            return new FunctionOutputLog();
-        }
-
-        public void LogFatalError(string info, Exception e)
-        {            
-        }
-
-        public void UpdateInstanceLog(ExecutionInstanceLogEntity instance)
-        {            
-        }
-        
-
-        public void WriteHeartbeat(ExecutionRoleHeartbeat stats)
-        {
-            
-        }
-
-        public bool IsDeleteRequested(Guid id)
-        {
-            return false;
-        }
-    }
 
     // Listens on a queue, deques, and runs
     public class ExecutorListener : IDisposable
@@ -225,7 +198,7 @@ namespace Executor
             logger.LogFatalError(text, e);
             this._stats.CriticalErrors++;
         }
-
+         
         private void HandleMessage(CloudQueueMessage msg, IExecutionLogger logger, CancellationToken token)
         {                       
             _stats.RunCount++;
@@ -236,59 +209,37 @@ namespace Executor
             _stats.FunctionInstanceId = instance.Id;
             WriteHeartbeat(logger);
             
-            FunctionOutputLog logInfo = logger.GetLogStream(instance);
-            instance.ParameterLogBlob = logInfo.ParameterLogBlob;
-                
-            // Log functions for later mining. 
-            ExecutionInstanceLogEntity logItem = new ExecutionInstanceLogEntity();                
-                
-            logItem.FunctionInstance = instance;
-            logItem.OutputUrl = logInfo.Uri; // URL can now be written to incrementally 
-            logItem.StartTime = DateTime.UtcNow;
-            logger.UpdateInstanceLog(logItem);
-                
-            int maxDequeueCount = 3;
-            if (msg.DequeueCount > maxDequeueCount)
+            // Call 
+            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc = (consoleOutput) =>
+                {
+                    int maxDequeueCount = 3;
+                    if (msg.DequeueCount > maxDequeueCount)
+                    {
+                        // Handle poison messages. We should be robust to all the cases, so this shouldn't happen. 
+                        return new FunctionExecutionResult
+                        {
+                            ExceptionType = "DequeueCountExceeded",
+                            ExceptionMessage = string.Format("Function could not be executed after {0} attempts. Giving up.", maxDequeueCount)
+                        };
+                    }
+
+                    var result = _executor.Execute(instance, consoleOutput, token);
+                    return result;
+                };
+            
+            var ctx = logger.GetExecutionContext();
+
+            try
             {
-                // Handle poison messages. We should be robust to all the cases, so this shouldn't happen. 
-                logItem.ExceptionType = "DequeueCountExceeded";
-                logItem.ExceptionMessage = string.Format("Function could not be executed after {0} attempts. Giving up.", maxDequeueCount);
+                ExecutionBase.Work(
+                    instance,
+                    ctx,
+                    fpInvokeFunc);
             }
-            else
+            catch (Exception e)
             {
-
-                Stopwatch sw = new Stopwatch(); // Provide higher resolution timer for function
-                sw.Start();
-                try
-                {
-                    var result = _executor.Execute(instance, logInfo.Output, token);
-
-                    // User errors should be caught and returned in result message.
-
-                    logItem.ExceptionType = result.ExceptionType;
-                    logItem.ExceptionMessage = result.ExceptionMessage;
-                }
-                catch (OperationCanceledException e)
-                {
-                    // Execution was aborted. Common case, not a critical error. 
-                    logItem.ExceptionType = e.GetType().FullName;
-                    logItem.ExceptionMessage = e.Message;
-                }
-                catch (Exception e)
-                {
-                    // Non-user error. Something really bad happened.                    
-                    LogCriticalError(logger, e);
-
-                    logInfo.Output.WriteLine("Error: {0}", e.Message);
-                    logInfo.Output.WriteLine("stack: {0}", e.StackTrace);
-                }
-                logInfo.CloseOutput();
-                sw.Stop();
+                LogCriticalError(logger, e);
             }
-
-            // Log completion information
-            logItem.EndTime = DateTime.UtcNow;
-            logger.UpdateInstanceLog(logItem);                            
         }
 
         public void Dispose()

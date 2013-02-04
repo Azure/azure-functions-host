@@ -59,6 +59,7 @@
     <Compile Include="Config.cs" />
     <Compile Include="ContainerDownloader.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
+    <Compile Include="Execution\ExecuteBase.cs" />
     <Compile Include="Execution\ExecutionStatsAggregatorBridge.cs" />
     <Compile Include="Execution\FunctionExecutionResult.cs" />
     <Compile Include="Execution\IQueueFunction.cs" />

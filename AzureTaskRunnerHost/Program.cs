@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
@@ -66,72 +67,38 @@ namespace AzureTaskRunnerHost
         {
             PrintDiagInfo();
 
-            // Sharing code with ExecutorListener
-            // Other functionality:
-            // - heartbeat 
-            // - check for abort
-            // - 
-
-            // Update logger, mark that function has begun executing
-
             ServiceInputs inputs = GetLogger("input.logger.txt");
-
-            var bridge = inputs.GetBridge();
-
-            IFunctionUpdatedLogger logger = inputs.Logger;
-            var logItem = new ExecutionInstanceLogEntity();
-
-            string containerName = "daas" + "-invoke-log"; // !!! Share with EndpointNames?
-            FunctionOutputLog logInfo = FunctionOutputLog.GetLogStream(
-                inputs.Instance, 
-                inputs.AccountConnectionString,
-                containerName);
-
-            inputs.Instance.ParameterLogBlob = logInfo.ParameterLogBlob;
-
-            logItem.FunctionInstance = inputs.Instance;
-            logItem.OutputUrl = logInfo.Uri;
-            logItem.StartTime = DateTime.UtcNow;
-            logger.Log(logItem);
-
-            Console.WriteLine("Logging to: {0}", logInfo.Uri);
-
+                        
             LocalFunctionInstance descr = inputs.GetLocalInstance();
 
-            // main work happens here.
-            Console.WriteLine("Got function! {0}", descr.MethodName);
-
-            Stopwatch sw = new Stopwatch(); // Provide higher resolution timer for function
-            sw.Start();
-
-            var oldOutput = Console.Out;
-            FunctionExecutionResult result;
-            try
+            IAccountInfo account = new AccountInfo { AccountConnectionString = inputs.AccountConnectionString };
+            var ctx = new FunctionExecutionContext
             {
-                Console.SetOut(logInfo.Output);
-                result = RunnerHost.Program.MainWorker(descr);
-                // worker will print exception information to console. 
-            }
-            finally
-            {
-                logInfo.CloseOutput();
-                Console.SetOut(oldOutput);
-                sw.Stop();
-            }
-                        
-            // User errors returned via results.
-            logItem.EndTime = DateTime.UtcNow;
-            logItem.ExceptionType = result.ExceptionType;
-            logItem.ExceptionMessage = result.ExceptionMessage;
-            logger.Log(logItem);
+                Account = account,
+                Bridge = inputs.GetBridge(),
+                Logger = inputs.Logger
+            };
+
+            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc = (consoleOutput) =>
+                {
+                    var oldOutput = Console.Out;
+                    try
+                    {
+                        Console.SetOut(consoleOutput);
+                        return RunnerHost.Program.MainWorker(descr);
+                        // worker will print exception information to console. 
+                    }
+                    finally
+                    {                        
+                        Console.SetOut(oldOutput);
+                    }
+                };
+
+            ExecutionBase.Work(inputs.Instance, ctx, fpInvokeFunc);
 
             // $$$ When do we delete the WorkItems?
             // Now we're done. Results are saved off to blobs. Can delete the work item. 
             // Do we want to keep work item around for better AzureTask integration?           
-
-            // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
-            bridge.EnqueueCompletedFunction(logItem);
-            Console.WriteLine("Done, Queued to Bridge!");
         }
 
         private static ServiceInputs GetLogger(string filename)
