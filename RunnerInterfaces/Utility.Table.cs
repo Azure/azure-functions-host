@@ -59,7 +59,7 @@ namespace RunnerInterfaces
 
         // Is this a type that is already serialized by default?
         // See list of types here: http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
-        public static bool IsSimpleType(Type t)
+        public static bool IsDefaultTableType(Type t)
         {
             if ((t == typeof(byte[])) ||
                 (t == typeof(bool)) ||
@@ -81,7 +81,7 @@ namespace RunnerInterfaces
                 if (tOpen == typeof(Nullable<>))
                 {
                     var tArg = t.GetGenericArguments()[0];
-                    return IsSimpleType(tArg);
+                    return IsDefaultTableType(tArg);
                 }
             }
             
@@ -121,7 +121,7 @@ namespace RunnerInterfaces
                 string inputValue = xmlProp.Value;
 
                 // simple types are already prepopulated
-                if (IsSimpleType(prop.PropertyType))
+                if (IsDefaultTableType(prop.PropertyType))
                 {
                     continue;
                 }
@@ -146,7 +146,7 @@ namespace RunnerInterfaces
 
                 var propType = property.PropertyType;
 
-                if (IsSimpleType(propType))
+                if (IsDefaultTableType(propType))
                 {
                     continue;
                 }

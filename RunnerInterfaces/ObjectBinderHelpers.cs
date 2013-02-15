@@ -48,9 +48,11 @@ namespace RunnerInterfaces
                 return Enum.Parse(target, input, ignoreCase: true);
             }
 
-            // Use JSON deserialization 
-            // This may throw if the input string is not valid json. 
-            return JsonCustom.DeserializeObject(input, target);
+            // It's possible we end up here if the string was JSON and we should have been using a JSON deserializer instead. 
+            {
+                string msg = string.Format("Can't bind from string to type '{0}'", target.FullName);
+                throw new InvalidOperationException(msg);
+            }
         }
 
 
@@ -180,9 +182,13 @@ namespace RunnerInterfaces
         // - ToString / TryParse
         // - JSON 
         // Make sure serialization/Deserialization agree on the types.
+        // Parses are *not* compatible, especially for same types. 
         private static bool UseToStringParser(Type t)
         {
-            return Utility.IsSimpleType(t) || (t == typeof(TimeSpan));
+            // JOSN requires strings to be quoted. 
+            // The practical effect of adding some of these types just means that the values don't need to be quoted. 
+            // That gives them higher compatibily with just regular strings. 
+            return Utility.IsDefaultTableType(t) || (t == typeof(TimeSpan)) || (t == typeof(CloudBlobPath));
         }
     }
 }

@@ -184,6 +184,16 @@ namespace Orchestrator
                     // assembly.
                     // This goes away when the process is recycled. 
                     // Get a warning now so that we don't have subtle bugs from processing the wrong assembly.
+                    bool isGacDll = a.Location.Contains(@"\GAC_MSIL\");
+
+                    if (isGacDll)
+                    {
+                        // Stupid loader will forcibly resolve dlls against the GAC. That's ok here since GAC
+                        // dlls are framework and won't contain user code and so can't be simple batch dlls. 
+                        // So don't need to even index them. 
+                        continue;
+                    }
+
                     throw new InvalidOperationException("CLR Loaded assembly from wrong spot");
                 }
 

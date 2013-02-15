@@ -52,7 +52,7 @@ namespace WebFrontEnd.Controllers
 
             var model = new LogIndexModel();
 
-            int N = 100;
+            int N = 30;
             var query = new FunctionInstanceQueryFilter();
             model.Logs = logger.GetRecent(N, query).ToArray();
             model.Description = string.Format("Last {0} executed functions", N);
@@ -66,7 +66,7 @@ namespace WebFrontEnd.Controllers
             var logger = GetServices().GetFunctionInvokeQuery();
 
             var model = new LogIndexModel();
-            int N = 100;
+            int N = 30;
             var query = new FunctionInstanceQueryFilter 
             { 
                 Location = func.Location,
