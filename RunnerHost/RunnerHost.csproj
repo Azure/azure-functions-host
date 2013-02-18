@@ -63,6 +63,7 @@
     <Compile Include="IPostActionTransaction.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RuntimeBindingInputs.cs" />
     <Compile Include="RuntimeBindings\BlobParameterRuntimeBinding.cs" />
     <Compile Include="RuntimeBindings\LiteralParameterRuntimeBinding.cs" />
     <Compile Include="RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />

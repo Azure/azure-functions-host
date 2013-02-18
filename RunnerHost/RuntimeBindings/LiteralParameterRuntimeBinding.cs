@@ -9,7 +9,6 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-
     public class UnknownParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public string AccountConnectionString { get; set; }

@@ -31,11 +31,12 @@ namespace Orchestrator
             }
         }        
 
-        public override ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs)
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             if (this.IsInput)
             {
-                string payload = inputs._queueMessageInput.AsString;
+                var inputQueueMsg = (ITriggerNewQueueMessage)inputs;
+                string payload = inputQueueMsg.QueueMessageInput.AsString;
                 return new LiteralObjectParameterRuntimeBinding { LiteralJson = payload };
             }
             else
@@ -45,14 +46,14 @@ namespace Orchestrator
                 {
                     QueueOutput = new CloudQueueDescriptor
                     {
-                        AccountConnectionString = Utility.GetConnectionString(inputs.Account),
+                        AccountConnectionString = inputs.AccountConnectionString,
                         QueueName =  this.QueueName
                     }
                 };
             }
         }
 
-        public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             if (this.IsInput)
             {

@@ -13,13 +13,13 @@ namespace Orchestrator
     {
         public CloudBlobPath BlobPathPattern { get; set; }
 
-        public override ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs)
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             // plug in any unbounded parameters. 
             //    deploydId=123
             //    "daas-test-input\{deployId}\{names}.csv"
             //  becomees: "daas-test-input\123\{names}.csv"
-            CloudBlobPath path = this.BlobPathPattern.ApplyNamesPartial(inputs._nameParameters);
+            CloudBlobPath path = this.BlobPathPattern.ApplyNamesPartial(inputs.NameParameters);
 
             // Pass to arg Instance "daas-test-input\123\{names}.csv"
             // RuntimeHost binder gets that, does enumeration (of entire container?) and match. 
@@ -30,14 +30,14 @@ namespace Orchestrator
             {
                 BlobPathPattern = new CloudBlobDescriptor
                 {
-                    AccountConnectionString = Utility.GetConnectionString(inputs.Account),
+                    AccountConnectionString = inputs.AccountConnectionString,
                     ContainerName = path.ContainerName,
                     BlobName = path.BlobName
                 }
             };
         }
 
-        public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             var path = new CloudBlobPath(invokeString);
 
@@ -45,7 +45,7 @@ namespace Orchestrator
             {                 
                 BlobPathPattern = new CloudBlobDescriptor
                 {
-                    AccountConnectionString = Utility.GetConnectionString(account),
+                    AccountConnectionString = inputs.AccountConnectionString,
                     ContainerName = path.ContainerName,
                     BlobName = path.BlobName
                 }

@@ -9,45 +9,31 @@ using Newtonsoft.Json;
 using SimpleBatch;
 
 namespace RunnerInterfaces
-{    
-    // Inputs that can impact producing a runtime binding.     
-    public class RuntimeBindingInputs
+{
+    // This is the basic infomration that a static binding can use to create a runtime binding.
+    // There are auxillary interfaces (ITrigger*) which provide additional information specific to certain binding triggers.
+    public interface IRuntimeBindingInputs
     {
-        private FunctionLocation _location;
-
-        // !!! this ctor means that ReadFile doesn't work. 
-        // This gets invoked when a function uses IBinder to create stuff. 
-        public RuntimeBindingInputs(string accountConnectionString)
-        {
-            this.Account = Utility.GetAccount(accountConnectionString);
-        }
-
-        public RuntimeBindingInputs(FunctionLocation location)
-        {
-            this._location = location;
-            this.Account = Utility.GetAccount(location.Blob.AccountConnectionString);
-        }
-
-        // Account that binding is relative too. 
-        // public CloudStorageAccount _account;
-        public CloudStorageAccount Account { get; set; }
-
-        // $$$ Input triggered on CloudBlob, or triggered on a new Message
-        public CloudBlob _blobInput;
-        public CloudQueueMessage _queueMessageInput;
-
-        public IDictionary<string, string> _nameParameters;
-
-        // Reads a file, relative to the function being executed. 
-        public virtual string ReadFile(string filename)
-        {
-            var container = _location.Blob.GetContainer();
-            var blob = container.GetBlobReference(filename);
-            string content= Utility.ReadBlob(blob);
-
-            return content;
-        }
+        IDictionary<string, string> NameParameters { get; } 
+        string AccountConnectionString { get; }
+        string ReadFile(string filename);
     }
+
+    // extension interface to IRuntimeBindingInputs, for when the input is triggered by a new blob
+    public interface ITriggerNewBlob : IRuntimeBindingInputs
+    {
+        // If null, then ignore.
+        CloudBlob BlobInput { get; }
+    }
+
+    // extension interface for when the input is triggered bya new queue message.
+    public interface ITriggerNewQueueMessage : IRuntimeBindingInputs
+    {
+        // If null, then ignore. 
+        CloudQueueMessage QueueMessageInput { get; }
+    }
+
+
 
     // $$$ Simulate via extension methods?
     // Replaces FunctionFlow. 
@@ -73,10 +59,10 @@ namespace RunnerInterfaces
         // BindingContext provides set of possible inputs  (a single blob input that triggered, a queue message, 
         // a dictionary of name parameters)
         // This is what BindingContext.Bind does.
-        public abstract ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs);
+        public abstract ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs);
 
         // This should roundtrip with ConvertToInvokeString
-        public abstract ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString);
+        public abstract ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString);
 
         // Describe the binding, as understood by the indexer. 
         //   Read from blob "container\blob\{name}.csv"

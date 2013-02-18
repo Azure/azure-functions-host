@@ -9,6 +9,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
+using System.Diagnostics;
 
 namespace DaasEndpoints
 {
@@ -22,6 +23,7 @@ namespace DaasEndpoints
             return c;
         }
 
+        [DebuggerNonUserCode]
         public ServiceHealthStatus GetHealthStatus()
         {
             var stats = new ServiceHealthStatus();

@@ -25,25 +25,25 @@ namespace Orchestrator
         // This is used for optimizations. 
         public bool IsReadOnly { get; set; }
 
-        public override ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs)
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             return new TableParameterRuntimeBinding
             {
                 Table = new CloudTableDescriptor
                 {
-                    AccountConnectionString = Utility.GetConnectionString(inputs.Account),
+                    AccountConnectionString = inputs.AccountConnectionString,
                     TableName = this.TableName
                 }
             };
         }
 
-        public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             return new TableParameterRuntimeBinding
             {
                 Table = new CloudTableDescriptor
                 {
-                    AccountConnectionString = Utility.GetConnectionString(account),
+                    AccountConnectionString = inputs.AccountConnectionString,
                     TableName = invokeString
                 }
             };

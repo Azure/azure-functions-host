@@ -10,14 +10,14 @@ namespace Orchestrator
     public class NameParameterStaticBinding : ParameterStaticBinding
     {
         public string KeyName { get; set; }
-        public bool UserSupplied { get; set; } 
+        public bool UserSupplied { get; set; }
 
-        public override ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs)
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             string value;
-            if (inputs._nameParameters != null)
+            if (inputs.NameParameters != null)
             {
-                if (inputs._nameParameters.TryGetValue(KeyName, out value))
+                if (inputs.NameParameters.TryGetValue(KeyName, out value))
                 {
                     return new LiteralStringParameterRuntimeBinding { Value = value };
                 }
@@ -25,17 +25,17 @@ namespace Orchestrator
             if (UserSupplied)
             {
                 // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { AccountConnectionString = Utility.GetConnectionString(inputs.Account) };
+                return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
             }
             throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));            
         }
 
-        public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             if (string.IsNullOrWhiteSpace(invokeString) && UserSupplied)
             {
                 // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { AccountConnectionString = Utility.GetConnectionString(account) };
+                return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
             }
             return new LiteralStringParameterRuntimeBinding { Value = invokeString };
         }

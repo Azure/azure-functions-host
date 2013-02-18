@@ -99,10 +99,13 @@ namespace WebFrontEnd.Controllers
 
             var flows = func.Flow.Bindings;
             var account = func.GetAccount();
+
+            IRuntimeBindingInputs inputs = new RunnerHost.RuntimeBindingInputs(func.Location);
+
             for (int i = 0; i < argValues.Length; i++)
             {
                 var flow = flows[i];
-                args[i] = flow.BindFromInvokeString(account, argValues[i]);
+                args[i] = flow.BindFromInvokeString(inputs, argValues[i]);
 
                 if (args[i] == null)
                 {

@@ -13,36 +13,37 @@ namespace Orchestrator
         public CloudBlobPath Path;
         public bool IsInput;
 
-        public override ParameterRuntimeBinding Bind(RuntimeBindingInputs inputs)
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             // Bind to a blob container
             var path = this.Path;
 
             if (path.BlobName == null)
             {
+                var inputBlob = (ITriggerNewBlob)inputs;
                 // Just a container match. Match to the input blob.
-                path = new CloudBlobPath(inputs._blobInput);
+                path = new CloudBlobPath(inputBlob.BlobInput);
             }
             else
             {
-                path = path.ApplyNames(inputs._nameParameters);
+                path = path.ApplyNames(inputs.NameParameters);
             }
 
             var arg = new CloudBlobDescriptor
             {
-                AccountConnectionString = Utility.GetConnectionString(inputs.Account),
+                AccountConnectionString = inputs.AccountConnectionString,
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };
             return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput};
         }
 
-        public override ParameterRuntimeBinding BindFromInvokeString(CloudStorageAccount account, string invokeString)
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             var path = new CloudBlobPath(invokeString);
             var arg = new CloudBlobDescriptor
             {
-                AccountConnectionString = Utility.GetConnectionString(account),
+                AccountConnectionString = inputs.AccountConnectionString,
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };

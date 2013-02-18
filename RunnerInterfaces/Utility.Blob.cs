@@ -86,9 +86,15 @@ namespace RunnerInterfaces
         [DebuggerNonUserCode]
         public static string ReadBlob(CloudBlob blob)
         {
+            // Beware! Blob.DownloadText does not strip the BOM! 
             try
-            {
-                return blob.DownloadText();
+            {                
+                using (var stream = blob.OpenRead())
+                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks : true))
+                {
+                    string data = sr.ReadToEnd();
+                    return data;
+                }               
             }
             catch
             {

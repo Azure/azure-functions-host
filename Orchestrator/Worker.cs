@@ -253,10 +253,7 @@ namespace Orchestrator
 
             // blobInput was the one that triggered it.            
 
-            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
-            {                
-                _queueMessageInput = msg
-            };
+            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg);            
 
             var instance = BindParameters(ctx, func);
             
@@ -403,7 +400,7 @@ namespace Orchestrator
         {
             var ctx = new RuntimeBindingInputs(func.Location)
             {
-                _nameParameters = parameters
+                NameParameters = parameters
             };
             var instance = BindParameters(ctx, func);
             return instance;
@@ -434,10 +431,9 @@ namespace Orchestrator
                 return null;
             }
 
-            var ctx = new RuntimeBindingInputs(func.Location)
+            var ctx = new NewBlobRuntimeBindingInputs(func.Location, blobInput)
             {
-                _blobInput = blobInput,
-                _nameParameters = p,
+                NameParameters = p,
             };
             return BindParameters(ctx, func);
         }
