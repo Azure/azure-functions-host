@@ -87,6 +87,18 @@ namespace RunnerHost
             return result;
         }
 
+        private static ParameterStaticBinding Bind(ConfigAttribute attr, ParameterInfo parameter)
+        {
+            string filename = attr.Filename;
+            if (string.IsNullOrEmpty(filename))
+            {
+                // $$$ Settle on convention 
+                // Don't conflict with app.config filenames either. 
+                filename = string.Format("{0}.config.txt", parameter.Name);
+            }
+            return new ConfigParameterStaticBinding { Filename = attr.Filename };
+        }
+
         private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
         {
             var path = new CloudBlobPath(attr.ContainerName);

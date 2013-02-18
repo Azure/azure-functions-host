@@ -70,6 +70,7 @@
     <Compile Include="StaticBinder.cs" />
     <Compile Include="StaticBindings\BlobAggregateParameterStaticBinding.cs" />
     <Compile Include="StaticBindings\BlobParameterStaticBinding.cs" />
+    <Compile Include="StaticBindings\ConfigParameterStaticBinding.cs" />
     <Compile Include="StaticBindings\NameParameterStaticBinding.cs" />
     <Compile Include="StaticBindings\QueueParameterStaticBinding.cs" />
     <Compile Include="StaticBindings\TableParameterStaticBinding.cs" />

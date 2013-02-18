@@ -253,9 +253,8 @@ namespace Orchestrator
 
             // blobInput was the one that triggered it.            
 
-            RuntimeBindingInputs ctx = new RuntimeBindingInputs
-            {
-                _account = func.GetAccount(),
+            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
+            {                
                 _queueMessageInput = msg
             };
 
@@ -402,9 +401,8 @@ namespace Orchestrator
 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func, IDictionary<string, string> parameters)
         {
-            var ctx = new RuntimeBindingInputs
+            var ctx = new RuntimeBindingInputs(func.Location)
             {
-                 _account= func.GetAccount(),
                 _nameParameters = parameters
             };
             var instance = BindParameters(ctx, func);
@@ -415,10 +413,7 @@ namespace Orchestrator
         // This means all inputs can be bound without any additional information. 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func)
         {
-            var ctx = new RuntimeBindingInputs
-            {
-                _account = func.GetAccount(),
-            };
+            var ctx = new RuntimeBindingInputs(func.Location);
             var instance = BindParameters(ctx, func);
             return instance;
         }
@@ -439,9 +434,8 @@ namespace Orchestrator
                 return null;
             }
 
-            var ctx = new RuntimeBindingInputs
+            var ctx = new RuntimeBindingInputs(func.Location)
             {
-                _account = func.GetAccount(),
                 _blobInput = blobInput,
                 _nameParameters = p,
             };

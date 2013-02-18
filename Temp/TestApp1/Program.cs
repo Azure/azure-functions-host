@@ -13,6 +13,14 @@ namespace TestApp1
     {
         public int Value { get; set; }
     }
+
+    // Sample class for configuraiton 
+    class MyConfig
+    {
+        public string UserName { get; set; }
+        public int Quota { get; set; }
+    }
+
     class Program
     {
         static void Main(string[] args)
@@ -24,6 +32,12 @@ namespace TestApp1
             config.Register("TestReg").
                 BindBlobInput("input", @"daas-test-input3\{name}.csv").
                 BindBlobOutput("output", @"daas-test-input3\{name}.output.csv");
+        }
+
+        [NoAutomaticTrigger]
+        public static void TestConfig([Config("test.config.txt")] MyConfig options)
+        {
+            Console.WriteLine("Username:{0}, quoata:{1}", options.UserName, options.Quota);
         }
 
         [NoAutomaticTrigger]

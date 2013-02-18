@@ -25,7 +25,7 @@ namespace Orchestrator
             if (UserSupplied)
             {
                 // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { AccountConnectionString = Utility.GetConnectionString(inputs._account) };
+                return new UnknownParameterRuntimeBinding { AccountConnectionString = Utility.GetConnectionString(inputs.Account) };
             }
             throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));            
         }

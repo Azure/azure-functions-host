@@ -30,7 +30,7 @@ namespace Orchestrator
 
             var arg = new CloudBlobDescriptor
             {
-                AccountConnectionString = Utility.GetConnectionString(inputs._account),
+                AccountConnectionString = Utility.GetConnectionString(inputs.Account),
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };

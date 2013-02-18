@@ -6,6 +6,23 @@ using System.Text;
 // Attributes used by test functions
 namespace SimpleBatch
 {
+    // Specify this parameter comes from configuration 
+    [AttributeUsage(AttributeTargets.Parameter)]
+    public class ConfigAttribute : Attribute
+    {
+        // Short name of the file containing the configuration. 
+        public string Filename { get; set; }
+
+        public ConfigAttribute()
+        {
+        }
+
+        public ConfigAttribute(string filename)
+        {
+            this.Filename = filename;
+        }
+    }
+
     // Tells orchestration layer to not listen on this method.
     // This can be useful to avoid the performance impact of listening on a large container. 
     // Method must be invoked explicitly.

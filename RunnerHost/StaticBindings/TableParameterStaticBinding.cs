@@ -31,7 +31,7 @@ namespace Orchestrator
             {
                 Table = new CloudTableDescriptor
                 {
-                    AccountConnectionString = Utility.GetConnectionString(inputs._account),
+                    AccountConnectionString = Utility.GetConnectionString(inputs.Account),
                     TableName = this.TableName
                 }
             };

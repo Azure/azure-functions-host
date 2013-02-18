@@ -45,7 +45,7 @@ namespace Orchestrator
                 {
                     QueueOutput = new CloudQueueDescriptor
                     {
-                        AccountConnectionString = Utility.GetConnectionString(inputs._account),
+                        AccountConnectionString = Utility.GetConnectionString(inputs.Account),
                         QueueName =  this.QueueName
                     }
                 };

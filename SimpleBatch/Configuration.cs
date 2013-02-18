@@ -194,6 +194,11 @@ namespace SimpleBatch
             return config.Bind(null, new TimerAttribute(interval.ToString()));
         }
 
+        public static IFluentConfig BindConfig(this IFluentConfig config, string parameterName, string filename)
+        {
+            return config.Bind(parameterName, new ConfigAttribute(filename));
+        }
+
         public static IFluentConfig BindBlobInput(this IFluentConfig config, string parameterName, string path)
         {
             return config.Bind(parameterName, new BlobInputAttribute(path));

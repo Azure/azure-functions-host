@@ -19,6 +19,15 @@ namespace OrchestratorUnitTests
     public class LocalOrchestratorTests
     {
         [TestMethod]
+        public void InvokeConfig()
+        {
+            var account = TestStorage.GetAccount();
+            MethodInfo m = typeof(Program).GetMethod("TestConfig");
+
+            LocalOrchestrator.Invoke(account, m);
+        }
+
+        [TestMethod]
         public void InvokeWithParams()
         {
             var account = TestStorage.GetAccount();
@@ -255,10 +264,14 @@ namespace OrchestratorUnitTests
                 myoutputqueue.Add(new Payload { Value = 30 });
             }
 
+
+            public static void TestConfig([Config] Payload payload )
+            {
+                Assert.AreEqual(payload.Value, 15);
+            }
             
         }
-           
-
+        
         
         class Payload
         {

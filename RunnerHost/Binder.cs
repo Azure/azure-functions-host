@@ -118,6 +118,7 @@ namespace RunnerHost
     {
         private string _accountConnectionString;
         private IConfiguration _config;
+
         public BindingContext(IConfiguration config, string accountConnectionString)
         {
             _config = config;
@@ -135,10 +136,7 @@ namespace RunnerHost
             // Same static binding as used in indexing
             ParameterStaticBinding staticBind = StaticBinder.DoStaticBind(a, p); 
 
-            RuntimeBindingInputs inputs = new RuntimeBindingInputs
-            { 
-                 _account = Utility.GetAccount(_accountConnectionString)
-            };
+            RuntimeBindingInputs inputs = new RuntimeBindingInputs(_accountConnectionString);
 
             // If somebody tried an non-sensical bind, we'd get the failure here 
             // here because the binding input doesn't have the information. 
