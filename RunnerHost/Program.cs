@@ -76,7 +76,9 @@ namespace RunnerHost
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
             CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
 
-            Invoke(config, method, invoke.Args);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
+
+            Invoke(config, method, inputs, invoke.Args);
         }
 
         static void ApplyManifestBinders(LocalFunctionInstance invoke, IConfiguration config)
@@ -143,6 +145,7 @@ namespace RunnerHost
 
         // $$$ get rid of static fields.
         static CloudBlobDescriptor _parameterLogger;
+        
 
         // Query the selfwatches and update the live parameter info.
         static void LogSelfWatch(ISelfWatch[] watches, CloudBlob paramBlob)
@@ -274,34 +277,11 @@ namespace RunnerHost
             }
         }
 
-        // ###
-        // Get this from the LocalFunctionInstance instead.
-        private static string GetAccountString(ParameterRuntimeBinding[] argDescriptors)
-        {
-            foreach (var param in argDescriptors)
-            {
-                var blob = param as BlobParameterRuntimeBinding;
-                if (blob != null)
-                {
-                    return blob.Blob.AccountConnectionString;
-                }
-
-                var table = param as TableParameterRuntimeBinding;
-                if (table != null)
-                {
-                    return table.Table.AccountConnectionString;
-                }
-            }
-
-            return null; // unknown account
-        }
-
-        public static void Invoke(IConfiguration config, MethodInfo m, ParameterRuntimeBinding[] argDescriptors)
+        public static void Invoke(IConfiguration config, MethodInfo m, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
 
-            string accountConnectionString = GetAccountString(argDescriptors);
-            IBinder bindingContext = new BindingContext(config, accountConnectionString);
+            IBinder bindingContext = new BindingContext(config, inputs);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

@@ -24,14 +24,15 @@ namespace RunnerHost
         {            
             bool isReadOnly = false; // ### eventually get this from an attribute?
 
-            var binder = config.GetTableBinder(type, isReadOnly);
+            ICloudTableBinder binder = config.GetTableBinder(type, isReadOnly);
             if (binder == null)
             {
                 string msg = string.Format("Can't bind an azure table to type '{0}'", type.AssemblyQualifiedName);
                 throw new InvalidOperationException(msg);
             }
 
-            var ctx = new BindingContext(config, Table.AccountConnectionString);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
+            IBinder ctx = new BindingContext(config, inputs);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

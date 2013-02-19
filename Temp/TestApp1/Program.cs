@@ -41,6 +41,14 @@ namespace TestApp1
         }
 
         [NoAutomaticTrigger]
+        public static void TestConfig2(IBinder binder)
+        {
+            MyConfig options = binder.Bind<MyConfig>(new ConfigAttribute("test.config.txt")).Result;
+
+            Console.WriteLine("Username:{0}, quoata:{1}", options.UserName, options.Quota);
+        }
+
+        [NoAutomaticTrigger]
         public static void TestCall(ICall call, int value)
         {
             call.QueueCall("TestCall2", new { value = value});

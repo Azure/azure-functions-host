@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
@@ -10,17 +11,17 @@ namespace RunnerHost
     {
         private FunctionLocation _location;
 
-        // !!! this ctor means that ReadFile doesn't work. 
-        // This gets invoked when a function uses IBinder to create stuff. 
+        // Beware that this constructor won't support ReadFile. 
         public RuntimeBindingInputs(string accountConnectionString)
         {
             this.AccountConnectionString = accountConnectionString;
         }
 
+        // Location lets us get the account string and pull down any extra config files. 
         public RuntimeBindingInputs(FunctionLocation location)
+            : this(location.Blob.AccountConnectionString)
         {
             this._location = location;
-            this.AccountConnectionString = location.Blob.AccountConnectionString;
         }
 
         // Account that binding is relative too. 
@@ -32,6 +33,11 @@ namespace RunnerHost
         // Reads a file, relative to the function being executed. 
         public virtual string ReadFile(string filename)
         {
+            if (_location == null)
+            {
+                string msg = string.Format("No context information for reading file: {0}", filename);
+                throw new InvalidOperationException(msg);
+            }
             var container = _location.Blob.GetContainer();
             var blob = container.GetBlobReference(filename);
             string content = Utility.ReadBlob(blob);

@@ -6,6 +6,7 @@ using System.Threading;
 using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
+using RunnerHost;
 using RunnerInterfaces;
 using SimpleBatch;
 using SimpleBatch.Client;
@@ -87,7 +88,9 @@ namespace Orchestrator
         {            
             FunctionIndexEntity func = GetFunction(account, method);
             FunctionInvokeRequest instance = fpGetInstance(func);
-            RunnerHost.Program.Invoke(config, method, instance.Args);
+
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
+            Program.Invoke(config, method, inputs, instance.Args);
         }
 
         private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
@@ -97,7 +100,8 @@ namespace Orchestrator
 
             var config = ReflectionFunctionInvoker.GetConfiguration(account, method.DeclaringType);
 
-            RunnerHost.Program.Invoke(config, method, instance.Args);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
+            Program.Invoke(config, method, inputs, instance.Args);
         }
 
         // Convert MethodInfo --> FunctionIndexEntity
@@ -196,7 +200,8 @@ namespace Orchestrator
             MethodInfo m = _mapping[idx];
                                     
             // run immediately 
-            RunnerHost.Program.Invoke(_config, m, instance.Args);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
+            Program.Invoke(_config, m, inputs, instance.Args);
 
             return null;
         }

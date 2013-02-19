@@ -116,13 +116,13 @@ namespace RunnerHost
 
     class BindingContext : IBinder
     {
-        private string _accountConnectionString;
+        private IRuntimeBindingInputs _runtimeInputs;
         private IConfiguration _config;
 
-        public BindingContext(IConfiguration config, string accountConnectionString)
+        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs)
         {
             _config = config;
-            _accountConnectionString = accountConnectionString;
+            _runtimeInputs = runtimeInputs;
         }
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
@@ -136,12 +136,10 @@ namespace RunnerHost
             // Same static binding as used in indexing
             ParameterStaticBinding staticBind = StaticBinder.DoStaticBind(a, p); 
 
-            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(_accountConnectionString);
-
             // If somebody tried an non-sensical bind, we'd get the failure here 
             // here because the binding input doesn't have the information. 
             // Eg, eg a QueueInput attribute would fail because input doesn't have a queue input message.
-            ParameterRuntimeBinding runtimeBind = staticBind.Bind(inputs);
+            ParameterRuntimeBinding runtimeBind = staticBind.Bind(_runtimeInputs);
 
             BindResult result = runtimeBind.Bind(_config, this, p);
             return Utility.StrongWrapper<T>(result);                
@@ -149,7 +147,7 @@ namespace RunnerHost
         
         public string AccountConnectionString
         {
-            get { return _accountConnectionString; }
+            get { return _runtimeInputs.AccountConnectionString; }
         }
     }
 

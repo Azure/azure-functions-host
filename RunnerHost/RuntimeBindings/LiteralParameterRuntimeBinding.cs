@@ -20,17 +20,25 @@ namespace RunnerHost
         public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
-            var binder = config.GetBinder(t);
+            ICloudBinder binder = config.GetBinder(t);
             if (binder == null)
             {
                 string msg = string.Format("Can't bind parameter '{0}' to type '{1}'. Are you missing a custom model binder?", targetParameter.Name, t);
                 throw new InvalidOperationException(msg);
             }
 
-            // use the supplied account connection string
-            var ctx2 = new BindingContext(config, this.AccountConnectionString); 
+            // We want to preserve the same binding context to maximize consistency between model bound parameters 
+            // and explictly calling IBinder. 
+            // Sanity check that they're using the same accounts. 
+            if (this.AccountConnectionString != bindingContext.AccountConnectionString)
+            {               
+                var name1 = Utility.GetAccountName(this.AccountConnectionString);
+                var name2 = Utility.GetAccountName(bindingContext.AccountConnectionString);
 
-            return binder.Bind(ctx2, targetParameter);
+                string msg = string.Format("Binding has conflicting accounts: {0} vs {1}", name1, name2);
+                throw new InvalidOperationException(msg);
+            }            
+            return binder.Bind(bindingContext, targetParameter);
         }
     }
 
