@@ -38,10 +38,7 @@ namespace RunnerHost
                 string msg = string.Format("No context information for reading file: {0}", filename);
                 throw new InvalidOperationException(msg);
             }
-            var container = _location.Blob.GetContainer();
-            var blob = container.GetBlobReference(filename);
-            string content = Utility.ReadBlob(blob);
-
+            string content = _location.ReadFile(filename);
             return content;
         }
     }

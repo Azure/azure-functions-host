@@ -53,5 +53,15 @@ namespace RunnerInterfaces
         {
             return MethodName.GetHashCode();
         }
+        
+        // Read a file from the function's location. 
+        public virtual string ReadFile(string filename)
+        {
+            var container = this.Blob.GetContainer();
+            var blob = container.GetBlobReference(filename);
+            string content = Utility.ReadBlob(blob);
+
+            return content;
+        }
     }
 }

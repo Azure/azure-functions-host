@@ -265,7 +265,7 @@ namespace OrchestratorUnitTests
             }
 
 
-            public static void TestConfig([Config] Payload payload )
+            public static void TestConfig([Config("ConfigTest.txt")] Payload payload )
             {
                 Assert.AreEqual(payload.Value, 15);
             }

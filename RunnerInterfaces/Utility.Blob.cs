@@ -140,6 +140,10 @@ namespace RunnerInterfaces
         // See code here: http://social.msdn.microsoft.com/Forums/en-GB/windowsazuredata/thread/d364761b-6d9d-4c15-8353-46c6719a3392
         static void ValidateContainerName(string containerName)
         {
+            if (containerName == null)
+            {
+                throw new ArgumentNullException("containerName");
+            }
             if (containerName.Equals("$root"))
             {
                 return; 

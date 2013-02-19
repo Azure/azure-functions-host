@@ -96,7 +96,7 @@ namespace RunnerHost
                 // Don't conflict with app.config filenames either. 
                 filename = string.Format("{0}.config.txt", parameter.Name);
             }
-            return new ConfigParameterStaticBinding { Filename = attr.Filename };
+            return new ConfigParameterStaticBinding { Filename = filename };
         }
 
         private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
