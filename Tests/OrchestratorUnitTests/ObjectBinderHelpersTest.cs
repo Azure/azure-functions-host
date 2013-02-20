@@ -51,6 +51,25 @@ namespace OrchestratorUnitTests
         }
 
         [TestMethod]
+        public void ConvertEnum()
+        {
+            var obj = new { Purchase = Fruit.Banana };
+            var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
+
+            Assert.AreEqual(1, d.Count);
+            Assert.AreEqual("Banana", d["Purchase"]);
+        }
+
+        // No Type converter
+        public enum Fruit
+        {
+            Apple,
+            Banana,
+            Pear,
+        }
+
+
+        [TestMethod]
         public void ConvertWithTypeDescriptor()
         {
             TestEnum x = (TestEnum)ObjectBinderHelpers.BindFromString("Frown", typeof(TestEnum));

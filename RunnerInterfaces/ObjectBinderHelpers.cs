@@ -188,7 +188,13 @@ namespace RunnerInterfaces
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 
             // That gives them higher compatibily with just regular strings. 
-            return Utility.IsDefaultTableType(t) || (t == typeof(TimeSpan)) || (t == typeof(CloudBlobPath));
+            return Utility.IsDefaultTableType(t) || 
+                (t == typeof(char)) ||
+                (t.IsEnum) || // ensures Enums are represented as string values instead of numerical.
+                (t == typeof(TimeSpan)) || 
+                (t == typeof(CloudBlobPath) 
+                
+                );
         }
     }
 }
