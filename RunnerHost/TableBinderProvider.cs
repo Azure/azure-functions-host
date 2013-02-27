@@ -14,7 +14,7 @@ namespace RunnerHost
         class QueueOutputBinder : ICloudBinder
         {
             public Type queueType;
-            public BindResult Bind(IBinder bindingContext, ParameterInfo parameter)
+            public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
             {
                 CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
 
@@ -51,7 +51,7 @@ namespace RunnerHost
 
         class TableBinder : ICloudTableBinder
         {
-            public BindResult Bind(IBinder bindingContext, Type targetType, string tableName)
+            public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
                 CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
 
@@ -84,7 +84,7 @@ namespace RunnerHost
     {
         class TableBinder<T> : ICloudTableBinder where T : new()
         {
-            public BindResult Bind(IBinder bindingContext, Type targetType, string tableName)
+            public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
                 CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
 
@@ -126,7 +126,7 @@ namespace RunnerHost
         class TableBinder : ICloudTableBinder
         {
             public Type azureTableType;
-            public BindResult Bind(IBinder bindingContext, Type targetType, string tableName)
+            public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
                 CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
 

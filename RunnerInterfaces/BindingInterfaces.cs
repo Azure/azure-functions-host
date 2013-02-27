@@ -123,7 +123,7 @@ namespace RunnerInterfaces
         // Also, the parameterInfo provides a loader-approved System.Type for the target parameter, so
         // that avoids trying to serialize and rehydrate a type.
         // This should be the same parameter info that the function was originally indexed against. 
-        public abstract BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter);
+        public abstract BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter);
 
         public override string ToString()
         {

@@ -281,7 +281,7 @@ namespace RunnerHost
         {
             int len = argDescriptors.Length;
 
-            IBinder bindingContext = new BindingContext(config, inputs);
+            IBinderEx bindingContext = new BindingContext(config, inputs);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

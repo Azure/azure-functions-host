@@ -21,7 +21,7 @@ namespace DataTableBinder
         // In-memory mutable version
         class MutableDataTableInputBinder : ICloudBlobBinder
         {
-            public BindResult Bind(IBinder bindingContext, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
             {
                 BindResult<Stream> input = bindingContext.BindReadStream<Stream>(containerName, blobName); // Shortcut
 
@@ -36,7 +36,7 @@ namespace DataTableBinder
         // Streaming version 
         class DataTableInputBinder : ICloudBlobBinder
         {
-            public BindResult Bind(IBinder bindingContext, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
             {
                 BindResult<Stream> input = bindingContext.BindReadStream<Stream>(containerName, blobName); // Shortcut
 
@@ -50,7 +50,7 @@ namespace DataTableBinder
 
         class DataTableOutputBinder : ICloudBlobBinder
         {
-            public BindResult Bind(IBinder bindingContext, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
             {
                 BindResult<Stream> bind = bindingContext.BindWriteStream<Stream>(containerName, blobName);
 

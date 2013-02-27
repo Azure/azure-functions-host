@@ -15,7 +15,7 @@ namespace RunnerHost
         public CloudBlobDescriptor Blob { get; set; }
         public bool IsInput { get; set; }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var type = targetParameter.ParameterType;
 
@@ -31,7 +31,7 @@ namespace RunnerHost
             return Bind(config, bindingContext, type);
         }
 
-        public BindResult Bind(IConfiguration config, IBinder bindingContext, Type type)
+        public BindResult Bind(IConfiguration config, IBinderEx bindingContext, Type type)
         {            
             ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
             if (blobBinder == null)
@@ -75,7 +75,7 @@ namespace RunnerHost
         // Descriptor has wildcards in it. 
         // "container\{name}.csv" --> Stream[] all blobs that match
         // 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
             if (!t.IsArray)

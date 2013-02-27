@@ -30,7 +30,7 @@ namespace RunnerHost
             }
         }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             if (!targetParameter.IsOut)
             {

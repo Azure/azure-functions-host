@@ -41,7 +41,7 @@ namespace TestApp1
         }
 
         [NoAutomaticTrigger]
-        public static void TestConfig2(IBinder binder)
+        public static void TestConfig2(IBinderEx binder)
         {
             MyConfig options = binder.Bind<MyConfig>(new ConfigAttribute("test.config.txt")).Result;
 

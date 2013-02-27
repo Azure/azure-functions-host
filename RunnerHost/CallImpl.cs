@@ -40,7 +40,7 @@ namespace RunnerHost
             return null;
         }
 
-        BindResult ICloudBinder.Bind(IBinder bindingContext, System.Reflection.ParameterInfo parameter)
+        BindResult ICloudBinder.Bind(IBinderEx bindingContext, System.Reflection.ParameterInfo parameter)
         {
             var result = _fpNewInvoker();
 

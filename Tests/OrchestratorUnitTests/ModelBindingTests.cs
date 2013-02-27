@@ -70,7 +70,7 @@ namespace OrchestratorUnitTests
 
             class ModelInputBlobBinder : ICloudBlobBinder
             {
-                public BindResult Bind(IBinder bindingContext, string containerName, string blobName, Type targetType)
+                public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
                     CloudBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
 
@@ -81,7 +81,7 @@ namespace OrchestratorUnitTests
 
             class ModelOutputBlobBinder : ICloudBlobBinder
             {
-                public BindResult Bind(IBinder bindingContext, string containerName, string blobName, Type targetType)
+                public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
                     CloudBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
 
@@ -129,11 +129,7 @@ namespace OrchestratorUnitTests
             [SimpleBatch.Description("Invoke with an IBinder")]
             public static void TestBinder(IBinder binder)
             {
-                var output = binder.BindWriteStream<TextWriter>("daas-test-input", "directout.txt");
-
-                // ### Just want result. Not self-watch or cleanup. Those could be handled automatically. 
-                var tw = output.Result;
-
+                TextWriter tw = binder.BindWriteStream<TextWriter>("daas-test-input", "directout.txt");
                 tw.Write("output");
 
                 // closed automatically 

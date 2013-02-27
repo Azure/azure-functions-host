@@ -23,7 +23,7 @@ namespace RunnerHost
         {
             // Track for cleanup
             private readonly List<BindResult> _results = new List<BindResult>();
-            private readonly IBinder _inner;
+            private readonly IBinderEx _inner;
 
             class Watches
             {
@@ -32,12 +32,13 @@ namespace RunnerHost
             }
             private readonly List<Watches> _watches = new List<Watches>();
 
-            public BinderWrapper(IBinder inner)
+            public BinderWrapper(IBinderEx inner)
             {
                 _inner = inner;
             }
 
-            public BindResult<T> Bind<T>(Attribute a)
+            // Implements simplified IBinder instead of IBinderEx. Doesn't expose BindResult.
+            public T Bind<T>(Attribute a)
             {
                 var result = _inner.Bind<T>(a);
 
@@ -53,7 +54,7 @@ namespace RunnerHost
                 }
 
                 _results.Add(result);
-                return result;
+                return result.Result;
             }
 
             public string AccountConnectionString
@@ -93,7 +94,7 @@ namespace RunnerHost
 
         class BinderBinder : ICloudBinder
         {
-            public BindResult Bind(IBinder bindingContext, ParameterInfo parameter)
+            public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
             {
                 var wrapper = new BinderWrapper(bindingContext);
                 return new BindResult<IBinder>(wrapper)
@@ -114,7 +115,7 @@ namespace RunnerHost
     }
 
 
-    class BindingContext : IBinder
+    class BindingContext : IBinderEx
     {
         private IRuntimeBindingInputs _runtimeInputs;
         private IConfiguration _config;

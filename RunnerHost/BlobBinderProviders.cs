@@ -18,7 +18,7 @@ namespace RunnerHost
         private class BlobBinder : ICloudBlobBinder
         {
             public bool IsInput;
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
@@ -44,7 +44,7 @@ namespace RunnerHost
         private class BlobStreamBinder : ICloudBlobBinder
         {
             public bool IsInput;
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
@@ -87,7 +87,7 @@ namespace RunnerHost
         private class TextWriterBinder : ICloudBlobBinder
         {
             TextWriter _content = new StringWriter();
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
@@ -113,7 +113,7 @@ namespace RunnerHost
     {
         private class TextReaderBinder : ICloudBlobBinder
         {
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 

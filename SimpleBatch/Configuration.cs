@@ -40,8 +40,17 @@ namespace SimpleBatch
             // default is nop
         }
     }
-        
+
+    // Public one that we bind to. Simpler, doesn't expose a BindResult. 
     public interface IBinder
+    {
+        T Bind<T>(Attribute a);
+        string AccountConnectionString { get; }
+    }
+
+    // $$$ Remove this one and merge with IBinder. 
+    // Internal one, exposes the BindResult.
+    public interface IBinderEx
     {
         BindResult<T> Bind<T>(Attribute a);
         string AccountConnectionString { get; }
@@ -51,12 +60,22 @@ namespace SimpleBatch
     {
         // Get a stream for the given blob. The storage account is relative to binder.AccountConnetionString,
         // and the container and blob name are specified.
-        public static BindResult<T> BindReadStream<T>(this IBinder binder, string containerName, string blobName)
+        public static BindResult<T> BindReadStream<T>(this IBinderEx binder, string containerName, string blobName)
         {
             return binder.Bind<T>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
         }
 
-        public static BindResult<T> BindWriteStream<T>(this IBinder binder, string containerName, string blobName)
+        public static BindResult<T> BindWriteStream<T>(this IBinderEx binder, string containerName, string blobName)
+        {
+            return binder.Bind<T>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
+        }
+
+        public static T BindReadStream<T>(this IBinder binder, string containerName, string blobName)
+        {
+            return binder.Bind<T>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
+        }
+
+        public static T BindWriteStream<T>(this IBinder binder, string containerName, string blobName)
         {
             return binder.Bind<T>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
         }
@@ -124,7 +143,7 @@ namespace SimpleBatch
     public interface ICloudBlobBinder
     {
         // Returned object should be assignable to target type.
-        BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType);
+        BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType);
     }
 
     public interface ICloudBlobBinderProvider
@@ -136,7 +155,7 @@ namespace SimpleBatch
 
     public interface ICloudTableBinder
     {
-        BindResult Bind(IBinder bindingContext, Type targetType, string tableName);
+        BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName);
     }
     public interface ICloudTableBinderProvider
     {
@@ -147,7 +166,7 @@ namespace SimpleBatch
     // Binds to arbitrary entities in the cloud
     public interface ICloudBinder
     {
-        BindResult Bind(IBinder bindingContext, ParameterInfo parameter);
+        BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter);
     }
 
     // Binder for any arbitrary azure things. Could even bind to multiple things. 

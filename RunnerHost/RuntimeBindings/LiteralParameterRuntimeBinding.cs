@@ -17,7 +17,7 @@ namespace RunnerHost
             return string.Empty;
         }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
             ICloudBinder binder = config.GetBinder(t);
@@ -49,7 +49,7 @@ namespace RunnerHost
     {
         public string Value { get; set; }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var result = ObjectBinderHelpers.BindFromString(Value, targetParameter.ParameterType);
             return new BindResult { Result = result };
@@ -69,7 +69,7 @@ namespace RunnerHost
     {
         public string LiteralJson { get; set; }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             object result = JsonCustom.DeserializeObject(this.LiteralJson, targetParameter.ParameterType);
             return new BindResult { Result = result };

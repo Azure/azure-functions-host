@@ -16,7 +16,7 @@ namespace DataTableBinder
         // RowAs<T> doesn't take System.Type, so we plumb the T through here.  
         private class EnumerableBlobBinder<T> : ICloudBlobBinder where T : class, new()
         {
-            public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 BindResult<Stream> input = binder.BindReadStream<Stream>(containerName, blobName); // Shortcut
                 Stream blobStream = input.Result;

@@ -14,7 +14,7 @@ namespace RunnerHost
     {
         public CloudTableDescriptor Table { get; set; }
 
-        public override BindResult Bind(IConfiguration config, IBinder bindingContext, ParameterInfo targetParameter)
+        public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
             return Bind(config, t);
@@ -32,7 +32,7 @@ namespace RunnerHost
             }
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
-            IBinder ctx = new BindingContext(config, inputs);
+            IBinderEx ctx = new BindingContext(config, inputs);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

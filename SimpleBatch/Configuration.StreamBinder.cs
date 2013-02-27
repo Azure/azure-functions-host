@@ -32,7 +32,7 @@ namespace SimpleBatch
             {
                 public ICloudBlobStreamBinder<T> _inner;
 
-                public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+                public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
                 {
                     var bindStream = binder.BindReadStream<Stream>(containerName, blobName);
                     T obj = _inner.ReadFromStream(bindStream.Result);
@@ -43,7 +43,7 @@ namespace SimpleBatch
             {
                 public ICloudBlobStreamBinder<T> _inner;
 
-                public BindResult Bind(IBinder binder, string containerName, string blobName, Type targetType)
+                public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
                 {
                     var bindStream = binder.BindWriteStream<Stream>(containerName, blobName);
 

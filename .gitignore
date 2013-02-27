@@ -11,3 +11,6 @@ csx
 /TestResults
 /Secrets/Secrets.Password.cs
 /tests/LiveAzureTests/config.password.cs
+
+/CloudBinders/PrivateBinderList.csv
+/PublicDownload/Binaries
