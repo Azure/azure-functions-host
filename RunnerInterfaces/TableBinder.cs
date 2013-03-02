@@ -356,7 +356,7 @@ namespace AzureTables
         {
             if (!Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
             {
-                throw new InvalidOperationException(string.Format("{0} is not a valid name for an azure table", tableName));
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
             }
         }
 

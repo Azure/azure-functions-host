@@ -30,6 +30,8 @@ namespace GauntletTest
         const string TempContainer = @"sb-gauntlet";
         const string TempBlobPath = TempContainer + @"\subdir\test.txt";
         const string TempBlobOutPath = TempContainer + @"\subdir\testOutput.txt";
+        const string TableName = "gauntlettable";
+        static Tuple<string, string> TableKey = Tuple.Create("1", "first");
         
         const string CookieBlobName = @"cookies\{0}.txt";
 
@@ -46,11 +48,15 @@ namespace GauntletTest
         [NoAutomaticTrigger]
         public static void Start(
             ICall call,
+            [Table(TableName)] IDictionary<Tuple<string, string>, object> dict,
             [Config(ConfigBlobName)] Payload val)
         {
             // Pass the guid through. 
             Guid g = Guid.NewGuid();
             Console.WriteLine("Starting a gauntlet run. Cookie: {0}", g);
+
+            // write to table
+            dict[TableKey] = new Payload { Name = "Test", Quota = 150, Cookie = g };
 
             // Config gets modiifed halfway through, so may be in random state unless we rebublish. 
             // Don't care. 
@@ -73,9 +79,20 @@ namespace GauntletTest
         public static void FromQueue(
             [QueueInput] Payload gauntletQueue,
             [BlobOutput(ConfigPath)] TextWriter twConfig,
+            [Table(TableName)] IDictionary<Tuple<string, string>, Payload> dict, // read as strong object
             [BlobOutput(TempBlobPath)] TextWriter twOther
              )
         {
+            var val = dict[TableKey];
+            if (val.Name != "Test" || val.Quota != 150)
+            {
+                throw new Exception("Table read failure");
+            }
+            if (val.Cookie != gauntletQueue.Cookie)
+            {
+                throw new Exception("Table cookie has wrong value");
+            }
+
             // Overwrite the config file! Make sure that subsequent runs pick up the update. 
             string msg = @"{ 'Name' : 'Bob', 'Quota' : 2048 }".Replace('\'', '\"');
             twConfig.WriteLine(msg);

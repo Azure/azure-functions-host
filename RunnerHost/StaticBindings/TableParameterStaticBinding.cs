@@ -39,6 +39,12 @@ namespace Orchestrator
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
+            // For convenience, do the right thing with an empty string
+            if (string.IsNullOrWhiteSpace(invokeString))
+            {
+                invokeString = this.TableName;
+            }
+
             return new TableParameterRuntimeBinding
             {
                 Table = new CloudTableDescriptor

@@ -9,7 +9,7 @@ public partial class ImageFuncs
     // Must have this signature. 
     public static void Initialize(IConfiguration config)
     {
-        // Regsiter a custom model binder for the given type.
+        // Register a custom model binder for the given type.
         config.Add<WebImage>(new WebImageBinder());
     }
 
