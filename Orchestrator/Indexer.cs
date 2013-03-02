@@ -50,9 +50,18 @@ namespace Orchestrator
             {
                 string localCache = helper.LocalCachePrivate;
 
+                {
+                    // Delete the user's instance of SimpleBatch just to force it to bind against the host instance.
+                    string path = Path.Combine(localCache, "SimpleBatch.dll");
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                    }
+                }
+
                 BinderLookup binderLookup = new BinderLookup(binderLookupTable, localCache);
 
-                RemoveStaleFunctions(containerDescriptor, localCache);                
+                RemoveStaleFunctions(containerDescriptor, localCache);
 
                 // Copying funcs out of a container, apply locations to that container.
                 Func<MethodInfo, FunctionLocation> funcApplyLocation = method => GetLocationInfoFromContainer(containerDescriptor, method);

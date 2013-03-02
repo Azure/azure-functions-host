@@ -12,20 +12,28 @@ namespace SimpleBatch.Client
     // Invocation that calls out to a web service.
     public class WebFunctionInvoker : FunctionInvoker
     {
-        const string defaultUri = @"http://daas2.azurewebsites.net/";
-
         private readonly string _serviceUri;
         private readonly string _scope; // fully qualified cloud name, incluing storage container
 
         public WebFunctionInvoker(string scope, string serviceUri)
         {
+            if (serviceUri == null)
+            {
+                throw new ArgumentNullException("serviceUri");
+            }
+
+            if (!serviceUri.EndsWith("/"))
+            {
+                serviceUri += "/";
+            }
+
             _scope = scope;
             if (!_scope.EndsWith(@"\"))
             {
                 _scope += @"\";
             }
 
-            _serviceUri = (serviceUri == null) ? defaultUri : serviceUri;
+            _serviceUri = serviceUri;
         }
 
         protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)

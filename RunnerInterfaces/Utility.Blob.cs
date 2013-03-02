@@ -153,7 +153,6 @@ namespace RunnerInterfaces
             {
                 throw new Exception("Invalid container name: " + containerName);
             }
-
         }
     }
 }

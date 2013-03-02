@@ -20,8 +20,8 @@ namespace Orchestrator
 
             if (path.BlobName == null)
             {
-                var inputBlob = (ITriggerNewBlob)inputs;
                 // Just a container match. Match to the input blob.
+                var inputBlob = (ITriggerNewBlob)inputs;
                 path = new CloudBlobPath(inputBlob.BlobInput);
             }
             else

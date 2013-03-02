@@ -85,7 +85,7 @@ This will:
                     return;
                 }
 
-                File.WriteAllText(configName, JsonConvert.SerializeObject(dlg.Data));                
+                File.WriteAllText(configName, JsonConvert.SerializeObject(dlg.Data, Formatting.Indented));                
 
             }
 

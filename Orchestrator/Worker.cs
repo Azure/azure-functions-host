@@ -150,14 +150,17 @@ namespace Orchestrator
                     var queueBinding = input as QueueParameterStaticBinding;
                     if (queueBinding != null)
                     {
-                        // Queuenames must be all lowercase. Normalize for convenience. 
-                        string queueName = queueBinding.QueueName.ToLower();
+                        if (queueBinding.IsInput)
+                        {
+                            // Queuenames must be all lowercase. Normalize for convenience. 
+                            string queueName = queueBinding.QueueName.ToLower();
 
-                        CloudQueueClient clientQueue = func.GetAccount().CreateCloudQueueClient();
-                        CloudQueue queue = clientQueue.GetQueueReference(queueName); 
+                            CloudQueueClient clientQueue = func.GetAccount().CreateCloudQueueClient();
+                            CloudQueue queue = clientQueue.GetQueueReference(queueName);
 
-                        _mapQueues.GetOrCreate(queue).Add(func);
-                        break; 
+                            _mapQueues.GetOrCreate(queue).Add(func);
+                            break;
+                        }
                     }
                 }
             }
@@ -260,6 +263,7 @@ namespace Orchestrator
             if (instance != null)
             {
                 Console.WriteLine("# Queuing function: {0}", func);
+                instance.TriggerReason = "New queue input message on queue"; 
                 _execute.Queue(instance);
             }
         }

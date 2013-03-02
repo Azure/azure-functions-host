@@ -60,21 +60,21 @@ namespace WebFrontEnd.Controllers
             for (int i = 0; i < args.Length; i++)
             {
                 var arg = args[i];
-                string s = arg.ConvertToInvokeString();
-                if (s == null)
+                string s = "???";
+
+                try
                 {
-                    s = "???";
-                    // This should be rare. Maybe a case that's not implemented. Or a corrupt arg in the queue. 
-                    // ###
-                }
-                else
-                {
+                    s = arg.ConvertToInvokeString();
+                    
                     // If arg is a blob, provide a blob-aware link to explore that further.
                     var blobArg = arg as BlobParameterRuntimeBinding;
                     if (blobArg != null)
                     {
                         ps[i].ArgBlobLink = blobArg.Blob;
-                    }
+                    }                    
+                }
+                catch (NotImplementedException)
+                {
                 }
                 ps[i].ArgInvokeString = s;                
             }

@@ -43,7 +43,7 @@ namespace RunnerHost
 
         public override string ConvertToInvokeString()
         {
-            throw new NotImplementedException();
+            return "[set on output]"; // ignored for output parameters anyways.
         }
 
         public override string ToString()

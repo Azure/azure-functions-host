@@ -33,24 +33,13 @@ namespace Orchestrator
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
+            string payload = null;
             if (this.IsInput)
             {
                 var inputQueueMsg = (ITriggerNewQueueMessage)inputs;
-                string payload = inputQueueMsg.QueueMessageInput.AsString;
-                return new LiteralObjectParameterRuntimeBinding { LiteralJson = payload };
+                payload = inputQueueMsg.QueueMessageInput.AsString;                
             }
-            else
-            {
-                // Will set on out parameter.
-                return new QueueOutputParameterRuntimeBinding
-                {
-                    QueueOutput = new CloudQueueDescriptor
-                    {
-                        AccountConnectionString = inputs.AccountConnectionString,
-                        QueueName =  this.QueueName
-                    }
-                };
-            }
+            return this.BindFromInvokeString(inputs, payload);
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
@@ -59,7 +48,19 @@ namespace Orchestrator
             {
                 return new LiteralObjectParameterRuntimeBinding { LiteralJson = invokeString };
             }
-            throw new NotImplementedException();
+            else
+            {
+                // invokeString is ignored. 
+                // Will set on out parameter.
+                return new QueueOutputParameterRuntimeBinding
+                {
+                    QueueOutput = new CloudQueueDescriptor
+                    {
+                        AccountConnectionString = inputs.AccountConnectionString,
+                        QueueName = this.QueueName
+                    }
+                };
+            }
         }
 
         public override string Description

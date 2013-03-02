@@ -62,23 +62,33 @@ namespace SimpleBatch
         // and the container and blob name are specified.
         public static BindResult<T> BindReadStream<T>(this IBinderEx binder, string containerName, string blobName)
         {
-            return binder.Bind<T>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobInputAttribute(Combine(containerName, blobName)));
         }
 
         public static BindResult<T> BindWriteStream<T>(this IBinderEx binder, string containerName, string blobName)
         {
-            return binder.Bind<T>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobOutputAttribute(Combine(containerName, blobName)));
         }
 
         public static T BindReadStream<T>(this IBinder binder, string containerName, string blobName)
         {
-            return binder.Bind<T>(new BlobInputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobInputAttribute(Combine(containerName, blobName)));
         }
 
         public static T BindWriteStream<T>(this IBinder binder, string containerName, string blobName)
         {
-            return binder.Bind<T>(new BlobOutputAttribute(Path.Combine(containerName, blobName)));
+            return binder.Bind<T>(new BlobOutputAttribute(Combine(containerName, blobName)));
         }
+
+        // Combine container and Blob name into a single path. 
+        // This is the inverse of CloudBlobPath
+        private static string Combine(string containerName, string blobName)
+        {
+            // $$$ Validate the names upfront where it's easy to diagnose. This can avoid cryptor 400 errors from Azure later. 
+            // Rules are here: http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
+            return containerName + @"\" + blobName;
+        }
+    
     }
 
     // Strongly typed wrapper around a result.

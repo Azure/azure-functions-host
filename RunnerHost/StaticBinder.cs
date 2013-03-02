@@ -69,6 +69,21 @@ namespace RunnerHost
     {
         public static ParameterStaticBinding DoStaticBind(Attribute attr, ParameterInfo parameter)
         {
+            // This assumes that we have a single instance of SimpleBatch.dll between the user's assembly and this host process.
+            Assembly attrAssembly = attr.GetType().Assembly;
+            string pathUserAttribute = attrAssembly.Location;
+            string shortName = System.IO.Path.GetFileName(pathUserAttribute);
+            if (string.Compare(shortName, "SimpleBatch.dll", StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                Assembly hostAssembly = typeof(BlobInputAttribute).Assembly;
+                if (attrAssembly != hostAssembly)
+                {
+                    // Throw an explicit error on mismatch.
+                    // Else, we'd just fail the bindings with no error, and none of the methods would get indexed.
+                    throw new InvalidOperationException("User application has a different instance of SimpleBatch.dll than the host app.");
+                }
+            }
+            
             var t = typeof(StaticBinder);
             MethodInfo method = t.GetMethod("Bind", 
                 BindingFlags.NonPublic | BindingFlags.Static, null,                 

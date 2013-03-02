@@ -57,8 +57,6 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            //TestIndex();
-            TestTask();
         }
 
 #if false
