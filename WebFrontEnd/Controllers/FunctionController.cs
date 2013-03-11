@@ -116,7 +116,11 @@ namespace WebFrontEnd.Controllers
             FunctionInvokeRequest instance = new FunctionInvokeRequest();
             instance.Args = args;
             instance.Location = func.Location;
-            instance.TriggerReason = "Explicitly requested via web dashboard";
+            instance.TriggerReason = new InvokeTriggerReason
+            {
+                Message = "Explicitly requested via web dashboard",
+                ParentGuid = Guid.Empty, // Invoked directly by user, so no parent function. 
+            };
 
             // Get instance ID from queuing. Use that to redict to view 
             IQueueFunction executor = GetServices().GetExecutionClient();

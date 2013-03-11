@@ -121,7 +121,7 @@ namespace RunnerHost
             int len = instance.Location.MethodName.Length;
             scope = scope.Substring(0, scope.Length - len - 1);
 
-            var result = new WebFunctionInvoker(scope, url);
+            var result = new WebFunctionInvoker(scope, url, instance.FunctionInstanceGuid);
 
             return result;
         }

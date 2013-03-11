@@ -25,9 +25,10 @@ namespace RunnerInterfaces
         // This should get set once the function is queued. 
         public Guid Id { get; set; }
 
-        // Human readable string providing a hint for why this function was triggered.
-        // This is for diagnostics. 
-        public string TriggerReason { get; set; }
+        // Diagnostic information about why this function was executed. 
+        // Call ToString() to get a human readable reason. 
+        // Assert: this.TriggerReason.ChildGuid == this.Id
+        public TriggerReason TriggerReason { get; set; }
 
         public FunctionLocation Location { get; set; }
 
@@ -60,7 +61,8 @@ namespace RunnerInterfaces
                 Args = this.Args,
                 ParameterLogBlob = this.ParameterLogBlob,
                 Location = this.Location,
-                ServiceUrl = this.ServiceUrl
+                ServiceUrl = this.ServiceUrl,
+                FunctionInstanceGuid = Id
             };
             return x;
         }

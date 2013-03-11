@@ -57,6 +57,21 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
+            string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.local.cscfg";
+            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(configFile);
+            var table = new AzureTable<TriggerReasonEntity>(account.GetAccount(), "functionCausalityLog");
+
+
+            var log = new CausalityLogger(table, null);
+
+            Guid g1 = Guid.NewGuid();
+            Guid gParent = Guid.NewGuid();
+
+            var reason = new BlobTriggerReason { BlobPath = new CloudBlobPath(@"abc\defg"), ChildGuid = g1, ParentGuid = gParent };
+            log.LogTriggerReason(reason);
+
+            var parent = log.GetChildren(gParent).ToArray();
+
         }
 
 #if false
@@ -93,8 +108,9 @@ namespace ConsoleApplication1
 
             //IFunctionUpdatedLogger logger = new NullLogger();
             IFunctionUpdatedLogger logger = new FunctionInvokeLogger { Account = account.GetAccount(), TableName = "daasfunctionlogs" };
-            
-            var e = new TaskExecutor(account, logger, taskConfig);
+
+            ICausalityLogger causalityLogger = null;
+            var e = new TaskExecutor(account, logger, taskConfig, causalityLogger);
 
             //e.DeletePool();
             //e.CreatePool(1);
@@ -116,7 +132,7 @@ namespace ConsoleApplication1
                     TypeName = "TestApp1.Program",
                     MethodName = "TestCall2"
                 },
-                TriggerReason = "test for Azure Tasks",
+                TriggerReason = new BlobTriggerReason { }, // !!! "test for Azure Tasks",
                 Args = new ParameterRuntimeBinding[]
                   {
                        new LiteralStringParameterRuntimeBinding { Value = "172" }

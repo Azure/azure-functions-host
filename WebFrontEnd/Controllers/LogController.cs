@@ -100,6 +100,9 @@ namespace WebFrontEnd.Controllers
             var model = new LogFunctionModel();
             model.Instance = func;
 
+            IFunctionInstanceLookup lookup = GetServices().GetFunctionInvokeLookup();
+            model.Lookup = lookup;
+
             var instance = model.Instance.FunctionInstance;
             model.Descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
 
@@ -109,7 +112,12 @@ namespace WebFrontEnd.Controllers
 
             model.Parameters = LogAnalysis.GetParamInfo(model.Descriptor);
             LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
-            LogAnalysis.ApplySelfWatchInfo(instance, model.Parameters);                
+            LogAnalysis.ApplySelfWatchInfo(instance, model.Parameters);
+            
+    
+            ICausalityReader causalityReader = GetServices().GetCausalityReader();
+
+            model.Children = causalityReader.GetChildren(func.FunctionInstance.Id).ToArray();
                 
             return View("FunctionInstance", model);
         }
@@ -255,5 +263,11 @@ namespace WebFrontEnd.Controllers
         public FunctionIndexEntity Descriptor { get; set; }
 
         public ParamModel[] Parameters { get; set; }
+
+        // Children functions that got triggered due to this function. 
+        public TriggerReason[] Children { get; set; }
+
+        // For translating Guids to function names
+        public IFunctionInstanceLookup Lookup { get; set; }
     }
 }

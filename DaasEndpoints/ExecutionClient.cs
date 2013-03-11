@@ -13,8 +13,8 @@ namespace DaasEndpoints
     {
         private readonly CloudQueue _queue;
 
-        public WorkerRoleExecutionClient(CloudQueue queue, IAccountInfo account, IFunctionUpdatedLogger logger)
-            : base(account, logger)
+        public WorkerRoleExecutionClient(CloudQueue queue, IAccountInfo account, IFunctionUpdatedLogger logger, ICausalityLogger causalityLogger)
+            : base(account, logger, causalityLogger)
         {
             _queue = queue;
         }

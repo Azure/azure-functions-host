@@ -13,6 +13,7 @@ This page shows details on a specific execution instance of function: @Html.Func
 <ul>
     @{
         var log = Model.Instance;
+        var trigger = log.FunctionInstance.TriggerReason;
     }
     <li>
         @log.GetRunStatusString()
@@ -29,7 +30,15 @@ This page shows details on a specific execution instance of function: @Html.Func
     </li>
     <li>Timestamp: @(log.Timestamp) UTC time</li>             
     <li>Logging: @Html.FunctionOutputLink(log) </li>
-    <li>Reason this function was executed: @log.FunctionInstance.TriggerReason </li>
+    @if (trigger != null)
+    {
+        <li>Reason this function was executed: <span>@trigger</span>
+        @if (trigger.ParentGuid != Guid.Empty)
+        {
+            <span>(by @Html.FunctionInstanceLogLink(trigger.ParentGuid, Model.Lookup) )</span>
+        }
+    </li>
+    }
 </ul>
 
 <p>Values for the parameters for this invocation:</p>
@@ -51,6 +60,23 @@ This page shows details on a specific execution instance of function: @Html.Func
     </tr>
 }
     </table>
+
+
+@if(Model.Children.Length > 0)
+{
+    <p>Functions triggered by this function:</p>
+    
+    <table border="1">
+        @foreach (var child in Model.Children)
+        {
+            <tr>
+                <td>@Html.FunctionInstanceLogLink(child.ChildGuid, Model.Lookup)</td>
+                <td>@child.ToString()</td>
+            </tr>
+        }
+    </table>
+}
+
 
 
 <p>@Html.ReplayFunctionInstance(log) Click this link to replay the function with the same parameters.</p>

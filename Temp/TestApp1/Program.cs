@@ -60,7 +60,6 @@ namespace TestApp1
             Console.WriteLine("Executed:{0}", value);
         }
 
-
         public static void YaoFunc(
             [BlobInput(@"yao-input\{name}.txt")] TextReader input,
             string name, 

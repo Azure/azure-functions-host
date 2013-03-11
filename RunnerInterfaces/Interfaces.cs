@@ -23,6 +23,9 @@ namespace RunnerInterfaces
         // Blob to write live parameter logging too. 
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
 
+        // The guid for this function instance. We need this to properly track causality.
+        public FunctionInstanceGuid FunctionInstanceGuid { get; set; }
+
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
 

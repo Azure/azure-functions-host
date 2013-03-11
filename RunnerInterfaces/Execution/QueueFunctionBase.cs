@@ -13,11 +13,12 @@ namespace RunnerInterfaces
     {
         protected readonly IFunctionUpdatedLogger _logger;
         protected readonly IAccountInfo _account;
+        protected readonly ICausalityLogger _causalityLogger;
 
         // account - this is the internal storage account for using the service. 
         // logger - used for updating the status of the function that gets queued. This must be serializable with JSon since
         //          it will get passed to the host process in an azure task.
-        protected QueueFunctionBase(IAccountInfo account, IFunctionUpdatedLogger logger)
+        protected QueueFunctionBase(IAccountInfo account, IFunctionUpdatedLogger logger, ICausalityLogger causalityLogger)
         {
             if (logger == null)
             {
@@ -27,15 +28,31 @@ namespace RunnerInterfaces
             {
                 throw new ArgumentNullException("account");
             }
+            if (causalityLogger == null)
+            {
+                throw new ArgumentNullException("causalityLogger");
+            }
 
             _account = account;
             _logger = logger;
+            _causalityLogger = causalityLogger;
         }
 
         public ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
         {
             instance.Id = Guid.NewGuid(); // used for logging. 
             instance.ServiceUrl = _account.WebDashboardUri;
+
+            if (instance.TriggerReason == null)
+            {
+                // Having a trigger reason is important for diagnostics. 
+                // So make sure it's not accidentally null. 
+                throw new InvalidOperationException("Function instance must have a trigger reason set.");
+            }
+            instance.TriggerReason.ChildGuid = instance.Id;
+            _causalityLogger.LogTriggerReason(instance.TriggerReason);
+            
+
 
             // Log that the function is now queued.
             // Do this before queueing to avoid racing with execution 

@@ -26,8 +26,8 @@ namespace Executor
         private readonly TaskConfig _config;
 
         // config - configuration information for using AzureTasks. 
-        public TaskExecutor(IAccountInfo account, IFunctionUpdatedLogger logger, TaskConfig config)
-            : base(account, logger)
+        public TaskExecutor(IAccountInfo account, IFunctionUpdatedLogger logger, TaskConfig config, ICausalityLogger causalityLogger)
+            : base(account, logger, causalityLogger)
         {
             if (config == null)
             {

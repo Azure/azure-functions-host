@@ -51,7 +51,7 @@ namespace WebFrontEnd
             FunctionIndexEntity f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
             {
-                throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);                                
+                throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
             }
 
             // Get query parameters
@@ -59,12 +59,33 @@ namespace WebFrontEnd
             Dictionary<string, string> parameters = GetParamsFromQuery(uri);
             parameters.Remove("func"); //  remove query parameter that we added for the function id
 
+            // !!! Extract a parent Guid parameter
+            Guid parentGuid;
+            {
+                string guidAsString;
+                const string key = "$this"; // !!! Share constant somewhere?
+                if (parameters.TryGetValue(key, out guidAsString))
+                {
+                    parentGuid = Guid.Parse(guidAsString);
+                    parameters.Remove(key);
+                }
+                else
+                {
+                    parentGuid = Guid.Empty;
+                }
+            }
+
+
             // Bind and queue. 
             // Queue could be an hour deep
             try
             {
                 var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
-                instance.TriggerReason = string.Format("Explicitly invoked via POST WebAPI.");
+                instance.TriggerReason = new InvokeTriggerReason
+                {
+                    Message = "Explicitly invoked via POST WebAPI.",
+                    ParentGuid = parentGuid
+                };
 
                 IQueueFunction executor = GetServices().GetExecutionClient();
                 ExecutionInstanceLogEntity result = executor.Queue(instance);

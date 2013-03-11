@@ -14,8 +14,9 @@ namespace SimpleBatch.Client
     {
         private readonly string _serviceUri;
         private readonly string _scope; // fully qualified cloud name, incluing storage container
+        private readonly Guid _thisFunc; // guid instance for this function. 
 
-        public WebFunctionInvoker(string scope, string serviceUri)
+        public WebFunctionInvoker(string scope, string serviceUri, Guid thisFuncGuid)
         {
             if (serviceUri == null)
             {
@@ -34,6 +35,8 @@ namespace SimpleBatch.Client
             }
 
             _serviceUri = serviceUri;
+
+            _thisFunc = thisFuncGuid;
         }
 
         protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)
@@ -150,6 +153,12 @@ namespace SimpleBatch.Client
             {
                 sb.AppendFormat("&{0}={1}", kv.Key, kv.Value);
             }
+
+            if (_thisFunc != Guid.Empty)
+            {
+                sb.AppendFormat("&{0}={1}", "$this", _thisFunc); // !!! double check?
+            }
+
             return sb.ToString();
         }
 

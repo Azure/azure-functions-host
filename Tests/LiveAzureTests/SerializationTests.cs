@@ -28,8 +28,8 @@ namespace LiveAzureTests
 
             var instance = new FunctionInvokeRequest
             {
-                Id =  g, 
-                TriggerReason = "from test",
+                Id =  g,
+                TriggerReason = new BlobTriggerReason { }, // !!!
                 Location = new FunctionLocation
                 {
                     Blob = Blob("container", "blob"),

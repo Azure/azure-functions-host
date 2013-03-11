@@ -54,11 +54,14 @@
   <ItemGroup>
     <Compile Include="BindingInterfaces.cs" />
     <Compile Include="BlobTextWriter.cs" />
+    <Compile Include="Logging\CausalityLogger.cs" />
+    <Compile Include="Logging\FunctionInstanceGuid.cs" />
+    <Compile Include="Logging\ICausalityLogger.cs" />
     <Compile Include="CloudBlobPath.cs" />
     <Compile Include="Comparers.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="ContainerDownloader.cs" />
-    <Compile Include="ExecutionInstanceLogEntity.cs" />
+    <Compile Include="Logging\ExecutionInstanceLogEntity.cs" />
     <Compile Include="Execution\AzureExecutionEndpointNames.cs" />
     <Compile Include="Execution\ExecuteBase.cs" />
     <Compile Include="Execution\ExecutionStatsAggregatorBridge.cs" />
@@ -72,8 +75,8 @@
     <Compile Include="Execution\IAccountInfo.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />
-    <Compile Include="Logger.cs" />
-    <Compile Include="LoggingInterfaces.cs" />
+    <Compile Include="Logging\Logger.cs" />
+    <Compile Include="Logging\LoggingInterfaces.cs" />
     <Compile Include="ModelBinderManifest.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

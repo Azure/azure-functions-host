@@ -11,6 +11,7 @@ using System.Threading;
 using AzureTables;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure;
+using SimpleBatch;
 
 namespace DaasEndpoints
 {
@@ -136,7 +137,9 @@ namespace DaasEndpoints
         public IQueueFunction GetExecutionClient()
         {
             IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
-            return new WorkerRoleExecutionClient(GetExecutionQueue(), _accountInfo, logger);
+            ICausalityLogger causalityLogger = GetCausalityLogger();
+
+            return new WorkerRoleExecutionClient(GetExecutionQueue(), _accountInfo, logger, causalityLogger);
         }
 
         public IFunctionTable GetFunctionTable()

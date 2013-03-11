@@ -33,6 +33,9 @@ namespace DaasEndpoints
         public const string FunctionInvokeLogIndexMruFunctionSucceeded = "functionlogsIndexMRUByFunctionSucceeded";
         public const string FunctionInvokeLogIndexMruFunctionFailed = "functionlogsIndexMRUByFunctionFailed";
 
+
+        public const string FunctionCausalityLog = "functionCausalityLog";
+
         // Queuenames must be all lowercase. 
         public const string ExecutionQueueName = prefix + "-execution";
 

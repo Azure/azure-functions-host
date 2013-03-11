@@ -212,9 +212,7 @@ namespace Orchestrator
 
                 if (instance != null)
                 {
-                    instance.TriggerReason = "Timer fired";
-
-                    Console.WriteLine("# Queuing function from Timer: {0}", func);
+                    instance.TriggerReason = new TimerTriggerReason();                         
                     _execute.Queue(instance);
                 }
             }
@@ -262,8 +260,11 @@ namespace Orchestrator
             
             if (instance != null)
             {
-                Console.WriteLine("# Queuing function: {0}", func);
-                instance.TriggerReason = "New queue input message on queue"; 
+                instance.TriggerReason = new QueueMessageTriggerReason
+                {
+                    MessageId = msg.Id,
+                    ParentGuid = GetOwnerFromMessage(msg)
+                };
                 _execute.Queue(instance);
             }
         }
@@ -307,13 +308,27 @@ namespace Orchestrator
                             }
                         }
 
-                        instance.TriggerReason = "New blob input detected: " + new CloudBlobPath(blob).ToString();
+                        Guid parentGuid = GetBlobWriterGuid(blob);
+                        instance.TriggerReason = new BlobTriggerReason
+                        {
+                            BlobPath = new CloudBlobPath(blob),
+                            ParentGuid = parentGuid
+                        };                      
 
-                        Console.WriteLine("# Queuing function: {0}", func);
                         _execute.Queue(instance);
                     }
                 }
             }
+        }
+
+        private Guid GetBlobWriterGuid(CloudBlob blob)
+        {
+            return Guid.Empty; // !!! Fill it out
+        }
+
+        private Guid GetOwnerFromMessage(CloudQueueMessage msg)
+        {
+            return Guid.Empty; // !!! Fill it out
         }
 
 

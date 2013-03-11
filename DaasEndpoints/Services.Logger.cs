@@ -18,6 +18,20 @@ namespace DaasEndpoints
     // Services related to logging
     public partial class Services
     {
+        public ICausalityLogger GetCausalityLogger()
+        {
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IFunctionInstanceLookup logger = null; // write-only mode
+            return new CausalityLogger(table, logger);
+        }
+
+        public ICausalityReader GetCausalityReader()
+        {
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IFunctionInstanceLookup logger = this.GetFunctionInvokeLookup(); // read-mode
+            return new CausalityLogger(table, logger);
+        }
+
         public IFunctionUpdatedLogger GetFunctionInvokeLogger()
         {
             return new FunctionInvokeLogger
@@ -82,9 +96,9 @@ namespace DaasEndpoints
                  row => Tuple.Create("1", row.ToString()));
         }
 
-        private IAzureTable<FunctionIndexPointer> GetIndexTable(string tableName)
+        private IAzureTable<FunctionInstanceGuid> GetIndexTable(string tableName)
         {
-            return new AzureTable<FunctionIndexPointer>(_account, tableName);
+            return new AzureTable<FunctionInstanceGuid>(_account, tableName);
         }
 
         private IAzureTableReader<ExecutionInstanceLogEntity> GetFunctionLookupTable()

@@ -29,6 +29,7 @@ namespace RunnerInterfaces
     // Called by any node, after function has been provided by IFunctionUpdatedLogger.
     public interface IFunctionInstanceLookup
     {
+        // $$$ Can this return null?
         ExecutionInstanceLogEntity Lookup(Guid rowKey);
     }
 

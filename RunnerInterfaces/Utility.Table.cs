@@ -24,6 +24,25 @@ namespace RunnerInterfaces
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
     public static partial class Utility
     {
+        // Helper to get a row key based on time stamp. 
+        // Where recent time is sorted first. 
+        public static string GetTickRowKey(DateTime time)
+        {
+            string rowKey = Ticks(time) + "." + Ticks(DateTime.UtcNow);
+            return rowKey;
+        }
+
+        public static string GetTickRowKey()
+        {
+            string rowKey = Ticks(DateTime.UtcNow);
+            return rowKey;
+        }
+
+        private static string Ticks(DateTime time)
+        {
+            return string.Format("{0:D19}", DateTime.MaxValue.Ticks - time.Ticks);
+        }
+
         private static TableServiceContext GetContent<T>(CloudStorageAccount account, string tableName)
         {
             CloudTableClient tableClient = account.CreateCloudTableClient();

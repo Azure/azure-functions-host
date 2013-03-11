@@ -67,6 +67,22 @@ namespace WebFrontEnd.Controllers
                 null);
         }
 
+        // Overload when we have a guid. Includes the resolve to resolve to a nice function name.
+        public static MvcHtmlString FunctionInstanceLogLink(
+            this HtmlHelper htmlHelper,
+            Guid id,
+            IFunctionInstanceLookup lookup)
+        {
+            ExecutionInstanceLogEntity log = lookup.Lookup(id);
+            if (log != null)
+            {
+                return FunctionInstanceLogLink(htmlHelper, log);
+            }
+            // No entry matching the guid. Just show the raw guid then. 
+            return FunctionInstanceLogLink(htmlHelper, id);
+        }
+
+        // Overload when we only have a guid, no resolver. 
         public static MvcHtmlString FunctionInstanceLogLink(
             this HtmlHelper htmlHelper,
             Guid? id,

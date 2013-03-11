@@ -13,18 +13,6 @@ using SimpleBatch;
 
 namespace Executor
 {
-    // Entry in a secondary index that points back to the primary table.
-    public class FunctionIndexPointer
-    {
-        public FunctionIndexPointer() { }
-
-        public FunctionIndexPointer(ExecutionInstanceLogEntity log)
-        {
-            this.Instance = log.FunctionInstance.Id;
-        }
-        public Guid Instance { get; set; }
-    }
-
     // Includes both reading and writing the secondary indices together. 
     public class ExecutionStatsAggregator : IFunctionCompleteLogger, IFunctionInstanceQuery
     {
@@ -36,10 +24,10 @@ namespace Executor
 
         // 2nd index for most-recently used functions.
         // These are all sorted by time stamp. 
-        private readonly IAzureTable<FunctionIndexPointer> _tableMRU;
-        private readonly IAzureTable<FunctionIndexPointer> _tableMRUByFunction;
-        private readonly IAzureTable<FunctionIndexPointer> _tableMRUByFunctionSucceed;
-        private readonly IAzureTable<FunctionIndexPointer> _tableMRUByFunctionFailed;
+        private readonly IAzureTable<FunctionInstanceGuid> _tableMRU;
+        private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunction;
+        private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionSucceed;
+        private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionFailed;
 
         // Lookup in primary index
         private readonly IAzureTableReader<ExecutionInstanceLogEntity> _tableLookup;
@@ -56,10 +44,10 @@ namespace Executor
         public ExecutionStatsAggregator(
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup,
             AzureTable<FunctionLocation, FunctionStatsEntity> tableStatsSummary,
-            IAzureTable<FunctionIndexPointer> tableMru, 
-            IAzureTable<FunctionIndexPointer> tableMruByFunction, 
-            IAzureTable<FunctionIndexPointer> tableMruByFunctionSucceeded, 
-            IAzureTable<FunctionIndexPointer> tableMruFunctionFailed)
+            IAzureTable<FunctionInstanceGuid> tableMru, 
+            IAzureTable<FunctionInstanceGuid> tableMruByFunction, 
+            IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded, 
+            IAzureTable<FunctionInstanceGuid> tableMruFunctionFailed)
             : this(tableLookup)
         {
             NotNull(tableStatsSummary, "tableStatsSummary");
@@ -102,11 +90,11 @@ namespace Executor
             // FunctionLocation 
             // Success?
 
-            IEnumerable<FunctionIndexPointer> ptrs;
+            IEnumerable<FunctionInstanceGuid> ptrs;
             if (filter.Location != null)
             {
                 // Filter on a specific type of function 
-                IAzureTableReader<FunctionIndexPointer> table;
+                IAzureTableReader<FunctionInstanceGuid> table;
 
                 if (filter.Succeeded.HasValue)
                 {
@@ -130,7 +118,7 @@ namespace Executor
             }
             else
             {
-                IAzureTableReader<FunctionIndexPointer> table = _tableMRU;
+                IAzureTableReader<FunctionInstanceGuid> table = _tableMRU;
                 // Take all functions, without filter. 
                 ptrs = table.Enumerate();
             }
@@ -138,7 +126,10 @@ namespace Executor
             ptrs = ptrs.Take(N);
 
             IFunctionInstanceLookup lookup = this;
-            return from ptr in ptrs select lookup.Lookup(ptr.Instance);
+            return from ptr in ptrs 
+                   let val = lookup.Lookup(ptr)
+                   where val != null
+                   select val;
         }
 
         void IFunctionCompleteLogger.Flush()
@@ -169,9 +160,9 @@ namespace Executor
                         
             // Use function's actual end time (so we can reindex)
             // and append with Now just in case there are ties. 
-            string rowKey = Ticks(log.EndTime.Value) + "." + Ticks(DateTime.UtcNow);
+            string rowKey = Utility.GetTickRowKey(log.EndTime.Value);
 
-            var ptr = new FunctionIndexPointer(log);
+            var ptr = new FunctionInstanceGuid(log);
             _tableMRU.Write("1", rowKey, ptr);
 
             string funcId = log.FunctionInstance.Location.ToString(); // valid row key
@@ -187,11 +178,6 @@ namespace Executor
                     break;
             }
 
-        }
-
-        private static string Ticks(DateTime time)
-        {
-            return string.Format("{0:D19}", DateTime.MaxValue.Ticks - time.Ticks);
         }
 
         // Called by the orchestrator (which gaurantees single-threaded access) sometime shortly after a 
