@@ -10,7 +10,7 @@ csx
 /WebFrontEnd/Properties/PublishProfiles
 /TestResults
 /Secrets/Secrets.Password.cs
-/tests/LiveAzureTests/config.password.cs
+/tests/LiveAzureTests/app.config
 
 /CloudBinders/PrivateBinderList.csv
 /PublicDownload/Binaries

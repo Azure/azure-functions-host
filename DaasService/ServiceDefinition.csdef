@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<ServiceDefinition name="DaasService" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition" schemaVersion="2012-05.1.7">
+<ServiceDefinition name="DaasService" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition" schemaVersion="2012-10.1.8">
   <WorkerRole name="ExecutionRole" vmsize="ExtraSmall">
     <Imports>
       <Import moduleName="Diagnostics" />
@@ -24,17 +24,14 @@
     </LocalResources>
     <ConfigurationSettings>
       <Setting name="MainStorage" />
-      <Setting name="WebRoleEndpoint"/>
-
-
+      <Setting name="WebRoleEndpoint" />
       <!-- For Azure Task Config 
       Key is secret. Poolname was precreated. 
       -->
-      <Setting name="AzureTaskTenantUrl"/>
-      <Setting name="AzureTaskAccountName"/>
-      <Setting name="AzureTaskKey"/>
-      <Setting name="AzureTaskPoolName"/>
-
+      <Setting name="AzureTaskTenantUrl" />
+      <Setting name="AzureTaskAccountName" />
+      <Setting name="AzureTaskKey" />
+      <Setting name="AzureTaskPoolName" />
     </ConfigurationSettings>
   </WorkerRole>
   <WebRole name="WebFrontEnd" vmsize="ExtraSmall">
@@ -47,16 +44,15 @@
     </Sites>
     <Endpoints>
       <InputEndpoint name="Endpoint1" protocol="http" port="80" />
-
       <!-- Must define an endpoint in order to discover other roles -->
-      <InternalEndpoint name="InternalEndpoint2" protocol="http"/>
+      <InternalEndpoint name="InternalEndpoint2" protocol="http" />
     </Endpoints>
     <Imports>
       <Import moduleName="Diagnostics" />
     </Imports>
     <ConfigurationSettings>
       <Setting name="MainStorage" />
-      <Setting name="WebRoleEndpoint"/>
+      <Setting name="WebRoleEndpoint" />
     </ConfigurationSettings>
   </WebRole>
 </ServiceDefinition>

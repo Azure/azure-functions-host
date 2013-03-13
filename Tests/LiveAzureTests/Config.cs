@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using LiveAzureTests;
+using System.Configuration;
 using Microsoft.WindowsAzure;
 using RunnerInterfaces;
 
@@ -10,6 +7,16 @@ public partial class AzureConfig
 {
     public static CloudStorageAccount GetAccount()
     {
+        string accountName = ConfigurationManager.AppSettings["accountName"];
+        string accountKey = ConfigurationManager.AppSettings["accountKey"];
+        if (String.IsNullOrEmpty(accountName))
+        {
+            throw new InvalidOperationException("The account name is null or empty. Set it in the app.config.");
+        }
+        if (String.IsNullOrEmpty(accountKey))
+        {
+            throw new InvalidOperationException("The account key is null or empty. Set it in the app.config.");
+        }
         return new CloudStorageAccount(new StorageCredentialsAccountAndKey(accountName, accountKey), false);
     }
 
