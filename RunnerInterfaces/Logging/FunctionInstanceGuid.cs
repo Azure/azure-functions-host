@@ -16,6 +16,7 @@ namespace RunnerInterfaces
     // !!! Change to struct? Rename to FunctionIndexGuid so it's obvious it's a guid wrapper.
     // !!! Make sure this JSON serializes like a guid?
     // Entry in a secondary index that points back to the primary table.
+    // Ideally be a struct, but then value-type semantics make serialization unhappy. 
     public class FunctionInstanceGuid
     {
         private Guid _instance;

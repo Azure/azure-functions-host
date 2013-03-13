@@ -1,0 +1,36 @@
+﻿@using WebFrontEnd.Controllers
+@model FunctionChainModel
+@{
+    ViewBag.Title = "ViewChain";
+   
+    int depth = 0;
+}
+
+<h2>View Chain</h2>
+
+<p>
+    Shows all descendents triggered by a particular function. 
+</p>
+
+<table border="1">
+@foreach (var node in Model.Nodes)
+{
+   
+    <tr>
+        <td>
+            @node.Depth
+        </td>
+    <td>
+        @{        
+        string methodName = node.Func.Location.MethodName;
+        string indent = new string('-', (node.Depth -1) * 2);
+        }
+        @indent                   
+        @Html.FunctionInstanceLogLink(node.Func, methodName)
+        </td>
+    <td>
+    @node.Func.TriggerReason
+        </td>
+        </tr>
+}
+    </table>

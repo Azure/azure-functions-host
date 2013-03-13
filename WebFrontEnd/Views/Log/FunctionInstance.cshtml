@@ -77,6 +77,12 @@ This page shows details on a specific execution instance of function: @Html.Func
     </table>
 }
 
-
+@if ((Model.Children.Length > 0) || (trigger.ParentGuid != Guid.Empty))
+{
+    <p>
+        View entire chain:
+    @Html.ActionLink("View entire function chain", "ViewChain", new { func = log.FunctionInstance.Id });
+    </p>
+}
 
 <p>@Html.ReplayFunctionInstance(log) Click this link to replay the function with the same parameters.</p>

@@ -42,6 +42,61 @@ namespace WebFrontEnd.Controllers
             return View();
         }
 
+
+        // Given a function, view the entire causal chain.  
+        public ActionResult ViewChain(FunctionInvokeRequest func)
+        {
+            ICausalityReader reader = GetServices().GetCausalityReader();
+            IFunctionInstanceLookup lookup = GetServices().GetFunctionInvokeLookup();
+
+            // Redirect to ancestor?
+            FunctionInvokeRequest funcHead = func;
+            while(true)
+            {
+                Guid parentGuid = funcHead.TriggerReason.ParentGuid;
+                if (parentGuid == Guid.Empty)
+                {
+                    break;
+                }
+                parentGuid = reader.GetParent(func.Id);
+                funcHead = lookup.Lookup(parentGuid).FunctionInstance;
+            }
+
+            if (funcHead.Id != func.Id)
+            {
+                return RedirectToAction("ViewChain", new { func = funcHead.Id });
+            }
+
+            FunctionChainModel model = new FunctionChainModel
+            {
+                 Lookup = lookup,
+                 Walker = reader
+            };
+
+            
+            List<ListNode> nodes = new List<ListNode>();
+            model.Nodes = nodes;
+            Walk(funcHead, nodes, 0, model);
+
+            return View(model);
+        }
+
+        void Walk(FunctionInvokeRequest current, List<ListNode> list, int depth, FunctionChainModel model)
+        {
+            depth++;
+            list.Add(new ListNode
+            {
+                Depth = depth,
+                Func = current
+            });
+            foreach (var child in model.Walker.GetChildren(current.Id))
+            {
+                FunctionInvokeRequest childFunc = model.Lookup.Lookup(child.ChildGuid).FunctionInstance;
+                Walk(childFunc, list, depth, model);
+            }
+        }
+
+
         //
         // GET: /Log/
 

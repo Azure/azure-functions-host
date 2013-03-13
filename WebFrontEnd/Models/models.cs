@@ -73,4 +73,19 @@ namespace WebFrontEnd.Controllers
             public string EntryPoint { get; set; }
         }
     }
+
+    public class FunctionChainModel
+    {
+        public ICausalityReader Walker { get; set; }
+        public IFunctionInstanceLookup Lookup { get; set; }
+
+        public IEnumerable<ListNode> Nodes { get; set; }
+    }
+
+    // Convert tree into flat list so that it's easier to render
+    public class ListNode
+    {
+        public FunctionInvokeRequest Func { get; set; }
+        public int Depth { get; set; }
+    }
 }
