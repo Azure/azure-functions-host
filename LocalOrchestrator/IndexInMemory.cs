@@ -112,7 +112,7 @@ namespace Orchestrator
 
             // run immediately 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
-            Program.Invoke(_config, m, inputs, instance.Args);
+            Program.Invoke(_config, m, instance.Id, inputs, instance.Args);
 
             return null;
         }

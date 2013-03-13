@@ -115,6 +115,11 @@ namespace RunnerInterfaces
         public static CloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)
         {
             var account = Utility.GetAccount(accountConnectionString);
+            return GetBlob(account, containerName, blobName);
+        }
+
+        public static CloudBlob GetBlob(CloudStorageAccount account, string containerName, string blobName)
+        {
             var client = account.CreateCloudBlobClient();
             var c = GetContainer(client, containerName);
             var blob = c.GetBlobReference(blobName);

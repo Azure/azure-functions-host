@@ -54,6 +54,7 @@ namespace SimpleBatch
     {
         BindResult<T> Bind<T>(Attribute a);
         string AccountConnectionString { get; }
+        Guid FunctionInstanceGuid { get; }
     }
 
     public static class IBinderExtensions

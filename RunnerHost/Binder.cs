@@ -117,13 +117,15 @@ namespace RunnerHost
 
     class BindingContext : IBinderEx
     {
-        private IRuntimeBindingInputs _runtimeInputs;
-        private IConfiguration _config;
+        private readonly IRuntimeBindingInputs _runtimeInputs;
+        private readonly IConfiguration _config;
+        private readonly FunctionInstanceGuid _FunctionInstanceGuid;
 
-        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs)
+        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance)
         {
             _config = config;
             _runtimeInputs = runtimeInputs;
+            _FunctionInstanceGuid = functionInstance;
         }
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
@@ -149,6 +151,12 @@ namespace RunnerHost
         public string AccountConnectionString
         {
             get { return _runtimeInputs.AccountConnectionString; }
+        }
+
+
+        public Guid FunctionInstanceGuid
+        {
+            get { return _FunctionInstanceGuid;  }
         }
     }
 

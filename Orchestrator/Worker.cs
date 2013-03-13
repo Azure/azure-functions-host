@@ -323,7 +323,8 @@ namespace Orchestrator
 
         private Guid GetBlobWriterGuid(CloudBlob blob)
         {
-            return Guid.Empty; // !!! Fill it out
+            IBlobCausalityLogger logger = new BlobCausalityLogger();
+            return logger.GetWriter(blob);
         }
 
         private Guid GetOwnerFromMessage(CloudQueueMessage msg)

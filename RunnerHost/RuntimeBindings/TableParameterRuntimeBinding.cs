@@ -17,10 +17,10 @@ namespace RunnerHost
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
-            return Bind(config, t);
+            return Bind(config, t, bindingContext.FunctionInstanceGuid);
         }
 
-        public BindResult Bind(IConfiguration config, Type type)
+        public BindResult Bind(IConfiguration config, Type type, FunctionInstanceGuid instance)
         {            
             bool isReadOnly = false; // ### eventually get this from an attribute?
 
@@ -32,7 +32,7 @@ namespace RunnerHost
             }
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
-            IBinderEx ctx = new BindingContext(config, inputs);
+            IBinderEx ctx = new BindingContext(config, inputs, instance);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

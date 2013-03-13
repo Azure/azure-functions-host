@@ -9,6 +9,64 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
+    // Wraps a bind Result and records the blob's authoring function after the blob is written.
+    // This preserves causality functionality. 
+    class BlobBindResult : BindResult
+    {
+        private readonly BindResult _inner;
+        private readonly Guid _functionWriter;
+        private readonly CloudBlob _blob;
+        private readonly IBlobCausalityLogger _logger;
+
+        // !!! Propagate Result?
+
+        private BlobBindResult(BindResult inner, Guid functionWriter, CloudBlob blob, IBlobCausalityLogger logger)
+        {
+            _functionWriter = functionWriter;
+            _blob = blob;
+            _logger = logger;
+
+            _inner = inner;
+            this.Result = _inner.Result;
+        }
+
+        public override ISelfWatch Watcher
+        {
+            get
+            {
+                return _inner.Watcher;
+            }
+        }
+
+        public override void OnPostAction()
+        {
+            _inner.Result = this.Result;
+            _inner.OnPostAction(); // important, this is what may write the blob. 
+
+            // This is the critical call to record causality. 
+            // The entire purpose of this wrapper class is to make this call. 
+            _logger.SetWriter(_blob, _functionWriter);
+        }
+
+        // Get a BindResult for a blob that will stamp the blob with the GUID of the function instance that wrote it. 
+        // ContainerName and BlobName are redundant with blob. 
+        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, string containerName, string blobName, Type targetType, CloudBlob blob, IBlobCausalityLogger logger)
+        {
+            // Invoke the inner binder to create a cloud blob. 
+            var inner = blobBinder.Bind(bindingContext, containerName, blobName, targetType);
+            if (isInput)
+            {
+                // Only stamp blobs we write. 
+                return inner;
+            }
+            
+            // Now wrap it with a result that will tag it with a Guid. 
+            Guid functionWriter = bindingContext.FunctionInstanceGuid;
+            return new BlobBindResult(inner, functionWriter, blob, logger);
+        }
+    }
+
+
     // Argument is single blob.
     public class BlobParameterRuntimeBinding : ParameterRuntimeBinding
     {
@@ -48,7 +106,8 @@ namespace RunnerHost
                 throw new InvalidOperationException(msg);                    
             }
 
-            return blobBinder.Bind(bindingContext, this.Blob.ContainerName, this.Blob.BlobName, type);            
+            IBlobCausalityLogger logger = new BlobCausalityLogger();
+            return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, this.Blob.ContainerName, this.Blob.BlobName, type, blob, logger);            
         }
                         
         public override string ConvertToInvokeString()
@@ -104,11 +163,16 @@ namespace RunnerHost
             int len = blobs.Count;
 
             var array = new BindArrayResult(len, tElement);
-                        
+
+            IBlobCausalityLogger logger = new BlobCausalityLogger();
+
             for (int i = 0; i < len; i++)
             {
                 var b = blobs[i];
-                BindResult bind = blobBinder.Bind(bindingContext, b.Container.Name, b.Name, tElement);
+
+
+                bool isInput = true;
+                BindResult bind = BlobBindResult.BindWrapper(isInput, blobBinder, bindingContext, b.Container.Name, b.Name, tElement, b, logger);            
                 array.SetBind(i, bind);                
             }
 

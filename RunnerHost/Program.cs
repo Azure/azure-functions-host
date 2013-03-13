@@ -78,7 +78,7 @@ namespace RunnerHost
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
 
-            Invoke(config, method, inputs, invoke.Args);
+            Invoke(config, method, invoke.FunctionInstanceGuid, inputs, invoke.Args);
         }
 
         static void ApplyManifestBinders(LocalFunctionInstance invoke, IConfiguration config)
@@ -277,11 +277,11 @@ namespace RunnerHost
             }
         }
 
-        public static void Invoke(IConfiguration config, MethodInfo m, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
+        public static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
 
-            IBinderEx bindingContext = new BindingContext(config, inputs);
+            IBinderEx bindingContext = new BindingContext(config, inputs, instance);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

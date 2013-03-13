@@ -87,21 +87,28 @@ namespace Orchestrator
         private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
         {            
             FunctionIndexEntity func = GetFunction(account, method);
-            FunctionInvokeRequest instance = fpGetInstance(func);
+            FunctionInvokeRequest instance = GetInstance(fpGetInstance, func);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
-            Program.Invoke(config, method, inputs, instance.Args);
+            Program.Invoke(config, method, instance.Id, inputs, instance.Args);
         }
 
         private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
         {
             FunctionIndexEntity func = GetFunction(account, method);
-            FunctionInvokeRequest instance = fpGetInstance(func);
+            FunctionInvokeRequest instance = GetInstance(fpGetInstance, func);
 
             var config = ReflectionFunctionInvoker.GetConfiguration(account, method.DeclaringType);
                         
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(func.Location);            
-            Program.Invoke(config, method, inputs, instance.Args);
+            Program.Invoke(config, method, instance.Id, inputs, instance.Args);
+        }
+
+        private static FunctionInvokeRequest GetInstance(Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance, FunctionIndexEntity func)
+        {
+            var instance = fpGetInstance(func);
+            instance.Id = Guid.NewGuid(); // add the function instance id for causality tracking
+            return instance;
         }
 
         // Convert MethodInfo --> FunctionIndexEntity

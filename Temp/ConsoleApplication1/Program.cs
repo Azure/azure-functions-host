@@ -58,19 +58,32 @@ namespace ConsoleApplication1
         static void Main()
         {
             string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.local.cscfg";
-            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(configFile);
-            var table = new AzureTable<TriggerReasonEntity>(account.GetAccount(), "functionCausalityLog");
+            IAccountInfo accountInfo = LocalRunnerHost.Program.GetAccountInfo(configFile);
 
+            CloudStorageAccount account = accountInfo.GetAccount();
+            var client = account.CreateCloudBlobClient();
+            CloudBlobContainer c = client.GetContainerReference("test");
+            CloudBlob blob = c.GetBlobReference("temp");
+            blob.UploadText("Hello!");
 
-            var log = new CausalityLogger(table, null);
+            // Metadata names must adehere to C# identifier rules
+            // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
+            blob.FetchAttributes();
+            blob.Metadata["SimpleBatch_WriterFunc"] = "test";
+            blob.SetMetadata();
 
-            Guid g1 = Guid.NewGuid();
-            Guid gParent = Guid.NewGuid();
+            CloudBlob blob2 = c.GetBlobReference("temp");
+                        
+            // Does it merge? Or replace?
 
-            var reason = new BlobTriggerReason { BlobPath = new CloudBlobPath(@"abc\defg"), ChildGuid = g1, ParentGuid = gParent };
-            log.LogTriggerReason(reason);
+            var x = blob2.Metadata["SimpleBatch_WriterFunc"]; // null. 
+            // blob2.FetchAttributes();
+            x = blob2.Metadata["SimpleBatch_WriterFunc"];
 
-            var parent = log.GetChildren(gParent).ToArray();
+            //blob2.Metadata["second"] = "2";
+            blob2.Metadata["third"] = "3";
+            blob2.SetMetadata();
+
 
         }
 

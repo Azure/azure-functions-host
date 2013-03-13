@@ -37,7 +37,7 @@ namespace OrchestratorUnitTests
 
             MethodInfo m = typeof(Program).GetMethod("FuncWithNames");
 
-            var d = new Dictionary<string,string>() { 
+            var d = new Dictionary<string, string>() { 
                 { "name", "note" }, 
                 { "date" , "monday" },
                 { "unbound", "test" },
@@ -47,6 +47,15 @@ namespace OrchestratorUnitTests
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.AreEqual("done", content);
+
+            {
+                // $$$ Put this in its own unit test?
+                IBlobCausalityLogger logger = new BlobCausalityLogger();
+                var blob = Utility.GetBlob(account, "daas-test-input", "out.csv");
+                var guid = logger.GetWriter(blob);
+
+                Assert.IsTrue(guid != Guid.Empty, "Blob is missing causality information");
+            }
         }
         
         [TestMethod]
