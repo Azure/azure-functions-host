@@ -37,7 +37,9 @@ namespace Orchestrator
             if (this.IsInput)
             {
                 var inputQueueMsg = (ITriggerNewQueueMessage)inputs;
-                payload = inputQueueMsg.QueueMessageInput.AsString;                
+
+                QueueCausalityHelper qcm = new QueueCausalityHelper();
+                payload = qcm.DecodePayload(inputQueueMsg.QueueMessageInput);
             }
             return this.BindFromInvokeString(inputs, payload);
         }

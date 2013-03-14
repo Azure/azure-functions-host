@@ -18,13 +18,17 @@ namespace RunnerHost
         private class QueueResult : BindResult
         {
             public CloudQueue Queue;
+            public Guid thisFunction;
 
             public override void OnPostAction()
             {
                 if (this.Result != null)
                 {
-                    string json = JsonCustom.SerializeObject(this.Result);
-                    CloudQueueMessage msg = new CloudQueueMessage(json);
+                    QueueCausalityHelper qcm = new QueueCausalityHelper();
+                    CloudQueueMessage msg = qcm.EncodePayload(thisFunction, this.Result);
+                    
+                    // Beware, as soon as this is added, 
+                    // another worker can pick up the message and start running. 
                     this.Queue.AddMessage(msg);
                 }
             }
@@ -38,7 +42,11 @@ namespace RunnerHost
                 throw new InvalidOperationException(msg);
             }
 
-            return new QueueResult { Queue = this.QueueOutput.GetQueue() };
+            return new QueueResult 
+            { 
+                thisFunction = bindingContext.FunctionInstanceGuid,
+                Queue = this.QueueOutput.GetQueue() 
+            };
         }
 
         public override string ConvertToInvokeString()

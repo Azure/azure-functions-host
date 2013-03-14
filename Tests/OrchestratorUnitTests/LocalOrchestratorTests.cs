@@ -105,7 +105,8 @@ namespace OrchestratorUnitTests
             var msg = queue.GetMessage();
             Assert.IsNotNull(msg);
 
-            string data = msg.AsString;
+            QueueCausalityHelper qcm = new QueueCausalityHelper();
+            string data = qcm.DecodePayload(msg);
             Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
             Assert.AreEqual(15, payload.Value);

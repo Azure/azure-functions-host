@@ -76,6 +76,7 @@
     <Compile Include="Execution\IAccountInfo.cs" />
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />
+    <Compile Include="Logging\IQueueCausalityLogger.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Logging\LoggingInterfaces.cs" />
     <Compile Include="ModelBinderManifest.cs" />

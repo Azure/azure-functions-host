@@ -58,7 +58,7 @@ namespace WebFrontEnd.Controllers
                 {
                     break;
                 }
-                parentGuid = reader.GetParent(func.Id);
+                parentGuid = reader.GetParent(funcHead.Id);
                 funcHead = lookup.Lookup(parentGuid).FunctionInstance;
             }
 

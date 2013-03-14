@@ -329,7 +329,8 @@ namespace Orchestrator
 
         private Guid GetOwnerFromMessage(CloudQueueMessage msg)
         {
-            return Guid.Empty; // !!! Fill it out
+            QueueCausalityHelper qcm = new QueueCausalityHelper();
+            return qcm.GetOwner(msg);
         }
 
 
