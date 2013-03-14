@@ -43,6 +43,22 @@ namespace WebFrontEnd
             Helpers.ScanBlobDir(GetServices(), account, new CloudBlobPath(container));
         }
 
+
+        private FunctionInstanceGuid GetParentGuid(Dictionary<string, string> parameters)
+        {
+            string guidAsString;
+            const string functionInstanceGuidKeyName = "$this"; // $$$ Share this?
+            if (parameters.TryGetValue(functionInstanceGuidKeyName, out guidAsString))
+            {
+                parameters.Remove(functionInstanceGuidKeyName);
+                return Guid.Parse(guidAsString);
+            }
+            else
+            {
+                return Guid.Empty;
+            }
+        }
+
         // Execute the given function. 
         // Assumes execution is used via named parameters.
         [HttpPost]
@@ -59,22 +75,7 @@ namespace WebFrontEnd
             Dictionary<string, string> parameters = GetParamsFromQuery(uri);
             parameters.Remove("func"); //  remove query parameter that we added for the function id
 
-            // !!! Extract a parent Guid parameter
-            Guid parentGuid;
-            {
-                string guidAsString;
-                const string key = "$this"; // !!! Share constant somewhere?
-                if (parameters.TryGetValue(key, out guidAsString))
-                {
-                    parentGuid = Guid.Parse(guidAsString);
-                    parameters.Remove(key);
-                }
-                else
-                {
-                    parentGuid = Guid.Empty;
-                }
-            }
-
+            FunctionInstanceGuid parentGuid = GetParentGuid(parameters);
 
             // Bind and queue. 
             // Queue could be an hour deep

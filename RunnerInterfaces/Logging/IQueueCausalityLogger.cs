@@ -7,8 +7,8 @@ using SimpleBatch;
 
 namespace RunnerInterfaces
 {
-    // !!! This tracks causality via the queue message payload. 
-    // This is bad because it means we can't interop queue sources with extenals. 
+    // This tracks causality via the queue message payload. 
+    // $$$ This is bad because it means we can't interop queue sources with extenals. 
     // Can we switch to some auxillary table? Beware, CloudQueueMessage.Id is not 
     // filled out until after the message is queued, but then there's a race between updating 
     // the aux storage and another function picking up the message.
@@ -46,54 +46,4 @@ namespace RunnerInterfaces
             return guid;
         }
     }
-
-#if false
-    public interface IQueueCausalityLogger
-    {
-        void SetWriter(string messageId, Guid function);
-
-        Guid GetWriter(string messageId);
-
-        // !!! Queue Messages are transient (unlike blobs). So we could remove the writer once we're done. 
-    }
-
-    public class QueueCausalityPayload
-    {
-        public Guid Function { get; set; }
-    }
-
-    public class QueueCausalityLogger : IQueueCausalityLogger
-    {
-        IAzureTable<QueueCausalityPayload> _table;
-
-        public void SetWriter(string messageId, Guid function)
-        {
-            string partKey = "1";
-            string rowKey = messageId;
-
-            QueueCausalityPayload values = new QueueCausalityPayload 
-            {
-                Function = function
-            };
-
-            _table.Write(partKey, rowKey, values);
-
-            // !!! We may queue up many messgaes, so we can we batch the writers too?
-            _table.Flush();
-        }
-
-        public Guid GetWriter(string messageId)
-        {
-            string partKey = "1";
-            string rowKey = messageId;
-            var values = _table.Lookup(partKey, rowKey);
-
-            if (values == null)
-            {
-                return Guid.Empty;
-            }
-            return values.Function;
-        }
-    }
-#endif
 }

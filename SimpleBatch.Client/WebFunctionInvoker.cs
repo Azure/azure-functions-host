@@ -156,7 +156,8 @@ namespace SimpleBatch.Client
 
             if (_thisFunc != Guid.Empty)
             {
-                sb.AppendFormat("&{0}={1}", "$this", _thisFunc); // !!! double check?
+                const string functionInstanceGuidKeyName = "$this"; // $$$ Share this?
+                sb.AppendFormat("&{0}={1}", functionInstanceGuidKeyName, _thisFunc);
             }
 
             return sb.ToString();

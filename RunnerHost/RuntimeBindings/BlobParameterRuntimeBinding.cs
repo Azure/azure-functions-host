@@ -18,8 +18,6 @@ namespace RunnerHost
         private readonly CloudBlob _blob;
         private readonly IBlobCausalityLogger _logger;
 
-        // !!! Propagate Result?
-
         private BlobBindResult(BindResult inner, Guid functionWriter, CloudBlob blob, IBlobCausalityLogger logger)
         {
             _functionWriter = functionWriter;
@@ -45,13 +43,16 @@ namespace RunnerHost
 
             // This is the critical call to record causality. 
             // The entire purpose of this wrapper class is to make this call. 
+            // This must be called after the blbo is written, since it may stamp the blob. 
             _logger.SetWriter(_blob, _functionWriter);
         }
 
         // Get a BindResult for a blob that will stamp the blob with the GUID of the function instance that wrote it. 
-        // ContainerName and BlobName are redundant with blob. 
-        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, string containerName, string blobName, Type targetType, CloudBlob blob, IBlobCausalityLogger logger)
+        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, Type targetType, CloudBlob blob, IBlobCausalityLogger logger)
         {
+            string containerName = blob.Container.Name;
+            string blobName = blob.Name;                
+
             // Invoke the inner binder to create a cloud blob. 
             var inner = blobBinder.Bind(bindingContext, containerName, blobName, targetType);
             if (isInput)
@@ -107,7 +108,7 @@ namespace RunnerHost
             }
 
             IBlobCausalityLogger logger = new BlobCausalityLogger();
-            return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, this.Blob.ContainerName, this.Blob.BlobName, type, blob, logger);            
+            return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, type, blob, logger);            
         }
                         
         public override string ConvertToInvokeString()
@@ -171,8 +172,8 @@ namespace RunnerHost
                 var b = blobs[i];
 
 
-                bool isInput = true;
-                BindResult bind = BlobBindResult.BindWrapper(isInput, blobBinder, bindingContext, b.Container.Name, b.Name, tElement, b, logger);            
+                const bool isInput = true;
+                BindResult bind = BlobBindResult.BindWrapper(isInput, blobBinder, bindingContext, tElement, b, logger);            
                 array.SetBind(i, bind);                
             }
 

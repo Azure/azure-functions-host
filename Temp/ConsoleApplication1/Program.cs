@@ -145,7 +145,7 @@ namespace ConsoleApplication1
                     TypeName = "TestApp1.Program",
                     MethodName = "TestCall2"
                 },
-                TriggerReason = new BlobTriggerReason { }, // !!! "test for Azure Tasks",
+                TriggerReason = new BlobTriggerReason { }, 
                 Args = new ParameterRuntimeBinding[]
                   {
                        new LiteralStringParameterRuntimeBinding { Value = "172" }

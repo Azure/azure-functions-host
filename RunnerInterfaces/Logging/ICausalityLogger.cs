@@ -5,6 +5,7 @@ using Executor;
 namespace RunnerInterfaces
 {
     // Log function causality (eg, parent-child relationships). 
+    // This is used to create a graph of parent-child causal relationships. 
     public interface ICausalityLogger
     {
         // Orchestrator (which is the thing that determines a function should get executed) calls this before Child is executed. 
@@ -37,7 +38,7 @@ namespace RunnerInterfaces
         // This is empty if there is no parent function (eg, a timer, or unknown blob writer).  
         public Guid ParentGuid { get; set; }
 
-        // !!! Also include Line number in parent function? Other diag info?
+        // $$$ Also include Line number in parent function? Other diag info?
                 
         public override string ToString()
         {
@@ -59,8 +60,7 @@ namespace RunnerInterfaces
 
     // This function was executed via an ICall interface. 
     public class InvokeTriggerReason : TriggerReason
-    {
-        // !!! Could include Line#? 
+    {        
         public override string ToString()
         {
             return this.Message;

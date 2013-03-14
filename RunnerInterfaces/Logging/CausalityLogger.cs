@@ -33,8 +33,7 @@ namespace RunnerInterfaces
         // Need $type tag on the toplevel object. So have to embed in an extra object. 
         public Wrapper Data { get; set; }
     }
-
-    // !!! 
+        
     // Implements the causality logger interfaces
     public class CausalityLogger : ICausalityLogger, ICausalityReader
     {
