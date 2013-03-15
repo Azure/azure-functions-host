@@ -1,16 +1,16 @@
-
 bin
 obj
 csx
 
 *.user
 *.suo
+*.cscfg
 
 /packages
 /WebFrontEnd/Properties/PublishProfiles
 /TestResults
 /Secrets/Secrets.Password.cs
-/tests/LiveAzureTests/app.config
+/Tests/LiveAzureTests/app.config
 
 /CloudBinders/PrivateBinderList.csv
 /PublicDownload/Binaries

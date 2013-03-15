@@ -1,25 +1,19 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using Executor;
+using AzureTables;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
-using System.Linq;
-using Newtonsoft.Json;
-using System.Threading;
-using AzureTables;
-using Microsoft.WindowsAzure.ServiceRuntime;
-using Microsoft.WindowsAzure;
 using SimpleBatch;
 
 namespace DaasEndpoints
 {
-    // Despite the name, this is not an IOC container. 
+    // Despite the name, this is not an IOC container.
     // This provides a global view of the distributed application (service, webpage, logging, tooling, etc)
     // Anything that needs an azure endpoint can go here.
-    // This access the raw settings (especially account name) from Secrets, but then also provides the 
-    // policy and references to stitch everything together. 
+    // This access the raw settings (especially account name) from Secrets, but then also provides the
+    // policy and references to stitch everything together.
     public partial class Services
     {
         private readonly IAccountInfo _accountInfo;
@@ -47,7 +41,7 @@ namespace DaasEndpoints
         }
 
         // This blob is used by orchestrator to signal to all the executor nodes to reset.
-        // THis is needed when orchestrator makes an update (like upgrading a funcioin) and needs 
+        // THis is needed when orchestrator makes an update (like upgrading a funcioin) and needs
         // the executors to clear their caches.
         public CloudBlob GetExecutorResetControlBlob()
         {
@@ -101,7 +95,7 @@ namespace DaasEndpoints
             string json = JsonCustom.SerializeObject(payload);
             GetOrchestratorControlQueue().AddMessage(new CloudQueueMessage(json));
         }
-        
+
         public CloudQueue GetOrchestratorControlQueue()
         {
             CloudQueueClient client = _account.CreateCloudQueueClient();
@@ -110,13 +104,13 @@ namespace DaasEndpoints
             return queue;
         }
 
-        // Important to get a quick, estimate of the depth of the execution queu. 
+        // Important to get a quick, estimate of the depth of the execution queu.
         public int? GetExecutionQueueDepth()
-        {            
+        {
             var q = GetExecutionQueue();
             return q.RetrieveApproximateMessageCount();
         }
-        
+
         public CloudQueue GetExecutionQueue()
         {
             CloudQueueClient queueClient = _account.CreateCloudQueueClient();
@@ -125,7 +119,7 @@ namespace DaasEndpoints
             return queue;
         }
 
-        // uses a WorkerRole for the backend execution. 
+        // uses a WorkerRole for the backend execution.
         public Worker GetOrchestrationWorker()
         {
             var functionTable = this.GetFunctionTable();
@@ -157,6 +151,14 @@ namespace DaasEndpoints
             CloudBlobClient client = _account.CreateCloudBlobClient();
             CloudBlobContainer c = client.GetContainerReference(EndpointNames.ConsoleOuputLogContainerName);
             c.CreateIfNotExist();
+            var permissions = c.GetPermissions();
+
+            // Set public read access for blobs only
+            if (permissions.PublicAccess != BlobContainerPublicAccessType.Blob)
+            {
+                permissions.PublicAccess = BlobContainerPublicAccessType.Blob;
+                c.SetPermissions(permissions);
+            }
             return c;
         }
     }
