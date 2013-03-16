@@ -266,6 +266,8 @@
     <Content Include="Views\Shared\_RescanFunction.cshtml" />
     <Content Include="Views\Home\ListAllBinders.cshtml" />
     <Content Include="Views\Log\ViewChain.cshtml" />
+    <Content Include="Views\Shared\_DeleteFunction.cshtml" />
+    <Content Include="Views\Home\DeleteFuncSubmit.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

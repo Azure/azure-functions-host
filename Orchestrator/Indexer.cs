@@ -17,11 +17,11 @@ using SimpleBatch;
 
 namespace Orchestrator
 {
-    // Abstraction over a MethodInfo so that we can bind from either 
+    // Abstraction over a MethodInfo so that we can bind from either
     // attributes or code-config.
     public class MethodDescriptor
     {
-        public string Name; 
+        public string Name;
         public Attribute[] MethodAttributes;
         public ParameterInfo[] Parameters;
     }
@@ -31,7 +31,7 @@ namespace Orchestrator
     {
         private readonly IFunctionTable _functionTable;
 
-        // Account for where index lives 
+        // Account for where index lives
         public Indexer(IFunctionTable functionTable)
         {
             if (functionTable == null)
@@ -41,12 +41,12 @@ namespace Orchestrator
             _functionTable = functionTable;
         }
 
-        // Index all things in the container 
+        // Index all things in the container
         // account - account that binderLookupTable paths resolve to. ($$$ move account info int ot he table too?)
         public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable)
         {
-            // Locally copy 
-            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot, uploadNewFiles : true))
+            // Locally copy
+            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot, uploadNewFiles: true))
             {
                 string localCache = helper.LocalCachePrivate;
 
@@ -71,15 +71,14 @@ namespace Orchestrator
                 CopyCloudModelBinders(binderLookup);
             }
         }
-        
+
         private void CopyCloudModelBinders(BinderLookup b)
         {
             int countCustom = 0;
-            
+
             var types = _binderTypes;
 
             bool first = true;
-
 
             foreach (var t in types)
             {
@@ -97,7 +96,7 @@ namespace Orchestrator
                     Console.WriteLine("  {0}", t.FullName);
                     countCustom++;
                 }
-            }                            
+            }
 
             if (countCustom > 0)
             {
@@ -129,9 +128,9 @@ namespace Orchestrator
         }
 
         // AssemblyName doesn't implement GetHashCode().
-        Dictionary<AssemblyName, string> _fileLocations = new Dictionary<AssemblyName, string>(new AssemblyNameComparer());
+        private Dictionary<AssemblyName, string> _fileLocations = new Dictionary<AssemblyName, string>(new AssemblyNameComparer());
 
-        Assembly CurrentDomain_ReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
+        private Assembly CurrentDomain_ReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
         {
             // Name is "SimpleBatch, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
 
@@ -148,32 +147,31 @@ namespace Orchestrator
             }
         }
 
-        HashSet<Type> _binderTypes = new HashSet<Type>();
+        private HashSet<Type> _binderTypes = new HashSet<Type>();
 
-        // Look at each assembly 
+        // Look at each assembly
         public void IndexLocalDir(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
         {
             // See http://blogs.msdn.com/b/jmstall/archive/2006/11/22/reflection-type-load-exception.aspx
 
-            // Use live loading (not just reflection-only) so that we can invoke teh Initialization method. 
+            // Use live loading (not just reflection-only) so that we can invoke teh Initialization method.
             var handler = new ResolveEventHandler(CurrentDomain_ReflectionOnlyAssemblyResolve);
             AppDomain.CurrentDomain.AssemblyResolve += handler;
             try
             {
-                IndexLocalDirWorker(funcApplyLocation, localDirectory);             
+                IndexLocalDirWorker(funcApplyLocation, localDirectory);
             }
             finally
             {
                 AppDomain.CurrentDomain.AssemblyResolve -= handler;
             }
         }
-        
+
         private void IndexLocalDirWorker(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
-        {                        
+        {
             var filesDll = Directory.EnumerateFiles(localDirectory, "*.dll");
             var filesExe = Directory.EnumerateFiles(localDirectory, "*.exe");
 
-            
             foreach (string file in filesExe.Concat(filesDll))
             {
                 //string name = Path.GetFileNameWithoutExtension(file);
@@ -183,43 +181,51 @@ namespace Orchestrator
 
             foreach (string file in filesExe.Concat(filesDll))
             {
-                Assembly a = Assembly.LoadFrom(file);
-                if (string.Compare(a.Location, file, StringComparison.OrdinalIgnoreCase) != 0)
+                Assembly a = null;
+                try
+                {
+                    a = Assembly.LoadFrom(file);
+                }
+                catch (Exception exception)
+                {
+                    Console.WriteLine("Warning: The assembly '{0}' has been skipped. Exception Type: '{1}', Exception Message: {2}", file, exception.GetType(), exception.Message);
+                    continue;
+                }
+
+                if (a != null && string.Compare(a.Location, file, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // $$$
                     // Stupid loader, loaded the assembly from the wrong spot.
-                    // This is important when an assembly has been updated and recompiled, 
+                    // This is important when an assembly has been updated and recompiled,
                     // but it still has the same identity, and so the loader foolishly pulls the old
                     // assembly.
-                    // This goes away when the process is recycled. 
+                    // This goes away when the process is recycled.
                     // Get a warning now so that we don't have subtle bugs from processing the wrong assembly.
                     bool isGacDll = a.Location.Contains(@"\GAC_MSIL\");
 
                     if (isGacDll)
                     {
                         // Stupid loader will forcibly resolve dlls against the GAC. That's ok here since GAC
-                        // dlls are framework and won't contain user code and so can't be simple batch dlls. 
-                        // So don't need to even index them. 
+                        // dlls are framework and won't contain user code and so can't be simple batch dlls.
+                        // So don't need to even index them.
                         continue;
                     }
 
                     throw new InvalidOperationException("CLR Loaded assembly from wrong spot");
                 }
 
-
-                // The hosts and binders are IL-only and running in 64-bit environments. 
-                // So the entry point can't require 32-bit. 
+                // The hosts and binders are IL-only and running in 64-bit environments.
+                // So the entry point can't require 32-bit.
                 {
                     var mainModule = a.GetLoadedModules(false)[0];
                     PortableExecutableKinds peKind;
                     ImageFileMachine machine;
                     mainModule.GetPEKind(out peKind, out machine);
                     if (peKind != PortableExecutableKinds.ILOnly)
-                    {                        
+                    {
                         throw new InvalidOperationException("Indexing must be in IL-only entry points.");
                     }
                 }
-
 
                 IndexAssembly(funcApplyLocation, a);
             }
@@ -253,8 +259,7 @@ namespace Orchestrator
             }
         }
 
-
-        static BindingFlags MethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        private static BindingFlags MethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         private static MethodInfo ResolveMethod(Type type, string name)
         {
@@ -271,26 +276,25 @@ namespace Orchestrator
         {
             InvokeInitMethodOnType(type, funcApplyLocation);
 
-            // Now register any declaritive methods 
+            // Now register any declaritive methods
             foreach (MethodInfo method in type.GetMethods(MethodFlags))
             {
                 IndexMethod(funcApplyLocation, method);
             }
         }
-                
+
         // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
-        // Register any functions provided by code-configuration. 
-        void InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        // Register any functions provided by code-configuration.
+        private void InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
             // Invoke initialization function on this type.
-            // This may register functions imperatively. 
+            // This may register functions imperatively.
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
             IndexerConfig config = new IndexerConfig(fpFuncLookup);
 
             RunnerHost.Program.ApplyHooks(type, config);
-            
 
-            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);                
+            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
 
             foreach (var descr in config.GetRegisteredMethods())
             {
@@ -298,7 +302,7 @@ namespace Orchestrator
             }
         }
 
-        // Helper to convert delegates. 
+        // Helper to convert delegates.
         private Func<MethodDescriptor, FunctionLocation> Convert(Func<string, MethodInfo> fpFuncLookup, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
             Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 =
@@ -311,19 +315,19 @@ namespace Orchestrator
             return funcApplyLocation2;
         }
 
-        // Default policy, assumes that the function originally came from the container. 
+        // Default policy, assumes that the function originally came from the container.
         private FunctionLocation GetLocationInfoFromContainer(CloudBlobDescriptor container, MethodInfo method)
         {
             Type type = method.DeclaringType;
-            
+
             // This is effectively serializing out a MethodInfo.
             return new FunctionLocation
             {
                 Blob = new CloudBlobDescriptor
                 {
-                     AccountConnectionString = container.AccountConnectionString,
-                     ContainerName = container.ContainerName,
-                     BlobName = Path.GetFileName(type.Assembly.Location)
+                    AccountConnectionString = container.AccountConnectionString,
+                    ContainerName = container.ContainerName,
+                    BlobName = Path.GetFileName(type.Assembly.Location)
                 },
                 MethodName = method.Name,
                 TypeName = type.FullName
@@ -337,12 +341,12 @@ namespace Orchestrator
 
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(method.DeclaringType, name);
             Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
-            
+
             IndexMethod(funcApplyLocation2, descr);
         }
 
-        // Container is where the method lived on the cloud. 
-        // Common path for both attribute-cased and code-based configuration. 
+        // Container is where the method lived on the cloud.
+        // Common path for both attribute-cased and code-based configuration.
         public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr)
         {
             FunctionIndexEntity index = GetDescriptionForMethod(descr);
@@ -360,11 +364,11 @@ namespace Orchestrator
                     var t = parameter.ParameterType;
                     MaybeAddBinderType(t);
                 }
-            }            
-        }    
+            }
+        }
 
         // Determine if we should check for a custom binder for the given type.
-        void MaybeAddBinderType(Type type)
+        private void MaybeAddBinderType(Type type)
         {
             if (type.IsPrimitive || type == typeof(string))
             {
@@ -377,21 +381,21 @@ namespace Orchestrator
                 return;
             }
 
-            _binderTypes.Add(type);            
+            _binderTypes.Add(type);
         }
 
-        // Get any bindings that can be explicitly deduced. 
+        // Get any bindings that can be explicitly deduced.
         // This always returns a non-null array, but array may have null elements
         // for bindings that can't be determined.
-        // - either those bindings are user supplied parameters (which means this function 
+        // - either those bindings are user supplied parameters (which means this function
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
         public static ParameterStaticBinding[] GetExplicitBindings(MethodDescriptor descr)
         {
             ParameterInfo[] ps = descr.Parameters;
-                        
-            ParameterStaticBinding[] flows = Array.ConvertAll(ps,  BindParameter);
+
+            ParameterStaticBinding[] flows = Array.ConvertAll(ps, BindParameter);
 
             // Populate input names
             HashSet<string> paramNames = new HashSet<string>();
@@ -404,7 +408,7 @@ namespace Orchestrator
             }
 
             // Take a second pass to bind params diretly to {key} in the attributes above,.
-            // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")], 
+            // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")],
             // then we'll bind 'string name' to the {name} value.
             int pos = 0;
             foreach (ParameterInfo p in ps)
@@ -432,35 +436,34 @@ namespace Orchestrator
             return null;
         }
 
-        // Note any remaining unbound parameters must be provided by the user. 
+        // Note any remaining unbound parameters must be provided by the user.
         // Return true if any parameters were unbound. Else false.
         public static bool MarkUnboundParameters(MethodDescriptor descr, ParameterStaticBinding[] flows)
         {
             ParameterInfo[] ps = descr.Parameters;
 
             bool hasUnboundParams = false;
-            for(int i = 0; i < flows.Length; i++)
+            for (int i = 0; i < flows.Length; i++)
             {
                 if (flows[i] == null)
                 {
                     string name = ps[i].Name;
-                    flows[i] = new NameParameterStaticBinding { KeyName = name, Name = name,  UserSupplied = true };
+                    flows[i] = new NameParameterStaticBinding { KeyName = name, Name = name, UserSupplied = true };
                     hasUnboundParams = true;
                 }
             }
             return hasUnboundParams;
         }
 
-        static MethodDescriptor GetFromMethod(MethodInfo method)
+        private static MethodDescriptor GetFromMethod(MethodInfo method)
         {
             var descr = new MethodDescriptor();
             descr.Name = method.Name;
-            descr.MethodAttributes = Array.ConvertAll(method.GetCustomAttributes(true), attr => (Attribute) attr);
+            descr.MethodAttributes = Array.ConvertAll(method.GetCustomAttributes(true), attr => (Attribute)attr);
             descr.Parameters = method.GetParameters();
 
-            return descr;           
+            return descr;
         }
-
 
         public static FunctionIndexEntity GetDescriptionForMethod(MethodInfo method)
         {
@@ -468,17 +471,17 @@ namespace Orchestrator
             return GetDescriptionForMethod(descr);
         }
 
-        // Returns a partially instantiated FunctionIndexEntity. 
-        // Caller must add Location information. 
+        // Returns a partially instantiated FunctionIndexEntity.
+        // Caller must add Location information.
         public static FunctionIndexEntity GetDescriptionForMethod(MethodDescriptor descr)
         {
             string description = null;
             TimeSpan? interval = null;
-            
+
             NoAutomaticTriggerAttribute triggerAttr = null;
-                        
+
             foreach (var attr in descr.MethodAttributes)
-            {                
+            {
                 triggerAttr = triggerAttr ?? (attr as NoAutomaticTriggerAttribute);
 
                 var descriptionAttr = attr as DescriptionAttribute;
@@ -494,14 +497,13 @@ namespace Orchestrator
                 }
             }
 
-
-            // $$$ Lots of other static checks to add. 
+            // $$$ Lots of other static checks to add.
             if ((triggerAttr != null) && (interval.HasValue))
             {
                 throw new InvalidOperationException("Illegal trigger binding. Can't have both timer and notrigger attributes");
             }
 
-            // Look at parameters. 
+            // Look at parameters.
             bool required = interval.HasValue;
 
             ParameterStaticBinding[] parameterBindings = GetExplicitBindings(descr);
@@ -514,7 +516,7 @@ namespace Orchestrator
             //
 
             // Get trigger:
-            // - (default) listen on blobs. Use this if there are flow attributes present. 
+            // - (default) listen on blobs. Use this if there are flow attributes present.
             // - Timer
             // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
 
@@ -536,19 +538,20 @@ namespace Orchestrator
                 // want an invoke, they would have used the [NoTrigger] attribute.
                 trigger = new FunctionTrigger { ListenOnBlobs = true };
 #if false
-                // Unbound parameters mean this can't be automatically invoked. 
+
+                // Unbound parameters mean this can't be automatically invoked.
                 // The only reason we listen on blob is for automatic invoke.
                 trigger = new FunctionTrigger { ListenOnBlobs = !hasUnboundParams };
 #endif
             }
             else if (description != null)
             {
-                // Only [Description] attribute, no other binding information. 
+                // Only [Description] attribute, no other binding information.
                 trigger = new FunctionTrigger();
-            }            
+            }
             else
             {
-                // Still no trigger (not even automatic), then ignore this function completely. 
+                // Still no trigger (not even automatic), then ignore this function completely.
                 return null;
             }
 
@@ -558,10 +561,10 @@ namespace Orchestrator
                 Trigger = trigger,
                 Flow = new FunctionFlow
                 {
-                    Bindings = parameterBindings                    
+                    Bindings = parameterBindings
                 }
             };
-            
+
             return index;
         }
     }

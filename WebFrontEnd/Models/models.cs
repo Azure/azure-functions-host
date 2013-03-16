@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Web;
-using System.Web.Mvc;
 using DaasEndpoints;
-using Executor;
 using Orchestrator;
 using RunnerInterfaces;
 
@@ -25,16 +21,27 @@ namespace WebFrontEnd.Controllers
         public string Password { get; set; }
     }
 
-    public class RegisterFuncSubmitModel
+    public class FuncSubmitModel
+    {
+        public Uri Writeback { get; set; }
+    }
+
+    public class RegisterFuncSubmitModel : FuncSubmitModel
     {
         public string AccountName { get; set; }
+
         public string ContainerName { get; set; }
-        public Uri Writeback { get; set; }
+    }
+
+    public class DeleteFuncSubmitModel : FuncSubmitModel
+    {
+        public string FunctionToDelete { get; set; }
     }
 
     public class OverviewModel
     {
         public string AccountName { get; set; }
+
         public int? QueueDepth { get; set; }
 
         public ServiceHealthStatus HealthStatus { get; set; }
@@ -60,7 +67,6 @@ namespace WebFrontEnd.Controllers
         public FunctionIndexEntity[] Functions { get; set; }
     }
 
-
     public class BinderListModel
     {
         public Entry[] Binders { get; set; }
@@ -68,8 +74,11 @@ namespace WebFrontEnd.Controllers
         public class Entry
         {
             public string TypeName { get; set; } // type this binder applies to
+
             public string AccountName { get; set; }
+
             public CloudBlobPath Path { get; set; }
+
             public string EntryPoint { get; set; }
         }
     }
@@ -77,6 +86,7 @@ namespace WebFrontEnd.Controllers
     public class FunctionChainModel
     {
         public ICausalityReader Walker { get; set; }
+
         public IFunctionInstanceLookup Lookup { get; set; }
 
         public IEnumerable<ListNode> Nodes { get; set; }
@@ -86,6 +96,7 @@ namespace WebFrontEnd.Controllers
     public class ListNode
     {
         public FunctionInvokeRequest Func { get; set; }
+
         public int Depth { get; set; }
     }
 }

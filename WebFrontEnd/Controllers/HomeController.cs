@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿using System.Linq;
 using System.Web.Mvc;
 using DaasEndpoints;
-using Executor;
 using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
-using SimpleBatch;
 
 namespace WebFrontEnd.Controllers
 {
@@ -29,13 +23,13 @@ namespace WebFrontEnd.Controllers
         public ActionResult Index()
         {
             OverviewModel model = new OverviewModel();
-            
-            // Get health 
+
+            // Get health
             var services = GetServices();
             model.QueueDepth = services.GetExecutionQueueDepth();
             model.HealthStatus = services.GetHealthStatus();
             model.AccountName = services.Account.Credentials.AccountName;
-            
+
             return View(model);
         }
 
@@ -49,18 +43,18 @@ namespace WebFrontEnd.Controllers
             return View(model);
         }
 
-
         public ActionResult ListAllBinders()
         {
             var binderLookupTable = GetServices().GetBinderTable();
 
-            var x = from kv in binderLookupTable.EnumerateDict() select new BinderListModel.Entry 
-            {
-                 AccountName = Utility.GetAccountName(kv.Value.AccountConnectionString),
-                 TypeName = kv.Key.Item2,
-                 Path = kv.Value.Path,
-                 EntryPoint = string.Format("{0}!{1}", kv.Value.InitAssembly, kv.Value.InitType)
-            };
+            var x = from kv in binderLookupTable.EnumerateDict()
+                    select new BinderListModel.Entry
+                        {
+                            AccountName = Utility.GetAccountName(kv.Value.AccountConnectionString),
+                            TypeName = kv.Key.Item2,
+                            Path = kv.Value.Path,
+                            EntryPoint = string.Format("{0}!{1}", kv.Value.InitAssembly, kv.Value.InitType)
+                        };
 
             var model = new BinderListModel
             {
@@ -83,8 +77,8 @@ namespace WebFrontEnd.Controllers
 
         public static CloudStorageAccount GetAccount(string AccountName, string AccountKey)
         {
-            // $$$ StorageAccounts are more than just Name,Key. 
-            // So special case getting the dev store account. 
+            // $$$ StorageAccounts are more than just Name,Key.
+            // So special case getting the dev store account.
             if (AccountName == "devstoreaccount1")
             {
                 return CloudStorageAccount.DevelopmentStorageAccount;
@@ -117,7 +111,7 @@ namespace WebFrontEnd.Controllers
             return View();
         }
 
-        // Try to lookup the connection string (including key!) for a given account. 
+        // Try to lookup the connection string (including key!) for a given account.
         // This works for accounts that are already registered with the service.
         // Return null if not found.
         internal static string TryLookupConnectionString(string accountName)
@@ -135,7 +129,7 @@ namespace WebFrontEnd.Controllers
             }
 
             // not found
-            return null;            
+            return null;
         }
 
         public ActionResult RegisterFuncSubmit(string AccountName, string AccountKey, string ContainerName)
@@ -147,29 +141,48 @@ namespace WebFrontEnd.Controllers
             // If account key is blank, see if we can look it up
             if (string.IsNullOrWhiteSpace(AccountKey))
             {
-                accountConnectionString = TryLookupConnectionString(AccountName);                   
+                accountConnectionString = TryLookupConnectionString(AccountName);
             }
 
             if (accountConnectionString == null)
             {
-                accountConnectionString  = Utility.GetConnectionString(GetAccount(AccountName, AccountKey));
+                accountConnectionString = Utility.GetConnectionString(GetAccount(AccountName, AccountKey));
             }
 
-            return RegisterFuncSubmitworker(accountConnectionString, ContainerName);
+            return RegisterFuncSubmitworker(new IndexOperation
+            {
+                UserAccountConnectionString = AccountName,
+                Blobpath = ContainerName
+            });
         }
-
 
         [HttpPost]
         public ActionResult RescanFunction(FunctionIndexEntity func)
         {
-            return RegisterFuncSubmitworker(func.Location.Blob.AccountConnectionString, func.Location.Blob.ContainerName);
+            return RegisterFuncSubmitworker(new IndexOperation
+                {
+                    UserAccountConnectionString = func.Location.Blob.AccountConnectionString,
+                    Blobpath = func.Location.Blob.ContainerName
+                });
         }
 
-        private ActionResult RegisterFuncSubmitworker(string accountConnectionString, string ContainerName)
+        [HttpPost]
+        public ActionResult DeleteFunction(FunctionIndexEntity func)
         {
-            var model = ExecutionController.RegisterFuncSubmitworker(accountConnectionString, ContainerName);
+            var model = ExecutionController.RegisterFuncSubmitworker(
+                new DeleteOperation
+                {
+                    FunctionToDelete = func.RowKey
+                });
+
+            return View("DeleteFuncSubmit", model);
+        }
+
+        private ActionResult RegisterFuncSubmitworker(IndexOperation operation)
+        {
+            var model = ExecutionController.RegisterFuncSubmitworker(operation);
 
             return View("RegisterFuncSubmit", model);
-        }             
+        }
     }
 }

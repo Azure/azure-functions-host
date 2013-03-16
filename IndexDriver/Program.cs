@@ -2,12 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using AzureTables;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
 using Orchestrator;
 using RunnerInterfaces;
 
@@ -17,7 +14,7 @@ namespace IndexDriver
     public class IndexDriverInput
     {
         // Describes the cloud resource for what to be indexed.
-        // This includes a blob download (or upload!) location 
+        // This includes a blob download (or upload!) location
         public IndexRequestPayload Request { get; set; }
 
         // This can be used to download assemblies locally for inspection.
@@ -39,7 +36,7 @@ namespace IndexDriver
         public string[] Errors { get; set; }
     }
 
-    // Do indexing in app. 
+    // Do indexing in app.
     public class Program
     {
         public static void Main(string[] args)
@@ -55,61 +52,80 @@ namespace IndexDriver
         public static IndexResults MainWorker(IndexDriverInput input)
         {
             string urlLogger = null;
-            StringWriter buffer = null;                        
+            StringWriter buffer = null;
 
             try
             {
                 string localCache = input.LocalCache;
                 IndexRequestPayload payload = input.Request;
 
-                // ### This can go away now that we have structured return results
-                urlLogger = payload.Writeback;
-                if (urlLogger != null)
-                {
-                    Console.WriteLine("Logging output to: {0}", urlLogger);
-                    CloudBlob blob = new CloudBlob(urlLogger);
-                    blob.UploadText(string.Format("Beginning indexing {0}", payload.Blobpath));
-                }
-                                
                 if (payload.Writeback != null)
                 {
                     buffer = new StringWriter();
                     Console.SetOut(buffer);
                 }
-                                
-                Console.WriteLine("indexing: {0}", payload.Blobpath);
 
-                IAccountInfo accountInfo =new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
+                IAccountInfo accountInfo = new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
                 var services = new Services(accountInfo);
-
 
                 LoggingCloudIndexerSettings settings = new LoggingCloudIndexerSettings(services.Account, EndpointNames.FunctionIndexTableName);
 
-                var binderLookupTable = services.GetBinderTable();
+                // ### This can go away now that we have structured return results
+                urlLogger = payload.Writeback;
 
-                HashSet<string> funcsBefore = settings.GetFuncSet();
-
-                Indexer i = new Indexer(settings);
-
-                var path = new CloudBlobPath(payload.Blobpath);
-
-                var cd = new CloudBlobDescriptor
+                IndexOperation indexOperation = payload.Operation as IndexOperation;
+                if (indexOperation != null)
                 {
-                    AccountConnectionString = payload.UserAccountConnectionString,
-                    ContainerName = path.ContainerName,
-                    BlobName = path.BlobName
-                };
+                    var binderLookupTable = services.GetBinderTable();
 
-                i.IndexContainer(cd, localCache, binderLookupTable);
+                    HashSet<string> funcsBefore = settings.GetFuncSet();
 
-                // Log what changes happned (added, removed, updated)
-                // Compare before and after
-                HashSet<string> funcsAfter = settings.GetFuncSet();
+                    Indexer i = new Indexer(settings);
 
-                var funcsTouched = from func in settings._funcsTouched select func.ToString();
-                PrintDifferences(funcsBefore, funcsAfter, funcsTouched);
-             
-                Console.WriteLine("DONE: SUCCESS");
+                    var path = new CloudBlobPath(indexOperation.Blobpath);
+
+                    var cd = new CloudBlobDescriptor
+                    {
+                        AccountConnectionString = indexOperation.UserAccountConnectionString,
+                        ContainerName = path.ContainerName,
+                        BlobName = path.BlobName
+                    };
+
+                    if (urlLogger != null)
+                    {
+                        Console.WriteLine("Logging output to: {0}", urlLogger);
+                        CloudBlob blob = new CloudBlob(urlLogger);
+                        blob.UploadText(string.Format("Beginning indexing {0}", indexOperation.Blobpath));
+                    }
+
+                    Console.WriteLine("indexing: {0}", indexOperation.Blobpath);
+
+                    i.IndexContainer(cd, localCache, binderLookupTable);
+
+                    // Log what changes happned (added, removed, updated)
+                    // Compare before and after
+                    HashSet<string> funcsAfter = settings.GetFuncSet();
+
+                    var funcsTouched = from func in settings._funcsTouched select func.ToString();
+                    PrintDifferences(funcsBefore, funcsAfter, funcsTouched);
+
+                    Console.WriteLine("DONE: SUCCESS");
+                }
+
+                DeleteOperation deleteOperation = payload.Operation as DeleteOperation;
+                if (deleteOperation != null)
+                {
+                    var function = services.GetFunctionTable().Lookup(deleteOperation.FunctionToDelete);
+                    if (function == null)
+                    {
+                        Console.WriteLine("ERROR: The function '{0}' was not found.", deleteOperation.FunctionToDelete);
+                    }
+                    else
+                    {
+                        settings.Delete(function);
+                        Console.WriteLine("DONE: Function '{0}' Deleted.", function.Location.MethodName);
+                    }
+                }
             }
             catch (InvalidOperationException e)
             {
@@ -135,9 +151,9 @@ namespace IndexDriver
             return new IndexResults();
         }
 
-        class LoggingCloudIndexerSettings : FunctionTable
+        private class LoggingCloudIndexerSettings : FunctionTable
         {
-            public List<FunctionIndexEntity> _funcsTouched  = new List<FunctionIndexEntity>();
+            public List<FunctionIndexEntity> _funcsTouched = new List<FunctionIndexEntity>();
 
             public List<Type> BinderTypes = new List<Type>();
 
@@ -157,10 +173,10 @@ namespace IndexDriver
                 HashSet<string> funcsAfter = new HashSet<string>();
                 funcsAfter.UnionWith(from func in this.ReadAll() select func.ToString());
                 return funcsAfter;
-            }          
+            }
         }
 
-        static void PrintDifferences(IEnumerable<string> funcsBefore, IEnumerable<string> funcsAfter, IEnumerable<string> funcsTouched)
+        private static void PrintDifferences(IEnumerable<string> funcsBefore, IEnumerable<string> funcsAfter, IEnumerable<string> funcsTouched)
         {
             // Removed. In before, not in after
             var setRemoved = new HashSet<string>(funcsBefore);
