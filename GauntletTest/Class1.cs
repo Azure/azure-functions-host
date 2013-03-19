@@ -5,17 +5,6 @@ using System.Linq;
 using System.Text;
 using SimpleBatch;
 
-#if false
-Single test that excercises everything. 
-Provides a 1 point run 
-
-- table
-    - IDict
-
-- Cloud-based model binder 
-
-#endif
-
 namespace GauntletTest
 {
     // Provide a single test that's:
