@@ -60,7 +60,13 @@ namespace WebFrontEnd.Controllers
                     break;
                 }
                 parentGuid = reader.GetParent(funcHead.Id);
-                funcHead = lookup.Lookup(parentGuid).FunctionInstance;
+
+                var parentFunc = lookup.Lookup(parentGuid);
+                if (parentFunc == null)
+                {
+                    break;
+                }
+                funcHead = parentFunc.FunctionInstance;
             }
 
             if (funcHead.Id != func.Id)

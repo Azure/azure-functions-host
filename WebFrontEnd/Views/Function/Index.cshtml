@@ -98,5 +98,5 @@ Details for function: <b>@Model.Descriptor.ToString()</b>
 <H3>Other actions:</H3>
 <ul>
     <li>@Html.FunctionLogInvokeHistoryLink(Model.Descriptor.Location)</li>
-    <li>@Html.Partial("_RescanFunction", Model.Descriptor) Click this to notify the service that you've uploaded a new version of the function to the container. </li> 
+    <li>@Html.Partial("_RescanFunction", Model.Descriptor.Location.Blob) Click this to notify the service that you've uploaded a new version of the function to the container. </li> 
 </ul>
