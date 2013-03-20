@@ -14,10 +14,12 @@
     [ @Html.ActionLink("List all Cloud Binders", "ListAllBinders") ]
 </p>
 
-
-
-<table border="1">
-
+@foreach (var group in Model.Functions)
+{
+    <h2>@group.Key</h2>
+    @Html.Partial("_RescanFunction", group.Key)
+    <h3>Functions</h3>
+    <table border="1">
     <tr>
         <td>Name</td>
         <td>Commands</td>
@@ -26,18 +28,18 @@
         <td>Description</td>
         <td>Flow</td>
     </tr>
-
-@foreach (var func in Model.Functions)
-{
-    <tr>
-        <td>@Html.FunctionLogLink(func)</td>
-        <td>@Html.Partial("_DeleteFunction", func)@Html.Partial("_RescanFunction", func)</td>
-        <td>@func.Location.GetId()</td>
-        <td>@func.Timestamp</td>
-        <td>@func.Description</td>
-        <td>@func.Flow</td>
-    </tr>
+    @foreach (var func in group)
+    {
+        <tr>
+            <td>@Html.FunctionLogLink(func)</td>
+            <td>@Html.Partial("_DeleteFunction", func)</td>
+            <td>@func.Location.GetId()</td>
+            <td>@func.Timestamp</td>
+            <td>@func.Description</td>
+            <td>@func.Flow</td>
+        </tr>
+    }
+    </table>
 }
 
 
-</table>

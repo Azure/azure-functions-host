@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using DaasEndpoints;
 using Orchestrator;
 using RunnerInterfaces;
@@ -64,7 +65,7 @@ namespace WebFrontEnd.Controllers
 
     public class FunctionListModel
     {
-        public FunctionIndexEntity[] Functions { get; set; }
+        public IEnumerable<IGrouping<CloudBlobDescriptor, FunctionIndexEntity>> Functions { get; set; }
     }
 
     public class BinderListModel

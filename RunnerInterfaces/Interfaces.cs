@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Executor;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
@@ -15,12 +11,14 @@ namespace RunnerInterfaces
     public class LocalFunctionInstance
     {
         public string AssemblyPath { get; set; }
+
         public string TypeName { get; set; }
+
         public string MethodName { get; set; }
 
         public ParameterRuntimeBinding[] Args { get; set; }
 
-        // Blob to write live parameter logging too. 
+        // Blob to write live parameter logging too.
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
 
         // The guid for this function instance. We need this to properly track causality.
@@ -34,11 +32,12 @@ namespace RunnerInterfaces
         // - provide a scope for resolving other execution requests (account/container/blob/assembly/type/method).
         public FunctionLocation Location { get; set; }
     }
-        
+
     // Full permission to a queue
     public class CloudQueueDescriptor
     {
         public string AccountConnectionString { get; set; }
+
         public string QueueName { get; set; }
 
         public CloudStorageAccount GetAccount()
@@ -51,7 +50,7 @@ namespace RunnerInterfaces
             var q = GetAccount().CreateCloudQueueClient().GetQueueReference(QueueName);
             q.CreateIfNotExist();
             return q;
-        }        
+        }
 
         public string GetId()
         {
@@ -78,14 +77,14 @@ namespace RunnerInterfaces
         public string FunctionToDelete { get; set; }
     }
 
-    // Queue message payload to request that orchestrator rescan a blob path 
+    // Queue message payload to request that orchestrator rescan a blob path
     public class IndexRequestPayload
     {
         // Account that the service is using.
-        // This is where the function entries are written. 
+        // This is where the function entries are written.
         public string ServiceAccountConnectionString { get; set; }
-        
-        // URI to upload to with index results. 
+
+        // URI to upload to with index results.
         // Use string instead of URI type to avoid escaping. That confuses azure.
         public string Writeback { get; set; }
 
@@ -94,7 +93,7 @@ namespace RunnerInterfaces
     }
 
     // Full permission to a Table
-    // This can be serialized. 
+    // This can be serialized.
     public class CloudTableDescriptor
     {
         public string AccountConnectionString { get; set; }
@@ -109,15 +108,16 @@ namespace RunnerInterfaces
 
     // Full permission to a blob
     // $$$ This class morphed a litte. Is this now the same as CloudBlobContainer?
-    // - vs. CloudBlob: this blobName can be null, this can refer to open. things. 
-    // - vs. CloudBlobPath: this has account info. 
+    // - vs. CloudBlob: this blobName can be null, this can refer to open. things.
+    // - vs. CloudBlobPath: this has account info.
     public class CloudBlobDescriptor
     {
         public string AccountConnectionString { get; set; }
-        
+
         public string ContainerName { get; set; }
+
         public string BlobName { get; set; }
-        
+
         public CloudStorageAccount GetAccount()
         {
             return Utility.GetAccount(AccountConnectionString);
@@ -143,13 +143,13 @@ namespace RunnerInterfaces
             string accountName = GetAccount().Credentials.AccountName;
             return string.Format(@"{0}\{1}\{2}", accountName, ContainerName, BlobName);
         }
-                
+
         public override string ToString()
         {
             return GetId();
         }
 
-        // Get an absolute URL that's a Shared Access Signature for the given blob.        
+        // Get an absolute URL that's a Shared Access Signature for the given blob.
         public string GetContainerSasSig(SharedAccessPermissions permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write)
         {
             CloudBlobContainer container = this.GetContainer();
@@ -178,6 +178,17 @@ namespace RunnerInterfaces
 
             var uri = blob.Uri.ToString() + sasQueryString;
             return uri;
+        }
+
+        public override int GetHashCode()
+        {
+            return GetId().GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            CloudBlobDescriptor descriptor = obj as CloudBlobDescriptor;
+            return descriptor != null && descriptor.GetId() == GetId();
         }
     }
 }

@@ -35,9 +35,10 @@ namespace WebFrontEnd.Controllers
 
         public ActionResult ListAllFunctions()
         {
+            var allFunctions = GetServices().GetFunctionTable().ReadAll();
             var model = new FunctionListModel
             {
-                Functions = GetServices().GetFunctionTable().ReadAll()
+                Functions = allFunctions.GroupBy(f => f.Location.Blob)
             };
 
             return View(model);
@@ -68,11 +69,8 @@ namespace WebFrontEnd.Controllers
         // Useful when there are paths that are not being listened on
         public ActionResult RequestScan()
         {
-            var model = new FunctionListModel
-            {
-                Functions = GetServices().GetFunctionTable().ReadAll()
-            };
-            return View(model);
+            var functions = GetServices().GetFunctionTable().ReadAll();
+            return View(functions);
         }
 
         public static CloudStorageAccount GetAccount(string AccountName, string AccountKey)
@@ -157,12 +155,12 @@ namespace WebFrontEnd.Controllers
         }
 
         [HttpPost]
-        public ActionResult RescanFunction(FunctionIndexEntity func)
+        public ActionResult RescanFunction(string accountString, string containerName)
         {
             return RegisterFuncSubmitworker(new IndexOperation
                 {
-                    UserAccountConnectionString = func.Location.Blob.AccountConnectionString,
-                    Blobpath = func.Location.Blob.ContainerName
+                    UserAccountConnectionString = accountString,
+                    Blobpath = containerName
                 });
         }
 

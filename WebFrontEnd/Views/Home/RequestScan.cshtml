@@ -1,5 +1,5 @@
 ﻿@using WebFrontEnd.Controllers
-@model FunctionListModel
+@model IEnumerable<Orchestrator.FunctionIndexEntity>
 @{
     ViewBag.Title = "RequestScan";
 }
@@ -19,7 +19,7 @@ Notify the orchestration service to scan the following container for new
     <p>2. or use the storage account that this function is stored in:</p>
 <select name="function">
     <option value="">(none)</option>        
-    @foreach(var item in Model.Functions)
+    @foreach(var item in Model)
     {
         //string message = string.Format("{0}: \r\n{1}", item.Signature, item.Description);
         string message = item.Location.GetId();
