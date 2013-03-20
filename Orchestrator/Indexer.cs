@@ -253,7 +253,23 @@ namespace Orchestrator
                 }
             }
 
-            foreach (var type in a.GetTypes())
+            Type[] types;
+
+            try
+            {
+                types = a.GetTypes();
+            }
+            catch
+            {
+                // This is bad. The assembly refers to SimpleBatch.dll, so it ought to be indexable.
+                // But we can't read the types.
+                // This could be because it refers to a stale/corrupted version of SimpleBatch.dll (or maybe 
+                // even a dll that has the same name but is totally different).
+                Console.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
+                return;
+            }
+
+            foreach (var type in types)
             {
                 IndexType(funcApplyLocation, type);
             }
