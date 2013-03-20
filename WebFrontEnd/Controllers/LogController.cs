@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using AzureTables;
@@ -81,6 +82,7 @@ namespace WebFrontEnd.Controllers
             return View(model);
         }
 
+        // Walk the chain and flatten it into a list that's easy to render to HTML. 
         void Walk(FunctionInvokeRequest current, List<ListNode> list, int depth, FunctionChainModel model)
         {
             depth++;
@@ -113,6 +115,20 @@ namespace WebFrontEnd.Controllers
             model.Description = string.Format("Last {0} executed functions", N);
 
             return View("ListFunctionInstances", model);
+        }
+
+        public ActionResult GetChargebackLog(int N = 20, string account = null)
+        {
+            // Defer to the WebAPI controller for the real work. 
+            var controller = new WebFrontEnd.ControllersWebApi.LogController();
+            var resp = controller.GetFunctionLog(N, account);
+            var content = resp.Content.ReadAsStringAsync().Result;
+
+            // Return the CSV results in a link that will naturally download as an Excel file. 
+            // Be sure to set the Content-Disposition header, which FileResultContent does for us. 
+            // http://stackoverflow.com/questions/989927/recommended-way-to-create-an-actionresult-with-a-file-extension
+            byte[] byteContents = Encoding.UTF8.GetBytes(content);
+            return File(byteContents, "text/csv", "chargeback.csv");                       
         }
 
         // List all invocation of a specific function. 

@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="BindingInterfaces.cs" />
     <Compile Include="BlobTextWriter.cs" />
+    <Compile Include="WrapperEnumerable.cs" />
     <Compile Include="Logging\CausalityLogger.cs" />
     <Compile Include="Logging\FunctionInstanceGuid.cs" />
     <Compile Include="Logging\IBlobCausalityLogger.cs" />

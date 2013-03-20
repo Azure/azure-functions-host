@@ -445,6 +445,7 @@ namespace AzureTables
         {
             Flush();
 
+            IEnumerable<GenericEntity> results;
             try
             {
                 _timeRead.Start();
@@ -458,32 +459,27 @@ namespace AzureTables
                     ctx.IgnoreMissingProperties = true;
                     ctx.ReadingEntity += OnReadingEntity;
 
-                    IQueryable<GenericEntity> query;
+                    IQueryable<GenericEntity> query1;
                     if (partitionKey == null)
                     {
-                        query = from o in ctx.CreateQuery<GenericEntity>(_tableName)
+                        query1 = from o in ctx.CreateQuery<GenericEntity>(_tableName)
                                 select o;
                     }
                     else
                     {
-                        query = from o in ctx.CreateQuery<GenericEntity>(_tableName)
+                        query1 = from o in ctx.CreateQuery<GenericEntity>(_tableName)
                                 where o.PartitionKey == partitionKey
                                 select o;
                     }
 
                     // Careful, must call AsTableServiceQuery() to get more than 1000 rows. 
                     // http://blogs.msdn.com/b/rihamselim/archive/2011/01/06/retrieving-more-the-1000-row-from-windows-azure-storage.aspx
-                    CloudTableQuery<GenericEntity> results = query.AsTableServiceQuery();
+                    // Query will create an IQueryable and try to retrieve all rows at once. 
+                    CloudTableQuery<GenericEntity> query2 = query1.AsTableServiceQuery();
 
-                    List<IDictionary<string, string>> list = new List<IDictionary<string, string>>();
-                    foreach (var item in results)
-                    {
-                        item.properties["PartitionKey"] = item.PartitionKey;
-                        item.properties["RowKey"] = item.RowKey;
-                        list.Add(item.properties);
-                    }
-                    return list;
-
+                    // But then must call Execute to get an deferred execution. 
+                    // http://convective.wordpress.com/2010/02/06/queries-in-azure-tables/
+                    results = query2.Execute(); // maintain deferred
                 }
                 catch (DataServiceQueryException)
                 {
@@ -495,6 +491,25 @@ namespace AzureTables
             {
                 _timeRead.Stop();
             }
+
+            // Beware, tables can be huge, so return a deferred query
+            IEnumerable<IDictionary<string, string>> list = from item in results
+                                                            select Normalize(item);
+
+
+            list = new WrapperEnumerable<IDictionary<string, string>>(list)
+            {
+                OnBefore = () => _timeRead.Start(),
+                OnAfter = () => _timeRead.Stop()
+            };
+            return list;
+        }
+
+        private static IDictionary<string, string>  Normalize(GenericEntity item)
+        {
+            item.properties["PartitionKey"] = item.PartitionKey;
+            item.properties["RowKey"] = item.RowKey;
+            return item.properties;
         }
 
         [DebuggerNonUserCode]

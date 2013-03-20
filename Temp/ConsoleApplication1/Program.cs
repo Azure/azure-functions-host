@@ -18,6 +18,7 @@ using AzureTables;
 using SimpleBatch.Client;
 using IndexDriver;
 using System.Reflection;
+using DaasEndpoints;
 
 namespace ConsoleApplication1
 {
@@ -57,34 +58,14 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.local.cscfg";
+            string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Daas.cscfg";
             IAccountInfo accountInfo = LocalRunnerHost.Program.GetAccountInfo(configFile);
 
-            CloudStorageAccount account = accountInfo.GetAccount();
-            var client = account.CreateCloudBlobClient();
-            CloudBlobContainer c = client.GetContainerReference("test");
-            CloudBlob blob = c.GetBlobReference("temp");
-            blob.UploadText("Hello!");
+            Services services = new Services(accountInfo);
+            IFunctionInstanceQuery logger = services.GetFunctionInvokeQuery();
 
-            // Metadata names must adehere to C# identifier rules
-            // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
-            blob.FetchAttributes();
-            blob.Metadata["SimpleBatch_WriterFunc"] = "test";
-            blob.SetMetadata();
-
-            CloudBlob blob2 = c.GetBlobReference("temp");
-                        
-            // Does it merge? Or replace?
-
-            var x = blob2.Metadata["SimpleBatch_WriterFunc"]; // null. 
-            // blob2.FetchAttributes();
-            x = blob2.Metadata["SimpleBatch_WriterFunc"];
-
-            //blob2.Metadata["second"] = "2";
-            blob2.Metadata["third"] = "3";
-            blob2.SetMetadata();
-
-
+            var la = new WebFrontEnd.LogAnalysis();
+            var rows = la.GetChargebackLog(30, "", logger);
         }
 
 #if false

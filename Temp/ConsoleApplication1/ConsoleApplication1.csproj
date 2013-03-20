@@ -66,6 +66,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\DaasEndpoints\DaasEndpoints.csproj">
+      <Project>{0cc8477b-5761-4ed9-a2a1-40178f9639ca}</Project>
+      <Name>DaasEndpoints</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\IndexDriver\IndexDriver.csproj">
       <Project>{eb5a89cb-ef6c-47be-8639-1f65fc61a64f}</Project>
       <Name>IndexDriver</Name>
@@ -97,6 +101,10 @@
     <ProjectReference Include="..\..\TaskExecutor\TaskExecutor.csproj">
       <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
       <Name>TaskExecutor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\WebFrontEnd\WebFrontEnd.csproj">
+      <Project>{45974999-9c53-48ad-83b9-519ecc8ab8f4}</Project>
+      <Name>WebFrontEnd</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

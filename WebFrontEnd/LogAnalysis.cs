@@ -6,8 +6,9 @@ using Executor;
 using Orchestrator;
 using RunnerHost;
 using RunnerInterfaces;
+using WebFrontEnd.Controllers;
 
-namespace WebFrontEnd.Controllers
+namespace WebFrontEnd
 {
     public class ParamModel
     {
@@ -201,6 +202,141 @@ namespace WebFrontEnd.Controllers
                 Writer = writer.ToArray()
             };
         }
+
+        // Return a function log that includes causality information. 
+        public IEnumerable<ChargebackRow> GetChargebackLog(int recentCount, string storageName, IFunctionInstanceQuery logger)
+        {
+            Walker w = new Walker(logger);
+
+            var query = new FunctionInstanceQueryFilter
+            {
+                Succeeded = true,
+                AccountName = storageName
+            };
+            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(recentCount, query);
+
+
+            List<ChargebackRow> rows = new List<ChargebackRow>();
+                
+            // First loop through and get row-independent stats.
+            foreach (var log in logs)
+            {
+                ChargebackRow row = new ChargebackRow();
+                rows.Add(row);
+                                
+                var instance = log.FunctionInstance;
+                row.Name = instance.Location.MethodName;
+                row.Id = instance.Id;
+                row.ParentId = instance.TriggerReason.ParentGuid;
+
+                w.SetParent(row.Id, row.ParentId);
+                
+                if (instance.Args.Length > 0)
+                {
+                    row.FirstParam = instance.Args[0].ToString();
+                }
+
+                row.Duration = log.GetDuration().Value;
+            }
+            
+
+            // Now go back and fill in GroupId
+            // This is more efficient in a separate pass because the first pass pre-populated via SetParent()
+            foreach (var row in rows)
+            {
+                Guid g = w.LookupGroupId(row.Id);
+                row.GroupId = g;
+            }
+
+            return rows;
+        }
+
+        // Find GroupIds (the top-most ancestor). Has local caches to minimize # of network fetches. 
+        public class Walker
+        {
+            private readonly Dictionary<Guid, Guid> _parentMap = new Dictionary<Guid, Guid>();
+            private readonly Dictionary<Guid, Guid> _groupMap = new Dictionary<Guid, Guid>();
+            private readonly IFunctionInstanceLookup _lookup;
+
+            public Walker(IFunctionInstanceLookup lookup)
+            {
+                if (lookup == null)
+                {
+                    throw new ArgumentNullException("lookup");
+                }
+                _lookup = lookup;
+            }
+
+            public Guid LookupGroupId(Guid id)
+            {
+                Guid g;
+                if (_groupMap.TryGetValue(id, out g))
+                {
+                    return g;
+                }
+
+                Guid parent = LookupParent(id);
+                if (parent == Guid.Empty)
+                {
+                    g = id;
+                }
+                else
+                {
+                    g = LookupGroupId(parent);
+                }
+                _groupMap[id] = g;
+
+                return g;
+            }
+
+            public Guid LookupParent(Guid child)
+            {
+                Guid g;
+                if (_parentMap.TryGetValue(child, out g))
+                {
+                    return g;
+                }
+
+                var parentFunc = _lookup.Lookup(child);
+                if (parentFunc == null)
+                {
+                    // Unknown parent
+                    return Guid.Empty;
+                }
+                g = parentFunc.FunctionInstance.TriggerReason.ParentGuid;
+                _parentMap[child] = g;
+                return g;
+            }
+
+            public void SetParent(Guid child, Guid parent)
+            {
+                _parentMap[child] = parent;
+            }
+        }
+    }
+
+    // Row for a function instance. 
+    public class ChargebackRow
+    {
+        // Function's name. This may be a shortened form, so don't parse it. 
+        public string Name { get; set; }
+
+        // Function instance Id. The definitive instance record. 
+        public Guid Id { get; set; } 
+
+        // Parent for this instance. Guid.Empty if no parent. 
+        public Guid ParentId { get; set; }
+
+        // top-most ancestor for the instance Id. 
+        public Guid GroupId { get; set; } 
+
+        // String representation of the first parameter. 
+        // This can be used to infer ownership. 
+        public string FirstParam { get; set; }
+
+        // How long this function ran.
+        public TimeSpan Duration { get; set; }
+
     }
 
 }
