@@ -59,6 +59,7 @@
     <Compile Include="BlobBinderProviders.cs" />
     <Compile Include="CallImpl.cs" />
     <Compile Include="Configuration.cs" />
+    <Compile Include="QueueOutputProvider.cs" />
     <Compile Include="DictionaryTableBinder.cs" />
     <Compile Include="IPostActionTransaction.cs" />
     <Compile Include="Program.cs" />

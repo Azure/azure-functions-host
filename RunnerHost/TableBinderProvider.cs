@@ -9,42 +9,6 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    class QueueOutputProvider : ICloudBinderProvider
-    {
-        class QueueOutputBinder : ICloudBinder
-        {
-            public Type queueType;
-            public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
-            {
-                CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
-
-                // How to get q-name? Or other info from the attributes.
-                string queueName = parameter.Name;
-
-                var q = account.CreateCloudQueueClient().GetQueueReference(queueName);
-
-                var obj = Activator.CreateInstance(queueType, new object[] { q });
-                return new BindResult { Result = obj } ;
-            }
-        }
-
-        public ICloudBinder TryGetBinder(Type targetType)
-        {
-            if (targetType.IsGenericType)
-            {
-                if (targetType.GetGenericTypeDefinition() == typeof(IQueueOutput<>))
-                {
-                    var args = targetType.GetGenericArguments();
-                    var t2 = typeof(QueueBinder<>).MakeGenericType(args[0]);
-
-                    return new QueueOutputBinder { queueType = t2 };
-                }
-            }
-            return null;
-        }
-    }
-
-
     class TableBinderProvider : ICloudTableBinderProvider
     {
         static TableBinder _singleton = new TableBinder();

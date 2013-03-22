@@ -33,9 +33,6 @@
   <!-- Items for the project -->
   <ItemGroup>
     <ServiceDefinition Include="ServiceDefinition.csdef" />
-    <ServiceConfiguration Include="ServiceConfiguration.Cloud-Daas.cscfg" />
-    <ServiceConfiguration Include="ServiceConfiguration.Cloud-Mike.cscfg" />
-    <ServiceConfiguration Include="ServiceConfiguration.Cloud-SimpleBatch.cscfg" />
     <ServiceConfiguration Include="ServiceConfiguration.Local.cscfg" />
   </ItemGroup>
   <ItemGroup>

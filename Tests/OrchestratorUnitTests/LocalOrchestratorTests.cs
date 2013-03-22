@@ -144,6 +144,34 @@ namespace OrchestratorUnitTests
             }
         }
 
+        [TestMethod]
+        public void TestEnqueueMessage_UsingCloudQueue()
+        {
+            var account = TestStorage.GetAccount();
+
+            CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
+            Utility.DeleteQueue(queue);
+
+            MethodInfo m = typeof(Program).GetMethod("FuncCloudQueueEnqueue");
+            LocalOrchestrator.Invoke(account, m);
+
+            for (int i = 10; i <= 30; i += 10)
+            {
+                var msg = queue.GetMessage();
+                Assert.IsNotNull(msg);
+
+                string data = msg.AsString;
+                queue.DeleteMessage(msg);
+
+                Assert.AreEqual(i.ToString(), data);
+            }
+
+            {
+                var msg = queue.GetMessage();
+                Assert.IsNull(msg); // no more messages
+            }
+        }
+
         // $$$ Test with directories
         [TestMethod]
         public void Aggregate()
@@ -263,6 +291,15 @@ namespace OrchestratorUnitTests
             {
                 // Send payload to Azure queue "myoutputqueue"
                 myoutputqueue = new Payload { Value = 15 };
+            }
+
+            [SimpleBatch.Description("cloud queue function")] // needed for indexing since we have no other attrs
+            public static void FuncCloudQueueEnqueue(
+                CloudQueue myoutputqueue)
+            {
+                myoutputqueue.AddMessage(new CloudQueueMessage("10"));
+                myoutputqueue.AddMessage(new CloudQueueMessage("20"));
+                myoutputqueue.AddMessage(new CloudQueueMessage("30"));
             }
 
             [SimpleBatch.Description("queue function")] // needed for indexing since we have no other attrs
