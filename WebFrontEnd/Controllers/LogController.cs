@@ -123,7 +123,7 @@ namespace WebFrontEnd.Controllers
             return View("ListFunctionInstances", model);
         }
 
-        public ActionResult GetChargebackLog(int N = 20, string account = null)
+        public ActionResult GetChargebackLog(int N = 200, string account = null)
         {
             // Defer to the WebAPI controller for the real work. 
             var controller = new WebFrontEnd.ControllersWebApi.LogController();

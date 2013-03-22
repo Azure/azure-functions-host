@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
+using DaasEndpoints;
 using Orchestrator;
 
 namespace WebFrontEnd
@@ -17,16 +19,48 @@ namespace WebFrontEnd
     {
         protected void Application_Start()
         {
-            AreaRegistration.RegisterAllAreas();
+            EnableLogging();
 
-            WebApiConfig.Register(GlobalConfiguration.Configuration);
-            FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
-            RouteConfig.RegisterRoutes(RouteTable.Routes);
-            BundleConfig.RegisterBundles(BundleTable.Bundles);
+            try
+            {
+                AreaRegistration.RegisterAllAreas();
 
-            ModelBinderConfig.Register();
+                WebApiConfig.Register(GlobalConfiguration.Configuration);
+                FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
+                RouteConfig.RegisterRoutes(RouteTable.Routes);
+                BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+                ModelBinderConfig.Register();
+            }
+            catch (Exception e)
+            {
+                LogFatalError(e);
+                throw;
+            }
         }
-    }
 
-    
+        private void EnableLogging()
+        {
+            AppDomain a = AppDomain.CurrentDomain;
+            a.UnhandledException += a_UnhandledException;
+        }
+
+        void a_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Exception ex = e.ExceptionObject as Exception;
+
+        }
+
+        void LogFatalError(Exception ex)
+        {
+            var s = GetServices();
+            s.LogFatalError("From Web Role", ex);            
+        }
+
+        private static Services GetServices()
+        {
+            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
+            return new Services(accountInfo);
+        }
+    }    
 }
