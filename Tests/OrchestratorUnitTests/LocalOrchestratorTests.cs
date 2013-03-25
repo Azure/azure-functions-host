@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Common;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
@@ -37,8 +34,8 @@ namespace OrchestratorUnitTests
 
             MethodInfo m = typeof(Program).GetMethod("FuncWithNames");
 
-            var d = new Dictionary<string, string>() { 
-                { "name", "note" }, 
+            var d = new Dictionary<string, string>() {
+                { "name", "note" },
                 { "date" , "monday" },
                 { "unbound", "test" },
                 { "target", "out"}
@@ -57,7 +54,7 @@ namespace OrchestratorUnitTests
                 Assert.IsTrue(guid != Guid.Empty, "Blob is missing causality information");
             }
         }
-        
+
         [TestMethod]
         public void InvokeWithParamsParser()
         {
@@ -66,15 +63,14 @@ namespace OrchestratorUnitTests
 
             MethodInfo m = typeof(Program).GetMethod("ParseArgument");
 
-            var d = new Dictionary<string,string>() { 
-                { "x", "15" }, 
+            var d = new Dictionary<string, string>() {
+                { "x", "15" },
             };
             LocalOrchestrator.Invoke(account, m, d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.AreEqual("16", content);
         }
-        
 
         [TestMethod]
         public void InvokeOnBlob()
@@ -101,7 +97,7 @@ namespace OrchestratorUnitTests
 
             MethodInfo m = typeof(Program).GetMethod("FuncEnqueue");
             LocalOrchestrator.Invoke(account, m);
-            
+
             var msg = queue.GetMessage();
             Assert.IsNotNull(msg);
 
@@ -110,6 +106,82 @@ namespace OrchestratorUnitTests
             Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
             Assert.AreEqual(15, payload.Value);
+        }
+
+        [TestMethod]
+        public void TestMultiEnqueueMessage_IEnumerable()
+        {
+            var account = TestStorage.GetAccount();
+
+            CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
+            Utility.DeleteQueue(queue);
+
+            MethodInfo m = typeof(Program).GetMethod("FuncMultiEnqueueIEnumerable");
+            LocalOrchestrator.Invoke(account, m);
+
+            for (int i = 10; i <= 30; i += 10)
+            {
+                var msg = queue.GetMessage();
+                Assert.IsNotNull(msg);
+
+                QueueCausalityHelper qcm = new QueueCausalityHelper();
+                string data = qcm.DecodePayload(msg);
+                queue.DeleteMessage(msg);
+
+                Payload payload = JsonConvert.DeserializeObject<Payload>(data);
+
+                // Technically, ordering is not gauranteed.
+                Assert.AreEqual(i, payload.Value);
+            }
+
+            {
+                var msg = queue.GetMessage();
+                Assert.IsNull(msg); // no more messages
+            }
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestMultiEnqueueMessage_NestedIEnumerable_Throws()
+        {
+            var account = TestStorage.GetAccount();
+
+            MethodInfo m = typeof(Program).GetMethod("FuncMultiEnqueueIEnumerableNested");
+
+            LocalOrchestrator.Invoke(account, m);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestQueueOutput_IList_Throws()
+        {
+            var account = TestStorage.GetAccount();
+
+            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputIList");
+
+            LocalOrchestrator.Invoke(account, m);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestQueueOutput_Object_Throws()
+        {
+            var account = TestStorage.GetAccount();
+
+            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputObject");
+
+            LocalOrchestrator.Invoke(account, m);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void TestQueueOutput_IEnumerableOfObject_Throws()
+        {
+            var account = TestStorage.GetAccount();
+
+            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputIEnumerableOfObject");
+
+            LocalOrchestrator.Invoke(account, m);
         }
 
         // Model bind a parameter to a queueing inteface, and then enqueue multiple messages.
@@ -198,7 +270,7 @@ namespace OrchestratorUnitTests
             Utility.WriteBlob(account, "daas-test-input", @"test\1.csv", "abc");
             Utility.WriteBlob(account, "daas-test-input", @"test\2.csv", "def");
 
-            var d = new Dictionary<string,string>() { 
+            var d = new Dictionary<string, string>() {
                 { "deployId", "test" },
                 { "outdir", "testoutput" }
             };
@@ -209,16 +281,18 @@ namespace OrchestratorUnitTests
             Assert.AreEqual("abcdef", content);
         }
 
-        class Program
+        private class Program
         {
             public static void Aggregate1(
                 [BlobInputs(@"daas-test-input\{names}.csv")] TextReader[] inputs,
-                //string[] names, // $$$ How do we get this? 
+
+                //string[] names, // $$$ How do we get this?
                 [BlobOutput(@"daas-test-input\output.csv")] TextWriter output
                 )
             {
                 int len = 2;
                 Assert.AreEqual(len, inputs.Length);
+
                 //Assert.AreEqual(len, names.Length);
 
                 StringBuilder sb = new StringBuilder();
@@ -234,6 +308,7 @@ namespace OrchestratorUnitTests
             public static void Aggregate2(
                 string deployId, // user provided? or from attribute (like names?)
                 [BlobInputsAttribute(@"daas-test-input\{deployId}\{names}.csv")] TextReader[] inputs,
+
                 //string[] names
                 [BlobOutput(@"daas-test-input\{outdir}\output.csv")] TextWriter output
             )
@@ -252,7 +327,7 @@ namespace OrchestratorUnitTests
             }
 
             // This can be invoked explicitly (and providing parameters)
-            // or it can be invoked implicitly by triggering on input. // (assuming no unbound parameters) 
+            // or it can be invoked implicitly by triggering on input. // (assuming no unbound parameters)
             public static void FuncWithNames(
                 string name, string date,  // used by input
                 string unbound, // not used by in/out
@@ -264,13 +339,12 @@ namespace OrchestratorUnitTests
                 Assert.AreEqual("test", unbound);
                 Assert.AreEqual("note", name);
                 Assert.AreEqual("monday", date);
-                
+
                 string content = values.ReadToEnd();
                 Assert.AreEqual("abc", content);
 
                 output.Write("done");
             }
-
 
             [NoAutomaticTrigger]
             public static void ParseArgument(int x, [BlobOutput(@"daas-test-input\out.csv")] TextWriter output)
@@ -293,6 +367,44 @@ namespace OrchestratorUnitTests
                 myoutputqueue = new Payload { Value = 15 };
             }
 
+            public static void FuncMultiEnqueueIEnumerable(
+                [QueueOutput] out IEnumerable<Payload> myoutputqueue)
+            {
+                List<Payload> payloads = new List<Payload>();
+                payloads.Add(new Payload { Value = 10 });
+                payloads.Add(new Payload { Value = 20 });
+                payloads.Add(new Payload { Value = 30 });
+                myoutputqueue = payloads;
+            }
+
+            public static void FuncMultiEnqueueIEnumerableNested(
+                [QueueOutput] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
+            {
+                List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
+                myoutputqueue = payloads;
+            }
+
+            public static void FuncQueueOutputIEnumerableOfObject(
+                [QueueOutput] out IEnumerable<object> myoutputqueue)
+            {
+                List<object> payloads = new List<object>();
+                myoutputqueue = payloads;
+            }
+
+            public static void FuncQueueOutputObject(
+                [QueueOutput] out object myoutputqueue)
+            {
+                List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
+                myoutputqueue = payloads;
+            }
+
+            public static void FuncQueueOutputIList(
+                [QueueOutput] out IList<Payload> myoutputqueue)
+            {
+                List<Payload> payloads = new List<Payload>();
+                myoutputqueue = payloads;
+            }
+
             [SimpleBatch.Description("cloud queue function")] // needed for indexing since we have no other attrs
             public static void FuncCloudQueueEnqueue(
                 CloudQueue myoutputqueue)
@@ -305,24 +417,21 @@ namespace OrchestratorUnitTests
             [SimpleBatch.Description("queue function")] // needed for indexing since we have no other attrs
             public static void FuncMultiEnqueue(
                IQueueOutput<Payload> myoutputqueue)
-            {                
+            {
                 myoutputqueue.Add(new Payload { Value = 10 });
                 myoutputqueue.Add(new Payload { Value = 20 });
                 myoutputqueue.Add(new Payload { Value = 30 });
             }
 
-
-            public static void TestConfig([Config("ConfigTest.txt")] Payload payload )
+            public static void TestConfig([Config("ConfigTest.txt")] Payload payload)
             {
                 Assert.AreEqual(payload.Value, 15);
             }
-            
         }
-        
-        
-        class Payload
+
+        private class Payload
         {
-            public int Value { get ;set ; }
+            public int Value { get; set; }
         }
     }
 }
