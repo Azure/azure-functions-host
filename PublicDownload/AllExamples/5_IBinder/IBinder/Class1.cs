@@ -39,7 +39,7 @@ namespace IBinderExample
             // This is called every time the function is run. So:
             // - you could pass in values at runtime
             // - you could even call Bind<> in a loop and create an arbitrary number of bindings.
-            TextWriter reader = binder.Bind<TextWriter>(new BlobOutputAttribute(@"container\Blob.txt"));
+            TextWriter writer = binder.Bind<TextWriter>(new BlobOutputAttribute(@"container\Blob.txt"));
         }
     }
 }

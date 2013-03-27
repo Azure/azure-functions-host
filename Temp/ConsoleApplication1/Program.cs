@@ -19,6 +19,8 @@ using SimpleBatch.Client;
 using IndexDriver;
 using System.Reflection;
 using DaasEndpoints;
+using Microsoft.Win32;
+using System.Net;
 
 namespace ConsoleApplication1
 {
@@ -56,8 +58,55 @@ namespace ConsoleApplication1
 
     class Program
     {
+        private static float GetCpuClockSpeed()
+        {
+            return (int)Registry.GetValue(@"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0", "~MHz", 0);
+        }
+
+        static void Record()
+        {
+            ExecutionNodeTrackingStats h = new ExecutionNodeTrackingStats
+            {
+                 ClockSpeed = GetCpuClockSpeed(),
+                 NumCores = Environment.ProcessorCount,
+                 OSVersion = Environment.OSVersion.ToString(),
+                 AccountName = "test2"
+            };
+
+            var url = @"http://simplebatch.azurewebsites.net/api/UsageStats";
+            PostJson(url, h);
+        }
+
+        static void PostJson(string url, object body)
+        {
+            var json = JsonConvert.SerializeObject(body);
+            byte[] bytes = Encoding.UTF8.GetBytes(json);
+
+            WebRequest request = WebRequest.Create(url);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.ContentLength = bytes.Length; // set before writing to stream
+            var stream = request.GetRequestStream();
+            stream.Write(bytes, 0, bytes.Length);
+            stream.Close();
+
+            var response = request.GetResponse(); // does the actual web request
+        }
+
+        public class ExecutionNodeTrackingStats
+        {
+            public int NumCores { get; set; }
+            public float ClockSpeed { get; set; }
+            public string OSVersion { get; set; }
+            public string AccountName { get; set; } 
+        }
+
+
         static void Main()
         {
+            Record();
+            return;
+
             string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Daas.cscfg";
             IAccountInfo accountInfo = LocalRunnerHost.Program.GetAccountInfo(configFile);
 

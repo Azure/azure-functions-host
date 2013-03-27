@@ -72,6 +72,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureTaskRunnerHost", "Azur
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GauntletTest", "GauntletTest\GauntletTest.csproj", "{158BAE27-1E61-4DE8-A409-D1FF09336F3D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Monitor", "Monitor\Monitor.csproj", "{6A9E423D-31EF-4A40-9B3B-EE0668AFEBAA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,10 @@ Global
 		{158BAE27-1E61-4DE8-A409-D1FF09336F3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{158BAE27-1E61-4DE8-A409-D1FF09336F3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{158BAE27-1E61-4DE8-A409-D1FF09336F3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A9E423D-31EF-4A40-9B3B-EE0668AFEBAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A9E423D-31EF-4A40-9B3B-EE0668AFEBAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A9E423D-31EF-4A40-9B3B-EE0668AFEBAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A9E423D-31EF-4A40-9B3B-EE0668AFEBAA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

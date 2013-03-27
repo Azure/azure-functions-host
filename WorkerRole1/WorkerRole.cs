@@ -31,19 +31,23 @@ namespace WorkerRole1
         void Run(IServiceContainer serviceContainer)
         {
             _startTime = DateTime.UtcNow;
-            
+
             // This is a sample worker implementation. Replace with your logic.
             Trace.WriteLine("WorkerRole1 entry point called", "Information");
 
             var local = RoleEnvironment.GetLocalResource("localStore");
 
             IAccountInfo accountInfo = serviceContainer.GetService<IAccountInfo>();
+            
+            Recorder.Start(accountInfo.GetAccountName());
+            
+
             var services = new Services(accountInfo);
             CloudQueue executionQueue = services.GetExecutionQueue();
             ExecutorListener e = null;
 
             var outputLogger = new WebExecutionLogger(services, LogRole);
-                                    
+
             while (true)
             {
                 bool reset = false;
@@ -83,8 +87,8 @@ namespace WorkerRole1
                     outputLogger.LogFatalError("Failure from Executor", ex);
                     outputLogger.WriteHeartbeat(e.Stats);
                 }
-              
-            }            
+
+            }
         }
 
         private bool CheckForReset(Services services)
