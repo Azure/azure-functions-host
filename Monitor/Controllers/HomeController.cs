@@ -10,7 +10,25 @@ namespace Monitor.Controllers
     {
         public ActionResult Index()
         {
-            return View();
+            var table = UsageStatsController.GetTable();
+
+            Dictionary<string, int> counts = new Dictionary<string, int>();
+            foreach (var x in table.Enumerate())
+            {
+                var name = x.AccountName;
+                int num;
+                counts.TryGetValue(name, out num);
+                num += x.VMExtraSmallSize;
+                counts[name] = num;
+            }
+
+            IndexModel m = new IndexModel { Counts = counts };
+            return View(m);
         }
+    }
+
+    public class IndexModel
+    {
+        public Dictionary<string, int> Counts { get; set; }
     }
 }

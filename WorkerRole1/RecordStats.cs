@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using Microsoft.Win32;
@@ -24,7 +25,8 @@ namespace WorkerRole1
                 return;
             }
 
-            string deployId = RoleEnvironment.DeploymentId;
+            string deployId = RoleEnvironment.DeploymentId + "," + RoleEnvironment.CurrentRoleInstance.Id;
+            
 
             _url = urlBase + @"/api/UsageStats";
 
@@ -32,7 +34,7 @@ namespace WorkerRole1
             // But we can infer it from # of cores and cpu speed.
             _stats = new ExecutionNodeTrackingStats
             {
-                ClockSpeed = GetCpuClockSpeed(),
+                PhysicalMemory = MemoryStats.GetMemory(),
                 NumCores = Environment.ProcessorCount,
                 OSVersion = Environment.OSVersion.ToString(),
                 AccountName = accountName, // provides identity
@@ -52,11 +54,6 @@ namespace WorkerRole1
                 var milliseconds = 1000 * 60 * 60; // 1 hour
                 Thread.Sleep(milliseconds);
             }
-        }
-
-        private static float GetCpuClockSpeed()
-        {
-            return (int)Registry.GetValue(@"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0", "~MHz", 0);
         }
 
         static void Record()
@@ -91,10 +88,49 @@ namespace WorkerRole1
         public class ExecutionNodeTrackingStats
         {
             public int NumCores { get; set; }
-            public float ClockSpeed { get; set; }
+            public ulong PhysicalMemory { get; set; }
             public string OSVersion { get; set; }
             public string AccountName { get; set; }
             public string DeploymentId { get; set; }
+        }
+    }
+
+    class MemoryStats
+    {
+        // http://stackoverflow.com/questions/105031/how-do-you-get-total-amount-of-ram-the-computer-has
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private class MEMORYSTATUSEX
+        {
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+            public MEMORYSTATUSEX()
+            {
+                this.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
+            }
+        }
+
+        [return: MarshalAs(UnmanagedType.Bool)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
+
+        public static ulong GetMemory()
+        {
+            ulong installedMemory;
+            MEMORYSTATUSEX memStatus = new MEMORYSTATUSEX();
+            if (GlobalMemoryStatusEx(memStatus))
+            {
+                installedMemory = memStatus.ullTotalPhys;
+
+                return memStatus.ullTotalPhys;
+            }
+            return 0;
         }
     }
 }
