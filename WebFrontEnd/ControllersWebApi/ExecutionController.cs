@@ -86,7 +86,7 @@ namespace WebFrontEnd
                     ParentGuid = parentGuid
                 };
 
-                IQueueFunction executor = GetServices().GetExecutionClient();
+                IQueueFunction executor = GetServices().GetQueueFunction();
                 ExecutionInstanceLogEntity result = executor.Queue(instance);
 
                 return new BeginRunResult { Instance = result.FunctionInstance.Id };

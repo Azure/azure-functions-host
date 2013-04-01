@@ -118,7 +118,7 @@ namespace OrchestratorRole
         private Worker CreateWorker()
         {
             IFunctionTable functionTable = _services.GetFunctionTable();
-            IQueueFunction exec = _services.GetExecutionClient();
+            IQueueFunction exec = _services.GetQueueFunction();
 
             return new Orchestrator.Worker(functionTable, exec);
         }

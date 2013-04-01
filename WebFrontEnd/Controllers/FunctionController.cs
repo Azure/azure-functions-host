@@ -123,7 +123,7 @@ namespace WebFrontEnd.Controllers
             };
 
             // Get instance ID from queuing. Use that to redict to view 
-            IQueueFunction executor = GetServices().GetExecutionClient();
+            IQueueFunction executor = GetServices().GetQueueFunction();
             var instanceLog = executor.Queue(instance);
 
             // We got here via a POST. 

@@ -123,7 +123,7 @@ namespace DaasEndpoints
         public Worker GetOrchestrationWorker()
         {
             var functionTable = this.GetFunctionTable();
-            IQueueFunction executor = this.GetExecutionClient();
+            IQueueFunction executor = this.GetQueueFunction();
 
             return new Orchestrator.Worker(functionTable, executor);
         }

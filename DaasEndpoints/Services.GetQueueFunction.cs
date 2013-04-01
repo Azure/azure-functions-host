@@ -15,7 +15,7 @@ namespace DaasEndpoints
     {
         // Get the object that will queue function invoke requests to the execution substrate.
         // This may pick from multiple substrates.
-        public IQueueFunction GetExecutionClient()
+        public IQueueFunction GetQueueFunction()
         {
             // Pick the appropriate queuing function to use.
             return GetWorkerRoleQueueFunction();
