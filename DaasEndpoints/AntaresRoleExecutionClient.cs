@@ -1,8 +1,6 @@
-﻿using System.Net;
-using System.Text;
+﻿using System;
 using Executor;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
 using RunnerInterfaces;
 
 namespace DaasEndpoints
@@ -17,6 +15,11 @@ namespace DaasEndpoints
         public AntaresRoleExecutionClient(string url, CloudQueue queue, IAccountInfo account, IFunctionUpdatedLogger logger, ICausalityLogger causalityLogger)
             : base(queue, account, logger, causalityLogger)
         {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                throw new InvalidOperationException("Antares worker url is empty");
+            }
+
             this.UrlBase = url;
         }
 

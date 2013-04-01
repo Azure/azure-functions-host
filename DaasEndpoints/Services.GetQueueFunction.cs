@@ -18,7 +18,31 @@ namespace DaasEndpoints
         public IQueueFunction GetQueueFunction()
         {
             // Pick the appropriate queuing function to use.
-            return GetWorkerRoleQueueFunction();
+            string value = RoleEnvironment.GetConfigurationSettingValue("ExecutionType");
+
+            QueueFunctionType t;
+            if (Enum.TryParse<QueueFunctionType>(value, out t))
+            {
+                // Keep a runtime codepath for all cases so that we ensure all cases always compile.
+                switch (t)
+                {
+                    case QueueFunctionType.Antares:
+                        return GetAntaresQueueFunction();
+                    case QueueFunctionType.AzureTasks:
+                        return GetAzureTasksQueueFunction();
+                    case QueueFunctionType.WorkerRoles:
+                        return GetWorkerRoleQueueFunction();
+                }
+            }
+            string msg = string.Format("unknown execution substrate:{0}", value);
+            throw new InvalidOperationException(msg);
+        }
+
+        enum QueueFunctionType
+        {
+            WorkerRoles,
+            Antares,
+            AzureTasks
         }
 
         // Run via Azure tasks. 
@@ -53,8 +77,9 @@ namespace DaasEndpoints
             IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
             ICausalityLogger causalityLogger = GetCausalityLogger();
 
-            // $$$ Get the URL from config? 
-            string urlBase = "http://simplebatchworker.azurewebsites.net";
+            // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
+            string urlBase = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
+           
             var queue = this.GetExecutionQueue();
             return new AntaresRoleExecutionClient(urlBase, queue, this._accountInfo, logger, causalityLogger);
         }
