@@ -118,34 +118,9 @@ namespace OrchestratorRole
         private Worker CreateWorker()
         {
             IFunctionTable functionTable = _services.GetFunctionTable();
-
-            IAccountInfo account = _services.AccountInfo;
-            IFunctionUpdatedLogger logger = _services.GetFunctionInvokeLogger();
-#if false
-            // Based on AzureTasks
-            TaskConfig taskConfig = GetAzureTaskConfig();
-            IQueueFunction exec = new TaskExecutor(account, logger, taskConfig);
-#else
-            // Based on WorkerRoles (submitted via a Queue)
-            var queue = _services.GetExecutionQueue();
-            ICausalityLogger causalityLogger = _services.GetCausalityLogger();
-            IQueueFunction exec = new WorkerRoleExecutionClient(queue, account, logger, causalityLogger);            
-#endif
+            IQueueFunction exec = _services.GetExecutionClient();
 
             return new Orchestrator.Worker(functionTable, exec);
-        }
-
-        // Gets AzureTask configuration from the Azure config settings
-        private TaskConfig GetAzureTaskConfig()
-        {
-            var taskConfig = new TaskConfig
-            {
-                TenantUrl = RoleEnvironment.GetConfigurationSettingValue("AzureTaskTenantUrl"),
-                AccountName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskAccountName"),
-                Key = RoleEnvironment.GetConfigurationSettingValue("AzureTaskKey"),
-                PoolName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskPoolName")
-            };
-            return taskConfig;
         }
     
         private void ResetExecutors()

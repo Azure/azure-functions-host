@@ -22,10 +22,33 @@ namespace WorkerRole1
 
         public override void Run()
         {
+            ShouldPauseWorkerRole();
+            
+
             ServiceContainer container = new ServiceContainer();
             container.SetService<IAccountInfo>(new AzureRoleAccountInfo());
 
             Run(container);
+        }
+
+        // Azure won't let us deploy 0 instances of a node. So have a configuration option to pause worker roles.
+        // Use this in configurations where we're using another execution substrate (eg, Antares or Azure Tasks).
+        // If the configuration is changed after deployment, the role should get recycled anyways so that will break the loop. 
+        private void ShouldPauseWorkerRole()
+        {            
+            string val = RoleEnvironment.GetConfigurationSettingValue("PauseWorker");
+            if (!string.IsNullOrWhiteSpace(val))
+            {
+                bool b;
+                if (bool.TryParse(val, out b))
+                {
+                    if (b)
+                    {
+                        // Hang here until role is recycled (perhaps by configuration change)
+                        Thread.Sleep(-1);
+                    }
+                }
+            }
         }
 
         void Run(IServiceContainer serviceContainer)
@@ -46,7 +69,7 @@ namespace WorkerRole1
             CloudQueue executionQueue = services.GetExecutionQueue();
             ExecutorListener e = null;
 
-            var outputLogger = new WebExecutionLogger(services, LogRole);
+            var outputLogger = new WebExecutionLogger(services, LogRole, RoleEnvironment.CurrentRoleInstance.Id);
 
             while (true)
             {
@@ -126,53 +149,4 @@ namespace WorkerRole1
             return base.OnStart();
         }
     }
-
-
-    // Provide services for executing a function on a Worker Role.
-    // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
-    // Everything else is worker role specific. 
-    public class WebExecutionLogger : IExecutionLogger
-    {
-        // Logging function for adding header info to the start of each log.
-        private readonly Services _services;
-        private readonly FunctionExecutionContext _ctx;
-
-        public WebExecutionLogger(Services services, Action<TextWriter> addHeaderInfo)
-        {
-            _services = services;
-
-            _ctx = new FunctionExecutionContext
-            {
-                OutputLogDispenser = new FunctionOutputLogDispenser( 
-                    _services.AccountInfo, 
-                    addHeaderInfo, 
-                    AzureExecutionEndpointNames.ConsoleOuputLogContainerName
-                ),
-                Bridge = _services.GetStatsAggregatorBridge(),
-                Logger = _services.GetFunctionInvokeLogger()
-            };
-        }
-                 
-        public FunctionExecutionContext GetExecutionContext()
-        {
-            return _ctx;
-        }
-        
-        public void LogFatalError(string info, Exception e)
-        {
-            _services.LogFatalError(info, e);
-        }    
-                
-        public void WriteHeartbeat(ExecutionRoleHeartbeat stats)
-        {
-            _services.WriteHealthStatus(RoleEnvironment.CurrentRoleInstance.Id, stats);
-        }
-
-        public bool IsDeleteRequested(Guid id)
-        {
-            return _services.IsDeleteRequested(id);
-        }
-    }
-
-
 }

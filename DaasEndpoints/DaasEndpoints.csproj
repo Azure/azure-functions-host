@@ -55,8 +55,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AntaresRoleExecutionClient.cs" />
     <Compile Include="AzureRoleAccountInfo.cs" />
-    <Compile Include="ExecutionClient.cs" />
+    <Compile Include="Services.GetQueueFunction.cs" />
+    <Compile Include="WorkerRoleExecutionClient.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="Names.cs" />
     <Compile Include="Services.cs" />
@@ -64,6 +66,7 @@
     <Compile Include="FunctionTable.cs" />
     <Compile Include="Services.Health.cs" />
     <Compile Include="Services.Logger.cs" />
+    <Compile Include="WebExecutionLogger.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
@@ -81,6 +84,10 @@
     <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TaskExecutor\TaskExecutor.csproj">
+      <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
+      <Name>TaskExecutor</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

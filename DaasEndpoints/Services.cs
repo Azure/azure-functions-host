@@ -128,14 +128,6 @@ namespace DaasEndpoints
             return new Orchestrator.Worker(functionTable, executor);
         }
 
-        public IQueueFunction GetExecutionClient()
-        {
-            IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
-            ICausalityLogger causalityLogger = GetCausalityLogger();
-
-            return new WorkerRoleExecutionClient(GetExecutionQueue(), _accountInfo, logger, causalityLogger);
-        }
-
         public IFunctionTable GetFunctionTable()
         {
             return new FunctionTable(_account, EndpointNames.FunctionIndexTableName);

@@ -89,10 +89,6 @@
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
     </ProjectReference>
-    <ProjectReference Include="..\TaskExecutor\TaskExecutor.csproj">
-      <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
-      <Name>TaskExecutor</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

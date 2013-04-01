@@ -1,5 +1,4 @@
-﻿using System;
-using Executor;
+﻿using Executor;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
 

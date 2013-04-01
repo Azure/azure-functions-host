@@ -9,7 +9,8 @@
     </LocalResources>
     <ConfigurationSettings>
       <Setting name="MainStorage" />
-      <Setting name="StatsTrackerUrl" />      
+      <Setting name="StatsTrackerUrl" />
+      <Setting name="PauseWorker" />
     </ConfigurationSettings>
   </WorkerRole>
   <WorkerRole name="OrchestratorRole" vmsize="ExtraSmall">
