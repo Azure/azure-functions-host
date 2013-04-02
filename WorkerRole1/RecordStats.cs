@@ -84,7 +84,7 @@ namespace WorkerRole1
             var response = request.GetResponse(); // does the actual web request
         }
 
-        // !!! Merge with Monitor
+        // $$$ Merge with Monitor
         public class ExecutionNodeTrackingStats
         {
             public int NumCores { get; set; }
