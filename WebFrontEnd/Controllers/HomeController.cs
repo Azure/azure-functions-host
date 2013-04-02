@@ -170,7 +170,7 @@ namespace WebFrontEnd.Controllers
             var model = ExecutionController.RegisterFuncSubmitworker(
                 new DeleteOperation
                 {
-                    FunctionToDelete = func.RowKey
+                    FunctionToDelete = func.ToString()
                 });
 
             return View("DeleteFuncSubmit", model);

@@ -370,7 +370,6 @@ namespace Orchestrator
             {
                 FunctionLocation loc = funcApplyLocation(descr);
                 index.Location = loc;
-                index.SetRowKey(); // may use location info
 
                 _functionTable.Add(index);
 
@@ -540,7 +539,7 @@ namespace Orchestrator
             if (interval.HasValue)
             {
                 // Timer supercedes listening on blobs
-                trigger = new FunctionTrigger { TimerInterval = interval.ToString(), ListenOnBlobs = false };
+                trigger = new FunctionTrigger { TimerInterval = interval.Value, ListenOnBlobs = false };
             }
             else if (triggerAttr != null)
             {

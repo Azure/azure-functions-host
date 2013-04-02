@@ -202,7 +202,7 @@ namespace OrchestratorUnitTests
 
             Assert.AreEqual("TestReg", func.Location.MethodName);
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
-            Assert.AreEqual("00:03:00", func.Trigger.TimerInterval);
+            Assert.AreEqual(TimeSpan.Parse("00:03:00"), func.Trigger.TimerInterval);
         }
 
         class Type6

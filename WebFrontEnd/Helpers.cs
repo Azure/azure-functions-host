@@ -113,7 +113,7 @@ namespace WebFrontEnd.Controllers
                 htmlHelper,
                 func.Location.MethodName,
                 "Index", "Function", 
-                new { func = func.RowKey }, 
+                new { func = func.ToString() }, 
                 null);
         }
 
@@ -124,7 +124,7 @@ namespace WebFrontEnd.Controllers
                 htmlHelper,
                 func.Location.ToString(),
                 "Index", "Function",
-                new { func = func.RowKey },
+                new { func = func.ToString() },
                 null);
         }
 
@@ -136,7 +136,7 @@ namespace WebFrontEnd.Controllers
                 htmlHelper,
                 func.MethodName,
                 "Index", "Function",
-                new { func = FunctionIndexEntity.GetRowKey(func) },
+                new { func = func.ToString() },
                 null);
         }
 
@@ -157,7 +157,7 @@ namespace WebFrontEnd.Controllers
                 msg,
                 "ListFunctionInstances", "Log",
                 new { 
-                    func = FunctionIndexEntity.GetRowKey(func),
+                    func = func.ToString(),
                     success = success
                 },
                 null);

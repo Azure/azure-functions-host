@@ -35,7 +35,7 @@ namespace RunnerInterfaces
         // ToString can be used as an azure row key.
         public override string ToString()
         {
-            return this.GetId().Replace('\\', '.');
+            return Utility.GetAsTableKey(this.GetId());
         }
 
         public override bool Equals(object obj)

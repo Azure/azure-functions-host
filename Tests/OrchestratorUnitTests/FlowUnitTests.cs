@@ -126,7 +126,7 @@ namespace OrchestratorUnitTests
         {
             FunctionIndexEntity func = Get("DescriptionOnly");
             
-            Assert.AreEqual(false, func.Trigger.GetTimerInterval().HasValue); // no timer
+            Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs); // no blobs
             
             var flows = func.Flow.Bindings;
@@ -147,7 +147,7 @@ namespace OrchestratorUnitTests
         {
             FunctionIndexEntity func = Get("HasBlobAndUnboundParameter");
 
-            Assert.AreEqual(false, func.Trigger.GetTimerInterval().HasValue); // no timer
+            Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs); // no blobs
 
             var flows = func.Flow.Bindings;
@@ -170,7 +170,7 @@ namespace OrchestratorUnitTests
         {
             FunctionIndexEntity func = Get("HasBlobAndBoundParameter");
 
-            Assert.AreEqual(false, func.Trigger.GetTimerInterval().HasValue); // no timer
+            Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs); // all parameters are bound
 
             var flows = func.Flow.Bindings;

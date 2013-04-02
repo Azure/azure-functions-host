@@ -24,6 +24,12 @@ namespace RunnerInterfaces
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
     public static partial class Utility
     {
+        // Convert key into something that can be used as a row or partition key. Removes invalid chars.
+        public static string GetAsTableKey(string key)
+        {
+            return key.Replace('\\', '.');
+        }
+
         // Helper to get a row key based on time stamp. 
         // Where recent time is sorted first. 
         public static string GetTickRowKey(DateTime time)

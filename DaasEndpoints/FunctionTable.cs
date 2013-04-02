@@ -11,6 +11,7 @@ using System.Threading;
 using AzureTables;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure;
+using SimpleBatch;
 
 namespace DaasEndpoints
 {
@@ -21,40 +22,53 @@ namespace DaasEndpoints
     // Executor/RunnerHost shouldn't need this. 
     public class FunctionTable : IFunctionTable
     {
-        private readonly CloudStorageAccount _account;
-        private string _tableName;
+        private readonly IAzureTable<FunctionIndexEntity> _table;
 
-        public FunctionTable(CloudStorageAccount account, string tableName)
+        private const string PartionKey = "1";
+
+        public FunctionTable(IAzureTable<FunctionIndexEntity> table)
         {
-            _account = account;
-            _tableName = tableName;
+            _table = table;
         }
 
         public virtual FunctionIndexEntity Lookup(string functionId)
         {
-            FunctionIndexEntity func = Utility.Lookup<FunctionIndexEntity>(
-              _account,
-              _tableName,
-              FunctionIndexEntity.PartionKey,
-              functionId);
+            if (functionId == null)
+            {
+                throw new ArgumentNullException("functionId");
+            }
+            FunctionIndexEntity func = _table.Lookup(PartionKey, functionId);
             return func;
         }
 
         public virtual FunctionIndexEntity[] ReadAll()
         {
-            var funcs = Utility.ReadTable<FunctionIndexEntity>(_account, EndpointNames.FunctionIndexTableName);
-            return funcs;
+            var all = _table.Enumerate().ToArray();
+            return all;
         }
 
         public virtual void Add(FunctionIndexEntity func)
         {
+            if (func == null)
+            {
+                throw new ArgumentNullException("func ");
+            }
+
             // $$$ Batch this (AzureTable would handle that)
-            Utility.AddTableRow(_account, _tableName, func);
+            string rowKey = func.ToString();
+            _table.Write(PartionKey, rowKey, func);
+            _table.Flush();
         }
 
         public virtual void Delete(FunctionIndexEntity func)
         {
-            Utility.DeleteTableRow(_account, _tableName, func);
+            if (func == null)
+            {
+                throw new ArgumentNullException("func ");
+            }
+
+            string rowKey = func.ToString();
+            _table.Delete(PartionKey, rowKey);
         }
     }
 }

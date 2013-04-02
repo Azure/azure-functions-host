@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Orchestrator;
 using RunnerHost;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace LiveAzureTests
 {
@@ -160,7 +161,7 @@ namespace LiveAzureTests
                 },
                 Trigger = new FunctionTrigger
                 {
-                    TimerInterval = TimeSpan.FromMinutes(15).ToString(),
+                    TimerInterval = TimeSpan.FromMinutes(15),
                     ListenOnBlobs = true
                 },
                 Flow = new FunctionFlow
@@ -189,13 +190,17 @@ namespace LiveAzureTests
                     }
                 }
             };
-            func.SetRowKey();
 
+            // Using a real AzureTable object and lookup will excercise serialization. 
             string tableName = "functabletest";
-            Utility.AddTableRow(AzureConfig.GetAccount(), tableName, func);
+            IAzureTable<FunctionIndexEntity> table = new AzureTable<FunctionIndexEntity>(AzureConfig.GetAccount(), tableName);
 
-            var func2 = Utility.Lookup<FunctionIndexEntity>(AzureConfig.GetAccount(), tableName, func.PartitionKey, func.RowKey);
-            
+            string partKey = "1";
+            string rowKey = func.ToString();
+            table.Write(partKey, rowKey, func);
+            table.Flush();
+
+            FunctionIndexEntity func2 = table.Lookup(partKey, rowKey);                        
 
             // Ensure it round tripped.
             Assert.IsNotNull(func2, "failed to lookup");

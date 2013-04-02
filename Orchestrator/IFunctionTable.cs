@@ -17,7 +17,7 @@ namespace Orchestrator
 
     public interface IFunctionTableLookup
     {
-        // Function Id is the location. 
+        // Function Id is the location.ToString().
         FunctionIndexEntity Lookup(string functionId);
         FunctionIndexEntity[] ReadAll();
     }
@@ -25,7 +25,7 @@ namespace Orchestrator
     {
         public static FunctionIndexEntity Lookup(this IFunctionTableLookup lookup, FunctionLocation location)
         {
-            string rowKey = FunctionIndexEntity.GetRowKey(location);
+            string rowKey = location.ToString();
             return lookup.Lookup(rowKey);
         }
     }

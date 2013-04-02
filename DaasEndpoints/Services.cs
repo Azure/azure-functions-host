@@ -130,7 +130,9 @@ namespace DaasEndpoints
 
         public IFunctionTable GetFunctionTable()
         {
-            return new FunctionTable(_account, EndpointNames.FunctionIndexTableName);
+            IAzureTable<FunctionIndexEntity> table = new AzureTable<FunctionIndexEntity>(_account, EndpointNames.FunctionIndexTableName);
+
+            return new FunctionTable(table);
         }
 
         public AzureTable<BinderEntry> GetBinderTable()

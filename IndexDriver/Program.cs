@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using AzureTables;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace IndexDriver
 {
@@ -68,7 +70,8 @@ namespace IndexDriver
                 IAccountInfo accountInfo = new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
                 var services = new Services(accountInfo);
 
-                LoggingCloudIndexerSettings settings = new LoggingCloudIndexerSettings(services.Account, EndpointNames.FunctionIndexTableName);
+                IAzureTable<FunctionIndexEntity> table = new AzureTable<FunctionIndexEntity>(services.Account, EndpointNames.FunctionIndexTableName);
+                LoggingCloudIndexerSettings settings = new LoggingCloudIndexerSettings(table);
 
                 // ### This can go away now that we have structured return results
                 urlLogger = payload.Writeback;
@@ -157,8 +160,8 @@ namespace IndexDriver
 
             public List<Type> BinderTypes = new List<Type>();
 
-            public LoggingCloudIndexerSettings(CloudStorageAccount account, string tableName)
-                : base(account, tableName)
+            public LoggingCloudIndexerSettings(IAzureTable<FunctionIndexEntity> table)
+                : base(table)
             {
             }
 

@@ -92,10 +92,9 @@ namespace Orchestrator
             {
                 var trigger = func.Trigger;
 
-                if (trigger.GetTimerInterval().HasValue)
+                if (trigger.TimerInterval.HasValue)
                 {
-                    TimeSpan period = trigger.GetTimerInterval().Value;
-
+                    TimeSpan period = trigger.TimerInterval.Value;
                     Timer timer = null;
                     TimerCallback callback = obj => 
                     {
