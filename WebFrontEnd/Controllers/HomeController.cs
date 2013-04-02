@@ -86,7 +86,7 @@ namespace WebFrontEnd.Controllers
 
         // Scan a container and queue execution items.
         [HttpPost]
-        public ActionResult RequestScanSubmit(FunctionIndexEntity function, string accountname, string accountkey, CloudBlobPath containerpath)
+        public ActionResult RequestScanSubmit(FunctionDefinition function, string accountname, string accountkey, CloudBlobPath containerpath)
         {
             CloudStorageAccount account;
             if (function != null)
@@ -165,7 +165,7 @@ namespace WebFrontEnd.Controllers
         }
 
         [HttpPost]
-        public ActionResult DeleteFunction(FunctionIndexEntity func)
+        public ActionResult DeleteFunction(FunctionDefinition func)
         {
             var model = ExecutionController.RegisterFuncSubmitworker(
                 new DeleteOperation

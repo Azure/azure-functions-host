@@ -15,27 +15,18 @@ using RunnerInterfaces;
 
 namespace Orchestrator
 {
-    // Describes how a function can get triggered.
-    // This is orthogonal to the binding. 
-    public class FunctionTrigger
-    {
-        // If != 0, then specify the function is invoked on the timer. 
-        public TimeSpan? TimerInterval { get; set; }
-                
-        // True if invocation should use a blob listener.
-        public bool ListenOnBlobs { get; set; }
-    }
-
-    // Persist a FunctionDescriptor in azure table storage.
-    // Must be flat. 
-    // $$$ This has extra metadata beyond just FunctionLocation (like Descr, Guid (rowkey), in/out, ... ) 
+    // Basic static definition for a function within SimpleBatch. 
+    // This has extra metadata beyond just FunctionLocation (like Descr, Guid (rowkey), in/out, ... ) 
     // This should be static once a function is uploaded. It can obviously change when we refresh a function and load 
     // a new version. So the Timestamp property gives us "last modified time"
-    // But it shouldn't change just be executing the function. Store that invocation information somewhere else.
-    public class FunctionIndexEntity
+    // But it can't change just be executing the function. Store that invocation information somewhere else.
+    public class FunctionDefinition
     {
         // User description of the function
         public string Description { get; set; }
+
+        // This maps to the builtin property on azure Tables, so it will get set for us. 
+        public DateTime Timestamp { get; set; }
 
         // Where the function lives. Location is effectively the row key. 
         public FunctionLocation Location { get; set; }

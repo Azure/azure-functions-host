@@ -26,8 +26,8 @@ namespace Orchestrator
 
         // When we notice the input is added, invoke this function 
         // String hashes on CloubBlobContainer
-        Dictionary<CloudBlobContainer, List<FunctionIndexEntity>> _map;
-        Dictionary<CloudQueue, List<FunctionIndexEntity>> _mapQueues;
+        Dictionary<CloudBlobContainer, List<FunctionDefinition>> _map;
+        Dictionary<CloudQueue, List<FunctionDefinition>> _mapQueues;
         private BlobListener _blobListener;
         
         // Settings is for wiring up Azure endpoints for the distributed app.
@@ -47,8 +47,8 @@ namespace Orchestrator
             _functionTable = functionTable;
             _execute = execute;
 
-            _map = new Dictionary<CloudBlobContainer, List<FunctionIndexEntity>>(new CloudContainerComparer());
-            _mapQueues = new Dictionary<CloudQueue, List<FunctionIndexEntity>>(new CloudQueueComparer());
+            _map = new Dictionary<CloudBlobContainer, List<FunctionDefinition>>(new CloudContainerComparer());
+            _mapQueues = new Dictionary<CloudQueue, List<FunctionDefinition>>(new CloudQueueComparer());
 
             CreateInputMap();
 
@@ -64,7 +64,7 @@ namespace Orchestrator
         // This is just retrieving the data structures created by the Indexer.
         private void CreateInputMap()
         {
-            FunctionIndexEntity[] funcs = _functionTable.ReadAll();
+            FunctionDefinition[] funcs = _functionTable.ReadAll();
 
             CreateInputMap(funcs);
         }
@@ -72,7 +72,7 @@ namespace Orchestrator
         // List of functions to execute. 
         // May have been triggered by a timer on a background thread . 
         // Process by main foreground thread. 
-        volatile ConcurrentQueue<FunctionIndexEntity> _queueExecuteFuncs;
+        volatile ConcurrentQueue<FunctionDefinition> _queueExecuteFuncs;
 
         List<Timer> _timers = new List<Timer>();
 
@@ -85,10 +85,10 @@ namespace Orchestrator
             _timers.Clear();
         }
 
-        private void CreateInputMap(FunctionIndexEntity[] funcs)
+        private void CreateInputMap(FunctionDefinition[] funcs)
         {
-            _queueExecuteFuncs = new ConcurrentQueue<FunctionIndexEntity>();
-            foreach (FunctionIndexEntity func in funcs)
+            _queueExecuteFuncs = new ConcurrentQueue<FunctionDefinition>();
+            foreach (FunctionDefinition func in funcs)
             {
                 var trigger = func.Trigger;
 
@@ -201,7 +201,7 @@ namespace Orchestrator
         {
             while (true)
             {
-                FunctionIndexEntity func;
+                FunctionDefinition func;
                 if (!_queueExecuteFuncs.TryDequeue(out func))
                 {
                     break;
@@ -235,7 +235,7 @@ namespace Orchestrator
                 var msg = queue.GetMessage(visibilityTimeout);
                 if (msg != null)
                 {
-                    foreach (FunctionIndexEntity func in funcs)
+                    foreach (FunctionDefinition func in funcs)
                     {
                         OnNewQueueItem(msg, func);
                         
@@ -247,7 +247,7 @@ namespace Orchestrator
             }
         }
 
-        private void OnNewQueueItem(CloudQueueMessage msg, FunctionIndexEntity func)
+        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func)
         {
             string payload = msg.AsString;
 
@@ -285,11 +285,11 @@ namespace Orchestrator
             var container = blob.Container;
             Console.WriteLine(@"# New blob: {0}", blob.Uri);
 
-            List<FunctionIndexEntity> list;
+            List<FunctionDefinition> list;
             if (_map.TryGetValue(container, out list))
             {
                 // Invoke all these functions
-                foreach (FunctionIndexEntity func in list)
+                foreach (FunctionDefinition func in list)
                 {
                     FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
                     if (instance != null)
@@ -339,7 +339,7 @@ namespace Orchestrator
         // Return null if we can't reason about it.
         // Return True is inputs are newer than outputs, and so function should be executed again.
         // Else return false (meaning function execution can be skipped)
-        public static bool? CheckBlobTimes(FunctionInvokeRequest instance, FunctionIndexEntity func)
+        public static bool? CheckBlobTimes(FunctionInvokeRequest instance, FunctionDefinition func)
         {
             return CheckBlobTimes(instance.Args, func.Flow.Bindings);
         }
@@ -416,7 +416,7 @@ namespace Orchestrator
             return inputsAreNewerThanOutputs;
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func, IDictionary<string, string> parameters)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, IDictionary<string, string> parameters)
         {
             var ctx = new RuntimeBindingInputs(func.Location)
             {
@@ -428,7 +428,7 @@ namespace Orchestrator
 
         // Invoke a function that is completely self-describing.
         // This means all inputs can be bound without any additional information. 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func)
         {
             var ctx = new RuntimeBindingInputs(func.Location);
             var instance = BindParameters(ctx, func);
@@ -437,7 +437,7 @@ namespace Orchestrator
 
 
         // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionIndexEntity func, CloudBlob blobInput)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudBlob blobInput)
         {
             // blobInput was the one that triggered it.
             // Get the path from the first blob input parameter.
@@ -464,7 +464,7 @@ namespace Orchestrator
         }
 
         // Bind the entire flow to an instance
-        public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionIndexEntity func)
+        public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionDefinition func)
         {
             FunctionFlow flow = func.Flow;
             int len = flow.Bindings.Length;

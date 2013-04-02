@@ -150,7 +150,7 @@ namespace LiveAzureTests
         {
             // Create an elaborate function object and ensure we can write it to table storage.
 
-            FunctionIndexEntity func = new FunctionIndexEntity
+            FunctionDefinition func = new FunctionDefinition
             {
                 Description = "description",
                 Location = new FunctionLocation
@@ -193,14 +193,14 @@ namespace LiveAzureTests
 
             // Using a real AzureTable object and lookup will excercise serialization. 
             string tableName = "functabletest";
-            IAzureTable<FunctionIndexEntity> table = new AzureTable<FunctionIndexEntity>(AzureConfig.GetAccount(), tableName);
+            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(AzureConfig.GetAccount(), tableName);
 
             string partKey = "1";
             string rowKey = func.ToString();
             table.Write(partKey, rowKey, func);
             table.Flush();
 
-            FunctionIndexEntity func2 = table.Lookup(partKey, rowKey);                        
+            FunctionDefinition func2 = table.Lookup(partKey, rowKey);                        
 
             // Ensure it round tripped.
             Assert.IsNotNull(func2, "failed to lookup");

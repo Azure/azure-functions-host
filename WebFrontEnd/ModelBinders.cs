@@ -19,7 +19,7 @@ namespace WebFrontEnd
     {
         public static void Register()
         {
-            ModelBinders.Binders.Add(typeof(FunctionIndexEntity), new FunctionIndexEntityBinder());
+            ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder());
             ModelBinders.Binders.Add(typeof(CloudStorageAccount), new CloudStorageAccountBinder());
             ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
             ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder());
@@ -105,7 +105,7 @@ namespace WebFrontEnd
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
             var services = new Services(accountInfo);
 
-            FunctionIndexEntity func = services.GetFunctionTable().Lookup(value);
+            FunctionDefinition func = services.GetFunctionTable().Lookup(value);
             if (func == null)
             {
                 modelState.AddModelError(modelName, "Invalid function id");

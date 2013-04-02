@@ -138,7 +138,7 @@ namespace WebFrontEnd.Controllers
         }
 
         // List all invocation of a specific function. 
-        public ActionResult ListFunctionInstances(FunctionIndexEntity func, bool? success = null)
+        public ActionResult ListFunctionInstances(FunctionDefinition func, bool? success = null)
         {
             var logger = GetServices().GetFunctionInvokeQuery();
 
@@ -337,7 +337,7 @@ namespace WebFrontEnd.Controllers
     {
         public ExecutionInstanceLogEntity Instance { get; set; }
 
-        public FunctionIndexEntity Descriptor { get; set; }
+        public FunctionDefinition Descriptor { get; set; }
 
         public ParamModel[] Parameters { get; set; }
 

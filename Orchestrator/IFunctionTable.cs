@@ -11,19 +11,19 @@ namespace Orchestrator
     // Manage the function index. 
     public interface IFunctionTable : IFunctionTableLookup
     {
-        void Add(FunctionIndexEntity func);
-        void Delete(FunctionIndexEntity func);
+        void Add(FunctionDefinition func);
+        void Delete(FunctionDefinition func);
     }
 
     public interface IFunctionTableLookup
     {
         // Function Id is the location.ToString().
-        FunctionIndexEntity Lookup(string functionId);
-        FunctionIndexEntity[] ReadAll();
+        FunctionDefinition Lookup(string functionId);
+        FunctionDefinition[] ReadAll();
     }
     public static class IFunctionTableLookupExtensions
     {
-        public static FunctionIndexEntity Lookup(this IFunctionTableLookup lookup, FunctionLocation location)
+        public static FunctionDefinition Lookup(this IFunctionTableLookup lookup, FunctionLocation location)
         {
             string rowKey = location.ToString();
             return lookup.Lookup(rowKey);

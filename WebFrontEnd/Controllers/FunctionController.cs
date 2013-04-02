@@ -13,7 +13,7 @@ namespace WebFrontEnd.Controllers
     // Show static information about the function 
     public class FunctionInfoModel
     {
-        public FunctionIndexEntity Descriptor { get; set; }
+        public FunctionDefinition Descriptor { get; set; }
 
         public ParamModel[] Parameters { get; set; }
 
@@ -36,14 +36,14 @@ namespace WebFrontEnd.Controllers
 
         // Show all the static information 
         [HttpGet]
-        public ActionResult Index(FunctionIndexEntity func)
+        public ActionResult Index(FunctionDefinition func)
         {
             return RenderInvokePageWorker(func, null);
         }
 
         // Called when Run is converting from named parameters to full arg instances
         [HttpPost]
-        public ActionResult ComputeArgsFromNames(FunctionIndexEntity func, string[] key)
+        public ActionResult ComputeArgsFromNames(FunctionDefinition func, string[] key)
         {
             // Convert to a function instance. 
             string[] names = func.Flow.GetInputParameters().ToArray();
@@ -64,13 +64,13 @@ namespace WebFrontEnd.Controllers
         [HttpGet]
         public ActionResult InvokeFunctionReplay(FunctionInvokeRequest instance)
         {
-            FunctionIndexEntity func = GetServices().GetFunctionTable().Lookup(instance.Location);
+            FunctionDefinition func = GetServices().GetFunctionTable().Lookup(instance.Location);
             return RenderInvokePageWorker(func, instance.Args);
         }
 
         // This is the common worker that everything feeds down into.
         // Seed the input dialog with the given arg instances
-        private ActionResult RenderInvokePageWorker(FunctionIndexEntity func, ParameterRuntimeBinding[] args)
+        private ActionResult RenderInvokePageWorker(FunctionDefinition func, ParameterRuntimeBinding[] args)
         {
             var flows = func.Flow;
 
@@ -89,7 +89,7 @@ namespace WebFrontEnd.Controllers
 
         // Post when we actually submit the invoke. 
         [HttpPost]
-        public ActionResult InvokeFunctionWithArgs(FunctionIndexEntity func, string[] argValues)
+        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues)
         {
             if (argValues == null)
             {

@@ -17,7 +17,7 @@ namespace OrchestratorUnitTests
     public class CodeConfigFlowUnitTests
     {
         #region Support
-        private static FunctionIndexEntity Get(Type type)
+        private static FunctionDefinition Get(Type type)
         {
             var accountString = CloudStorageAccount.DevelopmentStorageAccount.ToString(true);
 
@@ -47,24 +47,24 @@ namespace OrchestratorUnitTests
 
         class IndexerSettings : IFunctionTable
         {
-            private List<FunctionIndexEntity> _funcs = new List<FunctionIndexEntity>();
+            private List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
 
-            public void Add(FunctionIndexEntity func)
+            public void Add(FunctionDefinition func)
             {
                 _funcs.Add(func);
             }
 
-            public void Delete(FunctionIndexEntity func)
+            public void Delete(FunctionDefinition func)
             {
                 throw new NotImplementedException();
             }
 
-            public FunctionIndexEntity[] ReadAll()
+            public FunctionDefinition[] ReadAll()
             {
                 return _funcs.ToArray();
             }
 
-            public FunctionIndexEntity Lookup(string functionId)
+            public FunctionDefinition Lookup(string functionId)
             {
                 throw new NotImplementedException();
             }

@@ -12,7 +12,7 @@ namespace RunnerHost
     // IConfiguration implementation for Registering functions. 
     public class IndexerConfig : IConfiguration
     {
-        private readonly List<FunctionIndexEntity> _functions = new List<FunctionIndexEntity>();
+        private readonly List<FunctionDefinition> _functions = new List<FunctionDefinition>();
 
         private readonly Func<string, MethodInfo> _fpFuncLookup;
 

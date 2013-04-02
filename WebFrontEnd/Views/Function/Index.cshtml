@@ -1,4 +1,5 @@
 ﻿@using WebFrontEnd.Controllers
+@using RunnerInterfaces
 @model FunctionInfoModel
 
 @{
@@ -35,11 +36,11 @@ Details for function: <b>@Model.Descriptor.ToString()</b>
 <!-- mention the rest API . Even regenerate the link? -->
 
 <p>To invoke this function, provide all of the parameters and submit. </p>
-<p>Note that all azure storage locations are relative to the <b>@Model.Descriptor.GetAccount().Credentials.AccountName</b> storage container, since that's where the function was uploaded. </p>
+<p>Note that all azure storage locations are relative to the <b>@Utility.GetAccountName(Model.Descriptor.GetAccount())</b> storage container, since that's where the function was uploaded. </p>
 
 @using (Html.BeginForm("InvokeFunctionWithArgs", "Function"))
 {
-    <input type="hidden" value="@Model.Descriptor.RowKey" name ="func"/>
+    <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
     
 <table border="1">
     <tr>
@@ -72,7 +73,7 @@ Details for function: <b>@Model.Descriptor.ToString()</b>
         
     @using (Html.BeginForm("ComputeArgsFromNames", "Function"))
     {
-        <input type="hidden" value="@Model.Descriptor.RowKey" name ="func"/>
+        <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
     
         <table border="1">         
             <tr>

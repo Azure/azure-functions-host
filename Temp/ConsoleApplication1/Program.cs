@@ -245,22 +245,22 @@ namespace ConsoleApplication1
 
         class FuncTable : IFunctionTable
         {
-            public void Add(FunctionIndexEntity func)
+            public void Add(FunctionDefinition func)
             {
             }
 
-            public void Delete(FunctionIndexEntity func)
+            public void Delete(FunctionDefinition func)
             {
             }
 
-            public FunctionIndexEntity Lookup(string functionId)
+            public FunctionDefinition Lookup(string functionId)
             {
                 throw new NotImplementedException();
             }
 
-            public FunctionIndexEntity[] ReadAll()
+            public FunctionDefinition[] ReadAll()
             {
-                return new FunctionIndexEntity[0];
+                return new FunctionDefinition[0];
             }
         }
     }

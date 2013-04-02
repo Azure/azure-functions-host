@@ -32,7 +32,7 @@ namespace WebFrontEnd
         [HttpPost]
         public void Scan(string func, string container)
         {
-            FunctionIndexEntity f = GetServices().GetFunctionTable().Lookup(func);
+            FunctionDefinition f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
@@ -62,7 +62,7 @@ namespace WebFrontEnd
         [HttpPost]
         public BeginRunResult Run(string func)
         {
-            FunctionIndexEntity f = GetServices().GetFunctionTable().Lookup(func);
+            FunctionDefinition f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);

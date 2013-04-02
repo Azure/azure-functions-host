@@ -15,12 +15,12 @@ namespace OrchestratorUnitTests
     public class FlowUnitTests
     {
         // Helper to do the indexing.
-        private static FunctionIndexEntity Get(string methodName)
+        private static FunctionDefinition Get(string methodName)
         {
             MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.IsNotNull(m);
 
-            FunctionIndexEntity func = Indexer.GetDescriptionForMethod(m);
+            FunctionDefinition func = Indexer.GetDescriptionForMethod(m);
             return func;
         }
 
@@ -30,7 +30,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestNoAutoTrigger1()
         {
-            FunctionIndexEntity func = Get("NoAutoTrigger1");
+            FunctionDefinition func = Get("NoAutoTrigger1");
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
         }
 
@@ -39,7 +39,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void AutoTrigger1()        
         {
-            FunctionIndexEntity func = Get("AutoTrigger1");
+            FunctionDefinition func = Get("AutoTrigger1");
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs);
         }
 
@@ -50,7 +50,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestNoAutoTrigger2()
         {
-            FunctionIndexEntity func = Get("NoAutoTrigger2");
+            FunctionDefinition func = Get("NoAutoTrigger2");
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
         }
 
@@ -61,7 +61,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestNoIndex()
         {
-            FunctionIndexEntity func = Get("NoIndex");
+            FunctionDefinition func = Get("NoIndex");
             Assert.IsNull(func);
         }
 
@@ -71,7 +71,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestTable()
         {
-            FunctionIndexEntity func = Get("Table");
+            FunctionDefinition func = Get("Table");
 
             var flows = func.Flow.Bindings;
             Assert.AreEqual(1, flows.Length);
@@ -87,7 +87,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestQueueInput()
         {
-            FunctionIndexEntity func = Get("QueueIn");
+            FunctionDefinition func = Get("QueueIn");
 
             var flows = func.Flow.Bindings;
             Assert.AreEqual(1, flows.Length);
@@ -107,7 +107,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestQueueOutput()
         {
-            FunctionIndexEntity func = Get("QueueOutput");
+            FunctionDefinition func = Get("QueueOutput");
                         
             var flows = func.Flow.Bindings;
             Assert.AreEqual(1, flows.Length);
@@ -124,7 +124,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestDescriptionOnly()
         {
-            FunctionIndexEntity func = Get("DescriptionOnly");
+            FunctionDefinition func = Get("DescriptionOnly");
             
             Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs); // no blobs
@@ -145,7 +145,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestHasBlobAndUnboundParameter()
         {
-            FunctionIndexEntity func = Get("HasBlobAndUnboundParameter");
+            FunctionDefinition func = Get("HasBlobAndUnboundParameter");
 
             Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs); // no blobs
@@ -168,7 +168,7 @@ namespace OrchestratorUnitTests
         [TestMethod]
         public void TestHasBlobAndBoundParameter()
         {
-            FunctionIndexEntity func = Get("HasBlobAndBoundParameter");
+            FunctionDefinition func = Get("HasBlobAndBoundParameter");
 
             Assert.AreEqual(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs); // all parameters are bound

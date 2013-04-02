@@ -68,8 +68,13 @@ namespace RunnerInterfaces
 
         public static string GetAccountName(string accountConnectionString)
         {
-            var a = GetAccount(accountConnectionString);
-            return a.Credentials.AccountName;
+            CloudStorageAccount account = GetAccount(accountConnectionString);
+            return GetAccountName(account);
+        }
+
+        public static string GetAccountName(CloudStorageAccount account)
+        {
+            return account.Credentials.AccountName;
         }
 
         [DebuggerNonUserCode]

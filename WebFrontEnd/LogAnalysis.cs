@@ -35,7 +35,7 @@ namespace WebFrontEnd
         }
 
         // Gets static information
-        public static ParamModel[] GetParamInfo(FunctionIndexEntity func)
+        public static ParamModel[] GetParamInfo(FunctionDefinition func)
         {
             var flows = func.Flow.Bindings;
 

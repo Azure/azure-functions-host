@@ -29,11 +29,11 @@ namespace IndexDriver
         {
         }
 
-        public FunctionIndexEntity[] NewFunctions { get; set; }
+        public FunctionDefinition[] NewFunctions { get; set; }
 
-        public FunctionIndexEntity[] UpdatedFunctions { get; set; }
+        public FunctionDefinition[] UpdatedFunctions { get; set; }
 
-        public FunctionIndexEntity[] DeletedFunctions { get; set; }
+        public FunctionDefinition[] DeletedFunctions { get; set; }
 
         public string[] Errors { get; set; }
     }
@@ -70,7 +70,7 @@ namespace IndexDriver
                 IAccountInfo accountInfo = new AccountInfo { AccountConnectionString = payload.ServiceAccountConnectionString };
                 var services = new Services(accountInfo);
 
-                IAzureTable<FunctionIndexEntity> table = new AzureTable<FunctionIndexEntity>(services.Account, EndpointNames.FunctionIndexTableName);
+                IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(services.Account, EndpointNames.FunctionIndexTableName);
                 LoggingCloudIndexerSettings settings = new LoggingCloudIndexerSettings(table);
 
                 // ### This can go away now that we have structured return results
@@ -156,16 +156,16 @@ namespace IndexDriver
 
         private class LoggingCloudIndexerSettings : FunctionTable
         {
-            public List<FunctionIndexEntity> _funcsTouched = new List<FunctionIndexEntity>();
+            public List<FunctionDefinition> _funcsTouched = new List<FunctionDefinition>();
 
             public List<Type> BinderTypes = new List<Type>();
 
-            public LoggingCloudIndexerSettings(IAzureTable<FunctionIndexEntity> table)
+            public LoggingCloudIndexerSettings(IAzureTable<FunctionDefinition> table)
                 : base(table)
             {
             }
 
-            public override void Add(FunctionIndexEntity func)
+            public override void Add(FunctionDefinition func)
             {
                 _funcsTouched.Add(func);
                 base.Add(func);

@@ -24,10 +24,6 @@ namespace Orchestrator
     // This should be serializable, it will get persisted in azure tables.
     public class FunctionFlow
     {
-        // Azure Client library bug: requires at least one trivial property. 
-        // Else it crashes before even getting to the custom write hooks. 
-        public string Dummy { get; set; }
-
         // Should all be non-null, else we have error!
         public ParameterStaticBinding[] Bindings { get; set; }
 

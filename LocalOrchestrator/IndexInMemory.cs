@@ -18,7 +18,7 @@ namespace Orchestrator
     // Executes via in-memory MethodInfos without azure. 
     class IndexInMemory : IFunctionTable, IQueueFunction
     {
-        List<FunctionIndexEntity> _funcs = new List<FunctionIndexEntity>();
+        List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
         List<MethodInfo> _mapping = new List<MethodInfo>();
 
         public IndexInMemory(CloudStorageAccount account)
@@ -82,12 +82,12 @@ namespace Orchestrator
             }
         }
 
-        void IFunctionTable.Add(FunctionIndexEntity func)
+        void IFunctionTable.Add(FunctionDefinition func)
         {
             _funcs.Add(func);
         }
 
-        void IFunctionTable.Delete(FunctionIndexEntity func)
+        void IFunctionTable.Delete(FunctionDefinition func)
         {
             string funcString = func.ToString();
             foreach (var x in _funcs)
@@ -100,7 +100,7 @@ namespace Orchestrator
             }
         }
 
-        FunctionIndexEntity[] IFunctionTableLookup.ReadAll()
+        FunctionDefinition[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();
         }
@@ -130,7 +130,7 @@ namespace Orchestrator
             // Binders must be already set in the IConfiguration
         }
 
-        public FunctionIndexEntity Lookup(string functionId)
+        public FunctionDefinition Lookup(string functionId)
         {
             throw new NotImplementedException();
         }

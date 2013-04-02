@@ -22,32 +22,32 @@ namespace DaasEndpoints
     // Executor/RunnerHost shouldn't need this. 
     public class FunctionTable : IFunctionTable
     {
-        private readonly IAzureTable<FunctionIndexEntity> _table;
+        private readonly IAzureTable<FunctionDefinition> _table;
 
         private const string PartionKey = "1";
 
-        public FunctionTable(IAzureTable<FunctionIndexEntity> table)
+        public FunctionTable(IAzureTable<FunctionDefinition> table)
         {
             _table = table;
         }
 
-        public virtual FunctionIndexEntity Lookup(string functionId)
+        public virtual FunctionDefinition Lookup(string functionId)
         {
             if (functionId == null)
             {
                 throw new ArgumentNullException("functionId");
             }
-            FunctionIndexEntity func = _table.Lookup(PartionKey, functionId);
+            FunctionDefinition func = _table.Lookup(PartionKey, functionId);
             return func;
         }
 
-        public virtual FunctionIndexEntity[] ReadAll()
+        public virtual FunctionDefinition[] ReadAll()
         {
             var all = _table.Enumerate().ToArray();
             return all;
         }
 
-        public virtual void Add(FunctionIndexEntity func)
+        public virtual void Add(FunctionDefinition func)
         {
             if (func == null)
             {
@@ -60,7 +60,7 @@ namespace DaasEndpoints
             _table.Flush();
         }
 
-        public virtual void Delete(FunctionIndexEntity func)
+        public virtual void Delete(FunctionDefinition func)
         {
             if (func == null)
             {

@@ -107,7 +107,7 @@ namespace Orchestrator
 
         private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
         {
-            FunctionIndexEntity[] funcs = _functionTable.ReadAll();
+            FunctionDefinition[] funcs = _functionTable.ReadAll();
 
             string connection = containerDescriptor.AccountConnectionString;
             string containerName = containerDescriptor.ContainerName;
@@ -116,7 +116,7 @@ namespace Orchestrator
             {
                 string name = Path.GetFileName(file);
 
-                foreach (FunctionIndexEntity func in funcs)
+                foreach (FunctionDefinition func in funcs)
                 {
                     var loc = func.Location;
                     if (loc.Blob.BlobName == name && loc.Blob.ContainerName == containerName && loc.Blob.AccountConnectionString == connection)
@@ -365,7 +365,7 @@ namespace Orchestrator
         // Common path for both attribute-cased and code-based configuration.
         public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr)
         {
-            FunctionIndexEntity index = GetDescriptionForMethod(descr);
+            FunctionDefinition index = GetDescriptionForMethod(descr);
             if (index != null)
             {
                 FunctionLocation loc = funcApplyLocation(descr);
@@ -480,7 +480,7 @@ namespace Orchestrator
             return descr;
         }
 
-        public static FunctionIndexEntity GetDescriptionForMethod(MethodInfo method)
+        public static FunctionDefinition GetDescriptionForMethod(MethodInfo method)
         {
             MethodDescriptor descr = GetFromMethod(method);
             return GetDescriptionForMethod(descr);
@@ -488,7 +488,7 @@ namespace Orchestrator
 
         // Returns a partially instantiated FunctionIndexEntity.
         // Caller must add Location information.
-        public static FunctionIndexEntity GetDescriptionForMethod(MethodDescriptor descr)
+        public static FunctionDefinition GetDescriptionForMethod(MethodDescriptor descr)
         {
             string description = null;
             TimeSpan? interval = null;
@@ -570,7 +570,7 @@ namespace Orchestrator
                 return null;
             }
 
-            FunctionIndexEntity index = new FunctionIndexEntity
+            FunctionDefinition index = new FunctionDefinition
             {
                 Description = description,
                 Trigger = trigger,

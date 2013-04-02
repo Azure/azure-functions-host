@@ -65,7 +65,7 @@ namespace WebFrontEnd.Controllers
 
     public class FunctionListModel
     {
-        public IEnumerable<IGrouping<CloudBlobDescriptor, FunctionIndexEntity>> Functions { get; set; }
+        public IEnumerable<IGrouping<CloudBlobDescriptor, FunctionDefinition>> Functions { get; set; }
     }
 
     public class BinderListModel

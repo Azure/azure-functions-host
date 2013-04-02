@@ -84,18 +84,18 @@ namespace Orchestrator
 
         // Common call point. 
 
-        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
+        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, IConfiguration config, Func<FunctionDefinition, FunctionInvokeRequest> fpGetInstance)
         {            
-            FunctionIndexEntity func = GetFunction(account, method);
+            FunctionDefinition func = GetFunction(account, method);
             FunctionInvokeRequest instance = GetInstance(fpGetInstance, func);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
             Program.Invoke(config, method, instance.Id, inputs, instance.Args);
         }
 
-        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance)
+        private static void InvokeWorker(CloudStorageAccount account, MethodInfo method, Func<FunctionDefinition, FunctionInvokeRequest> fpGetInstance)
         {
-            FunctionIndexEntity func = GetFunction(account, method);
+            FunctionDefinition func = GetFunction(account, method);
             FunctionInvokeRequest instance = GetInstance(fpGetInstance, func);
 
             var config = ReflectionFunctionInvoker.GetConfiguration(account, method.DeclaringType);
@@ -104,7 +104,7 @@ namespace Orchestrator
             Program.Invoke(config, method, instance.Id, inputs, instance.Args);
         }
 
-        private static FunctionInvokeRequest GetInstance(Func<FunctionIndexEntity, FunctionInvokeRequest> fpGetInstance, FunctionIndexEntity func)
+        private static FunctionInvokeRequest GetInstance(Func<FunctionDefinition, FunctionInvokeRequest> fpGetInstance, FunctionDefinition func)
         {
             var instance = fpGetInstance(func);
             instance.Id = Guid.NewGuid(); // add the function instance id for causality tracking
@@ -112,7 +112,7 @@ namespace Orchestrator
         }
 
         // Convert MethodInfo --> FunctionIndexEntity
-        private static FunctionIndexEntity GetFunction(CloudStorageAccount account, MethodInfo method)
+        private static FunctionDefinition GetFunction(CloudStorageAccount account, MethodInfo method)
         {
             IndexInMemory store = new IndexInMemory(account);
             Indexer i = new Indexer(store);
@@ -121,7 +121,7 @@ namespace Orchestrator
 
             IFunctionTable functionTable = store;
             var funcs = functionTable.ReadAll();
-            FunctionIndexEntity func = funcs[0];
+            FunctionDefinition func = funcs[0];
             return func;
         }
     }
