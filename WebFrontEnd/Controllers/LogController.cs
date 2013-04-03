@@ -48,7 +48,7 @@ namespace WebFrontEnd.Controllers
         public ActionResult ViewChain(FunctionInvokeRequest func)
         {
             ICausalityReader reader = GetServices().GetCausalityReader();
-            IFunctionInstanceLookup lookup = GetServices().GetFunctionInvokeLookup();
+            IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
 
             // Redirect to ancestor?
             FunctionInvokeRequest funcHead = func;
@@ -111,7 +111,7 @@ namespace WebFrontEnd.Controllers
         // List Function invocations 
         public ActionResult ListAllInstances()
         {
-            var logger = GetServices().GetFunctionInvokeQuery();
+            var logger = GetServices().GetFunctionInstanceQuery();
 
             var model = new LogIndexModel();
 
@@ -140,7 +140,7 @@ namespace WebFrontEnd.Controllers
         // List all invocation of a specific function. 
         public ActionResult ListFunctionInstances(FunctionDefinition func, bool? success = null)
         {
-            var logger = GetServices().GetFunctionInvokeQuery();
+            var logger = GetServices().GetFunctionInstanceQuery();
 
             var model = new LogIndexModel();
             int N = 30;
@@ -177,7 +177,7 @@ namespace WebFrontEnd.Controllers
             var model = new LogFunctionModel();
             model.Instance = func;
 
-            IFunctionInstanceLookup lookup = GetServices().GetFunctionInvokeLookup();
+            IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
             model.Lookup = lookup;
 
             var instance = model.Instance.FunctionInstance;

@@ -145,7 +145,7 @@ namespace ConsoleApplication1
             IAccountInfo accountInfo = LocalRunnerHost.Program.GetAccountInfo(configFile);
 
             Services services = new Services(accountInfo);
-            IFunctionInstanceQuery logger = services.GetFunctionInvokeQuery();
+            IFunctionInstanceQuery logger = services.GetFunctionInstanceQuery();
 
             var la = new WebFrontEnd.LogAnalysis();
             var rows = la.GetChargebackLog(30, "", logger);
@@ -185,7 +185,7 @@ namespace ConsoleApplication1
 
             //IFunctionUpdatedLogger logger = new NullLogger();
             var table = new AzureTable<ExecutionInstanceLogEntity>(account.GetAccount(), "daasfunctionlogs");
-            IFunctionUpdatedLogger logger = new FunctionInvokeLogger(table);
+            IFunctionUpdatedLogger logger = new FunctionUpdatedLogger(table);
 
             ICausalityLogger causalityLogger = null;
             var e = new TaskExecutor(account, logger, taskConfig, causalityLogger);

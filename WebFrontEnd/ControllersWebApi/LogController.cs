@@ -23,7 +23,7 @@ namespace WebFrontEnd.ControllersWebApi
         public HttpResponseMessage GetFunctionLog(int N = 20, string account=null)
         {
             LogAnalysis l = new LogAnalysis();
-            IFunctionInstanceQuery query = GetServices().GetFunctionInvokeQuery();
+            IFunctionInstanceQuery query = GetServices().GetFunctionInstanceQuery();
             IEnumerable<ChargebackRow> logs = l.GetChargebackLog(N, account, query);
             
             using (var tw = new StringWriter())

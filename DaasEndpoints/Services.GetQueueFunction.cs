@@ -49,7 +49,7 @@ namespace DaasEndpoints
         // This requires that an existing azure task pool has been setup. 
         private IQueueFunction GetAzureTasksQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
+            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
             ICausalityLogger causalityLogger = GetCausalityLogger();
 
             // Based on AzureTasks
@@ -74,7 +74,7 @@ namespace DaasEndpoints
         // This requires that an existing antares site was deployed. 
         private IQueueFunction GetAntaresQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
+            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
             ICausalityLogger causalityLogger = GetCausalityLogger();
 
             // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
@@ -88,7 +88,7 @@ namespace DaasEndpoints
         // These worker roles should have been deployed automatically.
         private IQueueFunction GetWorkerRoleQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionInvokeLogger();
+            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
             ICausalityLogger causalityLogger = GetCausalityLogger();
 
             // Based on WorkerRoles (submitted via a Queue)

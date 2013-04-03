@@ -100,7 +100,7 @@ namespace WebFrontEnd
         [HttpGet]
         public FunctionInstanceStatusResult GetStatus(Guid id)
         {
-            IFunctionInstanceLookup logger = GetServices().GetFunctionInvokeQuery();
+            IFunctionInstanceLookup logger = GetServices().GetFunctionInstanceQuery();
             var instance = logger.Lookup(id);
             return new FunctionInstanceStatusResult
             {

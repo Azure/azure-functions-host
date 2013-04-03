@@ -31,7 +31,7 @@ namespace RebuildFunctionQueryTables
 
             Stopwatch sw = Stopwatch.StartNew();
 
-            IFunctionCompleteLogger f = s.GetStatsAggregator();
+            IFunctionCompleteLogger f = s.GetFunctionCompleteLogger();
 
             IAzureTable<ExecutionInstanceLogEntity> table = new AzureTable<ExecutionInstanceLogEntity>(account, EndpointNames.FunctionInvokeLogTableName);
 

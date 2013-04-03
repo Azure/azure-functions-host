@@ -28,19 +28,19 @@ namespace DaasEndpoints
         public ICausalityReader GetCausalityReader()
         {
             IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
-            IFunctionInstanceLookup logger = this.GetFunctionInvokeLookup(); // read-mode
+            IFunctionInstanceLookup logger = this.GetFunctionInstanceLookup(); // read-mode
             return new CausalityLogger(table, logger);
         }
 
-        public IFunctionUpdatedLogger GetFunctionInvokeLogger()
+        public IFunctionUpdatedLogger GetFunctionUpdatedLogger()
         {
             var table = new AzureTable<ExecutionInstanceLogEntity>(_account, EndpointNames.FunctionInvokeLogTableName);
-            return new FunctionInvokeLogger(table);
+            return new FunctionUpdatedLogger(table);
         }
 
         // Streamlined case if we just need to lookup specific function instances.
         // In this case, we don't need all the secondary indices.
-        public IFunctionInstanceLookup GetFunctionInvokeLookup()
+        public IFunctionInstanceLookup GetFunctionInstanceLookup()
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
             return new ExecutionStatsAggregator(tableLookup);
@@ -54,13 +54,13 @@ namespace DaasEndpoints
             return new ExecutionStatsAggregatorBridge(queue);
         }
 
-        public IFunctionInstanceQuery GetFunctionInvokeQuery()
+        public IFunctionInstanceQuery GetFunctionInstanceQuery()
         {
             return GetStatsAggregatorInternal();
         }
 
         // Actually does the aggregation. Receives a message from the bridge.
-        public IFunctionCompleteLogger GetStatsAggregator()
+        public IFunctionCompleteLogger GetFunctionCompleteLogger()
         {
             return GetStatsAggregatorInternal();
         }

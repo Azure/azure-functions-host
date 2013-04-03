@@ -27,7 +27,7 @@ namespace Executor
                     AzureExecutionEndpointNames.ConsoleOuputLogContainerName
                 ),
                 Bridge = _services.GetStatsAggregatorBridge(),
-                Logger = _services.GetFunctionInvokeLogger()
+                Logger = _services.GetFunctionUpdatedLogger()
             };
         }
 

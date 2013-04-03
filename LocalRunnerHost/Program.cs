@@ -38,7 +38,7 @@ namespace LocalRunnerHost
         {
             var services = new Services(accountInfo);
 
-            var l = services.GetFunctionInvokeQuery();
+            var l = services.GetFunctionInstanceQuery();
             ExecutionInstanceLogEntity log = l.Lookup(id);
             if (log == null)
             {

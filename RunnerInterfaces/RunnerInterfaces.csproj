@@ -78,7 +78,7 @@
     <Compile Include="Interfaces.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="Logging\IQueueCausalityLogger.cs" />
-    <Compile Include="Logging\Logger.cs" />
+    <Compile Include="Logging\FunctionUpdatedLogger.cs" />
     <Compile Include="Logging\LoggingInterfaces.cs" />
     <Compile Include="ModelBinderManifest.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />

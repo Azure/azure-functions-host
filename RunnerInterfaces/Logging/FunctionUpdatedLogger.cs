@@ -13,12 +13,11 @@ using SimpleBatch;
 namespace Executor
 {
     // Logs 
-    // !!! Rename to be consistent
-    public class FunctionInvokeLogger : IFunctionUpdatedLogger
+    public class FunctionUpdatedLogger : IFunctionUpdatedLogger
     {
         private readonly IAzureTable<ExecutionInstanceLogEntity> _table;
 
-        public FunctionInvokeLogger(IAzureTable<ExecutionInstanceLogEntity> table)
+        public FunctionUpdatedLogger(IAzureTable<ExecutionInstanceLogEntity> table)
         {
             if (table == null)
             {

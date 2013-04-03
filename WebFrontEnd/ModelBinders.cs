@@ -61,7 +61,7 @@ namespace WebFrontEnd
 
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
             var services = new Services(accountInfo);
-            IFunctionInstanceLookup logger = services.GetFunctionInvokeQuery();
+            IFunctionInstanceLookup logger = services.GetFunctionInstanceQuery();
             
             ExecutionInstanceLogEntity log = logger.Lookup(g);
             if (log == null)
