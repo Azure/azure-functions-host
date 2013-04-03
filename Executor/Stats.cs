@@ -74,7 +74,7 @@ namespace Executor
         // Lookup in the primary table.
         ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
         {
-            return _tableLookup.Lookup("1", rowKey.ToString());
+            return FunctionUpdatedLogger.RawLookup(_tableLookup, rowKey.ToString());
         }
 
         // This is the inverse operation of LogMru.

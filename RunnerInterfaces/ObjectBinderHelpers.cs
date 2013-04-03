@@ -134,14 +134,21 @@ namespace RunnerInterfaces
                 object value = prop.GetValue(obj, null);
                 if (value != null)
                 {
-                    if (UseToStringParser(prop.PropertyType))
+                    string result;
+                    if (prop.PropertyType == typeof(DateTime?) ||
+                        prop.PropertyType == typeof(DateTime))
                     {
-                        d[prop.Name] = value.ToString();
+                        result = SerializeDateTime((DateTime) value);
+                    }
+                    else if (UseToStringParser(prop.PropertyType))
+                    {
+                        result = value.ToString();
                     }
                     else
                     {
-                        d[prop.Name] = JsonCustom.SerializeObject(value);
+                        result = JsonCustom.SerializeObject(value);
                     }
+                    d[prop.Name] = result;
                 }
             }
             return d;
@@ -163,7 +170,16 @@ namespace RunnerInterfaces
                     object value;
                     string str = kv.Value;
                     Type type = prop.PropertyType;
-                    if (UseToStringParser(prop.PropertyType))
+                    if (type == typeof(DateTime))
+                    {
+                        value = DeserializeDateTime(str);
+                    }
+                    else if (type == typeof(DateTime?))
+                    {
+                        DateTime? v2 = DeserializeDateTime(str);
+                        value = v2;
+                    }
+                    else if (UseToStringParser(prop.PropertyType))
                     {
                         value = BindFromString(str, type);
                     }
@@ -178,7 +194,41 @@ namespace RunnerInterfaces
             return obj;
         }
 
-        // We have 2 parsing formats:
+
+        // DateTime.ToString() is not specific enough, so need better serialization functions.
+        public static string SerializeDateTime(DateTime date)
+        {
+            // DateTime is tricky. It doesn't include TimeZone, but does include 
+            // a DateTime.Kind property which controls the "view" exposed via ToString. 
+            // So:
+            //   x1.ToString() == x2.ToString(), even though:
+            //   x1.ToUniversalTime().ToString() != x2.ToUniversalTime().ToString()
+
+            // Write out a very specific format (UTC with timezone) so that our parse
+            // function can read properly. 
+
+            // Write out dates using ISO 8601 format.
+            // http://msdn.microsoft.com/en-us/library/az4se3k1.aspx
+            // This is the same format JSON.Net will use, although it will write as a string
+            // so the result is embedded in quotes. 
+            return date.ToUniversalTime().ToString("o");
+        }
+
+        public static DateTime DeserializeDateTime(string s)
+        {
+            // Parse will read in a variety of formats (even ones not written without timezone info)
+            var x = DateTime.Parse(s);
+
+            if (x.Kind == DateTimeKind.Unspecified)
+            {                
+                // Assume if there's no timezone info, it's UTC.
+                return DateTime.SpecifyKind(x, DateTimeKind.Utc);
+            }
+            return x.ToUniversalTime();
+        }
+
+        // We have 3 parsing formats:
+        // - DateTime (see SerializeDateTime)
         // - ToString / TryParse
         // - JSON 
         // Make sure serialization/Deserialization agree on the types.

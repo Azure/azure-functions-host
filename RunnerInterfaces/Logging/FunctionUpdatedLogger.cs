@@ -12,10 +12,13 @@ using SimpleBatch;
 
 namespace Executor
 {
-    // Logs 
+    // Primary access to the azure table storing function invoke requests.  
     public class FunctionUpdatedLogger : IFunctionUpdatedLogger
     {
+        // Partition key is a constant. Row key is ExecutionInstanceLogEntity.GetKey(), which is the function instance Guid. 
         private readonly IAzureTable<ExecutionInstanceLogEntity> _table;
+
+        const string PartKey = "1";
 
         public FunctionUpdatedLogger(IAzureTable<ExecutionInstanceLogEntity> table)
         {
@@ -28,10 +31,9 @@ namespace Executor
                        
         // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
         public void Log(ExecutionInstanceLogEntity log)
-        {
-            string partKey = "1";
+        {            
             string rowKey = log.GetKey();
-            var l2 = _table.Lookup(partKey, rowKey);            
+            var l2 = RawLookup(_table, rowKey);
             if (l2 == null)
             {
                 l2 = log;
@@ -42,8 +44,14 @@ namespace Executor
                 Merge(l2, log);
             }
 
-            _table.Write(partKey, rowKey, l2);
+            _table.Write(PartKey, rowKey, l2);
             _table.Flush();
+        }
+
+        public static ExecutionInstanceLogEntity RawLookup(IAzureTableReader<ExecutionInstanceLogEntity> table, string rowKey)
+        {
+            ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
+            return func;
         }
 
         // $$$ Should be a merge. Move this merge operation in IAzureTable?
