@@ -23,7 +23,7 @@ Notify the orchestration service to scan the following container for new
     {
         //string message = string.Format("{0}: \r\n{1}", item.Signature, item.Description);
         string message = item.Location.GetId();
-        <option value="@item.RowKey">@message</option>        
+        <option value="@item.ToString()">@message</option>        
     }
 </select>
           

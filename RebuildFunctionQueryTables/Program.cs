@@ -7,6 +7,7 @@ using AzureTables;
 using DaasEndpoints;
 using Executor;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace RebuildFunctionQueryTables
 {
@@ -32,9 +33,9 @@ namespace RebuildFunctionQueryTables
 
             IFunctionCompleteLogger f = s.GetStatsAggregator();
 
-            var logs = Utility.ReadTableLazy<ExecutionInstanceLogEntity>(
-                account,
-                EndpointNames.FunctionInvokeLogTableName);
+            IAzureTable<ExecutionInstanceLogEntity> table = new AzureTable<ExecutionInstanceLogEntity>(account, EndpointNames.FunctionInvokeLogTableName);
+
+            var logs = table.Enumerate();
 
             int count = 0;
 

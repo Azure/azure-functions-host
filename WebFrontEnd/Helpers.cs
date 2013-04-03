@@ -186,7 +186,7 @@ namespace WebFrontEnd.Controllers
                 linkText: "Replay " + log.ToString(),
                 actionName: "InvokeFunctionReplay", 
                 controllerName: "Function",
-                routeValues: new { instance =  log.RowKey },
+                routeValues: new { instance =  log.GetKey() },
                 htmlAttributes: null                
                 );
 

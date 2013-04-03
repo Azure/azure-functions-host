@@ -75,6 +75,10 @@
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
+      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
+      <Name>SimpleBatch</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

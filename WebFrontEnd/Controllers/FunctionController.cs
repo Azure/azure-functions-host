@@ -133,7 +133,7 @@ namespace WebFrontEnd.Controllers
 
         private ActionResult RedirectLogFunctionInstance(ExecutionInstanceLogEntity func)
         {
-            return RedirectToAction("FunctionInstance", "Log", new { func = func.RowKey });
+            return RedirectToAction("FunctionInstance", "Log", new { func = func.GetKey() });
         }
 
     }

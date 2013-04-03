@@ -34,11 +34,8 @@ namespace DaasEndpoints
 
         public IFunctionUpdatedLogger GetFunctionInvokeLogger()
         {
-            return new FunctionInvokeLogger
-            {
-                Account = _account,
-                TableName = EndpointNames.FunctionInvokeLogTableName,
-            };
+            var table = new AzureTable<ExecutionInstanceLogEntity>(_account, EndpointNames.FunctionInvokeLogTableName);
+            return new FunctionInvokeLogger(table);
         }
 
         // Streamlined case if we just need to lookup specific function instances.

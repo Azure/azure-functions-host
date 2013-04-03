@@ -184,7 +184,8 @@ namespace ConsoleApplication1
             };
 
             //IFunctionUpdatedLogger logger = new NullLogger();
-            IFunctionUpdatedLogger logger = new FunctionInvokeLogger { Account = account.GetAccount(), TableName = "daasfunctionlogs" };
+            var table = new AzureTable<ExecutionInstanceLogEntity>(account.GetAccount(), "daasfunctionlogs");
+            IFunctionUpdatedLogger logger = new FunctionInvokeLogger(table);
 
             ICausalityLogger causalityLogger = null;
             var e = new TaskExecutor(account, logger, taskConfig, causalityLogger);

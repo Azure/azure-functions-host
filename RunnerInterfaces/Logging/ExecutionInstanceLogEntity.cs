@@ -14,8 +14,8 @@ namespace Executor
     // Provide the function instance for reply. 
     // Get list of inputs for logging. 
     // Times should all be in UTC.
-    [DataServiceKey("PartitionKey", "RowKey")]
-    public class ExecutionInstanceLogEntity : TableServiceEntity
+    // This object gets mutated as the function executes. 
+    public class ExecutionInstanceLogEntity
     {
         public override string ToString()
         {
@@ -23,29 +23,14 @@ namespace Executor
             return string.Format("{0} @ {1}", name, this.QueueTime.Value.ToUniversalTime());
         }
 
+        // This maps to the builtin property on azure Tables, so it will get set for us. 
+        // This is the last time the object was updated. 
+        public DateTime Timestamp { get; set; }
+
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
-        private FunctionInvokeRequest _functionInstance;
-
-        public FunctionInvokeRequest FunctionInstance
-        {
-            get
-            {
-                return this._functionInstance;
-            }
-            set
-            {
-                this._functionInstance = value;
-
-                if (value != null)
-                {
-                    // Update row and partition key, since those are based on the FunctionInstance
-                    this.PartitionKey = "1";
-                    this.RowKey = value.Id.ToString();
-                }
-            }
-        }
-
+        public FunctionInvokeRequest FunctionInstance { get; set; }
+        
         // If function threw an exception, set to type.fullname of that exception.
         // It's important that this is top-level and queryable because it's a key scenario to find failures. 
         // Provides a quick way to know if function failed. Get exception details from the logging. 
@@ -73,6 +58,13 @@ namespace Executor
         // String that serves as a backpointer to the execution substrate.
         // Eg, if this was runas an azure task, this string can retrieve an azure task.
         public string Backpointer { get; set; }
+
+        // Get a row key for azure tables
+        // !!! Should FunctionDefinition have this too? That one uses ToString(), and it's inconsistent.
+        public string GetKey()
+        {
+            return this.FunctionInstance.Id.ToString();
+        }
     }
 
     public enum FunctionInstanceStatus

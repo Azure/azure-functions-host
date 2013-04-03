@@ -12,20 +12,27 @@ using SimpleBatch;
 
 namespace Executor
 {
-    // ### This should just be an azure table (maybe with trivial wrapper for Row/Part key)
+    // Logs 
+    // !!! Rename to be consistent
     public class FunctionInvokeLogger : IFunctionUpdatedLogger
     {
-        public CloudStorageAccount Account { get; set; }
-        
-        // Table that lists all functions. 
-        public string TableName { get; set; }
-                
+        private readonly IAzureTable<ExecutionInstanceLogEntity> _table;
+
+        public FunctionInvokeLogger(IAzureTable<ExecutionInstanceLogEntity> table)
+        {
+            if (table == null)
+            {
+                throw new ArgumentNullException("table");
+            }
+            _table = table;
+        }
+                       
         // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
         public void Log(ExecutionInstanceLogEntity log)
         {
-            // $$$ Should be a merge. Is there a table operation for merge?
-
-            var l2 = Utility.Lookup<ExecutionInstanceLogEntity>(Account, TableName, log.PartitionKey, log.RowKey);
+            string partKey = "1";
+            string rowKey = log.GetKey();
+            var l2 = _table.Lookup(partKey, rowKey);            
             if (l2 == null)
             {
                 l2 = log;
@@ -36,9 +43,11 @@ namespace Executor
                 Merge(l2, log);
             }
 
-            Utility.AddTableRow(Account, TableName, l2);
+            _table.Write(partKey, rowKey, l2);
+            _table.Flush();
         }
 
+        // $$$ Should be a merge. Move this merge operation in IAzureTable?
         static void Merge<T>(T mutate, T delta)
         {
             foreach (var property in typeof(T).GetProperties())

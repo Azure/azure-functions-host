@@ -40,6 +40,7 @@ namespace RunnerInterfaces
         // Resolveed against default storage account
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
 
+        // This is a valid azure table row/partition key. 
         public override string ToString()
         {
             return Location.GetId() + "," + Id.ToString();
