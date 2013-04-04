@@ -7,7 +7,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    internal class QueueOutputProvider : ICloudBinderProvider
+    internal class QueueOutputBinderProvider : ICloudBinderProvider
     {
         public ICloudBinder TryGetBinder(Type targetType)
         {

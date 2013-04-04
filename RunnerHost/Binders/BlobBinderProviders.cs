@@ -11,7 +11,6 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-
     // Bind directly to a CloudBlob. 
     class CloudBlobBinderProvider : ICloudBlobBinderProvider
     {

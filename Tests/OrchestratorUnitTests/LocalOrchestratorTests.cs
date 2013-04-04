@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
@@ -85,6 +86,26 @@ namespace OrchestratorUnitTests
             string content = Utility.ReadBlob(account, "daas-test-input", "input.csv");
 
             Assert.AreEqual("abc", content);
+        }
+
+        // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
+        [TestMethod]
+        public void TestBindCloudStorageAccount()
+        {
+            var account = TestStorage.GetAccount();
+
+            MethodInfo m = typeof(Program).GetMethod("FuncCloudStorageAccount");
+
+            var args = new {
+                containerName = "daas-test-input",
+                blobName = "input.txt",
+                value = "abc"
+            };
+            
+            LocalOrchestrator.Invoke(account, m, ObjectBinderHelpers.ConvertObjectToDict(args));
+
+            string content = Utility.ReadBlob(account, args.containerName, args.blobName);
+            Assert.AreEqual(args.value, content);
         }
 
         [TestMethod]
@@ -426,6 +447,13 @@ namespace OrchestratorUnitTests
             public static void TestConfig([Config("ConfigTest.txt")] Payload payload)
             {
                 Assert.AreEqual(payload.Value, 15);
+            }
+
+            // Test binding to CloudStorageAccount 
+            [SimpleBatch.Description("test")]
+            public static void FuncCloudStorageAccount(CloudStorageAccount account, string value, string containerName, string blobName)
+            {
+                Utility.WriteBlob(account, containerName, blobName, value);
             }
         }
 

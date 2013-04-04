@@ -238,7 +238,8 @@ namespace RunnerHost
             config.TableBinders.Add(new DictionaryTableBinderProvider());
 
             // Other
-            config.Binders.Add(new QueueOutputProvider());
+            config.Binders.Add(new QueueOutputBinderProvider());
+            config.Binders.Add(new CloudStorageAccountBinderProvider());
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
 
