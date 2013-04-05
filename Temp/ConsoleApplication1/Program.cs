@@ -61,6 +61,15 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
+            // Run in an AppDomain
+            Utility.DebugRunInProc = true;
+            // var result = Utility.ProcessExecute<int, int>(typeof(RunnerHost.Program), @"c:\temp\1", 15, Console.Out);                
+
+            var output = new StringWriter();
+
+            var target = typeof(RunnerHost.Program).Assembly;
+            var path = new Uri(target.CodeBase).LocalPath;
+            Utility.RunInAppDomain(path, new string[0], output);
         }
 
 #if false

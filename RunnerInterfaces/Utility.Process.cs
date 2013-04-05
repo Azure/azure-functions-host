@@ -72,32 +72,18 @@ namespace RunnerInterfaces
 
             var path = new Uri(target.CodeBase).LocalPath;
 
-            string args = string.Format("\"{0}\" \"{1}\"", inputPath, outputPath);
-
             if (!DebugRunInProc)
             {
-                ProcessExecute(path, args, output, token);
+                string args = string.Format("\"{0}\" \"{1}\"", inputPath, outputPath);
+                RunInSeparateProcess(path, args, output, token);
             }
             else
             {
-                // For debugging, run in-memory
-                var old = Console.Out;
-                try
-                {
-                    Console.SetOut(output);
-                    var mi = targetType.GetMethod("Main", new Type[] { typeof(string[]) });
-                    mi.Invoke(null, new object[] 
-                        { 
-                            new string[] { inputPath, outputPath }
-                        });
-                }
-                catch (Exception e)
-                {
-                    // Error
-                    Console.WriteLine("Error!! {0}", e.Message);
-                }
-                Console.SetOut(old); // restore
+                var args = new string[] { inputPath, outputPath };
+                RunInAppDomain(path, args, output);
+                // RunInSameDomain(targetType, args, output);
             }
+            output.Flush();
 
             // If output path doesn't exist, then the target app crashed with a critical and unexpectd error. 
             // Normally, app should catch any user errors and propagate those results to the result object.
@@ -113,9 +99,73 @@ namespace RunnerInterfaces
             return result;
         }
 
+        // Run in the same appdomain, via reflection. 
+        public static void RunInSameDomain(Type targetType, string[] args, TextWriter output)
+        {            
+            var old = Console.Out;
+            try
+            {
+                Console.SetOut(output);
+                var mi = targetType.GetMethod("Main", new Type[] { typeof(string[]) });
+                mi.Invoke(null, new object[] 
+                        { 
+                            args
+                        });
+            }
+            catch (Exception e)
+            {
+                // Error
+                Console.WriteLine("Error!! {0}", e.Message);
+            }
+            Console.SetOut(old); // restore
+        }
+
+        // Run in a isolated appdomain. Still in the same process (good for debugging and for security permissions), 
+        // but also in a separate domain that we can unload after running. 
+        public static void RunInAppDomain(string path, string[] args, TextWriter output)
+        {
+            var old = Console.Out;
+            Console.SetOut(output);
+
+            AppDomain domain = AppDomain.CreateDomain("second");
+
+            // New appdomain does not inherit Console.Out
+            // So we we have to invoke into the AppDomain and call Console.SetOut()
+            // TextWriter marshal by ref, so we can still pass it in. 
+            try
+            {
+                var objHandle = domain.CreateInstanceFrom(path, "RunnerHost.OutputSetter");
+                var obj = objHandle.Unwrap();
+                var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod;
+                obj.GetType().InvokeMember("SetOut", flags, null, obj, new object[] { output });
+            }
+            catch
+            {
+                Console.WriteLine("Failed to capture child process console output");
+            }
+
+            try
+            {
+                try
+                {
+                    domain.ExecuteAssembly(path, args);
+                }
+                finally
+                {
+                    AppDomain.Unload(domain);
+                }
+            }
+            catch (Exception e)
+            {
+                // Error
+                Console.WriteLine("Error!! {0}", e.Message);
+            }
+            Console.SetOut(old); // restore
+        }
+
         // redirect console.output to capture.
         // output stream is updated live (no buffering). 
-        public static void ProcessExecute(string filename, string args, TextWriter output, CancellationToken token)
+        private static void RunInSeparateProcess(string filename, string args, TextWriter output, CancellationToken token)
         {
             ProcessStartInfo si = new ProcessStartInfo();
             si.UseShellExecute = false;

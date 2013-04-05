@@ -14,6 +14,21 @@ using SimpleBatch.Client;
 
 namespace RunnerHost
 {
+    // Helper to redirect std.out if this function is launched as an appdomain.
+    // This a hook that can be invoked by whoever creates the appdomain.
+    // See:
+    // http://blogs.artinsoft.net/mrojas/archive/2008/10/02/outofprocess-in-c.aspx
+    public class OutputSetter : MarshalByRefObject
+    {
+        public OutputSetter()
+        {
+        }
+        public void SetOut(TextWriter output)
+        {
+            Console.SetOut(output);
+        }
+    }
+
     // Used for launching an instance
     public class Program
     {
