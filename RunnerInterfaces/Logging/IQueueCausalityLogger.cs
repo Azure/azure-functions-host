@@ -3,47 +3,60 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Executor;
 using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SimpleBatch;
 
 namespace RunnerInterfaces
 {
     // This tracks causality via the queue message payload. 
-    // $$$ This is bad because it means we can't interop queue sources with extenals. 
+    // Important that this can interoperate with external queue messages, so be resilient to a missing guid marker. 
     // Can we switch to some auxillary table? Beware, CloudQueueMessage.Id is not 
     // filled out until after the message is queued, but then there's a race between updating 
     // the aux storage and another function picking up the message.
     public class QueueCausalityHelper
     {
+        // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
+        const string parentGuidFieldName = "SBParentGuid";
+
         // When we enqueue, add the 
         public CloudQueueMessage EncodePayload(Guid functionOwner, object payload)
         {
-            string json = JsonCustom.SerializeObject(payload);
+            JToken token = JToken.FromObject(payload);
+            token[parentGuidFieldName] = functionOwner.ToString();
 
-            string x = functionOwner.ToString() + "," + json;
-
-            CloudQueueMessage msg = new CloudQueueMessage(x);
+            string json = token.ToString();
+            
+            CloudQueueMessage msg = new CloudQueueMessage(json);
             // Beware, msg.id is not filled out yet. 
             return msg;
         }
 
         public string DecodePayload(CloudQueueMessage msg)
         {
-            string x = msg.AsString;
-            int i = x.IndexOf(',');
-            string payload = x.Substring(i + 1);
+            // Beware, if payload was queued externally, this may not even be valid JSON. 
+            string payload = msg.AsString;            
             return payload;
         }
 
         public Guid GetOwner(CloudQueueMessage msg)
         {
-            string x = msg.AsString;
-            int i = x.IndexOf(',');
-            string owner = x.Substring(0, i);
+            string json = msg.AsString;
 
-            Guid guid;
-            Guid.TryParse(owner, out guid);
+            try
+            {
+                JToken token = JToken.Parse(json);
+                string val = (string)token[parentGuidFieldName];
 
-            return guid;
+                Guid guid;
+                Guid.TryParse(val, out guid);
+
+                return guid;
+            }
+            catch (JsonReaderException)
+            {
+                return Guid.Empty;
+            }
         }
     }
 }

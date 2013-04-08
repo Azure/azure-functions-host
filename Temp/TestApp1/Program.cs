@@ -34,6 +34,11 @@ namespace TestApp1
                 BindBlobOutput("output", @"daas-test-input3\{name}.output.csv");
         }
 
+        public static void TestQueue([QueueInput] MyConfig myTestQueue)
+        {
+            Console.WriteLine("{0},{1}", myTestQueue.UserName, myTestQueue.Quota);
+        }
+
         [NoAutomaticTrigger]
         public static void TestConfig([Config("test.config.txt")] MyConfig options)
         {
