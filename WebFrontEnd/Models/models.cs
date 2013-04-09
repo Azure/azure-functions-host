@@ -42,6 +42,7 @@ namespace WebFrontEnd.Controllers
     public class OverviewModel
     {
         public string AccountName { get; set; }
+        public string ExecutionSubstrate { get; set; }
 
         public int? QueueDepth { get; set; }
 

@@ -2,6 +2,7 @@
 using System.Web.Mvc;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.ServiceRuntime;
 using Orchestrator;
 using RunnerInterfaces;
 
@@ -26,6 +27,7 @@ namespace WebFrontEnd.Controllers
 
             // Get health
             var services = GetServices();
+            model.ExecutionSubstrate = services.GetExecutionSubstrateDescription();
             model.QueueDepth = services.GetExecutionQueueDepth();
             model.HealthStatus = services.GetHealthStatus();
             model.AccountName = services.Account.Credentials.AccountName;

@@ -171,6 +171,7 @@ namespace WebFrontEnd.Controllers
         {
             if (func == null)
             {
+                return View("Error");
             }
 
             // Do some analysis to find inputs, outputs, 
@@ -182,6 +183,13 @@ namespace WebFrontEnd.Controllers
 
             var instance = model.Instance.FunctionInstance;
             model.Descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
+            if (model.Descriptor == null)
+            {
+                // Function has been removed from the table.                 
+                string msg = string.Format("Function {0} has been unloaded from the server. Can't get log information", func.FunctionInstance.Location.GetId());
+                this.ModelState.AddModelError("func", msg);
+                return View("Error");
+            }
 
             // Parallel arrays of static descriptor and actual instance info 
             ParameterRuntimeBinding[] args = instance.Args;

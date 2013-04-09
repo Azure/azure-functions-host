@@ -33,7 +33,10 @@ namespace WebFrontEnd.ControllersWebApi
                 {
                     // Sanitize the first parameter for CSV usage. 
                     string val = row.FirstParam;
-                    val = val.Replace('\r', ' ').Replace('\n', ' ').Replace(',', ';');
+                    if (val != null)
+                    {
+                        val = val.Replace('\r', ' ').Replace('\n', ' ').Replace(',', ';');
+                    }
 
                     tw.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}",
                         row.Name,

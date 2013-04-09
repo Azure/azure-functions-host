@@ -66,7 +66,7 @@ namespace WebFrontEnd
             ExecutionInstanceLogEntity log = logger.Lookup(g);
             if (log == null)
             {
-                modelState.AddModelError(modelName, "Invalid function log entry. Has it been deleted from the server?");
+                modelState.AddModelError(modelName, "Invalid function log entry. Either the entry is invalid or logs have been deleted from the server.");
             }
             return log;
         }

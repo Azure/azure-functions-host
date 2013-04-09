@@ -13,29 +13,61 @@ namespace DaasEndpoints
 {
     public partial class Services
     {
-        // Get the object that will queue function invoke requests to the execution substrate.
-        // This may pick from multiple substrates.
-        public IQueueFunction GetQueueFunction()
+        // Get a description of which execution mechanism is used. 
+        // This is coupled to IQueueFunction. ($$$ Move this to be on that interface?)
+        public string GetExecutionSubstrateDescription()
         {
-            // Pick the appropriate queuing function to use.
+            try
+            {
+                QueueFunctionType t = GetExecutionType();
+                switch (t)
+                {
+                    case QueueFunctionType.Antares:
+                        string url = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
+                        return "Antares: " + url;
+                    default:
+                        return t.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+
+        }
+
+        private QueueFunctionType GetExecutionType()
+        {
             string value = RoleEnvironment.GetConfigurationSettingValue("ExecutionType");
 
             QueueFunctionType t;
             if (Enum.TryParse<QueueFunctionType>(value, out t))
             {
-                // Keep a runtime codepath for all cases so that we ensure all cases always compile.
-                switch (t)
-                {
-                    case QueueFunctionType.Antares:
-                        return GetAntaresQueueFunction();
-                    case QueueFunctionType.AzureTasks:
-                        return GetAzureTasksQueueFunction();
-                    case QueueFunctionType.WorkerRoles:
-                        return GetWorkerRoleQueueFunction();
-                }
+                return t;
             }
             string msg = string.Format("unknown execution substrate:{0}", value);
             throw new InvalidOperationException(msg);
+        }
+
+        // Get the object that will queue function invoke requests to the execution substrate.
+        // This may pick from multiple substrates.
+        public IQueueFunction GetQueueFunction()
+        {
+            // Pick the appropriate queuing function to use.
+            QueueFunctionType t = GetExecutionType();
+            // Keep a runtime codepath for all cases so that we ensure all cases always compile.
+            switch (t)
+            {
+                case QueueFunctionType.Antares:
+                    return GetAntaresQueueFunction();
+                case QueueFunctionType.AzureTasks:
+                    return GetAzureTasksQueueFunction();
+                case QueueFunctionType.WorkerRoles:
+                    return GetWorkerRoleQueueFunction();
+                default:
+                    // should have already thrown before getting here. 
+                    throw new InvalidOperationException("Unknown"); 
+            }            
         }
 
         enum QueueFunctionType
