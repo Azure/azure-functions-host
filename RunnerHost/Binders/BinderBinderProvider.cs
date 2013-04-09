@@ -74,8 +74,12 @@ namespace RunnerHost
             {
                 lock (_watches)
                 {
+                    string marker = "; ";
+                    
                     // Show selfwatch from objects we've handed out. 
                     StringBuilder sb = new StringBuilder();
+                    sb.AppendFormat("Created {0} object(s):" + marker, _watches.Count);
+
                     foreach (var result in _watches)
                     {
                         sb.Append(result.Name);
@@ -84,8 +88,7 @@ namespace RunnerHost
                             sb.Append(" ");
                             sb.Append(result.Watch.GetStatus());
                         }
-                        sb.Append('.');
-                        sb.AppendLine();
+                        sb.Append(marker); // Must keep on the same line                        
                     }
                     return sb.ToString();
                 }

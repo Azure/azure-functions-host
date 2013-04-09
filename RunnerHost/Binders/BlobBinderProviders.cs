@@ -85,15 +85,24 @@ namespace RunnerHost
     {
         private class TextWriterBinder : ICloudBlobBinder
         {
-            TextWriter _content = new StringWriter();
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
+                MemoryStream ms = new MemoryStream();
+                WatchableStream watcher = new WatchableStream(ms);
+                TextWriter _content = new StreamWriter(watcher);
+
                 CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 return new BindCleanupResult
                 {
-                     Result =_content,
-                     Cleanup = () => blob.UploadText(_content.ToString())
+                    Result = _content,
+                    SelfWatch = watcher, 
+                    Cleanup = () =>
+                        {
+                            _content.Flush();
+                            blob.UploadFromStream(ms);
+                        }
+
                 };
             }
         }

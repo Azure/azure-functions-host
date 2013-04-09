@@ -138,6 +138,9 @@ namespace WebFrontEnd
 
                         return list.ToArray();
                     }
+
+                    line = line.Replace("; ", "\r\n");
+
                     list.Add(line);
                 }
             }

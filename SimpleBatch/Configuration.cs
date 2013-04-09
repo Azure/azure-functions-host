@@ -13,6 +13,8 @@ namespace SimpleBatch
     // This can be queried on another thread. 
     public interface ISelfWatch
     {
+        // $$$ Expected that string is a single line. 
+        // Use "; " to denote multiple lines. 
         string GetStatus();
     }
 
@@ -99,6 +101,7 @@ namespace SimpleBatch
     {
         private readonly BindResult[] _inners;
         public Action<T> Cleanup;
+        public ISelfWatch _watcher;
 
         // this OnPostAction() will chain to inners
         public BindResult(T result, params BindResult[] inners)
@@ -110,6 +113,14 @@ namespace SimpleBatch
         public BindResult(T result)
         {
             this.Result = result;
+        }
+
+        public override ISelfWatch Watcher
+        {
+            get
+            {
+                return base.Watcher ?? _inners[0].Watcher;
+            }
         }
 
         public new T Result
