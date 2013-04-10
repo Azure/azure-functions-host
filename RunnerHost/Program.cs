@@ -65,19 +65,24 @@ namespace RunnerHost
 
                 // Failure. 
                 Console.WriteLine("Exception while executing:");
-
-                Exception e2 = e;
-                while (e2 != null)
-                {
-                    Console.WriteLine(e2.Message);
-                    Console.WriteLine(e2.StackTrace);
-                    Console.WriteLine();
-                    e2 = e2.InnerException;
-                }
+                WriteExceptionChain(e);                
                 Console.WriteLine("FAIL");
             }
 
             return result;
+        }
+
+        // Write an exception and inner exceptions
+        private static void WriteExceptionChain(Exception e)
+        {
+            Exception e2 = e;
+            while (e2 != null)
+            {
+                Console.WriteLine(e2.Message);
+                Console.WriteLine(e2.StackTrace);
+                Console.WriteLine();
+                e2 = e2.InnerException;
+            }
         }
 
         public static void Invoke(LocalFunctionInstance invoke)
@@ -331,9 +336,22 @@ namespace RunnerHost
 
                 // Process any out parameters, do any cleanup
                 // For update, do any cleanup work. 
-                foreach(var bind in binds)
+                
+                for (int i = 0; i < len; i++)
                 {
-                    bind.OnPostAction();
+                    var bind = binds[i];
+                    try
+                    {
+                        // This could invoke user code and do complex things that may fail. Catch the exception 
+                        bind.OnPostAction();
+                    }
+                    catch(Exception e)
+                    {
+                        // This 
+                        Console.WriteLine("Error while handling parameter #{0} '{1}' after function returned:", i, ps[i]);
+                        WriteExceptionChain(e);
+                        success = false;
+                    }
                 }
 
                 if (success)

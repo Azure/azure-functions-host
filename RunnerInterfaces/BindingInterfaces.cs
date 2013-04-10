@@ -16,7 +16,7 @@ namespace RunnerInterfaces
     {
         IDictionary<string, string> NameParameters { get; } 
         string AccountConnectionString { get; }
-        string ReadFile(string filename);
+        string ReadFile(string filename); // $$$ Throw or null on missing file?
     }
 
     // extension interface to IRuntimeBindingInputs, for when the input is triggered by a new blob

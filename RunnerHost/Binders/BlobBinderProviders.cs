@@ -100,6 +100,7 @@ namespace RunnerHost
                     Cleanup = () =>
                         {
                             _content.Flush();
+                            ms.Position = 0; // reset to start
                             blob.UploadFromStream(ms);
                         }
 
