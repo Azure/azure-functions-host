@@ -68,6 +68,8 @@
       <Import moduleName="Diagnostics" />
     </Imports>
     <ConfigurationSettings>
+      <Setting name="LoginPassword"/>
+      
       <!-- These should all be same as the Orchestrator Role's-->
       <Setting name="MainStorage" />
       <Setting name="WebRoleEndpoint" />

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
+using Microsoft.WindowsAzure.ServiceRuntime;
 
 namespace WebFrontEnd.Controllers
 {
@@ -22,7 +23,9 @@ namespace WebFrontEnd.Controllers
         {
             if (ModelState.IsValid)
             {
-                bool f = (model.Password == "12345");
+                string expected = RoleEnvironment.GetConfigurationSettingValue("LoginPassword");
+
+                bool f = (model.Password == expected);
                 // bool f = Membership.ValidateUser(model.UserName, model.Password);
                 if (!f)
                 {
