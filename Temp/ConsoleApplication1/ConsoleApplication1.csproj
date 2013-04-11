@@ -74,6 +74,10 @@
       <Project>{eb5a89cb-ef6c-47be-8639-1f65fc61a64f}</Project>
       <Name>IndexDriver</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\LocalOrchestrator\LocalOrchestrator.csproj">
+      <Project>{c03aa9a7-be04-4c64-a104-185fc8e51252}</Project>
+      <Name>LocalOrchestrator</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\SimpleBatch.Client\SimpleBatch.Client.csproj">
       <Project>{0f2424ff-7502-4bc7-87cd-a477b88fa054}</Project>
       <Name>SimpleBatch.Client</Name>

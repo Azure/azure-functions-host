@@ -167,19 +167,56 @@ namespace Orchestrator
             }
         }
 
-        private void IndexLocalDirWorker(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
+        private string[] GetFileList(string localDirectory)
         {
             var filesDll = Directory.EnumerateFiles(localDirectory, "*.dll");
             var filesExe = Directory.EnumerateFiles(localDirectory, "*.exe");
-
-            foreach (string file in filesExe.Concat(filesDll))
+                        
+            List<string> list = new List<string>();
+            foreach (var file in filesExe.Concat(filesDll))
             {
-                //string name = Path.GetFileNameWithoutExtension(file);
+                // Omit anything with .vshost.exe:
+                // 1. It won't have SB functions anyways.
+                // 2. we often can't index it, so it produces noisy errors even trying
+                // 3. they all have the same AssemblyName, and so trying to load can produce naming collisions. 
+                if (file.EndsWith(".vshost.exe", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    continue;
+                }
+                list.Add(file);
+            }
+            return list.ToArray();
+        }
+
+        [DebuggerNonUserCode]
+        private AssemblyName GetAssemblyName(string file)
+        {
+            try
+            {
                 var name = AssemblyName.GetAssemblyName(file);
-                _fileLocations[name] = file;
+                return name;
+            }
+            catch (BadImageFormatException)
+            {
+                // Can happen normally for Native dlls. 
+                return null;
+            }
+        }
+
+        private void IndexLocalDirWorker(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
+        {
+            string[] fileList = GetFileList(localDirectory);
+
+            foreach (string file in fileList)
+            {
+                var name = GetAssemblyName(file);
+                if (name != null)
+                {
+                    _fileLocations[name] = file;
+                }
             }
 
-            foreach (string file in filesExe.Concat(filesDll))
+            foreach (string file in fileList)
             {
                 Assembly a = null;
                 try
@@ -188,7 +225,7 @@ namespace Orchestrator
                 }
                 catch (Exception exception)
                 {
-                    Console.WriteLine("Warning: The assembly '{0}' has been skipped. Exception Type: '{1}', Exception Message: {2}", file, exception.GetType(), exception.Message);
+                    Console.WriteLine("Warning: The assembly '{0}' has been skipped. This is ok if there are no simplebatch entry point functions in that file.  Exception Type: '{1}', Exception Message: {2}", file, exception.GetType(), exception.Message);
                     continue;
                 }
 
@@ -211,7 +248,11 @@ namespace Orchestrator
                         continue;
                     }
 
-                    throw new InvalidOperationException("CLR Loaded assembly from wrong spot");
+                    // One way this can happen is if 2 assemblies have the same assembly name but different filenames.
+                    // The loader will match on assembly name and reuse. 
+                    // This is the case with Vshost.exe. 
+                    string msg = string.Format("CLR loaded wrong assembly. Tried to load {0} but actually loaded {1}.", file, a.Location);
+                    throw new InvalidOperationException(msg);
                 }
 
                 // The hosts and binders are IL-only and running in 64-bit environments.

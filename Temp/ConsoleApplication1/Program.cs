@@ -61,15 +61,11 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            // Run in an AppDomain
-            Utility.DebugRunInProc = true;
-            // var result = Utility.ProcessExecute<int, int>(typeof(RunnerHost.Program), @"c:\temp\1", 15, Console.Out);                
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+            var t = new IndexInMemory(account);
+            Indexer i = new Indexer(t);
 
-            var output = new StringWriter();
-
-            var target = typeof(RunnerHost.Program).Assembly;
-            var path = new Uri(target.CodeBase).LocalPath;
-            Utility.RunInAppDomain(path, new string[0], output);
+            i.IndexLocalDir(t.OnApplyLocationInfo, @"c:\temp\2");
         }
 
 #if false
