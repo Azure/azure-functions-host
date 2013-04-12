@@ -31,9 +31,11 @@ namespace LiveAzureTests
             {
                 Id =  g,
                 TriggerReason = new BlobTriggerReason { },
-                Location = new FunctionLocation
+                Location = new RemoteFunctionLocation
                 {
-                    Blob = Blob("container", "blob"),
+                    AccountConnectionString = "some connection string",
+                    ContainerName = "container",
+                    BlobName = "blob",
                     MethodName = "method",
                     TypeName = "type"
                 },
@@ -81,7 +83,7 @@ namespace LiveAzureTests
 
 
             string tableName = "functionlogtest";
-            Utility.DeleteTable(AzureConfig.GetAccount(), tableName);
+            Utility.DeleteTable(AzureConfig.GetAccount(), tableName); // !!! Can take 4 minutes. Mock with in-memory?
 
             var table = new AzureTable<ExecutionInstanceLogEntity>(AzureConfig.GetAccount(), tableName);
             IFunctionUpdatedLogger logger = new FunctionUpdatedLogger(table);
@@ -140,9 +142,9 @@ namespace LiveAzureTests
             FunctionDefinition func = new FunctionDefinition
             {
                 Description = "description",
-                Location = new FunctionLocation
+                Location = new LocalFunctionLocation
                 {
-                    Blob = Blob("container", "blob"),
+                    AssemblyPath = @"unknown:\unknown",
                     MethodName = "method",
                     TypeName = "type"
                 },

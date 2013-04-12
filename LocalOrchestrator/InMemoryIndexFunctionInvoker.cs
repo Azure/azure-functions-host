@@ -13,6 +13,7 @@ using SimpleBatch.Client;
 
 namespace Orchestrator
 {
+    // Used for invoking functions (via ICall) that were indexed in-memory. 
     class InMemoryIndexFunctionInvoker : LocalFunctionInvoker
     {
         private readonly IndexInMemory _indexer;

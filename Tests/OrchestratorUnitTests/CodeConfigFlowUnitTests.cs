@@ -26,16 +26,10 @@ namespace OrchestratorUnitTests
             Indexer i = new Indexer(x);
 
             Func<MethodInfo, FunctionLocation> funcApplyLocation =
-                method => new FunctionLocation
+                method => new MethodInfoFunctionLocation
                 {
-                    MethodName = method.Name,
-                    TypeName = method.DeclaringType.Name,
-                    Blob = new CloudBlobDescriptor
-                    {
-                        AccountConnectionString = accountString,
-                        BlobName ="blob",
-                        ContainerName = "container"
-                    }
+                     AccountConnectionString = accountString,
+                     MethodInfo = method
                 };
                       
             
@@ -45,6 +39,7 @@ namespace OrchestratorUnitTests
             return funcs[0];
         }
 
+        // !!! Redundant?
         class IndexerSettings : IFunctionTable
         {
             private List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
@@ -93,7 +88,7 @@ namespace OrchestratorUnitTests
         {
             var func = Get(typeof(Type1));
 
-            Assert.AreEqual("TestReg", func.Location.MethodName);
+            Assert.AreEqual("Type1.TestReg", func.Location.GetShortName());
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs);
 
             var bindings = func.Flow.Bindings;
@@ -126,7 +121,7 @@ namespace OrchestratorUnitTests
 
             Assert.IsNotNull(func);
 
-            Assert.AreEqual("TestReg", func.Location.MethodName);
+            Assert.AreEqual("Type2.TestReg", func.Location.GetShortName());
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
 
             var bindings = func.Flow.Bindings;
@@ -152,7 +147,7 @@ namespace OrchestratorUnitTests
 
             Assert.IsNotNull(func);
 
-            Assert.AreEqual("TestReg", func.Location.MethodName);
+            Assert.AreEqual("Type3.TestReg", func.Location.GetShortName());
             Assert.AreEqual("xyz", func.Description);
         }
 
@@ -175,7 +170,7 @@ namespace OrchestratorUnitTests
 
             Assert.IsNotNull(func);
 
-            Assert.AreEqual("TestReg", func.Location.MethodName);
+            Assert.AreEqual("Type4.TestReg", func.Location.GetShortName());
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
             Assert.AreEqual(null, func.Trigger.TimerInterval);
         }
@@ -200,7 +195,7 @@ namespace OrchestratorUnitTests
 
             Assert.IsNotNull(func);
 
-            Assert.AreEqual("TestReg", func.Location.MethodName);
+            Assert.AreEqual("Type5.TestReg", func.Location.GetShortName());
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
             Assert.AreEqual(TimeSpan.Parse("00:03:00"), func.Trigger.TimerInterval);
         }

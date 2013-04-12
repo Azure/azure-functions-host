@@ -228,7 +228,7 @@ namespace WebFrontEnd
                 rows.Add(row);
                                 
                 var instance = log.FunctionInstance;
-                row.Name = instance.Location.MethodName;
+                row.Name = instance.Location.GetShortName();
                 row.Id = instance.Id;
                 row.ParentId = instance.TriggerReason.ParentGuid;
 

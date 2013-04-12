@@ -105,6 +105,8 @@ namespace Orchestrator
             }
         }
 
+        // !!! How do we remove stale URI functions?
+        // Remove any functions that are in the container. 
         private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
         {
             FunctionDefinition[] funcs = _functionTable.ReadAll();
@@ -118,10 +120,13 @@ namespace Orchestrator
 
                 foreach (FunctionDefinition func in funcs)
                 {
-                    var loc = func.Location;
-                    if (loc.Blob.BlobName == name && loc.Blob.ContainerName == containerName && loc.Blob.AccountConnectionString == connection)
+                    var loc = func.Location as RemoteFunctionLocation;
+                    if (loc != null)
                     {
-                        _functionTable.Delete(func);
+                        if ((loc.BlobName == name) && (loc.ContainerName == containerName) && (loc.AccountConnectionString == connection))
+                        {
+                            _functionTable.Delete(func);
+                        }
                     }
                 }
             }
@@ -378,14 +383,11 @@ namespace Orchestrator
             Type type = method.DeclaringType;
 
             // This is effectively serializing out a MethodInfo.
-            return new FunctionLocation
+            return new RemoteFunctionLocation
             {
-                Blob = new CloudBlobDescriptor
-                {
-                    AccountConnectionString = container.AccountConnectionString,
-                    ContainerName = container.ContainerName,
-                    BlobName = Path.GetFileName(type.Assembly.Location)
-                },
+                AccountConnectionString = container.AccountConnectionString,
+                ContainerName = container.ContainerName,
+                BlobName = Path.GetFileName(type.Assembly.Location),
                 MethodName = method.Name,
                 TypeName = type.FullName
             };

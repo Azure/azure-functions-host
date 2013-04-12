@@ -21,6 +21,7 @@ namespace Orchestrator
         List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
         List<MethodInfo> _mapping = new List<MethodInfo>();
 
+        // account is for binding parameters. 
         public IndexInMemory(CloudStorageAccount account)
         {
             this.Account = account;
@@ -51,35 +52,14 @@ namespace Orchestrator
 
         public FunctionLocation OnApplyLocationInfo(MethodInfo method)
         {
-            int idx = _mapping.Count;
             _mapping.Add(method);
 
             // Still need account information because blob inputs are relative to these accounts.
-            return new InMemoryFunctionLocation
+            return new MethodInfoFunctionLocation
             {
-                Blob = new CloudBlobDescriptor
-                {
-                    AccountConnectionString = this.AccountConnectionString
-                },
-                MethodName = method.Name,
-                TypeName = method.DeclaringType.Name,
-                _method = method
+                AccountConnectionString = this.AccountConnectionString,
+                MethodInfo = method
             };
-        }
-
-        // Refer to a function via reflection, not necessarily that lives on a cloud blob. 
-        // So blob information here may not be accurate. 
-        class InMemoryFunctionLocation : FunctionLocation
-        {
-            public MethodInfo _method;
-
-            public override string ReadFile(string filename)
-            {
-                var root = Path.GetDirectoryName(_method.DeclaringType.Assembly.Location);
-
-                string path = Path.Combine(root, filename);
-                return File.ReadAllText(path);
-            }
         }
 
         void IFunctionTable.Add(FunctionDefinition func)
@@ -107,12 +87,9 @@ namespace Orchestrator
 
         ExecutionInstanceLogEntity IQueueFunction.Queue(FunctionInvokeRequest instance)
         {
-            InMemoryFunctionLocation location = (InMemoryFunctionLocation) instance.Location;
-            MethodInfo m = location._method;
-
-            // run immediately 
-            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(instance.Location);
-            Program.Invoke(_config, m, instance.Id, inputs, instance.Args);
+            // Our _config lets us hook the ICall binder so that calls come back to the in-memory orchestrator 
+            // rather than go through a webcall.
+            Program.Invoke(instance, _config);
 
             return null;
         }
@@ -122,14 +99,7 @@ namespace Orchestrator
         {
             return null;
         }
-
-
-        public void RequestBinder(Type t)
-        {
-            // Nop. In-memory doesn't pull binders down from cloud. 
-            // Binders must be already set in the IConfiguration
-        }
-
+       
         public FunctionDefinition Lookup(string functionId)
         {
             throw new NotImplementedException();

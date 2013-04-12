@@ -32,13 +32,14 @@ namespace Executor
         // Execute the function and block. 
         public FunctionExecutionResult Execute(FunctionInvokeRequest instance, TextWriter outputLogging, CancellationToken token)
         {
-            string localCache = GetLocalCopy(instance.Location);
+            var remoteLoc = (RemoteFunctionLocation)instance.Location; // !!! Handle others?
+            string localCache = GetLocalCopy(remoteLoc);
 
             ExecutionInstance i = new ExecutionInstance(localCache, outputLogging);
             return i.Execute(instance, token);
         }
 
-        private string GetLocalCopy(FunctionLocation descr)
+        private string GetLocalCopy(RemoteFunctionLocation descr)
         {
             string id = descr.GetId();
             ContainerDownloader download;
@@ -50,7 +51,7 @@ namespace Executor
                 {
                     ClearCache();
                 }
-                download = new ContainerDownloader(descr.Blob, _localCacheRoot);
+                download = new ContainerDownloader(descr.GetBlob(), _localCacheRoot);
                 _localCacheMap[id] = download;
             }
 
@@ -105,15 +106,25 @@ namespace Executor
             }
             _output.WriteLine();
 
-            LocalFunctionInstance localInstance = instance.GetLocalFunctionInstance(_localCopy);
+            var localInstance = ConvertToLocal(instance);
 
-            var result = Utility.ProcessExecute<LocalFunctionInstance, FunctionExecutionResult>(
+            var result = Utility.ProcessExecute<FunctionInvokeRequest, FunctionExecutionResult>(
                 typeof(RunnerHost.Program),
                 _localCopy,
                 localInstance, _output,
                 token);
 
             return result;
+        }
+
+        private FunctionInvokeRequest ConvertToLocal(FunctionInvokeRequest remoteFunc)
+        {
+            var remoteLoc = (RemoteFunctionLocation) remoteFunc.Location;
+            var localLocation = remoteLoc.GetAsLocal(_localCopy);
+
+            var localFunc = remoteFunc.CloneUpdateLocation(localLocation);            
+
+            return localFunc;
         }
     }
 }

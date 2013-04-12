@@ -126,7 +126,7 @@ namespace IndexDriver
                     else
                     {
                         settings.Delete(function);
-                        Console.WriteLine("DONE: Function '{0}' Deleted.", function.Location.MethodName);
+                        Console.WriteLine("DONE: Function '{0}' Deleted.", function.Location.GetShortName());
                     }
                 }
             }

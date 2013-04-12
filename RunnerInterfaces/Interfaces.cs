@@ -6,33 +6,6 @@ namespace RunnerInterfaces
 {
     // Stuff that's shared between RunnerHost and Executor?
 
-    // Describes a function that resides on this machine (so we can use a path to the local harddrive).
-    // Runner takes in an InvokeDescription, which is serialized from the executor.
-    public class LocalFunctionInstance
-    {
-        public string AssemblyPath { get; set; }
-
-        public string TypeName { get; set; }
-
-        public string MethodName { get; set; }
-
-        public ParameterRuntimeBinding[] Args { get; set; }
-
-        // Blob to write live parameter logging too.
-        public CloudBlobDescriptor ParameterLogBlob { get; set; }
-
-        // The guid for this function instance. We need this to properly track causality.
-        public FunctionInstanceGuid FunctionInstanceGuid { get; set; }
-
-        // ServiceURL. This can be used if the function needs to queue other execution requests.
-        public string ServiceUrl { get; set; }
-
-        // Location of this function in the cloud. This is useful to:
-        // - provide a storage container that everything gets resolved against.
-        // - provide a scope for resolving other execution requests (account/container/blob/assembly/type/method).
-        public FunctionLocation Location { get; set; }
-    }
-
     // Full permission to a queue
     public class CloudQueueDescriptor
     {

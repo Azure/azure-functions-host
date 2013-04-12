@@ -40,7 +40,7 @@ namespace Orchestrator
 
         public CloudStorageAccount GetAccount()
         {
-            return Utility.GetAccount(this.Location.Blob.AccountConnectionString);
+            return Utility.GetAccount(this.Location.AccountConnectionString);
         }
                 
         // This can be used as an azure row/partition key.

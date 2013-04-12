@@ -116,14 +116,11 @@ namespace ConsoleApplication1
 
             FunctionInvokeRequest request = new FunctionInvokeRequest
             {
-                Location = new FunctionLocation
+                Location = new RemoteFunctionLocation
                 {
-                    Blob = new CloudBlobDescriptor
-                        {
-                            AccountConnectionString = userAccountConnectionString,
-                            ContainerName = "daas-test-functions",
-                            BlobName = "TestApp1.exe"
-                        },
+                    ContainerName = "daas-test-functions",
+                    BlobName = "TestApp1.exe",               
+                    AccountConnectionString = userAccountConnectionString,
                     TypeName = "TestApp1.Program",
                     MethodName = "TestCall2"
                 },

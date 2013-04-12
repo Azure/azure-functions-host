@@ -239,7 +239,7 @@ namespace WebFrontEnd.Controllers
         private Dictionary<TKey, TValue> GetTable<TKey, TValue>(
             AzureTable table,
             Func<string, TKey> fpGetKeyFromRowKey
-            ) where TKey :  new () where TValue : new()
+            ) where TKey :  class  where TValue : new()
         {
             var dict = new Dictionary<TKey, TValue>();
 

@@ -19,7 +19,7 @@ namespace Executor
     {
         public override string ToString()
         {
-            var name = this.FunctionInstance.Location.MethodName;
+            var name = this.FunctionInstance.Location.GetShortName();
             return string.Format("{0} @ {1}", name, this.QueueTime.Value.ToUniversalTime());
         }
 

@@ -40,7 +40,7 @@ namespace WebFrontEnd.Controllers
             var allFunctions = GetServices().GetFunctionTable().ReadAll();
             var model = new FunctionListModel
             {
-                Functions = allFunctions.GroupBy(f => f.Location.Blob)
+                Functions = allFunctions.GroupBy(f => f.Location.GetGroupingKey())
             };
 
             return View(model);
@@ -124,7 +124,7 @@ namespace WebFrontEnd.Controllers
 
                 if (string.Compare(cred.AccountName, accountName, ignoreCase: true) == 0)
                 {
-                    return func.Location.Blob.AccountConnectionString;
+                    return func.Location.AccountConnectionString;
                 }
             }
 

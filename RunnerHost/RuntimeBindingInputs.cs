@@ -19,7 +19,7 @@ namespace RunnerHost
 
         // Location lets us get the account string and pull down any extra config files. 
         public RuntimeBindingInputs(FunctionLocation location)
-            : this(location.Blob.AccountConnectionString)
+            : this(location.AccountConnectionString)
         {
             this._location = location;
         }

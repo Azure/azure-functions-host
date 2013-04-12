@@ -49,23 +49,16 @@ namespace RunnerInterfaces
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
 
-
-        public LocalFunctionInstance GetLocalFunctionInstance(string localDir)
+        // Do a clone of this object, but update the location.
+        // This is useful as we convert between different location types (eg, after downloading)
+        public FunctionInvokeRequest CloneUpdateLocation(FunctionLocation newLocation)
         {
-            string assemblyEntryPoint = Path.Combine(localDir, this.Location.Blob.BlobName);
+            // Easiest to do a deep copy; but we could do a shallow since we're just changing the location.
+            string json = JsonCustom.SerializeObject(this);
+            var copy = JsonCustom.DeserializeObject<FunctionInvokeRequest>(json);
 
-            LocalFunctionInstance x = new LocalFunctionInstance
-            {
-                AssemblyPath = assemblyEntryPoint,
-                TypeName = this.Location.TypeName,
-                MethodName = this.Location.MethodName,
-                Args = this.Args,
-                ParameterLogBlob = this.ParameterLogBlob,
-                Location = this.Location,
-                ServiceUrl = this.ServiceUrl,
-                FunctionInstanceGuid = Id
-            };
-            return x;
+            copy.Location = newLocation;
+            return copy;
         }
     }
 }

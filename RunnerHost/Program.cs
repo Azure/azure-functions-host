@@ -34,15 +34,15 @@ namespace RunnerHost
     {
         public static void Main(string[] args)
         {
-            var client = new Utility.ProcessExecuteArgs<LocalFunctionInstance, FunctionExecutionResult>(args);
+            var client = new Utility.ProcessExecuteArgs<FunctionInvokeRequest, FunctionExecutionResult>(args);
 
-            LocalFunctionInstance descr = client.Input;
+            FunctionInvokeRequest descr = client.Input;
             var result = MainWorker(descr);
 
             client.Result = result;
         }
-        
-        public static FunctionExecutionResult MainWorker(LocalFunctionInstance descr)
+
+        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
         {                       
             Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
             Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
@@ -85,26 +85,38 @@ namespace RunnerHost
             }
         }
 
-        public static void Invoke(LocalFunctionInstance invoke)
+        public static void Invoke(FunctionInvokeRequest invoke, IConfiguration config)
+        {
+            MethodInfo method = GetLocalMethod(invoke);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
+            Invoke(config, method, invoke.Id, inputs, invoke.Args);
+        }
+
+        public static void Invoke(FunctionInvokeRequest invoke)
         {
             MethodInfo method = GetLocalMethod(invoke);
 
-            // GEt standard config. 
+            // Get standard config. 
             // Use an ICall that binds against the WebService provided by the local function instance.
             IConfiguration config = InitBinders();
             ApplyManifestBinders(invoke, config);
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
             CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
 
-            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-
-            Invoke(config, method, invoke.FunctionInstanceGuid, inputs, invoke.Args);
+            Invoke(invoke, config);
         }
 
-        static void ApplyManifestBinders(LocalFunctionInstance invoke, IConfiguration config)
+        // Manifests are a way of adding binders to the configuration. 
+        static void ApplyManifestBinders(FunctionInvokeRequest invoke, IConfiguration config)
         {
+            var localLoc = invoke.Location as LocalFunctionLocation;
+            if (localLoc == null)
+            {
+                // !!! Assumes manifest only exists on disk. 
+                return;
+            }
             // Is there a manifest file?
-            string path = Path.GetDirectoryName(invoke.AssemblyPath);
+            string path = Path.GetDirectoryName(localLoc.AssemblyPath);
             string file = Path.Combine(path, "manifest.txt"); 
             if (!File.Exists(file))
             {
@@ -132,35 +144,38 @@ namespace RunnerHost
             }
         }
 
-        static FunctionInvoker GetWebInvoker(LocalFunctionInstance instance)
+        static FunctionInvoker GetWebInvoker(FunctionInvokeRequest instance)
         {
             string url = instance.ServiceUrl;
 
             // Scope = caller's scope minus the method name at the end.
             string scope = instance.Location.GetId();
-            int len = instance.Location.MethodName.Length;
-            scope = scope.Substring(0, scope.Length - len - 1);
+            int lastDot = scope.LastIndexOf('.');
+            scope = scope.Substring(0, lastDot);
 
-            var result = new WebFunctionInvoker(scope, url, instance.FunctionInstanceGuid);
+            var result = new WebFunctionInvoker(scope, url, instance.Id);
 
             return result;
         }
 
-        private static MethodInfo GetLocalMethod(LocalFunctionInstance invoke)
+        private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
         {
-            Assembly a = Assembly.LoadFrom(invoke.AssemblyPath);
-            Type t = a.GetType(invoke.TypeName);
-            if (t == null)
+            // For a RemoteFunctionLocation, we could download it and invoke. But assuming caller already did that. 
+            // (Caller can cache the downloads and so do it more efficiently)
+            var localLocation = invoke.Location as LocalFunctionLocation;
+            if (localLocation != null)
             {
-                throw new InvalidOperationException(string.Format("Type '{0}' does not exist.", invoke.TypeName));
+                return localLocation.GetLocalMethod();
             }
 
-            MethodInfo m = t.GetMethod(invoke.MethodName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            if (m == null)
+            var methodLocation = invoke.Location as MethodInfoFunctionLocation;
+            if (methodLocation != null)
             {
-                throw new InvalidOperationException(string.Format("Method '{0}' does not exist.", invoke.MethodName));
+                return methodLocation.MethodInfo;
             }
-            return m;
+
+            throw new InvalidOperationException("Can't get a MethodInfo from function location:" + invoke.Location.ToString());
+            
         }
 
         // $$$ get rid of static fields.
@@ -298,6 +313,7 @@ namespace RunnerHost
             }
         }
 
+        // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
         public static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;

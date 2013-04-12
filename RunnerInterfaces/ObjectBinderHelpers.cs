@@ -106,11 +106,11 @@ namespace RunnerInterfaces
         // Dictionary is a copy (immune if source object gets mutated)        
         public static IDictionary<string, string> ConvertObjectToDict(object obj)
         {
-            Type type = obj.GetType();
+            Type objectType = obj.GetType();
 
             // Does type implemnet IDictionary<string, TValue>?
             // If so, run through and call
-            foreach(var typeInterface in type.GetInterfaces())
+            foreach (var typeInterface in objectType.GetInterfaces())
             {    
                 if (typeInterface.IsGenericType)
                 {
@@ -129,24 +129,25 @@ namespace RunnerInterfaces
 
             Dictionary<string, string> d = new Dictionary<string, string>();
 
-            foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (var prop in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 object value = prop.GetValue(obj, null);
                 if (value != null)
                 {
                     string result;
-                    if (prop.PropertyType == typeof(DateTime?) ||
-                        prop.PropertyType == typeof(DateTime))
+                    Type type = prop.PropertyType;
+                    if (type == typeof(DateTime?) ||
+                        type == typeof(DateTime))
                     {
                         result = SerializeDateTime((DateTime) value);
                     }
-                    else if (UseToStringParser(prop.PropertyType))
+                    else if (UseToStringParser(type))
                     {
                         result = value.ToString();
                     }
                     else
                     {
-                        result = JsonCustom.SerializeObject(value);
+                        result = JsonCustom.SerializeObject(value, type);
                     }
                     d[prop.Name] = result;
                 }

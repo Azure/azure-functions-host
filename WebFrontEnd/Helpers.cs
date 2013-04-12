@@ -111,7 +111,7 @@ namespace WebFrontEnd.Controllers
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                func.Location.MethodName,
+                func.Location.GetShortName(),
                 "Index", "Function", 
                 new { func = func.ToString() }, 
                 null);
@@ -134,7 +134,7 @@ namespace WebFrontEnd.Controllers
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                func.MethodName,
+                func.GetShortName(),
                 "Index", "Function",
                 new { func = func.ToString() },
                 null);
@@ -151,7 +151,7 @@ namespace WebFrontEnd.Controllers
         public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
             FunctionLocation func, string linkText, bool? success = null)
         {
-            string msg = linkText ?? string.Format("{0} invoke history", func.MethodName);
+            string msg = linkText ?? string.Format("{0} invoke history", func.GetShortName());
             return LinkExtensions.ActionLink(
                 htmlHelper,
                 msg,
