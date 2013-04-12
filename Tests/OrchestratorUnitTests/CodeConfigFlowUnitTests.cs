@@ -16,56 +16,20 @@ namespace OrchestratorUnitTests
     [TestClass]
     public class CodeConfigFlowUnitTests
     {
-        #region Support
+        // Get the SimpleBatch function that's declared in the given type. Assumes only 1 function per type.
         private static FunctionDefinition Get(Type type)
         {
-            var accountString = CloudStorageAccount.DevelopmentStorageAccount.ToString(true);
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
 
+            var x = new IndexInMemory(account);
+            IFunctionTable functionTable = x;
+            Indexer i = new Indexer(functionTable);
+           
+            i.IndexType(x.OnApplyLocationInfo, type);
 
-            IndexerSettings x = new IndexerSettings();
-            Indexer i = new Indexer(x);
-
-            Func<MethodInfo, FunctionLocation> funcApplyLocation =
-                method => new MethodInfoFunctionLocation
-                {
-                     AccountConnectionString = accountString,
-                     MethodInfo = method
-                };
-                      
-            
-            i.IndexType(funcApplyLocation, type);
-
-            var funcs = x.ReadAll();
+            var funcs = functionTable.ReadAll();
             return funcs[0];
         }
-
-        // !!! Redundant?
-        class IndexerSettings : IFunctionTable
-        {
-            private List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
-
-            public void Add(FunctionDefinition func)
-            {
-                _funcs.Add(func);
-            }
-
-            public void Delete(FunctionDefinition func)
-            {
-                throw new NotImplementedException();
-            }
-
-            public FunctionDefinition[] ReadAll()
-            {
-                return _funcs.ToArray();
-            }
-
-            public FunctionDefinition Lookup(string functionId)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        #endregion // Support
 
         class Type1
         {
