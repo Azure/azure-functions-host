@@ -12,6 +12,7 @@ using System.Linq;
 
 namespace LiveAzureTests
 {
+    // !!! Could we do a binder hook to bind these against In-memory tables and so avoid the need for live accounts?
     // Azure storage emulator is doesn't support Upsert, so table won't work. 
     // Need to run table tests against live storage
     [TestClass]
@@ -25,37 +26,6 @@ namespace LiveAzureTests
             
             MethodInfo m = typeof(TableProgram).GetMethod("TableDict");
             LocalOrchestrator.Invoke(account, m);
-        }
-
-        [TestMethod]
-        public void AzureTableClassEnum()
-        {
-            AzureTable table = new AzureTable(AzureConfig.GetAccount(), "test2");
-            table.Clear();
-
-            table.Write("1", "x", new { Fruit = Fruit.Banana });
-
-            // Read normally. Should be serialized as a textual name, not a number
-            var x = table.Lookup("1", "x");
-            Assert.IsNotNull(x);
-            Assert.AreEqual("Banana", x["Fruit"]); 
-
-            // Read with strong binder.
-            IAzureTableReader<FruitEntity> reader = table.GetTypeSafeWrapper<FruitEntity>();
-            FruitEntity f = reader.Lookup("1", "x");
-            Assert.AreEqual(Fruit.Banana, f.Fruit);
-        }
-
-        class FruitEntity
-        {
-            public Fruit Fruit { get; set; }
-        }
-
-        public enum Fruit
-        {
-            Apple,
-            Banana,
-            Pear,
         }
 
         // This test takes 2 mins.
@@ -244,6 +214,13 @@ namespace LiveAzureTests
             public Fruit Fruit { get; set; }
             public TimeSpan Duration { get; set; }
             public string Value { get; set; }
+        }
+
+        public enum Fruit
+        {
+            Apple,
+            Banana,
+            Pear,
         }
 
         public class Stuff

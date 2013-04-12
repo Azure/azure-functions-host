@@ -1,26 +1,44 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Data.Services.Common;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading;
 using AzureTables;
 using Executor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
 using Orchestrator;
 using RunnerHost;
 using RunnerInterfaces;
 using SimpleBatch;
+using SimpleBatch.Client;
 
-namespace LiveAzureTests
+namespace OrchestratorUnitTests
 {
+    // Ensure that various "currency" types can be properly serialized and deserialized to AzureTables.
     [TestClass]
-    public class SerializationTests
+    public class TableSerializationTests
     {
+        public AzureTable<T> GetTable<T>() where T : new()
+        {
+            return AzureTable<T>.NewInMemory();
+        }
+
         static CloudBlobDescriptor Blob(string container, string blob)
         {
             return new CloudBlobDescriptor
             {
-                AccountConnectionString = AzureConfig.GetConnectionString(),
+                AccountConnectionString = AccountConnectionString,
                 ContainerName = container,
                 BlobName = blob,
             };
         }
+        const string AccountConnectionString = "name=some azure account;password=secret";
 
         [TestMethod]
         public void TestExecutionInstanceLogEntity()
@@ -29,7 +47,7 @@ namespace LiveAzureTests
 
             var instance = new FunctionInvokeRequest
             {
-                Id =  g,
+                Id = g,
                 TriggerReason = new BlobTriggerReason { },
                 Location = new RemoteFunctionLocation
                 {
@@ -51,7 +69,7 @@ namespace LiveAzureTests
                     {
                          Table = new CloudTableDescriptor
                          {
-                              AccountConnectionString = AzureConfig.GetConnectionString(),
+                              AccountConnectionString = AccountConnectionString,
                               TableName  = "mytable7"
                          }                         
                     },
@@ -63,7 +81,7 @@ namespace LiveAzureTests
                     {
                          QueueOutput = new CloudQueueDescriptor
                          {
-                              AccountConnectionString = AzureConfig.GetConnectionString(),
+                              AccountConnectionString = AccountConnectionString,
                               QueueName = "myqueue"
                          }
                     }
@@ -74,24 +92,20 @@ namespace LiveAzureTests
             var log = new ExecutionInstanceLogEntity
             {
                 FunctionInstance = instance,
-                 ExceptionType = "system.CrazyException",
-                 ExceptionMessage = "testing",
-                 OutputUrl = "http://output",
-                 QueueTime = now.Subtract(TimeSpan.FromMinutes(5)),                     
-                 StartTime = now
+                ExceptionType = "system.CrazyException",
+                ExceptionMessage = "testing",
+                OutputUrl = "http://output",
+                QueueTime = now.Subtract(TimeSpan.FromMinutes(5)),
+                StartTime = now
             };
 
 
-            string tableName = "functionlogtest";
-            Utility.DeleteTable(AzureConfig.GetAccount(), tableName); // !!! Can take 4 minutes. Mock with in-memory?
-
-            var table = new AzureTable<ExecutionInstanceLogEntity>(AzureConfig.GetAccount(), tableName);
+            var table =  GetTable<ExecutionInstanceLogEntity>();
             IFunctionUpdatedLogger logger = new FunctionUpdatedLogger(table);
 
             logger.Log(log);
+            // $$$ Get a new instance of the table to ensure everything was flushed. 
 
-            // get a new instance of the table to ensure everything was flushed. 
-            table = new AzureTable<ExecutionInstanceLogEntity>(AzureConfig.GetAccount(), tableName);
             IFunctionInstanceLookup lookup = new ExecutionStatsAggregator(table);
 
             var log2 = lookup.Lookup(g);
@@ -107,7 +121,7 @@ namespace LiveAzureTests
 
             Assert.AreEqual(log.ToString(), log2.ToString());
         }
-        
+
         void AssertEqual(FunctionInvokeRequest instance1, FunctionInvokeRequest instance2)
         {
             Assert.AreEqual(instance1.Id, instance2.Id);
@@ -119,7 +133,7 @@ namespace LiveAzureTests
                 var arg2 = instance2.Args[i];
 
                 Assert.AreEqual(GetInvokeString(arg1), GetInvokeString(arg2));
-            }            
+            }
         }
 
         static string GetInvokeString(ParameterRuntimeBinding p)
@@ -180,16 +194,14 @@ namespace LiveAzureTests
                 }
             };
 
-            // Using a real AzureTable object and lookup will excercise serialization. 
-            string tableName = "functabletest";
-            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(AzureConfig.GetAccount(), tableName);
+            IAzureTable<FunctionDefinition> table = GetTable<FunctionDefinition>();
 
             string partKey = "1";
             string rowKey = func.ToString();
             table.Write(partKey, rowKey, func);
             table.Flush();
 
-            FunctionDefinition func2 = table.Lookup(partKey, rowKey);                        
+            FunctionDefinition func2 = table.Lookup(partKey, rowKey);
 
             // Ensure it round tripped.
             Assert.IsNotNull(func2, "failed to lookup");

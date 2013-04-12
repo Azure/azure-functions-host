@@ -88,10 +88,20 @@
     <Compile Include="ParserUnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scenarios.cs" />
+    <Compile Include="TableSerializationTests.cs" />
+    <Compile Include="TableUnitTests.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\DaasEndpoints\DaasEndpoints.csproj">
+      <Project>{0cc8477b-5761-4ed9-a2a1-40178f9639ca}</Project>
+      <Name>DaasEndpoints</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Executor\Executor.csproj">
+      <Project>{c7447feb-9ee5-475e-a4c6-a85a75e4cd9d}</Project>
+      <Name>Executor</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\SimpleBatch.Client\SimpleBatch.Client.csproj">
       <Project>{0f2424ff-7502-4bc7-87cd-a477b88fa054}</Project>
       <Name>SimpleBatch.Client</Name>

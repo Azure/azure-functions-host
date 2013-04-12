@@ -54,6 +54,9 @@
   <ItemGroup>
     <Compile Include="BindingInterfaces.cs" />
     <Compile Include="BlobTextWriter.cs" />
+    <Compile Include="Tables\LocalTableCore.cs" />
+    <Compile Include="Tables\LiveTableCore.cs" />
+    <Compile Include="Tables\TableCore.cs" />
     <Compile Include="WrapperEnumerable.cs" />
     <Compile Include="Logging\CausalityLogger.cs" />
     <Compile Include="Logging\FunctionInstanceGuid.cs" />
@@ -85,7 +88,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueueBinder.cs" />
     <Compile Include="ServiceContainer.cs" />
-    <Compile Include="TableBinder.cs" />
+    <Compile Include="Tables\AzureTable.cs" />
     <Compile Include="Utility.Blob.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Utility.Process.cs" />

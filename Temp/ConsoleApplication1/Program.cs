@@ -61,11 +61,7 @@ namespace ConsoleApplication1
     {
         static void Main()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var t = new IndexInMemory(account);
-            Indexer i = new Indexer(t);
-
-            i.IndexLocalDir(t.OnApplyLocationInfo, @"c:\temp\2");
+            
         }
 
 #if false

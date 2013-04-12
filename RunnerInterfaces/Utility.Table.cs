@@ -122,8 +122,8 @@ namespace RunnerInterfaces
             }
 
 
-            var xmlProps = args.Data.Element(AzureTable.AtomNamespace + "content")
-                            .Element(AzureTable.MetadataNamespace + "properties")
+            var xmlProps = args.Data.Element(AzureTableConstants.AtomNamespace + "content")
+                            .Element(AzureTableConstants.MetadataNamespace + "properties")
                             .Elements();
             foreach (var xmlProp in xmlProps)
             {
@@ -134,14 +134,14 @@ namespace RunnerInterfaces
                     continue; // extra entity property not in C# class. Ignore it.
                 }
 
-                bool isNull = string.Equals("true", xmlProp.Attribute(AzureTable.MetadataNamespace + "null") == null ? null : xmlProp.Attribute(AzureTable.MetadataNamespace + "null").Value, StringComparison.OrdinalIgnoreCase);
+                bool isNull = string.Equals("true", xmlProp.Attribute(AzureTableConstants.MetadataNamespace + "null") == null ? null : xmlProp.Attribute(AzureTableConstants.MetadataNamespace + "null").Value, StringComparison.OrdinalIgnoreCase);
 
                 if (isNull)
                 {
                     continue; // nothing to do with a null value. 
                 }
 
-                string typeName = xmlProp.Attribute(AzureTable.MetadataNamespace + "type") == null ? null : xmlProp.Attribute(AzureTable.MetadataNamespace + "type").Value;
+                string typeName = xmlProp.Attribute(AzureTableConstants.MetadataNamespace + "type") == null ? null : xmlProp.Attribute(AzureTableConstants.MetadataNamespace + "type").Value;
 
                 string inputValue = xmlProp.Value;
 
@@ -162,7 +162,7 @@ namespace RunnerInterfaces
         {
             T obj = (T) args.Entity;
 
-            XElement properties = args.Data.Descendants(AzureTable.MetadataNamespace + "properties").First();
+            XElement properties = args.Data.Descendants(AzureTableConstants.MetadataNamespace + "properties").First();
 
             
             foreach (var property in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance))
@@ -191,8 +191,8 @@ namespace RunnerInterfaces
 
         private static void AddXmlProperty(string propertyName, string content, string edmTypeName, XElement properties)
         {
-            XElement e = new XElement(AzureTable.DataNamespace + propertyName, content);
-            e.Add(new XAttribute(AzureTable.MetadataNamespace + "type", edmTypeName));
+            XElement e = new XElement(AzureTableConstants.DataNamespace + propertyName, content);
+            e.Add(new XAttribute(AzureTableConstants.MetadataNamespace + "type", edmTypeName));
 
             properties.Add(e);
         }
@@ -203,7 +203,7 @@ namespace RunnerInterfaces
             // var xePayload = args.Data.Descendants().Where<XElement>(xe => xe.Name == xnEntityProperties).First<XElement>();
 
             //XName xnProperty = XName.Get(propertyName, args.Data.GetNamespaceOfPrefix("d").NamespaceName);
-            XName xnProperty = XName.Get(propertyName, AzureTable.DataNamespace.NamespaceName);
+            XName xnProperty = XName.Get(propertyName, AzureTableConstants.DataNamespace.NamespaceName);
             foreach (XElement xeRemoveThisProperty in xePayload.Descendants(xnProperty).ToList())
             {
                 xeRemoveThisProperty.Remove();

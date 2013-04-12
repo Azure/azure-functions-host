@@ -68,7 +68,6 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Config.cs" />
-    <Compile Include="SerializationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TableTests.cs" />
   </ItemGroup>
