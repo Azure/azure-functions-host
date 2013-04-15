@@ -37,6 +37,8 @@ namespace AzureTables
             _tableName = tableName;
 
             _client = _account.CreateCloudTableClient();
+
+            // This can fail if the table was recently deleted and is still in the process of being deleted.
             _client.CreateTableIfNotExist(tableName);
         }
 

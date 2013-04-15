@@ -114,8 +114,7 @@ namespace ConsoleApplication1
             {
                 Location = new RemoteFunctionLocation
                 {
-                    ContainerName = "daas-test-functions",
-                    BlobName = "TestApp1.exe",               
+                    DownloadSource = new CloudBlobPath("daas-test-functions", "TestApp1.exe"),
                     AccountConnectionString = userAccountConnectionString,
                     TypeName = "TestApp1.Program",
                     MethodName = "TestCall2"

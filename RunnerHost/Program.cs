@@ -101,7 +101,7 @@ namespace RunnerHost
             IConfiguration config = InitBinders();
             ApplyManifestBinders(invoke, config);
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
-            CallBinderProvider.Insert(() => GetWebInvoker(invoke), config);
+            CallBinderProvider.Insert(() => GetWebInvoker(invoke), config); // binds ICall
 
             Invoke(invoke, config);
         }
@@ -148,12 +148,13 @@ namespace RunnerHost
         {
             string url = instance.ServiceUrl;
 
-            // Scope = caller's scope minus the method name at the end.
-            string scope = instance.Location.GetId();
-            int lastDot = scope.LastIndexOf('.');
-            scope = scope.Substring(0, lastDot);
-
-            var result = new WebFunctionInvoker(scope, url, instance.Id);
+            Func<string, string> functionResolver = (shortName) =>
+                {
+                    var newLoc = instance.Location.ResolveFunctionLocation(shortName);
+                    var functionId = newLoc.ToString(); // Used with IFunctionTableLookup.
+                    return functionId;
+                };
+            var result = new WebFunctionInvoker(functionResolver, url, instance.Id);
 
             return result;
         }

@@ -10,13 +10,27 @@ using Newtonsoft.Json;
 namespace SimpleBatch.Client
 {
     // Invocation that calls out to a web service.
+    // This will ping _serviceUri and pass a function string.
+    // The default schema is that the function string is a can be resolved with IFunctionTable.Lookup,
+    // and so it's expected to be a FunctionLocation. 
     public class WebFunctionInvoker : FunctionInvoker
     {
         private readonly string _serviceUri;
-        private readonly string _scope; // fully qualified cloud name, incluing storage container
+        private readonly Func<string, string> _functionResolver;
         private readonly Guid _thisFunc; // guid instance for this function. 
 
+        // Useful for simple clients
         public WebFunctionInvoker(string scope, string serviceUri, Guid thisFuncGuid)
+            : this(shortName => DefaultResolver(scope, shortName), serviceUri, thisFuncGuid)
+        {
+        }
+        private static string DefaultResolver(string scope, string shortName)
+        {
+            // !!!
+            throw new NotImplementedException();
+        }
+
+        public WebFunctionInvoker(Func<string,string> functionResolver, string serviceUri, Guid thisFuncGuid)
         {
             if (serviceUri == null)
             {
@@ -28,11 +42,7 @@ namespace SimpleBatch.Client
                 serviceUri += "/";
             }
 
-            _scope = scope;
-            if (!_scope.EndsWith(@"\"))
-            {
-                _scope += @"\";
-            }
+            _functionResolver = functionResolver;
 
             _serviceUri = serviceUri;
 
@@ -84,8 +94,9 @@ namespace SimpleBatch.Client
         }
 
         // $$$ Make this virtual to help with unit testing?
+        // !!! Move to Utility
         private static T Send<T>(string uri, string verb)
-        {
+        {            
             // Send 
             WebRequest request = WebRequest.Create(uri);
             request.Method = verb;
@@ -103,10 +114,10 @@ namespace SimpleBatch.Client
         }
 
         // May convert a shortname to a fully qualified name that we can invoke.        
-        string ResolveFunction(string functionName)
+        string ResolveFunction(string functionShortName)
         {
-            string fullName = _scope + functionName;
-            return fullName.Replace('\\', '.');
+            string fullName = _functionResolver(functionShortName);
+            return fullName;
         }
 
         #region Web service

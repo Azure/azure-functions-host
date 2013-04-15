@@ -35,11 +35,6 @@ namespace RunnerInterfaces
     {
         public MethodInfo MethodInfo { get; set; }
 
-        public override string GetGroupingKey()
-        {
-            return this.MethodInfo.DeclaringType.Assembly.FullName;
-        }
-
         public override string GetShortName()
         {
             return string.Format("{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
@@ -78,8 +73,7 @@ namespace RunnerInterfaces
     public class RemoteFunctionLocation : FileFunctionLocation
     {
         // Base class has the account connection string. 
-        public string ContainerName { get; set; }
-        public string BlobName { get; set; }
+        public CloudBlobPath DownloadSource { get; set; }
 
         // For convenience, return Account,Container,Blob as a single unit. 
         public CloudBlobDescriptor GetBlob()
@@ -87,14 +81,9 @@ namespace RunnerInterfaces
             return new CloudBlobDescriptor
             {
                 AccountConnectionString = this.AccountConnectionString,
-                BlobName = BlobName,
-                ContainerName = ContainerName
+                BlobName = this.DownloadSource.BlobName,
+                ContainerName = this.DownloadSource.ContainerName
             };
-        }
-
-        public override string GetGroupingKey()
-        {
-            return this.GetBlob().GetId();
         }
 
         public override string GetId()
@@ -112,13 +101,16 @@ namespace RunnerInterfaces
             return content;
         }
 
-        // Assume caller has download the remote location to localCopy
+        // Assume caller has download the remote location to localDirectoryCopy
         // The container of the remote loc should be downloaded into the same directory as localCopy
-        public LocalFunctionLocation GetAsLocal(string localCopy)
+        public LocalFunctionLocation GetAsLocal(string localDirectoryCopy)
         {
+            string assemblyEntryPoint = Path.Combine(localDirectoryCopy, this.DownloadSource.BlobName);
+
             return new LocalFunctionLocation
             {
-                AssemblyPath = localCopy,
+                DownloadSource = this.DownloadSource,
+                AssemblyPath = assemblyEntryPoint,
                 AccountConnectionString = AccountConnectionString,
                 MethodName = this.MethodName,
                 TypeName = this.TypeName
@@ -132,11 +124,24 @@ namespace RunnerInterfaces
         // Assumes other dependencies are in the same directory. 
         public string AssemblyPath { get; set; }
 
-        public override string GetGroupingKey()
+        // Where was this downloaded from?
+        // Knowing this is essential if a local execution wants to queue up additional calls on the server. 
+        public CloudBlobPath DownloadSource { get; set; }
+
+        // ShortName is the method relative to this type. 
+        // !!! Should this return a Local or Remote?
+        public override FunctionLocation ResolveFunctionLocation(string shortName)
         {
-            return this.AssemblyPath;
+            return new RemoteFunctionLocation
+            {
+                AccountConnectionString = this.AccountConnectionString,
+                DownloadSource = DownloadSource,
+                MethodName = shortName, // 
+                TypeName = this.TypeName
+            };
         }
 
+        // $$$ How consistent should this be with a the RemoteFunctionLocation that this was downloaded from?
         public override string GetId()
         {
             return string.Format(@"{0}\{1}\{2}", AssemblyPath, TypeName, MethodName);
@@ -193,16 +198,17 @@ namespace RunnerInterfaces
 
         // Uniquely stringize this object. Can be used for equality comparisons. 
         // !!! Is this unique even for different derived types?
+        // !!! This vs. ToString?
         public abstract string GetId();
 
         // Useful name for human display. This has no uniqueness properties and can't be used as a rowkey. 
         public abstract string GetShortName();
 
-        // For UI purposes, get a key that can be used to group functions from a similar storage location together. 
-        // eg, all functions in the same dll. 
-        public virtual string GetGroupingKey()
+        // This is used for ICall. Convert from a short name to another FunctionLocation.
+        // !!! Reconcile this with GetShortName()? 
+        public virtual FunctionLocation ResolveFunctionLocation(string shortName)
         {
-            return this.GetId();
+            throw new InvalidOperationException("Can't resolve function location for: " + shortName);
         }
 
         // ToString can be used as an azure row key.

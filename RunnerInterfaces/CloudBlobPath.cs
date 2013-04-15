@@ -33,6 +33,12 @@ namespace RunnerInterfaces
         }
 
         // Parse the string. 
+        public CloudBlobPath(string containerName, string blobName)
+        {
+            _containerName = containerName;
+            _blobName = blobName;
+        }
+
         public CloudBlobPath(string blobInput)
         {
             Parser.Split(blobInput, out _containerName, out _blobName);

@@ -123,7 +123,7 @@ namespace Orchestrator
                     var loc = func.Location as RemoteFunctionLocation;
                     if (loc != null)
                     {
-                        if ((loc.BlobName == name) && (loc.ContainerName == containerName) && (loc.AccountConnectionString == connection))
+                        if ((loc.DownloadSource.BlobName == name) && (loc.DownloadSource.ContainerName == containerName) && (loc.AccountConnectionString == connection))
                         {
                             _functionTable.Delete(func);
                         }
@@ -382,12 +382,15 @@ namespace Orchestrator
         {
             Type type = method.DeclaringType;
 
+
+            string containerName = container.ContainerName;
+            string blobName = Path.GetFileName(type.Assembly.Location);
+
             // This is effectively serializing out a MethodInfo.
             return new RemoteFunctionLocation
             {
                 AccountConnectionString = container.AccountConnectionString,
-                ContainerName = container.ContainerName,
-                BlobName = Path.GetFileName(type.Assembly.Location),
+                DownloadSource = new CloudBlobPath(containerName, blobName),                
                 MethodName = method.Name,
                 TypeName = type.FullName
             };

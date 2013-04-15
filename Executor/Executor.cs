@@ -120,6 +120,7 @@ namespace Executor
         private FunctionInvokeRequest ConvertToLocal(FunctionInvokeRequest remoteFunc)
         {
             var remoteLoc = (RemoteFunctionLocation) remoteFunc.Location;
+
             var localLocation = remoteLoc.GetAsLocal(_localCopy);
 
             var localFunc = remoteFunc.CloneUpdateLocation(localLocation);            

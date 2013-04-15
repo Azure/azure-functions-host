@@ -22,7 +22,7 @@
         </td>
     <td>
         @{        
-        string methodName = node.Func.Location.MethodName;
+        string methodName = node.Func.Location.GetShortName();
         string indent = new string('-', (node.Depth -1) * 2);
         }
         @indent                   

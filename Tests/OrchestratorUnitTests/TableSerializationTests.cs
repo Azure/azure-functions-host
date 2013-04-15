@@ -52,8 +52,7 @@ namespace OrchestratorUnitTests
                 Location = new RemoteFunctionLocation
                 {
                     AccountConnectionString = "some connection string",
-                    ContainerName = "container",
-                    BlobName = "blob",
+                    DownloadSource = new CloudBlobPath("container", "blob"),
                     MethodName = "method",
                     TypeName = "type"
                 },
