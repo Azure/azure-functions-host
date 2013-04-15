@@ -37,6 +37,7 @@ namespace RunnerInterfaces
         }
     }
 
+    // !!! Move these to their own file
     public class IndexOperation
     {
         // User account that the Blobpath is resolved against

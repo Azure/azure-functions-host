@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
 using SimpleBatch;
 
 namespace RunnerInterfaces

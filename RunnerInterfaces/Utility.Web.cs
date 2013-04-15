@@ -33,6 +33,21 @@ namespace RunnerInterfaces
 
             var response = request.GetResponse(); // does the actual web request
         }
+
+        public static T GetJson<T>(string url)
+        {
+            WebRequest request = WebRequest.Create(url);
+            request.Method = "GET";
+
+            var response = request.GetResponse(); // does the actual web request
+
+            var stream2 = response.GetResponseStream();
+            var text = new StreamReader(stream2).ReadToEnd();
+            stream2.Close();
+
+            T val = JsonConvert.DeserializeObject<T>(text);
+            return val;
+        }
                 
         public static T Send<T>(string uri, string verb)
         {

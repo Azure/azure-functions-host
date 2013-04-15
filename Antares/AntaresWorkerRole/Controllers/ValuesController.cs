@@ -38,7 +38,9 @@ namespace AntaresWorkerRole.Controllers
             string rootPath = Path.Combine(Path.GetTempPath(), "SimpleBatchRoot");
 
             var e = new ExecutorListener(rootPath, executionQueue);
-            var outputLogger = new WebExecutionLogger(services, LogRole, "Antares:" + Process.GetCurrentProcess().Id.ToString());
+
+            string roleName = "Antares:" + Process.GetCurrentProcess().Id.ToString();
+            var outputLogger = new WebExecutionLogger(services, LogRole, roleName);
 
             // Checks for message.
             while (true)
