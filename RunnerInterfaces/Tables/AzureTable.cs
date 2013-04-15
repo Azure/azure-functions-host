@@ -280,7 +280,7 @@ namespace AzureTables
                     return null;
                 }
 
-                return all.properties;                
+                return Normalize(all);                
             }
             finally
             {

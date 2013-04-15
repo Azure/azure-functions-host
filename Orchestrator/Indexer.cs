@@ -105,7 +105,6 @@ namespace Orchestrator
             }
         }
 
-        // !!! How do we remove stale URI functions?
         // Remove any functions that are in the container. 
         private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
         {
