@@ -20,9 +20,13 @@ namespace AzureTaskRunnerHost
         public FunctionInvokeRequest Instance { get; set; }
         public string LocalDir { get; set; } // Local dir (relative) that function dlls were xcopied too. 
 
-        public LocalFunctionInstance GetLocalInstance()
+        public FunctionInvokeRequest GetLocalInstance()
         {
-            return this.Instance.GetLocalFunctionInstance(this.LocalDir);
+            var remoteLoc = (RemoteFunctionLocation) this.Instance.Location;
+
+            var localLoc = remoteLoc.GetAsLocal(LocalDir);
+
+            return this.Instance.CloneUpdateLocation(localLoc);
         }
 
         // For producing a ExecutionStatsAggregatorBridge
@@ -68,8 +72,8 @@ namespace AzureTaskRunnerHost
             PrintDiagInfo();
 
             ServiceInputs inputs = GetLogger("input.logger.txt");
-                        
-            LocalFunctionInstance descr = inputs.GetLocalInstance();
+
+            var descr = inputs.GetLocalInstance();
 
             IAccountInfo account = new AccountInfo { AccountConnectionString = inputs.AccountConnectionString };
 

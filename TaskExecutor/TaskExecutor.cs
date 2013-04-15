@@ -198,8 +198,9 @@ namespace Executor
 
         private IEnumerable<ResourceFile> GetUserFiles(FunctionLocation location)
         {
-            var blob = location.Blob;
-            return GetFilesInContainer(blob.AccountConnectionString, blob.ContainerName, "user");
+            var remoteLoc = (RemoteFunctionLocation)location;
+            var path = remoteLoc.DownloadSource;
+            return GetFilesInContainer(remoteLoc.AccountConnectionString, path.ContainerName, "user");
         }
 
         // Common files, same for all tasks. 
