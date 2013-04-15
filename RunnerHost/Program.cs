@@ -112,7 +112,7 @@ namespace RunnerHost
             var localLoc = invoke.Location as LocalFunctionLocation;
             if (localLoc == null)
             {
-                // !!! Assumes manifest only exists on disk. 
+                // $$$ Assumes manifest only exists on disk. What about other types?
                 return;
             }
             // Is there a manifest file?

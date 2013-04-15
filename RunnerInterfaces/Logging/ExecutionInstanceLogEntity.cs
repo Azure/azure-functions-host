@@ -60,7 +60,7 @@ namespace Executor
         public string Backpointer { get; set; }
 
         // Get a row key for azure tables
-        // !!! Should FunctionDefinition have this too? That one uses ToString(), and it's inconsistent.
+        // $$$ Should FunctionDefinition have this too? That one uses ToString(), and it's inconsistent.
         public string GetKey()
         {
             return this.FunctionInstance.Id.ToString();

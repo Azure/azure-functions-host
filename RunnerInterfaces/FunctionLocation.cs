@@ -8,31 +8,14 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace RunnerInterfaces
-{
-    // Function location is accessed by pinging a URL. 
-    public class UriFunctionLocation : FunctionLocation
-    {
-        // Uniquely specifies the method.
-        public string Uri { get; set; }
-
-        public override string GetShortName()
-        {
-            // !!! Some convention to shorten?
-            return this.Uri;
-        }
-
-        public override string GetId()
-        {
-            return this.Uri;
-        }
-
-        // Could implement ReadFile if we had a convention on the URI
-    }
-
-    // !!! Can't serialize this. 
+{    
     // Function is already loaded into memory. 
     public class MethodInfoFunctionLocation : FunctionLocation
     {
+        // $$$ Can't serialize this because it has a real methodinfo. We shouldn't be serializing these anyways. 
+        // instead:
+        // 1. caller should be converting location into a serializable type and running o
+        // 2. entire scenario is already in-memory. 
         public MethodInfo MethodInfo { get; set; }
 
         public override string GetShortName()
@@ -129,14 +112,14 @@ namespace RunnerInterfaces
         public CloudBlobPath DownloadSource { get; set; }
 
         // ShortName is the method relative to this type. 
-        // !!! Should this return a Local or Remote?
-        public override FunctionLocation ResolveFunctionLocation(string shortName)
+        // $$$ Should this return a Local or Remote? 
+        public override FunctionLocation ResolveFunctionLocation(string methodName)
         {
             return new RemoteFunctionLocation
             {
                 AccountConnectionString = this.AccountConnectionString,
                 DownloadSource = DownloadSource,
-                MethodName = shortName, // 
+                MethodName = methodName, // 
                 TypeName = this.TypeName
             };
         }
@@ -197,18 +180,20 @@ namespace RunnerInterfaces
         public string AccountConnectionString { get; set; }
 
         // Uniquely stringize this object. Can be used for equality comparisons. 
-        // !!! Is this unique even for different derived types?
-        // !!! This vs. ToString?
+        // $$$ Is this unique even for different derived types? 
+        // $$$ This vs. ToString?
         public abstract string GetId();
 
         // Useful name for human display. This has no uniqueness properties and can't be used as a rowkey. 
         public abstract string GetShortName();
 
         // This is used for ICall. Convert from a short name to another FunctionLocation.
-        // !!! Reconcile this with GetShortName()? 
-        public virtual FunctionLocation ResolveFunctionLocation(string shortName)
+        // $$$ Reconcile methodName with GetShortName (which includes a type name)
+        // Should x.ResolveFunctionLocation(x.GetShortName()).Equals(x) == true?
+        // Any other invariants here?
+        public virtual FunctionLocation ResolveFunctionLocation(string methodName)
         {
-            throw new InvalidOperationException("Can't resolve function location for: " + shortName);
+            throw new InvalidOperationException("Can't resolve function location for: " + methodName);
         }
 
         // ToString can be used as an azure row key.

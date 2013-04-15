@@ -32,7 +32,7 @@ namespace Executor
         // Execute the function and block. 
         public FunctionExecutionResult Execute(FunctionInvokeRequest instance, TextWriter outputLogging, CancellationToken token)
         {
-            var remoteLoc = (RemoteFunctionLocation)instance.Location; // !!! Handle others?
+            var remoteLoc = (RemoteFunctionLocation)instance.Location; // $$$ Handle other location types?
             string localCache = GetLocalCopy(remoteLoc);
 
             ExecutionInstance i = new ExecutionInstance(localCache, outputLogging);

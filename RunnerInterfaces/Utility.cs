@@ -30,23 +30,6 @@ namespace RunnerInterfaces
 
     public static partial class Utility
     {
-        // Move to utility
-        public static void PostJson(string url, object body)
-        {
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(body);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-
-            WebRequest request = WebRequest.Create(url);
-            request.Method = "POST";
-            request.ContentType = "application/json";
-            request.ContentLength = bytes.Length; // set before writing to stream
-            var stream = request.GetRequestStream();
-            stream.Write(bytes, 0, bytes.Length);
-            stream.Close();
-
-            var response = request.GetResponse(); // does the actual web request
-        }
-
         public static BindResult<T> StrongWrapper<T>(BindResult b)
         {
             return new BindResult<T>((T)b.Result, b);

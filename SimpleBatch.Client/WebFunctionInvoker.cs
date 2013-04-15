@@ -19,17 +19,6 @@ namespace SimpleBatch.Client
         private readonly Func<string, string> _functionResolver;
         private readonly Guid _thisFunc; // guid instance for this function. 
 
-        // Useful for simple clients
-        public WebFunctionInvoker(string scope, string serviceUri, Guid thisFuncGuid)
-            : this(shortName => DefaultResolver(scope, shortName), serviceUri, thisFuncGuid)
-        {
-        }
-        private static string DefaultResolver(string scope, string shortName)
-        {
-            // !!!
-            throw new NotImplementedException();
-        }
-
         public WebFunctionInvoker(Func<string,string> functionResolver, string serviceUri, Guid thisFuncGuid)
         {
             if (serviceUri == null)
@@ -94,7 +83,8 @@ namespace SimpleBatch.Client
         }
 
         // $$$ Make this virtual to help with unit testing?
-        // !!! Move to Utility
+        // $$$ Would be nice to unify with Utility, but that would take a dependency reference we can't have. 
+        // maybe do a source link instead?
         private static T Send<T>(string uri, string verb)
         {            
             // Send 
