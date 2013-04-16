@@ -40,20 +40,25 @@ namespace WebFrontEnd.Controllers
             var allFunctions = GetServices().GetFunctionTable().ReadAll();
             var model = new FunctionListModel
             {
-                Functions = allFunctions.GroupBy(f => GetBlob(f.Location))
+                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location))
             };
 
             return View(model);
         }
 
-        private CloudBlobDescriptor GetBlob(FunctionLocation loc)
+        private object GetGroupingKey(FunctionLocation loc)
         {
             var remoteLoc = loc as RemoteFunctionLocation;
-            if (remoteLoc == null)
+            if (remoteLoc != null)
             {
-                return null;
+                return remoteLoc.GetBlob();
             }
-            return remoteLoc.GetBlob();
+            IUrlFunctionLocation urlLoc = loc as IUrlFunctionLocation;
+            if (urlLoc != null)
+            {
+                return urlLoc.InvokeUrl;
+            }
+            return "other";
         }
 
         public ActionResult ListAllBinders()

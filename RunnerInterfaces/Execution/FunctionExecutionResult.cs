@@ -7,5 +7,13 @@
         // null on success. Type.FullName if the function threw an exception.
         public string ExceptionType { get; set; }
         public string ExceptionMessage { get; set; }
-    }    
+    }
+
+    public class KuduFunctionExecutionResult
+    {
+        public FunctionExecutionResult Result { get; set; }
+
+        // !!! Move this to be incremental. 
+        public string ConsoleOutput { get; set; }
+    }
 }

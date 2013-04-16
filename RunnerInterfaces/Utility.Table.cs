@@ -27,7 +27,7 @@ namespace RunnerInterfaces
         // Convert key into something that can be used as a row or partition key. Removes invalid chars.
         public static string GetAsTableKey(string key)
         {
-            return key.Replace('\\', '.');
+            return key.Replace('\\', '.').Replace('/', '.');
         }
 
         // Helper to get a row key based on time stamp. 

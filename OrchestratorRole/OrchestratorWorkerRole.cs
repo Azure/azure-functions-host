@@ -81,6 +81,12 @@ namespace OrchestratorRole
 
             var _statsBridge = _services.GetStatsAggregatorBridge();
 
+            // !!! One time at startup. Need this via deployment or something.
+            {
+                string url = "http://localhost:20278/api/SimpleBatchIndexer";
+                PollKudu(url);
+            }
+
             CancellationTokenSource cancelSource = new CancellationTokenSource();
             while (true)
             {
@@ -106,12 +112,12 @@ namespace OrchestratorRole
                 _services.WriteHealthStatus(worker.Heartbeat);
 
                 _statsBridge.DrainQueue(_stats, _lookup);
-               
+
                 // Polling walks all blobs. Could take a long time for a large container.
-                worker.Poll(cancelSource.Token);                
-                                
+                worker.Poll(cancelSource.Token);
+
                 // Delay before looping
-                Thread.Sleep(1*1000);                
+                Thread.Sleep(1 * 1000);
             }
         }
 
@@ -129,6 +135,48 @@ namespace OrchestratorRole
 
             string msg = string.Format("Reset at {0} by {1}", DateTime.Now, RoleEnvironment.CurrentRoleInstance.Id);
             _services.GetExecutorResetControlBlob().UploadText(msg);
+        }
+
+        // Ping the given URL for new functions to be indexed
+        private void PollKudu(string url)
+        {
+            try
+            {
+                var funcs = Utility.GetJson<FunctionDefinition[]>(url);
+
+                IFunctionTable table = _services.GetFunctionTable();
+
+                // !!! Stale functions? Remove any that are at the same url?
+                {
+                    var listDelete = new List<FunctionDefinition>();
+                    foreach (var func in table.ReadAll())
+                    {
+                        var loc = func.Location as IUrlFunctionLocation;
+                        if (loc != null)
+                        {
+                            if (string.Compare(loc.InvokeUrl, url, StringComparison.OrdinalIgnoreCase) == 0)
+                            {
+                                listDelete.Add(func);
+                            }
+                        }
+                    }
+                    foreach (var func in listDelete)
+                    {
+                        table.Delete(func);
+                    }
+                }
+
+
+                foreach (var func in funcs)
+                {
+                    table.Add(func);
+                }
+            }
+            catch
+            {
+                // $$$ Web request probably failed. Bad url? Server failures? User code failed during indexing?
+                // Report back this failure somehow.
+            }
         }
 
         bool PollForIndexRequest()

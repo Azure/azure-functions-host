@@ -60,7 +60,24 @@ namespace ConsoleApplication1
     class Program
     {
         static void Main()
-        {   
+        {
+            var def = new FunctionDefinition
+            {
+#if false
+                 Location =new KuduFunctionLocation
+                 {
+                      Uri = "xyz"
+                 }
+#endif
+                Location = new RemoteFunctionLocation
+                {
+                     TypeName = "xyz"
+                }
+            };
+
+            var funcs = new FunctionDefinition[] { def };
+            var json = JsonCustom.SerializeObject(def);
+            var x2 = JsonCustom.DeserializeObject<FunctionDefinition>(json);            
         }
 
 #if false

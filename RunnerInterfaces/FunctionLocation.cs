@@ -6,9 +6,66 @@ using System.Reflection;
 using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
 
 namespace RunnerInterfaces
-{    
+{
+    public interface IUrlFunctionLocation
+    {
+        // To invoke, POST to this URL, with FunctionInvokeRequest as the body. 
+        string InvokeUrl { get; }
+    }
+
+    // !!! 
+    // This can be serialized. 
+    // In order to deserialize, this type must be defined in both sides. 
+    public class KuduFunctionLocation : FunctionLocation, IUrlFunctionLocation
+    {
+        // Do a POST to this URI, and pass this instance in the body.  
+        public string Uri { get; set; }
+
+        public string AssemblyQualifiedTypeName { get; set; }
+        public string MethodName { get; set; }
+
+        // !!! Needed for ICall support. 
+        public override FunctionLocation ResolveFunctionLocation(string methodName)
+        {
+            return base.ResolveFunctionLocation(methodName);
+        }
+
+        public MethodInfoFunctionLocation Convert()
+        {
+            Type t = Type.GetType(AssemblyQualifiedTypeName);
+            MethodInfo m = t.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static);
+            return new MethodInfoFunctionLocation
+            {
+                AccountConnectionString = this.AccountConnectionString,
+                MethodInfo = m
+            };
+        }
+
+        public override string GetId()
+        {
+            // !!! Need  a URL. But also has to be a valid row/partition key since it's 
+            // called by FunctionInvokeRequest.ToString()
+            return "Kudu," + MethodName;
+        }
+
+        public override string GetShortName()
+        {
+            return MethodName;
+        }
+
+        [JsonIgnore]
+        public string InvokeUrl
+        {
+            get
+            {
+                return Uri;
+            }
+        }
+    }
+
     // Function is already loaded into memory. 
     public class MethodInfoFunctionLocation : FunctionLocation
     {

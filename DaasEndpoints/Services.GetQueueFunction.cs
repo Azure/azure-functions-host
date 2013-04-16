@@ -64,6 +64,8 @@ namespace DaasEndpoints
                     return GetAzureTasksQueueFunction();
                 case QueueFunctionType.WorkerRoles:
                     return GetWorkerRoleQueueFunction();
+                case QueueFunctionType.Kudu:
+                    return GetKuduQueueFunction();
                 default:
                     // should have already thrown before getting here. 
                     throw new InvalidOperationException("Unknown"); 
@@ -74,7 +76,8 @@ namespace DaasEndpoints
         {
             WorkerRoles,
             Antares,
-            AzureTasks
+            AzureTasks,
+            Kudu,
         }
 
         // Run via Azure tasks. 
@@ -114,6 +117,15 @@ namespace DaasEndpoints
            
             var queue = this.GetExecutionQueue();
             return new AntaresRoleExecutionClient(urlBase, queue, this._accountInfo, logger, causalityLogger);
+        }
+
+        private IQueueFunction GetKuduQueueFunction()
+        {
+            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
+            ICausalityLogger causalityLogger = GetCausalityLogger();
+                        
+            var queue = this.GetExecutionQueue();
+            return new KuduQueueFunction(this._accountInfo, logger, causalityLogger);  
         }
 
         // Run via Azure Worker Roles

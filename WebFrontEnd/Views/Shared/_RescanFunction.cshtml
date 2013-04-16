@@ -1,15 +1,20 @@
 ﻿@using WebFrontEnd.Controllers
 @using Orchestrator
-@model RunnerInterfaces.CloudBlobDescriptor
+@model object
 
-@if (Model != null)
+@{
+    var blob = Model as RunnerInterfaces.CloudBlobDescriptor;
+}
+
+
+@if (blob != null)
 {
     using (Html.BeginForm("RescanFunction", "Home"))
     {
-        <input type="hidden" name="accountString" value="@Model.AccountConnectionString" />
-        <input type="hidden" name="containerName" value="@Model.ContainerName" />
+        <input type="hidden" name="accountString" value="@blob.AccountConnectionString" />
+        <input type="hidden" name="containerName" value="@blob.ContainerName" />
         <h3>Container</h3>
-        <label>@Model.ContainerName</label>
+        <label>@blob.ContainerName</label>
         <input type="submit" value="Rescan Container"/>
     }
 } 
