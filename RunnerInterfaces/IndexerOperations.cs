@@ -17,6 +17,12 @@ namespace RunnerInterfaces
         public string FunctionToDelete { get; set; }
     }
 
+    // Request that APIs at the given Url be indexed.
+    public class IndexUrlOperation
+    {
+        public string Url { get; set; }
+    }
+
     // Queue message payload to request that orchestrator rescan a blob path
     public class IndexRequestPayload
     {

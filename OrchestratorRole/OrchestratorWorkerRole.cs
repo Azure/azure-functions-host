@@ -81,12 +81,6 @@ namespace OrchestratorRole
 
             var _statsBridge = _services.GetStatsAggregatorBridge();
 
-            // !!! One time at startup. Need this via deployment or something.
-            {
-                string url = "http://localhost:20278/api/SimpleBatchIndexer";
-                PollKudu(url);
-            }
-
             CancellationTokenSource cancelSource = new CancellationTokenSource();
             while (true)
             {
@@ -138,8 +132,9 @@ namespace OrchestratorRole
         }
 
         // Ping the given URL for new functions to be indexed
-        private void PollKudu(string url)
+        private void PollKudu(string url, TextWriter output)
         {
+            output.WriteLine("indexing functions at: {0}", url);
             try
             {
                 var funcs = Utility.GetJson<FunctionDefinition[]>(url);
@@ -162,20 +157,28 @@ namespace OrchestratorRole
                     }
                     foreach (var func in listDelete)
                     {
+                        // $$$ Log deleted functions. Share logic here with indexing
                         table.Delete(func);
                     }
                 }
 
 
+                output.WriteLine("Adding/Refreshing {0} functions:", funcs.Length);
                 foreach (var func in funcs)
                 {
+                    output.WriteLine(func.Location.GetShortName());
                     table.Add(func);
                 }
+
+                output.WriteLine("DONE: SUCCESS");
             }
-            catch
+            catch(Exception e)
             {
-                // $$$ Web request probably failed. Bad url? Server failures? User code failed during indexing?
-                // Report back this failure somehow.
+                output.WriteLine("Failure to index!");
+                output.WriteLine("Exception {0}, {1}", e.GetType().FullName, e.Message);
+                output.WriteLine(e.StackTrace);
+
+                output.WriteLine("DONE: FAILED");
             }
         }
 
@@ -186,19 +189,37 @@ namespace OrchestratorRole
             var msg = queue.GetMessage();
             if (msg != null)
             {
+                IndexRequestPayload payload = JsonCustom.DeserializeObject<IndexRequestPayload>(msg.AsString);
+
                 StringWriter swTempOutput = new StringWriter();
 
                 string localPath = Path.Combine(_localCacheRoot, "index");
                
                 try
                 {
+                    IndexUrlOperation urlOp = payload.Operation as IndexUrlOperation;
+                    if (urlOp != null)
+                    {
+                        PollKudu(urlOp.Url, swTempOutput);
+
+                        var urlLogger = payload.Writeback;
+                        if (urlLogger != null)
+                        {
+                            Console.WriteLine("Logging output to: {0}", urlLogger);
+                            CloudBlob blob = new CloudBlob(urlLogger);
+                            blob.UploadText(swTempOutput.ToString());
+                        }
+
+                        return true;
+                    }
+
                     var result = Utility.ProcessExecute<IndexDriverInput, IndexResults>(
                         typeof(IndexDriver.Program),
                         localPath,
                         new IndexDriverInput
                         {
                              LocalCache = localPath,
-                             Request = JsonCustom.DeserializeObject<IndexRequestPayload>(msg.AsString)
+                             Request = payload
                         },
                         swTempOutput);                
                 }

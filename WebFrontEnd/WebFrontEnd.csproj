@@ -273,6 +273,8 @@
     <Content Include="Views\Log\ViewChain.cshtml" />
     <Content Include="Views\Shared\_DeleteFunction.cshtml" />
     <Content Include="Views\Home\DeleteFuncSubmit.cshtml" />
+    <Content Include="Views\Home\RegisterKuduFunc.cshtml" />
+    <Content Include="Views\Home\RegisterKuduFuncSubmit.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

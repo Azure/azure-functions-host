@@ -218,7 +218,6 @@ namespace WebFrontEnd
                 {
                     AccountName = accountName,
                     ContainerName = indexOperation.Blobpath,
-                    Writeback = new Uri(blobResults.Uri.AbsoluteUri)
                 };
             }
 
@@ -229,9 +228,22 @@ namespace WebFrontEnd
                 model = new DeleteFuncSubmitModel
                 {
                     FunctionToDelete = deleteOperation.FunctionToDelete,
-                    Writeback = new Uri(blobResults.Uri.AbsoluteUri)
                 };
             }
+
+            IndexUrlOperation urlOp = operation as IndexUrlOperation;
+            if (urlOp != null)
+            {
+                msgStart = string.Format(@"Index request for {0} is in the queue and waiting to be processed.", urlOp.Url);
+                model = new FuncSubmitModel();
+            }
+
+            if (model == null)
+            {
+                msgStart = "Unknown indexing operation";
+            }
+            model.Writeback = new Uri(blobResults.Uri.AbsoluteUri);
+            
 
             // Upload some text as a placeholder while the message waits in the queue.
             // Exercise the SAS too before handing it back to the service.

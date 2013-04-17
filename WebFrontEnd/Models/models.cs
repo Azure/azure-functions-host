@@ -26,7 +26,7 @@ namespace WebFrontEnd.Controllers
     {
         public Uri Writeback { get; set; }
     }
-
+   
     public class RegisterFuncSubmitModel : FuncSubmitModel
     {
         public string AccountName { get; set; }

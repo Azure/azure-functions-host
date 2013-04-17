@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using SimpleBatch;
 
 public class Test
@@ -7,6 +8,7 @@ public class Test
         [BlobInput(@"kudu-test\{name}.input.txt")] TextReader input,
         [BlobOutput(@"kudu-test\{name}.output.txt")] TextWriter output)
     {
+        Console.WriteLine("Hi from Kudu!");
         string content = input.ReadToEnd();
         output.Write(content);
     }

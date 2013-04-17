@@ -199,5 +199,18 @@ namespace WebFrontEnd.Controllers
 
             return View("RegisterFuncSubmit", model);
         }
+
+        public ActionResult RegisterKuduFunc()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult RegisterKuduFuncSubmit(string url)
+        {
+            var model = WebFrontEnd.ControllersWebApi.KuduController.IndexWorker(url);
+            return View(model);
+        }
+
     }
 }

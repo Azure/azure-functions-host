@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -39,11 +40,11 @@ namespace KuduFrontEnd
             string url = this.Request.RequestUri.ToString();
 
             // Azure storage account that all bindings get resolved relative to. 
-            // !!!
-            string accountConnectionString = Utility.GetConnectionString(CloudStorageAccount.DevelopmentStorageAccount);
-
+            // Get from Web.Config
+            // Utility.GetConnectionString(CloudStorageAccount.DevelopmentStorageAccount);
+            string accountConnectionString = ConfigurationManager.AppSettings["SimpleBatchAccountConnectionString"]; 
+            
             // Can fail if accountConnectionString is not set.
-
             var ft = new IndexInMemory();
             Indexer i = new Indexer(ft);
 

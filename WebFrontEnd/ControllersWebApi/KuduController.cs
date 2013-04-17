@@ -9,35 +9,32 @@ using DaasEndpoints;
 using DataAccess;
 using Orchestrator;
 using RunnerInterfaces;
+using WebFrontEnd.Controllers;
 
 namespace WebFrontEnd.ControllersWebApi
 {
     public class KuduController : ApiController
     {
-        private static Services GetServices()
-        {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
-        }
-
         // Called after a new kudu site is published and we need to index it. 
         // Uri is for the antares site that we ping. 
+        [HttpPost]
         public void Index(string uri)
         {
-            // $$$ Multi-thread race with Orchestrator?            
-            var results = Utility.GetJson<FunctionDefinition[]>(uri);
 
-            var services = GetServices();
-            IFunctionTable table = services.GetFunctionTable();
-            foreach (var func in results)
+        }
+
+        public static FuncSubmitModel IndexWorker(string uri)
+        {
+            // common case, append the expected route. 
+            if (uri.EndsWith(".azurewebsites.net"))
             {
-                table.Add(func);
+                uri += "/api/SimpleBatchIndexer";
             }
-
-            // !!! Remove stale functions?
 
             // Ping orchestrator to update maps?
             // Or even send a IndexRequestPayload over with the URL
+            var obj = new IndexUrlOperation { Url = uri } ;
+            return ExecutionController.RegisterFuncSubmitworker(obj);
         }
     }
 }
