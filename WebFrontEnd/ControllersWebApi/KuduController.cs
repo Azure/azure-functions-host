@@ -18,9 +18,11 @@ namespace WebFrontEnd.ControllersWebApi
         // Called after a new kudu site is published and we need to index it. 
         // Uri is for the antares site that we ping. 
         [HttpPost]
-        public void Index(string uri)
+        public FuncSubmitModel Index(string uri)
         {
-
+            // At least return a URL that they can view results at.
+            // Useful for when debugging with Fiddler.
+            return IndexWorker(uri);
         }
 
         public static FuncSubmitModel IndexWorker(string uri)
