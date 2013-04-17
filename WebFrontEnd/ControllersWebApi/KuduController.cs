@@ -30,7 +30,11 @@ namespace WebFrontEnd.ControllersWebApi
             // common case, append the expected route. 
             if (uri.EndsWith(".azurewebsites.net"))
             {
-                uri += "/api/SimpleBatchIndexer";
+                uri += "/";
+            }
+            if (uri.EndsWith(".azurewebsites.net/"))
+            {
+                uri += "api/SimpleBatchIndexer";
             }
 
             // Ping orchestrator to update maps?

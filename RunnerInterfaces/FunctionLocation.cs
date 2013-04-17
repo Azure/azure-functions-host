@@ -48,7 +48,9 @@ namespace RunnerInterfaces
         {
             // !!! Need  a URL. But also has to be a valid row/partition key since it's 
             // called by FunctionInvokeRequest.ToString()
-            return "Kudu," + MethodName;
+            string accountName = Utility.GetAccountName(this.AccountConnectionString);
+            string shortUrl = new Uri(this.Uri).Host; // gets a human readable (almost) unique name, without invalid chars
+            return string.Format(@"kudu\{0}\{1}\{2}", shortUrl, accountName, MethodName);
         }
 
         public override string GetShortName()

@@ -249,10 +249,19 @@ namespace RunnerInterfaces
             // Get the data service context
             TableServiceContext serviceContext = tableClient.GetDataServiceContext();
 
-            PartitionRowKeyEntity specificEntity =
-                (from e in serviceContext.CreateQuery<PartitionRowKeyEntity>(tableName)
-                 where e.PartitionKey == partitionKey && e.RowKey == rowKey
-                 select e).FirstOrDefault();
+            PartitionRowKeyEntity specificEntity = null;
+
+            try
+            {
+                specificEntity =
+                    (from e in serviceContext.CreateQuery<PartitionRowKeyEntity>(tableName)
+                     where e.PartitionKey == partitionKey && e.RowKey == rowKey
+                     select e).FirstOrDefault();
+            }
+            catch (DataServiceQueryException)
+            {
+                // Throws if entry doesn't exist. 
+            }
 
             if (specificEntity != null)
             {

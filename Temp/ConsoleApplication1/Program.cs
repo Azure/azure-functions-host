@@ -25,59 +25,12 @@ using System.Runtime.InteropServices;
 
 namespace ConsoleApplication1
 {
-
-    public enum Fruit
-    {
-        Apple,
-        Pear,
-        Banana,
-    }
-    public class Widget
-    {
-        public string Name { get; set; }
-        public int Score { get; set; }
-    }
-
-    [DataServiceKey("PartitionKey", "RowKey")]
-    public class WidgetEntity : TableServiceEntity
-    {
-        //public Fruit Fruit { get; set; }
-        public int Value { get; set; }
-
-        public DateTime QueueTime { get; set; }
-
-        public DateTime? StartTime { get; set; }
-        public DateTime? EndTime { get; set; }
-
-        //public TimeSpan Delta { get; set; }
-        //public TimeSpan DeltaMissing { get; set; }
-
-        // TimeSpan
-
-        // public Widget Widget { get; set; }
-    }
-
     class Program
     {
         static void Main()
         {
-            var def = new FunctionDefinition
-            {
-#if false
-                 Location =new KuduFunctionLocation
-                 {
-                      Uri = "xyz"
-                 }
-#endif
-                Location = new RemoteFunctionLocation
-                {
-                     TypeName = "xyz"
-                }
-            };
-
-            var funcs = new FunctionDefinition[] { def };
-            var json = JsonCustom.SerializeObject(def);
-            var x2 = JsonCustom.DeserializeObject<FunctionDefinition>(json);            
+            string uri = "http://test578.azurewebsites.net/";
+            var x = new Uri(uri);
         }
 
 #if false

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Web.Mvc;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
@@ -56,7 +57,7 @@ namespace WebFrontEnd.Controllers
             IUrlFunctionLocation urlLoc = loc as IUrlFunctionLocation;
             if (urlLoc != null)
             {
-                return urlLoc.InvokeUrl;
+                return new Uri(urlLoc.InvokeUrl);
             }
             return "other";
         }

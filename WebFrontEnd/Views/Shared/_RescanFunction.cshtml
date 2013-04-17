@@ -4,6 +4,7 @@
 
 @{
     var blob = Model as RunnerInterfaces.CloudBlobDescriptor;
+    var uri = Model as Uri;
 }
 
 
@@ -18,6 +19,16 @@
         <input type="submit" value="Rescan Container"/>
     }
 } 
+else if (uri != null)
+{
+    using (Html.BeginForm("RegisterKuduFuncSubmit", "Home"))
+    {
+        <input type="hidden" name="url" value="@uri.ToString()" />
+        <h3>Uri:</h3>
+        <label>@uri</label>
+        <input type="submit" value="Rescan url"/>
+    }
+}
 else 
 {
     <h3>Container</h3>
