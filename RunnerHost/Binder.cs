@@ -12,7 +12,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    class BindingContext : IBinderEx
+    public class BindingContext : IBinderEx
     {
         private readonly IRuntimeBindingInputs _runtimeInputs;
         private readonly IConfiguration _config;
