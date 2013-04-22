@@ -13,7 +13,7 @@
     {
         public FunctionExecutionResult Result { get; set; }
 
-        // !!! Move this to be incremental. 
+        // $$$ Move this to be incremental.  
         public string ConsoleOutput { get; set; }
     }
 }

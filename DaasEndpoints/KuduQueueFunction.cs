@@ -26,12 +26,12 @@ namespace DaasEndpoints
                 Run(request);
             }
 
-            // !!! Ignore others. Could chain to another IQueueFunction impl. 
+            // $$$ Ignore others. Could chain to another IQueueFunction impl. 
         }
 
         KuduFunctionExecutionResult Invoke(IUrlFunctionLocation x, FunctionInvokeRequest request)
         {
-            // !!! This is synchronous. 
+            // $$$ This is synchronous. Make it async. But that means plumbing through ExecutionBase.Work.
             return Utility.PostJson<KuduFunctionExecutionResult>(x.InvokeUrl, request);
         }
 

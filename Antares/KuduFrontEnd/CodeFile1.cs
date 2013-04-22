@@ -7,7 +7,7 @@ using Orchestrator;
 
 namespace KuduFrontEnd
 {
-    // !!! Merge with Orch's IndexInMemory 
+    // $$$ Merge with Orch's IndexInMemory 
     class IndexInMemory : IFunctionTable
     {
         List<FunctionDefinition> List = new List<FunctionDefinition>();

@@ -76,14 +76,14 @@ namespace KuduFrontEnd
 
         public KuduFunctionExecutionResult Post(FunctionInvokeRequest request)
         {
-            // !!! Move to background thread, can't block. 
+            // $$$ Move to background thread, can't block. 
             var loc = (KuduFunctionLocation)request.Location;
 
             MethodInfoFunctionLocation loc2 = loc.Convert();
             var req2 = request.CloneUpdateLocation(loc2);
 
             // $$$ Console output is not incremental. 
-            // !!! What about concurrent Post requests? Will they steal each other's Console.Out?
+            // $$$ What about concurrent Post requests? Will they steal each other's Console.Out?
             StringWriter sw = new StringWriter();
             Console.SetOut(sw);
             var result = RunnerHost.Program.MainWorker(req2);

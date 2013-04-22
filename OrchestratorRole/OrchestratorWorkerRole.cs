@@ -141,7 +141,7 @@ namespace OrchestratorRole
 
                 IFunctionTable table = _services.GetFunctionTable();
 
-                // !!! Stale functions? Remove any that are at the same url?
+                // Remove stale functions that are at the same URL. 
                 {
                     var listDelete = new List<FunctionDefinition>();
                     foreach (var func in table.ReadAll())
