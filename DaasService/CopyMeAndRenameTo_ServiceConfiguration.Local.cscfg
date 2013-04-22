@@ -23,7 +23,7 @@
     <Instances count="1" />
     <ConfigurationSettings>
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" value="UseDevelopmentStorage=true" />
-      <Setting name="MainStorage" value="DefaultEndpointsProtocol=https;AccountName=simplebatch;AccountKey=ifTv6m4N8UkjvxNfWzC5NEepcNQWYgEcoeO2JLMK6nuG0VOhZejHE+Xk2s13359hc4Xz6/AUNlbMHZILJoxwtw==" />
+      <Setting name="MainStorage" value="DefaultEndpointsProtocol=https;AccountName=????;AccountKey=????" />
       <Setting name="WebRoleEndpoint" value="http://127.0.0.1:81" />
     </ConfigurationSettings>
   </Role>
