@@ -8,6 +8,9 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerHost;
 using RunnerInterfaces;
+using TriggerService;
+using System.Text;
+using TriggerType = RunnerInterfaces.TriggerType; // resolve ambiguity !!!
 
 namespace Orchestrator
 {
@@ -26,13 +29,42 @@ namespace Orchestrator
 
         // When we notice the input is added, invoke this function 
         // String hashes on CloubBlobContainer
-        Dictionary<CloudBlobContainer, List<FunctionDefinition>> _map;
-        Dictionary<CloudQueue, List<FunctionDefinition>> _mapQueues;
-        private BlobListener _blobListener;
         
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTable _functionTable;
         private readonly IQueueFunction _execute;
+
+        private Listener _listener;
+                
+        // Add "Tag" to Trigger?
+        // - Kudu: it's a URL
+        // - Worker: it's a FunctionDefinition object. 
+        class MyInvoker : ITriggerInvoke
+        {
+            private readonly Worker _parent;
+            public MyInvoker(Worker parent)
+            {
+                _parent = parent;
+            }
+
+            void ITriggerInvoke.OnNewTimer(TimerTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewTimer(func);
+            }
+
+            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewQueueItem(msg, func);
+            }
+
+            void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewBlob(func, blob);
+            }
+        }
 
         public Worker(IFunctionTable functionTable, IQueueFunction execute)
         {
@@ -46,9 +78,6 @@ namespace Orchestrator
             }
             _functionTable = functionTable;
             _execute = execute;
-
-            _map = new Dictionary<CloudBlobContainer, List<FunctionDefinition>>(new CloudContainerComparer());
-            _mapQueues = new Dictionary<CloudQueue, List<FunctionDefinition>>(new CloudQueueComparer());
 
             CreateInputMap();
 
@@ -66,107 +95,19 @@ namespace Orchestrator
         {
             FunctionDefinition[] funcs = _functionTable.ReadAll();
 
-            CreateInputMap(funcs);
-        }
+            TriggerMap map = new TriggerMap();
 
-        // List of functions to execute. 
-        // May have been triggered by a timer on a background thread . 
-        // Process by main foreground thread. 
-        volatile ConcurrentQueue<FunctionDefinition> _queueExecuteFuncs;
-
-        List<Timer> _timers = new List<Timer>();
-
-        void DisposeTimers()
-        {
-            foreach (var timer in _timers)
+            foreach (var func in funcs)
             {
-                timer.Dispose();
-            }
-            _timers.Clear();
-        }
-
-        private void CreateInputMap(FunctionDefinition[] funcs)
-        {
-            _queueExecuteFuncs = new ConcurrentQueue<FunctionDefinition>();
-            foreach (FunctionDefinition func in funcs)
-            {
-                var trigger = func.Trigger;
-
-                if (trigger.TimerInterval.HasValue)
+                var ts = CalculateTriggers.GetTrigger(func);
+                if (ts != null)
                 {
-                    TimeSpan period = trigger.TimerInterval.Value;
-                    Timer timer = null;
-                    TimerCallback callback = obj => 
-                    {
-                        // Called back on an arbitrary thread.                        
-                        if (_queueExecuteFuncs != null)                        
-                        {
-                            _queueExecuteFuncs.Enqueue(func);
-                        }
-                    };
-
-                    timer = new Timer(callback, null, TimeSpan.FromMinutes(0), period);
-                    _timers.Add(timer);
-                    
-                    // Don't listen on any other inputs.
-                    continue;
-                }
-
-                var flow = func.Flow;
-                foreach (var input in flow.Bindings)
-                {
-                    if (trigger.ListenOnBlobs)
-                    {
-                        var blobBinding = input as BlobParameterStaticBinding;
-                        if (blobBinding != null)
-                        {
-                            if (!blobBinding.IsInput)
-                            {
-                                continue;
-                            }
-                            CloudBlobPath path = blobBinding.Path;
-                            string containerName = path.ContainerName;
-
-                            // Check if it's on the ignore list
-                            var account = func.GetAccount();
-
-                            bool ignore = false;
-                            string accountContainerName = account.Credentials.AccountName + "\\" + containerName;
-
-                            if (!ignore)
-                            {
-                                CloudBlobClient clientBlob = account.CreateCloudBlobClient();
-                                CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
-
-                                _map.GetOrCreate(container).Add(func);
-                            }
-
-                            // $$$ Policy: only listen on the the first input 
-                            break;
-                        }
-                    }
-
-                    var queueBinding = input as QueueParameterStaticBinding;
-                    if (queueBinding != null)
-                    {
-                        if (queueBinding.IsInput)
-                        {
-                            // Queuenames must be all lowercase. Normalize for convenience. 
-                            string queueName = queueBinding.QueueName.ToLower();
-
-                            CloudQueueClient clientQueue = func.GetAccount().CreateCloudQueueClient();
-                            CloudQueue queue = clientQueue.GetQueueReference(queueName);
-
-                            _mapQueues.GetOrCreate(queue).Add(func);
-                            break;
-                        }
-                    }
+                    map.AddTriggers(func.Location.GetId(), ts);
                 }
             }
 
-            _blobListener = new BlobListener(_map.Keys);
+            _listener = new Listener(map, new MyInvoker(this));
         }
-
 
         public void Run()
         {
@@ -187,63 +128,21 @@ namespace Orchestrator
             Poll(CancellationToken.None);
         }
 
-        public void Poll(CancellationToken cancel)
+        public void Poll(CancellationToken token)
         {
             _heartbeat.Heartbeat = DateTime.UtcNow;
-            _blobListener.Poll(OnNewBlobMaybe, cancel);
-
-            PollTimers();
-
-            PollQueues();
+            _listener.Poll(token);
         }
 
-        private void PollTimers()
+
+        private void OnNewTimer(FunctionDefinition func)
         {
-            while (true)
+            var instance = GetFunctionInvocation(func);
+
+            if (instance != null)
             {
-                FunctionDefinition func;
-                if (!_queueExecuteFuncs.TryDequeue(out func))
-                {
-                    break;
-                }
-
-                var instance = GetFunctionInvocation(func);
-
-                if (instance != null)
-                {
-                    instance.TriggerReason = new TimerTriggerReason();                         
-                    _execute.Queue(instance);
-                }
-            }
-        }
-
-        // Listen for all queue results.
-        private void PollQueues()
-        {
-            foreach (var kv in _mapQueues)
-            {
-                var queue = kv.Key;
-                var funcs = kv.Value;
-
-                if (!queue.Exists())
-                {
-                    continue;
-                }
-
-                // $$$ What if job takes longer. Call CloudQueue.UpdateMessage
-                var visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
-                var msg = queue.GetMessage(visibilityTimeout);
-                if (msg != null)
-                {
-                    foreach (FunctionDefinition func in funcs)
-                    {
-                        OnNewQueueItem(msg, func);
-                        
-                        // $$$ Need to call Delete message only if function succeeded. 
-                        // and that gets trickier when we have multiple funcs listening. 
-                        queue.DeleteMessage(msg);
-                    }
-                }
+                instance.TriggerReason = new TimerTriggerReason();
+                _execute.Queue(instance);
             }
         }
 
@@ -269,54 +168,19 @@ namespace Orchestrator
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
-        public void OnNewBlob(CloudBlob blob)
+        private void OnNewBlob(FunctionDefinition func, CloudBlob blob)
         {
-            OnNewBlobWorker(blob, alwaysRun: true);
-        }
-
-        // Run the blob, only if the inputs are newer than the outputs.
-        private void OnNewBlobMaybe(CloudBlob blob)
-        {
-            OnNewBlobWorker(blob, alwaysRun: false);
-        }
-
-        private void OnNewBlobWorker(CloudBlob blob, bool alwaysRun)
-        {
-            var container = blob.Container;
-            Console.WriteLine(@"# New blob: {0}", blob.Uri);
-
-            List<FunctionDefinition> list;
-            if (_map.TryGetValue(container, out list))
+            FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
+            if (instance != null)
             {
-                // Invoke all these functions
-                foreach (FunctionDefinition func in list)
+                Guid parentGuid = GetBlobWriterGuid(blob);
+                instance.TriggerReason = new BlobTriggerReason
                 {
-                    FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
-                    if (instance != null)
-                    {
-                        if (!alwaysRun)
-                        {
-                            // Allow for optimization to skip execution if outputs are all newer than inputs.
-                            var inputsAreNewerThanOutputs = CheckBlobTimes(instance, func);
-                            if (inputsAreNewerThanOutputs.HasValue)
-                            {
-                                if (!inputsAreNewerThanOutputs.Value)
-                                {
-                                    continue;
-                                }
-                            }
-                        }
+                    BlobPath = new CloudBlobPath(blob),
+                    ParentGuid = parentGuid
+                };
 
-                        Guid parentGuid = GetBlobWriterGuid(blob);
-                        instance.TriggerReason = new BlobTriggerReason
-                        {
-                            BlobPath = new CloudBlobPath(blob),
-                            ParentGuid = parentGuid
-                        };                      
-
-                        _execute.Queue(instance);
-                    }
-                }
+                _execute.Queue(instance);
             }
         }
 
@@ -331,91 +195,7 @@ namespace Orchestrator
             QueueCausalityHelper qcm = new QueueCausalityHelper();
             return qcm.GetOwner(msg);
         }
-
-
-        // If function is just blob input and output, and the output blobs are newe, then don't rerun.
-        // This is a key optimization for avoiding expensive operations.
-        // Pass in func to save cost of having to look it up again.
-        // Return null if we can't reason about it.
-        // Return True is inputs are newer than outputs, and so function should be executed again.
-        // Else return false (meaning function execution can be skipped)
-        public static bool? CheckBlobTimes(FunctionInvokeRequest instance, FunctionDefinition func)
-        {
-            return CheckBlobTimes(instance.Args, func.Flow.Bindings);
-        }
-
-        // Easier exposure for unit testing
-        public static bool? CheckBlobTimes(ParameterRuntimeBinding[] argsRuntime, ParameterStaticBinding[] flows)
-        {
-            if (argsRuntime.Length != flows.Length)
-            {
-                throw new ArgumentException("arrays should be same length");
-            }
-
-            DateTime newestInput = DateTime.MinValue; // Old
-            DateTime oldestOutput = DateTime.MaxValue; // New
-
-            for (int i = 0; i < argsRuntime.Length; i++)            
-            {
-                var arg = argsRuntime[i];
-                var flow = flows[i];
-
-                // Input, Output, Ignore, Unknown
-
-                var t = flow.GetTriggerType();
-
-                if (t == TriggerType.Ignore)
-                {
-                    continue;
-                }
-                
-
-                DateTime? time = arg.LastModifiedTime;
-
-                if (t == TriggerType.Input)
-                {
-                    if (!time.HasValue)
-                    {
-                        // Missing an input? We shouldn't even be trying to invoke this function then.
-                        // Skip optimizations and let the binder deal with it. Binder should issue a nice error message.
-                        return null;
-                    }
-                    if (time > newestInput)
-                    {
-                        newestInput = time.Value;
-                    }
-                }
-                else
-                {
-                    if (!time.HasValue)
-                    {
-                        // No output. This is a common case.
-                        // Run the function to generate it.
-                        return true;
-                    }
-                    if (time < oldestOutput)
-                    {
-                        oldestOutput = time.Value;
-                    }
-                }                
-            }
-
-            if (newestInput == DateTime.MinValue)
-            {
-                return null;
-            }
-
-            if (oldestOutput == DateTime.MaxValue)
-            {
-                // No outputs. So question is moot.
-                return null;
-            }
-
-            // All inputs and outputs are already present. 
-            bool inputsAreNewerThanOutputs = (newestInput > oldestOutput);
-            return inputsAreNewerThanOutputs;
-        }
-
+        
         public static FunctionInvokeRequest GetFunctionInvocation(
             FunctionDefinition func, 
             IDictionary<string, string> parameters,
@@ -469,7 +249,7 @@ namespace Orchestrator
 
         public void Dispose()
         {
-            DisposeTimers();
+            _listener.Dispose();
         }
 
         // Bind the entire flow to an instance
