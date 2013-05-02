@@ -14,6 +14,7 @@ namespace RunnerInterfaces
             var settings = new JsonSerializerSettings()
             {
                 TypeNameHandling = TypeNameHandling.Auto,
+                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
                 Formatting = Formatting.Indented
             };
             settings.Converters.Add(new StorageConverter());
