@@ -266,7 +266,9 @@ namespace Orchestrator
                     PortableExecutableKinds peKind;
                     ImageFileMachine machine;
                     mainModule.GetPEKind(out peKind, out machine);
-                    if (peKind != PortableExecutableKinds.ILOnly)
+
+                    // Net.45 adds new flags for preference, which can be a superset of IL Only.
+                    if ((peKind & PortableExecutableKinds.ILOnly) != PortableExecutableKinds.ILOnly)
                     {
                         throw new InvalidOperationException("Indexing must be in IL-only entry points.");
                     }
