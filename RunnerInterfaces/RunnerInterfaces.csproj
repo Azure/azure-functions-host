@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BindingInterfaces.cs" />
+    <Compile Include="BlobLease.cs" />
     <Compile Include="BlobTextWriter.cs" />
     <Compile Include="IndexerOperations.cs" />
     <Compile Include="Tables\LocalTableCore.cs" />

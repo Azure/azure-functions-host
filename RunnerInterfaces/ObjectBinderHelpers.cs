@@ -136,23 +136,30 @@ namespace RunnerInterfaces
                 {
                     string result;
                     Type type = prop.PropertyType;
-                    if (type == typeof(DateTime?) ||
-                        type == typeof(DateTime))
-                    {
-                        result = SerializeDateTime((DateTime) value);
-                    }
-                    else if (UseToStringParser(type))
-                    {
-                        result = value.ToString();
-                    }
-                    else
-                    {
-                        result = JsonCustom.SerializeObject(value, type);
-                    }
+                    result = SerializeObject(value, type);
                     d[prop.Name] = result;
                 }
             }
             return d;
+        }
+
+        public static string SerializeObject(object value, Type type)
+        {
+            string result;
+            if (type == typeof(DateTime?) ||
+                type == typeof(DateTime))
+            {
+                result = SerializeDateTime((DateTime)value);
+            }
+            else if (UseToStringParser(type))
+            {
+                result = value.ToString();
+            }
+            else
+            {
+                result = JsonCustom.SerializeObject(value, type);
+            }
+            return result;
         }
 
         public static T ConvertDictToObject<T>(IDictionary<string, string> data) where T : new()
@@ -171,28 +178,35 @@ namespace RunnerInterfaces
                     object value;
                     string str = kv.Value;
                     Type type = prop.PropertyType;
-                    if (type == typeof(DateTime))
-                    {
-                        value = DeserializeDateTime(str);
-                    }
-                    else if (type == typeof(DateTime?))
-                    {
-                        DateTime? v2 = DeserializeDateTime(str);
-                        value = v2;
-                    }
-                    else if (UseToStringParser(prop.PropertyType))
-                    {
-                        value = BindFromString(str, type);
-                    }
-                    else
-                    {
-                        value = JsonCustom.DeserializeObject(str, type);
-                    }
+                    value = DeserializeObject(str, type);
                     prop.SetValue(obj, value, null);
                 }
             }
 
             return obj;
+        }
+
+        public static object DeserializeObject(string str, Type type)
+        {
+            object value;
+            if (type == typeof(DateTime))
+            {
+                value = DeserializeDateTime(str);
+            }
+            else if (type == typeof(DateTime?))
+            {
+                DateTime? v2 = DeserializeDateTime(str);
+                value = v2;
+            }
+            else if (UseToStringParser(type))
+            {
+                value = BindFromString(str, type);
+            }
+            else
+            {
+                value = JsonCustom.DeserializeObject(str, type);
+            }
+            return value;
         }
 
 

@@ -36,6 +36,13 @@ namespace RunnerInterfaces
             return new BindResult<T>((T)b.Result, b);
 
         }
+
+        // C# "ref" keyword
+        public static bool IsRefKeyword(ParameterInfo p)
+        {
+            return (p.ParameterType.IsByRef && !p.IsOut);
+        }
+
         public static string GetConnectionString(CloudStorageAccount account)
         {
             return account.ToString(exportSecrets: true);

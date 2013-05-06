@@ -40,7 +40,8 @@ namespace Orchestrator
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
-            var path = new CloudBlobPath(invokeString);
+            var path = (string.IsNullOrWhiteSpace(invokeString)) ? this.Path : new CloudBlobPath(invokeString);
+            
             var arg = new CloudBlobDescriptor
             {
                 AccountConnectionString = inputs.AccountConnectionString,

@@ -116,11 +116,18 @@ namespace RunnerHost
 
         private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
         {
+            bool isLease = Utility.IsRefKeyword(parameter);
+
+            // Treat ByRef as output. 
+            // - for blob listening: if it were input, this would cause a cycle (since we write to the input)
+            // - it's output since we're writing to it. So we do need to stamp it with a function guid.
+            bool isInput = !isLease;
+
             var path = new CloudBlobPath(attr.ContainerName);
             return new BlobParameterStaticBinding
             {
                 Path = path,
-                IsInput = true
+                IsInput = isInput
             };
         }
 
