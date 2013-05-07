@@ -8,6 +8,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Orchestrator;
+using RunnerHost;
 using RunnerInterfaces;
 using SimpleBatch;
 
@@ -86,6 +87,41 @@ namespace OrchestratorUnitTests
             string content = Utility.ReadBlob(account, "daas-test-input", "input.csv");
 
             Assert.AreEqual("abc", content);
+        }
+
+        [TestMethod]
+        public void TestBlobLease()
+        {
+            // Test that we get the blob lease, write while holding the lease. 
+            // We don't need a lease to read. 
+            BlobParameterRuntimeBinding.BlobLeaseTestHook = () => new MockBlobLeaseHolder();
+
+            var account = TestStorage.GetAccount();
+
+            string Container = "daas-test-input";
+            string BlobName = "counter.txt";
+
+            var blob = Utility.GetBlob(account, Container, BlobName);
+            blob.DeleteIfExists();
+
+            var blobLease = MockBlobLeaseHolder.GetBlobSuffix(blob, ".lease");
+            blob.DeleteIfExists(); // get into a known state
+
+            MethodInfo m = typeof(Program).GetMethod("BlobLease");
+            LocalOrchestrator.Invoke(account, m); // Invoke once, will create file
+                        
+            string content = blob.DownloadText();
+            Assert.AreEqual("1", content);
+
+            string content2 = Utility.ReadBlob(account, Container, BlobName + ".x");
+            Assert.AreEqual(content, content2, "Didn't write while holding the lease");
+
+            LocalOrchestrator.Invoke(account, m); // Invoke second time. 
+                        
+            string content3 = blob.DownloadText();
+            Assert.AreEqual("2", content3);
+
+            Assert.IsFalse(Utility.DoesBlobExist(blobLease), "Blob lease was not released");
         }
 
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
@@ -288,8 +324,8 @@ namespace OrchestratorUnitTests
             var account = TestStorage.GetAccount();
 
             Utility.DeleteContainer(account, "daas-test-input");
-            Utility.WriteBlob(account, "daas-test-input", @"test\1.csv", "abc");
-            Utility.WriteBlob(account, "daas-test-input", @"test\2.csv", "def");
+            Utility.WriteBlob(account, "daas-test-input", @"test/1.csv", "abc");
+            Utility.WriteBlob(account, "daas-test-input", @"test/2.csv", "def");
 
             var d = new Dictionary<string, string>() {
                 { "deployId", "test" },
@@ -304,6 +340,11 @@ namespace OrchestratorUnitTests
 
         private class Program
         {
+            public static void BlobLease([BlobInput(@"daas-test-input\counter.txt")]  ref int x)
+            {
+                x++;
+            }
+
             public static void Aggregate1(
                 [BlobInputs(@"daas-test-input\{names}.csv")] TextReader[] inputs,
 

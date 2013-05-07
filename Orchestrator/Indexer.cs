@@ -595,7 +595,7 @@ namespace Orchestrator
             }
             else if (hasAnyBindings)
             {
-                // Can't tell teh difference between unbound parameters and modelbound parameters.
+                // Can't tell the difference between unbound parameters and modelbound parameters.
                 // Assume any unknonw parameters will be solved with model binding, and that if the user didn't
                 // want an invoke, they would have used the [NoTrigger] attribute.
                 trigger = new FunctionTrigger { ListenOnBlobs = true };

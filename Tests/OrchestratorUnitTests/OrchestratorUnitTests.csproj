@@ -87,6 +87,7 @@
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
+    <Compile Include="Mocks\MockBlobLeaseHolder.cs" />
     <Compile Include="ModelBindingTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="ParserUnitTests.cs" />

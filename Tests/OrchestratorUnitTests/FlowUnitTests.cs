@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Orchestrator;
+using RunnerInterfaces;
 using SimpleBatch;
 
 namespace OrchestratorUnitTests
@@ -64,6 +65,20 @@ namespace OrchestratorUnitTests
             FunctionDefinition func = Get("NoIndex");
             Assert.IsNull(func);
         }
+
+        public static void AutoTrigger1([BlobInput(@"daas-test-input\foo.txt")] ref int x) { }
+
+        [TestMethod]
+        public void TestBlobLease()
+        {
+            FunctionDefinition func = Get("Table");
+            Assert.IsNotNull(func);
+
+            // Even though it's BlobInput, we don't listen on ref parameters (since that would be a cycle).
+            var staticBinding = func.Flow.Bindings[0];
+            Assert.AreNotEqual(TriggerType.Input, staticBinding.GetTriggerType());
+        }
+
 
         // Runtime type is irrelevant for table. 
         private static void Table([Table("TableName")] object reader) { }

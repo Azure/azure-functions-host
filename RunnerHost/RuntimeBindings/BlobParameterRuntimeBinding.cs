@@ -77,8 +77,8 @@ namespace RunnerHost
                 string msg = string.Format("Input blob is not found: {0}", blob.Uri);
                 throw new InvalidOperationException(msg);                    
             }
-                
-            BlobLeaseHolder _holder = new BlobLeaseHolder();
+
+            IBlobLeaseHolder _holder = BlobLeaseTestHook();
 
             if (useLease)
             {
@@ -104,6 +104,13 @@ namespace RunnerHost
                 IBlobCausalityLogger logger = new BlobCausalityLogger();
                 return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, type, blob, logger);
             }
+        }
+
+        // Test hook for hooking BlobLeases.
+        public static Func<IBlobLeaseHolder> BlobLeaseTestHook = DefaultBlobLeaseTestHook;
+        public static IBlobLeaseHolder DefaultBlobLeaseTestHook()
+        {
+            return new BlobLeaseHolder();
         }
                         
         public override string ConvertToInvokeString()

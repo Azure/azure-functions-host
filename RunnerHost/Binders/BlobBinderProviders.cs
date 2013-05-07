@@ -42,12 +42,10 @@ namespace RunnerHost
     // Uses leases.
     class JsonByRefBlobBinder : ICloudBlobBinder
     {
-        public BlobLeaseHolder Lease { get; set; }
+        public IBlobLeaseHolder Lease { get; set; }
 
         public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
         {
-            string leaseId = Lease.LeaseId;
-
             CloudBlob blob = Utility.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
 
@@ -72,23 +70,20 @@ namespace RunnerHost
             {
                 Result = result
             };
-            x.Cleanup = () =>
-                {
-                    object newResult = x.Result;
-                    try
-                    {
-                        string json2 = ObjectBinderHelpers.SerializeObject(newResult, targetType);
-                        BlobLease.UploadText(blob, json2, leaseId);
-                    }
-                    finally
-                    {
-                        BlobLease.ReleaseLease(blob, leaseId);
-                    }
-                };
 
             // $$$ There's still a far distance between here and releasing the lease in BindResult.Cleanup. 
             // Could have an orphaned lease. 
-            Lease.SuppressRelease();
+            var newLease = Lease.TransferOwnership();
+
+            x.Cleanup = () =>
+                {
+                    object newResult = x.Result;
+                    using (newLease)
+                    {
+                        string json2 = ObjectBinderHelpers.SerializeObject(newResult, targetType);
+                        newLease.UploadText(json2);
+                    }                    
+                };
             return x;
         }
 
