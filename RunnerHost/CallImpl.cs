@@ -18,14 +18,14 @@ namespace RunnerHost
     {
         public FunctionInvoker _inner;
 
-        public void QueueCall(string functionName, object arguments = null)
-        {
-            _inner.QueueCall(functionName, arguments);
-        }
-
         public string GetStatus()
         {
             return _inner.GetStatus();
+        }
+
+        public IFunctionToken QueueCall(string functionName, object arguments = null, IEnumerable<IFunctionToken> prereqs = null)
+        {
+            return _inner.QueueCall(functionName, arguments, prereqs);
         }
     }
 }

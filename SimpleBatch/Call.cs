@@ -12,8 +12,11 @@ namespace SimpleBatch
     public interface ICall
     {
         // Queues a call to the given function. Function is resolved against the current "scope". 
-        // $$$ Inherits all named args from caller. 
-        // Return a tag for logging and stuff?
-        void QueueCall(string functionName, object arguments = null);
-    }    
+        // arguments can be either an IDictionary or an anonymous object with fields.         
+        IFunctionToken QueueCall(string functionName, object arguments = null, IEnumerable<IFunctionToken> prereqs = null);
+    }
+
+    public interface IFunctionToken
+    {
+    }
 }

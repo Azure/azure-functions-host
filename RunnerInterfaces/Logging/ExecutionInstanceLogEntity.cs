@@ -41,6 +41,9 @@ namespace Executor
         // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
 
+        // Number of outstanding prereqs before this function can run. 
+        public int PrereqCount { get; set; }
+
         // Set to once we've been queued. This should always been set since queuing is essentially initialization.
         // QueueTime is set on the machine that enqueues the request, which can be a different machine than 
         // the execution node. So there could be clocksqew between queue time and start time.        
@@ -70,6 +73,7 @@ namespace Executor
     public enum FunctionInstanceStatus
     {
         None, // shouldn't be used. Can indicate a serialization error.
+        AwaitingPrereqs, // function is not yet queued. Has outstanding prereqs. 
         Queued, // waiting in the execution queue.
         Running, // Now running. An execution node has picked up ownership.
         CompletedSuccess, // ran to completion, either via success or a user error (threw exception)
@@ -94,6 +98,8 @@ namespace Executor
         {
             switch (obj.GetStatus())
             {
+                case FunctionInstanceStatus.AwaitingPrereqs:
+                    return string.Format("Awaiting prerequisites ({0} remaining)", obj.PrereqCount);
                 case FunctionInstanceStatus.Queued:
                     return string.Format("In queued (since {0})", obj.QueueTime);
                 case FunctionInstanceStatus.Running:
@@ -110,6 +116,11 @@ namespace Executor
 
         public static FunctionInstanceStatus GetStatus(this ExecutionInstanceLogEntity obj)
         {
+            if (obj.PrereqCount > 0)
+            {
+                return FunctionInstanceStatus.AwaitingPrereqs;
+            }
+
             if (obj.EndTime.HasValue)
             {
                 if (obj.ExceptionType == null)
