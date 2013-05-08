@@ -66,12 +66,12 @@ namespace OrchestratorUnitTests
             Assert.IsNull(func);
         }
 
-        public static void AutoTrigger1([BlobInput(@"daas-test-input\foo.txt")] ref int x) { }
+        public static void BlobLease([BlobInput(@"daas-test-input\foo.txt")] ref int x) { }
 
         [TestMethod]
         public void TestBlobLease()
         {
-            FunctionDefinition func = Get("Table");
+            FunctionDefinition func = Get("BlobLease");
             Assert.IsNotNull(func);
 
             // Even though it's BlobInput, we don't listen on ref parameters (since that would be a cycle).

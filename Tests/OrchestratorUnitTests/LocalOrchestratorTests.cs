@@ -324,8 +324,8 @@ namespace OrchestratorUnitTests
             var account = TestStorage.GetAccount();
 
             Utility.DeleteContainer(account, "daas-test-input");
-            Utility.WriteBlob(account, "daas-test-input", @"test/1.csv", "abc");
-            Utility.WriteBlob(account, "daas-test-input", @"test/2.csv", "def");
+            Utility.WriteBlob(account, "daas-test-input", @"test\1.csv", "abc");
+            Utility.WriteBlob(account, "daas-test-input", @"test\2.csv", "def");
 
             var d = new Dictionary<string, string>() {
                 { "deployId", "test" },

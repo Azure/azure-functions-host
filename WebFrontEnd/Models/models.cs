@@ -11,7 +11,7 @@ namespace WebFrontEnd.Controllers
     public class LogOnViewModel
     {
         [Required]
-        [MinLength(3)] // !!! Don't work in 4.5
+        [MinLength(3)]
         [MaxLength(15)] // sanity check
         [RegularExpression("[a-zA-Z0-9]+")] // especially useful since we use UserName in filename lookup
         public string UserName { get; set; }

@@ -78,7 +78,20 @@ namespace RunnerHost
             Exception e2 = e;
             while (e2 != null)
             {
-                Console.WriteLine(e2.Message);
+                Console.WriteLine("{0}, {1}", e2.GetType().FullName, e2.Message);
+
+                // Write bonus information for extra diagnostics
+                var se = e2 as StorageClientException;
+                if (se != null)
+                {
+                    var nvc = se.ExtendedErrorInformation.AdditionalDetails;                  
+
+                    foreach (var key in nvc.AllKeys)
+                    {
+                        Console.WriteLine("  >{0}: {1}", key, nvc[key]);
+                    }
+                }
+
                 Console.WriteLine(e2.StackTrace);
                 Console.WriteLine();
                 e2 = e2.InnerException;
@@ -353,43 +366,48 @@ namespace RunnerHost
 
                 // Process any out parameters, do any cleanup
                 // For update, do any cleanup work. 
-                
-                for (int i = 0; i < len; i++)
-                {
-                    var bind = binds[i];
-                    try
-                    {
-                        // This could invoke user code and do complex things that may fail. Catch the exception 
-                        bind.OnPostAction();
-                    }
-                    catch(Exception e)
-                    {
-                        // This 
-                        Console.WriteLine("Error while handling parameter #{0} '{1}' after function returned:", i, ps[i]);
-                        WriteExceptionChain(e);
-                        success = false;
-                    }
-                }
 
-                if (success)
+                try
                 {
-                    foreach (var bind in binds)
+                    for (int i = 0; i < len; i++)
                     {
-                        var a = bind as IPostActionTransaction;
-                        if (a != null)
+                        var bind = binds[i];
+                        try
                         {
-                            a.OnSuccessAction();
-                        }                        
+                            // This could invoke user code and do complex things that may fail. Catch the exception 
+                            bind.OnPostAction();
+                        }
+                        catch (Exception e)
+                        {
+                            // This 
+                            string msg = string.Format("Error while handling parameter #{0} '{1}' after function returned:", i, ps[i]);
+                            throw new InvalidOperationException(msg, e);
+                        }
+                    }
+
+                    if (success)
+                    {
+                        foreach (var bind in binds)
+                        {
+                            var a = bind as IPostActionTransaction;
+                            if (a != null)
+                            {
+                                a.OnSuccessAction();
+                            }
+                        }
+                    }
+
+                }
+                finally
+                {
+                    // Stop the watches last. PostActions may do things that should show up in the watches.
+                    // PostActions could also take a long time (flushing large caches), and so it's useful to have
+                    // watches still running.                
+                    if (fpStopWatcher != null)
+                    {
+                        fpStopWatcher();
                     }
                 }
-
-                // Stop the watches last. PostActions may do things that should show up in the watches.
-                // PostActions could also take a long time (flushing large caches), and so it's useful to have
-                // watches still running.                
-                if (fpStopWatcher != null)
-                {
-                    fpStopWatcher();
-                }      
             }            
         }
 
