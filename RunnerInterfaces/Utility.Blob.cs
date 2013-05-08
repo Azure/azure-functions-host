@@ -103,7 +103,6 @@ namespace RunnerInterfaces
         }
 
         // Return Null if doesn't exist
-        [DebuggerNonUserCode]
         public static string ReadBlob(CloudStorageAccount account, string containerName, string blobName)
         {
             var client = account.CreateCloudBlobClient();

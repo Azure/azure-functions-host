@@ -29,24 +29,30 @@ namespace Orchestrator
                 path = path.ApplyNames(inputs.NameParameters);
             }
 
-            var arg = new CloudBlobDescriptor
-            {
-                AccountConnectionString = inputs.AccountConnectionString,
-                ContainerName = path.ContainerName,
-                BlobName = path.BlobName
-            };
-            return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput};
+
+            return Bind(inputs, path);            
+        }
+
+        static string NormalizeBlobName(string blobName)
+        {
+            // Azure directories use '/', and azure sdk libraries fail with '\\'.
+            return blobName.Replace('\\', '/');
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             var path = (string.IsNullOrWhiteSpace(invokeString)) ? this.Path : new CloudBlobPath(invokeString);
-            
+
+            return Bind(inputs, path);
+        }
+
+        private ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs, CloudBlobPath path)
+        {
             var arg = new CloudBlobDescriptor
             {
                 AccountConnectionString = inputs.AccountConnectionString,
                 ContainerName = path.ContainerName,
-                BlobName = path.BlobName
+                BlobName = NormalizeBlobName(path.BlobName)
             };
             return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput };
         }
