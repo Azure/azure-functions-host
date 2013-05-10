@@ -46,10 +46,10 @@ namespace RunnerHost
 
             return new BindResultTransaction
             {
-                Result = new WebCallWrapper { _inner = result },
+                Result = new WebCallWrapper(result, bindingContext.FunctionInstanceGuid),
                 Cleanup = () =>
                 {
-                    result.Flush();
+                    // !!! skip
                 }
             };
         }

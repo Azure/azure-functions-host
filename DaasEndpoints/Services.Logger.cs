@@ -18,6 +18,15 @@ namespace DaasEndpoints
     // Services related to logging
     public partial class Services
     {
+        public IPrereqManager GetPrereqManager()
+        {
+            IAzureTable prereqTable = new AzureTable(_account, "schedPrereqTable");
+            IAzureTable successorTable = new AzureTable(_account, "schedSuccessorTable");
+            IFunctionInstanceLookup lookup = GetFunctionInstanceLookup();
+
+            return new PrereqManager(prereqTable, successorTable, lookup);
+        }
+
         public ICausalityLogger GetCausalityLogger()
         {
             IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);

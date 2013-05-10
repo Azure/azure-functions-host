@@ -61,6 +61,7 @@
     <Compile Include="AntaresRoleExecutionClient.cs" />
     <Compile Include="AzureRoleAccountInfo.cs" />
     <Compile Include="KuduQueueFunction.cs" />
+    <Compile Include="PrereqTable.cs" />
     <Compile Include="Services.GetQueueFunction.cs" />
     <Compile Include="WorkerRoleExecutionClient.cs" />
     <Compile Include="Helpers.cs" />

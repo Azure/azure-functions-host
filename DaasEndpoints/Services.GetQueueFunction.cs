@@ -80,16 +80,24 @@ namespace DaasEndpoints
             Kudu,
         }
 
+        private QueueInterfaces GetQueueInterfaces()
+        {
+            return new QueueInterfaces
+            {
+                 AccountInfo = this._accountInfo,
+                 Logger = GetFunctionUpdatedLogger(),
+                 CausalityLogger = GetCausalityLogger(),
+                 PreqreqManager = GetPrereqManager()
+            };
+        }
+
         // Run via Azure tasks. 
         // This requires that an existing azure task pool has been setup. 
         private IQueueFunction GetAzureTasksQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
-            ICausalityLogger causalityLogger = GetCausalityLogger();
-
             // Based on AzureTasks
             TaskConfig taskConfig = GetAzureTaskConfig();
-            return new TaskExecutor(this._accountInfo, logger, taskConfig, causalityLogger);            
+            return new TaskExecutor(taskConfig, GetQueueInterfaces());            
         }
 
         // Gets AzureTask configuration from the Azure config settings
@@ -109,35 +117,26 @@ namespace DaasEndpoints
         // This requires that an existing antares site was deployed. 
         private IQueueFunction GetAntaresQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
-            ICausalityLogger causalityLogger = GetCausalityLogger();
-
             // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
             string urlBase = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
            
             var queue = this.GetExecutionQueue();
-            return new AntaresRoleExecutionClient(urlBase, queue, this._accountInfo, logger, causalityLogger);
+            return new AntaresRoleExecutionClient(urlBase, queue, GetQueueInterfaces());
         }
 
         private IQueueFunction GetKuduQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
-            ICausalityLogger causalityLogger = GetCausalityLogger();
-                        
             var queue = this.GetExecutionQueue();
-            return new KuduQueueFunction(this._accountInfo, logger, causalityLogger);  
+            return new KuduQueueFunction(GetQueueInterfaces());  
         }
 
         // Run via Azure Worker Roles
         // These worker roles should have been deployed automatically.
         private IQueueFunction GetWorkerRoleQueueFunction()
         {
-            IFunctionUpdatedLogger logger = GetFunctionUpdatedLogger();
-            ICausalityLogger causalityLogger = GetCausalityLogger();
-
             // Based on WorkerRoles (submitted via a Queue)
             var queue = this.GetExecutionQueue();
-            return new WorkerRoleExecutionClient(queue, this._accountInfo, logger, causalityLogger);            
+            return new WorkerRoleExecutionClient(queue, GetQueueInterfaces());
         }
     }
 }

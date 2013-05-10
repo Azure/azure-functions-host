@@ -26,8 +26,8 @@ namespace Executor
         private readonly TaskConfig _config;
 
         // config - configuration information for using AzureTasks. 
-        public TaskExecutor(IAccountInfo account, IFunctionUpdatedLogger logger, TaskConfig config, ICausalityLogger causalityLogger)
-            : base(account, logger, causalityLogger)
+        public TaskExecutor(TaskConfig config, QueueInterfaces interfaces)
+            : base(interfaces)
         {
             if (config == null)
             {
@@ -40,9 +40,9 @@ namespace Executor
                 var settings = JsonCustom.NewSettings();
                 settings.TypeNameHandling = TypeNameHandling.Objects; // needed 
 
-                _loggerJson = JsonConvert.SerializeObject(logger, settings);
+                _loggerJson = JsonConvert.SerializeObject(interfaces.Logger, settings);
 
-                logger = JsonCustom.DeserializeObject<IFunctionUpdatedLogger>(_loggerJson);
+                interfaces.Logger = JsonCustom.DeserializeObject<IFunctionUpdatedLogger>(_loggerJson);
             }
 
             _config = config;

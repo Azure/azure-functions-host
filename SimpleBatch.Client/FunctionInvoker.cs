@@ -22,39 +22,31 @@ namespace SimpleBatch.Client
         // $$$ Where would we get these from?
         public IDictionary<string, string> InheritedArgs { get; set; }
 
-        // Queues, for being flushed later
-        List<Action> _queue = new List<Action>();
-
         // Implements ICall
         // Defers calls to avoid races.
-        public void QueueCall(string functionShortName, object arguments = null)
+        public Guid QueueCall(string functionShortName, object arguments = null, IEnumerable<Guid> prereqs = null)
         {
             _countQueued++;
             var args = ResolveArgs(arguments);
 
-            _queue.Add(() =>
-            {
-                this.InvokeDirect(functionShortName, args);
-            });
-        }
+            var guid = this.InvokeDirect(functionShortName, args, prereqs);
+            return guid;
+        }       
 
-        // Drain the queue, send the messages.
-        public void Flush()
+        private IEnumerable<Guid> NormalizePrereqs(IEnumerable<Guid> prereqs)
         {
-            var q = _queue;
-            _queue = new List<Action>();
-
-            foreach (Action a in q)
+            if (prereqs == null)
             {
-                a(); // may add new queue messages
+                return new Guid[0];
             }
+            return prereqs;                
         }
 
         // Invokes, queues an execution. 
         // Function could start running immediately. 
-        protected Guid InvokeDirect(string functionShortName, IDictionary<string, string> args)
+        protected Guid InvokeDirect(string functionShortName, IDictionary<string, string> args, IEnumerable<Guid> prereqs = null)
         {
-            Guid guid = MakeWebCall(functionShortName, args);
+            Guid guid = MakeWebCall(functionShortName, args, NormalizePrereqs(prereqs));
 
             return guid;
         }
@@ -109,7 +101,7 @@ namespace SimpleBatch.Client
             return string.Format("Queued {0} calls", _countQueued);
         }
 
-        protected abstract Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters);
+        protected abstract Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs);
 
         protected abstract Task WaitOnCall(Guid g);
 

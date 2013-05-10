@@ -10,6 +10,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
+using System.Linq;
 
 namespace WebFrontEnd
 {
@@ -60,7 +61,7 @@ namespace WebFrontEnd
         // Execute the given function.
         // Assumes execution is used via named parameters.
         [HttpPost]
-        public BeginRunResult Run(string func)
+        public BeginRunResult Run(string func, [FromBody] Guid[] prereqs)
         {
             FunctionDefinition f = GetServices().GetFunctionTable().Lookup(func);
             if (f == null)
@@ -85,6 +86,11 @@ namespace WebFrontEnd
                     Message = "Explicitly invoked via POST WebAPI.",
                     ParentGuid = parentGuid
                 };
+
+                if (prereqs != null && prereqs.Length > 0)
+                {
+                    instance.Prereqs = prereqs.ToArray();
+                }
 
                 IQueueFunction executor = GetServices().GetQueueFunction();
                 ExecutionInstanceLogEntity result = executor.Queue(instance);

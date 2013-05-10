@@ -55,10 +55,12 @@
     <Compile Include="BindingInterfaces.cs" />
     <Compile Include="BlobLease.cs" />
     <Compile Include="BlobTextWriter.cs" />
+    <Compile Include="Execution\Prereqs.cs" />
     <Compile Include="IndexerOperations.cs" />
     <Compile Include="Tables\LocalTableCore.cs" />
     <Compile Include="Tables\LiveTableCore.cs" />
     <Compile Include="Tables\TableCore.cs" />
+    <Compile Include="Utility.Table.AtomicAdjust.cs" />
     <Compile Include="Utility.Web.cs" />
     <Compile Include="WrapperEnumerable.cs" />
     <Compile Include="Logging\CausalityLogger.cs" />

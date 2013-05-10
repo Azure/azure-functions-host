@@ -86,13 +86,18 @@ namespace SimpleBatch.Client
         }
 
         protected abstract MethodInfo ResolveMethod(string functionShortName);
-        
+
         // Rather than call to Website and queue over internet, just queue locally. 
-        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)
+        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs)
         {
+            if (prereqs != null && prereqs.Any())
+            {
+                throw new NotImplementedException("This implementation of ICall does not support prerequisites");
+            }
+
             var method = ResolveMethod(functionShortName);
 
-            // Runs synchronously
+            // Runs synchronously // !!!
             Orchestrator.LocalOrchestrator.Invoke(_account, this.Configuration, method, parameters);
 
             return Guid.Empty;
@@ -112,6 +117,5 @@ namespace SimpleBatch.Client
             tsc.SetResult(null);
             return tsc.Task;
         }
-
     }
 }

@@ -12,8 +12,8 @@ namespace DaasEndpoints
         // The url of the antares worker site to be pinged when new work comes in. 
         private readonly string UrlBase;
 
-        public AntaresRoleExecutionClient(string url, CloudQueue queue, IAccountInfo account, IFunctionUpdatedLogger logger, ICausalityLogger causalityLogger)
-            : base(queue, account, logger, causalityLogger)
+        public AntaresRoleExecutionClient(string url, CloudQueue queue, QueueInterfaces interfaces)
+            : base(queue, interfaces)
         {
             if (string.IsNullOrWhiteSpace(url))
             {

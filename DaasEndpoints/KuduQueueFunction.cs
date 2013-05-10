@@ -10,8 +10,8 @@ namespace DaasEndpoints
     // Run a function where the source (and binaries) are via Kudu
     class KuduQueueFunction : QueueFunctionBase
     {
-        public KuduQueueFunction(IAccountInfo account, IFunctionUpdatedLogger logger, ICausalityLogger causalityLogger)
-            : base(account, logger, causalityLogger)
+        public KuduQueueFunction(QueueInterfaces interfaces)
+            : base(interfaces)
         {
         }
         protected override void Work(ExecutionInstanceLogEntity logItem)

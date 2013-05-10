@@ -27,80 +27,19 @@ namespace ConsoleApplication1
 {
     class Program
     {
+        static Guid New()
+        {
+            return Guid.NewGuid();
+        }
+
         static void Main()
         {
-            string uri = "http://test578.azurewebsites.net/";
-            var x = new Uri(uri);
+
+            // Stress test Prereq table.
+            IPrereqManager pt;
+
+
         }
-
-#if false
-        Verify it still works locally (update host)
-
-        ExecutionStatsAggregatorBridge on func complete. 
-        - share with Executor?
-        - realy should be part of IFunctionUpdatedLogger
-
-        Get real orchestrator using it!
-
-        - When do we delete Work items?
-
-        A) ATHost can pull workers.  (But this means its own queue. Fighting AT model)
-        B) Use AT queuing mechanism. 
-#endif
-
-
-
-        static void TestTask()
-        {
-            // Get account that service operates with
-            string configFile = @"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Cloud-Mike.cscfg";
-            IAccountInfo account = LocalRunnerHost.Program.GetAccountInfo(configFile);
-            var config = LocalRunnerHost.Program.GetConfigAsDictionary(configFile);
-
-            var taskConfig = new TaskConfig
-            {
-                TenantUrl = config["AzureTaskTenantUrl"],
-                AccountName = config["AzureTaskAccountName"],
-                Key = config["AzureTaskKey"],
-                PoolName = config["AzureTaskPoolName"]
-            };
-
-            //IFunctionUpdatedLogger logger = new NullLogger();
-            var table = new AzureTable<ExecutionInstanceLogEntity>(account.GetAccount(), "daasfunctionlogs");
-            IFunctionUpdatedLogger logger = new FunctionUpdatedLogger(table);
-
-            ICausalityLogger causalityLogger = null;
-            var e = new TaskExecutor(account, logger, taskConfig, causalityLogger);
-
-            //e.DeletePool();
-            //e.CreatePool(1);
-
-
-
-            string userAccountConnectionString = account.AccountConnectionString; // account for user functions
-
-            FunctionInvokeRequest request = new FunctionInvokeRequest
-            {
-                Location = new RemoteFunctionLocation
-                {
-                    DownloadSource = new CloudBlobPath("daas-test-functions", "TestApp1.exe"),
-                    AccountConnectionString = userAccountConnectionString,
-                    TypeName = "TestApp1.Program",
-                    MethodName = "TestCall2"
-                },
-                TriggerReason = new BlobTriggerReason { }, 
-                Args = new ParameterRuntimeBinding[]
-                  {
-                       new LiteralStringParameterRuntimeBinding { Value = "172" }
-                  },
-                ServiceUrl = account.WebDashboardUri
-            };
-            ExecutionInstanceLogEntity entry = e.Queue(request);
-
-            e.WaitAndPrintOutput(entry);
-        }
-
-        
 
         class NullLogger : IFunctionUpdatedLogger
         {

@@ -142,6 +142,11 @@ namespace Executor
         public static bool IsCompleted(this ExecutionInstanceLogEntity obj)
         {
             var status = obj.GetStatus();
+            return status.IsCompleted();
+        }
+
+        public static bool IsCompleted(this FunctionInstanceStatus status)
+        {
             return status == FunctionInstanceStatus.CompletedSuccess || status == FunctionInstanceStatus.CompletedFailed;
         }
     }

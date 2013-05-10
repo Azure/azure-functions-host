@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace SimpleBatch.Client
 {
@@ -17,7 +18,8 @@ namespace SimpleBatch.Client
     {
         private readonly string _serviceUri;
         private readonly Func<string, string> _functionResolver;
-        private readonly Guid _thisFunc; // guid instance for this function. 
+
+        protected Guid _thisFunc; // guid instance for this function. 
 
         public WebFunctionInvoker(Func<string,string> functionResolver, string serviceUri, Guid thisFuncGuid)
         {
@@ -38,12 +40,13 @@ namespace SimpleBatch.Client
             _thisFunc = thisFuncGuid;
         }
 
-        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters)
+        protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs)
         {
             var function = ResolveFunction(functionShortName);
             string uri = MakeUriRun(function, parameters);
 
-            var val = Send<BeginRunResult>(uri, "POST");
+            Guid[] body = prereqs.ToArray();
+            var val = Send<BeginRunResult>(uri, "POST", body);
 
             return val.Instance;
         }
@@ -85,13 +88,25 @@ namespace SimpleBatch.Client
         // $$$ Make this virtual to help with unit testing?
         // $$$ Would be nice to unify with Utility, but that would take a dependency reference we can't have. 
         // maybe do a source link instead?
-        private static T Send<T>(string uri, string verb)
+        private static T Send<T>(string uri, string verb, object body = null)
         {            
             // Send 
             WebRequest request = WebRequest.Create(uri);
             request.Method = verb;
             request.ContentType = "application/json";
             request.ContentLength = 0;
+
+            if (body != null)
+            {
+                var json = JsonConvert.SerializeObject(body);
+                byte[] bytes = Encoding.UTF8.GetBytes(json);
+
+                request.ContentLength = bytes.Length; // set before writing to stream
+                var stream = request.GetRequestStream();
+                stream.Write(bytes, 0, bytes.Length);
+                stream.Close();
+            }
+
 
             var response = request.GetResponse(); // does the actual web request
 
