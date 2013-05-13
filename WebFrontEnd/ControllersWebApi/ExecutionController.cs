@@ -80,17 +80,12 @@ namespace WebFrontEnd
             // Queue could be an hour deep
             try
             {
-                var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters);
+                var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters, prereqs);
                 instance.TriggerReason = new InvokeTriggerReason
                 {
                     Message = "Explicitly invoked via POST WebAPI.",
                     ParentGuid = parentGuid
                 };
-
-                if (prereqs != null && prereqs.Length > 0)
-                {
-                    instance.Prereqs = prereqs.ToArray();
-                }
 
                 IQueueFunction executor = GetServices().GetQueueFunction();
                 ExecutionInstanceLogEntity result = executor.Queue(instance);

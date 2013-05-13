@@ -22,14 +22,21 @@ namespace Orchestrator
         List<MethodInfo> _mapping = new List<MethodInfo>();
 
         // account is for binding parameters. 
-        public IndexInMemory(CloudStorageAccount account)
+        public IndexInMemory(CloudStorageAccount account, IConfiguration config)
         {
             this.Account = account;
             this.AccountConnectionString = Utility.GetConnectionString(account);
+            _config = config;
+        }
 
-            _config = RunnerHost.Program.InitBinders();
+        public IndexInMemory(CloudStorageAccount account)
+            : this(account, null)
+        {
+            var config = RunnerHost.Program.InitBinders();
             var caller = new InMemoryIndexFunctionInvoker(this);
-            LocalFunctionInvoker.InsertCallBinderProvider(caller, _config);
+            LocalFunctionInvoker.InsertCallBinderProvider(caller, config);
+
+            _config = config;
         }
 
         private IConfiguration _config;

@@ -13,7 +13,7 @@ using SimpleBatch;
 namespace Executor
 {
     // Primary access to the azure table storing function invoke requests.  
-    public class FunctionUpdatedLogger : IFunctionUpdatedLogger
+    public class FunctionUpdatedLogger : IFunctionUpdatedLogger, IFunctionInstanceLookup
     {
         // Partition key is a constant. Row key is ExecutionInstanceLogEntity.GetKey(), which is the function instance Guid. 
         private readonly IAzureTable<ExecutionInstanceLogEntity> _table;
@@ -53,9 +53,10 @@ namespace Executor
             ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
             return func;
         }
+               
 
         // $$$ Should be a merge. Move this merge operation in IAzureTable?
-        static void Merge<T>(T mutate, T delta)
+        public static void Merge<T>(T mutate, T delta)
         {
             foreach (var property in typeof(T).GetProperties())
             {
@@ -65,6 +66,11 @@ namespace Executor
                     property.SetValue(mutate, deltaVal, null);
                 }
             }
+        }
+
+        ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
+        {
+            return RawLookup(_table, rowKey.ToString());
         }
     }    
 }

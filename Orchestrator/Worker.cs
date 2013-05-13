@@ -416,13 +416,22 @@ namespace Orchestrator
             return inputsAreNewerThanOutputs;
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, IDictionary<string, string> parameters)
+        public static FunctionInvokeRequest GetFunctionInvocation(
+            FunctionDefinition func, 
+            IDictionary<string, string> parameters,
+            IEnumerable<Guid> prereqs = null)
         {
             var ctx = new RuntimeBindingInputs(func.Location)
             {
                 NameParameters = parameters
             };
             var instance = BindParameters(ctx, func);
+
+            if (prereqs != null && prereqs.Any())
+            {
+                instance.Prereqs = prereqs.ToArray();
+            }
+
             return instance;
         }
 

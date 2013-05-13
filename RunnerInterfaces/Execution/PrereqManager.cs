@@ -1,19 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using Executor;
-using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
 using System.Linq;
-using Newtonsoft.Json;
-using System.Threading;
-using AzureTables;
-using Microsoft.WindowsAzure.ServiceRuntime;
-using Microsoft.WindowsAzure;
+using Executor;
 using SimpleBatch;
 
-namespace DaasEndpoints
+namespace RunnerInterfaces
 {
     // !!! Really scrutinize for race conditions and hammer stress test this.
     public class PrereqManager : IPrereqManager

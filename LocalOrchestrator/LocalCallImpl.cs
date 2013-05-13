@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure;
+using Orchestrator;
 using RunnerHost;
 using SimpleBatch;
 
@@ -51,6 +52,8 @@ namespace SimpleBatch.Client
 
         public IConfiguration Configuration { get; private set; }
 
+        LocalExecutionContext _localExec;
+
         public LocalFunctionInvoker(CloudStorageAccount account, Type scope)
         {
             if (account == null)
@@ -60,6 +63,8 @@ namespace SimpleBatch.Client
             _account = account;
 
             this.Configuration = GetConfiguration(scope, this);
+
+            _localExec = new LocalExecutionContext(account, scope, this.Configuration);
         }
 
         public static IConfiguration GetConfiguration(Type scope, LocalFunctionInvoker caller)
@@ -90,6 +95,13 @@ namespace SimpleBatch.Client
         // Rather than call to Website and queue over internet, just queue locally. 
         protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs)
         {
+            var method = ResolveMethod(functionShortName);
+
+            var guid = _localExec.Call(method, parameters, prereqs);
+            return guid;
+
+
+#if false // !!!
             if (prereqs != null && prereqs.Any())
             {
                 throw new NotImplementedException("This implementation of ICall does not support prerequisites");
@@ -101,6 +113,7 @@ namespace SimpleBatch.Client
             Orchestrator.LocalOrchestrator.Invoke(_account, this.Configuration, method, parameters);
 
             return Guid.Empty;
+#endif
         }
 
         protected override Task WaitOnCall(Guid g)
