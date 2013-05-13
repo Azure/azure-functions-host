@@ -18,18 +18,12 @@ namespace RunnerHost
     // this adds a wrapper.
     public class CallBinderProvider : ICloudBinderProvider, ICloudBinder
     {
-        public static CallBinderProvider New(Func<FunctionInvoker> fpNewInvoker)
+        private ICall _inner;
+                
+        public static void Insert(IConfiguration config, ICall inner)
         {
-            return new CallBinderProvider { _fpNewInvoker = fpNewInvoker };
+            config.Binders.Insert(0, new CallBinderProvider { _inner = inner });
         }
-
-        // Insert a binding for ICall to the result supplied by fpNewInvoker().
-        public static void Insert(Func<FunctionInvoker> fpNewInvoker, IConfiguration config)
-        {
-            config.Binders.Insert(0, New(fpNewInvoker));
-        }
-
-        private Func<FunctionInvoker> _fpNewInvoker;
 
         public ICloudBinder TryGetBinder(Type targetType)
         {
@@ -42,16 +36,65 @@ namespace RunnerHost
 
         BindResult ICloudBinder.Bind(IBinderEx bindingContext, System.Reflection.ParameterInfo parameter)
         {
-            var result = _fpNewInvoker();
-
-            return new BindResultTransaction
-            {
-                Result = new WebCallWrapper(result, bindingContext.FunctionInstanceGuid),
-                Cleanup = () =>
-                {
-                    // !!! skip
-                }
+            return new BindResult            
+            { 
+                Result = new CallWithContextWrapper(_inner, bindingContext.FunctionInstanceGuid)
             };
+        }
+    }
+
+
+    // Wraps another ICall, but chains a current function guid onto the prerequisites. 
+    class CallWithContextWrapper : ICall, ISelfWatch
+    {
+        volatile int _count;
+        volatile ICall _inner;
+
+        private readonly Guid _thisFunc;
+
+        public CallWithContextWrapper(ICall inner, Guid thisFunc)
+        {
+            _inner = inner;
+            _thisFunc = thisFunc;
+        }
+
+        public IFunctionToken QueueCall(string functionName, object arguments = null, IEnumerable<IFunctionToken> prereqs = null)
+        {
+            _count++;
+            var prereqs2 = NormalizePrereqs(prereqs);
+            var args2 = ResolveArgs(arguments);
+
+            return _inner.QueueCall(functionName, args2, prereqs2);
+        }
+
+        public string GetStatus()
+        {
+            return string.Format("Made {0} calls.", _count);
+        }
+
+        private IDictionary<string, string> ResolveArgs(object arguments)
+        {
+            var d = RunnerInterfaces.ObjectBinderHelpers.ConvertObjectToDict(arguments);
+            d["$this"] = _thisFunc.ToString();
+            return d;
+        }
+
+        private IEnumerable<IFunctionToken> NormalizePrereqs(IEnumerable<IFunctionToken> prereqs)
+        {
+            // Current function is a prereq. This means queued functions don't execute
+            // until the current function is done. 
+            if (_thisFunc != Guid.Empty)
+            {
+                yield return new SimpleFunctionToken(_thisFunc);
+            }
+
+            if (prereqs != null)
+            {
+                foreach (var token in prereqs)
+                {
+                    yield return token;
+                }
+            }
         }
     }
 }

@@ -4,21 +4,7 @@ using System.Threading.Tasks;
 
 namespace SimpleBatch.Client
 {
-    // !!! Rationalize this with ICall, IFunctionToken 
-    public interface IFunctionInvoker
-    {
-        // Invoke the function. 
-        // shortName is usually just the function name, although the exact details are determined
-        //    by the scope that this invoker is for.
-        // Args are either an IDict or anonymous object. 
-        // Task is signalled when invocation is complete.
-        Task InvokeAsync(string functionShortName, object args = null); // no return value
-        
-        // Invoke and get the return result.
-        //Task<T> InvokeAsync<T>(string function, object args = null);
-    }
-
-    public abstract class FunctionInvoker : IFunctionInvoker
+    public abstract class FunctionInvoker
     {
         // $$$ Where would we get these from?
         public IDictionary<string, string> InheritedArgs { get; set; }
@@ -50,11 +36,6 @@ namespace SimpleBatch.Client
             Guid guid = MakeWebCall(functionShortName, args, NormalizePrereqs(prereqs));
 
             return guid;
-        }
-
-        Task IFunctionInvoker.InvokeAsync(string functionShortName, object args)
-        {
-            throw new NotImplementedException();
         }
 
         // Synchronous invoke. Blocks until function has finished executing. 

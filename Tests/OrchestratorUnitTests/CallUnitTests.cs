@@ -28,15 +28,16 @@ namespace OrchestratorUnitTests
             Utility.DeleteContainer(account, "daas-test-input");
             Program._sb.Clear();
 
-            var l = new ReflectionFunctionInvoker(account, typeof(Program));
-            var guid1 = l.Invoke("Chain1", new { inheritedArg = "xyz" }); // blocks
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            ICall call = lc;
+            var guid1 = call.QueueCall("Chain1", new { inheritedArg = "xyz" }).Guid;
 
             string log = Program._sb.ToString();
             Assert.AreEqual("1,2,3,4,5,6,7", log);
 
             // Verify the causality chain
-            var causality = l.ExecutionContext.CausalityReader;
-            var lookup = l.ExecutionContext.FunctionInstanceLookup;
+            var causality = lc.CausalityReader;
+            var lookup = lc.FunctionInstanceLookup;
 
             // Chain1
             var log1 = lookup.LookupOrThrow(guid1);            
@@ -139,9 +140,8 @@ namespace OrchestratorUnitTests
 
             Utility.WriteBlob(account, "daas-test-input", "foo-input.txt", "12");
 
-            var l = new ReflectionFunctionInvoker(account, typeof(Program2));
-            l.Invoke("Chain1", new { name = "foo" }); // blocks
-
+            var l = new LocalExecutionContext(account, typeof(Program2));
+            l.Call("Chain1", new { name = "foo" }); // blocks
 
             Assert.IsFalse(Utility.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
             

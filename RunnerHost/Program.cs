@@ -114,7 +114,9 @@ namespace RunnerHost
             IConfiguration config = InitBinders();
             ApplyManifestBinders(invoke, config);
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
-            CallBinderProvider.Insert(() => GetWebInvoker(invoke), config); // binds ICall
+
+            ICall inner = GetWebInvoker(invoke);
+            CallBinderProvider.Insert(config, inner); // binds ICall
 
             Invoke(invoke, config);
         }
@@ -157,7 +159,7 @@ namespace RunnerHost
             }
         }
 
-        static FunctionInvoker GetWebInvoker(FunctionInvokeRequest instance)
+        static ICall GetWebInvoker(FunctionInvokeRequest instance)
         {
             string url = instance.ServiceUrl;
 
@@ -169,7 +171,7 @@ namespace RunnerHost
                 };
             var result = new WebFunctionInvoker(functionResolver, url, instance.Id);
 
-            return result;
+            return new WebCallWrapper(result);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)

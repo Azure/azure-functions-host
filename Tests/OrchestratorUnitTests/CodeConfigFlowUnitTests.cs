@@ -21,7 +21,7 @@ namespace OrchestratorUnitTests
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
-            var x = new IndexInMemory(account);
+            var x = new LocalFunctionTable(account);
             IFunctionTable functionTable = x;
             Indexer i = new Indexer(functionTable);
            

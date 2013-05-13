@@ -49,8 +49,8 @@ namespace LocalOrchestratorTableTests
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
-            MethodInfo m = typeof(TableProgram).GetMethod("TableDict");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            lc.Call("TableDict");
         }
 
         // Azure storage emulator is doesn't support Upsert, so table won't work. 
@@ -60,10 +60,10 @@ namespace LocalOrchestratorTableTests
             var store = new InMemoryTableProviderTestHook();
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
-                        
 
-            MethodInfo m = typeof(TableProgram).GetMethod("TableWrite");
-            LocalOrchestrator.Invoke(account, m);
+
+            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            lc.Call("TableWrite");
 
             // Read via traditional Azure APIs.
             IAzureTable<TableEntry> table = store.Create<TableEntry>(null, TableProgram.TableName);
@@ -74,11 +74,8 @@ namespace LocalOrchestratorTableTests
             Assert.AreEqual("2", results[2].RowKey);
             Assert.AreEqual("20", results[2].myvalue);
 
-            MethodInfo m2 = typeof(TableProgram).GetMethod("TableRead");
-            LocalOrchestrator.Invoke(account, m2);
-
-            MethodInfo m3 = typeof(TableProgram).GetMethod("TableReadStrong");
-            LocalOrchestrator.Invoke(account, m3);
+            lc.Call("TableRead");
+            lc.Call("TableReadStrong");
         }
 
         [TestMethod]
@@ -88,8 +85,8 @@ namespace LocalOrchestratorTableTests
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
-            MethodInfo m = typeof(TableProgram).GetMethod("TableReadWrite");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            lc.Call("TableReadWrite");
         }
 
         [DataServiceKey("PartitionKey", "RowKey")]

@@ -54,7 +54,8 @@
   <ItemGroup>
     <Compile Include="IndexInMemory.cs" />
     <Compile Include="InMemoryIndexFunctionInvoker.cs" />
-    <Compile Include="LocalCallImpl.cs" />
+    <Compile Include="LocalFunctionInvoker.cs" />
+    <Compile Include="LocalExecutionContext.cs" />
     <Compile Include="LocalOrchestrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

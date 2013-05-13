@@ -106,6 +106,10 @@ namespace RunnerInterfaces
         // Dictionary is a copy (immune if source object gets mutated)        
         public static IDictionary<string, string> ConvertObjectToDict(object obj)
         {
+            if (obj == null)
+            {
+                return new Dictionary<string, string>();
+            }
             Type objectType = obj.GetType();
 
             // Does type implemnet IDictionary<string, TValue>?

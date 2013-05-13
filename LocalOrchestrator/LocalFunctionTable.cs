@@ -16,26 +16,25 @@ namespace Orchestrator
 {
     // Provide in-memory settings that can glue an indexer, orchestrator, and execution.
     // Executes via in-memory MethodInfos without azure. 
-    public class IndexInMemory : IFunctionTable, IQueueFunction
+    // $$$ Merge with any other IFunctionTable, like IndexInMemory
+    public class LocalFunctionTable : IFunctionTable
     {
         List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
         List<MethodInfo> _mapping = new List<MethodInfo>();
 
         // account is for binding parameters. 
-        public IndexInMemory(CloudStorageAccount account, IConfiguration config)
+        public LocalFunctionTable(CloudStorageAccount account, IConfiguration config)
         {
             this.Account = account;
             this.AccountConnectionString = Utility.GetConnectionString(account);
             _config = config;
         }
 
-        public IndexInMemory(CloudStorageAccount account)
+        public LocalFunctionTable(CloudStorageAccount account)
             : this(account, null)
         {
             var config = RunnerHost.Program.InitBinders();
-            var caller = new InMemoryIndexFunctionInvoker(this);
-            LocalFunctionInvoker.InsertCallBinderProvider(caller, config);
-
+            // !!! Missing an ICallBinder?
             _config = config;
         }
 
@@ -90,17 +89,7 @@ namespace Orchestrator
         FunctionDefinition[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();
-        }
-
-        ExecutionInstanceLogEntity IQueueFunction.Queue(FunctionInvokeRequest instance)
-        {
-            // Our _config lets us hook the ICall binder so that calls come back to the in-memory orchestrator 
-            // rather than go through a webcall.
-            Program.Invoke(instance, _config);
-
-            return null;
-        }
-
+        }  
 
         public DateTime? GetLastExecutionTime(FunctionLocation func)
         {

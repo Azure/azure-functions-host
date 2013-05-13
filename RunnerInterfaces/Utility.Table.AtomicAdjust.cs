@@ -1,18 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data.Services.Client;
 using System.Data.Services.Common;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
 using System.Xml.Linq;
 using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json; // !!! Remove unused references
 
 namespace RunnerInterfaces
 {

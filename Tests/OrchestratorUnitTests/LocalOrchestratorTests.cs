@@ -21,9 +21,9 @@ namespace OrchestratorUnitTests
         public void InvokeConfig()
         {
             var account = TestStorage.GetAccount();
-            MethodInfo m = typeof(Program).GetMethod("TestConfig");
 
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("TestConfig");
         }
 
         [TestMethod]
@@ -33,16 +33,16 @@ namespace OrchestratorUnitTests
 
             Utility.DeleteContainer(account, "daas-test-input");
             Utility.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
-
-            MethodInfo m = typeof(Program).GetMethod("FuncWithNames");
-
+                        
             var d = new Dictionary<string, string>() {
                 { "name", "note" },
                 { "date" , "monday" },
                 { "unbound", "test" },
                 { "target", "out"}
             };
-            LocalOrchestrator.Invoke(account, m, d);
+
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncWithNames", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.AreEqual("done", content);
@@ -63,12 +63,12 @@ namespace OrchestratorUnitTests
             var account = TestStorage.GetAccount();
             Utility.DeleteContainer(account, "daas-test-input");
 
-            MethodInfo m = typeof(Program).GetMethod("ParseArgument");
-
             var d = new Dictionary<string, string>() {
                 { "x", "15" },
             };
-            LocalOrchestrator.Invoke(account, m, d);
+
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("ParseArgument", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.AreEqual("16", content);
@@ -81,8 +81,8 @@ namespace OrchestratorUnitTests
 
             Utility.WriteBlob(account, "daas-test-input", "input.csv", "abc");
 
-            MethodInfo m = typeof(Program).GetMethod("Func1");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("Func1");
 
             string content = Utility.ReadBlob(account, "daas-test-input", "input.csv");
 
@@ -107,8 +107,8 @@ namespace OrchestratorUnitTests
             var blobLease = MockBlobLeaseHolder.GetBlobSuffix(blob, ".lease");
             blob.DeleteIfExists(); // get into a known state
 
-            MethodInfo m = typeof(Program).GetMethod("BlobLease");
-            LocalOrchestrator.Invoke(account, m); // Invoke once, will create file
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("BlobLease"); // Invoke once, will create file
                         
             string content = blob.DownloadText();
             Assert.AreEqual("1", content);
@@ -116,7 +116,7 @@ namespace OrchestratorUnitTests
             string content2 = Utility.ReadBlob(account, Container, BlobName + ".x");
             Assert.AreEqual(content, content2, "Didn't write while holding the lease");
 
-            LocalOrchestrator.Invoke(account, m); // Invoke second time. 
+            lc.Call("BlobLease"); // Invoke second time. 
                         
             string content3 = blob.DownloadText();
             Assert.AreEqual("2", content3);
@@ -130,15 +130,14 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            MethodInfo m = typeof(Program).GetMethod("FuncCloudStorageAccount");
-
             var args = new {
                 containerName = "daas-test-input",
                 blobName = "input.txt",
                 value = "abc"
             };
-            
-            LocalOrchestrator.Invoke(account, m, ObjectBinderHelpers.ConvertObjectToDict(args));
+
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncCloudStorageAccount", args);            
 
             string content = Utility.ReadBlob(account, args.containerName, args.blobName);
             Assert.AreEqual(args.value, content);
@@ -152,8 +151,8 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            MethodInfo m = typeof(Program).GetMethod("FuncEnqueue");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncEnqueue");
 
             var msg = queue.GetMessage();
             Assert.IsNotNull(msg);
@@ -173,8 +172,8 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            MethodInfo m = typeof(Program).GetMethod("FuncMultiEnqueueIEnumerable");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncMultiEnqueueIEnumerable");
 
             for (int i = 10; i <= 30; i += 10)
             {
@@ -203,9 +202,8 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            MethodInfo m = typeof(Program).GetMethod("FuncMultiEnqueueIEnumerableNested");
-
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncMultiEnqueueIEnumerableNested");
         }
 
         [TestMethod]
@@ -214,9 +212,8 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputIList");
-
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncQueueOutputIList");
         }
 
         [TestMethod]
@@ -225,9 +222,8 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputObject");
-
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncQueueOutputObject");
         }
 
         [TestMethod]
@@ -236,9 +232,8 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            MethodInfo m = typeof(Program).GetMethod("FuncQueueOutputIEnumerableOfObject");
-
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncQueueOutputIEnumerableOfObject");
         }
 
         // Model bind a parameter to a queueing inteface, and then enqueue multiple messages.
@@ -250,8 +245,8 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            MethodInfo m = typeof(Program).GetMethod("FuncMultiEnqueue");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncMultiEnqueue");
 
             for (int i = 10; i <= 30; i += 10)
             {
@@ -281,8 +276,8 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            MethodInfo m = typeof(Program).GetMethod("FuncCloudQueueEnqueue");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("FuncCloudQueueEnqueue");
 
             for (int i = 10; i <= 30; i += 10)
             {
@@ -311,8 +306,8 @@ namespace OrchestratorUnitTests
             Utility.WriteBlob(account, "daas-test-input", "1.csv", "abc");
             Utility.WriteBlob(account, "daas-test-input", "2.csv", "def");
 
-            MethodInfo m = typeof(Program).GetMethod("Aggregate1");
-            LocalOrchestrator.Invoke(account, m);
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("Aggregate1");
 
             string content = Utility.ReadBlob(account, "daas-test-input", "output.csv");
             Assert.AreEqual("abcdef", content);
@@ -331,8 +326,9 @@ namespace OrchestratorUnitTests
                 { "deployId", "test" },
                 { "outdir", "testoutput" }
             };
-            MethodInfo m = typeof(Program).GetMethod("Aggregate2");
-            LocalOrchestrator.Invoke(account, m, d);
+
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("Aggregate2", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", @"testoutput/output.csv");
             Assert.AreEqual("abcdef", content);

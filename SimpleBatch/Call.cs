@@ -18,5 +18,6 @@ namespace SimpleBatch
 
     public interface IFunctionToken
     {
+        Guid Guid { get; }
     }
 }

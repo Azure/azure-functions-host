@@ -24,9 +24,9 @@ namespace OrchestratorUnitTests
             var account = TestStorage.GetAccount();
 
             Utility.DeleteContainer(account, "daas-test-input");
-            
-            MethodInfo m = typeof(Program).GetMethod("TestBinder");                        
-            LocalOrchestrator.Invoke(account, m);
+
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            lc.Call("TestBinder");                        
 
             string content = Utility.ReadBlob(account, "daas-test-input", "directout.txt");
             Assert.AreEqual("output", content);
@@ -40,13 +40,10 @@ namespace OrchestratorUnitTests
             Utility.DeleteContainer(account, "daas-test-input");
             Utility.WriteBlob(account, "daas-test-input", "input.txt", "abc");
 
-            MethodInfo m = typeof(Program).GetMethod("Func");
-
-            // ### Get default config, then add to it. 
-            IConfiguration config = RunnerHost.Program.InitBinders();
+            var lc = new LocalExecutionContext(account, typeof(Program));
+            IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
-
-            LocalOrchestrator.InvokeOnBlob(account, config, m, @"daas-test-input\input.txt");
+            lc.CallOnBlob("Func", @"daas-test-input\input.txt");
 
             string content = Utility.ReadBlob(account, "daas-test-input", "output.txt");
             Assert.AreEqual("*abc*", content);
