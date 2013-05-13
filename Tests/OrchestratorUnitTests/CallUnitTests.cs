@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Executor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
@@ -25,12 +26,49 @@ namespace OrchestratorUnitTests
         {            
             var account = TestStorage.GetAccount();
             Utility.DeleteContainer(account, "daas-test-input");
+            Program._sb.Clear();
 
             var l = new ReflectionFunctionInvoker(account, typeof(Program));
-            l.Invoke("Chain1", new { inheritedArg = "xyz" }); // blocks
+            var guid1 = l.Invoke("Chain1", new { inheritedArg = "xyz" }); // blocks
 
             string log = Program._sb.ToString();
             Assert.AreEqual("1,2,3,4,5,6,7", log);
+
+            // Verify the causality chain
+            var causality = l.ExecutionContext.CausalityReader;
+            var lookup = l.ExecutionContext.FunctionInstanceLookup;
+
+            // Chain1
+            var log1 = lookup.LookupOrThrow(guid1);            
+            Assert.AreEqual("Chain1", GetMethodName(log1));
+            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log1.GetStatus());
+            var children = causality.GetChildren(guid1).ToArray();
+            Assert.AreEqual(1, children.Length);
+            Assert.AreEqual(guid1, children[0].ParentGuid); // call to Child2
+            var guid2 = children[0].ChildGuid;
+
+            // Chain2
+            var log2 = lookup.LookupOrThrow(guid2);
+            Assert.AreEqual("Chain2", GetMethodName(log2));
+            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log2.GetStatus());
+            children = causality.GetChildren(guid2).ToArray();
+            Assert.AreEqual(1, children.Length);
+            Assert.AreEqual(guid2, children[0].ParentGuid); // Call to Child3
+            var guid3 = children[0].ChildGuid;
+
+            // Chain3
+            var log3 = lookup.LookupOrThrow(guid3);
+            Assert.AreEqual("Chain3", GetMethodName(log3));
+            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log3.GetStatus());
+            children = causality.GetChildren(guid3).ToArray();
+            Assert.AreEqual(0, children.Length);
+        }
+
+        static string GetMethodName(ExecutionInstanceLogEntity log)
+        {
+            var x = (MethodInfoFunctionLocation) log.FunctionInstance.Location;
+            var mi = x.MethodInfo;
+            return mi.Name;
         }
 
         class Program

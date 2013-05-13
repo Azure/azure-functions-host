@@ -123,7 +123,7 @@ namespace Orchestrator
     }
 
     // Replumb LocalOrch on this. 
-    class LocalExecutionContext
+    public class LocalExecutionContext
     {        
         private readonly IConfiguration _config;
         private readonly IPrereqManager _prereq;
@@ -131,30 +131,53 @@ namespace Orchestrator
         private readonly IActivateFunction _activator;
         private readonly IFunctionInstanceLookup _lookup;
         private readonly IFunctionUpdatedLogger _functionUpdate;
+        private readonly ICausalityLogger _causalityLogger;
+        private readonly ICausalityReader _causalityReader;
 
         private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
 
-        // Scope is for invokgin on ICall. 
+        public ICausalityReader CausalityReader
+        {
+            get
+            {
+                return _causalityReader;
+            }
+        }
+
+        public IFunctionInstanceLookup FunctionInstanceLookup
+        {
+            get
+            {
+                return _lookup;
+            }
+        }
+
+        // Scope is for invoking on ICall. 
         public LocalExecutionContext(CloudStorageAccount account, Type scope, IConfiguration config)
         {
-            // 1. New up LocalFunctionInvoker, and pass this object in. USe in MakeWebCall
-            // 2. 
             _fpResolveFuncDefinition = method => Resolve(account, config, method);
 
-            // NEed Config that binds ICall back to invoke here. 
+            // Need Config that binds ICall back to invoke here. 
             //_config = ReflectionFunctionInvoker.GetConfiguration(account, scope);
             _config = config; // !!!
 
-            //var table = AzureTable<ExecutionInstanceLogEntity>.NewInMemory(); !!!
-            //var x = new FunctionUpdatedLogger(table);
-            var x = new LocalFunctionLogger();
-            _functionUpdate = x;
-            _lookup = x;
+            {            
+                var x = new LocalFunctionLogger();
+                _functionUpdate = x;
+                _lookup = x;
+            }
 
             IAzureTable prereqTable = AzureTable.NewInMemory();
             IAzureTable successorTable = AzureTable.NewInMemory();
 
             _prereq = new PrereqManager(prereqTable, successorTable, _lookup);
+
+            {
+                IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
+                var x = new CausalityLogger(table, _lookup);
+                _causalityLogger = x;
+                _causalityReader = x;
+            }
 
             var qi = new QueueInterfaces
             {
@@ -162,7 +185,7 @@ namespace Orchestrator
                 Logger = _functionUpdate,
                 Lookup = _lookup,
                 PreqreqManager = _prereq,
-                CausalityLogger = new EmptyCausality()
+                CausalityLogger = _causalityLogger
             };
 
             var y = new LocalQueue(qi, this);
@@ -189,21 +212,25 @@ namespace Orchestrator
         {
             var func = _fpResolveFuncDefinition(method);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, parameters, prereqs);
-            instance.TriggerReason = new InvokeTriggerReason { Message = "Local invoke" };
-            // !!! include parent guid?
+
+            // !!! Merge with other code
+            Guid thisGuid = Guid.Empty;
+            string guidValue;
+            if (parameters.TryGetValue("$this", out guidValue))
+            {
+                thisGuid = Guid.Parse(guidValue);
+            }
+
+            instance.TriggerReason = new InvokeTriggerReason 
+            { 
+                Message = "Local invoke",
+                ParentGuid = thisGuid
+            };
 
             var logItem = _queueFunction.Queue(instance);
             var guid = logItem.FunctionInstance.Id;
 
             return guid;
-        }
-
-        class EmptyCausality : ICausalityLogger
-        {
-            public void LogTriggerReason(TriggerReason reason)
-            {
-                // Ignored.
-            }
         }
 
         class LocalQueue : QueueFunctionBase, IActivateFunction

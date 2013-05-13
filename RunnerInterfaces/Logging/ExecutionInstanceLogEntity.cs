@@ -41,10 +41,8 @@ namespace Executor
         // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
 
-        // Number of outstanding prereqs before this function can run. 
-        public int PrereqCount { get; set; }
-
-        // Set to once we've been queued. This should always been set since queuing is essentially initialization.
+        // Set to once we've been queued. 
+        // This is not set if the function has outstanding prerequisites. 
         // QueueTime is set on the machine that enqueues the request, which can be a different machine than 
         // the execution node. So there could be clocksqew between queue time and start time.        
         public DateTime? QueueTime { get; set; }
@@ -99,7 +97,7 @@ namespace Executor
             switch (obj.GetStatus())
             {
                 case FunctionInstanceStatus.AwaitingPrereqs:
-                    return string.Format("Awaiting prerequisites ({0} remaining)", obj.PrereqCount);
+                    return string.Format("Awaiting prerequisites");
                 case FunctionInstanceStatus.Queued:
                     return string.Format("In queued (since {0})", obj.QueueTime);
                 case FunctionInstanceStatus.Running:
@@ -116,7 +114,7 @@ namespace Executor
 
         public static FunctionInstanceStatus GetStatus(this ExecutionInstanceLogEntity obj)
         {
-            if (obj.PrereqCount > 0)
+            if (!obj.QueueTime.HasValue)
             {
                 return FunctionInstanceStatus.AwaitingPrereqs;
             }

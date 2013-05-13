@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 namespace SimpleBatch.Client
 {
+    // !!! Rationalize this with ICall, IFunctionToken 
     public interface IFunctionInvoker
     {
         // Invoke the function. 
@@ -22,7 +23,7 @@ namespace SimpleBatch.Client
         // $$$ Where would we get these from?
         public IDictionary<string, string> InheritedArgs { get; set; }
 
-        // Implements ICall
+        // Implements ICall // !!! Rationalize?
         // Defers calls to avoid races.
         public Guid QueueCall(string functionShortName, object arguments = null, IEnumerable<Guid> prereqs = null)
         {
@@ -51,21 +52,25 @@ namespace SimpleBatch.Client
             return guid;
         }
 
-        // Invoke 
-        public Task InvokeAsync(string functionShortName, object arguments = null)
+        Task IFunctionInvoker.InvokeAsync(string functionShortName, object args)
+        {
+            throw new NotImplementedException();
+        }
+
+        // Synchronous invoke. Blocks until function has finished executing. 
+        // To make this async, we'd need to return a (Task, Guid) combo. 
+        // Can't return Task<Guid> since the guid is available before the task is complete.
+        public Guid Invoke(string functionShortName, object arguments = null)
         {
             var args = ResolveArgs(arguments);
 
+            // Function is queued, Guid is available immediately. 
             Guid g = InvokeDirect(functionShortName, args);
 
             // Now wait.
-            return WaitOnCall(g);
-        }
-
-        public void Invoke(string functionShortName, object arguments = null)
-        {
-            Task t = InvokeAsync(functionShortName, arguments);
-            t.Wait();
+            WaitOnCall(g).Wait();
+            
+            return g;
         }
 
         // Arguments is either null (nothing), an IDict, or an object whose properties are the arguments. 
@@ -82,6 +87,7 @@ namespace SimpleBatch.Client
                 }
             }
 
+            // !!! Double copy?
             if (arguments != null)
             {
                 var d = ObjectBinderHelpers.ConvertObjectToDict(arguments);
@@ -104,6 +110,5 @@ namespace SimpleBatch.Client
         protected abstract Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs);
 
         protected abstract Task WaitOnCall(Guid g);
-
     }
 }

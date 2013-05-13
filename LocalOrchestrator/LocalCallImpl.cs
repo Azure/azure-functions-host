@@ -49,10 +49,14 @@ namespace SimpleBatch.Client
     public abstract class LocalFunctionInvoker : FunctionInvoker
     {
         private readonly CloudStorageAccount _account;
+        private readonly LocalExecutionContext _localExec;
 
         public IConfiguration Configuration { get; private set; }
 
-        LocalExecutionContext _localExec;
+        public LocalExecutionContext ExecutionContext
+        {
+            get { return _localExec; }
+        }
 
         public LocalFunctionInvoker(CloudStorageAccount account, Type scope)
         {
@@ -99,21 +103,6 @@ namespace SimpleBatch.Client
 
             var guid = _localExec.Call(method, parameters, prereqs);
             return guid;
-
-
-#if false // !!!
-            if (prereqs != null && prereqs.Any())
-            {
-                throw new NotImplementedException("This implementation of ICall does not support prerequisites");
-            }
-
-            var method = ResolveMethod(functionShortName);
-
-            // Runs synchronously // !!!
-            Orchestrator.LocalOrchestrator.Invoke(_account, this.Configuration, method, parameters);
-
-            return Guid.Empty;
-#endif
         }
 
         protected override Task WaitOnCall(Guid g)

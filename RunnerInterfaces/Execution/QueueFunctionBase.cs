@@ -91,8 +91,7 @@ namespace RunnerInterfaces
             
             if (instance.Prereqs != null && instance.Prereqs.Length > 0)
             {
-                // Has prereqs. don't queue yet. Instead, setup in the pre-req table.
-                logItem.PrereqCount = instance.Prereqs.Length;
+                // Has prereqs. don't queue yet. Instead, setup in the pre-req table.                
                 _logger.Log(logItem);
 
                 _preqreqManager.AddPrereq(instance.Id, instance.Prereqs, this);                

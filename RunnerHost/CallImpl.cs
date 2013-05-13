@@ -1,13 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using RunnerInterfaces;
 using SimpleBatch;
 using SimpleBatch.Client;
 
@@ -33,9 +25,19 @@ namespace RunnerHost
         public IFunctionToken QueueCall(string functionName, object arguments = null, IEnumerable<IFunctionToken> prereqs = null)
         {
             IEnumerable<Guid> prereqGuids = NormalizePrereqs(prereqs);
+            var args = ResolveArgs(arguments);
 
-            var guid = _inner.QueueCall(functionName, arguments, prereqGuids);
+            var guid = _inner.QueueCall(functionName, args, prereqGuids);
             return new SimpleFunctionToken(guid);
+        }
+                
+        private IDictionary<string, string> ResolveArgs(object arguments)
+        {
+           var d = (arguments == null) ? 
+               new Dictionary<string,string>() :
+               RunnerInterfaces.ObjectBinderHelpers.ConvertObjectToDict(arguments);
+           d["$this"] = _thisFunc.ToString();
+           return d;
         }
 
         private IEnumerable<Guid> NormalizePrereqs(IEnumerable<IFunctionToken> prereqs)

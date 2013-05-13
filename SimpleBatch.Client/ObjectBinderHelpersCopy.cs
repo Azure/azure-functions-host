@@ -106,7 +106,7 @@ namespace SimpleBatch.Client
             Type type = obj.GetType();
 
             // Does type implemnet IDictionary<string, TValue>?
-            // If so, run through and call
+            // If so, run through and call ConvertDict<TValue>(obj)
             foreach (var typeInterface in type.GetInterfaces())
             {
                 if (typeInterface.IsGenericType)
@@ -117,7 +117,7 @@ namespace SimpleBatch.Client
                         if (typeArgs[0] == typeof(string))
                         {
                             var m = methodConvertDict.MakeGenericMethod(typeArgs[1]);
-                            IDictionary<string, string> result = (IDictionary<string, string>)m.Invoke(null, new object[] { obj });
+                            var result = (IDictionary<string, string>)m.Invoke(null, new object[] { obj });
                             return result;
                         }
                     }
