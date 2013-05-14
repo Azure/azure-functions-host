@@ -6,7 +6,7 @@ using SimpleBatch;
 
 namespace RunnerInterfaces
 {
-    // !!! Really scrutinize for race conditions and hammer stress test this.
+    // $$$ Really scrutinize for race conditions and hammer stress test this.
     public class PrereqManager : IPrereqManager
     {
         // PartKey, RowKey = PreReqGuid, target Guid. 
@@ -17,7 +17,6 @@ namespace RunnerInterfaces
         // This can enumeraet a given function's prerequisites.
         private readonly IAzureTable _prereqTable;
 
-        // !!! Do we need full status? Or just Success/Fail/NotYetDone
         Func<Guid, FunctionInstanceStatus> _fpGetStatus;
 
 
@@ -40,7 +39,7 @@ namespace RunnerInterfaces
             var empty = new { };
             foreach (Guid prereq in prereqs)
             {
-                if (!IsDone(prereq))
+                if (!IsCompletedSuccess(prereq))
                 {
                     _successorTable.Write(prereq.ToString(), func.ToString(), empty);
                     _prereqTable.Write(func.ToString(), prereq.ToString(), empty);
@@ -56,10 +55,16 @@ namespace RunnerInterfaces
             }
         }
 
-        private bool IsDone(Guid func)
+        private bool IsCompletedSuccess(Guid func)
         {
             var status = this._fpGetStatus(func);
-            return status == FunctionInstanceStatus.CompletedSuccess; // !!! failure?
+            return status == FunctionInstanceStatus.CompletedSuccess;
+        }
+
+        private bool IsCompletedFail(Guid func)
+        {
+            var status = this._fpGetStatus(func);
+            return status == FunctionInstanceStatus.CompletedFailed; 
         }
 
         private void Activate(IActivateFunction q, Guid func)
@@ -70,6 +75,13 @@ namespace RunnerInterfaces
         // Beware, this could be called multiple times for the same function. 
         public void OnComplete(Guid func, IActivateFunction q)
         {
+            if (IsCompletedFail(func))
+            {
+                // For failed functions, prevent successors from running. 
+                // $$$ Propagate the failure?
+                return;
+            }
+
             foreach (Guid child in EnumerateSuccessors(func))
             {
                 _prereqTable.Delete(child.ToString(), func.ToString());
@@ -88,7 +100,6 @@ namespace RunnerInterfaces
         // Is the given function already completed?
         private static FunctionInstanceStatus GetFunctionStatus(IFunctionInstanceLookup lookup, Guid func)
         {
-            // !!! What about if a prereq completes with an error?            
             var log = lookup.Lookup(func);
             return log.GetStatus();
         }

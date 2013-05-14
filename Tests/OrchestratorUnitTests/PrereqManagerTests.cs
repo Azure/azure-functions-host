@@ -115,13 +115,28 @@ namespace OrchestratorUnitTests
             Assert.IsTrue(w.ActivatedSet.Contains(G1));
         }
 
-
         [TestMethod]
         public void NoSuccessors()
         {
             var w = new World();
 
             w.OnComplete(F2); // No successors. 
+            Assert.AreEqual(0, w.ActivatedSet.Count);
+        }
+
+        [TestMethod]
+        public void FailedPrereq()
+        {
+            var w = new World();
+
+            w.Status[F1] = FunctionInstanceStatus.CompletedFailed;
+
+            w.AddPrereq(G1, new Guid[] { F1 });
+
+            // G1 should not run. Ambiguous whether it fails outright or is forwever "waiting prereqs".
+            Assert.AreEqual(0, w.ActivatedSet.Count, "should not have activated yet");
+            
+            w.OnComplete(F1); 
             Assert.AreEqual(0, w.ActivatedSet.Count);
         }
 

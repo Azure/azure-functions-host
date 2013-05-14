@@ -21,6 +21,7 @@ namespace OrchestratorUnitTests
     [TestClass]
     public class CallUnitTests
     {
+        // Verify that ICall doesn't invoke if the parent method failed. 
         [TestMethod]
         public void InvokeFail()
         {
@@ -31,10 +32,13 @@ namespace OrchestratorUnitTests
 
             var lookup = lc.FunctionInstanceLookup;
 
+            // Verify Method1 failed
             var log1 = lookup.LookupOrThrow(guid1);
             Assert.AreEqual(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
             Assert.AreEqual("System.InvalidOperationException", log1.ExceptionType);
             Assert.AreEqual(ProgramFail.Message, log1.ExceptionMessage);
+
+            Assert.IsFalse(ProgramFail._isCalled, "Method2 should not be invoked since Method1 failed");
         }
 
         class ProgramFail
@@ -42,9 +46,21 @@ namespace OrchestratorUnitTests
             public const string Message = "Failed!";
 
             [NoAutomaticTrigger]
-            public static void Method()
+            public static void Method(ICall call)
             {
+                call.QueueCall("Method2"); // shouldn't be called
+
                 throw new InvalidOperationException(Message);
+            }
+
+
+            public static bool _isCalled = false;
+
+            [NoAutomaticTrigger]
+            public static void Method2()
+            {
+                _isCalled = true;
+                // This should not be called
             }
         }
 

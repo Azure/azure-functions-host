@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using Executor;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
@@ -197,44 +198,52 @@ namespace OrchestratorUnitTests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestMultiEnqueueMessage_NestedIEnumerable_Throws()
         {
             var account = TestStorage.GetAccount();
 
             var lc = new LocalExecutionContext(account, typeof(Program));
-            lc.Call("FuncMultiEnqueueIEnumerableNested");
+            CallError<InvalidOperationException>(lc, "FuncMultiEnqueueIEnumerableNested");
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestQueueOutput_IList_Throws()
         {
             var account = TestStorage.GetAccount();
 
             var lc = new LocalExecutionContext(account, typeof(Program));
-            lc.Call("FuncQueueOutputIList");
+            CallError<InvalidOperationException>(lc, "FuncQueueOutputIList");
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestQueueOutput_Object_Throws()
         {
             var account = TestStorage.GetAccount();
 
             var lc = new LocalExecutionContext(account, typeof(Program));
-            lc.Call("FuncQueueOutputObject");
+            CallError<InvalidOperationException>(lc, "FuncQueueOutputObject");
         }
 
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestQueueOutput_IEnumerableOfObject_Throws()
         {
             var account = TestStorage.GetAccount();
 
             var lc = new LocalExecutionContext(account, typeof(Program));
-            lc.Call("FuncQueueOutputIEnumerableOfObject");
+            CallError<InvalidOperationException>(lc, "FuncQueueOutputIEnumerableOfObject");
         }
+
+        static void CallError<T>(LocalExecutionContext lc, string functionName) where T : Exception
+        {
+            var guid = lc.Call("FuncQueueOutputIEnumerableOfObject");
+
+            var lookup = lc.FunctionInstanceLookup;
+
+            var log1 = lookup.LookupOrThrow(guid);
+            Assert.AreEqual(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
+            Assert.AreEqual(typeof(T).FullName, log1.ExceptionType);
+        }
+
 
         // Model bind a parameter to a queueing inteface, and then enqueue multiple messages.
         [TestMethod]
