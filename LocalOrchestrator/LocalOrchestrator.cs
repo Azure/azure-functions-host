@@ -26,7 +26,7 @@ namespace Orchestrator
             Indexer i = new Indexer(store);
 
             i.IndexType(store.OnApplyLocationInfo, typeClass);
-            IFunctionTable functionTable = store; // !!! Merge with LC
+            IFunctionTable functionTable = store; // $$$ Merge with LC
             IQueueFunction executor = lc.QueueFunction;
 
             var worker = new Worker(functionTable, executor);

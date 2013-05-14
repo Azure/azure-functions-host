@@ -22,6 +22,34 @@ namespace OrchestratorUnitTests
     public class CallUnitTests
     {
         [TestMethod]
+        public void InvokeFail()
+        {
+            var account = TestStorage.GetAccount();
+            var lc = new LocalExecutionContext(account, typeof(ProgramFail));
+            ICall call = lc;
+            var guid1 = call.QueueCall("Method").Guid;
+
+            var lookup = lc.FunctionInstanceLookup;
+
+            var log1 = lookup.LookupOrThrow(guid1);
+            Assert.AreEqual(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
+            Assert.AreEqual("System.InvalidOperationException", log1.ExceptionType);
+            Assert.AreEqual(ProgramFail.Message, log1.ExceptionMessage);
+        }
+
+        class ProgramFail
+        {
+            public const string Message = "Failed!";
+
+            [NoAutomaticTrigger]
+            public static void Method()
+            {
+                throw new InvalidOperationException(Message);
+            }
+        }
+
+
+        [TestMethod]
         public void InvokeChain()
         {            
             var account = TestStorage.GetAccount();

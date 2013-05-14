@@ -225,9 +225,17 @@ namespace Orchestrator
             {
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
-                Program.Invoke(logItem.FunctionInstance, _parent._config);
+                try
+                {
+                    Program.Invoke(logItem.FunctionInstance, _parent._config);
+                }
+                catch (Exception e)
+                {
+                    logItem.ExceptionType = e.GetType().FullName;
+                    logItem.ExceptionMessage = e.Message;
+                }
 
-                // Mark this function as done executing. !!! Merge with ExecutionBase?
+                // Mark this function as done executing. $$$ Merge with ExecutionBase?
                 logItem.EndTime = DateTime.UtcNow;
                 _parent._functionUpdate.Log(logItem);
 
