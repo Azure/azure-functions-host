@@ -11,6 +11,7 @@ using Orchestrator;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
 using System.Linq;
+using RunnerHost;
 
 namespace WebFrontEnd
 {
@@ -43,21 +44,6 @@ namespace WebFrontEnd
             Helpers.ScanBlobDir(GetServices(), account, new CloudBlobPath(container));
         }
 
-        private FunctionInstanceGuid GetParentGuid(Dictionary<string, string> parameters)
-        {
-            string guidAsString;
-            const string functionInstanceGuidKeyName = "$this"; // $$$ Share this?
-            if (parameters.TryGetValue(functionInstanceGuidKeyName, out guidAsString))
-            {
-                parameters.Remove(functionInstanceGuidKeyName);
-                return Guid.Parse(guidAsString);
-            }
-            else
-            {
-                return Guid.Empty;
-            }
-        }
-
         // Execute the given function.
         // Assumes execution is used via named parameters.
         [HttpPost]
@@ -74,7 +60,7 @@ namespace WebFrontEnd
             Dictionary<string, string> parameters = GetParamsFromQuery(uri);
             parameters.Remove("func"); //  remove query parameter that we added for the function id
 
-            FunctionInstanceGuid parentGuid = GetParentGuid(parameters);
+            FunctionInstanceGuid parentGuid = CallUtil.GetParentGuid(parameters);
 
             // Bind and queue.
             // Queue could be an hour deep

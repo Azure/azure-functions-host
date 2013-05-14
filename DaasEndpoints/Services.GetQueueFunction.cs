@@ -52,14 +52,19 @@ namespace DaasEndpoints
 
         public IActivateFunction GetActivator(QueueInterfaces qi = null)
         {
-            IQueueFunction q = GetQueueFunction(qi);
-            return (IActivateFunction)q; // !!! Resolve statically
+            var q = GetQueueFunctionInternal(qi);
+            return q;
         }
 
         // Get the object that will queue function invoke requests to the execution substrate.
         // This may pick from multiple substrates.
         public IQueueFunction GetQueueFunction(QueueInterfaces qi = null)
         {
+            return GetQueueFunctionInternal(qi);
+        }
+
+        private QueueFunctionBase GetQueueFunctionInternal(QueueInterfaces qi = null)
+        {        
             if (qi == null)
             {
                 qi = this.GetQueueInterfaces();
@@ -109,7 +114,7 @@ namespace DaasEndpoints
 
         // Run via Azure tasks. 
         // This requires that an existing azure task pool has been setup. 
-        private IQueueFunction GetAzureTasksQueueFunction(QueueInterfaces qi)
+        private QueueFunctionBase GetAzureTasksQueueFunction(QueueInterfaces qi)
         {
             // Based on AzureTasks
             TaskConfig taskConfig = GetAzureTaskConfig();
@@ -131,7 +136,7 @@ namespace DaasEndpoints
 
         // Run via Antares. 
         // This requires that an existing antares site was deployed. 
-        private IQueueFunction GetAntaresQueueFunction(QueueInterfaces qi)
+        private QueueFunctionBase GetAntaresQueueFunction(QueueInterfaces qi)
         {
             // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
             string urlBase = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
@@ -140,7 +145,7 @@ namespace DaasEndpoints
             return new AntaresRoleExecutionClient(urlBase, queue, qi);
         }
 
-        private IQueueFunction GetKuduQueueFunction(QueueInterfaces qi)
+        private QueueFunctionBase GetKuduQueueFunction(QueueInterfaces qi)
         {
             var queue = this.GetExecutionQueue();
             return new KuduQueueFunction(qi);  
@@ -148,7 +153,7 @@ namespace DaasEndpoints
 
         // Run via Azure Worker Roles
         // These worker roles should have been deployed automatically.
-        private IQueueFunction GetWorkerRoleQueueFunction(QueueInterfaces qi)
+        private QueueFunctionBase GetWorkerRoleQueueFunction(QueueInterfaces qi)
         {
             // Based on WorkerRoles (submitted via a Queue)
             var queue = this.GetExecutionQueue();

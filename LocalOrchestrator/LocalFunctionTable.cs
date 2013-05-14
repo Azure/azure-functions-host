@@ -23,22 +23,11 @@ namespace Orchestrator
         List<MethodInfo> _mapping = new List<MethodInfo>();
 
         // account is for binding parameters. 
-        public LocalFunctionTable(CloudStorageAccount account, IConfiguration config)
+        public LocalFunctionTable(CloudStorageAccount account)
         {
             this.Account = account;
             this.AccountConnectionString = Utility.GetConnectionString(account);
-            _config = config;
         }
-
-        public LocalFunctionTable(CloudStorageAccount account)
-            : this(account, null)
-        {
-            var config = RunnerHost.Program.InitBinders();
-            // !!! Missing an ICallBinder?
-            _config = config;
-        }
-
-        private IConfiguration _config;
 
         public CloudStorageAccount Account { get; private set; }
         public string AccountConnectionString { get; private set; }

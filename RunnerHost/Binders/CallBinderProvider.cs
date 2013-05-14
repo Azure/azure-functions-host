@@ -75,7 +75,7 @@ namespace RunnerHost
         private IDictionary<string, string> ResolveArgs(object arguments)
         {
             var d = RunnerInterfaces.ObjectBinderHelpers.ConvertObjectToDict(arguments);
-            d["$this"] = _thisFunc.ToString();
+            CallUtil.AddFunctionGuid(_thisFunc, d);
             return d;
         }
 

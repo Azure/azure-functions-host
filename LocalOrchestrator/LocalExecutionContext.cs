@@ -14,7 +14,7 @@ using SimpleBatch.Client;
 
 namespace Orchestrator
 {
-    // !!! Replumb LocalOrch on this. 
+    // Support local execution. This does not have a trigger service, but still maintains all of the logging, prereqs, and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 
     public class LocalExecutionContext : ICall
     {
@@ -133,7 +133,7 @@ namespace Orchestrator
 
         private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
         {
-            LocalFunctionTable store = new LocalFunctionTable(account, config);
+            LocalFunctionTable store = new LocalFunctionTable(account);
             Indexer i = new Indexer(store);
 
             i.IndexMethod(store.OnApplyLocationInfo, method);
@@ -174,29 +174,14 @@ namespace Orchestrator
             return guid;
         }
 
-        // Binds 
-        // !!! If no prereqs, can run immediately. 
+        // If no prereqs, can run immediately. 
         public Guid Call(MethodInfo method, IDictionary<string, string> parameters = null, IEnumerable<Guid> prereqs = null)
         {
             FunctionDefinition func = ResolveFunctionDefinition(method);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, parameters, prereqs);
 
-            return CallInner(instance, ExtractParentGuid(parameters));
-
-        }
-
-        private static Guid ExtractParentGuid(IDictionary<string, string> parameters)
-        {
-            if (parameters != null)
-            {
-                // !!! Merge with other code            
-                string guidValue;
-                if (parameters.TryGetValue("$this", out guidValue))
-                {
-                    return Guid.Parse(guidValue);
-                }
-            }
-            return Guid.Empty;
+            Guid guidThis = CallUtil.GetParentGuid(parameters);
+            return CallInner(instance, guidThis);
         }
 
         private Guid CallInner(FunctionInvokeRequest instance)

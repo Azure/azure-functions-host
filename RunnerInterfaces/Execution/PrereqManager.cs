@@ -67,12 +67,9 @@ namespace RunnerInterfaces
             q.ActivateFunction(func);
         }
 
-        // !!! Beware, this could be called multiple times for the same function. 
+        // Beware, this could be called multiple times for the same function. 
         public void OnComplete(Guid func, IActivateFunction q)
         {
-            // !!! Do we care if IsDone should be set true yet? Caller may have not yet set.
-
-            // For all prereqs = func, decrement the count
             foreach (Guid child in EnumerateSuccessors(func))
             {
                 _prereqTable.Delete(child.ToString(), func.ToString());

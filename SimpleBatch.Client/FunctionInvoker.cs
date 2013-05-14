@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace SimpleBatch.Client
 {
+    // Base class for client-side invocation through a Web request. 
     public abstract class FunctionInvoker
     {
         // $$$ Where would we get these from?
         public IDictionary<string, string> InheritedArgs { get; set; }
 
-        // Implements ICall // !!! Rationalize?
         // Defers calls to avoid races.
         public Guid QueueCall(string functionShortName, object arguments = null, IEnumerable<Guid> prereqs = null)
         {
@@ -68,7 +68,6 @@ namespace SimpleBatch.Client
                 }
             }
 
-            // !!! Double copy?
             if (arguments != null)
             {
                 var d = ObjectBinderHelpers.ConvertObjectToDict(arguments);

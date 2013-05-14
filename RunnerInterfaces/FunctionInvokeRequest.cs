@@ -49,8 +49,7 @@ namespace RunnerInterfaces
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
         
-        // List of prerequisites. !!!
-        // Null if no prereqs. 
+        // List of prerequisites. Null if no prereqs. 
         public Guid[] Prereqs { get; set; }
 
         // Do a clone of this object, but update the location.
