@@ -12,7 +12,7 @@ namespace RunnerInterfaces
 
         // Used to update function as its being executed
         public IFunctionUpdatedLogger Logger { get; set; }
-
+                
         // Mark when a function has finished execution. This will send a message that causes the function's 
         // execution statistics to get aggregated. 
         public ExecutionStatsAggregatorBridge Bridge { get; set; }

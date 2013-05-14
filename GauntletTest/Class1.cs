@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using SimpleBatch;
 
 namespace GauntletTest
@@ -51,11 +52,26 @@ namespace GauntletTest
             // Don't care. 
             Console.WriteLine("Initial values: {0},{1}", val.Name, val.Quota);
 
-            call.QueueCall("FromCall", new { name = val.Name, value = val.Quota, cookie = g });
+
+            IFunctionToken t1 = call.QueueCall("FromCallMiddle", new { value = 1 });
+            IFunctionToken t2 = call.QueueCall("FromCallMiddle", new { value = 2 });
+            IFunctionToken t3 = call.QueueCall("FromCallMiddle", new { value = 3 });
+
+            call.QueueCall(
+                "FromCallJoin", 
+                new { name = val.Name, value = val.Quota, cookie = g },
+                t1, t2, t3 // prereqs
+                );
         }
 
         [NoAutomaticTrigger]
-        public static void FromCall(string name, int value, Guid cookie, [QueueOutput] out Payload gauntletQueue)
+        public static void FromCallMiddle(int value)
+        {
+            Thread.Sleep(1000); // help exasperate race conditions. 
+        }    
+
+        [NoAutomaticTrigger]
+        public static void FromCallJoin(string name, int value, Guid cookie, [QueueOutput] out Payload gauntletQueue)
         {
             gauntletQueue = new Payload
             {

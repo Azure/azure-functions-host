@@ -63,7 +63,8 @@
     <Compile Include="Binders\CloudStorageAccountBinderProvider.cs" />
     <Compile Include="BindResultHelpers.cs" />
     <Compile Include="Binders\BlobBinderProviders.cs" />
-    <Compile Include="CallImpl.cs" />
+    <Compile Include="SimpleFunctionToken.cs" />
+    <Compile Include="WebCallWrapper.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Binders\QueueOutputBinderProvider.cs" />
     <Compile Include="DictionaryTableBinder.cs" />

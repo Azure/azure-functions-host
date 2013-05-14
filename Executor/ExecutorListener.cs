@@ -206,6 +206,14 @@ namespace Executor
             string json = msg.AsString;
             FunctionInvokeRequest instance = JsonCustom.DeserializeObject<FunctionInvokeRequest>(json);
 
+
+            if (instance.SchemaNumber != FunctionInvokeRequest.CurrentSchema)
+            {
+                // Ignore any stale messages. 
+                // These could have been reactivated messages froma prior service instance.
+                return;
+            }
+
             _stats.FunctionInstanceId = instance.Id;
             WriteHeartbeat(logger);
             

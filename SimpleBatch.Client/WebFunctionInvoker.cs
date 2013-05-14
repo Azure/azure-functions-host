@@ -19,9 +19,7 @@ namespace SimpleBatch.Client
         private readonly string _serviceUri;
         private readonly Func<string, string> _functionResolver;
 
-        protected Guid _thisFunc; // guid instance for this function. 
-
-        public WebFunctionInvoker(Func<string,string> functionResolver, string serviceUri, Guid thisFuncGuid)
+        public WebFunctionInvoker(Func<string,string> functionResolver, string serviceUri)
         {
             if (serviceUri == null)
             {
@@ -36,8 +34,6 @@ namespace SimpleBatch.Client
             _functionResolver = functionResolver;
 
             _serviceUri = serviceUri;
-
-            _thisFunc = thisFuncGuid;
         }
 
         protected override Guid MakeWebCall(string functionShortName, IDictionary<string, string> parameters, IEnumerable<Guid> prereqs)
@@ -168,12 +164,6 @@ namespace SimpleBatch.Client
             foreach (var kv in parameters)
             {
                 sb.AppendFormat("&{0}={1}", kv.Key, kv.Value);
-            }
-
-            if (_thisFunc != Guid.Empty)
-            {
-                const string functionInstanceGuidKeyName = "$this"; // $$$ Share this?
-                sb.AppendFormat("&{0}={1}", functionInstanceGuidKeyName, _thisFunc);
             }
 
             return sb.ToString();

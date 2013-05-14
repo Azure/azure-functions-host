@@ -169,7 +169,7 @@ namespace RunnerHost
                     var functionId = newLoc.ToString(); // Used with IFunctionTableLookup.
                     return functionId;
                 };
-            var result = new WebFunctionInvoker(functionResolver, url, instance.Id);
+            var result = new WebFunctionInvoker(functionResolver, url);
 
             return new WebCallWrapper(result);
         }

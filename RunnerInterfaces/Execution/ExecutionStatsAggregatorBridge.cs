@@ -43,7 +43,7 @@ namespace Executor
 
         // Called by single Orchestrator node to aggregate
         // Will apply each function to the stats object.
-        public void DrainQueue(IFunctionCompleteLogger stats, IFunctionInstanceLookup lookup)
+        public IEnumerable<Guid> DrainQueue()
         {
             while (true)
             {
@@ -58,12 +58,9 @@ namespace Executor
                 var payload = JsonCustom.DeserializeObject<ExecutionFinishedPayload>(msg.AsString);
                 foreach (var instance in payload.Instances)
                 {
-                    var func = lookup.Lookup(instance);
-                    stats.IndexCompletedFunction(func);
+                    yield return instance;
                 }
             }
-
-            stats.Flush();
         }
     }
 }

@@ -27,6 +27,11 @@ namespace OrchestratorRole
         private Services _services;
         private IFunctionInstanceLookup _lookup;
 
+        private ExecutionStatsAggregatorBridge _statsBridge;
+
+        private IPrereqManager _prereqManager;
+        private IActivateFunction _activator;
+
         // Check that the connection to the webservice is working.
         void CheckServiceUrl(IAccountInfo accountInfo)
         {
@@ -78,10 +83,14 @@ namespace OrchestratorRole
 
             _services.ResetHealthStatus();
 
-            _stats = _services.GetFunctionCompleteLogger();
-            _lookup = _services.GetFunctionInstanceLookup();
+            var qi = _services.GetQueueInterfaces();
 
-            var _statsBridge = _services.GetStatsAggregatorBridge();
+            _stats = _services.GetFunctionCompleteLogger();            
+            _statsBridge = _services.GetStatsAggregatorBridge();
+
+            _activator = _services.GetActivator(qi);
+            _lookup = qi.Lookup;
+            _prereqManager = qi.PreqreqManager;
 
             CancellationTokenSource cancelSource = new CancellationTokenSource();
             while (true)
@@ -107,7 +116,7 @@ namespace OrchestratorRole
 
                 _services.WriteHealthStatus(worker.Heartbeat);
 
-                _statsBridge.DrainQueue(_stats, _lookup);
+                DrainCompletionQueue();
 
                 // Polling walks all blobs. Could take a long time for a large container.
                 worker.Poll(cancelSource.Token);
@@ -115,6 +124,21 @@ namespace OrchestratorRole
                 // Delay before looping
                 Thread.Sleep(1 * 1000);
             }
+        }
+
+
+        private void DrainCompletionQueue()
+        {            
+            foreach (Guid instance in _statsBridge.DrainQueue())
+            {
+                ExecutionInstanceLogEntity func = _lookup.Lookup(instance);
+                _stats.IndexCompletedFunction(func);
+
+                // $$$ This could be moved to the execution nodes; but then nodes would need a way
+                // to directly queue. 
+                _prereqManager.OnComplete(instance, _activator);
+            }
+            _stats.Flush();
         }
 
         private Worker CreateWorker()

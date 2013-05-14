@@ -18,8 +18,7 @@ namespace Executor
             // Queue tutorial here:
             //   http://www.developerfusion.com/article/120197/using-the-queuing-service-in-windows-azure/ 
 
-            instance.SchemaNumber = FunctionInvokeRequest.CurrentSchema;
-            
+           
             // Caller should have set ID.             
             string json = JsonCustom.SerializeObject(instance);
             var msg = new CloudQueueMessage(json);

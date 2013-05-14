@@ -30,6 +30,7 @@ namespace Executor
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionFailed;
 
         // Lookup in primary index
+        // $$$ Should this be IFunctionInstanceLookup instead?
         private readonly IAzureTableReader<ExecutionInstanceLogEntity> _tableLookup;
 
         // Creates an instance that justs supports IFunctionInstanceLookup.

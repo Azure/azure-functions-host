@@ -18,8 +18,7 @@ This page shows details on a specific execution instance of function: @Html.Func
         var trigger = log.FunctionInstance.TriggerReason;
     }
     <li>
-        @log.GetRunStatusString()
-
+        @Html.Partial("_FunctionStatus", log) 
 
         @if (log.GetStatus() == FunctionInstanceStatus.Running)
         {
@@ -63,6 +62,24 @@ This page shows details on a specific execution instance of function: @Html.Func
 }
     </table>
 
+
+@if (Model.Prereqs.Length > 0)
+{
+    <p>This function is waiting on the following prerequisites before it can execute:</p>
+    <table border="1">
+        <tr>
+            <td>Name</td>
+            <td>Status</td>
+        </tr>        
+        @foreach (var prereq in Model.Prereqs)
+        {
+            <tr>
+                <td> @Html.FunctionInstanceLogLink(prereq) </td>
+                <td> @Html.Partial("_FunctionStatus", prereq) </td>
+            </tr>
+        }
+    </table>
+}
 
 @if(Model.Children.Length > 0)
 {

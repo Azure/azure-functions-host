@@ -203,6 +203,10 @@ namespace WebFrontEnd.Controllers
             ICausalityReader causalityReader = GetServices().GetCausalityReader();
 
             model.Children = causalityReader.GetChildren(func.FunctionInstance.Id).ToArray();
+
+            IPrereqManager pt = GetServices().GetPrereqManager();
+            var prereqs = pt.EnumeratePrereqs(instance.Id).ToArray();
+            model.Prereqs = Array.ConvertAll(prereqs, id => lookup.Lookup(id));
                 
             return View("FunctionInstance", model);
         }
@@ -352,6 +356,9 @@ namespace WebFrontEnd.Controllers
         // Children functions that got triggered due to this function. 
         public TriggerReason[] Children { get; set; }
 
+        // non-null list of prereqs. 
+        public ExecutionInstanceLogEntity[] Prereqs { get; set; }
+               
         // For translating Guids to function names
         public IFunctionInstanceLookup Lookup { get; set; }
     }

@@ -26,26 +26,12 @@
     @foreach(var log in Model.Logs)
     {
         <tr>
-            <td>
-                @{
-        string color = null;
-        switch (@log.GetStatus())
-        { 
-            case FunctionInstanceStatus.CompletedFailed:
-                color = "red"; break;
-            case FunctionInstanceStatus.CompletedSuccess:
-                color = "green"; break;
-            case FunctionInstanceStatus.Running:
-                color = "blue"; break;
-                // don't colorize others.                 
-        }       
-        }                
+            <td>                   
                 @Html.FunctionInstanceLogLink(log)
             </td>
             <td>
-                                <font color="@color">
-                @log.GetRunStatusString()
-                                    </font> </td>             
+                @Html.Partial("_FunctionStatus", log)
+            </td>             
             <td>@Html.FunctionOutputLink(log)</td>
         </tr>
     }

@@ -19,11 +19,16 @@ namespace DaasEndpoints
     public partial class Services
     {
         public IPrereqManager GetPrereqManager()
+        {            
+            IFunctionInstanceLookup lookup = GetFunctionInstanceLookup();
+            return GetPrereqManager(lookup);
+        }
+
+        public IPrereqManager GetPrereqManager(IFunctionInstanceLookup lookup)
         {
             IAzureTable prereqTable = new AzureTable(_account, "schedPrereqTable");
             IAzureTable successorTable = new AzureTable(_account, "schedSuccessorTable");
-            IFunctionInstanceLookup lookup = GetFunctionInstanceLookup();
-
+            
             return new PrereqManager(prereqTable, successorTable, lookup);
         }
 
@@ -41,7 +46,7 @@ namespace DaasEndpoints
             return new CausalityLogger(table, logger);
         }
 
-        public IFunctionUpdatedLogger GetFunctionUpdatedLogger()
+        public FunctionUpdatedLogger GetFunctionUpdatedLogger()
         {
             var table = new AzureTable<ExecutionInstanceLogEntity>(_account, EndpointNames.FunctionInvokeLogTableName);
             return new FunctionUpdatedLogger(table);

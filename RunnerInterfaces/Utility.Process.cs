@@ -129,20 +129,7 @@ namespace RunnerInterfaces
 
             AppDomain domain = AppDomain.CreateDomain("second");
 
-            // New appdomain does not inherit Console.Out
-            // So we we have to invoke into the AppDomain and call Console.SetOut()
-            // TextWriter marshal by ref, so we can still pass it in. 
-            try
-            {
-                var objHandle = domain.CreateInstanceFrom(path, "RunnerHost.OutputSetter");
-                var obj = objHandle.Unwrap();
-                var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod;
-                obj.GetType().InvokeMember("SetOut", flags, null, obj, new object[] { output });
-            }
-            catch
-            {
-                Console.WriteLine("Failed to capture child process console output");
-            }
+            RedirectConsoleOutput(domain, path, output);
 
             try
             {
@@ -161,6 +148,25 @@ namespace RunnerInterfaces
                 Console.WriteLine("Error!! {0}", e.Message);
             }
             Console.SetOut(old); // restore
+        }
+
+        [DebuggerNonUserCode]
+        private static void RedirectConsoleOutput(AppDomain domain, string path, TextWriter output)
+        {
+            // New appdomain does not inherit Console.Out
+            // So we we have to invoke into the AppDomain and call Console.SetOut()
+            // TextWriter marshal by ref, so we can still pass it in. 
+            try
+            {
+                var objHandle = domain.CreateInstanceFrom(path, "RunnerHost.OutputSetter");
+                var obj = objHandle.Unwrap();
+                var flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod;
+                obj.GetType().InvokeMember("SetOut", flags, null, obj, new object[] { output });
+            }
+            catch
+            {
+                Console.WriteLine("Failed to capture child process console output");
+            }
         }
 
         // redirect console.output to capture.

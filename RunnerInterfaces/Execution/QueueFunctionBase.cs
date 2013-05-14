@@ -73,6 +73,7 @@ namespace RunnerInterfaces
         public ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
         {
             instance.Id = Guid.NewGuid(); // used for logging. 
+            instance.SchemaNumber = FunctionInvokeRequest.CurrentSchema;
             instance.ServiceUrl = _account.WebDashboardUri;
 
             if (instance.TriggerReason == null)

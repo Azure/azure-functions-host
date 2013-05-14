@@ -20,7 +20,10 @@ namespace Executor
         public override string ToString()
         {
             var name = this.FunctionInstance.Location.GetShortName();
-            return string.Format("{0} @ {1}", name, this.QueueTime.Value.ToUniversalTime());
+            string queueTime = this.QueueTime.HasValue ? 
+                this.QueueTime.Value.ToUniversalTime().ToString() :
+                "(awaiting prereqs)";
+            return string.Format("{0} @ {1}", name, queueTime);
         }
 
         // This maps to the builtin property on azure Tables, so it will get set for us. 
@@ -112,13 +115,9 @@ namespace Executor
             }
         }
 
+        // beware, object may be partially filled out. So bias checks to fields that are present rather than missing. 
         public static FunctionInstanceStatus GetStatus(this ExecutionInstanceLogEntity obj)
         {
-            if (!obj.QueueTime.HasValue)
-            {
-                return FunctionInstanceStatus.AwaitingPrereqs;
-            }
-
             if (obj.EndTime.HasValue)
             {
                 if (obj.ExceptionType == null)
@@ -134,7 +133,14 @@ namespace Executor
             {
                 return FunctionInstanceStatus.Running;
             }
-            return FunctionInstanceStatus.Queued;
+            if (obj.QueueTime.HasValue)
+            {
+                // Queued, but not started or completed. 
+                return FunctionInstanceStatus.Queued;    
+            }
+
+            // Not even queued. 
+            return FunctionInstanceStatus.AwaitingPrereqs;            
         }
 
         public static bool IsCompleted(this ExecutionInstanceLogEntity obj)
