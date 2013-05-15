@@ -54,6 +54,9 @@ namespace Orchestrator
                 ContainerName = path.ContainerName,
                 BlobName = NormalizeBlobName(path.BlobName)
             };
+
+            Utility.ValidateContainerName(arg.ContainerName);
+
             return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput };
         }
 

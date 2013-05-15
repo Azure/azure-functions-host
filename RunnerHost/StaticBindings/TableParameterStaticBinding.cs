@@ -18,7 +18,20 @@ namespace Orchestrator
 {
     public class TableParameterStaticBinding : ParameterStaticBinding
     {
-        public string TableName { get; set; }
+        private string _tableName;
+
+        public string TableName 
+        { 
+            get
+            {
+                return _tableName;
+            }
+            set
+            {
+                Utility.ValidateAzureTableName(value);
+                _tableName = value;
+            }
+        }
 
         // $$$ don't think we use this anymore. 
         // True iff we know we have read-only access to the table. 

@@ -26,7 +26,7 @@ namespace Orchestrator
             // builds up Dict<string, List<string>>,  [names] = "first","second", "third"
             // Can then bind names to string[] names parameter.
 
-            return new BlobAggregateParameterRuntimeBinding
+            var binding = new BlobAggregateParameterRuntimeBinding
             {
                 BlobPathPattern = new CloudBlobDescriptor
                 {
@@ -35,6 +35,9 @@ namespace Orchestrator
                     BlobName = path.BlobName
                 }
             };
+            Utility.ValidateContainerName(binding.BlobPathPattern.ContainerName);
+
+            return binding;
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)

@@ -34,10 +34,8 @@ namespace ConsoleApplication1
 
         static void Main()
         {
-
-            // Stress test Prereq table.
-            IPrereqManager pt;
-
+            TestIndex();
+            
 
         }
 
@@ -57,7 +55,8 @@ namespace ConsoleApplication1
             Func<MethodInfo, FunctionLocation> funcApplyLocation = method => null;
                     
 
-            string dir = @"C:\CodePlex\azuresimplebatch\Temp\TestApp1\bin\Debug";
+            //string dir = @"C:\CodePlex\azuresimplebatch\Temp\TestApp1\bin\Debug";
+            string dir = @"C:\TfsOnline\SimpleBatchOps\GalDiff\GalDiff\bin\debug";
             i.IndexLocalDir(funcApplyLocation, dir);
         }
 

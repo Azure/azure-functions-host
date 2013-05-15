@@ -96,10 +96,18 @@ namespace RunnerHost
                 // Not a binding attribute.
                 return null;
             }
-            
-            var result = (ParameterStaticBinding) method.Invoke(null, new object[] { attr, parameter});
-            result.Name = parameter.Name;
-            return result;
+
+            try
+            {
+                var result = (ParameterStaticBinding)method.Invoke(null, new object[] { attr, parameter });
+                result.Name = parameter.Name;
+                return result;
+            }
+            catch (TargetInvocationException e)
+            {
+                // Unwrap, especially since callers may catch by type.
+                throw e.InnerException; 
+            }
         }
 
         private static ParameterStaticBinding Bind(ConfigAttribute attr, ParameterInfo parameter)

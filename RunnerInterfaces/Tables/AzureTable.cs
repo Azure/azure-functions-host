@@ -141,7 +141,7 @@ namespace AzureTables
 
         public AzureTable(CloudStorageAccount account, string tableName)
         {
-            ValidateAzureTableName(tableName);
+            Utility.ValidateAzureTableName(tableName);
             _core = new LiveTableCore(account, tableName);
         }
 
@@ -155,16 +155,6 @@ namespace AzureTables
         {
             // $$$ Consistency issues with flushing?
             return new AzureTable<TValue>(_core);
-        }
-
-        // Azure table names are very restrictive, so sanity check upfront to give a useful error.
-        // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
-        private static void ValidateAzureTableName(string tableName)
-        {
-            if (!Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
-            {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
-            }
         }
 
         // Flush all outstanding write operations. 

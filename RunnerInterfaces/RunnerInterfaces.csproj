@@ -57,7 +57,8 @@
     <Compile Include="BlobTextWriter.cs" />
     <Compile Include="Execution\IPrereqManager.cs" />
     <Compile Include="Execution\PrereqManager.cs" />
-    <Compile Include="IndexerOperations.cs" />
+    <Compile Include="Index\IndexerOperations.cs" />
+    <Compile Include="Index\IndexException.cs" />
     <Compile Include="Tables\LocalTableCore.cs" />
     <Compile Include="Tables\LiveTableCore.cs" />
     <Compile Include="Tables\TableCore.cs" />

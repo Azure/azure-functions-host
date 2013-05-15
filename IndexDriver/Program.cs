@@ -130,7 +130,7 @@ namespace IndexDriver
                     }
                 }
             }
-            catch (InvalidOperationException e)
+            catch (IndexException e)
             {
                 // Expected user error
                 Console.WriteLine("Error during indexing: {0}", e);

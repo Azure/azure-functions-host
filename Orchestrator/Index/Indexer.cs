@@ -344,6 +344,25 @@ namespace Orchestrator
             {
                 IndexMethod(funcApplyLocation, method);
             }
+            
+            CheckDups();            
+        }
+
+        // Check for duplicate names. Indexing doesn't support overloads.
+        void CheckDups()
+        {
+            HashSet<string> locs = new HashSet<string>();
+
+            foreach (var func in _functionTable.ReadAll())
+            {
+                var key = func.Location.ToString();
+                if (!locs.Add(key))
+                {
+                    // Dup found!
+                    string msg = string.Format("SimpleBatch doesn't support function overloads. There are multiple overloads for: {0}", key);
+                    throw new InvalidOperationException(msg);
+                }
+            }
         }
 
         // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
@@ -469,7 +488,7 @@ namespace Orchestrator
                 }
             }
 
-            // Take a second pass to bind params diretly to {key} in the attributes above,.
+            // Take a second pass to bind params directly to {key} in the attributes above,.
             // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")],
             // then we'll bind 'string name' to the {name} value.
             int pos = 0;
@@ -487,15 +506,22 @@ namespace Orchestrator
 
         private static ParameterStaticBinding BindParameter(ParameterInfo parameter)
         {
-            foreach (Attribute attr in parameter.GetCustomAttributes(true))
+            try
             {
-                var bind = StaticBinder.DoStaticBind(attr, parameter);
-                if (bind != null)
+                foreach (Attribute attr in parameter.GetCustomAttributes(true))
                 {
-                    return bind;
+                    var bind = StaticBinder.DoStaticBind(attr, parameter);
+                    if (bind != null)
+                    {
+                        return bind;
+                    }
                 }
+                return null;
             }
-            return null;
+            catch (Exception  e)
+            {
+                throw IndexException.NewParameter(parameter, e);
+            }
         }
 
         // Note any remaining unbound parameters must be provided by the user.
@@ -536,6 +562,22 @@ namespace Orchestrator
         // Returns a partially instantiated FunctionIndexEntity.
         // Caller must add Location information.
         public static FunctionDefinition GetDescriptionForMethod(MethodDescriptor descr)
+        {
+            try
+            {
+                return GetDescriptionForMethodInternal(descr);
+            }
+            catch (Exception e)
+            {
+                if (e is IndexException)
+                {
+                    throw;
+                }
+                throw IndexException.NewMethod(descr.Name, e);
+            }
+        }
+
+        private static FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr)
         {
             string description = null;
             TimeSpan? interval = null;
@@ -627,7 +669,50 @@ namespace Orchestrator
                 }
             };
 
+            Validate(index);
+
             return index;
+        }
+
+        private static void Validate(FunctionDefinition index)
+        {
+            // $$$ This should share policy code with Orchestrator where it builds the listening map. 
+
+            // Throw on multiple QueueInputs
+            int qc = 0;
+            foreach (var flow in index.Flow.Bindings)
+            {
+                var q = flow as QueueParameterStaticBinding;
+                if (q != null && q.IsInput)
+                {
+                    qc++;
+                }
+            }
+
+            if (qc > 1)
+            {
+                string msg = string.Format("Can't have multiple QueueInputs on a single function definition");
+                throw new InvalidOperationException(msg);
+            }
+
+            if (qc > 0)
+            {
+                if (!(index.Flow.Bindings[0] is QueueParameterStaticBinding))
+                {
+                    throw new InvalidOperationException("A QueueInput parameter must be the first parameter.");
+                }
+
+                if (index.Trigger.TimerInterval.HasValue)
+                {
+                    throw new InvalidOperationException("Can't have a QueueInput and Timer triggers on the same function ");
+                }
+
+                if (!index.Trigger.ListenOnBlobs)
+                {
+                    // This implies a [NoAutomaticTrigger] attribute. 
+                    throw new InvalidOperationException("Can't have QueueInput and NoAutomaticTrigger on the same function.");
+                }
+            }
         }
     }
 }

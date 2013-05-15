@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml.Linq;
 using AzureTables;
@@ -404,6 +405,16 @@ namespace RunnerInterfaces
             {
                 // Not found. 
                 return null;
+            }
+        }
+
+        // Azure table names are very restrictive, so sanity check upfront to give a useful error.
+        // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
+        public static void ValidateAzureTableName(string tableName)
+        {
+            if (!Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
             }
         }
     }

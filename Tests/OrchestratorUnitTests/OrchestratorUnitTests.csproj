@@ -84,6 +84,7 @@
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUnitTests.cs" />
     <Compile Include="CodeConfigFlowUnitTests.cs" />
+    <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
