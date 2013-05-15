@@ -21,7 +21,7 @@ namespace WorkerRole1
         DateTime _lastResetTime;        
 
         public override void Run()
-        {
+        {            
             ShouldPauseWorkerRole();
             
 

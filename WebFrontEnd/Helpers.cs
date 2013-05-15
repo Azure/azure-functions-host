@@ -22,7 +22,13 @@ namespace WebFrontEnd.Controllers
             DateTime now, DateTime past)
         {
             var span = now - past;
+            return TimeLapse(htmlHelper, span);
+        }
 
+        public static MvcHtmlString TimeLapse(
+            this HtmlHelper htmlHelper,
+            TimeSpan span)
+        {
             string s;
             if (span.TotalSeconds < 60)
             {
@@ -41,12 +47,21 @@ namespace WebFrontEnd.Controllers
         }
 
         // Emit an HTML link to the log for the given function instance.
-        public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper, 
+        public static MvcHtmlString FunctionInstanceLogLinkVerbose(
+            this HtmlHelper htmlHelper,
             ExecutionInstanceLogEntity log)
         {
             string name = log.ToString();
             return FunctionInstanceLogLink(htmlHelper, log.FunctionInstance, name);
+        }
+
+        // This should be the common link, most friendly version. 
+        // Emit an HTML link to the log for the given function instance.
+        public static MvcHtmlString FunctionInstanceLogLink(
+            this HtmlHelper htmlHelper, 
+            ExecutionInstanceLogEntity log)
+        {
+            return htmlHelper.Partial("_FunctionInstanceLogLink", log);      
         }
 
         public static MvcHtmlString FunctionInstanceLogLink(
@@ -54,6 +69,7 @@ namespace WebFrontEnd.Controllers
             FunctionInvokeRequest instance,
             string textLink = null)
         {
+            // $$$ Is this used anywhere?
             if (textLink == null)
             {
                 textLink = instance.ToString();

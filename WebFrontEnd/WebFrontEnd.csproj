@@ -275,6 +275,7 @@
     <Content Include="Views\Home\RegisterKuduFunc.cshtml" />
     <Content Include="Views\Home\RegisterKuduFuncSubmit.cshtml" />
     <Content Include="Views\Shared\_FunctionStatus.cshtml" />
+    <Content Include="Views\Shared\_FunctionInstanceLogLink.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

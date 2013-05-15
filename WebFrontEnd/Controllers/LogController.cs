@@ -45,33 +45,33 @@ namespace WebFrontEnd.Controllers
 
 
         // Given a function, view the entire causal chain.  
-        public ActionResult ViewChain(FunctionInvokeRequest func)
+        public ActionResult ViewChain(ExecutionInstanceLogEntity func)
         {
             ICausalityReader reader = GetServices().GetCausalityReader();
             IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
 
             // Redirect to ancestor?
-            FunctionInvokeRequest funcHead = func;
+            var funcHead = func;
             while(true)
             {
-                Guid parentGuid = funcHead.TriggerReason.ParentGuid;
+                Guid parentGuid = funcHead.FunctionInstance.TriggerReason.ParentGuid;
                 if (parentGuid == Guid.Empty)
                 {
                     break;
                 }
-                parentGuid = reader.GetParent(funcHead.Id);
+                parentGuid = reader.GetParent(funcHead.FunctionInstance.Id);
 
                 var parentFunc = lookup.Lookup(parentGuid);
                 if (parentFunc == null)
                 {
                     break;
                 }
-                funcHead = parentFunc.FunctionInstance;
+                funcHead = parentFunc;
             }
 
-            if (funcHead.Id != func.Id)
+            if (funcHead.FunctionInstance.Id != func.FunctionInstance.Id)
             {
-                return RedirectToAction("ViewChain", new { func = funcHead.Id });
+                return RedirectToAction("ViewChain", new { func = funcHead.FunctionInstance.Id });
             }
 
             FunctionChainModel model = new FunctionChainModel
@@ -85,11 +85,40 @@ namespace WebFrontEnd.Controllers
             model.Nodes = nodes;
             Walk(funcHead, nodes, 0, model);
 
+
+            // Compute stats
+            var minStart = DateTime.MaxValue;
+            var maxEnd = DateTime.MinValue;
+            foreach (var node in nodes)
+            {
+                var start = node.Func.StartTime;
+                var end = node.Func.EndTime;
+
+                if (start.HasValue)
+                {
+                    if (start.Value < minStart)
+                    {
+                        minStart = start.Value;
+                    }
+                }
+                if (end.HasValue)
+                {
+                    if (end.Value > maxEnd)
+                    {
+                        maxEnd = end.Value;
+                    }
+                }
+            }
+            if (minStart < maxEnd)
+            {
+                model.Duration = maxEnd - minStart;
+            }
+
             return View(model);
         }
 
         // Walk the chain and flatten it into a list that's easy to render to HTML. 
-        void Walk(FunctionInvokeRequest current, List<ListNode> list, int depth, FunctionChainModel model)
+        void Walk(ExecutionInstanceLogEntity current, List<ListNode> list, int depth, FunctionChainModel model)
         {
             depth++;
             list.Add(new ListNode
@@ -97,9 +126,9 @@ namespace WebFrontEnd.Controllers
                 Depth = depth,
                 Func = current
             });
-            foreach (var child in model.Walker.GetChildren(current.Id))
+            foreach (var child in model.Walker.GetChildren(current.FunctionInstance.Id))
             {
-                FunctionInvokeRequest childFunc = model.Lookup.Lookup(child.ChildGuid).FunctionInstance;
+                var childFunc = model.Lookup.Lookup(child.ChildGuid);
                 Walk(childFunc, list, depth, model);
             }
         }

@@ -22,15 +22,20 @@
         </td>
     <td>
         @{        
-        string methodName = node.Func.Location.GetShortName();
         string indent = new string('-', (node.Depth -1) * 2);
         }
         @indent                   
-        @Html.FunctionInstanceLogLink(node.Func, methodName)
+        @Html.FunctionInstanceLogLink(node.Func)
         </td>
     <td>
-    @node.Func.TriggerReason
+    @node.Func.FunctionInstance.TriggerReason
         </td>
         </tr>
 }
     </table>
+
+
+@if(Model.Duration.HasValue)
+{
+    <p>Total chain timespan: @Html.TimeLapse(Model.Duration.Value) </p>
+}

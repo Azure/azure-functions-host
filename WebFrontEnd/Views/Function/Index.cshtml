@@ -41,6 +41,7 @@ Details for function: <b>@Model.Descriptor.ToString()</b>
 @using (Html.BeginForm("InvokeFunctionWithArgs", "Function"))
 {
     <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
+    <input type="hidden" value="@Model.ReplayGuid" name ="replayGuid"/>
     
 <table border="1">
     <tr>

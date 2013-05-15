@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using DaasEndpoints;
+using Executor;
 using Orchestrator;
 using RunnerInterfaces;
 
@@ -93,13 +94,29 @@ namespace WebFrontEnd.Controllers
         public IFunctionInstanceLookup Lookup { get; set; }
 
         public IEnumerable<ListNode> Nodes { get; set; }
+
+        // For computing the whole span of the chain. 
+        public TimeSpan? Duration { get; set; }
     }
 
     // Convert tree into flat list so that it's easier to render
     public class ListNode
     {
-        public FunctionInvokeRequest Func { get; set; }
+        public ExecutionInstanceLogEntity Func { get; set; }
 
         public int Depth { get; set; }
+    }
+
+    // Show static information about the function 
+    public class FunctionInfoModel
+    {
+        public FunctionDefinition Descriptor { get; set; }
+
+        public ParamModel[] Parameters { get; set; }
+
+        // List of {name}
+        public string[] KeyNames { get; set; }
+
+        public Guid ReplayGuid { get; set; }
     }
 }

@@ -10,17 +10,6 @@ using RunnerInterfaces;
 
 namespace WebFrontEnd.Controllers
 {
-    // Show static information about the function 
-    public class FunctionInfoModel
-    {
-        public FunctionDefinition Descriptor { get; set; }
-
-        public ParamModel[] Parameters { get; set; }
-
-        // List of {name}
-        public string[] KeyNames { get; set; }
-    }
-
     // Controller for viewing details (mainly invocation) on an individual function.
     [Authorize]
     public class FunctionController : Controller
@@ -64,17 +53,23 @@ namespace WebFrontEnd.Controllers
         [HttpGet]
         public ActionResult InvokeFunctionReplay(FunctionInvokeRequest instance)
         {
+            var parentGuid = instance.Id;
+
             FunctionDefinition func = GetServices().GetFunctionTable().Lookup(instance.Location);
-            return RenderInvokePageWorker(func, instance.Args);
+            return RenderInvokePageWorker(func, instance.Args, parentGuid);
         }
 
         // This is the common worker that everything feeds down into.
         // Seed the input dialog with the given arg instances
-        private ActionResult RenderInvokePageWorker(FunctionDefinition func, ParameterRuntimeBinding[] args)
+        private ActionResult RenderInvokePageWorker(FunctionDefinition func, ParameterRuntimeBinding[] args, Guid? replayGuid = null)
         {
             var flows = func.Flow;
 
             var model = new FunctionInfoModel();
+            if (replayGuid.HasValue)
+            {
+                model.ReplayGuid = replayGuid.Value;
+            }
             model.Descriptor = func;
             model.KeyNames = flows.GetInputParameters().ToArray();
             model.Parameters = LogAnalysis.GetParamInfo(func);
@@ -89,7 +84,7 @@ namespace WebFrontEnd.Controllers
 
         // Post when we actually submit the invoke. 
         [HttpPost]
-        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues)
+        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues, Guid replayGuid)
         {
             if (argValues == null)
             {
@@ -116,11 +111,23 @@ namespace WebFrontEnd.Controllers
             FunctionInvokeRequest instance = new FunctionInvokeRequest();
             instance.Args = args;
             instance.Location = func.Location;
-            instance.TriggerReason = new InvokeTriggerReason
+
+            if (replayGuid != Guid.Empty)
             {
-                Message = "Explicitly requested via web dashboard",
-                ParentGuid = Guid.Empty, // Invoked directly by user, so no parent function. 
-            };
+                instance.TriggerReason = new InvokeTriggerReason
+                {
+                    Message = "Invoked by replaying a previous function.",
+                    ParentGuid = replayGuid
+                };
+            }
+            else
+            {
+                instance.TriggerReason = new InvokeTriggerReason
+                {
+                    Message = "Explicitly requested via web dashboard",
+                    ParentGuid = Guid.Empty, // Invoked directly by user, so no parent function. 
+                };
+            }
 
             // Get instance ID from queuing. Use that to redict to view 
             IQueueFunction executor = GetServices().GetQueueFunction();
