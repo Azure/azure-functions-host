@@ -19,7 +19,7 @@ namespace RunnerInterfaces
 
         // 3: Switched arguments to use polymorphism
         // 4: uses structured types in declarations.
-        public const int CurrentSchema = 7;
+        public const int CurrentSchema = 8;
 
         // Guid provides unique id to recognize function invocation instance.
         // This should get set once the function is queued. 

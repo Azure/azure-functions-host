@@ -42,9 +42,26 @@ namespace SimpleBatch.Client
             string uri = MakeUriRun(function, parameters);
 
             Guid[] body = prereqs.ToArray();
-            var val = Send<BeginRunResult>(uri, "POST", body);
 
-            return val.Instance;
+            try
+            {
+                var val = Send<BeginRunResult>(uri, "POST", body);
+                return val.Instance;
+            }
+            catch (WebException e)
+            {
+                // Give a more useful error.
+                var x = e.Response as HttpWebResponse;
+                if (x != null)
+                {
+                    if (x.StatusCode == HttpStatusCode.BadRequest)
+                    {
+                        string message = new StreamReader(x.GetResponseStream()).ReadToEnd();
+                        throw new InvalidOperationException("Attempt to invoke function failed: " + message);
+                    }
+                }
+                throw;
+            }            
         }
 
         // Return task that is signaled 
