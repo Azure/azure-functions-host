@@ -55,15 +55,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BinderLookup.cs" />
+    <Compile Include="Index\BinderLookup.cs" />
     <Compile Include="BlobListener.cs" />
     <Compile Include="BlobListener2.cs" />
-    <Compile Include="FunctionFlow.cs" />
-    <Compile Include="FunctionDefinition.cs" />
-    <Compile Include="FunctionTrigger.cs" />
-    <Compile Include="IFunctionTable.cs" />
-    <Compile Include="Indexer.cs" />
-    <Compile Include="IndexerConfig.cs" />
+    <Compile Include="Common\FunctionFlow.cs" />
+    <Compile Include="Common\FunctionDefinition.cs" />
+    <Compile Include="Common\FunctionTrigger.cs" />
+    <Compile Include="Common\IFunctionTable.cs" />
+    <Compile Include="Index\Indexer.cs" />
+    <Compile Include="Index\IndexerConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Worker.cs" />
   </ItemGroup>
