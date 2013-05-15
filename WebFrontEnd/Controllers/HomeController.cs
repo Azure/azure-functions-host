@@ -29,6 +29,7 @@ namespace WebFrontEnd.Controllers
             // Get health
             var services = GetServices();
             model.ExecutionSubstrate = services.GetExecutionSubstrateDescription();
+            model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
             model.QueueDepth = services.GetExecutionQueueDepth();
             model.HealthStatus = services.GetHealthStatus();
             model.AccountName = services.Account.Credentials.AccountName;
