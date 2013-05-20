@@ -71,11 +71,12 @@ namespace RunnerInterfaces
             File.WriteAllText(inputPath, json);
 
             var path = new Uri(target.CodeBase).LocalPath;
+            int processExitCode = 0;
 
             if (!DebugRunInProc)
             {
                 string args = string.Format("\"{0}\" \"{1}\"", inputPath, outputPath);
-                RunInSeparateProcess(path, args, output, token);
+                processExitCode= RunInSeparateProcess(path, args, output, token);
             }
             else
             {
@@ -89,8 +90,8 @@ namespace RunnerInterfaces
             // Normally, app should catch any user errors and propagate those results to the result object.
             if (!File.Exists(outputPath))
             {
-                string msg = string.Format("Critical error: App {0} exited unexpectedly. See console output log for details.", target.FullName);
-                throw new InvalidOperationException(msg);
+                string msg = string.Format("Critical error: App {0} exited unexpectedly with exitcode {1} ({1:X}). See console output log for details.", target.FullName, processExitCode);
+                throw new AbnormalTerminationException(msg);
             }
             
             string jsonResult = File.ReadAllText(outputPath);
@@ -171,7 +172,8 @@ namespace RunnerInterfaces
 
         // redirect console.output to capture.
         // output stream is updated live (no buffering). 
-        private static void RunInSeparateProcess(string filename, string args, TextWriter output, CancellationToken token)
+        // return process exit code 
+        private static int RunInSeparateProcess(string filename, string args, TextWriter output, CancellationToken token)
         {
             ProcessStartInfo si = new ProcessStartInfo();
             si.UseShellExecute = false;
@@ -233,8 +235,16 @@ namespace RunnerInterfaces
                     output.Flush();
                 }
             }
+            return p.ExitCode;
         }
     }
 
+    // Some error in user app (probably a stack overflow) 
+    public class AbnormalTerminationException : Exception
+    {
+        public AbnormalTerminationException(string msg) : base(msg)
+        {
+        }
+    }
 
 }

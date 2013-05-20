@@ -58,14 +58,17 @@ namespace RunnerInterfaces
                     logItem.ExceptionType = result.ExceptionType;
                     logItem.ExceptionMessage = result.ExceptionMessage;
                 }
-                catch (OperationCanceledException e)
-                {
-                    // Execution was aborted. Common case, not a critical error. 
-                    logItem.ExceptionType = e.GetType().FullName;
-                    logItem.ExceptionMessage = e.Message;
-                }
                 catch (Exception e)
                 {
+                    if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error. 
+                        (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
+                    {                        
+                        logItem.ExceptionType = e.GetType().FullName;
+                        logItem.ExceptionMessage = e.Message;
+
+                        return;
+                    }
+                
                     // Non-user error. Something really bad happened! This shouldn't be happening. 
                     // Suggests something critically wrong with the execution infrastructure that wasn't properly
                     // handled elsewhere. 
