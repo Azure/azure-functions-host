@@ -1,1 +1,40 @@
-﻿
+﻿div.call-unit {
+    padding: 30px;
+}
+
+div.call-unit form {
+    margin: 0;
+}
+
+div.call-unit div.control-group {
+    margin: 0;
+}
+
+div.call-unit .control-label {
+    width: 80px;
+}
+
+div.call-unit .controls {
+    margin-left: 85px;
+}
+
+div.call-unit .call-unit-commands {
+    margin-top: 1em;
+}
+
+div#invoke-unit #invoke-unit-function {
+    font-size: 31.5px;
+    font-weight: bold;
+    color: black;
+    text-rendering: optimizeLegibility;
+}
+
+div#invoke-unit #invoke-unit-body {
+    font-size: 17.5px;
+    color: #999999;
+    line-height: 1;
+}
+
+div#invoke-unit #invoke-unit-params {
+    margin-top: 10px;
+}
