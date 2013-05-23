@@ -1,21 +1,8 @@
-﻿<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>@ViewBag.Title</title>
-    @Styles.Render("~/Content/css")
-    @Scripts.Render("~/bundles/modernizr")
-</head>
+﻿@{
+    Layout = "~/Views/Shared/_TopLayout.cshtml";
+}
 
-<div style="background:#CCC; float:right">
 @Html.Partial("_Header")
+<div class="container-fluid">
+    @RenderBody()  
 </div>
-
-<body>
-    @RenderBody()
-
-    @Scripts.Render("~/bundles/jquery")
-    @RenderSection("scripts", required: false)
-</body>
-</html>

@@ -1,2 +1,14 @@
-﻿
-@Html.ActionLink("[Home]", "Index", "Home") <span>UTC time: @DateTime.UtcNow </span>
+﻿<div class="navbar">
+    <div class="navbar-inner">
+        <ul class="nav pull-right">
+            <li><a href="@Url.Action("Logout", "Account")">Log Out</a></li>
+        </ul>
+        <p class="navbar-text pull-right">Server time: @DateTime.UtcNow</p>
+        <a class="brand" href="@Url.Action("Index", "Home")">SimpleBatch</a>
+        <ul class="nav">
+            @Html.MenuLink("Home", action: "Index", controller: "Home")
+            @Html.MenuLink("Functions", action: "ListAllFunctions", controller: "Home")
+            @Html.MenuLink("Cloud Binders", action: "ListAllBinders", controller: "Home")
+        </ul>
+    </div>
+</div>

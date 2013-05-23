@@ -6,19 +6,6 @@
 
 <h2>Dashboard</h2>
 
-
-<h3>Administration commands</h3>
-<ul>
-    <li>@Html.ActionLink("List all registered functions", "ListAllFunctions")</li>    
-    <li>@Html.ActionLink("List all Cloud Binders", "ListAllBinders")</li>    
-    <li>Register a function from a 
-        @Html.ActionLink("Blob Container", "RegisterFunc") or at a 
-        @Html.ActionLink("Kudu site", "RegisterKuduFunc")
-    </li>
-    <li>@Html.ActionLink("Scan a blob container and execute functions", "RequestScan")</li>
-</ul>
-
-
 <h3>Health of service</h3>
 <p>        
     [@Html.ActionLink("Summary of recent invokes", "Summary", "Log")]

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Mvc.Html;
+using System.Web.Routing;
 using DaasEndpoints;
 using Executor;
 using Microsoft.WindowsAzure;
@@ -17,6 +18,47 @@ namespace WebFrontEnd.Controllers
     // Another benefit to HTML helpers is that is that the IDE doesn't find property references in CSHTML.
     public static class MoreHtmlHelpers
     {
+        public static HtmlString MenuLink(this HtmlHelper self, string name, string action, string controller)
+        {
+            return MenuLink(self, name, action, controller, null);
+        }
+
+        public static HtmlString MenuLink(this HtmlHelper self, string name, string action, string controller, object routeValues)
+        {
+            var url = new UrlHelper(self.ViewContext.RequestContext);
+            RouteValueDictionary target;
+            if (routeValues != null)
+            {
+                target = new RouteValueDictionary(routeValues);
+            }
+            else
+            {
+                target = new RouteValueDictionary();
+            }
+            target["action"] = action;
+            target["controller"] = controller;
+
+            TagBuilder li = new TagBuilder("li");
+            TagBuilder a = new TagBuilder("a");
+            if (SameRoute(target, self.ViewContext.RouteData.Values))
+            {
+                li.AddCssClass("active");
+            }
+            a.Attributes["href"] = url.RouteUrl(target);
+            a.SetInnerText(name);
+            li.InnerHtml = a.ToString(TagRenderMode.Normal);
+            return new HtmlString(li.ToString(TagRenderMode.Normal));
+        }
+
+        private static bool SameRoute(RouteValueDictionary target, RouteValueDictionary routeValueDictionary)
+        {
+            var matches = target
+                .Where(pair => routeValueDictionary.ContainsKey(pair.Key) && Equals(pair.Value, routeValueDictionary[pair.Key]))
+                .Select(pair => pair.Key);
+            var mismatches = routeValueDictionary.Keys.Except(matches);
+            return !mismatches.Any();
+        }
+
         public static MvcHtmlString TimeLapse(
             this HtmlHelper htmlHelper,
             DateTime now, DateTime past)

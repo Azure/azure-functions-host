@@ -42,5 +42,11 @@ namespace WebFrontEnd.Controllers
 
             return Redirect(returnUrl ?? Url.Action("Index", "Home"));
         }
+
+        public ActionResult Logout()
+        {
+            FormsAuthentication.SignOut();
+            return RedirectToAction("Login");
+        }
     }
 }
