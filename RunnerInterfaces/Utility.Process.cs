@@ -174,6 +174,7 @@ namespace RunnerInterfaces
         private static void RunInSeparateProcess(string filename, string args, TextWriter output, CancellationToken token)
         {
             ProcessStartInfo si = new ProcessStartInfo();
+            si.CreateNoWindow = true;
             si.UseShellExecute = false;
             si.FileName = filename;
             si.Arguments = args;
@@ -187,9 +188,6 @@ namespace RunnerInterfaces
 
             Stopwatch sw = Stopwatch.StartNew();
             Process p = Process.Start(si);
-
-            p.BeginOutputReadLine();
-            p.BeginErrorReadLine();
 
             var funcOutput = new DataReceivedEventHandler(
                 (sender, e) =>
@@ -206,6 +204,9 @@ namespace RunnerInterfaces
 
             p.ErrorDataReceived += funcOutput;
             p.OutputDataReceived += funcOutput;
+
+            p.BeginOutputReadLine();
+            p.BeginErrorReadLine();
 
             try
             {
