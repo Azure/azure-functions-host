@@ -27,6 +27,7 @@ namespace WebFrontEnd
             bundles.Add(new StyleBundle("~/Content/css").Include(
                 "~/components/bootstrap/docs/assets/css/bootstrap.css",
                 "~/components/bootstrap/docs/assets/css/bootstrap-responsive.css",
+                "~/components/font-awesome/build/assets/font-awesome/css/font-awesome.css",
                 "~/Content/site.css"));
 
             bundles.Add(new StyleBundle("~/Content/themes/base/css").Include(

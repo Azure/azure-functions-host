@@ -18,12 +18,12 @@ namespace WebFrontEnd.Controllers
     // Another benefit to HTML helpers is that is that the IDE doesn't find property references in CSHTML.
     public static class MoreHtmlHelpers
     {
-        public static HtmlString MenuLink(this HtmlHelper self, string name, string action, string controller)
+        public static HtmlString MenuLink(this HtmlHelper self, string name, string icon, string action, string controller)
         {
-            return MenuLink(self, name, action, controller, null);
+            return MenuLink(self, name, icon, action, controller, null);
         }
 
-        public static HtmlString MenuLink(this HtmlHelper self, string name, string action, string controller, object routeValues)
+        public static HtmlString MenuLink(this HtmlHelper self, string name, string icon, string action, string controller, object routeValues)
         {
             var url = new UrlHelper(self.ViewContext.RequestContext);
             RouteValueDictionary target;
@@ -38,14 +38,16 @@ namespace WebFrontEnd.Controllers
             target["action"] = action;
             target["controller"] = controller;
 
-            TagBuilder li = new TagBuilder("li");
-            TagBuilder a = new TagBuilder("a");
+            var li = new TagBuilder("li");
+            var a = new TagBuilder("a");
+            var i = new TagBuilder("i");
             if (SameRoute(target, self.ViewContext.RouteData.Values))
             {
                 li.AddCssClass("active");
             }
+            i.AddCssClass(icon);
             a.Attributes["href"] = url.RouteUrl(target);
-            a.SetInnerText(name);
+            a.InnerHtml = i.ToString(TagRenderMode.Normal) + " " + name;
             li.InnerHtml = a.ToString(TagRenderMode.Normal);
             return new HtmlString(li.ToString(TagRenderMode.Normal));
         }
