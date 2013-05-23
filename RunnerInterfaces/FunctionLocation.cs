@@ -104,7 +104,7 @@ namespace RunnerInterfaces
 
         public override string GetShortName()
         {
-            return this.TypeName + "." + this.MethodName;
+            return this.MethodName;
         }
     }
 
