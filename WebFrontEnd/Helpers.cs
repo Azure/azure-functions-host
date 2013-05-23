@@ -18,11 +18,21 @@ namespace WebFrontEnd.Controllers
     // Another benefit to HTML helpers is that is that the IDE doesn't find property references in CSHTML.
     public static class MoreHtmlHelpers
     {
+        /// <summary>
+        /// Renders an &lt;li&gt; tag containing a "Menu Item Link" which is a standard link that displays a marker indicating if its target is the current action.
+        /// </summary>
+        /// <param name="icon">The CSS class for an icon to use for the menu item</param>
+        /// <param name="name">The text to display for the link</param>
         public static HtmlString MenuLink(this HtmlHelper self, string name, string icon, string action, string controller)
         {
             return MenuLink(self, name, icon, action, controller, null);
         }
 
+        /// <summary>
+        /// Renders an &lt;li&gt; tag containing a "Menu Item Link" which is a standard link that displays a marker indicating if its target is the current action.
+        /// </summary>
+        /// <param name="icon">The CSS class for an icon to use for the menu item</param>
+        /// <param name="name">The text to display for the link</param>
         public static HtmlString MenuLink(this HtmlHelper self, string name, string icon, string action, string controller, object routeValues)
         {
             var url = new UrlHelper(self.ViewContext.RequestContext);
@@ -50,15 +60,6 @@ namespace WebFrontEnd.Controllers
             a.InnerHtml = i.ToString(TagRenderMode.Normal) + " " + name;
             li.InnerHtml = a.ToString(TagRenderMode.Normal);
             return new HtmlString(li.ToString(TagRenderMode.Normal));
-        }
-
-        private static bool SameRoute(RouteValueDictionary target, RouteValueDictionary routeValueDictionary)
-        {
-            var matches = target
-                .Where(pair => routeValueDictionary.ContainsKey(pair.Key) && Equals(pair.Value, routeValueDictionary[pair.Key]))
-                .Select(pair => pair.Key);
-            var mismatches = routeValueDictionary.Keys.Except(matches);
-            return !mismatches.Any();
         }
 
         public static MvcHtmlString TimeLapse(
@@ -171,10 +172,21 @@ namespace WebFrontEnd.Controllers
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                func.Location.GetShortName(),
+                func.Location.GetShorterName(),
                 "Index", "Function", 
                 new { func = func.ToString() }, 
                 null);
+        }
+
+        public static string GetShorterName(this FunctionLocation self)
+        {
+            var shortName = self.GetShortName();
+            var lastDotIndex = shortName.LastIndexOf('.');
+            if (lastDotIndex >= 0)
+            {
+                return shortName.Substring(lastDotIndex + 1);
+            }
+            return shortName;
         }
 
         public static MvcHtmlString FunctionFullNameLink(this HtmlHelper htmlHelper,
@@ -287,5 +299,16 @@ namespace WebFrontEnd.Controllers
             return MvcHtmlString.Create(p.ArgInvokeString);
         }
 
+        /// <summary>
+        /// Helper to check if two RouteValueDictionaries have the same values
+        /// </summary>
+        private static bool SameRoute(RouteValueDictionary target, RouteValueDictionary routeValueDictionary)
+        {
+            var matches = target
+                .Where(pair => routeValueDictionary.ContainsKey(pair.Key) && Equals(pair.Value, routeValueDictionary[pair.Key]))
+                .Select(pair => pair.Key);
+            var mismatches = routeValueDictionary.Keys.Except(matches);
+            return !mismatches.Any();
+        }
     }
 }
