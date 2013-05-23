@@ -10,7 +10,7 @@ namespace WebFrontEnd
         {
             bundles.Add(new ScriptBundle("~/bundles/js").Include(
                         "~/Scripts/jquery-{version}.js",
-                        "~/components/bootstrap/docs/assets/js/bootstrap.js"));
+                        "~/components/bootstrap/js/bootstrap.js"));
 
             bundles.Add(new ScriptBundle("~/bundles/jqueryui").Include(
                         "~/Scripts/jquery-ui-{version}.js"));
@@ -25,9 +25,9 @@ namespace WebFrontEnd
                         "~/Scripts/modernizr-*"));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
-                "~/components/bootstrap/docs/assets/css/bootstrap.css",
-                "~/components/bootstrap/docs/assets/css/bootstrap-responsive.css",
-                "~/components/font-awesome/build/assets/font-awesome/css/font-awesome.css",
+                "~/components/bootstrap/css/bootstrap.css",
+                "~/components/bootstrap/css/bootstrap-responsive.css",
+                "~/components/font-awesome/css/font-awesome.css",
                 "~/Content/site.css"));
 
             bundles.Add(new StyleBundle("~/Content/themes/base/css").Include(

@@ -15,10 +15,10 @@
 <div class="alert alert-info">
 @if (trigger.ListenOnBlobs)
 {
-    <text>This function is invoked automatically when a new input blob becomes available. </text>
+    <text>This function is invoked automatically when a new input blob becomes available.</text>
 } else if (trigger.TimerInterval != null)
 {
-    <text>This function is invoked automatically on a timer at frequency (@trigger.TimerInterval) </text>
+    <text>This function is invoked automatically on a timer at frequency (@trigger.TimerInterval)</text>
 } else 
 {
     <text>This function is not automatically invoked. You can invoke it explicitly via this webpage or via an HTTP RPC call.</text>
