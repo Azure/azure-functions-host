@@ -8,7 +8,7 @@
 }
 
 <div class="page-header">
-<h1>@Model.Descriptor.Location.GetShortName() <small>@Model.Descriptor.Description</small></h1>
+<h1>@Model.Descriptor.Location.GetShorterName() <small>@Model.Descriptor.Description</small></h1>
 <p>Last Updated: @Model.Descriptor.Timestamp</p>
 </div>
 
@@ -30,7 +30,7 @@
 {
     <div class="hero-unit call-unit" id="invoke-unit">
         <div id="invoke-unit-body">
-            <span id="invoke-unit-function">@(Model.Descriptor.Location.GetShortName())</span>
+            <span id="invoke-unit-function">@(Model.Descriptor.Location.GetShorterName())</span>
             @if(Model.Parameters.Length == 0) {
                 <text>()</text>
             } else {
