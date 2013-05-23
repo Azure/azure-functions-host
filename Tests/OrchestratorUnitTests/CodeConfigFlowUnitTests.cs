@@ -187,7 +187,7 @@ namespace OrchestratorUnitTests
                 var func = Get(typeof(Type6));
                 Assert.Fail("shouldn't succeed at registering missing parameter name.");
             }
-            catch (InvalidOperationException e)
+            catch (InvalidOperationException)
             {
             }            
         }

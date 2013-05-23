@@ -15,8 +15,7 @@ namespace Orchestrator
         // Containers to listen to, and timestamp of last poll
         // Use parallel arrays instead of dicts to allow update during enumeration
         CloudBlobContainer[] _containers;
-        DateTime[] _lastUpdateTimes;
-
+        
         public BlobListener2(IEnumerable<CloudBlobContainer> containers)
         {
             _containers = containers.ToArray();
