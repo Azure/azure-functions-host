@@ -17,7 +17,8 @@
     @foreach (var group in Model.Functions)
     {
         <tr>
-            <th colspan="6">@group.Key</th>
+            <th colspan="4">@group.Key</th>
+            <th>@Html.Partial("_RescanFunction", group.Key)</th>
         </tr>
         <tr>
             <th>Name</th>
@@ -25,6 +26,7 @@
             <th>Last Updated</th>
             <th>Description</th>
             <th>Location</th>
+            <th></th>
         </tr>
         foreach (var func in group)
         {
@@ -38,6 +40,5 @@
         }
     }
 
-        @*@Html.Partial("_RescanFunction", group.Key)*@
     </table>
 </div>
