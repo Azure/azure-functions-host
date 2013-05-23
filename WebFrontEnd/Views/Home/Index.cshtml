@@ -28,16 +28,17 @@ else
 <p>
 Status from roles (as of @now.ToLongTimeString()) :
 </p>
-<table border="1">
-
-    <tr>
-        <td>role</td>
-        <td>Current action</td>
-        <td>last update</td>
-        <td>node uptime</td>
-        <td>last cache reset</td>
-        <td>other</td>
-    </tr>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <td>Role</td>
+            <td>Current action</td>
+            <td>Last update</td>
+            <td>Node uptime</td>
+            <td>Last cache reset</td>
+            <td>Other</td>
+        </tr>
+    </thead>
 @foreach (var kv in Model.HealthStatus.Executors)
 {
     <tr>
