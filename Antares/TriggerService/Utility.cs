@@ -18,7 +18,7 @@ namespace TriggerService
         }
     }
 
-    public static partial class Utility
+    internal static partial class Utility
     {
         [DebuggerNonUserCode]
         public static bool DoesBlobExist(CloudBlob blob)

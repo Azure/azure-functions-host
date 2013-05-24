@@ -200,8 +200,6 @@ namespace TriggerService
                 // Invoke all these functions
                 foreach (BlobTrigger func in list)
                 {
-                    // !!! Does it match input?
-
                     CloudBlobPath firstInput = new CloudBlobPath(func.BlobInput);                    
 
                     var p = firstInput.Match(new CloudBlobPath(blob));
@@ -231,7 +229,7 @@ namespace TriggerService
         }
 
         // Return true if we should invoke the blob trigger
-        private static bool ShouldInvokeTrigger(CloudBlobClient client, BlobTrigger func, IDictionary<string, string> p, DateTime? inputTime)
+        private static bool ShouldInvokeTrigger(CloudBlobClient client, BlobTrigger func, IDictionary<string, string> nvc, DateTime? inputTime)
         {
             if (!inputTime.HasValue)
             {
@@ -242,7 +240,7 @@ namespace TriggerService
             foreach (var output in outputs)
             {
                 CloudBlobPath outputPath = new CloudBlobPath(output);
-                var outputPathResolved = outputPath.ApplyNames(p);
+                var outputPathResolved = outputPath.ApplyNames(nvc);
 
                 var outputContainer = client.GetContainerReference(outputPathResolved.ContainerName);
                 var outputBlob = outputContainer.GetBlobReference(outputPathResolved.BlobName);

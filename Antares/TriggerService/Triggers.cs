@@ -15,7 +15,7 @@ namespace TriggerService
     }
 
 
-    public static partial class Utility
+    internal static partial class Utility
     {
         // Hook to help deal with polymorphism. 
         public static Trigger[] DeserializeTriggerArray(string json)

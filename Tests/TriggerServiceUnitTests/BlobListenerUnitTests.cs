@@ -1,9 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
 using RunnerInterfaces;
+using TriggerService;
 
-namespace OrchestratorUnitTests
+
+namespace TriggerServiceUnitTests
 {
     [TestClass]
     public class BlobListenerTests
@@ -39,6 +41,16 @@ namespace OrchestratorUnitTests
             {
                 Assert.Fail("shouldn't retrigger the same blob");
             });            
+        }
+
+
+        // Set dev storage. These are well known values.
+        class TestStorage
+        {
+            public static CloudStorageAccount GetAccount()
+            {
+                return CloudStorageAccount.DevelopmentStorageAccount;
+            }
         }
     }
 }

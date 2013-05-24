@@ -31,6 +31,7 @@ namespace TriggerService
         }
     }
 
+    // In-memory 
     public class TriggerMap : ITriggerMap
     {
         Dictionary<string, Trigger[]> _storage = new Dictionary<string, Trigger[]>();

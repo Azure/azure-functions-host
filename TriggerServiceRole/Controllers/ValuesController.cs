@@ -4,8 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
+using TriggerService;
 
-namespace TriggerService
+namespace TriggerServiceRole.Controllers
 {
     public class ValuesController : ApiController
     {
@@ -22,9 +23,25 @@ namespace TriggerService
         }
 
         // POST api/values
-        public void Post(Trigger[] triggers)
+        public void Post(string callback)
         {
+            IFrontEndSharedState state = SharedState.GetState();
+
             // scope
+            // Trigger[] triggers
+
+            HttpClient c = new HttpClient();
+            HttpResponseMessage rsp = c.GetAsync(callback).Result;
+
+            string content = rsp.Content.ReadAsStringAsync().Result;
+            Trigger[] triggers = Read(content);
+
+            state.AddTriggers(callback, triggers);
+        }
+
+        private Trigger[] Read(string content)
+        {
+            throw new NotImplementedException();
         }
 
         // PUT api/values/5

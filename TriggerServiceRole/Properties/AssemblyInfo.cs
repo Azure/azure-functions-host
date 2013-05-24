@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("TriggerService")]
+[assembly: AssemblyTitle("TriggerServiceRole")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Microsoft IT")]
-[assembly: AssemblyProduct("TriggerService")]
+[assembly: AssemblyProduct("TriggerServiceRole")]
 [assembly: AssemblyCopyright("Copyright © Microsoft IT 2013")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("4b043e2c-93aa-40cf-9af3-6a845fb0ebb2")]
+[assembly: Guid("0c17234f-bb04-4017-84f0-fe48c2a73f41")]
 
 // Version information for an assembly consists of the following four values:
 //

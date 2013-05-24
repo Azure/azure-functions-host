@@ -1,7 +1,7 @@
 ﻿using System.Web;
 using System.Web.Optimization;
 
-namespace TriggerService
+namespace TriggerServiceRole
 {
     public class BundleConfig
     {
