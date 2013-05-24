@@ -59,6 +59,27 @@ namespace OrchestratorUnitTests
         }
 
         [TestMethod]
+        public void InvokeWithBlob()
+        {
+            CloudStorageAccount account = TestStorage.GetAccount();
+            Utility.DeleteContainer(account, "daas-test-input");
+            Utility.WriteBlob(account, "daas-test-input", "blob.csv", "0,1,2");
+
+            LocalExecutionContext context = new LocalExecutionContext(account, typeof(Program));
+            context.Call("FuncWithBlob");
+        }
+
+        [TestMethod]
+        public void InvokeWithMissingBlob()
+        {
+            CloudStorageAccount account = TestStorage.GetAccount();
+            Utility.DeleteContainer(account, "daas-test-input");
+
+            LocalExecutionContext context = new LocalExecutionContext(account, typeof(Program));
+            context.Call("FuncWithMissingBlob");
+        }
+
+        [TestMethod]
         public void InvokeWithParamsParser()
         {
             var account = TestStorage.GetAccount();
@@ -411,6 +432,67 @@ namespace OrchestratorUnitTests
                 Assert.AreEqual("abc", content);
 
                 output.Write("done");
+            }
+
+            [NoAutomaticTrigger]
+            public static void FuncWithBlob(
+                [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input\blob.csv")] Stream stream,
+                [BlobInput(@"daas-test-input\blob.csv")] IEnumerable<int> ints
+                )
+            {
+                Assert.IsNotNull(blob, "Unexpectedly null CloudBlob");
+                Assert.IsNotNull(stream, "Unexpectedly null Stream");
+                Assert.IsNotNull(ints, "Unexpectedly null IEnumerable<int>");
+
+                Assert.AreEqual("blob.csv", blob.Name);
+                string content = blob.DownloadText();
+                Assert.IsNotNull(content, "Unexpectedly null CloudBlob content");
+                string[] strings = content.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                Assert.AreEqual(3, strings.Length, "Unexpected number of entries in CloudBlob");
+                for (int i = 0; i < 3; ++i)
+                {
+                    int value;
+                    bool parsed = int.TryParse(strings[i], out value);
+                    Assert.IsTrue(parsed, "Unable to parse CloudBlob strings[{0}]: '{1}'", i, strings[i]);
+                    Assert.AreEqual(i, value, "Unexpected value in CloudBlob");
+                }
+
+                Assert.IsTrue(stream.CanRead, "Unable to read stream");
+                StreamReader reader = new StreamReader(stream);
+                content = reader.ReadToEnd();
+                Assert.IsNotNull(content, "Unexpectedly null Stream content");
+                strings = content.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                Assert.AreEqual(3, strings.Length, "Unexpected number of entries in Stream");
+                for (int i = 0; i < 3; ++i)
+                {
+                    int value;
+                    bool parsed = int.TryParse(strings[i], out value);
+                    Assert.IsTrue(parsed, "Unable to parse Stream strings[{0}]: '{1}'", i, strings[i]);
+                    Assert.AreEqual(i, value, "Unexpected value in Stream");
+                }
+
+                int count = 0;
+                foreach (int value in ints)
+                {
+                    Assert.AreEqual(count, value, "Unexpected value in IEnumerable<int>");
+                }
+
+                Assert.AreEqual(3, count, "Unexpected number of entries in IEnumerable<int>");
+            }
+
+            [NoAutomaticTrigger]
+            public static void FuncWithMissingBlob(
+                [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input\blob.csv")] Stream stream,
+                [BlobInput(@"daas-test-input\blob.csv")] TextReader reader,
+                [BlobInput(@"daas-test-input\blob.csv")] IEnumerable<int> ints
+                )
+            {
+                Assert.IsNull(blob, "Unexpectedly non-null CloudBlob");
+                Assert.IsNull(stream, "Unexpectedly non-null Stream");
+                Assert.IsNull(reader, "Unexpectedly non-null TextReader");
+                Assert.IsNull(ints, "Unexpectedly non-null IEnumerable<int>");
             }
 
             [NoAutomaticTrigger]

@@ -70,14 +70,6 @@ namespace RunnerHost
             }
 
             CloudBlob blob = this.Blob.GetBlob();
-
-            // Verify that blob exists. Give a friendly error up front.
-            if (IsInput && !Utility.DoesBlobExist(blob))
-            {
-                string msg = string.Format("Input blob is not found: {0}", blob.Uri);
-                throw new InvalidOperationException(msg);                    
-            }
-
             IBlobLeaseHolder _holder = BlobLeaseTestHook();
 
             if (useLease)

@@ -53,6 +53,14 @@ namespace RunnerHost
             string containerName = blob.Container.Name;
             string blobName = blob.Name;
 
+            // On input, special-case non-existent blob to provide the function with null regardless of the requested Type.
+            // $$$ May need to be extended when we improve value Type support.
+            if (isInput && !Utility.DoesBlobExist(blob))
+            {
+                string msg = string.Format("Input blob is not found: {0}", blob.Uri);
+                return new NullBindResult(msg);
+            }
+
             // Invoke the inner binder to create a cloud blob. 
             var inner = blobBinder.Bind(bindingContext, containerName, blobName, targetType);
             if (isInput)
