@@ -2,59 +2,43 @@
 @model OverviewModel
 @{
     ViewBag.Title = "Index";
+    var now = DateTime.UtcNow;
 }
 
-<h2>Dashboard</h2>
+<div class="page-header">
+<h1>Dashboard <small>Current status of the system</small></h1>
+</div>
 
-
-<h3>Administration commands</h3>
-<ul>
-    <li>@Html.ActionLink("List all registered functions", "ListAllFunctions")</li>    
-    <li>@Html.ActionLink("List all Cloud Binders", "ListAllBinders")</li>    
-    <li>Register a function from a 
-        @Html.ActionLink("Blob Container", "RegisterFunc") or at a 
-        @Html.ActionLink("Kudu site", "RegisterKuduFunc")
-    </li>
-    <li>@Html.ActionLink("Scan a blob container and execute functions", "RequestScan")</li>
-</ul>
-
-
-<h3>Health of service</h3>
-<p>        
-    [@Html.ActionLink("Summary of recent invokes", "Summary", "Log")]
-    [@Html.ActionLink("Log of recent invokes", "ListAllInstances", "Log")]
-
-Current queue depth for execution: 
-@if (Model.QueueDepth.HasValue)
-{
-    <b> @Model.QueueDepth.Value.ToString() </b>
-}
-else
-{
-    <span> Unknown</span>
-}    
-</p>
-
-    @{
-        var now = DateTime.UtcNow;
-    }
 <p>
-Status from roles (as of @now.ToLongTimeString()) :
+    Current queue depth for execution: 
+    @if (Model.QueueDepth.HasValue)
+    {
+        <b> @Model.QueueDepth.Value.ToString() </b>
+    }
+    else
+    {
+        <span> Unknown</span>
+    }    
+    </p>
 </p>
-<table border="1">
-
-    <tr>
-        <td>role</td>
-        <td>Current action</td>
-        <td>last update</td>
-        <td>node uptime</td>
-        <td>last cache reset</td>
-        <td>other</td>
-    </tr>
+<p>
+Status from roles (as of @now.ToLongTimeString() UTC) :
+</p>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Role</th>
+            <th>Current action</th>
+            <th>Last update</th>
+            <th>Node uptime</th>
+            <th>Last cache reset</th>
+            <th>Other</th>
+        </tr>
+    </thead>
 @foreach (var kv in Model.HealthStatus.Executors)
 {
-    <tr>
-        
+    var klass = kv.Value.FunctionInstanceId.HasValue ? "info" : "";
+    <tr class="@klass">
         <td>@kv.Key</td>
         <td>@Html.FunctionInstanceLogLink(kv.Value.FunctionInstanceId)</td>
         <td>@Html.TimeLapse(now, kv.Value.Heartbeat)</td>
@@ -67,8 +51,6 @@ Status from roles (as of @now.ToLongTimeString()) :
         </td>        
     </tr>    
 }
-
-<p>
     @{
         var orch = Model.HealthStatus.Orchestrator;
     }
@@ -83,15 +65,25 @@ Status from roles (as of @now.ToLongTimeString()) :
         <td></td>    
     </tr>
     }
-</p>
-
 </table>    
+
+<div class="btn-group">
+    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+        Recent Invokes
+        <span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu">
+        <li><a href="@Url.Action("Summary", "Log")">Summary</a></li>
+        <li><a href="@Url.Action("ListAllInstances", "Log")">Log</a></li>
+    </ul>
+</div>
+
 
 
 
 <h3>Configuration settings for service</h3>
-<table border="1">
-    <tr><td>Account name</td><td>@Model.AccountName</td></tr>
-    <tr><td>Execution</td><td>@Model.ExecutionSubstrate</td></tr>
-    <tr><td>version</td><td>@Model.VersionInformation</td></tr>
+<table class="table table-striped">
+    <tr><th>Account name</th><td>@Model.AccountName</td></tr>
+    <tr><th>Execution</th><td>@Model.ExecutionSubstrate</td></tr>
+    <tr><th>Version</th><td>@Model.VersionInformation</td></tr>
 </table>

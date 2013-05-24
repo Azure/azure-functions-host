@@ -2,27 +2,37 @@
     ViewBag.Title = "RegisterFunc";
 }
 
-<h2>RegisterFunc</h2>
-
-<p>1. Upload your assmeblies to an azure container.</p>
-<p>2. Specify the container here: </p>
-@using (Html.BeginForm("RegisterFuncSubmit", "Home"))
+<div class="page-header">
+    <h1>Register <small>a new function from an Azure Storage Container</small></h1>
+</div>
+<div>
+    <ol>
+    <li>Upload your assemblies to an Azure Storage Container.</li>
+    <li>Specify the container here: </li>
+    </ol>
+</div>
+@using (Html.BeginForm("RegisterFuncSubmit", "Home", FormMethod.Post, new { @class = "form-horizontal" }))
 {
-    <table>
-        <tr>
-            <td>Storage name:</td>
-            <td><input type="text" name="AccountName"/></td>
-        </tr>
-        <tr>
-            <td>Storage key:</td>
-            <td><input type="password" size="80" name="AccountKey"/></td>
-        </tr>
-        <tr>
-            <td>Container name:</td>
-            <td><input type="text" size="80" name="ContainerName"/></td>
-        </tr>        
-    </table>
+    <div class="control-group">
+        <label class="control-label" for="AccountName">Account Name:</label>
+        <div class="controls">
+            <input type="text" name="AccountName" placeholder="Azure Storage Account Name"/>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="AccountKey">Account Key:</label>
+        <div class="controls">
+            @* Account keys are long and random and difficult to check. Password field is unnecessary here *@
+            <input type="text" name="AccountKey" placeholder="Azure Storage Account Key"/>
+        </div>
+    </div>
+    <div class="control-group">
+        <label class="control-label" for="AccountName">Container Name:</label>
+        <div class="controls">
+            <input type="text" name="ContainerName" placeholder="Name of the container"/>
+        </div>
+    </div>
     <p>
-    <input type="submit" value="Register function" />
+    <button type="submit" class="btn btn-primary"><i class="icon-cloud-upload"></i> Register</button>
     </p>
 }

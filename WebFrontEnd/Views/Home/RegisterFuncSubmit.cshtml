@@ -4,10 +4,8 @@
     ViewBag.Title = "RegisterFuncSubmit";
 }
 
-<h2>RegisterFuncSubmit</h2>
-
-<p>Queued registration for functions in account=@Model.AccountName , container = @Model.ContainerName</p>
+<div class="page-title">
+<h1>Queued Registration <smal>for functions in @Model.AccountName/@Model.ContainerName</smal></h1>
+</div>
 
 <p>Check URI for indexing results: <a href="@Model.Writeback">@Model.Writeback</a></p>
-
-<p>[ @Html.ActionLink("List of registered functions", "ListAllFunctions") ] </p>

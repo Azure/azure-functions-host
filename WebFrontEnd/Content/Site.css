@@ -1,61 +1,40 @@
-﻿body {
-    font-size: .85em;
-    font-family: "Segoe UI", Verdana, Helvetica, Sans-Serif;
-    color: #232323;
-    background-color: #fff;
+﻿div.call-unit {
+    padding: 30px;
 }
 
-header, footer, nav, section {
-    display: block;
+div.call-unit form {
+    margin: 0;
 }
 
-
-/* Styles for basic forms
------------------------------------------------------------*/
-fieldset {
-    border: 1px solid #ddd;
-    padding: 0 1.4em 1.4em 1.4em;
-    margin: 0 0 1.5em 0;
+div.call-unit div.control-group {
+    margin: 0;
 }
 
-legend {
-    font-size: 1.2em;
+div.call-unit .control-label {
+    width: 80px;
+}
+
+div.call-unit .controls {
+    margin-left: 85px;
+}
+
+div.call-unit .call-unit-commands {
+    margin-top: 1em;
+}
+
+div#invoke-unit #invoke-unit-function {
+    font-size: 31.5px;
     font-weight: bold;
+    color: black;
+    text-rendering: optimizeLegibility;
 }
 
-textarea {
-    min-height: 75px;
+div#invoke-unit #invoke-unit-body {
+    font-size: 17.5px;
+    color: #999999;
+    line-height: 1;
 }
 
-.editor-label {
-    margin: 1em 0 0 0;
-}
-
-.editor-field {
-    margin: 0.5em 0 0 0;
-}
-
-
-/* Styles for validation helpers
------------------------------------------------------------*/
-.field-validation-error {
-    color: #f00;
-}
-
-.field-validation-valid {
-    display: none;
-}
-
-.input-validation-error {
-    border: 1px solid #f00;
-    background-color: #fee;
-}
-
-.validation-summary-errors {
-    font-weight: bold;
-    color: #f00;
-}
-
-.validation-summary-valid {
-    display: none;
+div#invoke-unit #invoke-unit-params {
+    margin-top: 10px;
 }

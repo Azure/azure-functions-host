@@ -4,10 +4,8 @@
     ViewBag.Title = "DeleteFuncSubmit";
 }
 
-<h2>RegisterFuncSubmit</h2>
-
-<p>Queued deletion for functions @Model.FunctionToDelete</p>
-
+<div class="page-title">
+<h1>Queued Deletion</h1>
+</div>
+<p>Queued Deletion of @Model.FunctionToDelete</p>
 <p>Check URI for indexing results: <a href="@Model.Writeback">@Model.Writeback</a></p>
-
-<p>[ @Html.ActionLink("List of registered functions", "ListAllFunctions") ] </p>

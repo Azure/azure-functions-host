@@ -1,2 +1,24 @@
-﻿
-@Html.ActionLink("[Home]", "Index", "Home") <span>UTC time: @DateTime.UtcNow </span>
+﻿<div class="navbar">
+    <div class="navbar-inner">
+        <div class="container">
+            <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <ul class="nav pull-right">
+                <li><a title="Log Out" href="@Url.Action("Logout", "Account")"><i class="icon-signout"></i><span class="hidden-phone"> Log Out</span></a></li>
+            </ul>
+            <p class="navbar-text pull-right visible-desktop">Server time: @DateTime.UtcNow</p>
+            <a class="brand" href="@Url.Action("Index", "Home")">SimpleBatch</a>
+            <div class="nav-collapse collapse">
+                <ul class="nav">
+                    @Html.MenuLink("Home", icon: "icon-home", action: "Index", controller: "Home")
+                    @Html.MenuLink("Functions", icon: "icon-cogs", action: "ListAllFunctions", controller: "Home")
+                    @Html.MenuLink("Cloud Binders", icon: "icon-magnet", action: "ListAllBinders", controller: "Home")
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

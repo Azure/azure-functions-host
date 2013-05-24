@@ -1,16 +1,19 @@
 ﻿@using WebFrontEnd.Controllers
 @model LogOnViewModel
 @{
+    Layout = "~/Views/Shared/_TopLayout.cshtml";
     ViewBag.Title = "LogOn";
 }
 
-<h2>Log On</h2>
-
-<p>Ask Mike for credentials. </p>
-
+<div class="container-fluid">
 @using (Html.BeginForm())
 {
-    @Html.ValidationSummary()
-    @Html.EditorForModel()
-    <input type="submit" value = "Log in" />                             
+    <fieldset>
+        <legend>Log On</legend>
+        <p>Ask Mike for credentials</p>
+        @Html.ValidationSummary()
+        @Html.EditorForModel()
+        <input class="btn btn-primary" type="submit" value = "Log in" />                             
+    </fieldset>
 }
+</div>

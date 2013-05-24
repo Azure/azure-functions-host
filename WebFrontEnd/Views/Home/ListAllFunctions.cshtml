@@ -5,40 +5,41 @@
     ViewBag.Title = "ListAllFunctions";
 }
 
-<h2>ListAllFunctions</h2>
+<div class="page-header">
+    <div class="pull-right">
+        <a class="btn btn-primary" href="@Url.Action("RegisterFunc", "Home")"><i class="icon-plus"></i> Register a new Function</a>
+    </div>
 
-<p>List of functions registered with system:</p>
+    <h1>Functions <small>A list of all functions registered with the system</small></h1>
+</div>
 
-
-<p>[ @Html.ActionLink("Register new function", "RegisterFunc") ] 
-    [ @Html.ActionLink("List all Cloud Binders", "ListAllBinders") ]
-</p>
-
-@foreach (var group in Model.Functions)
-{
-    <h2>@group.Key</h2>
-    @Html.Partial("_RescanFunction", group.Key)
-    <h3>Functions</h3>
-    <table border="1">
-    <tr>
-        <td>Name</td>
-        <td>Commands</td>
-        <td>Location</td>
-        <td>last updated</td>
-        <td>Description</td>
-        <td>Flow</td>
-    </tr>
-    @foreach (var func in group)
+<div>
+    <table class="table">
+    @foreach (var group in Model.Functions)
     {
         <tr>
-            <td>@Html.FunctionLogLink(func)</td>
-            <td>@Html.Partial("_DeleteFunction", func)</td>
-            <td>@func.Location.GetId()</td>
-            <td>@func.Description</td>
-            <td>@func.Flow</td>
+            <th colspan="4">@group.Key</th>
+            <th>@Html.Partial("_RescanFunction", group.Key)</th>
         </tr>
+        <tr>
+            <th>Name</th>
+            <th>Commands</th>
+            <th>Last Updated</th>
+            <th>Description</th>
+            <th>Location</th>
+            <th></th>
+        </tr>
+        foreach (var func in group)
+        {
+            <tr>
+                <td>@Html.FunctionLogLink(func)</td>
+                <td>@Html.Partial("_DeleteFunction", func)</td>
+                <td>@func.Timestamp</td>
+                <td>@func.Description</td>
+                <td>@func.Location.GetId()</td>
+            </tr>
+        }
     }
+
     </table>
-}
-
-
+</div>
