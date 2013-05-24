@@ -2,20 +2,43 @@
 @using Executor
 @model ExecutionInstanceLogEntity
 
-  @{
-        string color = null;
-        switch (Model.GetStatus())
-        { 
-            case FunctionInstanceStatus.CompletedFailed:
-                color = "red"; break;
-            case FunctionInstanceStatus.CompletedSuccess:
-                color = "green"; break;
-            case FunctionInstanceStatus.Running:
-                color = "blue"; break;
-                // don't colorize others.                 
-        }       
-}        
-
-<font color="@color">
+@{
+    string labelClass = null;
+    string descClass = null;
+    string labelText = null;
+    switch (Model.GetStatus())
+    { 
+        case FunctionInstanceStatus.CompletedFailed:
+            labelClass = "label-important";
+            descClass = "text-error";
+            labelText = "Failed";
+            break;
+        case FunctionInstanceStatus.CompletedSuccess:
+            labelClass = "label-success";
+            descClass = "text-success";
+            labelText = "Success";
+            break;
+        case FunctionInstanceStatus.Running:
+            labelClass = "label-info";
+            descClass = "text-info";
+            labelText = "Running";
+            break;
+        case FunctionInstanceStatus.Queued:
+            labelText = "Queued";
+            labelClass = "label-inverse";
+            break;
+        case FunctionInstanceStatus.AwaitingPrereqs:
+            labelText = "Awaiting Prerequisites";
+            labelClass = "label-inverse";
+            break;
+            // don't colorize others.                 
+    }       
+}
+<td>
+    @if(!String.IsNullOrEmpty(labelText)) {
+        <span class="label @labelClass">@labelText</span>
+    }
+</td>
+<td class="@descClass">
     @Model.GetRunStatusString()
-</font>
+</td>

@@ -2,37 +2,37 @@
 @using Executor
 @model LogIndexModel
 @{
-    ViewBag.Title = "ListFunctionInstances";
+    ViewBag.Title = "Function Invocation Log";
 }
 
-<h2>Log of recently executed functions</h2>
+<div class="page-header">
+<div class="pull-right">
+    <a class="btn" href="@Url.Action("GetChargebackLog")"><i class="icon-cloud-download"></i> Download Chargeback Log</a>
+</div>
+<h1>Invocation Log <small>@Model.Description</small></h1>
+</div>
 
-<p>
-[@Html.ActionLink("Home", "Index", "Home") ]
-[@Html.ActionLink("Summary of count of invocations per function type", "Summary")]
-[@Html.ActionLink("Chargeback log", "GetChargebackLog")]
-</p>
-
-<p>
-    <b>@Model.Description</b>
-</p>
-
-<table border="1">
-    <tr>
-        <td>Name</td>
-        <td>Status</td>
-        <td>output</td>
-    </tr>
-    @foreach(var log in Model.Logs)
-    {
-        <tr>
-            <td>                   
-                @Html.FunctionInstanceLogLinkVerbose(log)
-            </td>
-            <td>
-                @Html.Partial("_FunctionStatus", log)
-            </td>             
-            <td>@Html.FunctionOutputLink(log)</td>
-        </tr>
-    }
-</table>
+@if(Model.Logs.Any()) {
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Status Detail</th>
+                <th>Output</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var log in Model.Logs)
+            {
+                <tr>
+                    <td>@Html.FunctionInstanceLogLinkVerbose(log)</td>
+                    @Html.Partial("_FunctionStatus", log)
+                    <td>@Html.FunctionOutputLink(log)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+} else {
+    <p class="alert alert-info">The invocation log is empty</p>
+}

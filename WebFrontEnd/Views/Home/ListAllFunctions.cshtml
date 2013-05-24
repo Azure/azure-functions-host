@@ -13,7 +13,7 @@
     <h1>Functions <small>A list of all functions registered with the system</small></h1>
 </div>
 
-<div>
+@if(Model.Functions.Any()) {
     <table class="table">
     @foreach (var group in Model.Functions)
     {
@@ -42,4 +42,6 @@
     }
 
     </table>
-</div>
+} else {
+    <p class="alert alert-info">There are no functions registered in the system.</p>
+}
