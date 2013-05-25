@@ -25,7 +25,7 @@ namespace TriggerServiceRole.Controllers
         // POST api/values
         public void Post(string callback)
         {
-            IFrontEndSharedState state = SharedState.GetState();
+            IFrontEndSharedState state = new FrontEnd();
 
             // scope
             // Trigger[] triggers
@@ -33,10 +33,10 @@ namespace TriggerServiceRole.Controllers
             HttpClient c = new HttpClient();
             HttpResponseMessage rsp = c.GetAsync(callback).Result;
 
-            string content = rsp.Content.ReadAsStringAsync().Result;
-            Trigger[] triggers = Read(content);
+            var rawTriggers = rsp.Content.ReadAsAsync<TriggerRaw[]>().Result;
+            //var triggers = Trigger.FromWire(rawTriggers).ToArray();
 
-            state.AddTriggers(callback, triggers);
+            state.AddTriggers(callback, rawTriggers);
         }
 
         private Trigger[] Read(string content)
@@ -50,8 +50,9 @@ namespace TriggerServiceRole.Controllers
         }
 
         // DELETE api/values/5
-        public void Delete(int id)
+        public void Delete(string callback)
         {
+
         }
     }
 }

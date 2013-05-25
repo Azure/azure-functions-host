@@ -7,77 +7,18 @@ using Newtonsoft.Json;
 
 namespace TriggerService
 {
-    public enum TriggerType
-    {
-        Blob,
-        Queue,
-        Timer
-    }
-
-
     internal static partial class Utility
     {
         // Hook to help deal with polymorphism. 
         public static Trigger[] DeserializeTriggerArray(string json)
         {
             var ts2 = JsonConvert.DeserializeObject<TriggerRaw[]>(json);
-            Trigger[] ts3 = Array.ConvertAll(ts2, x => x.Convert());
+            Trigger[] ts3 = Array.ConvertAll(ts2, x => Trigger.FromWire(x));
             return ts3;
         }
     }
 
-    // Serialization helper to deal with polymorphism.
-    // $$$ Is there some Json.Net hook to make this go away?
-    public class TriggerRaw
-    {
-        // Invoke this path when the trigger fires 
-        public string CallbackPath { get; set; }
-        public string AccountConnectionString { get; set; } // $$$
-
-        public TriggerType Type { get; set; }
-
-        // Blob path
-        public string BlobInput { get; set; }
-        public string BlobOutput { get; set; }
-
-
-        // Queue 
-        public string QueueName { get; set; }
-
-        // Timer
-        public TimeSpan Interval { get; set; }
-
-        public Trigger Convert()
-        {
-            switch (this.Type)
-            {
-                case TriggerType.Blob:
-                    return new BlobTrigger
-                    {
-                        CallbackPath = this.CallbackPath,
-                        AccountConnectionString = this.AccountConnectionString,
-                        BlobInput = this.BlobInput,
-                        BlobOutput = this.BlobOutput
-                    };
-                case TriggerType.Queue:
-                    return new QueueTrigger
-                    {
-                        CallbackPath = this.CallbackPath,
-                        AccountConnectionString = this.AccountConnectionString,
-                        QueueName = this.QueueName
-                    };
-                case TriggerType.Timer:
-                    return new TimerTrigger
-                    {
-                        CallbackPath = this.CallbackPath,
-                        AccountConnectionString = this.AccountConnectionString,
-                        Interval = this.Interval
-                    };
-                default:
-                    throw new InvalidOperationException("Unknown Trigger type:" + this.Type);
-            }
-        }
-    }
+   
 
     // $$$ Blob listener, Queue listener, Cron?
     public abstract class Trigger
@@ -92,6 +33,42 @@ namespace TriggerService
         public string AccountConnectionString { get; set; }
 
         public TriggerType Type { get; set; }
+
+        public static IEnumerable<Trigger> FromWire(IEnumerable<TriggerRaw> raw)
+        {
+            return from x in raw select FromWire(x);
+        }
+
+        public static Trigger FromWire(TriggerRaw raw)
+        {
+            switch (raw.Type)
+            {
+                case TriggerType.Blob:
+                    return new BlobTrigger
+                    {
+                        CallbackPath = raw.CallbackPath,
+                        AccountConnectionString = raw.AccountConnectionString,
+                        BlobInput = raw.BlobInput,
+                        BlobOutput = raw.BlobOutput
+                    };
+                case TriggerType.Queue:
+                    return new QueueTrigger
+                    {
+                        CallbackPath = raw.CallbackPath,
+                        AccountConnectionString = raw.AccountConnectionString,
+                        QueueName = raw.QueueName
+                    };
+                case TriggerType.Timer:
+                    return new TimerTrigger
+                    {
+                        CallbackPath = raw.CallbackPath,
+                        AccountConnectionString = raw.AccountConnectionString,
+                        Interval = raw.Interval.Value
+                    };
+                default:
+                    throw new InvalidOperationException("Unknown Trigger type:" + raw.Type);
+            }
+        }
     }
 
     public class BlobTrigger : Trigger

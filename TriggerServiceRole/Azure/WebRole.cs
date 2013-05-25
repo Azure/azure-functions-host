@@ -19,7 +19,6 @@ namespace TriggerServiceRole
     {
         public override bool OnStart()
         {
-
             Work();
             return base.OnStart();
         }
@@ -27,105 +26,47 @@ namespace TriggerServiceRole
         private void Work()
         {
             // RoleEnvironment.GetConfigurationSettingValue("Storage");
-            CloudStorageAccount account = CloudStorageAccount.DevelopmentStorageAccount;
-            CloudBlobClient client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference("triggerservice");
-            CloudBlob blob = container.GetBlobReference("store.txt");
-
-            SharedState.Init(blob);
+            var state = new SharedState(new TriggerConfig());
+            state.Work();
         }
     }
 
 
 
-    // Between front-end (HTTP listeners) and back-end (WorkerRole)
-    // Accessed from multiple threads!
-
-    // These methods on state can be accessed by front-end HTTP listeners, and so can come in on any thread. 
-    public interface IFrontEndSharedState
-    {
-        void AddTriggers(string scope, Trigger[] triggers);
-
-        string GetLog();
-    }
-
-    public class SharedState : IFrontEndSharedState
+    public class SharedState
     {
         volatile static SharedState _value;
 
-
-        public ITriggerMap _innerMap;
         public CloudBlob _blob; // where map is persisted.
 
         StringWriter _stringWriter; // underlying backing storage
         TextWriter _writer; // threadsafe access
 
-        public static void Init(CloudBlob blob)
+        CloudQueue _requestQ;
+
+        public SharedState(TriggerConfig config)
         {
-            SharedState state = new SharedState
-            {
-                _blob = blob,
-            };
-            state._innerMap = state.Load();
+            CloudBlobClient client = config.GetAccount().CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference("triggerservice");
+            container.CreateIfNotExist();
+            CloudBlob blob = container.GetBlobReference("store.txt");
+                        
+            _blob = blob;
 
-            state._stringWriter = new StringWriter();
-            state._writer = TextWriter.Synchronized(state._stringWriter);
+            _requestQ = config.GetDeltaQueue();
 
-            // this publishes the storage; now other threads can access it. 
-            _value = state;
+            _stringWriter = new StringWriter();
+            _writer = TextWriter.Synchronized(_stringWriter);
         }
 
-        // Called from any thread.
-        public static IFrontEndSharedState GetState()
-        {
-            var x = _value;
-            if (x == null)
-            {
-                // If not available yet, then fail with Server not ready. 
-                throw new HttpException(503, "Server is not yet initialized. Try again later");
-            }
-            return x;
-        }
 
-        string IFrontEndSharedState.GetLog()
-        {
-            // !! Thread safety?
-            var x = _stringWriter.ToString();
-            return x;
-        }
-
-        // Called by HTTP front-ends when receiving new triggers
-        void IFrontEndSharedState.AddTriggers(string scope, Trigger[] triggers)
-        {
-            lock (this)
-            {
-                _innerMap = Load();
-                _innerMap.AddTriggers(scope, triggers);
-                Save();
-            }
-
-            // Main thread notice the changes in between polls.             
-        }
+       
 
         // Called under a lock. 
-        private void Save()
+        private void Save(ITriggerMap map)
         {
-            string content = JsonConvert.SerializeObject(_innerMap, JsonCustom.SerializerSettings);
+            string content = JsonConvert.SerializeObject(map, JsonCustom.SerializerSettings);
             _blob.UploadText(content);
-        }
-
-        [DebuggerNonUserCode]
-        static string GetBlobContents(CloudBlob blob)
-        {
-            try
-            {
-                string content = blob.DownloadText();
-                return content;
-            }
-            catch
-            {
-                return null; // not found
-            }
         }
 
         private ITriggerMap Load()
@@ -142,29 +83,64 @@ namespace TriggerServiceRole
             }
         }
 
+        [DebuggerNonUserCode]
+        static string GetBlobContents(CloudBlob blob)
+        {
+            try
+            {
+                string content = blob.DownloadText();
+                return content;
+            }
+            catch
+            {
+                return null; // not found
+            }
+        }
 
         public void Work()
         {
+            var q = this._requestQ;
+
+            ITriggerMap map = Load();
+                        
             Listener l = null;
+            bool resetListner = false;
+
             while (true)
             {
-                ITriggerMap map = null;
-                lock (this)
+                // Apply any changes.            
+                while (true)
                 {
-                    if (_innerMap != null)
+                    var msg = q.GetMessage();
+                    if (msg == null)
                     {
-                        // Rebuild the listener
-                        map = _innerMap;
-                        _innerMap = null;
-                        l = null;
+                        break;
                     }
+                    var payload = JsonConvert.DeserializeObject<AddTriggerPayload>(msg.AsString);
+                    var triggers = Trigger.FromWire(payload.Triggers).ToArray();
+                    
+                    // Assumes single-threaded
+                    map.AddTriggers(payload.Scope, triggers);
+                    Save(map);
+                    resetListner = true;
+
+                    q.DeleteMessage(msg);
+                }
+
+                if (resetListner)
+                {
+                    if (l != null)
+                    {
+                        l.Dispose();
+                    }
+                    l = null;
                 }
 
                 if (l == null)
                 {
-                    var logger = new WebInvokeLogger();
-                    l = new Listener(map, logger);
+                    l = new Listener(map, new WebInvoke ());
                 }
+
 
                 l.Poll();
                 Thread.Sleep(2 * 1000);

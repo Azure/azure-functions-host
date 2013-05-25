@@ -11,45 +11,6 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace TriggerService
 {
-    public class WebInvoke : ITriggerInvoke
-    {
-        public void OnNewTimer(TimerTrigger func, CancellationToken token)
-        {
-            Post(func.CallbackPath, token);
-        }
-
-        public void OnNewBlob(CloudBlob blob, BlobTrigger func, CancellationToken token)
-        {
-            // $$$ Have to provide the blob name. Do it as NVC?
-            Post(func.CallbackPath, token);
-        }
-
-        public void OnNewQueueItem(CloudQueueMessage msg, QueueTrigger func, CancellationToken token)
-        {
-            byte[] contents = msg.AsBytes;
-            Post(func.CallbackPath, token, contents);
-        }
-
-        private void Post(string url, CancellationToken token, byte[] contents = null)
-        {
-            if (contents == null)
-            {
-                contents = new byte[0];
-            }
-
-            try
-            {
-                HttpClient c = new HttpClient();
-                var result = c.PostAsync(url, new ByteArrayContent(contents), token);
-                HttpResponseMessage response = result.Result;
-            }
-            catch
-            {
-                // $$$ What ot do about errors? Bad user URL?
-            }
-        }
-    }
-
     public class Listener : IDisposable
     {
         private readonly ITriggerInvoke _invoker;
@@ -260,12 +221,6 @@ namespace TriggerService
             return false;
         }
 
-
-        private void CheckTime(CloudBlob input, CloudBlob output)
-        {
-
-        }
-
         // Listen for all queue results.
         private void PollQueues(CancellationToken token)
         {
@@ -281,7 +236,7 @@ namespace TriggerService
                     continue;
                 }
 
-                // $$$ What if job takes longer. Call CloudQueue.UpdateMessage
+                // What if job takes longer. Call CloudQueue.UpdateMessage
                 var visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
                 var msg = queue.GetMessage(visibilityTimeout);
                 if (msg != null)
@@ -291,11 +246,11 @@ namespace TriggerService
                         token.ThrowIfCancellationRequested();
 
                         _invoker.OnNewQueueItem(msg, func, token);
-
-                        // $$$ Need to call Delete message only if function succeeded. 
-                        // and that gets trickier when we have multiple funcs listening. 
-                        queue.DeleteMessage(msg);
                     }
+
+                    // Need to call Delete message only if function succeeded. 
+                    // and that gets trickier when we have multiple funcs listening. 
+                    queue.DeleteMessage(msg);
                 }
             }
         }

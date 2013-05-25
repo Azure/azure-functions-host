@@ -78,8 +78,10 @@
     <Compile Include="Listener.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TriggerMap.cs" />
+    <Compile Include="TriggerRaw.cs" />
     <Compile Include="Triggers.cs" />
     <Compile Include="Utility.cs" />
+    <Compile Include="WebInvoke.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

@@ -11,11 +11,11 @@ namespace TriggerServiceRole.Controllers
     {
         public ActionResult Index()
         {
-            IFrontEndSharedState state = SharedState.GetState();
+            //IFrontEndSharedState state = SharedState.GetState();
 
             var model = new HomeModel
             {
-                Log = state.GetLog()
+                Log = "bong"
             };
 
             return View(model);
