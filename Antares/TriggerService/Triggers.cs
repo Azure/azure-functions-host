@@ -7,19 +7,6 @@ using Newtonsoft.Json;
 
 namespace TriggerService
 {
-    internal static partial class Utility
-    {
-        // Hook to help deal with polymorphism. 
-        public static Trigger[] DeserializeTriggerArray(string json)
-        {
-            var ts2 = JsonConvert.DeserializeObject<TriggerRaw[]>(json);
-            Trigger[] ts3 = Array.ConvertAll(ts2, x => Trigger.FromWire(x));
-            return ts3;
-        }
-    }
-
-   
-
     // $$$ Blob listener, Queue listener, Cron?
     public abstract class Trigger
     {
@@ -34,12 +21,12 @@ namespace TriggerService
 
         public TriggerType Type { get; set; }
 
-        public static IEnumerable<Trigger> FromWire(IEnumerable<TriggerRaw> raw)
+        public static IEnumerable<Trigger> FromWire(IEnumerable<TriggerRaw> raw, Credentials credentials)
         {
-            return from x in raw select FromWire(x);
+            return from x in raw select FromWire(x, credentials);
         }
 
-        public static Trigger FromWire(TriggerRaw raw)
+        public static Trigger FromWire(TriggerRaw raw, Credentials credentials)
         {
             switch (raw.Type)
             {
@@ -47,7 +34,7 @@ namespace TriggerService
                     return new BlobTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = raw.AccountConnectionString,
+                        AccountConnectionString = credentials.AccountConnectionString,
                         BlobInput = raw.BlobInput,
                         BlobOutput = raw.BlobOutput
                     };
@@ -55,14 +42,14 @@ namespace TriggerService
                     return new QueueTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = raw.AccountConnectionString,
+                        AccountConnectionString = credentials.AccountConnectionString,
                         QueueName = raw.QueueName
                     };
                 case TriggerType.Timer:
                     return new TimerTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = raw.AccountConnectionString,
+                        AccountConnectionString = credentials.AccountConnectionString,
                         Interval = raw.Interval.Value
                     };
                 default:

@@ -16,25 +16,25 @@ namespace TriggerServiceRole
     // These methods on state can be accessed by front-end HTTP listeners, and so can come in on any thread. 
     public interface IFrontEndSharedState
     {
-        void AddTriggers(string scope, TriggerRaw[] triggers);
+        void AddTriggers(string scope, AddTriggerPayload triggers);
 
         string GetLog();
     }
 
 
-    class AddTriggerPayload
+    class AddTriggerQueuePayload
     {
         public string Scope { get; set; }
-        public TriggerRaw[] Triggers { get; set; }
+        public AddTriggerPayload Triggers { get; set; }
     }
 
     public class FrontEnd : IFrontEndSharedState
     {
         TriggerConfig _config = new TriggerConfig();
 
-        public void AddTriggers(string scope, TriggerRaw[] triggers)
+        public void AddTriggers(string scope, AddTriggerPayload triggers)
         {
-            var payload = new AddTriggerPayload 
+            var payload = new AddTriggerQueuePayload 
             { 
                 Scope = scope,
                 Triggers = triggers

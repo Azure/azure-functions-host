@@ -35,8 +35,6 @@ namespace TriggerServiceRole
 
     public class SharedState
     {
-        volatile static SharedState _value;
-
         public CloudBlob _blob; // where map is persisted.
 
         StringWriter _stringWriter; // underlying backing storage
@@ -116,8 +114,9 @@ namespace TriggerServiceRole
                     {
                         break;
                     }
-                    var payload = JsonConvert.DeserializeObject<AddTriggerPayload>(msg.AsString);
-                    var triggers = Trigger.FromWire(payload.Triggers).ToArray();
+                    var payload = JsonConvert.DeserializeObject<AddTriggerQueuePayload>(msg.AsString);
+                    var x = payload.Triggers;
+                    var triggers = Trigger.FromWire(x.Triggers, x.Credentials).ToArray();
                     
                     // Assumes single-threaded
                     map.AddTriggers(payload.Scope, triggers);

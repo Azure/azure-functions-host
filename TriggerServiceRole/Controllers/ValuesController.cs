@@ -33,10 +33,10 @@ namespace TriggerServiceRole.Controllers
             HttpClient c = new HttpClient();
             HttpResponseMessage rsp = c.GetAsync(callback).Result;
 
-            var rawTriggers = rsp.Content.ReadAsAsync<TriggerRaw[]>().Result;
+            var payload = rsp.Content.ReadAsAsync<AddTriggerPayload>().Result;
             //var triggers = Trigger.FromWire(rawTriggers).ToArray();
 
-            state.AddTriggers(callback, rawTriggers);
+            state.AddTriggers(callback, payload);
         }
 
         private Trigger[] Read(string content)
