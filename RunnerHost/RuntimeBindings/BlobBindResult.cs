@@ -57,8 +57,7 @@ namespace RunnerHost
             // $$$ May need to be extended when we improve value Type support.
             if (isInput && !Utility.DoesBlobExist(blob))
             {
-                string msg = string.Format("Input blob is not found: {0}", blob.Uri);
-                return new NullBindResult(msg);
+                return new NullBindResult("Input blob was not found");
             }
 
             // Invoke the inner binder to create a cloud blob. 
