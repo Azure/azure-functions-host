@@ -14,3 +14,4 @@ csx
 
 /CloudBinders/PrivateBinderList.csv
 /PublicDownload/Binaries
+*.azurePubXml

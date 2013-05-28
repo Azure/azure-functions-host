@@ -3,6 +3,8 @@
   <WorkerRole name="ExecutionRole" vmsize="ExtraSmall">
     <Imports>
       <Import moduleName="Diagnostics" />
+      <Import moduleName="RemoteAccess" />
+      <Import moduleName="RemoteForwarder" />
     </Imports>
     <LocalResources>
       <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
@@ -10,7 +12,6 @@
     <ConfigurationSettings>
       <Setting name="MainStorage" />
       <Setting name="StatsTrackerUrl" />
-      
       <!-- Set to "true" to have the execution worker roles pause on startup. -->
       <Setting name="PauseWorker" />
     </ConfigurationSettings>
@@ -18,6 +19,7 @@
   <WorkerRole name="OrchestratorRole" vmsize="ExtraSmall">
     <Imports>
       <Import moduleName="Diagnostics" />
+      <Import moduleName="RemoteAccess" />
     </Imports>
     <Endpoints>
       <!-- Must define an endpoint in order to discover other roles -->
@@ -31,14 +33,12 @@
       <!-- Backpointer to the URL for the WebFront end. This URL gets used when queuing functions 
       so that functions can communicate with the service -->
       <Setting name="WebRoleEndpoint" />
-
       <!-- Set the execution substrate. Should be either:
        WorkerRoles - function executed via the ExecutionRole instances
        Antares - function executed via an antares site. Set "AntaresWorkerUrl" config
        AzureTasks - function executed via azure tasks. Set the "AzureTask*" configs
       -->
       <Setting name="ExecutionType" />
-      
       <!-- For Azure Task Config 
       Key is secret. Poolname was precreated. 
       -->
@@ -46,7 +46,6 @@
       <Setting name="AzureTaskAccountName" />
       <Setting name="AzureTaskKey" />
       <Setting name="AzureTaskPoolName" />
-      
       <!-- For antares IQueueFunction -->
       <Setting name="AntaresWorkerUrl" />
     </ConfigurationSettings>
@@ -66,16 +65,14 @@
     </Endpoints>
     <Imports>
       <Import moduleName="Diagnostics" />
+      <Import moduleName="RemoteAccess" />
     </Imports>
     <ConfigurationSettings>
-      <Setting name="LoginPassword"/>
-      
+      <Setting name="LoginPassword" />
       <!-- These should all be same as the Orchestrator Role's-->
       <Setting name="MainStorage" />
       <Setting name="WebRoleEndpoint" />
-
       <Setting name="ExecutionType" />
-      
       <!-- For antares IQueueFunction -->
       <Setting name="AntaresWorkerUrl" />
     </ConfigurationSettings>
