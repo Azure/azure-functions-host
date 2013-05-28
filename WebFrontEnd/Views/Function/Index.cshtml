@@ -31,14 +31,15 @@
     <div class="hero-unit call-unit" id="invoke-unit">
         <div id="invoke-unit-body">
             <span id="invoke-unit-function">@(Model.Descriptor.Location.GetShorterName())</span>
+            <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
+            <input type="hidden" value="@Model.ReplayGuid" name ="replayGuid"/>
+
             @if(Model.Parameters.Length == 0) {
                 <text>()</text>
             } else {
                 <text>
                     (
                         <div id="invoke-unit-params">
-                            <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
-                            <input type="hidden" value="@Model.ReplayGuid" name ="replayGuid"/>
                             @for(int i =0; i < Model.Parameters.Length; i++) {
                                 var param = Model.Parameters[i];
                                 <div class="control-group">
