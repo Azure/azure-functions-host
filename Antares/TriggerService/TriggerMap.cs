@@ -79,5 +79,15 @@ namespace TriggerService
         {
             _storage.Remove(scope);
         }
+
+        public override string ToString()
+        {
+            int count = 0;
+            foreach (var kv in _storage)
+            {
+                count += kv.Value.Length;
+            }
+            return string.Format("{0} triggers", count);
+        }
     }
 }

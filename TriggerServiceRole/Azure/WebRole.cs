@@ -35,71 +35,27 @@ namespace TriggerServiceRole
 
     public class SharedState
     {
-        public CloudBlob _blob; // where map is persisted.
+        private readonly TriggerConfig _config;
 
         StringWriter _stringWriter; // underlying backing storage
         TextWriter _writer; // threadsafe access
 
-        CloudQueue _requestQ;
+        private readonly CloudQueue _requestQ;
 
         public SharedState(TriggerConfig config)
         {
-            CloudBlobClient client = config.GetAccount().CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference("triggerservice");
-            container.CreateIfNotExist();
-            CloudBlob blob = container.GetBlobReference("store.txt");
-                        
-            _blob = blob;
-
+            _config = config;
             _requestQ = config.GetDeltaQueue();
 
             _stringWriter = new StringWriter();
             _writer = TextWriter.Synchronized(_stringWriter);
         }
 
-
-       
-
-        // Called under a lock. 
-        private void Save(ITriggerMap map)
-        {
-            string content = JsonConvert.SerializeObject(map, JsonCustom.SerializerSettings);
-            _blob.UploadText(content);
-        }
-
-        private ITriggerMap Load()
-        {
-            string content = GetBlobContents(_blob);
-            if (content != null)
-            {
-                var result = JsonConvert.DeserializeObject<TriggerMap>(content, JsonCustom.SerializerSettings);
-                return result;
-            }
-            else
-            {
-                return new TriggerMap(); // empty 
-            }
-        }
-
-        [DebuggerNonUserCode]
-        static string GetBlobContents(CloudBlob blob)
-        {
-            try
-            {
-                string content = blob.DownloadText();
-                return content;
-            }
-            catch
-            {
-                return null; // not found
-            }
-        }
-
         public void Work()
         {
             var q = this._requestQ;
 
-            ITriggerMap map = Load();
+            ITriggerMap map = _config.Load();
                         
             Listener l = null;
             bool resetListner = false;
@@ -120,7 +76,7 @@ namespace TriggerServiceRole
                     
                     // Assumes single-threaded
                     map.AddTriggers(payload.Scope, triggers);
-                    Save(map);
+                    _config.Save(map);
                     resetListner = true;
 
                     q.DeleteMessage(msg);

@@ -11,11 +11,14 @@ namespace TriggerServiceRole.Controllers
     {
         public ActionResult Index()
         {
-            //IFrontEndSharedState state = SharedState.GetState();
+            IFrontEndSharedState state = new FrontEnd();
+
+            var map = state.GetMap();
 
             var model = new HomeModel
             {
-                Log = "bong"
+                ConfigInfo = state.GetConfigInfo(),
+                Map = map
             };
 
             return View(model);
@@ -24,6 +27,7 @@ namespace TriggerServiceRole.Controllers
 
     public class HomeModel
     {
-        public string Log { get; set; }
+        public string ConfigInfo { get; set; }
+        public ITriggerMap Map { get; set; }
     }
 }

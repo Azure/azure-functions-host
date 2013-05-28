@@ -49,7 +49,6 @@ namespace TriggerService
                     return new TimerTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = credentials.AccountConnectionString,
                         Interval = raw.Interval.Value
                     };
                 default:

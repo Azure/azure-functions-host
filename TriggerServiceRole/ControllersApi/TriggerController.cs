@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Web;
 using System.Web.Http;
 using TriggerService;
 
 namespace TriggerServiceRole.Controllers
 {
-    public class ValuesController : ApiController
+    public class TriggerController : ApiController
     {
         // GET api/values
         public IEnumerable<string> Get()
@@ -34,9 +35,21 @@ namespace TriggerServiceRole.Controllers
             HttpResponseMessage rsp = c.GetAsync(callback).Result;
 
             var payload = rsp.Content.ReadAsAsync<AddTriggerPayload>().Result;
-            //var triggers = Trigger.FromWire(rawTriggers).ToArray();
 
-            state.AddTriggers(callback, payload);
+
+            try
+            {
+                payload.Validate();
+            }
+            catch (Exception e)
+            {
+                throw new HttpException(400, e.Message);
+            }
+
+            // !!! This just queues the request. How do we return a failure if we didn't add it properly?
+            state.QueueAddTriggerRequest(callback, payload);
+
+            // !!! Who validated the triggers?
         }
 
         private Trigger[] Read(string content)

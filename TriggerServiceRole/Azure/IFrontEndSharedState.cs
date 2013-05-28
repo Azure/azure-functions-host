@@ -16,12 +16,13 @@ namespace TriggerServiceRole
     // These methods on state can be accessed by front-end HTTP listeners, and so can come in on any thread. 
     public interface IFrontEndSharedState
     {
-        void AddTriggers(string scope, AddTriggerPayload triggers);
+        void QueueAddTriggerRequest(string scope, AddTriggerPayload triggers);
 
-        string GetLog();
+        string GetConfigInfo();
+
+        ITriggerMap GetMap();
     }
-
-
+    
     class AddTriggerQueuePayload
     {
         public string Scope { get; set; }
@@ -32,10 +33,15 @@ namespace TriggerServiceRole
     {
         TriggerConfig _config = new TriggerConfig();
 
-        public void AddTriggers(string scope, AddTriggerPayload triggers)
+        public string GetConfigInfo()
         {
-            var payload = new AddTriggerQueuePayload 
-            { 
+            return _config.GetConfigInfo();
+        }
+
+        public void QueueAddTriggerRequest(string scope, AddTriggerPayload triggers)
+        {
+            var payload = new AddTriggerQueuePayload
+            {
                 Scope = scope,
                 Triggers = triggers
             };
@@ -43,37 +49,12 @@ namespace TriggerServiceRole
             var json = JsonConvert.SerializeObject(payload);
             var msg = new CloudQueueMessage(json);
             var q = _config.GetDeltaQueue();
-            q.AddMessage(msg);            
+            q.AddMessage(msg);
         }
 
-        public string GetLog()
+        public ITriggerMap GetMap()
         {
-            throw new NotImplementedException();
+            return _config.Load();
         }
-    }
-
-    public class TriggerConfig
-    {
-        CloudStorageAccount _account;
-
-        public TriggerConfig()
-        {
-            // !!! Get from config
-            // RoleEnvironment.GetConfigurationSettingValue("Storage");
-            _account = CloudStorageAccount.DevelopmentStorageAccount;
-        }
-
-        public CloudStorageAccount GetAccount()
-        {
-            return _account;
-        }
-
-        public CloudQueue GetDeltaQueue()
-        {
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            var q = client.GetQueueReference("triggerdeltaq");
-            q.CreateIfNotExist();
-            return q;
-        }        
     }
 }

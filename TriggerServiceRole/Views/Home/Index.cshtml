@@ -3,10 +3,25 @@
 
 <h1>Trigger Service</h1>
 
-Log of activity:
-<pre>
-@Model.Log
+<p>Registered Triggers</p>
 
-</pre>
+<ol>
+@foreach (var scope in Model.Map.GetScopes())
+{
+    <li>
+    <text>Scope: <b>@scope</b></text>
+        <ol>
+    @foreach (var trigger in Model.Map.GetTriggers(scope))
+    {
+        <li>
+            @trigger.ToString()
+        </li>
+            
+    }
+            </ol>
+    </li>
+}
+</ol>
 
 
+<p>Version info: @Model.ConfigInfo</p>
