@@ -16,13 +16,14 @@ namespace TriggerServiceRole
     public class TriggerConfig
     {
         private CloudStorageAccount _account;
+
+        // Error string describing startup failures. Useful for diagnostics. 
         private string _error;
 
         private CloudBlob _blob; // where map is persisted.
 
         public TriggerConfig()
         {
-            // !!! Get from config
             try
             {
                 var val = RoleEnvironment.GetConfigurationSettingValue("MainStorage");
@@ -34,6 +35,7 @@ namespace TriggerServiceRole
             }
         }
 
+        // Get an unstructured string summarizing the configuration. 
         public string GetConfigInfo()
         {
             if (_error != null)
@@ -45,7 +47,7 @@ namespace TriggerServiceRole
 
         }
 
-        public CloudStorageAccount GetAccount()
+        private CloudStorageAccount GetAccount()
         {
             return _account;
         }

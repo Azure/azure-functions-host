@@ -21,26 +21,32 @@ namespace TriggerService
         public void OnNewBlob(CloudBlob blob, BlobTrigger func, CancellationToken token)
         {
             // $$$ Have to provide the blob name. Do it as NVC?
-            Post(func.CallbackPath, token);
+            string containerName = blob.Container.Name;
+            string blobName = blob.Name;
+            string name = containerName + "/" + blobName;
+            var content = new StringContent(name);
+
+            Post(func.CallbackPath, token, content);
         }
 
         public void OnNewQueueItem(CloudQueueMessage msg, QueueTrigger func, CancellationToken token)
         {
-            byte[] contents = msg.AsBytes;
-            Post(func.CallbackPath, token, contents);
+            byte[] bytes = msg.AsBytes;
+            var content = new ByteArrayContent(bytes);
+            Post(func.CallbackPath, token, content);
         }
 
-        private void Post(string url, CancellationToken token, byte[] contents = null)
+        private void Post(string url, CancellationToken token, HttpContent content = null)
         {
-            if (contents == null)
+            if (content == null)
             {
-                contents = new byte[0];
+                content = new ByteArrayContent(new byte[0]);
             }
 
             try
             {
                 HttpClient c = new HttpClient();
-                var result = c.PostAsync(url, new ByteArrayContent(contents), token);
+                var result = c.PostAsync(url, content, token);
                 HttpResponseMessage response = result.Result;
             }
             catch
