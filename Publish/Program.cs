@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -55,6 +56,12 @@ namespace Publish
         [STAThread] // We'll pop a UI
         static void Main(string[] args)
         {
+            if (args.Length > 0 && args[0] == "dbg")
+            {
+                args = args.Skip(1).ToArray();
+                Debugger.Launch();
+            }
+
             if (args.Length < 1)
             {
                 Console.WriteLine(
@@ -196,12 +203,12 @@ On machine: {1}",
             }
         }
 
+        private static WebClient _client = new WebClient();
         public static string TryDownloadBlob(string uri)
         {
-            CloudBlob blob = new CloudBlob(uri);
             try
             {
-                return blob.DownloadText();
+                return _client.DownloadString(uri);
             }
             catch
             {

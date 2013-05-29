@@ -68,7 +68,7 @@
     <p>@trigger</p>
     <p>
         @if(!String.IsNullOrEmpty(log.OutputUrl)) {
-            <a href="@log.OutputUrl" class="btn"><i class="icon-cloud-download"></i> Download Console Output</a>
+            <a href="@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "InvokeLog", id = Model.Instance.FunctionInstance.Id })" class="btn"><i class="icon-cloud-download"></i> Download Console Output</a>
         }
         <a href="@Url.Action(actionName: "InvokeFunctionReplay", controllerName: "Function", routeValues: new { instance =  log.GetKey() })" class="btn"><i class="icon-refresh"></i> Replay</a>
         @if ((Model.Children.Length > 0) || (trigger.ParentGuid != Guid.Empty))

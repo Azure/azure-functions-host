@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Web.Http;
 using DaasEndpoints;
 using DataAccess;
+using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
 
 namespace WebFrontEnd.ControllersWebApi
@@ -17,6 +18,50 @@ namespace WebFrontEnd.ControllersWebApi
         {
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
             return new Services(accountInfo);
+        }
+
+        [HttpGet]
+        public HttpResponseMessage InvokeLog(string id)
+        {
+            // Parse the ID
+            Guid funcId;
+            if(!Guid.TryParse(id, out funcId)) {
+                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+            }
+            
+            // Get the invocation log
+            var instance = GetServices().GetFunctionInstanceLookup().Lookup(funcId);
+            if (instance == null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            // Load the blob
+            CloudBlob blob;
+            try
+            {
+                blob = new CloudBlob(instance.OutputUrl, GetServices().Account.Credentials);
+            }
+            catch (Exception)
+            {
+                blob = null;
+            }
+            if (blob == null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            // Get a SAS for the next 10 mins
+            string sas = blob.GetSharedAccessSignature(new SharedAccessPolicy()
+            {
+                Permissions = SharedAccessPermissions.Read,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(10)
+            });
+            
+            // Redirect to it
+            var resp = new HttpResponseMessage(HttpStatusCode.Found);
+            resp.Headers.Location = new Uri(blob.Uri.AbsoluteUri + sas);
+            return resp;
         }
 
         [HttpGet]

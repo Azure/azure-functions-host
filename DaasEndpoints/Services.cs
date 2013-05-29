@@ -147,10 +147,10 @@ namespace DaasEndpoints
             c.CreateIfNotExist();
             var permissions = c.GetPermissions();
 
-            // Set public read access for blobs only
-            if (permissions.PublicAccess != BlobContainerPublicAccessType.Blob)
+            // Set private access to avoid leaking data.
+            if (permissions.PublicAccess != BlobContainerPublicAccessType.Off)
             {
-                permissions.PublicAccess = BlobContainerPublicAccessType.Blob;
+                permissions.PublicAccess = BlobContainerPublicAccessType.Off;
                 c.SetPermissions(permissions);
             }
             return c;
