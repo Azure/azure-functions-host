@@ -25,19 +25,23 @@ namespace TriggerServiceRole.Controllers
             var payload = rsp.Content.ReadAsAsync<AddTriggerPayload>().Result;
 
 
+            // Do static validation. 
+            // Can still have runtime failures (eg, storage account that we're listening on gets deleted).
             try
             {
                 payload.Validate();
+
+                Validator.Validate(payload);                
             }
             catch (Exception e)
             {
                 throw new HttpException(400, e.Message);
             }
-
-            // !!! This just queues the request. How do we return a failure if we didn't add it properly?
+                        
             state.QueueAddTriggerRequest(callback, payload);
+        }
 
-            // !!! Who validated the triggers?
-        }     
+
+
     }
 }

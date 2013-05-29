@@ -52,9 +52,6 @@ namespace TriggerService
                         case TriggerType.Blob:
                             Verify(trigger.BlobInput != null, "Blob trigger is missing blob input");
                             Verify(string.Compare(trigger.BlobInput, trigger.BlobOutput, true) != 0, "Blob trigger output is identical to input");
-                            // !!! Validate parsing rules on Blob input path, valid chars, etc. 
-
-                            // !!! Verify we set credentials? What if antares gets it differently?
 
                             VerifyNotTimer(trigger);                            
                             VerifyNotQueue(trigger);
@@ -186,15 +183,20 @@ namespace TriggerService
 
         // Valid for TriggerType.Blob
         // Blob path
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobInput { get; set; }
+        
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobOutput { get; set; }
 
         // Valid for TriggerType.Queue
         // Queue 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string QueueName { get; set; }
 
         // Valid for TriggerType.Timer
         // Timer
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public TimeSpan? Interval { get; set; }
 
         public static TriggerRaw NewBlob(string callbackPath, string blobInput, string blobOutput = null)
@@ -227,32 +229,5 @@ namespace TriggerService
                 CallbackPath = callbackPath
             };
         }
-    }
-
-    // Get Json.Net settings for serializing the TriggerRaw
-    // !!! Can we applyy this to TriggerRaw directly?
-    public class TriggerJsonNetUtil
-    {
-        public static JsonSerializerSettings NewSettings()
-        {
-            // Don't care about TypeNameHandling since we don't use polymorphism
-            var settings = new JsonSerializerSettings()
-            {
-                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
-                Formatting = Formatting.Indented
-            };
-
-            return settings;
-        }
-
-        public static JsonSerializerSettings _settings = NewSettings();
-
-        public static JsonSerializerSettings SerializerSettings
-        {
-            get
-            {
-                return _settings;
-            }
-        }
-    }
+    }   
 }

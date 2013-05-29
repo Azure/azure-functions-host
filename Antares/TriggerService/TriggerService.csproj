@@ -81,6 +81,7 @@
     <Compile Include="TriggerRaw.cs" />
     <Compile Include="Triggers.cs" />
     <Compile Include="Utility.cs" />
+    <Compile Include="Validate.cs" />
     <Compile Include="WebInvoke.cs" />
   </ItemGroup>
   <ItemGroup>
