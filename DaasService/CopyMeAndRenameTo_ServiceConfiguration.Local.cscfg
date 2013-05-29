@@ -47,6 +47,7 @@
             <Setting name="AntaresWorkerUrl" value="" />
             <Setting name="ExecutionType" value="WorkerRoles" />
             <Setting name="LoginPassword" value="" />
+            <Setting name="FederatedLoginUrl" value="" />
             <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.Enabled" value="" />
             <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountUsername" value="" />
             <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountEncryptedPassword" value="" />

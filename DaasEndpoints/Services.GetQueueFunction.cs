@@ -88,14 +88,6 @@ namespace DaasEndpoints
             }            
         }
 
-        enum QueueFunctionType
-        {
-            WorkerRoles,
-            Antares,
-            AzureTasks,
-            Kudu,
-        }
-
         // $$$ Returning bundles of interfaces... this is really looking like we need IOC.
         // Similar bundle with FunctionExecutionContext
         public QueueInterfaces GetQueueInterfaces()
@@ -159,5 +151,13 @@ namespace DaasEndpoints
             var queue = this.GetExecutionQueue();
             return new WorkerRoleExecutionClient(queue, qi);
         }
+    }
+
+    public enum QueueFunctionType
+    {
+        WorkerRoles,
+        Antares,
+        AzureTasks,
+        Kudu,
     }
 }
