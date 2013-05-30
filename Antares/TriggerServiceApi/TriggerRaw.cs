@@ -7,8 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace TriggerService
-{
-    // !!! This goes in its own nuget package, shared by C# clients?
+{    
     [JsonConverter(typeof(StringEnumConverter))]
     public enum TriggerType
     {
@@ -44,7 +43,7 @@ namespace TriggerService
                         case TriggerType.Timer:
                             Verify(trigger.Interval.HasValue, "Timer trigger is missing the interval value");
                             Verify(trigger.Interval.Value > MinInterval, string.Format("Timer interval can't be less than {0}", MinInterval));
-                                                        
+
                             VerifyNotBlob(trigger);
                             VerifyNotQueue(trigger);
                             break;
@@ -53,7 +52,7 @@ namespace TriggerService
                             Verify(trigger.BlobInput != null, "Blob trigger is missing blob input");
                             Verify(string.Compare(trigger.BlobInput, trigger.BlobOutput, true) != 0, "Blob trigger output is identical to input");
 
-                            VerifyNotTimer(trigger);                            
+                            VerifyNotTimer(trigger);
                             VerifyNotQueue(trigger);
                             break;
 
@@ -162,7 +161,7 @@ namespace TriggerService
 
     // Credentialling. Store all sensitive information in one spot. 
     public class Credentials
-    {        
+    {
         // Could later generalize this to multiple accounts.
         public string AccountConnectionString { get; set; }
     }
@@ -179,13 +178,13 @@ namespace TriggerService
 
         // Common properties
         // Invoke this path when the trigger fires 
-        public string CallbackPath { get; set; }        
+        public string CallbackPath { get; set; }
 
         // Valid for TriggerType.Blob
         // Blob path
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobInput { get; set; }
-        
+
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobOutput { get; set; }
 
@@ -229,5 +228,5 @@ namespace TriggerService
                 CallbackPath = callbackPath
             };
         }
-    }   
+    }
 }

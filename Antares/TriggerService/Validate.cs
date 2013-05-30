@@ -7,7 +7,7 @@ namespace TriggerService
 {
     public class Validator
     {
-        // !!! really ought to be in client
+        // !!! really ought to be in client (but that would need CloudBlobPath and parsing)
         // More static validation on a blob triggers.
         public static void Validate(AddTriggerPayload payload)
         {
@@ -40,16 +40,20 @@ namespace TriggerService
 
             if (trigger.BlobOutput != null)
             {
-                // Verify that the output params are a subset of the input params. 
-                var outputs = ValidatePath(trigger.BlobOutput);
+                var outputPaths = trigger.BlobOutput.Split(';');
+                foreach (var outputPath in outputPaths)
+                {
+                    // Verify that the output params are a subset of the input params. 
+                    var outputs = ValidatePath(outputPath);
 
-                foreach (var x in inputs)
-                {
-                    outputs.Remove(x);
-                }
-                if (outputs.Count > 0)
-                {
-                    throw new InvalidOperationException("Unresolved parameters in output blob:" + string.Join(", ", outputs));
+                    foreach (var x in inputs)
+                    {
+                        outputs.Remove(x);
+                    }
+                    if (outputs.Count > 0)
+                    {
+                        throw new InvalidOperationException("Unresolved parameters in output blob:" + string.Join(", ", outputs));
+                    }
                 }
             }
         }

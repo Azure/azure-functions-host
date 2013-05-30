@@ -19,8 +19,12 @@ namespace TriggerServiceRole
     {
         public override bool OnStart()
         {
-            Work();
             return base.OnStart();
+        }
+
+        public override void Run()
+        {
+            Work();
         }
 
         private void Work()
@@ -84,6 +88,7 @@ namespace TriggerServiceRole
 
                 if (resetListner)
                 {
+                    resetListner = false;
                     if (l != null)
                     {
                         l.Dispose();

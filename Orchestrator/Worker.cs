@@ -148,21 +148,10 @@ namespace Orchestrator
 
         private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func)
         {
-            string payload = msg.AsString;
-
-            // blobInput was the one that triggered it.            
-
-            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg);            
-
-            var instance = BindParameters(ctx, func);
+            var instance = GetFunctionInvocation(func, msg);
             
             if (instance != null)
             {
-                instance.TriggerReason = new QueueMessageTriggerReason
-                {
-                    MessageId = msg.Id,
-                    ParentGuid = GetOwnerFromMessage(msg)
-                };
                 _execute.Queue(instance);
             }
         }
@@ -173,24 +162,17 @@ namespace Orchestrator
             FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
             if (instance != null)
             {
-                Guid parentGuid = GetBlobWriterGuid(blob);
-                instance.TriggerReason = new BlobTriggerReason
-                {
-                    BlobPath = new CloudBlobPath(blob),
-                    ParentGuid = parentGuid
-                };
-
                 _execute.Queue(instance);
             }
         }
 
-        private Guid GetBlobWriterGuid(CloudBlob blob)
+        private static Guid GetBlobWriterGuid(CloudBlob blob)
         {
             IBlobCausalityLogger logger = new BlobCausalityLogger();
             return logger.GetWriter(blob);
         }
 
-        private Guid GetOwnerFromMessage(CloudQueueMessage msg)
+        private static Guid GetOwnerFromMessage(CloudQueueMessage msg)
         {
             QueueCausalityHelper qcm = new QueueCausalityHelper();
             return qcm.GetOwner(msg);
@@ -217,6 +199,7 @@ namespace Orchestrator
 
         // Invoke a function that is completely self-describing.
         // This means all inputs can be bound without any additional information. 
+        // No reason set. 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func)
         {
             var ctx = new RuntimeBindingInputs(func.Location);
@@ -225,7 +208,26 @@ namespace Orchestrator
         }
 
 
-        // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
+        {
+            string payload = msg.AsString;
+
+            // blobInput was the one that triggered it.            
+
+            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg);
+
+            var instance = BindParameters(ctx, func);
+
+            instance.TriggerReason = new QueueMessageTriggerReason
+            {
+                MessageId = msg.Id,
+                ParentGuid = GetOwnerFromMessage(msg)
+            };
+
+            return instance;
+        }
+
+        // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.        
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudBlob blobInput)
         {
             // blobInput was the one that triggered it.
@@ -244,7 +246,15 @@ namespace Orchestrator
             {
                 NameParameters = p,
             };
-            return BindParameters(ctx, func);
+            var instance = BindParameters(ctx, func);
+
+            Guid parentGuid = GetBlobWriterGuid(blobInput);
+            instance.TriggerReason = new BlobTriggerReason
+            {
+                BlobPath = new CloudBlobPath(blobInput),
+                ParentGuid = parentGuid
+            };
+            return instance;
         }
 
         public void Dispose()

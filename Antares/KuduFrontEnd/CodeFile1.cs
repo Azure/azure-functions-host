@@ -32,7 +32,15 @@ namespace KuduFrontEnd
 
         public FunctionDefinition Lookup(string functionId)
         {
-            throw new NotImplementedException();
+            // $$$ Not linear :(
+            foreach (var x in List)
+            {
+                if (x.Location.ToString() == functionId)
+                {
+                    return x;
+                }
+            }
+            return null;
         }
 
         public FunctionDefinition[] ReadAll()

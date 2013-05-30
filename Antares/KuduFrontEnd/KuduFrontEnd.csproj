@@ -101,6 +101,10 @@
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>SimpleBatch</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TriggerServiceApi\TriggerServiceApi.csproj">
+      <Project>{9be40362-9c57-46db-90a3-e26cbe1a4f28}</Project>
+      <Name>TriggerServiceApi</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />

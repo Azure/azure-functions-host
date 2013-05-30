@@ -9,20 +9,33 @@ using TriggerService;
 
 namespace Orchestrator
 {
-    class CalculateTriggers
+    public class CalculateTriggers
     {
-        // Given a function definition, get the set of Triggers from it. 
         public static Trigger GetTrigger(FunctionDefinition func)
+        {
+            var credentials = new Credentials
+            {
+                 AccountConnectionString = func.Location.AccountConnectionString
+            };
+
+            var raw = GetTriggerRaw(func);
+            if (raw != null)
+            {
+                var x = Trigger.FromWire(raw, credentials);
+                x.Tag = func;
+                return x;
+            }
+            return null;
+        }
+
+        // Given a function definition, get the set of Triggers from it. 
+        public static TriggerRaw GetTriggerRaw(FunctionDefinition func)
         {
             var trigger = func.Trigger;
 
             if (trigger.TimerInterval.HasValue)
             {
-                return new TimerTrigger
-                {
-                    Tag = func,
-                    Interval = trigger.TimerInterval.Value
-                };
+                return TriggerRaw.NewTimer(null, trigger.TimerInterval.Value);
             }
 
             var flow = func.Flow;
@@ -45,14 +58,8 @@ namespace Orchestrator
 
                         CloudBlobClient clientBlob = account.CreateCloudBlobClient();
                         CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
-                                                
-                        return new BlobTrigger
-                        {
-                            AccountConnectionString = func.Location.AccountConnectionString,
-                            Tag = func,
-                            BlobInput = path.ToString(),
-                            BlobOutput = GetOutputPath(func)
-                        };
+
+                        return TriggerRaw.NewBlob(null, path.ToString(), GetOutputPath(func));                        
                     }
                 }
 
@@ -64,12 +71,7 @@ namespace Orchestrator
                         // Queuenames must be all lowercase. Normalize for convenience. 
                         string queueName = queueBinding.QueueName.ToLower();
 
-                        return new QueueTrigger
-                        {
-                            AccountConnectionString = func.Location.AccountConnectionString,
-                            QueueName = queueName,
-                            Tag = func,
-                        };
+                        return TriggerRaw.NewQueue(null, queueName);
                     }
                 }
             }

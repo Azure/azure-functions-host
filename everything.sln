@@ -92,6 +92,8 @@ Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "AzureTriggerService", "Anta
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerServiceRole", "TriggerServiceRole\TriggerServiceRole.csproj", "{C63B7CC4-09A7-4D95-95FA-202349EA3001}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerServiceApi", "Antares\TriggerServiceApi\TriggerServiceApi.csproj", "{9BE40362-9C57-46DB-90A3-E26CBE1A4F28}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -234,6 +236,10 @@ Global
 		{C63B7CC4-09A7-4D95-95FA-202349EA3001}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C63B7CC4-09A7-4D95-95FA-202349EA3001}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C63B7CC4-09A7-4D95-95FA-202349EA3001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BE40362-9C57-46DB-90A3-E26CBE1A4F28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BE40362-9C57-46DB-90A3-E26CBE1A4F28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BE40362-9C57-46DB-90A3-E26CBE1A4F28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BE40362-9C57-46DB-90A3-E26CBE1A4F28}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -267,5 +273,6 @@ Global
 		{EC7D4009-4908-458A-87AA-A1427508DBC0} = {3BE62B81-B69D-4E58-BF86-194E583CACEC}
 		{FC9F2E4F-44BF-461F-BC2F-DDAB4CEA1411} = {3BE62B81-B69D-4E58-BF86-194E583CACEC}
 		{C63B7CC4-09A7-4D95-95FA-202349EA3001} = {3BE62B81-B69D-4E58-BF86-194E583CACEC}
+		{9BE40362-9C57-46DB-90A3-E26CBE1A4F28} = {3BE62B81-B69D-4E58-BF86-194E583CACEC}
 	EndGlobalSection
 EndGlobal
