@@ -22,7 +22,7 @@ namespace TriggerService
         public Credentials Credentials { get; set; }
         public TriggerRaw[] Triggers { get; set; }
 
-        // !!! Include a password cookie here? 
+        // $$$ Include a password cookie here? 
         // This gets included as a header in all callbacks, client can use to authenticate. 
 
         // Helper to validate the structure is proper before intializing. 
@@ -181,10 +181,12 @@ namespace TriggerService
         public string CallbackPath { get; set; }
 
         // Valid for TriggerType.Blob
-        // Blob path
+        // Blob path for input. 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobInput { get; set; }
 
+        // Can be null, or multiple paths separate by ';'
+        // If set, then Input must be newer than at least one output in order to trigger. 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string BlobOutput { get; set; }
 

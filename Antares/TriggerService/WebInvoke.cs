@@ -20,7 +20,10 @@ namespace TriggerService
 
         public void OnNewBlob(CloudBlob blob, BlobTrigger func, CancellationToken token)
         {
-            // $$$ Have to provide the blob name. Do it as NVC?
+            // BlobInput path may have routing args, like Container/{name}.txt,
+            // so we need to provide the actual input so client can bind 'name'. 
+
+            // Provide blob name in body. 
             string containerName = blob.Container.Name;
             string blobName = blob.Name;
             string name = containerName + "/" + blobName;

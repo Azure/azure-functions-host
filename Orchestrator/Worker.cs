@@ -10,7 +10,6 @@ using RunnerHost;
 using RunnerInterfaces;
 using TriggerService;
 using System.Text;
-using TriggerType = RunnerInterfaces.TriggerType; // resolve ambiguity !!!
 
 namespace Orchestrator
 {
@@ -26,46 +25,13 @@ namespace Orchestrator
     public class Worker : IDisposable
     {
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
-
-        // When we notice the input is added, invoke this function 
-        // String hashes on CloubBlobContainer
-        
+       
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTable _functionTable;
         private readonly IQueueFunction _execute;
 
         private Listener _listener;
                 
-        // Add "Tag" to Trigger?
-        // - Kudu: it's a URL
-        // - Worker: it's a FunctionDefinition object. 
-        class MyInvoker : ITriggerInvoke
-        {
-            private readonly Worker _parent;
-            public MyInvoker(Worker parent)
-            {
-                _parent = parent;
-            }
-
-            void ITriggerInvoke.OnNewTimer(TimerTrigger trigger, CancellationToken token)
-            {
-                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewTimer(func);
-            }
-
-            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)
-            {
-                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewQueueItem(msg, func);
-            }
-
-            void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)
-            {
-                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewBlob(func, blob);
-            }
-        }
-
         public Worker(IFunctionTable functionTable, IQueueFunction execute)
         {
             if (functionTable == null)
@@ -276,6 +242,34 @@ namespace Orchestrator
                 Args = args
             };
             return instance;
+        }
+
+        // plug into Trigger Service to queue invocations on triggers. 
+        class MyInvoker : ITriggerInvoke
+        {
+            private readonly Worker _parent;
+            public MyInvoker(Worker parent)
+            {
+                _parent = parent;
+            }
+
+            void ITriggerInvoke.OnNewTimer(TimerTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewTimer(func);
+            }
+
+            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewQueueItem(msg, func);
+            }
+
+            void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)
+            {
+                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
+                _parent.OnNewBlob(func, blob);
+            }
         }
     }
 }

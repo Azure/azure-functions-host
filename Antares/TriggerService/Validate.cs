@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using TriggerService.Internal;
 
 
 namespace TriggerService
 {
     public class Validator
     {
-        // !!! really ought to be in client (but that would need CloudBlobPath and parsing)
+        // $$$ really ought to be in client (but that would need CloudBlobPath and parsing)
         // More static validation on a blob triggers.
         public static void Validate(AddTriggerPayload payload)
         {
@@ -30,10 +31,14 @@ namespace TriggerService
                 {
                     throw new InvalidOperationException("Account Storage Credentials are missing");
                 }
+                if (payload.Credentials.AccountConnectionString == null)
+                {
+                    throw new InvalidOperationException("Account Connection String in credentials is missing");
+                }
             }
         }
 
-        private static void ValidateBlobTrigger(TriggerRaw trigger)
+        public static void ValidateBlobTrigger(TriggerRaw trigger)
         {
             // Verify we parse propertly. 
             var inputs = ValidatePath(trigger.BlobInput);

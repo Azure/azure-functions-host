@@ -34,6 +34,7 @@ namespace TriggerService
         {
             Poll(callback, CancellationToken.None);
         }
+
         public void Poll(Action<CloudBlob> callback, CancellationToken cancel)
         {
             for(int i = 0; i < _containers.Length; i++)
@@ -49,7 +50,6 @@ namespace TriggerService
                 }
             }
         }
-
 
         // lastScanTime - updated to the latest time in the container. Never call DateTime.Now because we need to avoid clock schewing problems. 
         public static IEnumerable<CloudBlob> PollNewBlobs(CloudBlobContainer container, DateTime timestamp, CancellationToken cancel, ref DateTime lastScanTime)

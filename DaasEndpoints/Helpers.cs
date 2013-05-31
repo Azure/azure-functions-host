@@ -16,7 +16,7 @@ namespace DaasEndpoints
         // Returns count scanned
         public static int ScanBlobDir(Services services, CloudStorageAccount account, CloudBlobPath path)
         {
-            // !!! Need to determine FunctionDefinition from the given blob. 
+            // $$$ Need to determine FunctionDefinition from the given blob. 
             throw new NotImplementedException();
 #if false            
             var worker = services.GetOrchestrationWorker();

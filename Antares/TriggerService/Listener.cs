@@ -8,9 +8,11 @@ using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
+using TriggerService.Internal;
 
 namespace TriggerService
 {
+    // Listens on the triggers and invokes them when they fire
     public class Listener : IDisposable
     {
         private readonly ITriggerInvoke _invoker;
@@ -62,11 +64,11 @@ namespace TriggerService
                 var blobTrigger = func as BlobTrigger;
                 if (blobTrigger != null)
                 {
-                    CloudBlobPath path = new CloudBlobPath(blobTrigger.BlobInput);
-                    string containerName = path.ContainerName;
-                    CloudStorageAccount account = GetAccount(scope, func);
+                    CloudBlobPath path = blobTrigger.BlobInput;
 
+                    CloudStorageAccount account = GetAccount(scope, func);
                     CloudBlobClient clientBlob = account.CreateCloudBlobClient();
+                    string containerName = path.ContainerName;
                     CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
 
                     _map.GetOrCreate(container).Add(blobTrigger);
@@ -153,7 +155,22 @@ namespace TriggerService
         {
             var client = blob.ServiceClient;
 
+            var blobPathActual = new CloudBlobPath(blob);
             var container = blob.Container;
+
+            DateTime inputTime;
+            {
+                var inputTimeCheck = Utility.GetBlobModifiedUtcTime(blob);
+                if (!inputTimeCheck.HasValue)
+                {
+                    // Shouldn't happen. This means blob is missing, but we were called because blob was discovered.
+                    // did somebody delete it on us?
+                    return;
+                }
+                inputTime = inputTimeCheck.Value;
+            }
+
+            Func<CloudBlobPath, DateTime?> fpGetModifiedTime = path => GetModifiedTime(client, path);
 
             List<BlobTrigger> list;
             if (_map.TryGetValue(container, out list))
@@ -161,11 +178,10 @@ namespace TriggerService
                 // Invoke all these functions
                 foreach (BlobTrigger func in list)
                 {
-                    CloudBlobPath firstInput = new CloudBlobPath(func.BlobInput);                    
+                    CloudBlobPath blobPathPattern = func.BlobInput;
+                    var nvc = blobPathPattern.Match(blobPathActual);
 
-                    var p = firstInput.Match(new CloudBlobPath(blob));
-
-                    if (p == null)
+                    if (nvc == null)
                     {
                         continue; // Didn't match
                     }
@@ -174,12 +190,7 @@ namespace TriggerService
                     // - rerun if any outputs are missing 
                     // - or if Time(input) is more recent than any Time(Output)
 
-                    bool invoke = true;
-                    if (func.BlobOutput != null)
-                    {
-                        var inputTime = Utility.GetBlobModifiedUtcTime(blob);
-                        invoke = ShouldInvokeTrigger(client, func, p, inputTime);
-                    }
+                    bool invoke = ShouldInvokeTrigger(func, nvc, inputTime, fpGetModifiedTime);
 
                     if (invoke)
                     {
@@ -189,24 +200,39 @@ namespace TriggerService
             }
         }
 
-        // Return true if we should invoke the blob trigger
-        private static bool ShouldInvokeTrigger(CloudBlobClient client, BlobTrigger func, IDictionary<string, string> nvc, DateTime? inputTime)
+        // Helper to get the last modified time for a given (resolved) blob path. 
+        private static DateTime? GetModifiedTime(CloudBlobClient client, CloudBlobPath path)
         {
-            if (!inputTime.HasValue)
+            var container = client.GetContainerReference(path.ContainerName);
+            var blob = container.GetBlobReference(path.BlobName);
+
+            var time = Utility.GetBlobModifiedUtcTime(blob);
+            return time;
+        }
+
+
+        // Return true if we should invoke the blob trigger. Called when a corresponding input is detected.
+        // trigger - the blob trigger to evaluate. 
+        // nvc - route parameters from the input blob. These are used to resolve the output blobs
+        // inputTime - last modified time for the input blob
+        // fpGetModifiedTime - function to resolve times of the outputs (returns null if no output found)
+        public static bool ShouldInvokeTrigger(BlobTrigger trigger, IDictionary<string, string> nvc, DateTime inputTime, Func<CloudBlobPath, DateTime?> fpGetModifiedTime)
+        {
+            if (trigger.BlobOutputs == null)
             {
-                return false;
+                return true;
+            }
+            if (trigger.BlobOutputs.Length == 0)
+            {
+                return true;
             }
 
-            var outputs = func.BlobOutput.Split(';');
-            foreach (var output in outputs)
+            foreach (var outputPath in trigger.BlobOutputs)
             {
-                CloudBlobPath outputPath = new CloudBlobPath(output);
-                var outputPathResolved = outputPath.ApplyNames(nvc);
+                CloudBlobPath outputPathResolved = outputPath.ApplyNames(nvc);
 
-                var outputContainer = client.GetContainerReference(outputPathResolved.ContainerName);
-                var outputBlob = outputContainer.GetBlobReference(outputPathResolved.BlobName);
+                var outputTime = fpGetModifiedTime(outputPathResolved);
 
-                var outputTime = Utility.GetBlobModifiedUtcTime(outputBlob);
                 if (!outputTime.HasValue)
                 {
                     // Output is missing. Need to rerun. 
@@ -220,7 +246,7 @@ namespace TriggerService
             }
             return false;
         }
-
+                        
         // Listen for all queue results.
         private void PollQueues(CancellationToken token)
         {

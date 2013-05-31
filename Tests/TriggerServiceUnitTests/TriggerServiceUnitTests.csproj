@@ -69,8 +69,13 @@
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ValidateTriggers.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Antares\TriggerServiceApi\TriggerServiceApi.csproj">
+      <Project>{9be40362-9c57-46db-90a3-e26cbe1a4f28}</Project>
+      <Name>TriggerServiceApi</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Antares\TriggerService\TriggerService.csproj">
       <Project>{6a771bf9-ca3c-4234-9bf1-7b4af1fbcce9}</Project>
       <Name>TriggerService</Name>

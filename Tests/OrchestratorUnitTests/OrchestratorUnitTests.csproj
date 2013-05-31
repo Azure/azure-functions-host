@@ -96,7 +96,6 @@
     <Compile Include="Scenarios.cs" />
     <Compile Include="TableSerializationTests.cs" />
     <Compile Include="TableUnitTests.cs" />
-    <Compile Include="UnitTest1.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
   </ItemGroup>
   <ItemGroup>

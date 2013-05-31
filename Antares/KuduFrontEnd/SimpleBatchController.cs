@@ -190,7 +190,7 @@ namespace KuduFrontEnd
 
                 case TriggerType.Queue:
                     byte[] contents = this.Request.Content.ReadAsByteArrayAsync().Result;
-                    CloudQueueMessage msg = new CloudQueueMessage(contents); // !!! Set other properties?
+                    CloudQueueMessage msg = new CloudQueueMessage(contents); // $$$ Set other properties (like Id)?
 
                     instance = Worker.GetFunctionInvocation(func, msg);
                     break;                    
@@ -205,7 +205,7 @@ namespace KuduFrontEnd
             Console.SetOut(sw);
 
             IConfiguration config = RunnerHost.Program.InitBinders();
-            // !!! Missing ICall Binder. Should this be using LocalExecutionContext?
+            // $$$ Missing ICall Binder. Should this be using LocalExecutionContext?
 
             RunnerHost.Program.Invoke(instance, config); 
         }

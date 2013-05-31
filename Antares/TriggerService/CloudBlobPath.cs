@@ -6,9 +6,9 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
-namespace TriggerService
+namespace TriggerService.Internal
 {
-    // !!! Unify with one in RunnerInterfaces. But then we get a namespace conflict. 
+    // $$$ Unify with one in RunnerInterfaces. But then we get a namespace conflict. 
 
     // Class for describing a container and blob (no account info)
     // - Encapsulate path with {name} wildcards to cloud blob. (which is why this isn't just a CloudBlob)
@@ -16,21 +16,23 @@ namespace TriggerService
     // - Standardized parser
     // - ToString should be suitable rowkey to coopreate with table indices.    
     // - Serialize to JSON as a single string. 
-    internal class CloudBlobPath
+    public class CloudBlobPath
     {
-        private readonly string _containerName;
+        private string _containerName;
 
         // Name is flattened for blob subdirectories.
         // May have {key} embedded.
-        private readonly string _blobName;
+        private string _blobName;
 
         public string ContainerName
         {
             get { return _containerName; }
+            set { _containerName = value; } // $$$ For serialization
         }
         public string BlobName
         {
             get { return _blobName; }
+            set { _blobName = value; } // $$$ For serialization
         }
 
         // Parse the string. 

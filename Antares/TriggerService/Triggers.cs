@@ -4,16 +4,17 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using Newtonsoft.Json;
+using TriggerService.Internal;
 
 namespace TriggerService
 {
-    // $$$ Blob listener, Queue listener, Cron?
+    // Base class for triggers that client can listen on. 
     public abstract class Trigger
     {
         // Invoke this path when the trigger fires 
         public string CallbackPath { get; set; }
 
-        // Not serialized. For in-memory cases.
+        // Not serialized. For in-memory cases.(This is kind of exclusive with CallbackPath)
         public object Tag { get; set; }
 
         // $$$ Need abstraction here, may get via antares instead. 
@@ -31,13 +32,18 @@ namespace TriggerService
             switch (raw.Type)
             {
                 case TriggerType.Blob:
-                    return new BlobTrigger
+                    var trigger = new BlobTrigger
                     {
                         CallbackPath = raw.CallbackPath,
                         AccountConnectionString = credentials.AccountConnectionString,
-                        BlobInput = raw.BlobInput,
-                        BlobOutput = raw.BlobOutput
+                        BlobInput = new CloudBlobPath(raw.BlobInput)
                     };
+                    if (raw.BlobOutput != null)
+                    {
+                        string[] parts = raw.BlobOutput.Split(';');
+                        trigger.BlobOutputs = Array.ConvertAll(parts, part => new CloudBlobPath(part.Trim()));                       
+                    }
+                    return trigger;
                 case TriggerType.Queue:
                     return new QueueTrigger
                     {
@@ -64,19 +70,19 @@ namespace TriggerService
             this.Type = TriggerType.Blob;
         }
 
-        public string BlobInput { get; set; }
+        public CloudBlobPath BlobInput { get; set; }
 
-        // Semicolon separated list of output blobs. 
+        // list of output blobs. Null if no outputs. 
         // Don't fire trigger if all ouptuts are newer than the input. 
-        public string BlobOutput { get; set; }
+        public CloudBlobPath[] BlobOutputs { get; set; }
 
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("Trigger on {0}", BlobInput);
-            if (BlobOutput != null)
+            if (BlobOutputs != null)
             {
-                sb.AppendFormat(" unless {0} is newer", BlobOutput);
+                sb.AppendFormat(" unless {0} is newer", string.Join<CloudBlobPath>(";", BlobOutputs));
             }
             return sb.ToString();
         }

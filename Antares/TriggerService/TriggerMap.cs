@@ -36,7 +36,7 @@ namespace TriggerService
     {
         Dictionary<string, Trigger[]> _storage = new Dictionary<string, Trigger[]>();
 
-        // !!! Find better way to serialize
+        // $$$ Find better way to serialize
         public Dictionary<string, Trigger[]> Storage
         {
             get

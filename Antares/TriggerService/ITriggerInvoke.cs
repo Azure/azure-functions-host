@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace TriggerService
 {
+    // Callback interface for invoking triggers.
     public interface ITriggerInvoke
     {
         void OnNewTimer(TimerTrigger func, CancellationToken token);
