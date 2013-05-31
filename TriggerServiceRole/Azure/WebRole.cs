@@ -127,30 +127,5 @@ namespace TriggerServiceRole
         {
             _writer.WriteLine("New blob input detected {0}", func.BlobInput);
         }
-    }
-
-    static class JsonCustom
-    {
-        public static JsonSerializerSettings NewSettings()
-        {
-            var settings = new JsonSerializerSettings()
-            {
-                TypeNameHandling = TypeNameHandling.Auto,
-                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
-                Formatting = Formatting.Indented
-            };
-
-            return settings;
-        }
-
-        public static JsonSerializerSettings _settings = NewSettings();
-
-        public static JsonSerializerSettings SerializerSettings
-        {
-            get
-            {
-                return _settings;
-            }
-        }
-    }
+    }  
 }

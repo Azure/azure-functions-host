@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Newtonsoft.Json;
 
 namespace TriggerService
 {
@@ -35,9 +36,9 @@ namespace TriggerService
     public class TriggerMap : ITriggerMap
     {
         Dictionary<string, Trigger[]> _storage = new Dictionary<string, Trigger[]>();
-
-        // $$$ Find better way to serialize
-        public Dictionary<string, Trigger[]> Storage
+        
+        [JsonProperty]
+        Dictionary<string, Trigger[]> Storage
         {
             get
             {
@@ -48,6 +49,32 @@ namespace TriggerService
                 _storage = value;
             }
         }
+        public static JsonSerializerSettings NewSettings()
+        {
+            var settings = new JsonSerializerSettings()
+            {
+                TypeNameHandling = TypeNameHandling.Auto,
+                NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
+                Formatting = Formatting.Indented
+            };
+
+            return settings;
+        }
+
+        public static JsonSerializerSettings _settings = NewSettings();
+
+        public static string SaveJson(ITriggerMap map)
+        {
+            string content = JsonConvert.SerializeObject(map, _settings);
+            return content;
+        }
+
+        public static TriggerMap LoadJson(string json)
+        {
+            var result = JsonConvert.DeserializeObject<TriggerMap>(json, _settings);
+            return result;
+        }
+
 
         public Trigger[] GetTriggers(string scope)
         {

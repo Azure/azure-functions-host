@@ -74,9 +74,10 @@ namespace TriggerServiceRole
         }
 
         // Called under a lock. 
+
         public void Save(ITriggerMap map)
         {
-            string content = JsonConvert.SerializeObject(map, JsonCustom.SerializerSettings);
+            string content = TriggerMap.SaveJson(map);
             GetTriggerMapBlob().UploadText(content);
         }
 
@@ -85,7 +86,7 @@ namespace TriggerServiceRole
             string content = GetBlobContents(GetTriggerMapBlob());
             if (content != null)
             {
-                var result = JsonConvert.DeserializeObject<TriggerMap>(content, JsonCustom.SerializerSettings);
+                var result = TriggerMap.LoadJson(content);
                 return result;
             }
             else

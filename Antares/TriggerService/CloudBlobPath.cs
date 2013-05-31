@@ -9,6 +9,13 @@ using Newtonsoft.Json;
 namespace TriggerService.Internal
 {
     // $$$ Unify with one in RunnerInterfaces. But then we get a namespace conflict. 
+    public class CloudBlobPathConverter : StringConverter<CloudBlobPath>
+    {
+        public override object ReadFromString(string value)
+        {
+            return new CloudBlobPath(value);
+        }
+    }
 
     // Class for describing a container and blob (no account info)
     // - Encapsulate path with {name} wildcards to cloud blob. (which is why this isn't just a CloudBlob)
@@ -16,6 +23,7 @@ namespace TriggerService.Internal
     // - Standardized parser
     // - ToString should be suitable rowkey to coopreate with table indices.    
     // - Serialize to JSON as a single string. 
+    [JsonConverter(typeof(CloudBlobPathConverter))]
     public class CloudBlobPath
     {
         private string _containerName;
@@ -27,12 +35,10 @@ namespace TriggerService.Internal
         public string ContainerName
         {
             get { return _containerName; }
-            set { _containerName = value; } // $$$ For serialization
         }
         public string BlobName
         {
             get { return _blobName; }
-            set { _blobName = value; } // $$$ For serialization
         }
 
         // Parse the string. 
