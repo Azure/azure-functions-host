@@ -246,7 +246,8 @@ namespace RunnerHost
                 watches[i] = GetWatcher(binds[i], ps[i]);
             }
 
-            var refreshRate = TimeSpan.FromSeconds(3);
+            // $$$ If the refresh rate is too high, timers contend over the blob and it may not get written. Why?
+            var refreshRate = TimeSpan.FromSeconds(30);
 
             TimerCallback callback = obj =>
             {
