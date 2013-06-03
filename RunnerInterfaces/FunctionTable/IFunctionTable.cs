@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-
-namespace Orchestrator
+﻿
+namespace RunnerInterfaces
 {
-    // Manage the function index. 
+    // Manage the function index.
     public interface IFunctionTable : IFunctionTableLookup
     {
         void Add(FunctionDefinition func);

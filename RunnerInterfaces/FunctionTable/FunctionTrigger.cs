@@ -1,12 +1,12 @@
 ﻿using System;
 
-namespace Orchestrator
+namespace RunnerInterfaces
 {
     // Describes how a function can get triggered.
-    // This is orthogonal to the binding. 
+    // This is orthogonal to the binding.
     public class FunctionTrigger
     {
-        // If HasValue, then specify the function is invoked on the timer. 
+        // If HasValue, then specify the function is invoked on the timer.
         public TimeSpan? TimerInterval { get; set; }
 
         // True if invocation should use a blob listener.

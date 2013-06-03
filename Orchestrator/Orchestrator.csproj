@@ -56,10 +56,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Index\BinderLookup.cs" />
-    <Compile Include="Common\FunctionFlow.cs" />
-    <Compile Include="Common\FunctionDefinition.cs" />
-    <Compile Include="Common\FunctionTrigger.cs" />
-    <Compile Include="Common\IFunctionTable.cs" />
     <Compile Include="Index\CalculateTriggers.cs" />
     <Compile Include="Index\Indexer.cs" />
     <Compile Include="Index\IndexerConfig.cs" />

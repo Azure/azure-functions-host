@@ -28,6 +28,7 @@ namespace Executor
                 ),
                 Bridge = _services.GetStatsAggregatorBridge(),
                 Logger = _services.GetFunctionUpdatedLogger(),
+                FunctionTable = _services.GetFunctionTable(),
             };
         }
 

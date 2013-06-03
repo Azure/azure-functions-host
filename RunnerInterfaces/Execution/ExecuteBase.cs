@@ -16,12 +16,17 @@ namespace RunnerInterfaces
         // Mark when a function has finished execution. This will send a message that causes the function's 
         // execution statistics to get aggregated. 
         public ExecutionStatsAggregatorBridge Bridge { get; set; }
+
+        // Used to confirm function still exists just prior to execution
+        public IFunctionTable FunctionTable { get; set; }
     }
 
     // Class to ensure a consistent execution experience w.r.t. logging, ExecutionInstanceLogEntity, etc. 
     // This is coupled to QueueFunctionBase.
-    public class ExecutionBase
+    public static class ExecutionBase
     {
+        static Exception notFoundException = new System.EntryPointNotFoundException("Function not found");
+
         public static void Work(
             FunctionInvokeRequest instance,  // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
@@ -37,56 +42,91 @@ namespace RunnerInterfaces
             var logger = context.Logger;
             var bridge = context.Bridge;
 
-            FunctionOutputLog logInfo = context.OutputLogDispenser.CreateLogStream(instance);
-
-            instance.ParameterLogBlob = logInfo.ParameterLogBlob;
-
             logItem.FunctionInstance = instance;
-            logItem.OutputUrl = logInfo.Uri;
             logItem.StartTime = DateTime.UtcNow;
-            logger.Log(logItem);
 
             try
             {
-                try
+                // Confirm function exists if provided a function table.  Fake an Exception if not found.
+                bool functionExists = true;
+                if (context.FunctionTable != null)
                 {
-                    // Invoke the function. Redirect all console output to the given stream. 
-                    // (Function may be invoked in a different process, so we can't just set Console.Out here)
-                    FunctionExecutionResult result = fpInvokeFunc(logInfo.Output);
-
-                    // User errors should be caught and returned in result message.
-                    logItem.ExceptionType = result.ExceptionType;
-                    logItem.ExceptionMessage = result.ExceptionMessage;
+                    FunctionDefinition tableLocation = context.FunctionTable.Lookup(instance.Location);
+                    functionExists = tableLocation != null;
                 }
-                catch (Exception e)
-                {
-                    if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error. 
-                        (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
-                    {                        
-                        logItem.ExceptionType = e.GetType().FullName;
-                        logItem.ExceptionMessage = e.Message;
 
-                        return;
-                    }
-                
-                    // Non-user error. Something really bad happened! This shouldn't be happening. 
-                    // Suggests something critically wrong with the execution infrastructure that wasn't properly
-                    // handled elsewhere. 
-                    logInfo.Output.WriteLine("Error: {0}", e.Message);
-                    logInfo.Output.WriteLine("stack: {0}", e.StackTrace);
-                    throw; 
+                if (functionExists)
+                {
+                    Work(instance, context, fpInvokeFunc, logItem);
+                }
+                else
+                {
+                    logItem.ExceptionMessage = notFoundException.Message;
+                    logItem.ExceptionType = notFoundException.GetType().FullName;
                 }
             }
             finally
             {
-                logInfo.CloseOutput();
-
-                // User errors returned via results.
+                // User errors returned via results in inner Work()
                 logItem.EndTime = DateTime.UtcNow;
                 logger.Log(logItem);
 
                 // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
                 bridge.EnqueueCompletedFunction(logItem);
+            }
+        }
+
+        // Have confirmed the function exists.  Do real work.
+        static void Work(
+            FunctionInvokeRequest instance,         // specific request to execute
+            FunctionExecutionContext context,       // provides services for execution. Not request specific
+
+            // Do the actual invocation. Throw an OperationCancelException is the function is cancelled mid-execution. 
+            // The incoming TextWriter is where console output should be redirected too. 
+            // Returns a FunctionExecutionResult that describes the execution results of the function. 
+            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc,
+
+            ExecutionInstanceLogEntity logEntity    // current request log entity
+            )
+        {
+            FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
+            instance.ParameterLogBlob = functionOutput.ParameterLogBlob;
+            logEntity.OutputUrl = functionOutput.Uri;
+
+            IFunctionUpdatedLogger logger = context.Logger;
+            logger.Log(logEntity);
+
+            try
+            {
+                // Invoke the function. Redirect all console output to the given stream.
+                // (Function may be invoked in a different process, so we can't just set Console.Out here)
+                FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
+
+                // User errors should be caught and returned in result message.
+                logEntity.ExceptionType = result.ExceptionType;
+                logEntity.ExceptionMessage = result.ExceptionMessage;
+            }
+            catch (Exception e)
+            {
+                if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error.
+                    (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
+                {
+                    logEntity.ExceptionType = e.GetType().FullName;
+                    logEntity.ExceptionMessage = e.Message;
+
+                    return;
+                }
+
+                // Non-user error. Something really bad happened! This shouldn't be happening.
+                // Suggests something critically wrong with the execution infrastructure that wasn't properly
+                // handled elsewhere. 
+                functionOutput.Output.WriteLine("Error: {0}", e.Message);
+                functionOutput.Output.WriteLine("stack: {0}", e.StackTrace);
+                throw;
+            }
+            finally
+            {
+                functionOutput.CloseOutput();
             }
         }
     }

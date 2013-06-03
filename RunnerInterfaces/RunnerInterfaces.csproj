@@ -57,6 +57,10 @@
     <Compile Include="BlobTextWriter.cs" />
     <Compile Include="Execution\IPrereqManager.cs" />
     <Compile Include="Execution\PrereqManager.cs" />
+    <Compile Include="FunctionTable\FunctionDefinition.cs" />
+    <Compile Include="FunctionTable\FunctionFlow.cs" />
+    <Compile Include="FunctionTable\FunctionTrigger.cs" />
+    <Compile Include="FunctionTable\IFunctionTable.cs" />
     <Compile Include="Index\IndexerOperations.cs" />
     <Compile Include="Index\IndexException.cs" />
     <Compile Include="Tables\LocalTableCore.cs" />
