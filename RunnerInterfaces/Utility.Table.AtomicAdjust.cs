@@ -67,7 +67,7 @@ namespace RunnerInterfaces
                     // Merge by default. Important since we're only updating one property.
                     ctx.SaveChanges();
                 }
-                catch (DataServiceRequestException ex)
+                catch (DataServiceRequestException)
                 {
                     retryCount--;
                     // Likely a concurrency hit. Retry

@@ -150,7 +150,7 @@ namespace RunnerInterfaces
                 {
                     DoLeaseOperation(blob, leaseId, LeaseAction.Release);
                 }
-                catch (WebException e)
+                catch (WebException)
                 {
                     // 
                 }

@@ -25,7 +25,7 @@ namespace OrchestratorUnitTests
                     FunctionDefinition func = Indexer.GetDescriptionForMethod(method);
                     Assert.Fail("Expected error from method: {0}", method.Name);
                 }
-                catch (IndexException e)
+                catch (IndexException)
                 {
                 }
             }
