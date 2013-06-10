@@ -4,6 +4,9 @@
     <ConfigurationSettings>
       <Setting name="MainStorage" />
     </ConfigurationSettings>
+    <LocalResources>
+      <LocalStorage name="logging" sizeInMB="10" cleanOnRoleRecycle="true" />
+    </LocalResources>
     <Sites>
       <Site name="Web">
         <Bindings>

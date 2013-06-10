@@ -14,6 +14,20 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace TriggerService
 {
     // CloudBlobContainers are flyweights, may not compare. 
+    public class CloudBlobClientComparer : IEqualityComparer<CloudBlobClient>
+    {
+        public bool Equals(CloudBlobClient x, CloudBlobClient y)
+        {
+            return x.Credentials.AccountName == y.Credentials.AccountName;
+        }
+
+        public int GetHashCode(CloudBlobClient obj)
+        {
+            return obj.Credentials.AccountName.GetHashCode();
+        }
+    }
+
+    // CloudBlobContainers are flyweights, may not compare. 
     public class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>
     {
         public bool Equals(CloudBlobContainer x, CloudBlobContainer y)

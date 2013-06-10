@@ -121,6 +121,11 @@ namespace TriggerService.Internal
         public CloudBlob Resolve(CloudStorageAccount account)
         {
             var client = account.CreateCloudBlobClient();
+            return this.Resolve(client);
+        }
+
+        public CloudBlob Resolve(CloudBlobClient client)
+        {
             var container = client.GetContainerReference(this.ContainerName);
             var blob = container.GetBlobReference(this.BlobName);
             return blob;

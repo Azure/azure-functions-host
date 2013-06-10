@@ -20,7 +20,7 @@ namespace TriggerService
         private Dictionary<CloudBlobContainer, List<BlobTrigger>> _map;
         private Dictionary<CloudQueue, List<QueueTrigger>> _mapQueues;
 
-        private BlobListener _blobListener;
+        private IBlobListener _blobListener;
 
         // List of functions to execute. 
         // May have been triggered by a timer on a background thread . 
@@ -45,7 +45,22 @@ namespace TriggerService
                 AddTriggers(scope, triggers);
             }
 
-            _blobListener = new BlobListener(_map.Keys);
+            var keys = _map.Keys;
+                        
+            // IF we're listening on DevStorage, use a full scanner, since DevStorage doesn't support log listening. 
+            // This also gives us very deterministic behavior for unit tests. 
+            bool includesDevStorage = (keys.Count > 0) && (keys.First().ServiceClient.Credentials.AccountName == "devstoreaccount1");
+
+            if (includesDevStorage)
+            {
+                // Full scan, very deterministic. But doesn't scale.
+                _blobListener = new ContainerScannerBlobListener(keys);
+            }
+            else 
+            {
+                // highly scalable, non-deterministic, less responsive.
+                _blobListener = new BlobListener(keys);
+            }
         }
 
         private void DisposeTimers()

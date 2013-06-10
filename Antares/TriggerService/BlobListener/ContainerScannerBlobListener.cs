@@ -7,14 +7,17 @@ using System.Threading;
 
 namespace TriggerService
 {
-    public class BlobListener
+    // Full scan a container 
+    // Uses a naive full-scanning algorithm. Easy, but very inefficient and does not scale to large containers.
+    // But it is very deterministic. 
+    public class ContainerScannerBlobListener : IBlobListener
     {
         // Containers to listen to, and timestamp of last poll
         // Use parallel arrays instead of dicts to allow update during enumeration
         CloudBlobContainer[] _containers;
         DateTime[] _lastUpdateTimes;
-        
-        public BlobListener(IEnumerable<CloudBlobContainer> containers)
+
+        public ContainerScannerBlobListener(IEnumerable<CloudBlobContainer> containers)
         {
             DateTime start = new DateTime(1900, 1, 1); // old 
 
@@ -24,20 +27,15 @@ namespace TriggerService
             for (int i = 0; i < _lastUpdateTimes.Length; i++)
             {
                 _lastUpdateTimes[i] = start;
-            }            
+            }
         }
 
         // Does one iteration and then returns.
         // Poll containers, invoke callback for any new ones added.
         // $$$ Switch to queuing instead of just invoking callback
-        public void Poll(Action<CloudBlob> callback)
-        {
-            Poll(callback, CancellationToken.None);
-        }
-
         public void Poll(Action<CloudBlob> callback, CancellationToken cancel)
         {
-            for(int i = 0; i < _containers.Length; i++)
+            for (int i = 0; i < _containers.Length; i++)
             {
                 cancel.ThrowIfCancellationRequested();
                 var time = _lastUpdateTimes[i];
@@ -61,7 +59,7 @@ namespace TriggerService
                 container.CreateIfNotExist();
             }
             catch (StorageException)
-            { 
+            {
                 // Can happen if container was deleted (or being deleted). Just ignore and return empty collection.
                 // If it's deleted, there's nothing to listen for.
                 return blobs;
@@ -71,7 +69,7 @@ namespace TriggerService
             opt.UseFlatBlobListing = true;
             foreach (var blobItem in container.ListBlobs(opt))
             {
-                cancel.ThrowIfCancellationRequested();                
+                cancel.ThrowIfCancellationRequested();
 
                 CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
 

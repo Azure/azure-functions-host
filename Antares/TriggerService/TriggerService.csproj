@@ -71,7 +71,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BlobListener.cs" />
+    <Compile Include="BlobListener\BlobListener.cs" />
+    <Compile Include="BlobListener\ContainerScannerBlobListener.cs" />
+    <Compile Include="BlobListener\BlobLogListener.cs" />
     <Compile Include="CloudBlobPath.cs" />
     <Compile Include="Comparers.cs" />
     <Compile Include="ITriggerInvoke.cs" />

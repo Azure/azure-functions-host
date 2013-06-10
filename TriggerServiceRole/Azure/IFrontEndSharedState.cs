@@ -21,6 +21,8 @@ namespace TriggerServiceRole
         string GetConfigInfo();
 
         ITriggerMap GetMap();
+
+        string GetLogContents();
     }
     
     class AddTriggerQueuePayload
@@ -36,6 +38,12 @@ namespace TriggerServiceRole
         public string GetConfigInfo()
         {
             return _config.GetConfigInfo();
+        }
+
+        public string GetLogContents()
+        {
+            var path = TriggerConfig.GetLogPath();
+            return File.ReadAllText(path);
         }
 
         public void QueueAddTriggerRequest(string scope, AddTriggerPayload triggers)

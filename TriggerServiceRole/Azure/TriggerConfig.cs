@@ -35,6 +35,30 @@ namespace TriggerServiceRole
             }
         }
 
+        public void LogFatalError(Exception e)
+        {
+            CloudBlobContainer c = GetContainer();
+            var blob = c.GetBlobReference(string.Format("error{0}.txt", Guid.NewGuid()));
+
+            string content = string.Format("{0}, {1}, {2}", e.GetType().FullName, e.Message, e.StackTrace);
+
+            blob.UploadText(content);
+        }
+
+        public static string GetLogPath()
+        {
+            string path = RoleEnvironment.GetLocalResource("logging").RootPath;
+            return path + @"\\log.txt";
+        }
+        public static void AppendLog(string log)
+        {
+            string path = GetLogPath();
+            using (var tw = new StreamWriter(path, append: true))
+            {
+                tw.WriteLine(log);
+            }
+        }
+
         // Get an unstructured string summarizing the configuration. 
         public string GetConfigInfo()
         {
@@ -64,13 +88,19 @@ namespace TriggerServiceRole
         {
             if (_blob == null)
             {
-                CloudBlobClient client = this.GetAccount().CreateCloudBlobClient();
-                CloudBlobContainer container = client.GetContainerReference("triggerservice");
-                container.CreateIfNotExist();
+                CloudBlobContainer container = GetContainer();
                 CloudBlob blob = container.GetBlobReference("store.txt");
                 _blob = blob;
             }
             return _blob;
+        }
+
+        private CloudBlobContainer GetContainer()
+        {
+            CloudBlobClient client = this.GetAccount().CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference("triggerservice");
+            container.CreateIfNotExist();
+            return container;
         }
 
         // Called under a lock. 
@@ -87,7 +117,7 @@ namespace TriggerServiceRole
             if (content != null)
             {
                 var result = TriggerMap.LoadJson(content);
-                return result;
+                return result;                
             }
             else
             {

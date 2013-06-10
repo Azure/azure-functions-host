@@ -15,10 +15,29 @@ namespace TriggerService
     {
         public void OnNewTimer(TimerTrigger func, CancellationToken token)
         {
-            Post(func.CallbackPath, token);
+            HttpRequestMessage msg = CreateTimerHttpRequestMessage(func);
+            Send(msg, token);            
         }
 
         public void OnNewBlob(CloudBlob blob, BlobTrigger func, CancellationToken token)
+        {
+            HttpRequestMessage msg = CreateBlobHttpRequestMessage(blob, func);
+            Send(msg, token);
+        }
+
+        public void OnNewQueueItem(CloudQueueMessage queueMessage, QueueTrigger func, CancellationToken token)
+        {
+            HttpRequestMessage msg = CreateQueueHttpRequestMessage(queueMessage, func);
+            Send(msg, token);
+        }
+
+        public static HttpRequestMessage CreateTimerHttpRequestMessage(TimerTrigger func)
+        {
+            HttpRequestMessage msg = NewMessage(func, null);
+            return msg;
+        }
+
+        public static HttpRequestMessage CreateBlobHttpRequestMessage(CloudBlob blob, BlobTrigger func)
         {
             // BlobInput path may have routing args, like Container/{name}.txt,
             // so we need to provide the actual input so client can bind 'name'. 
@@ -29,33 +48,46 @@ namespace TriggerService
             string name = containerName + "/" + blobName;
             var content = new StringContent(name);
 
-            Post(func.CallbackPath, token, content);
+            HttpRequestMessage msg = NewMessage(func, content);
+            return msg;
         }
 
-        public void OnNewQueueItem(CloudQueueMessage msg, QueueTrigger func, CancellationToken token)
+        public static HttpRequestMessage CreateQueueHttpRequestMessage(CloudQueueMessage queueMessage, QueueTrigger func)
         {
-            byte[] bytes = msg.AsBytes;
+            byte[] bytes = queueMessage.AsBytes;
             var content = new ByteArrayContent(bytes);
-            Post(func.CallbackPath, token, content);
+
+            HttpRequestMessage msg = NewMessage(func, content);
+            return msg;
         }
 
-        private void Post(string url, CancellationToken token, HttpContent content = null)
+        private static HttpRequestMessage NewMessage(Trigger func, HttpContent content)
         {
             if (content == null)
             {
-                content = new ByteArrayContent(new byte[0]);
+                content = new ByteArrayContent(new byte[0]); // empty
             }
+            HttpRequestMessage msg = new HttpRequestMessage
+            {
+                Method = HttpMethod.Post,
+                RequestUri = new Uri(func.CallbackPath),
+                Content = content
+            };
+            return msg;
+        }
 
+        private static void Send(HttpRequestMessage msg, CancellationToken token)
+        {
             try
             {
                 HttpClient c = new HttpClient();
-                var result = c.PostAsync(url, content, token);
-                HttpResponseMessage response = result.Result;
+                var response = c.SendAsync(msg, token).Result;
             }
             catch
             {
-                // $$$ What ot do about errors? Bad user URL?
+                // Ignore errors. Bad Url? Bad response?
             }
         }
+
     }
 }

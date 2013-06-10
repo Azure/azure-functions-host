@@ -138,6 +138,7 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Azure\LoggingWebInvoke.cs" />
     <Compile Include="Azure\TriggerConfig.cs" />
     <Compile Include="Azure\IFrontEndSharedState.cs" />
     <Compile Include="Controllers\HomeController.cs" />

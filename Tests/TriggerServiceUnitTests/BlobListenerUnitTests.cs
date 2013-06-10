@@ -19,7 +19,7 @@ namespace TriggerServiceUnitTests
 
             CloudBlobClient client = account.CreateCloudBlobClient();
             var container = client.GetContainerReference(containerName);
-            BlobListener l = new BlobListener(new CloudBlobContainer[] { container });
+            IBlobListener l = new ContainerScannerBlobListener(new CloudBlobContainer[] { container });
 
             l.Poll(blob =>
                 {
