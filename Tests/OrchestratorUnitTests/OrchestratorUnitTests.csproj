@@ -85,6 +85,7 @@
     <Compile Include="CodeConfigFlowUnitTests.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
+    <Compile Include="IContextBinderTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="Mocks\MockBlobLeaseHolder.cs" />

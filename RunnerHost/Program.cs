@@ -294,6 +294,7 @@ namespace RunnerHost
             config.Binders.Add(new CloudStorageAccountBinderProvider());
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
+            config.Binders.Add(new ContextBinderProvider()); // for IContext
 
             return config;
         }

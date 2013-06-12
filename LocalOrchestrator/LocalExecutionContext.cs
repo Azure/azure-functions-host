@@ -140,7 +140,13 @@ namespace Orchestrator
 
             IFunctionTable functionTable = store;
             var funcs = functionTable.ReadAll();
-            // $$$ Add error check here. If nothing showed up, then function didn't have SB attributes.
+                        
+            if (funcs.Length == 0)
+            {
+                string msg = string.Format("Function '{0}' is not found. Is it missing Simple Batch attributes?", method);
+                throw new InvalidOperationException(msg);
+            }
+            
             FunctionDefinition func = funcs[0];
             return func;
         }

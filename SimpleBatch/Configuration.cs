@@ -41,6 +41,12 @@ namespace SimpleBatch
         {
             // default is nop
         }
+    }     
+   
+    // Get the function instance guid for the currently executing function 
+    public interface IContext
+    {
+        Guid FunctionInstanceGuid { get; }
     }
 
     // Public one that we bind to. Simpler, doesn't expose a BindResult. 
