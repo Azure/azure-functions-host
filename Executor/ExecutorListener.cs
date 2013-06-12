@@ -73,13 +73,8 @@ namespace Executor
         {
             CloudQueue q = _executionQueue;
 
-#if true
             TimeSpan refreshRate = TimeSpan.FromMinutes(1); // renew at this rate. 
             TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10);  
-#else
-            TimeSpan refreshRate = TimeSpan.FromSeconds(20); 
-            TimeSpan visibilityTimeout = TimeSpan.FromSeconds(45);  
-#endif
 
             var msg = q.GetMessage(visibilityTimeout);
 
@@ -91,6 +86,8 @@ namespace Executor
             }
 
             CancellationTokenSource source = new CancellationTokenSource();
+
+            FunctionExecutionContext ctx = logger.GetExecutionContext();
 
             bool done = false;
             try
@@ -127,16 +124,31 @@ namespace Executor
 
                     WriteHeartbeat(logger);
 
+                    bool delete = CheckForDelete(logger);
+
+                    // If it was unloaded from the function table, then auto-abort it.
+                    if (ctx.FunctionTable != null)
+                    {
+                        Guid? g = _stats.FunctionInstanceId;
+                        if (g.HasValue)
+                        {
+                            bool functionExists = ctx.FunctionTable.Lookup(g.Value.ToString()) != null;
+                            if (!functionExists)
+                            {
+                                delete = true;
+                            }
+                        }
+                    }
 
                     // Check for delete request.
-                    if (CheckForDelete(logger))
+                    if (delete)
                     {
                         done = true;
 
                         // This should leverage regular logging mechanisms.
                         // Ok for this to cause role to shutdown and recycle.
                         // Will cause OperationCanceledException to get thrown. 
-                        source.Cancel(); 
+                        source.Cancel();
 
                         q.DeleteMessage(msg); // this may throw.
 
@@ -145,7 +157,7 @@ namespace Executor
 
                 }, null, refreshRate, refreshRate)) // end timer function
                 {
-                    HandleMessage(msg, logger, source.Token);
+                    HandleMessage(msg, logger, ctx, source.Token);
                     done = true;
                 }
             }            
@@ -199,7 +211,7 @@ namespace Executor
             this._stats.CriticalErrors++;
         }
          
-        private void HandleMessage(CloudQueueMessage msg, IExecutionLogger logger, CancellationToken token)
+        private void HandleMessage(CloudQueueMessage msg, IExecutionLogger logger, FunctionExecutionContext ctx, CancellationToken token)
         {                       
             _stats.RunCount++;
 
@@ -234,9 +246,7 @@ namespace Executor
                     var result = _executor.Execute(instance, consoleOutput, token);
                     return result;
                 };
-            
-            var ctx = logger.GetExecutionContext();
-
+                        
             try
             {
                 ExecutionBase.Work(

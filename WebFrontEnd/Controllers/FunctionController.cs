@@ -84,7 +84,7 @@ namespace WebFrontEnd.Controllers
 
         // Post when we actually submit the invoke. 
         [HttpPost]
-        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues, Guid replayGuid)
+        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues, Guid? replayGuid)
         {
             if (argValues == null)
             {
@@ -112,12 +112,12 @@ namespace WebFrontEnd.Controllers
             instance.Args = args;
             instance.Location = func.Location;
 
-            if (replayGuid != Guid.Empty)
+            if (replayGuid.HasValue && replayGuid != Guid.Empty)
             {
                 instance.TriggerReason = new InvokeTriggerReason
                 {
                     Message = "Invoked by replaying a previous function.",
-                    ParentGuid = replayGuid
+                    ParentGuid = replayGuid.Value
                 };
             }
             else
