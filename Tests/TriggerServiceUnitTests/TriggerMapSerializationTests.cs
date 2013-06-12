@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System.Linq;
 using TriggerService;
 using TriggerService.Internal;
+using System.Text;
 
 namespace TriggerServiceUnitTests
 {
@@ -68,7 +69,9 @@ namespace TriggerServiceUnitTests
             var json = TriggerMap.SaveJson(map);
 
             // Since this is a serialization format, check it against a baseline to detect changes.
-            Assert.AreEqual(JsonSaved.Replace('\'', '"'), json);
+            string expected = Normalize(JsonSaved.Replace('\'', '"'));
+            string actual = Normalize(json);
+            AssertStringEqual(expected, actual);
 
             var map2 = TriggerMap.LoadJson(json);
                         
@@ -78,6 +81,58 @@ namespace TriggerServiceUnitTests
             Assert.AreEqual(json, json2);
         }
 
+        // Normalize the whitespace. This can vary with different serializers. 
+        static string Normalize(string json)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            bool isLastCharWhitespace = true;
+            foreach (char ch in json)
+            {
+                bool isWhitespace = ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t';
+
+                if (isWhitespace && isLastCharWhitespace)
+                {
+                    // skip
+                }
+                else if (isWhitespace)
+                {
+                    sb.Append(' '); // normalize to space
+                }
+                else
+                {
+                    sb.Append(ch);
+                }
+
+                isLastCharWhitespace = isWhitespace;
+            }
+            return sb.ToString();
+        }
+
+        // Assert strings are the same. If they're different. Give a more useful error message. Useful for long strings. 
+        static void AssertStringEqual(string a, string b)
+        {
+            if (a == b)
+            {
+                return;
+            }
+            int i = 0;
+
+            while (true)
+            {
+                if (i >= a.Length)
+                {
+                    break;
+                }
+                if (i >= b.Length)
+                {
+                    break;
+                }
+                Assert.AreEqual(a[i], b[i], string.Format("difference at index {0}", i));
+                i++;
+            }
+            Assert.AreEqual(a, b); // catch all                        
+        }
 
         const string JsonSaved = @"{
   'Storage': {
