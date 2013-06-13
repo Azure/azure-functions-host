@@ -11,6 +11,7 @@ using RunnerInterfaces;
 using System.Linq;
 using RunnerHost;
 using Microsoft.WindowsAzure;
+using OrchestratorUnitTests;
 
 namespace LocalOrchestratorTableTests
 {
@@ -49,7 +50,7 @@ namespace LocalOrchestratorTableTests
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
-            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            var lc = TestStorage.New<TableProgram>(account);
             lc.Call("TableDict");
         }
 
@@ -62,7 +63,7 @@ namespace LocalOrchestratorTableTests
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
 
-            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            var lc = TestStorage.New<TableProgram>(account);
             lc.Call("TableWrite");
 
             // Read via traditional Azure APIs.
@@ -85,7 +86,7 @@ namespace LocalOrchestratorTableTests
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
-            var lc = new LocalExecutionContext(account, typeof(TableProgram));
+            var lc = TestStorage.New<TableProgram>(account);
             lc.Call("TableReadWrite");
         }
 

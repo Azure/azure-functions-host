@@ -23,7 +23,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             Guid gActual = lc.Call("Test");
 
             Assert.AreNotEqual(gActual, Guid.Empty);            

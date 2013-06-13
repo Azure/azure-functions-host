@@ -25,7 +25,7 @@ namespace OrchestratorUnitTests
 
             Utility.DeleteContainer(account, "daas-test-input");
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("TestBinder");                        
 
             string content = Utility.ReadBlob(account, "daas-test-input", "directout.txt");
@@ -40,7 +40,7 @@ namespace OrchestratorUnitTests
             Utility.DeleteContainer(account, "daas-test-input");
             Utility.WriteBlob(account, "daas-test-input", "input.txt", "abc");
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
             lc.CallOnBlob("Func", @"daas-test-input\input.txt");

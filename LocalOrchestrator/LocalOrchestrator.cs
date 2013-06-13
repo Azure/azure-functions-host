@@ -20,7 +20,8 @@ namespace Orchestrator
         // Build by indexing all methods in type
         public static Worker Build(CloudStorageAccount account, Type typeClass)
         {
-            var lc = new LocalExecutionContext(account, typeClass);
+            var acs = account.ToString(true);
+            var lc = new LocalExecutionContext(acs, typeClass);
             
             LocalFunctionTable store = new LocalFunctionTable(account);
             Indexer i = new Indexer(store);

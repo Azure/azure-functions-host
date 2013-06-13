@@ -26,7 +26,7 @@ namespace OrchestratorUnitTests
         public void InvokeFail()
         {
             var account = TestStorage.GetAccount();
-            var lc = new LocalExecutionContext(account, typeof(ProgramFail));
+            var lc = TestStorage.New<ProgramFail>(account);
             ICall call = lc;
             var guid1 = call.QueueCall("Method").Guid;
 
@@ -72,7 +72,7 @@ namespace OrchestratorUnitTests
             Utility.DeleteContainer(account, "daas-test-input");
             Program._sb.Clear();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             ICall call = lc;
             var guid1 = call.QueueCall("Chain1", new { inheritedArg = "xyz" }).Guid;
 
@@ -184,7 +184,7 @@ namespace OrchestratorUnitTests
 
             Utility.WriteBlob(account, "daas-test-input", "foo-input.txt", "12");
 
-            var l = new LocalExecutionContext(account, typeof(Program2));
+            var l = TestStorage.New<Program2>(account);
             l.Call("Chain1", new { name = "foo" }); // blocks
 
             Assert.IsFalse(Utility.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");

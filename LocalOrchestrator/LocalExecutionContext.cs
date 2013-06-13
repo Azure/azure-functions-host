@@ -78,8 +78,10 @@ namespace Orchestrator
             return config;
         }
 
-        public LocalExecutionContext(CloudStorageAccount account, Type scope)
+        public LocalExecutionContext(string accountConnectionString, Type scope)
         {
+            var account = CloudStorageAccount.Parse(accountConnectionString);
+
             _config = CreateConfig(this, scope);        
        
             // These resolution functions are "open". We lazily resolve to any method on the scope type. 

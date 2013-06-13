@@ -296,6 +296,9 @@ namespace RunnerHost
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
             config.Binders.Add(new ContextBinderProvider()); // for IContext
 
+            // Hook in optional binders for Azure 2.0 data types. 
+            Azure20SdkBinders.Initialize.Add(config);
+
             return config;
         }
 

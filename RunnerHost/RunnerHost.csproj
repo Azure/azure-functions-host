@@ -95,6 +95,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CloudBinders\Azure20SdkBinders\Azure20SdkBinders.csproj">
+      <Project>{56b62fe7-c1f6-4200-9b4c-2a1677e53d1a}</Project>
+      <Name>Azure20SdkBinders</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SimpleBatch.Client\SimpleBatch.Client.csproj">
       <Project>{0f2424ff-7502-4bc7-87cd-a477b88fa054}</Project>
       <Name>SimpleBatch.Client</Name>

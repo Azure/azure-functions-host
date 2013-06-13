@@ -170,7 +170,14 @@ namespace OrchestratorUnitTests
 
     // Set dev storage. These are well known values.
     class TestStorage
-    {        
+    {
+        public static LocalExecutionContext New<T>(CloudStorageAccount account)
+        {
+            var acs = account.ToString(true);
+            var lc = new LocalExecutionContext(acs, typeof(T));
+            return lc;
+        }
+
         public static CloudStorageAccount GetAccount()
         {
             return CloudStorageAccount.DevelopmentStorageAccount;

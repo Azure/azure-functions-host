@@ -23,7 +23,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("TestConfig");
         }
 
@@ -42,7 +42,7 @@ namespace OrchestratorUnitTests
                 { "target", "out"}
             };
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncWithNames", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
@@ -65,8 +65,8 @@ namespace OrchestratorUnitTests
             Utility.DeleteContainer(account, "daas-test-input");
             Utility.WriteBlob(account, "daas-test-input", "blob.csv", "0,1,2");
 
-            LocalExecutionContext context = new LocalExecutionContext(account, typeof(Program));
-            context.Call("FuncWithBlob");
+            var lc = TestStorage.New<Program>(account);
+            lc.Call("FuncWithBlob");
         }
 
         [TestMethod]
@@ -75,8 +75,8 @@ namespace OrchestratorUnitTests
             CloudStorageAccount account = TestStorage.GetAccount();
             Utility.DeleteContainer(account, "daas-test-input");
 
-            LocalExecutionContext context = new LocalExecutionContext(account, typeof(Program));
-            context.Call("FuncWithMissingBlob");
+            var lc = TestStorage.New<Program>(account);
+            lc.Call("FuncWithMissingBlob");
         }
 
         [TestMethod]
@@ -89,7 +89,7 @@ namespace OrchestratorUnitTests
                 { "x", "15" },
             };
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("ParseArgument", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", "out.csv");
@@ -103,7 +103,7 @@ namespace OrchestratorUnitTests
 
             Utility.WriteBlob(account, "daas-test-input", "input.csv", "abc");
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("Func1");
 
             string content = Utility.ReadBlob(account, "daas-test-input", "input.csv");
@@ -129,7 +129,7 @@ namespace OrchestratorUnitTests
             var blobLease = MockBlobLeaseHolder.GetBlobSuffix(blob, ".lease");
             blob.DeleteIfExists(); // get into a known state
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("BlobLease"); // Invoke once, will create file
                         
             string content = blob.DownloadText();
@@ -158,7 +158,7 @@ namespace OrchestratorUnitTests
                 value = "abc"
             };
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncCloudStorageAccount", args);            
 
             string content = Utility.ReadBlob(account, args.containerName, args.blobName);
@@ -173,7 +173,7 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncEnqueue");
 
             var msg = queue.GetMessage();
@@ -194,7 +194,7 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncMultiEnqueueIEnumerable");
 
             for (int i = 10; i <= 30; i += 10)
@@ -223,7 +223,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             CallError<InvalidOperationException>(lc, "FuncMultiEnqueueIEnumerableNested");
         }
 
@@ -232,7 +232,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             CallError<InvalidOperationException>(lc, "FuncQueueOutputIList");
         }
 
@@ -241,7 +241,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             CallError<InvalidOperationException>(lc, "FuncQueueOutputObject");
         }
 
@@ -250,7 +250,7 @@ namespace OrchestratorUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             CallError<InvalidOperationException>(lc, "FuncQueueOutputIEnumerableOfObject");
         }
 
@@ -275,7 +275,7 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncMultiEnqueue");
 
             for (int i = 10; i <= 30; i += 10)
@@ -306,7 +306,7 @@ namespace OrchestratorUnitTests
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
             Utility.DeleteQueue(queue);
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("FuncCloudQueueEnqueue");
 
             for (int i = 10; i <= 30; i += 10)
@@ -336,7 +336,7 @@ namespace OrchestratorUnitTests
             Utility.WriteBlob(account, "daas-test-input", "1.csv", "abc");
             Utility.WriteBlob(account, "daas-test-input", "2.csv", "def");
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("Aggregate1");
 
             string content = Utility.ReadBlob(account, "daas-test-input", "output.csv");
@@ -357,7 +357,7 @@ namespace OrchestratorUnitTests
                 { "outdir", "testoutput" }
             };
 
-            var lc = new LocalExecutionContext(account, typeof(Program));
+            var lc = TestStorage.New<Program>(account);
             lc.Call("Aggregate2", d);
 
             string content = Utility.ReadBlob(account, "daas-test-input", @"testoutput/output.csv");
