@@ -252,7 +252,7 @@ namespace RunnerInterfaces
         // - JSON 
         // Make sure serialization/Deserialization agree on the types.
         // Parses are *not* compatible, especially for same types. 
-        private static bool UseToStringParser(Type t)
+        public static bool UseToStringParser(Type t)
         {
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 

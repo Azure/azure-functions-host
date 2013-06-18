@@ -138,7 +138,8 @@ namespace Orchestrator
             LocalFunctionTable store = new LocalFunctionTable(account);
             Indexer i = new Indexer(store);
 
-            i.IndexMethod(store.OnApplyLocationInfo, method);
+            IndexTypeContext ctx = new IndexTypeContext { Config = config };
+            i.IndexMethod(store.OnApplyLocationInfo, method, ctx);
 
             IFunctionTable functionTable = store;
             var funcs = functionTable.ReadAll();

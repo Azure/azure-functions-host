@@ -5,6 +5,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Orchestrator;
+using RunnerInterfaces;
 using SimpleBatch;
 
 namespace Azure20SdkUnitTests
@@ -72,6 +73,25 @@ namespace Azure20SdkUnitTests
 
             var lc = new LocalExecutionContext(acs, typeof(Program));
             lc.Call("Queue");
+            Assert.IsTrue(Program._QueueInvoked);
+        }
+        
+        [TestMethod]
+        public void TestQueueBadName()
+        {
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+            var acs = account.ToString(true);
+
+            var lc = new LocalExecutionContext(acs, typeof(Program));
+
+            try
+            {
+                lc.Call("QueueBadName");
+                Assert.Fail("indexer should have noticed bad queue name and failed immediately");
+            }
+            catch (IndexException)
+            {
+            }
         }
 
         class Program
@@ -85,10 +105,19 @@ namespace Azure20SdkUnitTests
                 Assert.AreEqual(account.ToString(), account2.ToString());
             }
 
+            public static bool _QueueInvoked;
+
             [SimpleBatch.Description("test")]
             public static void Queue(CloudQueue mytestqueue)
             {
+                _QueueInvoked = true;
                 Assert.IsNotNull(mytestqueue);
+            }
+
+            [SimpleBatch.Description("test")]
+            public static void QueueBadName(CloudQueue IllegalName)
+            {
+                Assert.Fail("shouldnt get invoked");
             }
 
             public static void IBlobMissing(

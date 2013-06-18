@@ -437,13 +437,11 @@ namespace OrchestratorUnitTests
             [NoAutomaticTrigger]
             public static void FuncWithBlob(
                 [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
-                [BlobInput(@"daas-test-input\blob.csv")] Stream stream,
-                [BlobInput(@"daas-test-input\blob.csv")] IEnumerable<int> ints
+                [BlobInput(@"daas-test-input\blob.csv")] Stream stream
                 )
             {
                 Assert.IsNotNull(blob, "Unexpectedly null CloudBlob");
                 Assert.IsNotNull(stream, "Unexpectedly null Stream");
-                Assert.IsNotNull(ints, "Unexpectedly null IEnumerable<int>");
 
                 Assert.AreEqual("blob.csv", blob.Name);
                 string content = blob.DownloadText();
@@ -471,28 +469,18 @@ namespace OrchestratorUnitTests
                     Assert.IsTrue(parsed, "Unable to parse Stream strings[{0}]: '{1}'", i, strings[i]);
                     Assert.AreEqual(i, value, "Unexpected value in Stream");
                 }
-
-                int count = 0;
-                foreach (int value in ints)
-                {
-                    Assert.AreEqual(count, value, "Unexpected value in IEnumerable<int>");
-                }
-
-                Assert.AreEqual(3, count, "Unexpected number of entries in IEnumerable<int>");
             }
 
             [NoAutomaticTrigger]
             public static void FuncWithMissingBlob(
                 [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
                 [BlobInput(@"daas-test-input\blob.csv")] Stream stream,
-                [BlobInput(@"daas-test-input\blob.csv")] TextReader reader,
-                [BlobInput(@"daas-test-input\blob.csv")] IEnumerable<int> ints
+                [BlobInput(@"daas-test-input\blob.csv")] TextReader reader
                 )
             {
                 Assert.IsNull(blob, "Unexpectedly non-null CloudBlob");
                 Assert.IsNull(stream, "Unexpectedly non-null Stream");
                 Assert.IsNull(reader, "Unexpectedly non-null TextReader");
-                Assert.IsNull(ints, "Unexpectedly non-null IEnumerable<int>");
             }
 
             [NoAutomaticTrigger]

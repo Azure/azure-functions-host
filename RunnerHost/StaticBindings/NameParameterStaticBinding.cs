@@ -18,6 +18,14 @@ namespace Orchestrator
         {
             if (UserSupplied)
             {
+                // $$$ This is a little ambiguous. This could be a runtime-supplied value, or it could be a type we model bind. 
+                if (ObjectBinderHelpers.UseToStringParser(parameter.ParameterType))
+                {
+                    // If bindable from a string (ie, basically simple types like int and string), 
+                    // then assume it's supplied at runtime by the user.  
+                    return;
+                }
+
                 // Verify that a binder exists. 
                 var binder = UnknownParameterRuntimeBinding.GetBinderOrThrow(config, parameter);
 

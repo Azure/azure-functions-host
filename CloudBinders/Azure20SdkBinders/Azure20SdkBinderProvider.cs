@@ -31,7 +31,7 @@ namespace Azure20SdkBinders
             {
                 return new CloudStorageAccountBinder();
             }
-            if (targetType == typeof(CloudQueueMessage))
+            if (targetType == typeof(CloudQueue))
             {
                 return new CloudQueueBinder();
             }            
