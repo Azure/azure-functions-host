@@ -26,6 +26,13 @@ namespace Orchestrator
         public ParameterInfo[] Parameters;
     }
 
+    // Context, speciifc to a given type. 
+    // Each type can provide its own configuration
+    public class IndexTypeContext
+    {
+        public IConfiguration Config { get; set; }
+    }
+
     // Go down and build an index
     public class Indexer
     {
@@ -337,12 +344,12 @@ namespace Orchestrator
 
         public void IndexType(Func<MethodInfo, FunctionLocation> funcApplyLocation, Type type)
         {
-            InvokeInitMethodOnType(type, funcApplyLocation);
+            var context = InvokeInitMethodOnType(type, funcApplyLocation);
 
             // Now register any declaritive methods
             foreach (MethodInfo method in type.GetMethods(MethodFlags))
             {
-                IndexMethod(funcApplyLocation, method);
+                IndexMethod(funcApplyLocation, method, context);
             }
             
             CheckDups();            
@@ -367,21 +374,27 @@ namespace Orchestrator
 
         // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
         // Register any functions provided by code-configuration.
-        private void InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        private IndexTypeContext InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
             // Invoke initialization function on this type.
             // This may register functions imperatively.
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
+            
             IndexerConfig config = new IndexerConfig(fpFuncLookup);
-
+            
+            RunnerHost.Program.AddDefaultBinders(config);
             RunnerHost.Program.ApplyHooks(type, config);
+
+            var context = new IndexTypeContext { Config = config };
 
             Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
 
+
             foreach (var descr in config.GetRegisteredMethods())
             {
-                IndexMethod(funcApplyLocation2, descr);
+                IndexMethod(funcApplyLocation2, descr, context);
             }
+            return context;
         }
 
         // Helper to convert delegates.
@@ -417,21 +430,21 @@ namespace Orchestrator
         }
 
         // Entry-point from reflection-based configuration. This is looking at inline attributes.
-        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method)
+        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method, IndexTypeContext context = null)
         {
             MethodDescriptor descr = GetFromMethod(method);
 
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(method.DeclaringType, name);
             Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
 
-            IndexMethod(funcApplyLocation2, descr);
+            IndexMethod(funcApplyLocation2, descr, context);
         }
 
         // Container is where the method lived on the cloud.
         // Common path for both attribute-cased and code-based configuration.
-        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr)
+        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr, IndexTypeContext context = null)
         {
-            FunctionDefinition index = GetDescriptionForMethod(descr);
+            FunctionDefinition index = GetDescriptionForMethod(descr, context);
             if (index != null)
             {
                 FunctionLocation loc = funcApplyLocation(descr);
@@ -553,19 +566,19 @@ namespace Orchestrator
             return descr;
         }
 
-        public static FunctionDefinition GetDescriptionForMethod(MethodInfo method)
+        public static FunctionDefinition GetDescriptionForMethod(MethodInfo method, IndexTypeContext context = null)
         {
             MethodDescriptor descr = GetFromMethod(method);
-            return GetDescriptionForMethod(descr);
+            return GetDescriptionForMethod(descr, context);
         }
 
         // Returns a partially instantiated FunctionIndexEntity.
         // Caller must add Location information.
-        public static FunctionDefinition GetDescriptionForMethod(MethodDescriptor descr)
+        public static FunctionDefinition GetDescriptionForMethod(MethodDescriptor descr, IndexTypeContext context = null)
         {
             try
             {
-                return GetDescriptionForMethodInternal(descr);
+                return GetDescriptionForMethodInternal(descr, context);
             }
             catch (Exception e)
             {
@@ -577,7 +590,7 @@ namespace Orchestrator
             }
         }
 
-        private static FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr)
+        private static FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
         {
             string description = null;
             TimeSpan? interval = null;
@@ -669,9 +682,26 @@ namespace Orchestrator
                 }
             };
 
+            if (context != null)
+            {
+                ValidateParameters(parameterBindings, descr.Parameters, context.Config);
+            }
+
             Validate(index);
 
             return index;
+        }
+
+        // Do static checking on parameter bindings. 
+        // Throw if we detect an error. 
+        private static void ValidateParameters(ParameterStaticBinding[] parameterBindings, ParameterInfo[] parameters, IConfiguration config)
+        {
+            for(int i = 0; i < parameterBindings.Length; i++)
+            { 
+                var binding = parameterBindings[i];
+                var param = parameters[i];
+                binding.Validate(config, param);
+            }
         }
 
         private static void Validate(FunctionDefinition index)

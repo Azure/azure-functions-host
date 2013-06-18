@@ -66,6 +66,7 @@
     <Compile Include="Tables\LocalTableCore.cs" />
     <Compile Include="Tables\LiveTableCore.cs" />
     <Compile Include="Tables\TableCore.cs" />
+    <Compile Include="Utility.Queue.Validate.cs" />
     <Compile Include="Utility.Table.AtomicAdjust.cs" />
     <Compile Include="Utility.Web.cs" />
     <Compile Include="WrapperEnumerable.cs" />

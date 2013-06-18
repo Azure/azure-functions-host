@@ -38,6 +38,14 @@ namespace Orchestrator
         // This is used for optimizations. 
         public bool IsReadOnly { get; set; }
 
+        public override void Validate(SimpleBatch.IConfiguration config, ParameterInfo parameter)
+        {
+            // Table name was already validated in property-setter
+
+            var type = parameter.ParameterType;
+            TableParameterRuntimeBinding.GetTableBinderOrThrow(config, type, false);
+        }
+
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             return new TableParameterRuntimeBinding

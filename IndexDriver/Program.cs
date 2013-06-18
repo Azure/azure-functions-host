@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using AzureTables;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
@@ -43,12 +44,37 @@ namespace IndexDriver
     {
         public static void Main(string[] args)
         {
+            if (args.Length == 1)
+            {
+                MainLocal(args);
+            }
+
             var client = new Utility.ProcessExecuteArgs<IndexDriverInput, IndexResults>(args);
 
             IndexDriverInput descr = client.Input;
             var result = MainWorker(descr);
 
             client.Result = result;
+        }
+
+        // Index an assembly on the local disk. 
+        private static void MainLocal(string[] args)
+        {
+            string assemblyPath = args[0];
+
+            var table = AzureTable<FunctionDefinition>.NewInMemory();
+            IFunctionTable settings = new LoggingCloudIndexerSettings(table);
+            Indexer i = new Indexer(settings);
+
+            var assembly = Assembly.LoadFile(assemblyPath);
+            //string dir = Path.GetDirectoryName(assemblyPath);
+            i.IndexAssembly(m => new MethodInfoFunctionLocation { MethodInfo = m }, assembly);
+
+            // Print output
+            foreach (var func in settings.ReadAll())
+            {
+                Console.WriteLine("  {0}", func.Location.GetShortName());
+            }
         }
 
         public static IndexResults MainWorker(IndexDriverInput input)

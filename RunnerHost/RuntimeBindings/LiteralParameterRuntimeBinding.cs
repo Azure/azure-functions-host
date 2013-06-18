@@ -19,13 +19,7 @@ namespace RunnerHost
 
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
-            var t = targetParameter.ParameterType;
-            ICloudBinder binder = config.GetBinder(t);
-            if (binder == null)
-            {
-                string msg = string.Format("Can't bind parameter '{0}' to type '{1}'. Are you missing a custom model binder?", targetParameter.Name, t);
-                throw new InvalidOperationException(msg);
-            }
+            ICloudBinder binder = GetBinderOrThrow(config, targetParameter);
 
             // We want to preserve the same binding context to maximize consistency between model bound parameters 
             // and explictly calling IBinder. 
@@ -39,6 +33,18 @@ namespace RunnerHost
                 throw new InvalidOperationException(msg);
             }            
             return binder.Bind(bindingContext, targetParameter);
+        }
+
+        public static ICloudBinder GetBinderOrThrow(IConfiguration config, ParameterInfo targetParameter)
+        {
+            var t = targetParameter.ParameterType;
+            ICloudBinder binder = config.GetBinder(t);
+            if (binder == null)
+            {
+                string msg = string.Format("Can't bind parameter '{0}' to type '{1}'. Are you missing a custom model binder or binding attribute ([Blob], [Queue], [Table])?", targetParameter.Name, t);
+                throw new InvalidOperationException(msg);
+            }
+            return binder;
         }
     }
 

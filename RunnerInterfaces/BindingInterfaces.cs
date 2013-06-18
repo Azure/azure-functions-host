@@ -46,6 +46,12 @@ namespace RunnerInterfaces
         // This is useful for diagnostic purposes. 
         public string Name { get; set; }
 
+        // Validate statically. Throw InvalidOperation Exceptions if something is wrong in the bindings. 
+        public virtual void Validate(IConfiguration config, ParameterInfo parameter)
+        {
+            // Nop
+        }
+
         // Get any {name} keys that this binding will provide. 
         // This notifies the static binder about which names are available for other bindings
         [JsonIgnore]

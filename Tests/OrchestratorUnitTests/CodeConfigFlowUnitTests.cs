@@ -117,7 +117,7 @@ namespace OrchestratorUnitTests
 
         class Type4
         {
-            public static void TestReg(Stream input)
+            public static void TestReg()
             {
             }
 
@@ -148,7 +148,7 @@ namespace OrchestratorUnitTests
 
             public static void Initialize(IConfiguration config)
             {
-                config.Register("TestReg").TriggerTimer(TimeSpan.FromMinutes(3));
+                config.Register("TestReg").TriggerTimer(TimeSpan.FromMinutes(3)).BindBlobInput("input", "container/blob");
             }
         }
 

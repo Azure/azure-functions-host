@@ -6,6 +6,7 @@ using System.Text;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using RunnerInterfaces;
 using SimpleBatch;
 
 namespace Azure20SdkBinders
@@ -37,8 +38,8 @@ namespace Azure20SdkBinders
             return null;
         }
     }
-        
-    class CloudQueueBinder : ICloudBinder
+
+    class CloudQueueBinder : ICloudBinder, ICloudBinderVerify
     {
         public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
         {
@@ -55,6 +56,12 @@ namespace Azure20SdkBinders
             var q = account.CreateCloudQueueClient().GetQueueReference(queueName);
             q.CreateIfNotExists();
             return q;
+        }
+
+        void ICloudBinderVerify.Validate(ParameterInfo parameter)
+        {
+            string queueName = parameter.Name;
+            RunnerInterfaces.Utility.ValidateQueueName(queueName);
         }
     }
 

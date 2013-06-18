@@ -18,6 +18,14 @@ namespace RunnerHost
 
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
+            bool useLease;
+            Type type = GetBinderType(targetParameter, this.IsInput, out useLease);                       
+
+            return Bind(config, bindingContext, type, useLease);
+        }
+
+        static internal Type GetBinderType(ParameterInfo targetParameter, bool IsInput, out bool useLease)
+        {
             var type = targetParameter.ParameterType;
 
             if (targetParameter.IsOut)
@@ -33,7 +41,7 @@ namespace RunnerHost
                 type = type.GetElementType();
             }
 
-            bool useLease = Utility.IsRefKeyword(targetParameter);
+            useLease = Utility.IsRefKeyword(targetParameter);
             if (useLease)
             {
                 // This means we had a bad request formed. 
@@ -42,8 +50,7 @@ namespace RunnerHost
                     throw new InvalidOperationException("Blob is leased, but marked as input-only.");
                 }
             }
-
-            return Bind(config, bindingContext, type, useLease);
+            return type;
         }
 
         public BindResult Bind(IConfiguration config, IBinderEx bindingContext, Type type, bool useLease)
@@ -53,22 +60,14 @@ namespace RunnerHost
             JsonByRefBlobBinder leaseAwareBinder = null;
 
             // $$$ Generalize Blob Lease support to all types. This requires passing the lease Id to the upload function. 
+            VerifyBinder(type, blobBinder, useLease);
+
             if (useLease)
             {
-                if (blobBinder != null)
-                {
-                    string msg = string.Format("The binder for {0} type does not support the 'ByRef keyword.", type.FullName);
-                    throw new NotImplementedException(msg);
-                }
                 leaseAwareBinder = new JsonByRefBlobBinder();
                 blobBinder = leaseAwareBinder;
             }
-
-            if (blobBinder == null)
-            {                
-                throw new InvalidOperationException(string.Format("Not supported binding to a parameter of type '{0}'", type.FullName));                
-            }
-
+                        
             CloudBlob blob = this.Blob.GetBlob();
             IBlobLeaseHolder _holder = BlobLeaseTestHook();
 
@@ -95,6 +94,25 @@ namespace RunnerHost
             {
                 IBlobCausalityLogger logger = new BlobCausalityLogger();
                 return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, type, blob, logger);
+            }
+        }
+
+        internal static void VerifyBinder(Type type, ICloudBlobBinder blobBinder, bool useLease)
+        {
+            if (useLease)
+            {
+                if (blobBinder != null)
+                {
+                    string msg = string.Format("The binder for {0} type does not support the 'ByRef keyword.", type.FullName);
+                    throw new NotImplementedException(msg);
+                }
+            }
+            else
+            {
+                if (blobBinder == null)
+                {
+                    throw new InvalidOperationException(string.Format("Not supported binding to a parameter of type '{0}'", type.FullName));
+                }
             }
         }
 

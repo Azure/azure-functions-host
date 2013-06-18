@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Microsoft.WindowsAzure;
 using RunnerHost;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace Orchestrator
 {
@@ -12,6 +14,18 @@ namespace Orchestrator
     {
         public CloudBlobPath Path;
         public bool IsInput;
+
+        // $$$ Ratioanlize these rules with BlobParameterRuntimeBinding
+        public override void Validate(SimpleBatch.IConfiguration config, System.Reflection.ParameterInfo parameter)
+        {
+            Utility.ValidateContainerName(this.Path.ContainerName);
+
+            bool useLease;
+            Type type = BlobParameterRuntimeBinding.GetBinderType(parameter, this.IsInput, out useLease);
+            ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
+
+            BlobParameterRuntimeBinding.VerifyBinder(type, blobBinder, useLease);            
+        }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {

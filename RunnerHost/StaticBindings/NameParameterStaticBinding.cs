@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Reflection;
 using Microsoft.WindowsAzure;
 using RunnerHost;
 using RunnerInterfaces;
+using SimpleBatch;
 
 namespace Orchestrator
 {
@@ -11,6 +13,21 @@ namespace Orchestrator
     {
         public string KeyName { get; set; }
         public bool UserSupplied { get; set; }
+
+        public override void Validate(IConfiguration config, ParameterInfo parameter)
+        {
+            if (UserSupplied)
+            {
+                // Verify that a binder exists. 
+                var binder = UnknownParameterRuntimeBinding.GetBinderOrThrow(config, parameter);
+
+                var verify = binder as ICloudBinderVerify;
+                if (verify != null)
+                {
+                    verify.Validate(parameter);
+                }
+            }
+        }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {

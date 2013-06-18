@@ -278,6 +278,12 @@ namespace RunnerHost
         {            
             Configuration config = new Configuration();
 
+            AddDefaultBinders(config);
+            return config;
+
+        }
+        public static void AddDefaultBinders(IConfiguration config)
+        {
             // Blobs
             config.BlobBinders.Add(new CloudBlobBinderProvider());
             config.BlobBinders.Add(new BlobStreamBinderProvider());
@@ -298,8 +304,6 @@ namespace RunnerHost
 
             // Hook in optional binders for Azure 2.0 data types. 
             Azure20SdkBinders.Initialize.Add(config);
-
-            return config;
         }
 
         private static void ApplyHooks(MethodInfo method, IConfiguration config)
