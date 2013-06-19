@@ -46,7 +46,7 @@ namespace RunnerHost
                 Watches w = new Watches
                 {
                     Name = a.ToString(),
-                    Watch = Program.GetWatcher(result, typeof(T))
+                    Watch = SelfWatch.GetWatcher(result, typeof(T))
                 };
                 lock (_watches)
                 {

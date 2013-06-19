@@ -197,83 +197,6 @@ namespace RunnerHost
         // $$$ get rid of static fields.
         static CloudBlobDescriptor _parameterLogger;
         
-
-        // Query the selfwatches and update the live parameter info.
-        static void LogSelfWatch(ISelfWatch[] watches, CloudBlob paramBlob)
-        {
-            StringBuilder sb = new StringBuilder();
-            foreach (var watch in watches)
-            {
-                if (watch != null)
-                {
-                    string val = watch.GetStatus();
-                    sb.AppendLine(val);
-                }
-                else
-                {
-                    sb.AppendLine(); // blank for a place holder.
-                }
-            }
-            try
-            {
-                paramBlob.UploadText(sb.ToString());
-            }
-            catch
-            {
-                // Not fatal if we can't update selfwatch. 
-                // Could happen because we're calling on a timer, and so it 
-                // could get invoked concurrently on multiple threads, which 
-                // could contend over writing.
-            }
-        }
-
-        // Begin self-watches. Return a cleanup delegate for stopping the watches. 
-        // May update args array with selfwatch wrappers.
-        static Action StartSelfWatcher(BindResult[] binds, ParameterInfo[] ps)
-        {
-            if (_parameterLogger == null)
-            {
-                // Can't self-watch, no where to log to
-                return null;
-            }
-            // Initial Self watchers on the parameters.
-            var paramBlob = _parameterLogger.GetBlob();
-
-            int len = binds.Length;
-            ISelfWatch[] watches = new ISelfWatch[len];
-            for(int i =0; i < len; i++)
-            {
-                watches[i] = GetWatcher(binds[i], ps[i]);
-            }
-
-            // $$$ If the refresh rate is too high, timers contend over the blob and it may not get written. Why?
-            var refreshRate = TimeSpan.FromSeconds(30);
-
-            TimerCallback callback = obj =>
-            {
-                if (_parameterLogger == null)
-                {
-                    return;
-                }
-                LogSelfWatch(watches, paramBlob);
-            };
-
-            // Given an initial quick update so that user sees non-zero values for self-watch.
-            Timer timer = new Timer(callback, null, TimeSpan.FromSeconds(3), refreshRate);
-
-            // Deferred function to stop the self-watching on parameters.
-            Action fpStopWatcher = () =>
-            {
-                timer.Dispose();
-                _parameterLogger = null;
-
-                // Flush remaining. do this after timer has been shutdown to avoid races. 
-                LogSelfWatch(watches, paramBlob);
-            };
-            return fpStopWatcher;
-        }
-
-
         public static IConfiguration InitBinders()
         {            
             Configuration config = new Configuration();
@@ -365,7 +288,7 @@ namespace RunnerHost
             Console.WriteLine("Parameters bound. Invoking user function.");
             Console.WriteLine("--------");
 
-            Action fpStopWatcher = null;
+            SelfWatch fpStopWatcher = null;
             try
             {
                 fpStopWatcher = InvokeWorker(m, binds, ps);
@@ -373,13 +296,13 @@ namespace RunnerHost
             }
             finally
             {
-                Console.WriteLine("--------");
-
                 // Process any out parameters, do any cleanup
                 // For update, do any cleanup work. 
 
                 try
                 {
+                    Console.WriteLine("--------");
+
                     for (int i = 0; i < len; i++)
                     {
                         var bind = binds[i];
@@ -416,15 +339,20 @@ namespace RunnerHost
                     // watches still running.                
                     if (fpStopWatcher != null)
                     {
-                        fpStopWatcher();
+                        fpStopWatcher.Stop();
                     }
                 }
             }            
         }
 
-        public static Action InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
+        public static SelfWatch InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
         {
-            Action fpStopWatcher = StartSelfWatcher(binds, ps);
+            SelfWatch fpStopWatcher  = null;
+            if (_parameterLogger != null)
+            {
+                CloudBlob blobResults = _parameterLogger.GetBlob();
+                fpStopWatcher = new SelfWatch(binds, ps, blobResults);
+            }
 
             // Watchers may tweak args, so do those second.
             object[] args = Array.ConvertAll(binds, bind => bind.Result);
@@ -451,58 +379,6 @@ namespace RunnerHost
             }
 
             return fpStopWatcher;
-        }
-
-        // May update the object with a Selfwatch wrapper.
-        static ISelfWatch GetWatcher(BindResult bind, ParameterInfo targetParameter)
-        {
-            return GetWatcher(bind, targetParameter.ParameterType);
-        }
-
-        public static ISelfWatch GetWatcher(BindResult bind, Type targetType)
-        {
-            ISelfWatch watch = bind.Watcher;
-            if (watch != null)
-            { 
-                // If explicitly provided, use that.
-                return watch;
-            }
-
-            watch = bind.Result as ISelfWatch;
-            if (watch != null)
-            {
-                return watch;
-            }
-
-            // See if we can apply a watcher on the result
-            var t = IsIEnumerableT(targetType);
-            if (t != null)
-            {
-                var tWatcher = typeof(WatchableEnumerable<>).MakeGenericType(t);
-                var result = Activator.CreateInstance(tWatcher, bind.Result);
-
-                bind.Result = result; // Update to watchable version.
-                return result as ISelfWatch;
-            }
-
-            // Nope, 
-            return null;
-        }        
-
-        // Get the T from an IEnumerable<T>. 
-        internal static Type IsIEnumerableT(Type typeTarget)
-        {
-            if (typeTarget.IsGenericType)
-            {
-                var t2 = typeTarget.GetGenericTypeDefinition();
-                if (t2 == typeof(IEnumerable<>))
-                {
-                    // RowAs<T> doesn't take System.Type, so need to use some reflection. 
-                    var rowType = typeTarget.GetGenericArguments()[0];
-                    return rowType;
-                }
-            }
-            return null;
         }        
     }        
 }

@@ -67,6 +67,7 @@
     <Compile Include="IBinderPrivate.cs" />
     <Compile Include="RuntimeBindings\NullBindResult.cs" />
     <Compile Include="RuntimeBindings\UnknownParameterRuntimeBinding.cs" />
+    <Compile Include="SelfWatch.cs" />
     <Compile Include="SimpleFunctionToken.cs" />
     <Compile Include="WebCallWrapper.cs" />
     <Compile Include="Configuration.cs" />
