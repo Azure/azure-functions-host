@@ -64,6 +64,7 @@
     <Compile Include="Binders\ContextBinderProvider.cs" />
     <Compile Include="BindResultHelpers.cs" />
     <Compile Include="Binders\BlobBinderProviders.cs" />
+    <Compile Include="IBinderPrivate.cs" />
     <Compile Include="RuntimeBindings\NullBindResult.cs" />
     <Compile Include="RuntimeBindings\UnknownParameterRuntimeBinding.cs" />
     <Compile Include="SimpleFunctionToken.cs" />

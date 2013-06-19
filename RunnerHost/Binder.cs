@@ -12,17 +12,19 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    public class BindingContext : IBinderEx
+    public class BindingContext : IBinderEx, IBinderPrivate
     {
         private readonly IRuntimeBindingInputs _runtimeInputs;
         private readonly IConfiguration _config;
         private readonly FunctionInstanceGuid _FunctionInstanceGuid;
+        private readonly string _serviceUrl;
 
-        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance)
+        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance, string serviceUrl)
         {
             _config = config;
             _runtimeInputs = runtimeInputs;
             _FunctionInstanceGuid = functionInstance;
+            _serviceUrl = serviceUrl;
         }
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
@@ -54,6 +56,11 @@ namespace RunnerHost
         public Guid FunctionInstanceGuid
         {
             get { return _FunctionInstanceGuid;  }
+        }
+
+        INotifyNewBlob IBinderPrivate.NotifyNewBlob
+        {
+            get { return new NotifyNewBlob(_serviceUrl);  }
         }
     }
 

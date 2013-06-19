@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
+using Newtonsoft.Json;
 
 namespace RunnerInterfaces
 {
@@ -33,6 +34,49 @@ namespace RunnerInterfaces
             }
             catch (StorageClientException)
             {
+            }
+        }
+
+        // Apply the callback funciton to each message in the queue. 
+        // Delete message from queue once callback returns.
+        [DebuggerNonUserCode]
+        public static void ApplyToQueue<T>(Action<T> callback, CloudQueue queue)
+        {
+            IEnumerable<CloudQueueMessage> msgs = null;
+            try
+            {
+                msgs = queue.GetMessages(32); // 32 is max number
+
+            }
+            catch
+            {
+            }
+            if (msgs == null)
+            {
+                return;
+            }
+
+            foreach (var msg in msgs)
+            {
+                T payload;
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<T>(msg.AsString);
+                }
+                catch
+                {
+                    // Bad JSON serialization. Posionous. Just remove it.                    
+                    queue.DeleteMessage(msg);
+                    continue;
+                }
+
+                callback(payload);
+
+                try
+                {
+                    queue.DeleteMessage(msg);
+                }
+                catch { }
             }
         }
     }

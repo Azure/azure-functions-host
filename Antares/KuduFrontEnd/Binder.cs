@@ -37,7 +37,7 @@ namespace SimpleBatch
             IRuntimeBindingInputs runtimeInputs = new RuntimeBindingInputs(accountConnectionString);
             var functionInstance = Guid.Empty;
 
-            _inner = new BindingContext(config, runtimeInputs, functionInstance);
+            _inner = new BindingContext(config, runtimeInputs, functionInstance, serviceUrl : null);
         }
 
         public T Bind<T>(Attribute a)

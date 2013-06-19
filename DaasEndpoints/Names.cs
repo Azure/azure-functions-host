@@ -50,6 +50,11 @@ namespace DaasEndpoints
 
         public const string FunctionInvokeDoneQueue = AzureExecutionEndpointNames.FunctionInvokeDoneQueue;
 
+        // Key optimization for blob listening: Blob listening on external blobs can have a 30 minute lag. 
+        // make it fast to detect blobs that we wrote ourselves. When we write a blob, queueue a notification
+        // message.
+        public const string BlobWrittenQueue = "blob-written";
+
         public const string DaasControlContainerName = prefix + "-control";        
     }
 

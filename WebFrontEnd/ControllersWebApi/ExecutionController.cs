@@ -31,6 +31,17 @@ namespace WebFrontEnd
             // Lets tooling verify they have a valid service URL.
         }
 
+        // Called to alert that a new blob is available. This is for fast chaining. 
+        [HttpPost]
+        public void NotifyBlob(BlobWrittenMessage msg)
+        {
+            if (msg == null)
+            {
+                throw NewUserError("payload not specified");
+            }
+            GetServices().GetBlobWrittenQueue().Add(msg);
+        }
+
         [HttpPost]
         public void Scan(string func, string container)
         {

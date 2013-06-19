@@ -17,12 +17,14 @@ namespace RunnerHost
         private readonly Guid _functionWriter;
         private readonly CloudBlob _blob;
         private readonly IBlobCausalityLogger _logger;
+        private readonly INotifyNewBlob _notify;
 
-        private BlobBindResult(BindResult inner, Guid functionWriter, CloudBlob blob, IBlobCausalityLogger logger)
+        private BlobBindResult(BindResult inner, Guid functionWriter, CloudBlob blob, IBlobCausalityLogger logger, INotifyNewBlob notify)
         {
             _functionWriter = functionWriter;
             _blob = blob;
             _logger = logger;
+            _notify = notify;
 
             _inner = inner;
             this.Result = _inner.Result;
@@ -45,6 +47,13 @@ namespace RunnerHost
             // The entire purpose of this wrapper class is to make this call. 
             // This must be called after the blbo is written, since it may stamp the blob. 
             _logger.SetWriter(_blob, _functionWriter);
+
+            // Notify that blob is available. 
+            if (_notify != null)
+            {
+                string name = _blob.ServiceClient.Credentials.AccountName;
+                _notify.Notify(name, _blob.Container.Name, _blob.Name);
+            }
         }
 
         // Get a BindResult for a blob that will stamp the blob with the GUID of the function instance that wrote it. 
@@ -68,9 +77,16 @@ namespace RunnerHost
                 return inner;
             }
 
+            INotifyNewBlob notify = null;
+            IBinderPrivate privateBinder = bindingContext as IBinderPrivate;
+            if (privateBinder != null)
+            {
+                notify = privateBinder.NotifyNewBlob;
+            }
+
             // Now wrap it with a result that will tag it with a Guid. 
             Guid functionWriter = bindingContext.FunctionInstanceGuid;
-            return new BlobBindResult(inner, functionWriter, blob, logger);
+            return new BlobBindResult(inner, functionWriter, blob, logger, notify);
         }
     }
 }

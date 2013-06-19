@@ -55,6 +55,7 @@
     <Compile Include="BindingInterfaces.cs" />
     <Compile Include="BlobLease.cs" />
     <Compile Include="BlobTextWriter.cs" />
+    <Compile Include="Execution\INotifyNewBlob.cs" />
     <Compile Include="Execution\IPrereqManager.cs" />
     <Compile Include="Execution\PrereqManager.cs" />
     <Compile Include="FunctionTable\FunctionDefinition.cs" />

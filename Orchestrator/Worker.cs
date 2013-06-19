@@ -100,6 +100,11 @@ namespace Orchestrator
             _listener.Poll(token);
         }
 
+        // Called if the external system thinks we may have a new blob. 
+        public void NewBlob(BlobWrittenMessage msg)
+        {
+            _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName);
+        }
 
         private void OnNewTimer(FunctionDefinition func)
         {

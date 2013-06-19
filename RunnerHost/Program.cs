@@ -102,7 +102,7 @@ namespace RunnerHost
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            Invoke(config, method, invoke.Id, inputs, invoke.Args);
+            Invoke(config, method, invoke.Id, invoke.ServiceUrl, inputs, invoke.Args);
         }
 
         public static void Invoke(FunctionInvokeRequest invoke)
@@ -339,11 +339,11 @@ namespace RunnerHost
         }
 
         // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        public static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
+        private static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, string serviceUrl, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance);
+            IBinderEx bindingContext = new BindingContext(config, inputs, instance, serviceUrl);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

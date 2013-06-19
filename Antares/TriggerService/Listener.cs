@@ -165,6 +165,23 @@ namespace TriggerService
             }
         }
 
+        // Called as a hint if an external source knows we have a new blob. Will invoke triggers. 
+        // This will invoke back any associated triggers
+        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName)
+        {
+            foreach (var container in _map.Keys)
+            {
+                if (containerName == container.Name) // names must be lowercase, so technically case-sensitive
+                {
+                    bool sameAccount = string.Compare(container.ServiceClient.Credentials.AccountName, accountName, ignoreCase: true) == 0;
+                    if (sameAccount)
+                    {
+                        var blob = container.GetBlobReference(blobName);
+                        OnNewBlobWorker(blob);                        
+                    }
+                }
+            }
+        }
 
         private void OnNewBlobWorker(CloudBlob blob)
         {
