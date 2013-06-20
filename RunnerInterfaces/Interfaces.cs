@@ -79,7 +79,10 @@ namespace RunnerInterfaces
         {
             var c = GetContainer();
             c.CreateIfNotExist();
-            var blob = c.GetBlobReference(BlobName);
+            string blobName = this.BlobName.Replace('\\', '/');
+
+            // SDK has bug in computing signature with \ in blob names. Should be using /
+            var blob = c.GetBlobReference(blobName);
             return blob;
         }
 

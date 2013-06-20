@@ -73,12 +73,13 @@ namespace RunnerHost
                 _lastContent = content;
                 _blobResults.UploadText(content);
             }
-            catch
-            {
+            catch( Exception e)
+            {   
                 // Not fatal if we can't update selfwatch. 
-                // Could happen because we're calling on a timer, and so it 
-                // could get invoked concurrently on multiple threads, which 
-                // could contend over writing.
+                // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
+                Console.WriteLine("---- SelfWatch failed ---");
+                Program.WriteExceptionChain(e);
+                Console.WriteLine("-------------------------");
             }
         }
 

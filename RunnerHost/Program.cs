@@ -73,7 +73,7 @@ namespace RunnerHost
         }
 
         // Write an exception and inner exceptions
-        private static void WriteExceptionChain(Exception e)
+        public static void WriteExceptionChain(Exception e)
         {
             Exception e2 = e;
             while (e2 != null)
