@@ -100,11 +100,12 @@ namespace LocalOrchestratorTableTests
         {
             public const string TableName = "testtable1";
 
-            public static void TableWrite([Table(TableName)] IAzureTableWriter writer)
+            public static void TableWrite([Table(TableName)] IDictionary<Tuple<string,string>, object> writer)
             {
                 for (int i = 0; i < 10; i++)
                 {
-                    writer.Write("part", i.ToString(), new { myvalue = i * 10 });
+                    var partRowKey = Tuple.Create("part", i.ToString());
+                    writer[partRowKey] = new { myvalue = i * 10 };
                 }
             }
 
