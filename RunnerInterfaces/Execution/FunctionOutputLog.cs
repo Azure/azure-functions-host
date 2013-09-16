@@ -34,6 +34,10 @@ namespace RunnerInterfaces
             string name = f.ToString() + ".txt";
 
             var c = Utility.GetContainer(accountConnectionString, containerName);
+            if (c.CreateIfNotExist())
+            {
+                c.SetPermissions(new BlobContainerPermissions() { PublicAccess = BlobContainerPublicAccessType.Off });
+            }
 
             CloudBlob blob = c.GetBlobReference(name);            
             

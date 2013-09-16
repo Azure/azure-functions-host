@@ -4,84 +4,108 @@
 
 @{
     ViewBag.Title = "FunctionInstance";
+    
+    var log = Model.Instance;
+    var trigger = log.FunctionInstance.TriggerReason;
+
+    // Heavily copy-pasted for now. Long-term, this should be in a view model.
+    string alertClass = null;
+    string alertHeader = null;
+    switch (log.GetStatus())
+    {
+        case FunctionInstanceStatus.CompletedFailed:
+            alertClass = "alert-error";
+            alertHeader = "Failed";
+            break;
+        case FunctionInstanceStatus.CompletedSuccess:
+            alertClass = "alert-success";
+            alertHeader = "Completed";
+            break;
+        case FunctionInstanceStatus.Running:
+            alertClass = "alert-info";
+            alertHeader = "Running";
+            break;
+        case FunctionInstanceStatus.Queued:
+            alertClass = "alert-info";
+            alertHeader = "Queued";
+            break;
+        case FunctionInstanceStatus.AwaitingPrereqs:
+            alertClass = "alert-info";
+            alertHeader = "Awaiting Prerequisites";
+            break;
+        // don't colorize others.                 
+    }
 }
 
-<h2>Function Invocation Details</h2>
+<div class="page-header">
+    <h1>
+        Invocation Details
+    </h1>
+</div>
 
 @Html.ValidationSummary()
 
-This page shows details on a specific execution instance of function: @Html.FunctionFullNameLink(Model.Descriptor)</b>
-
-<ul>
-    @{
-        var log = Model.Instance;
-        var trigger = log.FunctionInstance.TriggerReason;
-    }
-    <li>
-        @Html.Partial("_FunctionStatus", log) 
-
+<div class="hero-unit">
+    <h2>
+        @Model.Descriptor.Location.GetShorterName()
+        @if (!Model.Parameters.Any())
+        {
+            <small>()</small>
+        } else {
+            <small>(
+                <dl>
+                    @foreach (var param in Model.Parameters)
+                    {
+                        <dt>@param.Name</dt>
+                        <dd>@Html.ParamArgValueLink(param)</dd>
+                    }
+                </dl>
+            )</small>
+        }
+    </h2>
+    <p class="alert @alertClass"><strong>@alertHeader</strong> @log.GetRunStatusString()</p>
+    <p>Invoked at @log.Timestamp UTC</p>
+    <p>@trigger</p>
+    <p>
+        @if(!String.IsNullOrEmpty(log.OutputUrl)) {
+            <a href="@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "InvokeLog", id = Model.Instance.FunctionInstance.Id })" class="btn"><i class="icon-cloud-download"></i> Download Console Output</a>
+        }
+        <a href="@Url.Action(actionName: "InvokeFunctionReplay", controllerName: "Function", routeValues: new { instance =  log.GetKey() })" class="btn"><i class="icon-refresh"></i> Replay</a>
+        @if ((Model.Children.Length > 0) || (trigger.ParentGuid != Guid.Empty))
+        {
+            <a href="@Url.Action("ViewChain", new { func = log.FunctionInstance.Id })" class="btn"><i class="icon-code-fork"></i> View Children</a>
+        }
         @if (log.GetStatus() == FunctionInstanceStatus.Running)
         {
-            using(Html.BeginForm("AbortFunction", "Log", new { instance = @log.FunctionInstance.Id } ))
+            using (Html.BeginForm("AbortFunction", "Log", new { instance = @log.FunctionInstance.Id }, FormMethod.Post, new { @class = "form-inline" }))
             {
-                <input type="submit" value ="Abort" />
+                <button class="btn btn-danger" type="submit"><i class="icon-remove"></i> Abort</button>
             }
-            <span>(abort may take a few minutes)</span>
         }
-    </li>
-    <li>Timestamp: @(log.Timestamp) UTC time</li>             
-    <li>Logging: @Html.FunctionOutputLink(log) </li>
-    @if (trigger != null)
-    {
-        <li>Reason this function was executed: <span>@trigger</span>
-        @if (trigger.ParentGuid != Guid.Empty)
-        {
-            <span>(by @Html.FunctionInstanceLogLink(trigger.ParentGuid, Model.Lookup) )</span>
-        }
-    </li>
-    }
-</ul>
-
-<p>Values for the parameters for this invocation:</p>
-<table border="1">
-    <tr>
-        <td><b>Name</b></td>
-        <td><b>Description</b></td>
-        <td><b>Value</b></td>
-        <td><b>Runtime info</b></td>
-    </tr>
-
-@foreach (var param in Model.Parameters)
-{ 
-    <tr>
-        <td>@param.Name</td>
-        <td>@param.Description</td>
-        <td>@Html.ParamArgValueLink(param)</td>
-        <td><pre>@param.SelfWatch</pre></td>
-    </tr>
-}
-    </table>
+    </p>
+</div>
 
 
 @if (Model.Prereqs.Length > 0)
 {
-    <p>This function is waiting on the following prerequisites before it can execute:</p>
+    <p>This function is waiting on the following prerequisites before it can execute:
+    </p>
     <table border="1">
         <tr>
             <td>Name</td>
             <td>Status</td>
-        </tr>        
+        </tr>
         @foreach (var prereq in Model.Prereqs)
         {
             <tr>
-                <td> @Html.FunctionInstanceLogLink(prereq) </td>
-                <td> @Html.Partial("_FunctionStatus", prereq) </td>
+                <td>@Html.FunctionInstanceLogLink(prereq) </td>
+                <td>@Html.Partial("_FunctionStatus", prereq) </td>
             </tr>
         }
     </table>
 }
 
-@if(Model.Children.Length > 0)
+@if (Model.Children.Length > 0)
 {
     <p>Functions triggered by this function:</p>
     
@@ -95,13 +119,3 @@ This page shows details on a specific execution instance of function: @Html.Func
         }
     </table>
 }
-
-@if ((Model.Children.Length > 0) || (trigger.ParentGuid != Guid.Empty))
-{
-    <p>
-        View entire chain:
-    @Html.ActionLink("View entire function chain", "ViewChain", new { func = log.FunctionInstance.Id })
-    </p>
-}
-
-<p>@Html.ReplayFunctionInstance(log) Click this link to replay the function with the same parameters.</p>

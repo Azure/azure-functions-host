@@ -4,59 +4,68 @@
     ViewBag.Title = "Summary";
 }
 
-<h2>Function Invocation Summary</h2>
+<div class="page-header">
+<h1>Invocation Summary <small>the number of times each function was executed</small></h1>
+</div>
+@if(Model.Summary.Any()) {
+    <table class="table table-header">
+        <thead>
+            <tr>
+                <th>Function name</th>
+                <th>Completed successfully</th>
+                <th>Failures</th>
+                <th>Average run length</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var kv in Model.Summary)
+            {
+                <tr>
+                    <td>
+                        @Html.FunctionLogInvokeHistoryLink(kv.Key)
+                    </td>
+                    <td>
+                        @{
+                            var val = kv.Value;
+                            int count = val.CountCompleted;
 
-<p>
-  [@Html.ActionLink("Home", "Index", "Home") ]
-  [@Html.ActionLink("Log of most recent invokes", "ListAllInstances", "Log")]
-</p>
+                            string avgSpanString = string.Empty;
+                            if (count > 0)
+                            {
+                                var seconds = val.Runtime.TotalSeconds;
+                                var avgSeconds = seconds / count;
+                                var avgSpan = TimeSpan.FromSeconds(avgSeconds);
+                                avgSpanString = avgSpan.ToString();
+                            }        
+                        }
+                        @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountCompleted.ToString(), success: true)
+                    </td>         
+                    <td>
+                        @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountErrors.ToString(), success: false)
+                    </td>
+                    <td>
+                        @avgSpanString
+                    </td>
+                </tr>        
+            }
+        </tbody>
+    </table>
+} else {
+    <p class="alert alert-info">There are no function invocations in the log</p>
+}
 
-<p>Total number of times each function was executed:</p>
-<table border="1">
-    <tr>
-        <td>Function name</td>
-        <td>Completed successfully</td>
-        <td>Failures</td>
-        <td>Average run length</td>
-    </tr>
-    @foreach (var kv in Model.Summary)
-    {
-        <tr>
-            <td>
-                @Html.FunctionLogInvokeHistoryLink(kv.Key)
-            </td>
-            <td>
-                @{
-                    var val = kv.Value;
-                    int count = val.CountCompleted;
+<p class="alert alert-info">Queue depth: @Model.QueueDepth</p>
+    
 
-                    string avgSpanString = string.Empty;
-                    if (count > 0)
-                    {
-                        var seconds = val.Runtime.TotalSeconds;
-                        var avgSeconds = seconds / count;
-                        var avgSpan = TimeSpan.FromSeconds(avgSeconds);
-                        avgSpanString = avgSpan.ToString();
-                    }        
-                }
-                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountCompleted.ToString(), success: true)
-            </td>         
-            <td>
-                @Html.FunctionLogInvokeHistoryLink(kv.Key, val.CountErrors.ToString(), success: false)
-            </td>
-            <td>
-                @avgSpanString
-            </td>
-        </tr>        
-    }
-</table>
+@if(Model.QueuedInstances.Any()) {
+    <section id="execution-queue">
+        <h2>Top items from execution queue:</h2>
 
-<p>Queue depth: @Model.QueueDepth</p>
-<p>Top items from execution queue:</p>
-
-<ol>
-    @foreach (var instance in Model.QueuedInstances)
-    {
-        <li>@Html.FunctionInstanceLogLink(instance)</li>
-    }
-</ol>
+        <ol>
+            @foreach (var instance in Model.QueuedInstances)
+            {
+                <li>@Html.FunctionInstanceLogLink(instance)</li>
+            }
+        </ol>
+    </section>
+}

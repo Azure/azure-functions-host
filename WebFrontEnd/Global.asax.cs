@@ -9,6 +9,9 @@ using System.Web.Optimization;
 using System.Web.Routing;
 using DaasEndpoints;
 using Orchestrator;
+using Ninject;
+using WebFrontEnd.App_Start;
+using WebFrontEnd.Configuration;
 
 namespace WebFrontEnd
 {
@@ -23,12 +26,16 @@ namespace WebFrontEnd
 
             try
             {
+                ContainerConfig.Start();
+                var config = ContainerConfig.Kernel.TryGet<AppConfiguration>();
+
                 AreaRegistration.RegisterAllAreas();
 
                 WebApiConfig.Register(GlobalConfiguration.Configuration);
                 FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
                 RouteConfig.RegisterRoutes(RouteTable.Routes);
                 BundleConfig.RegisterBundles(BundleTable.Bundles);
+                
 
                 ModelBinderConfig.Register();
             }

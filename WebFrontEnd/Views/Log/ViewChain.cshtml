@@ -1,38 +1,43 @@
 ﻿@using WebFrontEnd.Controllers
 @model FunctionChainModel
+
 @{
     ViewBag.Title = "ViewChain";
    
     int depth = 0;
 }
 
-<h2>View Chain</h2>
+<div class="page-header">
+<h1>Call Tree <small>Shows all descendents triggered by a particular function.</small></h1>
+</div>
 
-<p>
-    Shows all descendents triggered by a particular function. 
-</p>
-
-<table border="1">
-@foreach (var node in Model.Nodes)
-{
-   
-    <tr>
-        <td>
-            @node.Depth
-        </td>
-    <td>
-        @{        
-        string indent = new string('-', (node.Depth -1) * 2);
-        }
-        @indent                   
-        @Html.FunctionInstanceLogLink(node.Func)
-        </td>
-    <td>
-    @node.Func.FunctionInstance.TriggerReason
-        </td>
+<table class="table table-striped">
+    <thead>
+        <tr>
+           <th>Depth</th>
+           <th>Function</th>
+           <th>Trigger</th>
         </tr>
-}
-    </table>
+    </thead>
+    <tbody>
+        @foreach (var node in Model.Nodes)
+        {
+            <tr>
+                <td>
+                    @node.Depth
+                </td>
+                <td>
+                    @* Hacky formatting but it works :) *@
+                    @Html.Raw(new String('-', (node.Depth -1) * 2).Replace("-", "&nbsp;&nbsp;"))
+                    @Html.FunctionInstanceLogLink(node.Func)
+                </td>
+                <td>
+                    @node.Func.FunctionInstance.TriggerReason
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
 
 @if(Model.Duration.HasValue)

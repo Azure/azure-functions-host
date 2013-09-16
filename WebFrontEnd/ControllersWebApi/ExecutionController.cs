@@ -240,7 +240,14 @@ namespace WebFrontEnd
             {
                 msgStart = "Unknown indexing operation";
             }
-            model.Writeback = new Uri(blobResults.Uri.AbsoluteUri);
+
+            // Get a shared access signature for the results blob
+            string sas = blobResults.GetSharedAccessSignature(new SharedAccessPolicy()
+            {
+                Permissions = SharedAccessPermissions.Read,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
+            });
+            model.Writeback = new Uri(blobResults.Uri.AbsoluteUri + sas);
             
 
             // Upload some text as a placeholder while the message waits in the queue.

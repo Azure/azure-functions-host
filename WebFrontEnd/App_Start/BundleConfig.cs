@@ -24,12 +24,14 @@ namespace WebFrontEnd
             bundles.Add(new ScriptBundle("~/bundles/modernizr").Include(
                         "~/Scripts/modernizr-*"));
 
-            bundles.Add(new StyleBundle("~/Content/css").Include(
+            bundles.Add(new StyleBundle("~/bundles/css").Include(
                 "~/components/bootstrap/css/bootstrap.css",
                 "~/components/bootstrap/css/bootstrap-responsive.css",
-                "~/components/font-awesome/css/font-awesome.css",
                 "~/Content/site.css"));
 
+            bundles.Add(new StyleBundle("~/components/font-awesome/css/bundle").Include("~/components/font-awesome/css/font-awesome.css"));
+
+            
             bundles.Add(new StyleBundle("~/Content/themes/base/css").Include(
                         "~/Content/themes/base/jquery.ui.core.css",
                         "~/Content/themes/base/jquery.ui.resizable.css",
