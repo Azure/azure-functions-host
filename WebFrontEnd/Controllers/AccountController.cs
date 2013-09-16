@@ -5,6 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
 using Microsoft.WindowsAzure.ServiceRuntime;
+using WebFrontEnd.Configuration;
 
 namespace WebFrontEnd.Controllers
 {
@@ -12,6 +13,12 @@ namespace WebFrontEnd.Controllers
     {
         //
         // GET: /Account/
+        private readonly AppConfiguration _config;
+
+        public AccountController(AppConfiguration config)
+        {
+            _config = config;
+        }
 
         public ActionResult Login()
         {
@@ -23,10 +30,9 @@ namespace WebFrontEnd.Controllers
         {
             if (ModelState.IsValid)
             {
-                string expected = RoleEnvironment.GetConfigurationSettingValue("LoginPassword");
+                string expected = _config.LoginPassword;
 
                 bool f = (model.Password == expected);
-                // bool f = Membership.ValidateUser(model.UserName, model.Password);
                 if (!f)
                 {
                     ModelState.AddModelError("", "Bad username or password");

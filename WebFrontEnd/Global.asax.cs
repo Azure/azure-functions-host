@@ -26,8 +26,8 @@ namespace WebFrontEnd
 
             try
             {
-                ContainerConfig.Start();
-                var config = ContainerConfig.Kernel.TryGet<AppConfiguration>();
+                var kernel = NinjectWebCommon.Kernel;
+                var config = kernel.TryGet<AppConfiguration>();
 
                 AreaRegistration.RegisterAllAreas();
 

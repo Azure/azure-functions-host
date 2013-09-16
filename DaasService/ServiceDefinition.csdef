@@ -3,8 +3,6 @@
     <WorkerRole name="ExecutionRole" vmsize="ExtraSmall">
         <Imports>
             <Import moduleName="Diagnostics" />
-            <Import moduleName="RemoteAccess" />
-            <Import moduleName="RemoteForwarder" />
         </Imports>
         <LocalResources>
             <LocalStorage name="localStore" sizeInMB="100" cleanOnRoleRecycle="true" />
@@ -19,7 +17,6 @@
     <WorkerRole name="OrchestratorRole" vmsize="ExtraSmall">
         <Imports>
             <Import moduleName="Diagnostics" />
-            <Import moduleName="RemoteAccess" />
         </Imports>
         <Endpoints>
             <!-- Must define an endpoint in order to discover other roles -->
@@ -65,7 +62,6 @@
         </Endpoints>
         <Imports>
             <Import moduleName="Diagnostics" />
-            <Import moduleName="RemoteAccess" />
         </Imports>
         <ConfigurationSettings>
             <Setting name="LoginPassword" />
