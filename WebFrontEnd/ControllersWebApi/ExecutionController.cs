@@ -17,6 +17,17 @@ namespace WebFrontEnd
 {
     public class ExecutionController : ApiController
     {
+        private readonly Services _services;
+        public ExecutionController(Services services)
+        {
+            _services = services;
+        }
+
+        private Services GetServices()
+        {
+            return _services;
+        }
+
         // caller should throw the exception so we analyze control flow
         private Exception NewUserError(string format, params string[] args)
         {
@@ -163,14 +174,8 @@ namespace WebFrontEnd
             public string ResultUri { get; set; }
         }
 
-        private static Services GetServices()
-        {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
-        }
-
         // Container is relative to accountConnectionString
-        internal static FuncSubmitModel RegisterFuncSubmitworker(object operation)
+        internal FuncSubmitModel RegisterFuncSubmitworker(object operation)
         {
             var services = GetServices();
 #if false

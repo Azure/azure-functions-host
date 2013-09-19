@@ -14,10 +14,15 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class FunctionController : Controller
     {
+        private readonly Services _services;
+        public FunctionController(Services services)
+        {
+            _services = services;
+        }
+
         private Services GetServices()
         {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
+            return _services;
         }
 
         //

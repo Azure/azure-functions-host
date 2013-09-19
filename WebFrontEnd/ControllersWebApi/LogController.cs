@@ -14,10 +14,16 @@ namespace WebFrontEnd.ControllersWebApi
 {
     public class LogController : ApiController
     {
-        private static Services GetServices()
+        private readonly Services _services;
+
+        public LogController(Services services)
         {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
+            _services = services;
+        }
+
+        private Services GetServices()
+        {
+            return _services;
         }
 
         [HttpGet]

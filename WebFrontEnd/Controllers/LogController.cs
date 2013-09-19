@@ -19,10 +19,15 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class LogController : Controller
     {
-        private static Services GetServices()
+        private readonly Services _services;
+        public LogController(Services services)
         {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
+            _services = services;
+        }
+
+        private Services GetServices()
+        {
+            return _services;
         }
                         
         protected override void OnActionExecuting(ActionExecutingContext filterContext)
@@ -155,7 +160,7 @@ namespace WebFrontEnd.Controllers
         public ActionResult GetChargebackLog(int N = 200, string account = null)
         {
             // Defer to the WebAPI controller for the real work. 
-            var controller = new WebFrontEnd.ControllersWebApi.LogController();
+            var controller = new WebFrontEnd.ControllersWebApi.LogController(GetServices());
             var resp = controller.GetFunctionLog(N, account);
             var content = resp.Content.ReadAsStringAsync().Result;
 

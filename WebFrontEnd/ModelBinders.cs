@@ -12,24 +12,32 @@ using Microsoft.WindowsAzure;
 using Orchestrator;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
+using Ninject;
 
 namespace WebFrontEnd
 {
     internal static class ModelBinderConfig
     {
-        public static void Register()
+        public static void Register(IKernel kernel)
         {
-            ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder());
-            ModelBinders.Binders.Add(typeof(CloudStorageAccount), new CloudStorageAccountBinder());
+            IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
+            IFunctionTable functionTable = kernel.Get<IFunctionTable>();
+
+            ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder(functionTable));
             ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
-            ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder());
-            ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder());
+            ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder(lookup));
+            ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder(lookup));
         }
     }
 
     // Bind FunctionIndexEntity
     public class FunctionInstanceBinder : ExecutionInstanceLogEntityBinder
     {
+        public FunctionInstanceBinder(IFunctionInstanceLookup logger)
+            : base(logger)
+        {
+        }
+
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
         {
             ExecutionInstanceLogEntity log = ParseWorker(value, modelName, modelState);
@@ -44,6 +52,13 @@ namespace WebFrontEnd
     // Bind FunctionIndexEntity
     public class ExecutionInstanceLogEntityBinder : StringHelperModelBinder
     {
+        private readonly IFunctionInstanceLookup _logger;
+
+        public ExecutionInstanceLogEntityBinder(IFunctionInstanceLookup logger)
+        {
+            _logger = logger;
+        }
+
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
         {
             return ParseWorker(value, modelName, modelState);
@@ -57,13 +72,8 @@ namespace WebFrontEnd
                 modelState.AddModelError(modelName, "Invalid function log format");
                 return null;
             }
-
-
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            var services = new Services(accountInfo);
-            IFunctionInstanceLookup logger = services.GetFunctionInstanceQuery();
             
-            ExecutionInstanceLogEntity log = logger.Lookup(g);
+            ExecutionInstanceLogEntity log = _logger.Lookup(g);
             if (log == null)
             {
                 modelState.AddModelError(modelName, "Invalid function log entry. Either the entry is invalid or logs have been deleted from the server.");
@@ -100,12 +110,16 @@ namespace WebFrontEnd
     // Bind FunctionIndexEntity
     public class FunctionIndexEntityBinder : StringHelperModelBinder
     {
+        private readonly IFunctionTable _functionTable;
+
+        public FunctionIndexEntityBinder(IFunctionTable functionTable)
+        {
+            _functionTable = functionTable;
+        }
+
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
         {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            var services = new Services(accountInfo);
-
-            FunctionDefinition func = services.GetFunctionTable().Lookup(value);
+            FunctionDefinition func = _functionTable.Lookup(value);
             if (func == null)
             {
                 modelState.AddModelError(modelName, "Invalid function id");
@@ -128,20 +142,5 @@ namespace WebFrontEnd
             modelState.AddModelError(modelName, "Illegal path syntax");
             return null;
         }
-    }
-
-    public class CloudStorageAccountBinder : StringHelperModelBinder
-    {
-        public override object Parse(string accountName, string modelName, ModelStateDictionary modelState)
-        {
-            string connection = HomeController.TryLookupConnectionString(accountName);
-            if (connection == null)
-            {
-                modelState.AddModelError(modelName, "account key information is unavailable");
-                return null;
-            }
-
-            return Utility.GetAccount(connection);
-        }
-    }
+    } 
 }

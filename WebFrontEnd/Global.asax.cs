@@ -37,7 +37,7 @@ namespace WebFrontEnd
                 BundleConfig.RegisterBundles(BundleTable.Bundles);
                 
 
-                ModelBinderConfig.Register();
+                ModelBinderConfig.Register(kernel);
             }
             catch (Exception e)
             {
@@ -64,6 +64,7 @@ namespace WebFrontEnd
             s.LogFatalError("From Web Role", ex);            
         }
 
+        // This is a special case used just for logging errors. 
         private static Services GetServices()
         {
             AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();

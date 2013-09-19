@@ -40,7 +40,9 @@ namespace WebFrontEnd.ControllersWebApi
             // Ping orchestrator to update maps?
             // Or even send a IndexRequestPayload over with the URL
             var obj = new IndexUrlOperation { Url = uri } ;
-            return ExecutionController.RegisterFuncSubmitworker(obj);
+
+            throw new NotImplementedException("Need updated kudu story");
+            // return new ExecutionController(null).RegisterFuncSubmitworker(obj);
         }
     }
 }

@@ -12,10 +12,15 @@ namespace WebFrontEnd.Controllers
     [Authorize]
     public class HomeController : Controller
     {
-        private static Services GetServices()
+        private readonly Services _services;
+        public HomeController(Services services)
         {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
+            _services = services;
+        }
+
+        private Services GetServices()
+        {
+            return _services;
         }
 
         //
@@ -131,7 +136,7 @@ namespace WebFrontEnd.Controllers
         // Try to lookup the connection string (including key!) for a given account.
         // This works for accounts that are already registered with the service.
         // Return null if not found.
-        internal static string TryLookupConnectionString(string accountName)
+        internal string TryLookupConnectionString(string accountName)
         {
             // If account key is blank, see if we can look it up
             var funcs = GetServices().GetFunctionTable().ReadAll();
@@ -186,7 +191,7 @@ namespace WebFrontEnd.Controllers
         [HttpPost]
         public ActionResult DeleteFunction(FunctionDefinition func)
         {
-            var model = ExecutionController.RegisterFuncSubmitworker(
+            var model = new ExecutionController(GetServices()).RegisterFuncSubmitworker(
                 new DeleteOperation
                 {
                     FunctionToDelete = func.ToString()
@@ -197,7 +202,7 @@ namespace WebFrontEnd.Controllers
 
         private ActionResult RegisterFuncSubmitworker(IndexOperation operation)
         {
-            var model = ExecutionController.RegisterFuncSubmitworker(operation);
+            var model = new ExecutionController(GetServices()).RegisterFuncSubmitworker(operation);
 
             return View("RegisterFuncSubmit", model);
         }

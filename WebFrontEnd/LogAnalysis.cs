@@ -28,12 +28,6 @@ namespace WebFrontEnd
     // $$$ Analysis can be expensive. Use a cache?
     public class LogAnalysis
     {
-        private static Services GetServices()
-        {
-            AzureRoleAccountInfo accountInfo = new AzureRoleAccountInfo();
-            return new Services(accountInfo);
-        }
-
         // Gets static information
         public static ParamModel[] GetParamInfo(FunctionDefinition func)
         {
@@ -154,7 +148,7 @@ namespace WebFrontEnd
 
 
         // Mine all the logs to determine blob readers and writers
-        public static LogBlobModel Compute(CloudBlobDescriptor blobPathAndAccount, IEnumerable<ExecutionInstanceLogEntity> logs)
+        public static LogBlobModel Compute(IFunctionTable functionTable, CloudBlobDescriptor blobPathAndAccount, IEnumerable<ExecutionInstanceLogEntity> logs)
         {
             string blobPath = blobPathAndAccount.GetId();
 
@@ -165,7 +159,7 @@ namespace WebFrontEnd
             {
                 FunctionInvokeRequest instance = log.FunctionInstance;
                 ParameterRuntimeBinding[] args = instance.Args;
-                var descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
+                var descriptor = functionTable.Lookup(instance.Location);
                 var flows = descriptor.Flow.Bindings;
 
                 for (int i = 0; i < args.Length; i++)
