@@ -72,6 +72,37 @@ namespace RunnerHost
             return result;
         }
 
+        // $$$ Merge with above
+        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config)
+        {
+            Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
+            Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
+
+            _parameterLogger = descr.ParameterLogBlob; // optional 
+
+            FunctionExecutionResult result = new FunctionExecutionResult();
+
+            try
+            {
+                Invoke(descr, config);
+                // Success
+                Console.WriteLine("Success");
+            }
+            catch (Exception e)
+            {
+                // both binding errors and user exceptions from the function will land here. 
+                result.ExceptionType = e.GetType().FullName;
+                result.ExceptionMessage = e.Message;
+
+                // Failure. 
+                Console.WriteLine("Exception while executing:");
+                WriteExceptionChain(e);
+                Console.WriteLine("FAIL");
+            }
+
+            return result;
+        }
+
         // Write an exception and inner exceptions
         public static void WriteExceptionChain(Exception e)
         {
@@ -115,8 +146,13 @@ namespace RunnerHost
             ApplyManifestBinders(invoke, config);
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
 
-            ICall inner = GetWebInvoker(invoke);
-            CallBinderProvider.Insert(config, inner); // binds ICall
+            // Don't bind ICall if we have no WebService URL. 
+            // ### Could bind ICall other ways
+            if (invoke.ServiceUrl != null)
+            {
+                ICall inner = GetWebInvoker(invoke);
+                CallBinderProvider.Insert(config, inner); // binds ICall
+            }
 
             Invoke(invoke, config);
         }
@@ -187,7 +223,11 @@ namespace RunnerHost
             var methodLocation = invoke.Location as MethodInfoFunctionLocation;
             if (methodLocation != null)
             {
-                return methodLocation.MethodInfo;
+                var method = methodLocation.MethodInfo;
+                if (method != null)
+                {
+                    return method;
+                }
             }
 
             throw new InvalidOperationException("Can't get a MethodInfo from function location:" + invoke.Location.ToString());
@@ -266,7 +306,17 @@ namespace RunnerHost
         {
             int len = argDescriptors.Length;
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance, serviceUrl);
+            // ###
+            //INotifyNewBlob notificationService = new NotifyNewBlobViaWebApi(serviceUrl);
+            INotifyNewBlob notificationService = null;
+            if (_parameterLogger != null)
+            {
+                //notificationService = new NotifyNewBlobViaQueueMessage(Utility.GetAccount(_parameterLogger.AccountConnectionString));
+            }
+            notificationService = new NotifyNewBlobViaInMemory();
+
+
+            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

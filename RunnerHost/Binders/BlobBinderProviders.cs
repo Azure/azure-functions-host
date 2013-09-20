@@ -158,11 +158,19 @@ namespace RunnerHost
                     SelfWatch = watcher, 
                     Cleanup = () =>
                         {
-                            _content.Flush();
-                            ms.Position = 0; // reset to start
-                            blob.UploadFromStream(ms);
-                        }
+                            // _content was exposed to user, may already be flush/closed/disposed.
+                            // But if it wasn't, we still need to flush so that the memory stream is current.
+                            // flush() will fail if we're already closed, so call close. 
+                            // But then close will close underlying streams, so MemoryStream becomes inaccessible.
+                            _content.Close();
 
+                            // Not accessible after calling close.
+                            //ms.Position = 0; // reset to start
+                            //blob.UploadFromStream(ms);
+
+                            var bytes = ms.ToArray();
+                            blob.UploadByteArray(bytes);                            
+                        }
                 };
             }
         }

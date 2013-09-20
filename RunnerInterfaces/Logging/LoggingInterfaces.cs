@@ -7,6 +7,7 @@ namespace RunnerInterfaces
     // Log when a function has completed.
     // This can also write and secondary indices needed for querying the logs. 
     // Called by the Orchestrator. 
+    // $$$ can this be infererd when IFunctionUpdatedLogger logs a completed func?
     public interface IFunctionCompleteLogger
     {
         // Called by the orchestrator (which gaurantees single-threaded access) sometime shortly after a 

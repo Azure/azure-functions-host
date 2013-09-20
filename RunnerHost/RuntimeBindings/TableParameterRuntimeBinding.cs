@@ -27,7 +27,7 @@ namespace RunnerHost
             ICloudTableBinder binder = GetTableBinderOrThrow(config, type, isReadOnly);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
-            IBinderEx ctx = new BindingContext(config, inputs, instance, serviceUrl : null);
+            IBinderEx ctx = new BindingContext(config, inputs, instance, notificationService : null);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

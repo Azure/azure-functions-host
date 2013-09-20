@@ -9,74 +9,6 @@
 <h1>Dashboard <small>Current status of the system</small></h1>
 </div>
 
-<p>
-    Current queue depth for execution: 
-    @if (Model.QueueDepth.HasValue)
-    {
-        <b> @Model.QueueDepth.Value.ToString() </b>
-    }
-    else
-    {
-        <span> Unknown</span>
-    }    
-    </p>
-</p>
-<p>
-Status from roles (as of @now.ToLongTimeString() UTC) :
-</p>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Role</th>
-            <th>Current action</th>
-            <th>Last update</th>
-            <th>Node uptime</th>
-            <th>Last cache reset</th>
-            <th>Other</th>
-        </tr>
-    </thead>
-@foreach (var kv in Model.HealthStatus.Executors)
-{
-    var klass = kv.Value.FunctionInstanceId.HasValue ? "info" : "";
-    <tr class="@klass">
-        <td>@kv.Key</td>
-        <td>@Html.FunctionInstanceLogLink(kv.Value.FunctionInstanceId)</td>
-        <td>@Html.TimeLapse(now, kv.Value.Heartbeat)</td>
-        <td>@Html.TimeLapse(now, kv.Value.Uptime)</td>
-        <td>@Html.TimeLapse(now, kv.Value.LastCacheReset)</td>
-        <td>@if (kv.Value.CriticalErrors > 0)
-            {
-                <font color="red">@kv.Value.CriticalErrors critical errors!</font>
-            }
-        </td>        
-    </tr>    
-}
-    @{
-        var orch = Model.HealthStatus.Orchestrator;
-    }
-    @if (orch != null)
-    {
-    <tr>
-        <td>Orchestrator</td>
-        <td></td>
-        <td>@Html.TimeLapse(now, orch.Heartbeat)</td>
-        <td>@Html.TimeLapse(now, orch.Uptime)</td>
-        <td>@Html.TimeLapse(now, orch.LastCacheReset)</td>
-        <td></td>    
-    </tr>
-    }
-</table>    
-
-<div class="btn-group">
-    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-        Recent Invokes
-        <span class="caret"></span>
-    </a>
-    <ul class="dropdown-menu">
-        <li><a href="@Url.Action("Summary", "Log")">Summary</a></li>
-        <li><a href="@Url.Action("ListAllInstances", "Log")">Log</a></li>
-    </ul>
-</div>
 
 
 
@@ -85,5 +17,5 @@ Status from roles (as of @now.ToLongTimeString() UTC) :
 <table class="table table-striped">
     <tr><th>Account name</th><td>@Model.AccountName</td></tr>
     <tr><th>Execution</th><td>@Model.ExecutionSubstrate</td></tr>
-    <tr><th>Version</th><td>@Model.VersionInformation</td></tr>
+    <tr><th>Version</th><td>1- @Model.VersionInformation</td></tr>    
 </table>

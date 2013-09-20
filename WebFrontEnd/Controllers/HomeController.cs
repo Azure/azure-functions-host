@@ -3,19 +3,31 @@ using System.Linq;
 using System.Web.Mvc;
 using DaasEndpoints;
 using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.ServiceRuntime;
 using Orchestrator;
 using RunnerInterfaces;
 
 namespace WebFrontEnd.Controllers
 {
+    public class BadConfigController : Controller
+    {
+        public ViewResult Index()
+        {
+            return View("BadConfig");
+        }
+    }
+
+#if !SITE_EXTENSION
     [Authorize]
+#endif
     public class HomeController : Controller
     {
         private readonly Services _services;
-        public HomeController(Services services)
+        private readonly IFunctionTableLookup _functionTableLookup;
+
+        public HomeController(Services services, IFunctionTableLookup functionTableLookup)
         {
             _services = services;
+            _functionTableLookup = functionTableLookup;
         }
 
         private Services GetServices()
@@ -44,7 +56,7 @@ namespace WebFrontEnd.Controllers
 
         public ActionResult ListAllFunctions()
         {
-            var allFunctions = GetServices().GetFunctionTable().ReadAll();
+            var allFunctions = _functionTableLookup.ReadAll();
             var model = new FunctionListModel
             {
                 Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location))
@@ -93,7 +105,7 @@ namespace WebFrontEnd.Controllers
         // Useful when there are paths that are not being listened on
         public ActionResult RequestScan()
         {
-            var functions = GetServices().GetFunctionTable().ReadAll();
+            var functions = _functionTableLookup.ReadAll();
             return View(functions);
         }
 
@@ -139,7 +151,7 @@ namespace WebFrontEnd.Controllers
         internal string TryLookupConnectionString(string accountName)
         {
             // If account key is blank, see if we can look it up
-            var funcs = GetServices().GetFunctionTable().ReadAll();
+            var funcs = _functionTableLookup.ReadAll();
             foreach (var func in funcs)
             {
                 var cred = func.GetAccount().Credentials;
@@ -191,7 +203,7 @@ namespace WebFrontEnd.Controllers
         [HttpPost]
         public ActionResult DeleteFunction(FunctionDefinition func)
         {
-            var model = new ExecutionController(GetServices()).RegisterFuncSubmitworker(
+            var model = new ExecutionController(GetServices(), _functionTableLookup).RegisterFuncSubmitworker(
                 new DeleteOperation
                 {
                     FunctionToDelete = func.ToString()
@@ -202,7 +214,7 @@ namespace WebFrontEnd.Controllers
 
         private ActionResult RegisterFuncSubmitworker(IndexOperation operation)
         {
-            var model = new ExecutionController(GetServices()).RegisterFuncSubmitworker(operation);
+            var model = new ExecutionController(GetServices(), _functionTableLookup).RegisterFuncSubmitworker(operation);
 
             return View("RegisterFuncSubmit", model);
         }

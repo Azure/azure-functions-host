@@ -77,7 +77,12 @@ namespace RunnerHost
 
         public ICollection<T> Values
         {
-            get { throw new NotImplementedException(); }
+            get 
+            { 
+                // Easy to do an IEnumerable, but problem here is ICollection.Count 
+                // Could return a speciall collection with .Count NotImplemented.
+                throw new NotImplementedException(); 
+            }
         }
 
         public T this[Tuple<string, string> key]

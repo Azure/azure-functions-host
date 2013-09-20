@@ -39,8 +39,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.WindowsAzure.ConfigurationManager.1.7.0.3\lib\net35-full\Microsoft.WindowsAzure.Configuration.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Diagnostics, Version=1.8.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
-    <Reference Include="Microsoft.WindowsAzure.ServiceRuntime, Version=1.8.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="Microsoft.WindowsAzure.StorageClient, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WindowsAzure.Storage.1.7.0.0\lib\net35-full\Microsoft.WindowsAzure.StorageClient.dll</HintPath>
     </Reference>
@@ -88,10 +86,6 @@
     <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
       <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
       <Name>RunnerInterfaces</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\TaskExecutor\TaskExecutor.csproj">
-      <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
-      <Name>TaskExecutor</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

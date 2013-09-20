@@ -7,22 +7,24 @@ using DaasEndpoints;
 using Executor;
 using Orchestrator;
 using RunnerInterfaces;
+using Microsoft.WindowsAzure.StorageClient;
+using System.IO;
 
 namespace WebFrontEnd.Controllers
 {
     // Controller for viewing details (mainly invocation) on an individual function.
+#if !SITE_EXTENSION
     [Authorize]
+#endif
     public class FunctionController : Controller
     {
-        private readonly Services _services;
-        public FunctionController(Services services)
-        {
-            _services = services;
-        }
+        private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IQueueFunction _queueFunction;
 
-        private Services GetServices()
+        public FunctionController(IQueueFunction queueFunction, IFunctionTableLookup functionTableLookup)
         {
-            return _services;
+            _queueFunction = queueFunction;
+            _functionTableLookup = functionTableLookup;
         }
 
         //
@@ -33,6 +35,57 @@ namespace WebFrontEnd.Controllers
         public ActionResult Index(FunctionDefinition func)
         {
             return RenderInvokePageWorker(func, null);
+        }
+
+        public static bool HasFile(HttpPostedFileBase file)
+        {
+            return (file != null && file.ContentLength > 0) ? true : false;
+        }
+
+        static string GetInputContainer(FunctionDefinition func)
+        {
+            foreach (var binding in func.Flow.Bindings)
+            {
+                BlobParameterStaticBinding b = binding as BlobParameterStaticBinding;
+                if (b != null)
+                {
+                    if (b.IsInput)
+                    {
+                        return b.Path.ContainerName;
+                    }
+                }                
+            }
+            return null;
+        }
+
+        [HttpPost]
+        public ActionResult Upload(FunctionDefinition func)
+        {
+            string inputContainerName = GetInputContainer(func);
+
+            if (Request.Files.Count == 1)
+            {            
+                var file = Request.Files[0];
+                if (file != null && file.ContentLength > 0)
+                {
+                    string filename = Path.GetFileName(file.FileName);
+
+
+                    var client = func.GetAccount().CreateCloudBlobClient();
+                    var container = client.GetContainerReference(inputContainerName);
+                    var blob = container.GetBlobReference(filename);
+
+                    // Upload the blob
+                    blob.UploadFromStream(file.InputStream);
+
+                    // Then set invoke args. 
+                    var instance = Orchestrator.Worker.GetFunctionInvocation(func, blob);
+                    return RenderInvokePageWorker(func, instance.Args);
+                }
+            }
+
+            return new ContentResult { Content = "Error. Bad upload" };           
+            
         }
 
         // Called when Run is converting from named parameters to full arg instances
@@ -60,7 +113,7 @@ namespace WebFrontEnd.Controllers
         {
             var parentGuid = instance.Id;
 
-            FunctionDefinition func = GetServices().GetFunctionTable().Lookup(instance.Location);
+            FunctionDefinition func = _functionTableLookup.Lookup(instance.Location);
             return RenderInvokePageWorker(func, instance.Args, parentGuid);
         }
 
@@ -68,6 +121,12 @@ namespace WebFrontEnd.Controllers
         // Seed the input dialog with the given arg instances
         private ActionResult RenderInvokePageWorker(FunctionDefinition func, ParameterRuntimeBinding[] args, Guid? replayGuid = null)
         {
+            if (func == null)
+            {
+                // ### Give this better UI. Chain to the error on Log.Error
+                // Function was probably unloaded from server. 
+                return View("Error");
+            }
             var flows = func.Flow;
 
             var model = new FunctionInfoModel();
@@ -81,6 +140,14 @@ namespace WebFrontEnd.Controllers
             if (args != null)
             {
                 LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
+            }
+
+            // If function has an input blob, mark the name (for cosmetic purposes)
+            // Uploading to this container can trigger the blob. 
+            string inputContainerName = GetInputContainer(func);
+            if (inputContainerName != null)
+            {
+                model.UploadContainerName = Utility.GetAccountName(func.GetAccount()) + "/" + inputContainerName;
             }
 
             // Precede the args
@@ -135,8 +202,7 @@ namespace WebFrontEnd.Controllers
             }
 
             // Get instance ID from queuing. Use that to redict to view 
-            IQueueFunction executor = GetServices().GetQueueFunction();
-            var instanceLog = executor.Queue(instance);
+            var instanceLog = _queueFunction.Queue(instance);
 
             // We got here via a POST. 
             // Switch to a GET so that users can do a page refresh as the function updates. 

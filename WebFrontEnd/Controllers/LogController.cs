@@ -16,13 +16,18 @@ using RunnerInterfaces;
 namespace WebFrontEnd.Controllers
 {
     // Controller that access the function invocation logging service to view log information.
+#if !SITE_EXTENSION
     [Authorize]
+#endif
     public class LogController : Controller
     {
         private readonly Services _services;
-        public LogController(Services services)
+        private readonly IFunctionTableLookup _functionTableLookup;
+
+        public LogController(Services services, IFunctionTableLookup functionTableLookup)
         {
             _services = services;
+            _functionTableLookup = functionTableLookup;
         }
 
         private Services GetServices()
@@ -216,7 +221,7 @@ namespace WebFrontEnd.Controllers
             model.Lookup = lookup;
 
             var instance = model.Instance.FunctionInstance;
-            model.Descriptor = GetServices().GetFunctionTable().Lookup(instance.Location);
+            model.Descriptor = _functionTableLookup.Lookup(instance.Location);
             if (model.Descriptor == null)
             {
                 // Function has been removed from the table.                 
@@ -263,7 +268,7 @@ namespace WebFrontEnd.Controllers
 
             var table = services.GetInvokeStatsTable();
             model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => services.GetFunctionTable().Lookup(rowKey).Location); // $$$ very inefficient
+                rowKey => _functionTableLookup.Lookup(rowKey).Location); // $$$ very inefficient
 
             // Populate queue. 
             model.QueuedInstances = PeekQueuedInstances();
@@ -317,12 +322,85 @@ namespace WebFrontEnd.Controllers
             return list.ToArray();
         }
 
+        CloudStorageAccount ResolveName(string accountName)
+        {
+            IFunctionTableLookup table = GetServices().GetFunctionTable();
+            foreach (var func in table.ReadAll())
+            {
+                var accountConnectionString = func.Location.AccountConnectionString;
+                var accountName2 = Utility.GetAccountName(accountConnectionString);
+                if (accountName == accountName2) // ### Case sensitive?
+                {
+                    return Utility.GetAccount(accountConnectionString);
+                }
+            }
+            return null;
+        }
+
+        // ### Beware of security concerns. Does user have permisission to see the blob?
         // Which function wrote to this blob last?
         // Which functions read from this blob?
         // View current value. 
-        public ActionResult Blob(CloudStorageAccount accountName, CloudBlobPath path)
-        {
-            throw new NotImplementedException("Viewing blob dependencies not implemented");
+        public ActionResult Blob(string accountName, 
+            string path = null,
+            string container = null, string blob = null)
+        {   
+            CloudBlobPath p;
+            if (path == null)
+            {
+                p = new CloudBlobPath(container, blob);
+            } else 
+            {                
+                p = new CloudBlobPath(path);
+                container = p.ContainerName;
+                blob = p.BlobName;
+            }                       
+            
+            CloudStorageAccount account = ResolveName(accountName);
+            if (account == null)
+            {
+                return new ContentResult { Content = string.Format("Can't resolve account name '{0}'", accountName) };
+            }
+
+            CloudBlob x = p.Resolve(account);
+
+            if (!Utility.DoesBlobExist(x))
+            {
+                return new ContentResult { Content = string.Format("Blob doesn't exist.") };
+            }
+
+            LogBlobModel2 model = new LogBlobModel2();
+            model.AccountName = accountName;
+            model.ContainerName = container;
+            model.BlobName = blob;
+            model.LastModifiedTime = Utility.GetBlobModifiedUtcTime(x);
+            model.Uri = x.Uri;
+
+            IBlobCausalityLogger logger = new BlobCausalityLogger();
+            var guid = logger.GetWriter(x);
+
+            IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
+            model.LastWriter = lookup.Lookup(guid);
+
+            model.Length = x.Properties.Length;
+            model.ContentType = x.Properties.ContentType;
+
+            // Read the first N characters as content. 
+            using (var stream = x.OpenRead())
+            {
+                int N = 100;
+                char[] buffer = new char[N];
+                using (var tr = new StreamReader(stream))
+                {
+                    int len = tr.Read(buffer, 0, buffer.Length);
+                    model.Content = new string(buffer, 0, len);
+                }
+            }
+
+            // $$$ Include list of functions that read this blob. 
+            // That can be trickier to find, may require searching all logs, which is expensive. 
+
+            return View(model);
 #if false
             FunctionInvokeLogger logger = GetServices().GetFunctionInvokeLogger();
             var logs = logger.GetAll();
@@ -343,6 +421,24 @@ namespace WebFrontEnd.Controllers
             return View(model);
 #endif
         }    
+    }
+
+    public class LogBlobModel2
+    {
+        public string AccountName { get; set; }
+        public string ContainerName { get; set; }
+        public string BlobName { get; set; }
+
+        public DateTime? LastModifiedTime { get; set; }
+        public long Length { get; set; }
+        public string ContentType { get; set; }
+        public string Content { get; set; }
+
+        // Full URI to blob. If container is public, then this can be used to view it. 
+        public Uri Uri { get; set; }
+
+        public ExecutionInstanceLogEntity LastWriter { get; set; }
+
     }
 
     public class LogBlobModel

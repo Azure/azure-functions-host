@@ -18,9 +18,11 @@ namespace WebFrontEnd
     public class ExecutionController : ApiController
     {
         private readonly Services _services;
-        public ExecutionController(Services services)
+        private readonly IFunctionTableLookup _functionTableLookup;
+        public ExecutionController(Services services, IFunctionTableLookup functionTableLookup)
         {
             _services = services;
+            _functionTableLookup = functionTableLookup;
         }
 
         private Services GetServices()
@@ -50,13 +52,15 @@ namespace WebFrontEnd
             {
                 throw NewUserError("payload not specified");
             }
-            GetServices().GetBlobWrittenQueue().Add(msg);
+
+            NotifyNewBlobViaQueueMessage notify = new NotifyNewBlobViaQueueMessage(GetServices().Account);
+            notify.Notify(msg);            
         }
 
         [HttpPost]
         public void Scan(string func, string container)
         {
-            FunctionDefinition f = GetServices().GetFunctionTable().Lookup(func);
+            FunctionDefinition f = _functionTableLookup.Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
@@ -71,7 +75,7 @@ namespace WebFrontEnd
         [HttpPost]
         public BeginRunResult Run(string func, [FromBody] Guid[] prereqs)
         {
-            FunctionDefinition f = GetServices().GetFunctionTable().Lookup(func);
+            FunctionDefinition f = _functionTableLookup.Lookup(func);
             if (f == null)
             {
                 throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);

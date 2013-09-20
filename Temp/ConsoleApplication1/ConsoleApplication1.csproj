@@ -112,10 +112,6 @@
       <Project>{494580b8-1c81-41df-9eb7-bd5a887258ab}</Project>
       <Name>RunnerHost</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\TaskExecutor\TaskExecutor.csproj">
-      <Project>{393738d4-5107-4fa7-8f9b-5d89dc285522}</Project>
-      <Name>TaskExecutor</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\WebFrontEnd\WebFrontEnd.csproj">
       <Project>{45974999-9c53-48ad-83b9-519ecc8ab8f4}</Project>
       <Name>WebFrontEnd</Name>

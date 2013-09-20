@@ -11,12 +11,12 @@
                 <li><a title="Log Out" href="@Url.Action("Logout", "Account")"><i class="icon-signout"></i><span class="hidden-phone"> Log Out</span></a></li>
             </ul>
             <p class="navbar-text pull-right visible-desktop">Server time: @DateTime.UtcNow</p>
-            <a class="brand" href="@Url.Action("Index", "Home")">SimpleBatch</a>
+            <a class="brand" href="@Url.Action("ListAllInstances", "Log")">SimpleBatch</a>
             <div class="nav-collapse collapse">
                 <ul class="nav">
-                    @Html.MenuLink("Home", icon: "icon-home", action: "Index", controller: "Home")
-                    @Html.MenuLink("Functions", icon: "icon-cogs", action: "ListAllFunctions", controller: "Home")
-                    @Html.MenuLink("Cloud Binders", icon: "icon-magnet", action: "ListAllBinders", controller: "Home")
+                    @Html.MenuLink("History", icon: "icon-cogs", action: "ListAllInstances", controller: "Log")
+                    @Html.MenuLink("Function Definitions", icon: "icon-cogs", action: "ListAllFunctions", controller: "Home")
+                    @Html.MenuLink("About", icon: "icon-home", action: "Index", controller: "Home")
                 </ul>
             </div>
         </div>

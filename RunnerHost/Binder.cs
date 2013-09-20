@@ -17,14 +17,14 @@ namespace RunnerHost
         private readonly IRuntimeBindingInputs _runtimeInputs;
         private readonly IConfiguration _config;
         private readonly FunctionInstanceGuid _FunctionInstanceGuid;
-        private readonly string _serviceUrl;
+        private readonly INotifyNewBlob _notificationService;
 
-        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance, string serviceUrl)
+        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance, INotifyNewBlob notificationService)
         {
             _config = config;
             _runtimeInputs = runtimeInputs;
             _FunctionInstanceGuid = functionInstance;
-            _serviceUrl = serviceUrl;
+            _notificationService = notificationService;
         }
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
@@ -60,7 +60,7 @@ namespace RunnerHost
 
         INotifyNewBlob IBinderPrivate.NotifyNewBlob
         {
-            get { return new NotifyNewBlob(_serviceUrl);  }
+            get { return _notificationService; }
         }
     }
 

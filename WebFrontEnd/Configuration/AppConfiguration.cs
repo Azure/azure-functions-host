@@ -15,7 +15,7 @@ namespace WebFrontEnd.Configuration
         /// <summary>
         /// Gets the main storage account for the application
         /// </summary>
-        [Required]
+        //[Required]
         [TypeConverter(typeof(CloudStorageAccountTypeConverter))]
         public CloudStorageAccount MainStorage { get; set; }
 

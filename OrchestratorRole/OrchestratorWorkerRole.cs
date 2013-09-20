@@ -54,7 +54,6 @@ namespace OrchestratorRole
             IAccountInfo accountInfo = new AzureRoleAccountInfo();
             _services = new Services(accountInfo);
 
-
             try
             {                
                 CheckServiceUrl(accountInfo);
@@ -116,9 +115,6 @@ namespace OrchestratorRole
 
                 DrainCompletionQueue();
 
-
-                Utility.ApplyToQueue<BlobWrittenMessage>(msg => worker.NewBlob(msg), _services.GetBlobWrittenQueueReader());
-                
                 // Polling walks all blobs. Could take a long time for a large container.
                 worker.Poll(cancelSource.Token);
 

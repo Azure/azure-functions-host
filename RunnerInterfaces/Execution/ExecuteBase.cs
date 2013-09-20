@@ -6,6 +6,7 @@ using Executor;
 namespace RunnerInterfaces
 {
     // Various objects needed for execution.
+    // @@@ Confirm this can be shared across requests
     public class FunctionExecutionContext
     {
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
@@ -15,10 +16,10 @@ namespace RunnerInterfaces
                 
         // Mark when a function has finished execution. This will send a message that causes the function's 
         // execution statistics to get aggregated. 
-        public ExecutionStatsAggregatorBridge Bridge { get; set; }
+        public IFunctionCompleteLogger Bridge { get; set; }
 
         // Used to confirm function still exists just prior to execution
-        public IFunctionTable FunctionTable { get; set; }
+        public IFunctionTableLookup FunctionTable { get; set; }
     }
 
     // Class to ensure a consistent execution experience w.r.t. logging, ExecutionInstanceLogEntity, etc. 
@@ -72,7 +73,11 @@ namespace RunnerInterfaces
                 logger.Log(logItem);
 
                 // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
-                bridge.EnqueueCompletedFunction(logItem);
+                if (bridge != null) // @@@
+                {
+                    bridge.IndexCompletedFunction(logItem);
+                    bridge.Flush();
+                }
             }
         }
 

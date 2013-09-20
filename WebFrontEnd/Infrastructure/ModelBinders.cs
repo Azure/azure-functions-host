@@ -20,13 +20,21 @@ namespace WebFrontEnd
     {
         public static void Register(IKernel kernel)
         {
-            IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
-            IFunctionTable functionTable = kernel.Get<IFunctionTable>();
+            try
+            {
+                IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
+                IFunctionTableLookup functionTable = kernel.Get<IFunctionTableLookup>();
 
-            ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder(functionTable));
-            ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
-            ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder(lookup));
-            ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder(lookup));
+                ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder(functionTable));
+                ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
+                ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder(lookup));
+                ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder(lookup));
+
+            }
+            catch (ActivationException)
+            {
+                // Ignore. Storage account may be invalid. 
+            }
         }
     }
 
@@ -110,9 +118,9 @@ namespace WebFrontEnd
     // Bind FunctionIndexEntity
     public class FunctionIndexEntityBinder : StringHelperModelBinder
     {
-        private readonly IFunctionTable _functionTable;
+        private readonly IFunctionTableLookup _functionTable;
 
-        public FunctionIndexEntityBinder(IFunctionTable functionTable)
+        public FunctionIndexEntityBinder(IFunctionTableLookup functionTable)
         {
             _functionTable = functionTable;
         }

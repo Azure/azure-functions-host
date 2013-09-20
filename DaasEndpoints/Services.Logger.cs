@@ -9,7 +9,6 @@ using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
-using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure;
 using SimpleBatch;
 

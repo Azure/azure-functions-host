@@ -59,24 +59,6 @@ namespace DaasEndpoints
             queue.CreateIfNotExist();
             return queue;
         }
-                        
-        // Gets an endpoit for adding messages to the queue. 
-        public IQueueOutput<BlobWrittenMessage> GetBlobWrittenQueue()
-        {
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            
-            var queue = client.GetQueueReference(EndpointNames.BlobWrittenQueue);
-            return new QueueBinder<BlobWrittenMessage>(queue);
-        }
-
-        // Gets an endpoint for reading the queue. 
-        public CloudQueue GetBlobWrittenQueueReader()
-        {
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            var queue = client.GetQueueReference(EndpointNames.BlobWrittenQueue);
-            return queue;
-        }
-
 
         public void PostDeleteRequest(FunctionInvokeRequest instance)
         {
@@ -146,6 +128,7 @@ namespace DaasEndpoints
             return new Orchestrator.Worker(functionTable, executor);
         }
 
+        // @@@ Remove this, move to be Ninject based. 
         public IFunctionTable GetFunctionTable()
         {
             IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, EndpointNames.FunctionIndexTableName);

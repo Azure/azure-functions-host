@@ -57,9 +57,24 @@
                   </div>
         </div>
         <p class="call-unit-commands">
-            <button type="submit" class="btn btn-primary"><i class="icon-play-sign"></i> Invoke</button>
+            <button type="submit" class="btn btn-primary"><i class="icon-play-sign"></i> Invoke</button><small> This will execute the function using the supplied parameters.</small>
         </p>
     </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.UploadContainerName))
+{
+    using (Html.BeginForm("Upload", "Function", FormMethod.Post, new { @class = "form-horizontal", enctype = "multipart/form-data" }))
+    {
+        <h2>Upload Blob<small> so that you can invoke this function on it</small></h2>    
+        <div class="hero-unit call-unit" >
+            <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
+            <p>Upload a file from here:</p>
+            <input class="icon-upload" type=file name=upload>
+            <p>To this container: <b>@Model.UploadContainerName</b></p>
+            <button type="submit" class="btn btn-primary"><i class="icon-upload"></i>Upload</button><small> The function will <strong>NOT</strong> be invoked.</small>
+        </div>
+    }    
 }
 
 @if(Model.KeyNames.Any()) {
@@ -89,73 +104,3 @@
 
 @Html.FunctionLogInvokeHistoryLink(Model.Descriptor.Location)
 
-@*<h2>Explicitly invoke this function</h2>
-
-<!-- mention the rest API . Even regenerate the link? -->
-
-<p>To invoke this function, provide all of the parameters and submit. </p>
-<p>Note that all azure storage locations are relative to the <b>@Utility.GetAccountName(Model.Descriptor.GetAccount())</b> storage container, since that's where the function was uploaded. </p>
-
-@using (Html.BeginForm("InvokeFunctionWithArgs", "Function"))
-{
-    <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
-    <input type="hidden" value="@Model.ReplayGuid" name ="replayGuid"/>
-    
-<table border="1">
-    <tr>
-        <td><b>name</b></td>
-        <td><b>Description</b></td>
-        <td><b>invoke with value:</b></td>
-    </tr>
-
-@for(int i =0; i < Model.Parameters.Length; i++)
-{ 
-    var param = Model.Parameters[i];
-    <tr>
-        <td>@param.Name</td>
-        <td>@param.Description</td>
-        <td bgcolor="#CCCCFF" >
-            <input name="argValues[@i]" value="@param.ArgInvokeString" size="100"/>
-        </td>
-    </tr>
-}
-    </table>
-    
-    <input type="submit" value="Invoke this function with supplied values" />
-}
-
-<!-- Invoke w/ name parameters. This is the easiest case -->
-@if (Model.KeyNames.Length > 0)
-{
-    <table border="1"><tr><td>
-    <p>For convenience, you can provide named parameters to help fill out the invocation parameters:</p>    
-        
-    @using (Html.BeginForm("ComputeArgsFromNames", "Function"))
-    {
-        <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
-    
-        <table border="1">         
-            <tr>
-                <td>route value name</td>
-                <td>value</td>
-            </tr>
-        @for (int i = 0; i < Model.KeyNames.Length; i++)        
-        { 
-        <tr>
-            @{
-            var key = Model.KeyNames[i];
-            }
-            <td>@(key) :</td>
-            <td><input name="key[@i]" /> </td>
-        </tr>
-        }   
-        </table>
-        <input type="submit" value="Apply names to arguments (does not invoke)"/>
-    }
-    </td></tr></table>
-}
-
-<H3>Other actions:</H3>
-<ul>
-    <li>@Html.FunctionLogInvokeHistoryLink(Model.Descriptor.Location)</li>
-</ul>*@

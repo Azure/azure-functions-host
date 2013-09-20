@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
+using System.Runtime.Serialization;
 
 namespace RunnerInterfaces
 {
@@ -35,10 +36,9 @@ namespace RunnerInterfaces
         {
             Type t = Type.GetType(AssemblyQualifiedTypeName);
             MethodInfo m = t.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static);
-            return new MethodInfoFunctionLocation
+            return new MethodInfoFunctionLocation(m)
             {
                 AccountConnectionString = this.AccountConnectionString,
-                MethodInfo = m
             };
         }
 
@@ -73,16 +73,58 @@ namespace RunnerInterfaces
         // instead:
         // 1. caller should be converting location into a serializable type and running o
         // 2. entire scenario is already in-memory. 
+        [JsonIgnore]
         public MethodInfo MethodInfo { get; set; }
+
+        public string ShortName { get; set; }
+        public string Id { get; set; }
+
+        // For deserialization
+        public string AssemblyQualifiedTypeName { get; set; }
+        public string MethodName { get; set; }
+
+        public MethodInfoFunctionLocation() // For Serialization
+        {
+        }
+
+        public MethodInfoFunctionLocation(MethodInfo method)
+        {
+            MethodInfo = method;
+            ShortName = string.Format("{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
+            Id = string.Format("{0}.{1}", MethodInfo.DeclaringType.FullName, MethodInfo.Name);
+
+            this.AssemblyQualifiedTypeName = MethodInfo.DeclaringType.AssemblyQualifiedName;
+            this.MethodName = MethodInfo.Name;
+        }
+
+        [OnDeserialized]
+        internal void OnDeserialized(StreamingContext ctx)
+        {
+            if (this.MethodInfo != null)
+            {
+                return;
+            }
+
+            if (AssemblyQualifiedTypeName != null && MethodName != null)
+            {
+                Type t = Type.GetType(AssemblyQualifiedTypeName);
+                if (t != null)
+                {
+                    MethodInfo m = t.GetMethod(MethodName, BindingFlags.Public | BindingFlags.Static);
+
+                    this.MethodInfo = m;
+                }
+            }
+        }
 
         public override string GetShortName()
         {
-            return string.Format("{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
+            return ShortName;
         }
 
         public override string GetId()
         {
-            return string.Format("{0}.{1}", MethodInfo.DeclaringType.FullName, MethodInfo.Name);
+            return Id;
         }
 
         public override string ReadFile(string filename)

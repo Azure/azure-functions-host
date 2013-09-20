@@ -138,8 +138,15 @@ namespace TriggerService
         }
         public void Poll(CancellationToken token)
         {
-            PollBlobs(token);
-            PollQueues(token);
+            try
+            {
+                PollBlobs(token);
+                PollQueues(token);
+            }
+            catch (StorageException)
+            {
+                // Storage exceptions can happen naturally and intermittently from network connectivity issues. Just ignore. 
+            }
             PollTimers(token);
         }
 

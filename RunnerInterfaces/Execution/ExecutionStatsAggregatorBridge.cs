@@ -13,7 +13,8 @@ namespace Executor
 {
     // Help executors queue a "FunctionCompleted" notification and Orchestrator reads it.
     // This keeps the Enqueue and Dequeue operation coupled together.
-    public class ExecutionStatsAggregatorBridge
+    // By queueing it, it also serializes write operations (accumulated from multiple executors) and makes them single threaded. 
+    public class ExecutionStatsAggregatorBridge : IFunctionCompleteLogger
     {
         private readonly CloudQueue _queue;
 
@@ -30,7 +31,7 @@ namespace Executor
         }
 
         // Called by many execution nodes
-        public void EnqueueCompletedFunction(ExecutionInstanceLogEntity instance)
+        public void IndexCompletedFunction(ExecutionInstanceLogEntity instance)
         {
             // If complete, then queue a message to the orchestrator so it can aggregate stats. 
             if (instance.IsCompleted())
@@ -61,6 +62,12 @@ namespace Executor
                     yield return instance;
                 }
             }
+        }
+
+        void IFunctionCompleteLogger.Flush()
+        {            
+            // Nop since function is queued immediately. 
+            // @@@ When Orch listens on this, it calls IPrereqManager too. 
         }
     }
 }

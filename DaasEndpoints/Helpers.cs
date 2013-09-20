@@ -6,6 +6,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
+using System.Runtime.CompilerServices;
 
 namespace DaasEndpoints
 {
@@ -34,6 +35,32 @@ namespace DaasEndpoints
             }
             return count;
 #endif
+        }
+    }
+
+    public static class AzureRuntime
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public static string GetConfigurationSettingValue(string name)
+        {
+            throw new InvalidOperationException("No azure runtime");
+            try
+            {
+                //string val = RoleEnvironment.GetConfigurationSettingValue("WebRoleEndpoint");
+                //return val;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static bool IsAvailable
+        {
+            get
+            {
+                return false;
+            }
         }
     }
 }

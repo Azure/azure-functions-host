@@ -39,8 +39,9 @@ namespace RunnerInterfaces
 
         // Apply the callback funciton to each message in the queue. 
         // Delete message from queue once callback returns.
-        [DebuggerNonUserCode]
-        public static void ApplyToQueue<T>(Action<T> callback, CloudQueue queue)
+        // Return true if any messages are handled
+        //[DebuggerNonUserCode]
+        public static bool ApplyToQueue<T>(Action<T> callback, CloudQueue queue)
         {
             IEnumerable<CloudQueueMessage> msgs = null;
             try
@@ -53,15 +54,16 @@ namespace RunnerInterfaces
             }
             if (msgs == null)
             {
-                return;
+                return false;
             }
 
+            int count = 0;
             foreach (var msg in msgs)
             {
                 T payload;
                 try
                 {
-                    payload = JsonConvert.DeserializeObject<T>(msg.AsString);
+                    payload = JsonCustom.DeserializeObject<T>(msg.AsString);
                 }
                 catch
                 {
@@ -71,6 +73,7 @@ namespace RunnerInterfaces
                 }
 
                 callback(payload);
+                count++;
 
                 try
                 {
@@ -78,6 +81,7 @@ namespace RunnerInterfaces
                 }
                 catch { }
             }
+            return count > 0;
         }
     }
 }

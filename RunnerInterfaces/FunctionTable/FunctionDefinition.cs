@@ -36,5 +36,17 @@ namespace RunnerInterfaces
         {
             return this.Location.ToString();
         }
+
+        // Do a clone of this object, but update the location.
+        // This is useful as we convert between different location types (eg, after downloading)
+        public FunctionDefinition CloneUpdateLocation(FunctionLocation newLocation)
+        {
+            // Easiest to do a deep copy; but we could do a shallow since we're just changing the location.
+            string json = JsonCustom.SerializeObject(this);
+            var copy = JsonCustom.DeserializeObject<FunctionDefinition>(json);
+
+            copy.Location = newLocation;
+            return copy;
+        }
     }
 }

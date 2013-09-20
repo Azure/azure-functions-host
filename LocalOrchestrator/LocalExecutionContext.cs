@@ -174,6 +174,14 @@ namespace Orchestrator
             return new SimpleFunctionToken(guid);
         }
 
+        public Guid Call(MethodInfo method, object arguments = null, IEnumerable<Guid> prereqs = null)
+        {
+            var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
+            
+            var guid = Call(method, args2, prereqs);
+            return guid;
+        }
+
         public Guid Call(string functionName, object arguments = null, IEnumerable<Guid> prereqs = null)
         {
             var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);

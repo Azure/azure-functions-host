@@ -27,10 +27,9 @@ namespace WebFrontEnd
             try
             {
                 var kernel = NinjectWebCommon.Kernel;
-                var config = kernel.TryGet<AppConfiguration>();
 
                 AreaRegistration.RegisterAllAreas();
-
+                
                 WebApiConfig.Register(GlobalConfiguration.Configuration);
                 FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
                 RouteConfig.RegisterRoutes(RouteTable.Routes);

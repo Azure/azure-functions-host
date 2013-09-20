@@ -68,7 +68,7 @@ namespace IndexDriver
 
             var assembly = Assembly.LoadFile(assemblyPath);
             //string dir = Path.GetDirectoryName(assemblyPath);
-            i.IndexAssembly(m => new MethodInfoFunctionLocation { MethodInfo = m }, assembly);
+            i.IndexAssembly(m => new MethodInfoFunctionLocation(m), assembly);
 
             // Print output
             foreach (var func in settings.ReadAll())

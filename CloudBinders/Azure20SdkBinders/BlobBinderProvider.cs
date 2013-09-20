@@ -25,7 +25,16 @@ namespace Azure20SdkBinders
 
             if (targetType == typeof(ICloudBlob))
             {
-                func = (container, blobName) => container.GetBlobReferenceFromServer(blobName);
+                if (isInput)
+                {
+                    // Assumes it's on the server. So must be reader
+                    func = (container, blobName) => container.GetBlobReferenceFromServer(blobName);
+                }
+                else
+                {
+                    // Writer. Default to Block blobs.
+                    func = (container, blobName) => container.GetBlockBlobReference(blobName);
+                }
             }
 
             // $$$ Check blob/Page compatability?

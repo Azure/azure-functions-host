@@ -4,7 +4,6 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
-using Microsoft.WindowsAzure.ServiceRuntime;
 using WebFrontEnd.Configuration;
 
 namespace WebFrontEnd.Controllers
@@ -13,11 +12,12 @@ namespace WebFrontEnd.Controllers
     {
         //
         // GET: /Account/
-        private readonly AppConfiguration _config;
+        private string _password;
 
-        public AccountController(AppConfiguration config)
+        public AccountController(ConfigurationService config)
         {
-            _config = config;
+            string password = config.ReadSetting("LoginPassword");
+            _password = string.IsNullOrWhiteSpace(password) ? "12345" : password;
         }
 
         public ActionResult Login()
@@ -30,7 +30,7 @@ namespace WebFrontEnd.Controllers
         {
             if (ModelState.IsValid)
             {
-                string expected = _config.LoginPassword;
+                string expected = _password;
 
                 bool f = (model.Password == expected);
                 if (!f)

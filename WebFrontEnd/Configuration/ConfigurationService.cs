@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Linq;
 using System.Web;
 using System.Web.Configuration;
-using Microsoft.WindowsAzure.ServiceRuntime;
+using System.Diagnostics;
 
 namespace WebFrontEnd.Configuration
 {
@@ -88,8 +88,10 @@ namespace WebFrontEnd.Configuration
             return String.IsNullOrEmpty(cloudValue) ? value : cloudValue;
         }
 
+        [DebuggerNonUserCode]
         public virtual string GetCloudSetting(string settingName)
         {
+#if false
             string value = null;
             try
             {
@@ -103,6 +105,10 @@ namespace WebFrontEnd.Configuration
                 // Not in the role environment or config setting not found...
             }
             return value;
+#else
+            // ###
+            return null;
+#endif
         }
 
         public virtual string GetAppSetting(string settingName)

@@ -45,6 +45,8 @@
 
 @Html.ValidationSummary()
 
+<p>This page shows a specific execution instance of this function definition: @Html.FunctionLogLink(@Model.Descriptor)</p>
+
 <div class="hero-unit">
     <h2>
         @Model.Descriptor.Location.GetShorterName()
@@ -58,6 +60,7 @@
                     {
                         <dt>@param.Name</dt>
                         <dd>@Html.ParamArgValueLink(param)</dd>
+                        <dd>@param.SelfWatch</dd>
                     }
                 </dl>
             )</small>

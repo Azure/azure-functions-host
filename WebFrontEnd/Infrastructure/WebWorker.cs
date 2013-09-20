@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
+#if false // ###
 namespace WebFrontEnd
 {
     // Entry point invoked for Azure.
@@ -15,3 +16,4 @@ namespace WebFrontEnd
         }
     }
 }
+#endif

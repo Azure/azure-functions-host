@@ -1,0 +1,21 @@
+﻿@{
+    ViewBag.Title = "BadConfig";
+}
+
+<pre>
+    @WebFrontEnd.AppModule._sb.ToString()
+</pre>
+
+<h2>Bad Config</h2>
+<p>
+The configuration is not properly set for the SimpleBatch Function Dashboard.
+In your configuration (such as web.config), you must set a key <i>MainStorage</i> that points to the account connection string where the sb logs are being stored. EG, under "AppSettings" in Web.config, add a value like:
+</p>
+<pre>
+  &lt;add key="SimpleBatchLoggingACS" value="DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b>" /&gt;
+</pre>
+
+<p>
+Either that key is missing, it's malformed (not a valid connection string), or it's not set to a valid storage account. 
+This is the storage account that your user functions will bind against.  This is also where logging will be stored.
+</p>

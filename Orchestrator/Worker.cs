@@ -27,13 +27,18 @@ namespace Orchestrator
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
        
         // Settings is for wiring up Azure endpoints for the distributed app.
-        private readonly IFunctionTable _functionTable;
+        private readonly IFunctionTableLookup _functionTable;
         private readonly IQueueFunction _execute;
 
+        // General purpose listener for blobs, queues. 
         private Listener _listener;
-                
-        public Worker(IFunctionTable functionTable, IQueueFunction execute)
+
+        // Fast-path blob listener. 
+        private INotifyNewBlobListener _blobListener;
+        
+        public Worker(IFunctionTableLookup functionTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
         {
+            _blobListener = blobListener;
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
@@ -94,10 +99,49 @@ namespace Orchestrator
             Poll(CancellationToken.None);
         }
 
+        int _triggerCount = 0;
+
         public void Poll(CancellationToken token)
         {
             _heartbeat.Heartbeat = DateTime.UtcNow;
-            _listener.Poll(token);
+
+            while (true)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                int lastCount = _triggerCount;
+
+                // this is a fast poll (checking a queue), so give it high priority
+                PollNotifyNewBlobs(token);
+                if (_triggerCount != lastCount)
+                {
+                    // This is a critical optimization.
+                    // If a function writes a blob, immediately execute any functions that would
+                    // have been triggered by that blob. Don't wait for a slow blob polling to detect it. 
+                    continue;
+                }
+
+                _listener.Poll(token);
+
+                if (_triggerCount != lastCount)
+                {
+                    continue;
+                }
+                break;
+            }            
+        }
+
+        // Poll blob notifications from the fast path that may be detected ahead of our
+        // normal listeners. 
+        void PollNotifyNewBlobs(CancellationToken token)
+        {
+            if (_blobListener != null)
+            {
+                _blobListener.ProcessMessages(this.NewBlob, token);
+            }
         }
 
         // Called if the external system thinks we may have a new blob. 
@@ -112,6 +156,7 @@ namespace Orchestrator
 
             if (instance != null)
             {
+                _triggerCount++;
                 instance.TriggerReason = new TimerTriggerReason();
                 _execute.Queue(instance);
             }
@@ -123,6 +168,7 @@ namespace Orchestrator
             
             if (instance != null)
             {
+                _triggerCount++;
                 _execute.Queue(instance);
             }
         }
@@ -133,6 +179,7 @@ namespace Orchestrator
             FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
             if (instance != null)
             {
+                _triggerCount++;
                 _execute.Queue(instance);
             }
         }

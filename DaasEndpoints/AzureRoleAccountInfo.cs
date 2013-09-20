@@ -1,6 +1,5 @@
 ﻿using System.Linq;
 using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.ServiceRuntime;
 using RunnerInterfaces;
 
 namespace DaasEndpoints
@@ -19,7 +18,7 @@ namespace DaasEndpoints
             {
                 if (_webDashboard == null)
                 {
-                    _webDashboard = RoleEnvironment.GetConfigurationSettingValue("WebRoleEndpoint");
+                    _webDashboard = AzureRuntime.GetConfigurationSettingValue("WebRoleEndpoint");
                 }
                 return _webDashboard;
             }
@@ -32,7 +31,7 @@ namespace DaasEndpoints
             {
                 if (_accountConnectionString == null)
                 {
-                    _accountConnectionString = RoleEnvironment.GetConfigurationSettingValue("MainStorage");
+                    _accountConnectionString = AzureRuntime.GetConfigurationSettingValue("MainStorage");
                 }
                 return _accountConnectionString;
             }

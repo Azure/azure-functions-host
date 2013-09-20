@@ -3,7 +3,6 @@ using System.IO;
 using AzureTables;
 using Executor;
 using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
@@ -23,7 +22,7 @@ namespace DaasEndpoints
                 switch (t)
                 {
                     case QueueFunctionType.Antares:
-                        string url = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
+                        string url = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
                         return "Antares: " + url;
                     default:
                         return t.ToString();
@@ -36,9 +35,13 @@ namespace DaasEndpoints
 
         }
 
-        private QueueFunctionType GetExecutionType()
+        public QueueFunctionType GetExecutionType()
         {
-            string value = RoleEnvironment.GetConfigurationSettingValue("ExecutionType");
+            if (!AzureRuntime.IsAvailable)
+            {
+                return QueueFunctionType.Unknown;
+            }
+            string value = AzureRuntime.GetConfigurationSettingValue("ExecutionType");
 
             QueueFunctionType t;
             if (Enum.TryParse<QueueFunctionType>(value, out t))
@@ -108,11 +111,16 @@ namespace DaasEndpoints
         // This requires that an existing azure task pool has been setup. 
         private QueueFunctionBase GetAzureTasksQueueFunction(QueueInterfaces qi)
         {
+#if false
             // Based on AzureTasks
             TaskConfig taskConfig = GetAzureTaskConfig();
             return new TaskExecutor(taskConfig, qi);            
+#else
+            throw new NotImplementedException("Azure tasks disabled");
+#endif
         }
 
+#if false // $$$ Move this to DI
         // Gets AzureTask configuration from the Azure config settings
         private static TaskConfig GetAzureTaskConfig()
         {
@@ -125,13 +133,14 @@ namespace DaasEndpoints
             };
             return taskConfig;
         }
+#endif
 
         // Run via Antares. 
         // This requires that an existing antares site was deployed. 
         private QueueFunctionBase GetAntaresQueueFunction(QueueInterfaces qi)
         {
             // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
-            string urlBase = RoleEnvironment.GetConfigurationSettingValue("AntaresWorkerUrl");
+            string urlBase = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
            
             var queue = this.GetExecutionQueue();
             return new AntaresRoleExecutionClient(urlBase, queue, qi);
@@ -159,5 +168,6 @@ namespace DaasEndpoints
         Antares,
         AzureTasks,
         Kudu,
+        Unknown,
     }
 }

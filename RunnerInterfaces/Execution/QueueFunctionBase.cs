@@ -106,6 +106,10 @@ namespace RunnerInterfaces
             // Now that it's queued, execution node may immediately pick up the queue item and start running it, 
             // and logging against it.
 
+            // Lookup again. In the bowls of queuing and execution, we may have made changes 
+            // against the log item in the table instead of our reference here. 
+            logItem = _lookup.Lookup(instance.Id);
+
             return logItem;
         }
 

@@ -50,10 +50,9 @@ namespace Orchestrator
             _mapping.Add(method);
 
             // Still need account information because blob inputs are relative to these accounts.
-            return new MethodInfoFunctionLocation
+            return new MethodInfoFunctionLocation(method)
             {
                 AccountConnectionString = this.AccountConnectionString,
-                MethodInfo = method
             };
         }
 

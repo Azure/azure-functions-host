@@ -118,5 +118,8 @@ namespace WebFrontEnd.Controllers
         public string[] KeyNames { get; set; }
 
         public Guid ReplayGuid { get; set; }
+
+        // Purely cosmetic (we recompute this on the server for security)
+        public string UploadContainerName { get; set; }
     }
 }

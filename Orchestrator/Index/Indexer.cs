@@ -38,6 +38,9 @@ namespace Orchestrator
     {
         private readonly IFunctionTable _functionTable;
 
+        // If this config is set, use it. 
+        public IConfiguration _configOverride;
+
         // Account for where index lives
         public Indexer(IFunctionTable functionTable)
         {
@@ -285,27 +288,29 @@ namespace Orchestrator
             }
         }
 
+        public static bool DoesAssemblyReferenceSimpleBatch(Assembly a)
+        {
+            var names = a.GetReferencedAssemblies();
+            foreach (var name in names)
+            {
+                if (string.Compare(name.Name, "SimpleBatch", StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void IndexAssembly(Func<MethodInfo, FunctionLocation> funcApplyLocation, Assembly a)
         {
             // Only try to index assemblies that reference SimpleBatch.
             // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
+            bool skip = !DoesAssemblyReferenceSimpleBatch(a);
+            if (skip)
             {
-                bool skip = true;
-                var names = a.GetReferencedAssemblies();
-                foreach (var name in names)
-                {
-                    if (string.Compare(name.Name, "SimpleBatch", StringComparison.OrdinalIgnoreCase) == 0)
-                    {
-                        skip = false;
-                        break;
-                    }
-                }
-
-                if (skip)
-                {
-                    return;
-                }
-            }
+                return;
+            }            
 
             Type[] types;
 
@@ -376,10 +381,15 @@ namespace Orchestrator
         // Register any functions provided by code-configuration.
         private IndexTypeContext InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
+            if (_configOverride != null)
+            {
+                return new IndexTypeContext { Config = _configOverride };
+            }
+
             // Invoke initialization function on this type.
             // This may register functions imperatively.
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
-            
+
             IndexerConfig config = new IndexerConfig(fpFuncLookup);
             
             RunnerHost.Program.AddDefaultBinders(config);
