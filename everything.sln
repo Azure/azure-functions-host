@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFrontEnd", "WebFrontEnd\WebFrontEnd.csproj", "{45974999-9C53-48AD-83B9-519ECC8AB8F4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch", "SimpleBatch\SimpleBatch.csproj", "{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}"
@@ -20,13 +22,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp1", "Temp\TestApp1\TestApp1.csproj", "{EFBA6889-46BF-4C69-A933-8C17D2CD38CA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RunnerHost", "RunnerHost\RunnerHost.csproj", "{494580B8-1C81-41DF-9EB7-BD5A887258AB}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{9225C60A-CFCB-4112-A310-3DEB92B4577F}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrchestratorUnitTests", "Tests\OrchestratorUnitTests\OrchestratorUnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
 EndProject

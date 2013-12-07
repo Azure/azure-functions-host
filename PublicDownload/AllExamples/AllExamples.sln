@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "1_HelloWorld", "1_HelloWorld\1_HelloWorld.csproj", "{2CD1F451-894A-46D1-A3D4-79A3E7F2240F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1_HelloWorld", "1_HelloWorld", "{86E93010-BC4D-4D33-88EE-67E8B5843A90}"
@@ -14,13 +16,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2_WebImageResize", "2_WebImageResize", "{BEDF2841-EC1F-4066-8D27-06C923044008}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebImageResize", "2_WebImageResize\WebImageResize\WebImageResize.csproj", "{34644E3A-C6AB-4CA2-98E5-200F3D1D9920}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{8C88273E-E41A-4BAC-9FD3-631C56E6898A}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebImageResizeConsole", "2_WebImageResize\WebImageResizeConsole\WebImageResizeConsole.csproj", "{A5E9A003-D961-42C9-B486-4A24BEE48BB5}"
 EndProject
