@@ -55,25 +55,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DaasEndpoints\DaasEndpoints.csproj">
-      <Project>{0cc8477b-5761-4ed9-a2a1-40178f9639ca}</Project>
-      <Name>DaasEndpoints</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Executor\Executor.csproj">
-      <Project>{c7447feb-9ee5-475e-a4c6-a85a75e4cd9d}</Project>
-      <Name>Executor</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LocalRunnerHost\LocalRunnerHost.csproj">
-      <Project>{51d2bba3-1acf-4bb8-8a40-61f45a0890e7}</Project>
-      <Name>LocalRunnerHost</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Orchestrator\Orchestrator.csproj">
-      <Project>{1cdc8c52-15c3-4de7-84ea-9caf92b9bcfd}</Project>
-      <Name>Orchestrator</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
-      <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
-      <Name>RunnerInterfaces</Name>
+    <ProjectReference Include="..\SimpleBatch.Host\SimpleBatch.Host.csproj">
+      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
+      <Name>SimpleBatch.Host</Name>
     </ProjectReference>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>

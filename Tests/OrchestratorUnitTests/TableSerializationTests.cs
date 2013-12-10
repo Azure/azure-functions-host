@@ -16,7 +16,6 @@ using Orchestrator;
 using RunnerHost;
 using RunnerInterfaces;
 using SimpleBatch;
-using SimpleBatch.Client;
 
 namespace OrchestratorUnitTests
 {

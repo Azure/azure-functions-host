@@ -58,7 +58,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\RunnerInterfaces\Utility.Queue.Validate.cs">
+    <Compile Include="..\..\SimpleBatch.Host\RunnerInterfaces\Utility.Queue.Validate.cs">
       <Link>Utility.Queue.Validate.cs</Link>
     </Compile>
     <Compile Include="Azure20SdkBinderProvider.cs" />

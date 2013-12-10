@@ -15,7 +15,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Data.Services.Common;
 using AzureTables;
-using SimpleBatch.Client;
 using IndexDriver;
 using System.Reflection;
 using DaasEndpoints;
@@ -52,8 +51,9 @@ namespace ConsoleApplication1
 
         static void Foo()
         {
-            var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
-            CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            //var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
+            //CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            CloudStorageAccount account = null;
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
             var container = blobClient.GetContainerReference("test6");
 
@@ -68,8 +68,9 @@ namespace ConsoleApplication1
 
         private static void MeasureQueues()
         {
-            var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
-            CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            //var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
+            //CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            CloudStorageAccount account = null;
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
             string containerName = "test9";
             var container = blobClient.GetContainerReference(containerName);
@@ -110,8 +111,9 @@ namespace ConsoleApplication1
 
         private static void Listen()
         {
-            var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");            
-            CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            //var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
+            //CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            CloudStorageAccount account = null;
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
            
             string containerName = "test9";
@@ -192,9 +194,9 @@ namespace ConsoleApplication1
 
         static void Measure()
         {
-            var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
-
-            CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            //var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
+            //CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            CloudStorageAccount account = null;
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
 
 
@@ -263,9 +265,9 @@ namespace ConsoleApplication1
 
         static void TestAnalytics()
         {
-            var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
-
-            CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            //var acs = LocalRunnerHost.Program.GetAccountInfo(@"C:\CodePlex\azuresimplebatch\DaasService\ServiceConfiguration.Local.cscfg");
+            //CloudStorageAccount account = CloudStorageAccount.Parse(acs.AccountConnectionString);
+            CloudStorageAccount account = null;
             CloudBlobClient blobClient = account.CreateCloudBlobClient();
 
             foreach (var blob in BlobLogListener.ListLogFiles(blobClient, "blob", DateTime.MinValue, DateTime.MaxValue))

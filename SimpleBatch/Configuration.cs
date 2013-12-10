@@ -213,9 +213,6 @@ namespace SimpleBatch
 
         // General type binding. 
         IList<ICloudBinderProvider> Binders { get; }
-
-        // Code-based configuration option
-        IFluentConfig Register(string functionName);
     }
 
     public interface IFluentConfig

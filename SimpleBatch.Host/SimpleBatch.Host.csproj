@@ -33,9 +33,13 @@
     <Reference Include="Microsoft.WindowsAzure.StorageClient, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\SimpleBatch.AzureTemp.0.0.1\lib\Microsoft.WindowsAzure.StorageClient.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data.Services.Client" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -43,37 +47,140 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Engine\DaasEndpoints\AntaresRoleExecutionClient.cs" />
+    <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
+    <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
+    <Compile Include="Engine\DaasEndpoints\Helpers.cs" />
+    <Compile Include="Engine\DaasEndpoints\KuduQueueFunction.cs" />
+    <Compile Include="Engine\DaasEndpoints\Names.cs" />
+    <Compile Include="Engine\DaasEndpoints\Services.cs" />
+    <Compile Include="Engine\DaasEndpoints\Services.GetQueueFunction.cs" />
+    <Compile Include="Engine\DaasEndpoints\Services.Health.cs" />
+    <Compile Include="Engine\DaasEndpoints\Services.Logger.cs" />
+    <Compile Include="Engine\DaasEndpoints\WebExecutionLogger.cs" />
+    <Compile Include="Engine\DaasEndpoints\WorkerRoleExecutionClient.cs" />
+    <Compile Include="Engine\Executor\Executor.cs" />
+    <Compile Include="Engine\Executor\ExecutorClient.cs" />
+    <Compile Include="Engine\Executor\ExecutorListener.cs" />
+    <Compile Include="Engine\Executor\Stats.cs" />
+    <Compile Include="Engine\IndexDriver\Program.cs" />
+    <Compile Include="Engine\Orchestrator\Index\BinderLookup.cs" />
+    <Compile Include="Engine\Orchestrator\Index\CalculateTriggers.cs" />
+    <Compile Include="Engine\Orchestrator\Index\Indexer.cs" />
+    <Compile Include="Engine\Orchestrator\Index\IndexerConfig.cs" />
+    <Compile Include="Engine\Orchestrator\Worker.cs" />
+    <Compile Include="Engine\Runner\Binder.cs" />
+    <Compile Include="Engine\Runner\Binders\BinderBinderProvider.cs" />
+    <Compile Include="Engine\Runner\Binders\BlobBinderProviders.cs" />
+    <Compile Include="Engine\Runner\Binders\CallBinderProvider.cs" />
+    <Compile Include="Engine\Runner\Binders\CloudStorageAccountBinderProvider.cs" />
+    <Compile Include="Engine\Runner\Binders\ContextBinderProvider.cs" />
+    <Compile Include="Engine\Runner\Binders\QueueOutputBinderProvider.cs" />
+    <Compile Include="Engine\Runner\Binders\TableBinderProvider.cs" />
+    <Compile Include="Engine\Runner\BindResultHelpers.cs" />
+    <Compile Include="Engine\Runner\Configuration.cs" />
+    <Compile Include="Engine\Runner\DictionaryTableBinder.cs" />
+    <Compile Include="Engine\Runner\IBinderPrivate.cs" />
+    <Compile Include="Engine\Runner\IPostActionTransaction.cs" />
+    <Compile Include="Engine\Runner\Program.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindingInputs.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\BlobBindResult.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\BlobParameterRuntimeBinding.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\LiteralParameterRuntimeBinding.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\NullBindResult.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\TableParameterRuntimeBinding.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\UnknownParameterRuntimeBinding.cs" />
+    <Compile Include="Engine\Runner\SelfWatch.cs" />
+    <Compile Include="Engine\Runner\SimpleFunctionToken.cs" />
+    <Compile Include="Engine\Runner\StaticBinder.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\BlobAggregateParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\BlobParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\ConfigParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\NameParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\QueueParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\StaticBindings\TableParameterStaticBinding.cs" />
+    <Compile Include="Engine\Runner\WatchableEnumerable.cs" />
+    <Compile Include="Engine\Runner\WatchableStream.cs" />
+    <Compile Include="Engine\Runner\WebCallWrapper.cs" />
     <Compile Include="Host.cs" />
     <Compile Include="HostContext.cs" />
+    <Compile Include="LocalExecution\LocalExecutionContext.cs" />
+    <Compile Include="LocalExecution\LocalFunctionTable.cs" />
+    <Compile Include="LocalExecution\LocalOrchestrator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RunnerInterfaces\BindingInterfaces.cs" />
+    <Compile Include="RunnerInterfaces\BlobLease.cs" />
+    <Compile Include="RunnerInterfaces\BlobTextWriter.cs" />
+    <Compile Include="RunnerInterfaces\CloudBlobPath.cs" />
+    <Compile Include="RunnerInterfaces\Comparers.cs" />
+    <Compile Include="RunnerInterfaces\Config.cs" />
+    <Compile Include="RunnerInterfaces\ContainerDownloader.cs" />
+    <Compile Include="RunnerInterfaces\Execution\AzureExecutionEndpointNames.cs" />
+    <Compile Include="RunnerInterfaces\Execution\ExecuteBase.cs" />
+    <Compile Include="RunnerInterfaces\Execution\ExecutionStatsAggregatorBridge.cs" />
+    <Compile Include="RunnerInterfaces\Execution\FunctionExecutionResult.cs" />
+    <Compile Include="RunnerInterfaces\Execution\FunctionOutputLog.cs" />
+    <Compile Include="RunnerInterfaces\Execution\IAccountInfo.cs" />
+    <Compile Include="RunnerInterfaces\Execution\IFunctionOutputLogDispenser.cs" />
+    <Compile Include="RunnerInterfaces\Execution\INotifyNewBlob.cs" />
+    <Compile Include="RunnerInterfaces\Execution\IPrereqManager.cs" />
+    <Compile Include="RunnerInterfaces\Execution\IQueueFunction.cs" />
+    <Compile Include="RunnerInterfaces\Execution\PrereqManager.cs" />
+    <Compile Include="RunnerInterfaces\Execution\QueueFunctionBase.cs" />
+    <Compile Include="RunnerInterfaces\FunctionInvokeRequest.cs" />
+    <Compile Include="RunnerInterfaces\FunctionLocation.cs" />
+    <Compile Include="RunnerInterfaces\FunctionTable\FunctionDefinition.cs" />
+    <Compile Include="RunnerInterfaces\FunctionTable\FunctionFlow.cs" />
+    <Compile Include="RunnerInterfaces\FunctionTable\FunctionTrigger.cs" />
+    <Compile Include="RunnerInterfaces\FunctionTable\IFunctionTable.cs" />
+    <Compile Include="RunnerInterfaces\Index\IndexerOperations.cs" />
+    <Compile Include="RunnerInterfaces\Index\IndexException.cs" />
+    <Compile Include="RunnerInterfaces\Interfaces.cs" />
+    <Compile Include="RunnerInterfaces\Json.cs" />
+    <Compile Include="RunnerInterfaces\Logging\CausalityLogger.cs" />
+    <Compile Include="RunnerInterfaces\Logging\ExecutionInstanceLogEntity.cs" />
+    <Compile Include="RunnerInterfaces\Logging\FunctionInstanceGuid.cs" />
+    <Compile Include="RunnerInterfaces\Logging\FunctionUpdatedLogger.cs" />
+    <Compile Include="RunnerInterfaces\Logging\IBlobCausalityLogger.cs" />
+    <Compile Include="RunnerInterfaces\Logging\ICausalityLogger.cs" />
+    <Compile Include="RunnerInterfaces\Logging\IQueueCausalityLogger.cs" />
+    <Compile Include="RunnerInterfaces\Logging\LoggingInterfaces.cs" />
+    <Compile Include="RunnerInterfaces\ModelBinderManifest.cs" />
+    <Compile Include="RunnerInterfaces\ObjectBinderHelpers.cs" />
+    <Compile Include="RunnerInterfaces\QueueBinder.cs" />
+    <Compile Include="RunnerInterfaces\ServiceContainer.cs" />
+    <Compile Include="RunnerInterfaces\Tables\AzureTable.cs" />
+    <Compile Include="RunnerInterfaces\Tables\LiveTableCore.cs" />
+    <Compile Include="RunnerInterfaces\Tables\LocalTableCore.cs" />
+    <Compile Include="RunnerInterfaces\Tables\TableCore.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Blob.cs" />
+    <Compile Include="RunnerInterfaces\Utility.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Process.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Queue.Validate.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Queues.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Table.AtomicAdjust.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Table.cs" />
+    <Compile Include="RunnerInterfaces\Utility.Web.cs" />
+    <Compile Include="RunnerInterfaces\WrapperEnumerable.cs" />
     <Compile Include="SimpleBinderProvider.cs" />
     <Compile Include="Support.cs" />
+    <Compile Include="Triggering\BlobListener\BlobListener.cs" />
+    <Compile Include="Triggering\BlobListener\BlobLogListener.cs" />
+    <Compile Include="Triggering\BlobListener\ContainerScannerBlobListener.cs" />
+    <Compile Include="Triggering\CloudBlobPath.cs" />
+    <Compile Include="Triggering\Comparers.cs" />
+    <Compile Include="Triggering\ITriggerInvoke.cs" />
+    <Compile Include="Triggering\Listener.cs" />
+    <Compile Include="Triggering\StringConverter.cs" />
+    <Compile Include="Triggering\TriggerMap.cs" />
+    <Compile Include="Triggering\TriggerRaw.cs" />
+    <Compile Include="Triggering\Triggers.cs" />
+    <Compile Include="Triggering\Utility.cs" />
+    <Compile Include="Triggering\Validate.cs" />
+    <Compile Include="Triggering\WebInvoke.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DaasEndpoints\DaasEndpoints.csproj">
-      <Project>{0cc8477b-5761-4ed9-a2a1-40178f9639ca}</Project>
-      <Name>DaasEndpoints</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Executor\Executor.csproj">
-      <Project>{c7447feb-9ee5-475e-a4c6-a85a75e4cd9d}</Project>
-      <Name>Executor</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\LocalOrchestrator\LocalOrchestrator.csproj">
-      <Project>{c03aa9a7-be04-4c64-a104-185fc8e51252}</Project>
-      <Name>LocalOrchestrator</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Orchestrator\Orchestrator.csproj">
-      <Project>{1cdc8c52-15c3-4de7-84ea-9caf92b9bcfd}</Project>
-      <Name>Orchestrator</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RunnerHost\RunnerHost.csproj">
-      <Project>{494580b8-1c81-41df-9eb7-bd5a887258ab}</Project>
-      <Name>RunnerHost</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RunnerInterfaces\RunnerInterfaces.csproj">
-      <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
-      <Name>RunnerInterfaces</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>SimpleBatch</Name>

@@ -30,9 +30,12 @@ namespace GauntletTest
             config.Add<Guid>(new GuidBlobBinder());
 
             string path = string.Format(CookieBlobName, "{cookie}");
+
+            /* TODO: reinstate fluent registration
             config.Register("FromBlob2").
                 BindBlobInput("input", TempContainer + @"\" + path).
                 BindBlobOutput("receipt", TempContainer + @"\cookies\{cookie}.output");
+             * */
         }
 
         [NoAutomaticTrigger]

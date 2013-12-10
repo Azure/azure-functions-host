@@ -14,7 +14,6 @@ using Newtonsoft.Json;
 using Orchestrator;
 using RunnerInterfaces;
 using SimpleBatch;
-using SimpleBatch.Client;
 
 namespace OrchestratorUnitTests
 {

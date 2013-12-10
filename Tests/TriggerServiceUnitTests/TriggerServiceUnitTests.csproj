@@ -8,7 +8,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>TriggerServiceUnitTests</RootNamespace>
     <AssemblyName>TriggerServiceUnitTests</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
@@ -16,6 +16,7 @@
     <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,6 +26,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,6 +35,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -75,22 +78,14 @@
     <Compile Include="ValidateTriggers.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Antares\TriggerServiceApi\TriggerServiceApi.csproj">
-      <Project>{9be40362-9c57-46db-90a3-e26cbe1a4f28}</Project>
-      <Name>TriggerServiceApi</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Antares\TriggerService\TriggerService.csproj">
-      <Project>{6a771bf9-ca3c-4234-9bf1-7b4af1fbcce9}</Project>
-      <Name>TriggerService</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RunnerInterfaces\RunnerInterfaces.csproj">
-      <Project>{d2aedb8b-2c25-4108-8ed1-2e6c294a0923}</Project>
-      <Name>RunnerInterfaces</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\SimpleBatch.Host\SimpleBatch.Host.csproj">
+      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
+      <Name>SimpleBatch.Host</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

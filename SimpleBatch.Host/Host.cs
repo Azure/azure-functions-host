@@ -214,7 +214,7 @@ namespace SimpleBatch
 
             VerifySuccess(logItem);
         }
-
+        
         // Invoke the function via the SimpleBatch binders. 
         // Function execution is logged and viewable via the function dashboard.
         private void CallWithLogging(MethodInfo method, object arguments = null)

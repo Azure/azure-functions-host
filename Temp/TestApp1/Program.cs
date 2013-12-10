@@ -29,9 +29,6 @@ namespace TestApp1
 
         public static void Initialize(IConfiguration config)
         {
-            config.Register("TestReg").
-                BindBlobInput("input", @"daas-test-input3\{name}.csv").
-                BindBlobOutput("output", @"daas-test-input3\{name}.output.csv");
         }
 
         public static void TestQueue([QueueInput] MyConfig myTestQueue)

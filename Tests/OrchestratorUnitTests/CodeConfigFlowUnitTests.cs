@@ -12,6 +12,7 @@ using SimpleBatch;
 
 namespace OrchestratorUnitTests
 {
+    /* TODO: Reinstate fluent configuration
     // Unit test the static parameter bindings. This primarily tests the indexer.
     [TestClass]
     public class CodeConfigFlowUnitTests
@@ -192,4 +193,5 @@ namespace OrchestratorUnitTests
             }            
         }
     }
+     * */
 }

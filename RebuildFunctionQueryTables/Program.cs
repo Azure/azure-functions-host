@@ -17,7 +17,8 @@ namespace RebuildFunctionQueryTables
         static void Main(string[] args)
         {
             string configPath = args[0];
-            IAccountInfo accountInfo = LocalRunnerHost.Program.GetAccountInfo(configPath);
+            //TODO: this was using settings from .cscfg (azure role) which is not obsolete. to ammend this tool we'd need to supply it with the azure storage account via config or something
+            IAccountInfo accountInfo = null;
             Services s = new Services(accountInfo);
             var account = accountInfo.GetAccount();
 
