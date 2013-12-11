@@ -158,8 +158,16 @@ namespace WebFrontEnd.Controllers
             var query = new FunctionInstanceQueryFilter();
             model.Logs = logger.GetRecent(N, query).ToArray();
             model.Description = string.Format("Last {0} executed functions", N);
+            model.HasWarning = HasWarning();
 
             return View("ListFunctionInstances", model);
+        }
+
+        private bool HasWarning()
+        {
+            var heartbeat = GetServices().GetRunningHostTableReader();
+            var heartbeats = heartbeat.ReadAll();
+            return heartbeats.Any(h => !HomeController.IsValidHeartbeat(h));
         }
 
         public ActionResult GetChargebackLog(int N = 200, string account = null)
@@ -462,6 +470,7 @@ namespace WebFrontEnd.Controllers
     {
         public string Description { get; set; }
         public ExecutionInstanceLogEntity[] Logs { get; set; }
+        public bool HasWarning { get; set; }
     }
 
     public class LogSummaryModel

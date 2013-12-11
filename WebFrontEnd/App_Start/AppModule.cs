@@ -57,6 +57,7 @@ namespace WebFrontEnd
             }
 
             Bind<IFunctionTableLookup>().ToConstant(services.GetFunctionTable());
+            Bind<IRunningHostTableReader>().ToConstant(services.GetRunningHostTableReader());
 
             QueueFunctionType t = services.GetExecutionType();
             if (t == QueueFunctionType.Unknown)

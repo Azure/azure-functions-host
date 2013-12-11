@@ -11,6 +11,10 @@
     <a class="btn" href="@Url.Action("GetChargebackLog")"><i class="icon-cloud-download"></i> Download Chargeback Log</a>
 </div>
 <h1>Invocation Log <small>@Model.Description</small></h1>
+@if (Model.HasWarning)
+{
+    <p class="text-warning"><i class="icon-warning-sign"></i> One or more functions are not running correctly. See @Html.ActionLink("Function Definitions", "ListAllFunctions", "Home") for details.</p>
+}
 </div>
 
 @if(Model.Logs.Any()) {

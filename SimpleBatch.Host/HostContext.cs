@@ -7,7 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
+using AzureTables;
 
 namespace SimpleBatch
 {
@@ -16,8 +18,11 @@ namespace SimpleBatch
     // and return a set of services that the host can use for invoking, listening, etc. 
     class HostContext
     {
+        private readonly string _hostName;
+
         public IFunctionTableLookup _functionTableLookup;
         public IQueueFunction _queueFunction;
+        public IRunningHostTableWriter _heartbeatTable;
 
         public CloudQueue _executionQueue;
 
@@ -32,6 +37,9 @@ namespace SimpleBatch
 
             // Reflect over assembly, looking for functions 
             var functionTableLookup = new FunctionStore(userAccountConnectionString, GetUserAssemblies(), config);
+
+            // Determine the host name from the function list
+            _hostName = GetHostName(functionTableLookup.ReadAll());
 
             // Publish this to Azure logging account so that a web dashboard can see it. 
             PublishFunctionTable(functionTableLookup, userAccountConnectionString, loggingAccountConnectionString);
@@ -49,7 +57,13 @@ namespace SimpleBatch
             IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, LogInvoke);
 
             this._functionTableLookup = functionTableLookup;
+            this._heartbeatTable = services.GetRunningHostTableWriter();
             this._queueFunction = queueFunction;
+        }
+
+        public string HostName
+        {
+            get { return _hostName; }
         }
 
         // Searhc for any types tha implement ICloudBlobStreamBinder<T>
@@ -101,6 +115,33 @@ namespace SimpleBatch
                 {
                 }
             }
+        }
+
+        private static string GetHostName(FunctionDefinition[] functions)
+        {
+            // 1. Try to get the assembly name from the first function definition.
+            FunctionDefinition firstFunction = functions.FirstOrDefault();
+
+            if (firstFunction != null)
+            {
+                string hostName = firstFunction.GetAssemblyFullName();
+
+                if (hostName != null)
+                {
+                    return hostName;
+                }
+            }
+
+            // 2. If there are no function definitions, try to use the entry assembly.
+            Assembly entryAssembly = Assembly.GetEntryAssembly();
+
+            if (entryAssembly != null)
+            {
+                return entryAssembly.FullName;
+            }
+
+            // 3. If there's no entry assembly either, we don't have anything to use.
+            return "Unknown";
         }
 
         static IEnumerable<Assembly> GetUserAssemblies()

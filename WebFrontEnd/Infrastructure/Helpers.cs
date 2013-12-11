@@ -168,13 +168,13 @@ namespace WebFrontEnd.Controllers
 
         // Emit HTML link to the log for the function descriptor.        
         public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionDefinition func)
+            FunctionDefinitionModel func)
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                func.Location.GetShorterName(),
+                func.LocationName,
                 "Index", "Function", 
-                new { func = func.ToString() }, 
+                new { func = func.RowKey }, 
                 null);
         }
 

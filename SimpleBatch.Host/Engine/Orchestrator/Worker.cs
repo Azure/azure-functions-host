@@ -25,9 +25,12 @@ namespace Orchestrator
     public class Worker : IDisposable
     {
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
-       
+
+        private readonly string _hostName;
+
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
+        private readonly IRunningHostTableWriter _heartbeatTable;
         private readonly IQueueFunction _execute;
 
         // General purpose listener for blobs, queues. 
@@ -35,19 +38,31 @@ namespace Orchestrator
 
         // Fast-path blob listener. 
         private INotifyNewBlobListener _blobListener;
+
+        private DateTime _nextHeartbeat;
         
-        public Worker(IFunctionTableLookup functionTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
+        public Worker(string hostName, IFunctionTableLookup functionTable, IRunningHostTableWriter heartbeatTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
         {
             _blobListener = blobListener;
+            if (hostName == null)
+            {
+                throw new ArgumentNullException("hostName");
+            }
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
+            }
+            if (heartbeatTable == null)
+            {
+                throw new ArgumentNullException("heartbeatTable");
             }
             if (execute == null)
             {
                 throw new ArgumentNullException("execute");
             }
+            _hostName = hostName;
             _functionTable = functionTable;
+            _heartbeatTable = heartbeatTable;
             _execute = execute;
 
             CreateInputMap();
@@ -104,6 +119,12 @@ namespace Orchestrator
         public void Poll(CancellationToken token)
         {
             _heartbeat.Heartbeat = DateTime.UtcNow;
+            
+            if (_heartbeat.Heartbeat > _nextHeartbeat)
+            {
+                _heartbeatTable.SignalHeartbeat(_hostName);
+                _nextHeartbeat = DateTime.UtcNow.Add(RunningHost.HeartbeatSignalInterval);
+            }
 
             while (true)
             {
@@ -230,7 +251,7 @@ namespace Orchestrator
         {
             string payload = msg.AsString;
 
-            // blobInput was the one that triggered it.            
+            // msg was the one that triggered it.            
 
             RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg);
 

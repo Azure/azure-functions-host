@@ -55,7 +55,8 @@ namespace DaasEndpoints
         // message.
         public const string BlobWrittenQueue = "blob-written";
 
-        public const string DaasControlContainerName = prefix + "-control";        
-    }
+        public const string DaasControlContainerName = prefix + "-control";
 
+        public const string RunningHostTableName = "AzureJobsRunningHost";
+    }
 }

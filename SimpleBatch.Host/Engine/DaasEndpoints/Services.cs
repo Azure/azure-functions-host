@@ -119,21 +119,26 @@ namespace DaasEndpoints
             return queue;
         }
 
-        // uses a WorkerRole for the backend execution.
-        public Worker GetOrchestrationWorker()
-        {
-            var functionTable = this.GetFunctionTable();
-            IQueueFunction executor = this.GetQueueFunction();
-
-            return new Orchestrator.Worker(functionTable, executor);
-        }
-
         // @@@ Remove this, move to be Ninject based. 
         public IFunctionTable GetFunctionTable()
         {
             IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, EndpointNames.FunctionIndexTableName);
 
             return new FunctionTable(table);
+        }
+
+        public IRunningHostTableWriter GetRunningHostTableWriter()
+        {
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostTableName);
+
+            return new RunningHostTableWriter(table);
+        }
+
+        public IRunningHostTableReader GetRunningHostTableReader()
+        {
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostTableName);
+
+            return new RunningHostTableReader(table);
         }
 
         public AzureTable<BinderEntry> GetBinderTable()

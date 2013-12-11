@@ -23,11 +23,13 @@ namespace WebFrontEnd.Controllers
     {
         private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IRunningHostTableReader _heartbeatTable;
 
-        public HomeController(Services services, IFunctionTableLookup functionTableLookup)
+        public HomeController(Services services, IFunctionTableLookup functionTableLookup, IRunningHostTableReader heartbeatTable)
         {
             _services = services;
             _functionTableLookup = functionTableLookup;
+            _heartbeatTable = heartbeatTable;
         }
 
         private Services GetServices()
@@ -56,11 +58,17 @@ namespace WebFrontEnd.Controllers
 
         public ActionResult ListAllFunctions()
         {
+            var heartbeats = _heartbeatTable.ReadAll();
             var allFunctions = _functionTableLookup.ReadAll();
             var model = new FunctionListModel
             {
-                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location))
+                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location), (f) => ToModel(f, heartbeats)),
             };
+
+            if (model.Functions.Any(g => g.Any(f => !f.HostIsRunning)))
+            {
+                model.HasWarning = true;
+            }
 
             return View(model);
         }
@@ -78,6 +86,36 @@ namespace WebFrontEnd.Controllers
                 return new Uri(urlLoc.InvokeUrl);
             }
             return "other";
+        }
+
+        private static FunctionDefinitionModel ToModel(FunctionDefinition func, RunningHost[] heartbeats)
+        {
+            return new FunctionDefinitionModel
+            {
+                RowKey = func.ToString(),
+                Timestamp = func.Timestamp,
+                Description = func.Description,
+                LocationId = func.Location.GetId(),
+                LocationName = func.Location.GetShorterName(),
+                HostIsRunning = HasValidHeartbeat(func, heartbeats)
+            };
+        }
+
+        private static bool HasValidHeartbeat(FunctionDefinition func, RunningHost[] heartbeats)
+        {
+            string assemblyFullName = func.GetAssemblyFullName();
+            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.AssemblyFullName == assemblyFullName);
+            return IsValidHeartbeat(heartbeat);
+        }
+
+        internal static bool IsValidHeartbeat(RunningHost heartbeat)
+        {
+            if (heartbeat == null)
+            {
+                return false;
+            }
+
+            return DateTime.UtcNow < heartbeat.LastHeartbeatUtc.Add(RunningHost.HeartbeatPollInterval);
         }
 
         public ActionResult ListAllBinders()

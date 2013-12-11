@@ -20,8 +20,15 @@ namespace Orchestrator
             IFunctionTable functionTable = store; // $$$ Merge with LC
             IQueueFunction executor = lc.QueueFunction;
 
-            var worker = new Worker(functionTable, executor);
+            var worker = new Worker(typeClass.Assembly.FullName, functionTable, new NullRunningHostTableWriter(), executor);
             return worker;        
-        }      
+        }
+
+        private class NullRunningHostTableWriter : IRunningHostTableWriter
+        {
+            public void SignalHeartbeat(string hostName)
+            {
+            }
+        }
     }
 }

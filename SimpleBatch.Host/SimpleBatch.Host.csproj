@@ -53,6 +53,8 @@
     <Compile Include="Engine\DaasEndpoints\Helpers.cs" />
     <Compile Include="Engine\DaasEndpoints\KuduQueueFunction.cs" />
     <Compile Include="Engine\DaasEndpoints\Names.cs" />
+    <Compile Include="Engine\DaasEndpoints\RunningHostTableReader.cs" />
+    <Compile Include="Engine\DaasEndpoints\RunningHostTableWriter.cs" />
     <Compile Include="Engine\DaasEndpoints\Services.cs" />
     <Compile Include="Engine\DaasEndpoints\Services.GetQueueFunction.cs" />
     <Compile Include="Engine\DaasEndpoints\Services.Health.cs" />
@@ -131,9 +133,13 @@
     <Compile Include="RunnerInterfaces\FunctionInvokeRequest.cs" />
     <Compile Include="RunnerInterfaces\FunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionDefinition.cs" />
+    <Compile Include="RunnerInterfaces\FunctionTable\FunctionDefinitionExtensions.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionFlow.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionTrigger.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\IFunctionTable.cs" />
+    <Compile Include="RunnerInterfaces\Host\IRunningHostTableWriter.cs" />
+    <Compile Include="RunnerInterfaces\Host\IRunningHostTableReader.cs" />
+    <Compile Include="RunnerInterfaces\Host\RunningHost.cs" />
     <Compile Include="RunnerInterfaces\Index\IndexerOperations.cs" />
     <Compile Include="RunnerInterfaces\Index\IndexException.cs" />
     <Compile Include="RunnerInterfaces\Interfaces.cs" />

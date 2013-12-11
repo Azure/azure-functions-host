@@ -137,7 +137,7 @@ namespace SimpleBatch
             //INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaQueueMessage(Utility.GetAccount(_loggingAccountConnectionString));
             INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
 
-            using (Worker worker = new Worker(_ctx._functionTableLookup, _ctx._queueFunction, fastpathNotify))
+            using (Worker worker = new Worker(_ctx.HostName, _ctx._functionTableLookup, _ctx._heartbeatTable, _ctx._queueFunction, fastpathNotify))
             {
                 while (!token.IsCancellationRequested)
                 {

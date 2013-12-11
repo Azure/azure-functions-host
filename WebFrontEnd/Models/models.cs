@@ -68,7 +68,24 @@ namespace WebFrontEnd.Controllers
 
     public class FunctionListModel
     {
-        public IEnumerable<IGrouping<object, FunctionDefinition>> Functions { get; set; }
+        public IEnumerable<IGrouping<object, FunctionDefinitionModel>> Functions { get; set; }
+
+        public bool HasWarning { get; set; }
+    }
+
+    public class FunctionDefinitionModel
+    {
+        public string RowKey { get; set; }
+
+        public string LocationId { get; set; }
+
+        public string LocationName { get; set; }
+
+        public DateTime Timestamp { get; set; }
+
+        public string Description { get; set; }
+
+        public bool HostIsRunning { get; set; }
     }
 
     public class BinderListModel
