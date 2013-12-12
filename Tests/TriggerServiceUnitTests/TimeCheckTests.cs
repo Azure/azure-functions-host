@@ -117,7 +117,7 @@ namespace TriggerServiceUnitTests
             return invoke;
         }
 
-        public static DateTime? LookupTime(CloudBlobPath path)
+        internal static DateTime? LookupTime(CloudBlobPath path)
         {
             if (path.BlobName.EndsWith("missing"))
             {

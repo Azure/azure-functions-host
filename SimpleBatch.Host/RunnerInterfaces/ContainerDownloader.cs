@@ -10,7 +10,7 @@ namespace RunnerInterfaces
     // - copies to a unique private subdirectory of the root to avoid interfering with other uses.
     // - uploads any new files that were added.
     // - deletes on finish
-    public class ContainerDownloader : IDisposable
+    internal class ContainerDownloader : IDisposable
     {
         string _localCachePrivate;
         public string LocalCachePrivate { get { return _localCachePrivate; } }

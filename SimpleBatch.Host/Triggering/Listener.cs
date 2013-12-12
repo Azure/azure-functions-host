@@ -10,7 +10,7 @@ using TriggerService.Internal;
 namespace TriggerService
 {
     // Listens on the triggers and invokes them when they fire
-    public class Listener : IDisposable
+    internal class Listener : IDisposable
     {
         private readonly ITriggerInvoke _invoker;
 

@@ -9,7 +9,7 @@ using RunnerInterfaces;
 
 namespace Orchestrator
 {
-    public class QueueParameterStaticBinding : ParameterStaticBinding
+    internal class QueueParameterStaticBinding : ParameterStaticBinding
     {
         // Is this enqueue or dequeue?
         public bool IsInput { get; set; }

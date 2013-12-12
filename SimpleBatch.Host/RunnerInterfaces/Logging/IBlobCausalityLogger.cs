@@ -9,7 +9,7 @@ namespace RunnerInterfaces
     // Records the function instance that created a blob. 
     // Used to track blob causality. This lets functions that read from a blob know who wrote that blob, and thus
     // deduce a parent relationship. 
-    public interface IBlobCausalityLogger
+    internal interface IBlobCausalityLogger
     {
         // Records which function wrote to this blob
         // blob - the blob that was written
@@ -24,7 +24,7 @@ namespace RunnerInterfaces
     // or accidentally remove it).
     // An alternative mechanism would be to have a look-aside table. But that's risky because it's
     // a separate object to manage and could get out of sync.
-    public class BlobCausalityLogger : IBlobCausalityLogger
+    internal class BlobCausalityLogger : IBlobCausalityLogger
     {
         // Metadata names must adehere to C# identifier rules
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx

@@ -14,7 +14,7 @@ using SimpleBatch;
 namespace IndexDriver
 {
     // $$$ Use this
-    public class IndexDriverInput
+    internal class IndexDriverInput
     {
         // Describes the cloud resource for what to be indexed.
         // This includes a blob download (or upload!) location
@@ -24,7 +24,7 @@ namespace IndexDriver
         public string LocalCache { get; set; }
     }
 
-    public class IndexResults
+    internal class IndexResults
     {
         public IndexResults()
         {
@@ -40,7 +40,7 @@ namespace IndexDriver
     }
 
     // Do indexing in app.
-    public class Program
+    internal class Program
     {
         public static void Main(string[] args)
         {

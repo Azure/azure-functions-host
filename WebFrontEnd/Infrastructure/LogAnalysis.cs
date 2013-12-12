@@ -7,6 +7,7 @@ using Orchestrator;
 using RunnerHost;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd
 {
@@ -19,7 +20,7 @@ namespace WebFrontEnd
         // human-readably string version of runtime information.
         // Links provide optional runtime information for further linking to explore arg.
         public string ArgInvokeString { get; set; }
-        public CloudBlobDescriptor ArgBlobLink { get; set; }
+        public CloudBlobDescriptorModel ArgBlobLink { get; set; }
                 
         // Runtime info. This can be structured to provide rich hyperlinks.
         public string SelfWatch { get; set; }
@@ -29,7 +30,7 @@ namespace WebFrontEnd
     public class LogAnalysis
     {
         // Gets static information
-        public static ParamModel[] GetParamInfo(FunctionDefinition func)
+        internal static ParamModel[] GetParamInfo(FunctionDefinition func)
         {
             var flows = func.Flow.Bindings;
 
@@ -50,7 +51,7 @@ namespace WebFrontEnd
             return ps;
         }
 
-        public static void ApplyRuntimeInfo(ParameterRuntimeBinding[] args, ParamModel[] ps)
+        internal static void ApplyRuntimeInfo(ParameterRuntimeBinding[] args, ParamModel[] ps)
         {
             for (int i = 0; i < args.Length; i++)
             {
@@ -65,7 +66,7 @@ namespace WebFrontEnd
                     var blobArg = arg as BlobParameterRuntimeBinding;
                     if (blobArg != null)
                     {
-                        ps[i].ArgBlobLink = blobArg.Blob;
+                        ps[i].ArgBlobLink = new CloudBlobDescriptorModel(blobArg.Blob);
                     }                    
                 }
                 catch (NotImplementedException)
@@ -75,7 +76,7 @@ namespace WebFrontEnd
             }
         }
 
-        public static void ApplySelfWatchInfo(FunctionInvokeRequest instance, ParamModel[] ps)
+        internal static void ApplySelfWatchInfo(FunctionInvokeRequest instance, ParamModel[] ps)
         {
             // Get selfwatch information
             string[] selfwatch = GetParameterSelfWatch(instance);
@@ -92,7 +93,7 @@ namespace WebFrontEnd
         }
 
         // Get Live information from current self-watch values. 
-        public static string[] GetParameterSelfWatch(FunctionInvokeRequest instance)
+        internal static string[] GetParameterSelfWatch(FunctionInvokeRequest instance)
         {
             if (instance.ParameterLogBlob == null)
             {
@@ -148,12 +149,12 @@ namespace WebFrontEnd
 
 
         // Mine all the logs to determine blob readers and writers
-        public static LogBlobModel Compute(IFunctionTable functionTable, CloudBlobDescriptor blobPathAndAccount, IEnumerable<ExecutionInstanceLogEntity> logs)
+        private static LogBlobModel Compute(IFunctionTable functionTable, CloudBlobDescriptor blobPathAndAccount, IEnumerable<ExecutionInstanceLogEntity> logs)
         {
             string blobPath = blobPathAndAccount.GetId();
 
-            List<ExecutionInstanceLogEntity> reader = new List<ExecutionInstanceLogEntity>();
-            List<ExecutionInstanceLogEntity> writer = new List<ExecutionInstanceLogEntity>();
+            var reader = new List<ExecutionInstanceLogEntityModel>();
+            var writer = new List<ExecutionInstanceLogEntityModel>();
 
             foreach (var log in logs)
             {
@@ -182,11 +183,11 @@ namespace WebFrontEnd
                     {
                         if (blobBinding.IsInput)
                         {
-                            reader.Add(log);
+                            reader.Add(new ExecutionInstanceLogEntityModel(log));
                         }
                         else
                         {
-                            writer.Add(log);
+                            writer.Add(new ExecutionInstanceLogEntityModel(log));
                         }
                     }                    
                 }
@@ -201,7 +202,7 @@ namespace WebFrontEnd
         }
 
         // Return a function log that includes causality information. 
-        public IEnumerable<ChargebackRow> GetChargebackLog(int recentCount, string storageName, IFunctionInstanceQuery logger)
+        internal IEnumerable<ChargebackRow> GetChargebackLog(int recentCount, string storageName, IFunctionInstanceQuery logger)
         {
             Walker w = new Walker(logger);
 
@@ -249,7 +250,7 @@ namespace WebFrontEnd
         }
 
         // Find GroupIds (the top-most ancestor). Has local caches to minimize # of network fetches. 
-        public class Walker
+        internal class Walker
         {
             private readonly Dictionary<Guid, Guid> _parentMap = new Dictionary<Guid, Guid>();
             private readonly Dictionary<Guid, Guid> _groupMap = new Dictionary<Guid, Guid>();

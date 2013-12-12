@@ -12,6 +12,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd.Controllers
 {
@@ -24,7 +25,7 @@ namespace WebFrontEnd.Controllers
         private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
 
-        public LogController(Services services, IFunctionTableLookup functionTableLookup)
+        internal LogController(Services services, IFunctionTableLookup functionTableLookup)
         {
             _services = services;
             _functionTableLookup = functionTableLookup;
@@ -55,7 +56,7 @@ namespace WebFrontEnd.Controllers
 
 
         // Given a function, view the entire causal chain.  
-        public ActionResult ViewChain(ExecutionInstanceLogEntity func)
+        public ActionResult ViewChain(ExecutionInstanceLogEntityModel func)
         {
             ICausalityReader reader = GetServices().GetCausalityReader();
             IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
@@ -76,7 +77,7 @@ namespace WebFrontEnd.Controllers
                 {
                     break;
                 }
-                funcHead = parentFunc;
+                funcHead = new ExecutionInstanceLogEntityModel(parentFunc);
             }
 
             if (funcHead.FunctionInstance.Id != func.FunctionInstance.Id)
@@ -101,8 +102,8 @@ namespace WebFrontEnd.Controllers
             var maxEnd = DateTime.MinValue;
             foreach (var node in nodes)
             {
-                var start = node.Func.StartTime;
-                var end = node.Func.EndTime;
+                var start = node.Func.UnderlyingObject.StartTime;
+                var end = node.Func.UnderlyingObject.EndTime;
 
                 if (start.HasValue)
                 {
@@ -128,7 +129,7 @@ namespace WebFrontEnd.Controllers
         }
 
         // Walk the chain and flatten it into a list that's easy to render to HTML. 
-        void Walk(ExecutionInstanceLogEntity current, List<ListNode> list, int depth, FunctionChainModel model)
+        void Walk(ExecutionInstanceLogEntityModel current, List<ListNode> list, int depth, FunctionChainModel model)
         {
             depth++;
             list.Add(new ListNode
@@ -138,7 +139,7 @@ namespace WebFrontEnd.Controllers
             });
             foreach (var child in model.Walker.GetChildren(current.FunctionInstance.Id))
             {
-                var childFunc = model.Lookup.Lookup(child.ChildGuid);
+                var childFunc = new ExecutionInstanceLogEntityModel(model.Lookup.Lookup(child.ChildGuid));
                 Walk(childFunc, list, depth, model);
             }
         }
@@ -156,7 +157,7 @@ namespace WebFrontEnd.Controllers
 
             int N = 30;
             var query = new FunctionInstanceQueryFilter();
-            model.Logs = logger.GetRecent(N, query).ToArray();
+            model.Logs = logger.GetRecent(N, query).Select(e => new ExecutionInstanceLogEntityModel(e)).ToArray();
             model.Description = string.Format("Last {0} executed functions", N);
             model.HasWarning = HasWarning();
 
@@ -167,7 +168,7 @@ namespace WebFrontEnd.Controllers
         {
             var heartbeat = GetServices().GetRunningHostTableReader();
             var heartbeats = heartbeat.ReadAll();
-            return heartbeats.Any(h => !HomeController.IsValidHeartbeat(h));
+            return heartbeats.Any(h => !RunningHost.IsValidHeartbeat(h));
         }
 
         public ActionResult GetChargebackLog(int N = 200, string account = null)
@@ -185,7 +186,7 @@ namespace WebFrontEnd.Controllers
         }
 
         // List all invocation of a specific function. 
-        public ActionResult ListFunctionInstances(FunctionDefinition func, bool? success = null)
+        public ActionResult ListFunctionInstances(FunctionDefinitionModel func, bool? success = null)
         {
             var logger = GetServices().GetFunctionInstanceQuery();
 
@@ -193,10 +194,10 @@ namespace WebFrontEnd.Controllers
             int N = 30;
             var query = new FunctionInstanceQueryFilter 
             { 
-                Location = func.Location,
+                Location = func.Location.UnderlyingObject,
                 Succeeded = success
             };
-            model.Logs = logger.GetRecent(N, query).ToArray();
+            model.Logs = logger.GetRecent(N, query).Select(e => new ExecutionInstanceLogEntityModel(e)).ToArray();
 
             if (success.HasValue)
             {
@@ -214,7 +215,7 @@ namespace WebFrontEnd.Controllers
         }
 
         // Lookup a single invocation instance 
-        public ActionResult FunctionInstance(ExecutionInstanceLogEntity func)
+        public ActionResult FunctionInstance(ExecutionInstanceLogEntityModel func)
         {
             if (func == null)
             {
@@ -229,39 +230,40 @@ namespace WebFrontEnd.Controllers
             model.Lookup = lookup;
 
             var instance = model.Instance.FunctionInstance;
-            model.Descriptor = _functionTableLookup.Lookup(instance.Location);
-            if (model.Descriptor == null)
+            var functionModel = _functionTableLookup.Lookup(instance.Location.UnderlyingObject.GetId());
+            if (functionModel == null)
             {
                 // Function has been removed from the table.                 
-                string msg = string.Format("Function {0} has been unloaded from the server. Can't get log information", func.FunctionInstance.Location.GetId());
+                string msg = string.Format("Function {0} has been unloaded from the server. Can't get log information", func.FunctionInstance.Location.UnderlyingObject.GetId());
                 this.ModelState.AddModelError("func", msg);
                 return View("Error");
             }
 
+            model.Descriptor = new FunctionDefinitionModel(functionModel);
             // Parallel arrays of static descriptor and actual instance info 
-            ParameterRuntimeBinding[] args = instance.Args;
+            ParameterRuntimeBinding[] args = instance.UnderlyingObject.Args;
             var flows = model.Descriptor.Flow.Bindings;
 
-            model.Parameters = LogAnalysis.GetParamInfo(model.Descriptor);
+            model.Parameters = LogAnalysis.GetParamInfo(model.Descriptor.UnderlyingObject);
             LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
-            LogAnalysis.ApplySelfWatchInfo(instance, model.Parameters);
+            LogAnalysis.ApplySelfWatchInfo(instance.UnderlyingObject, model.Parameters);
             
     
             ICausalityReader causalityReader = GetServices().GetCausalityReader();
 
-            model.Children = causalityReader.GetChildren(func.FunctionInstance.Id).ToArray();
+            model.Children = causalityReader.GetChildren(func.FunctionInstance.Id).Select(r => new TriggerReasonModel(r)).ToArray();
 
             IPrereqManager pt = GetServices().GetPrereqManager();
             var prereqs = pt.EnumeratePrereqs(instance.Id).ToArray();
-            model.Prereqs = Array.ConvertAll(prereqs, id => lookup.Lookup(id));
+            model.Prereqs = Array.ConvertAll(prereqs, id => new ExecutionInstanceLogEntityModel(lookup.Lookup(id)));
                 
             return View("FunctionInstance", model);
         }
 
         [HttpPost]
-        public ActionResult AbortFunction(FunctionInvokeRequest instance)
+        public ActionResult AbortFunction(FunctionInvokeRequestModel instance)
         {
-            GetServices().PostDeleteRequest(instance);
+            GetServices().PostDeleteRequest(instance.UnderlyingObject);
 
             // Redict so we swithc verbs from Post to Get
             return RedirectToAction("FunctionInstance", new { func = instance.Id });
@@ -275,11 +277,13 @@ namespace WebFrontEnd.Controllers
             var model = new LogSummaryModel();
 
             var table = services.GetInvokeStatsTable();
-            model.Summary = GetTable<FunctionLocation, FunctionStatsEntity>(table,
-                rowKey => _functionTableLookup.Lookup(rowKey).Location); // $$$ very inefficient
+            model.Summary = GetTable<FunctionLocationModel, FunctionStatsEntity, FunctionStatsEntityModel>(table,
+                rowKey => new FunctionLocationModel(_functionTableLookup.Lookup(rowKey).Location),
+                value => new FunctionStatsEntityModel(value)
+                ); // $$$ very inefficient
 
             // Populate queue. 
-            model.QueuedInstances = PeekQueuedInstances();
+            model.QueuedInstances = PeekQueuedInstances().Select(r => new FunctionInvokeRequestModel(r)).ToArray();
 
             model.QueueDepth = services.GetExecutionQueueDepth();
 
@@ -287,12 +291,13 @@ namespace WebFrontEnd.Controllers
         }
 
         // dict key is the row key. Ignores partition key in azure tables.
-        private Dictionary<TKey, TValue> GetTable<TKey, TValue>(
+        private Dictionary<TKey, TValueViewModel> GetTable<TKey, TValue, TValueViewModel>(
             AzureTable table,
-            Func<string, TKey> fpGetKeyFromRowKey
+            Func<string, TKey> fpGetKeyFromRowKey,
+            Func<TValue, TValueViewModel> transformValueToViewModel
             ) where TKey :  class  where TValue : new()
         {
-            var dict = new Dictionary<TKey, TValue>();
+            var dict = new Dictionary<TKey, TValueViewModel>();
 
             var all = table.Enumerate();
             foreach (var item in all)
@@ -303,7 +308,7 @@ namespace WebFrontEnd.Controllers
 
                 try
                 {
-                    dict[fpGetKeyFromRowKey(rowKey)] = x;
+                    dict[fpGetKeyFromRowKey(rowKey)] = transformValueToViewModel(x);
                 }
                 catch
                 { 
@@ -388,7 +393,7 @@ namespace WebFrontEnd.Controllers
             var guid = logger.GetWriter(x);
 
             IFunctionInstanceLookup lookup = GetServices().GetFunctionInstanceLookup();
-            model.LastWriter = lookup.Lookup(guid);
+            model.LastWriter = new ExecutionInstanceLogEntityModel(lookup.Lookup(guid));
 
             model.Length = x.Properties.Length;
             model.ContentType = x.Properties.ContentType;
@@ -445,7 +450,7 @@ namespace WebFrontEnd.Controllers
         // Full URI to blob. If container is public, then this can be used to view it. 
         public Uri Uri { get; set; }
 
-        public ExecutionInstanceLogEntity LastWriter { get; set; }
+        public ExecutionInstanceLogEntityModel LastWriter { get; set; }
 
     }
 
@@ -459,46 +464,46 @@ namespace WebFrontEnd.Controllers
         public Uri Uri { get; set; }
 
         // $$$ Readers could be single or plural.
-        public ExecutionInstanceLogEntity[] Readers { get; set; }
+        public ExecutionInstanceLogEntityModel[] Readers { get; set; }
 
         // $$$ What do multiple writers mean? Can we use timestamps?
         // Sort by most recent.
-        public ExecutionInstanceLogEntity[] Writer { get; set; }
+        public ExecutionInstanceLogEntityModel[] Writer { get; set; }
     }
 
     public class LogIndexModel
     {
         public string Description { get; set; }
-        public ExecutionInstanceLogEntity[] Logs { get; set; }
+        public ExecutionInstanceLogEntityModel[] Logs { get; set; }
         public bool HasWarning { get; set; }
     }
 
     public class LogSummaryModel
     {
         // key is the FunctionLocation row key. 
-        public IDictionary<FunctionLocation, FunctionStatsEntity> Summary { get; set; }
+        public IDictionary<FunctionLocationModel, FunctionStatsEntityModel> Summary { get; set; }
 
         // Top N function instances in the queued. Live values from reading the queue,not from the logs.
-        public FunctionInvokeRequest[] QueuedInstances { get; set; }
+        public FunctionInvokeRequestModel[] QueuedInstances { get; set; }
 
         public int? QueueDepth { get; set; }
     }
 
     public class LogFunctionModel
     {
-        public ExecutionInstanceLogEntity Instance { get; set; }
+        public ExecutionInstanceLogEntityModel Instance { get; set; }
 
-        public FunctionDefinition Descriptor { get; set; }
+        public FunctionDefinitionModel Descriptor { get; set; }
 
         public ParamModel[] Parameters { get; set; }
 
         // Children functions that got triggered due to this function. 
-        public TriggerReason[] Children { get; set; }
+        public TriggerReasonModel[] Children { get; set; }
 
         // non-null list of prereqs. 
-        public ExecutionInstanceLogEntity[] Prereqs { get; set; }
+        public ExecutionInstanceLogEntityModel[] Prereqs { get; set; }
                
         // For translating Guids to function names
-        public IFunctionInstanceLookup Lookup { get; set; }
+        internal IFunctionInstanceLookup Lookup { get; set; }
     }
 }

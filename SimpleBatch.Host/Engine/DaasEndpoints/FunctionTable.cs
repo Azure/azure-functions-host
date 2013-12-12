@@ -19,7 +19,7 @@ namespace DaasEndpoints
     // Orchestrator must read this to scan for triggers
     // Web dashboard may need this to show availability. 
     // Executor/RunnerHost shouldn't need this. 
-    public class FunctionTable : IFunctionTable
+    internal class FunctionTable : IFunctionTable
     {
         private readonly IAzureTable<FunctionDefinition> _table;
 

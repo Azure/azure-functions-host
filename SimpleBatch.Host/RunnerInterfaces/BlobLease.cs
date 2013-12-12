@@ -7,7 +7,7 @@ using Microsoft.WindowsAzure.StorageClient.Protocol;
 
 namespace RunnerInterfaces
 {
-    public interface IBlobLeaseHolder : IDisposable
+    internal interface IBlobLeaseHolder : IDisposable
     {
         void BlockUntilAcquired(CloudBlob blob);
         // release via Dipose()
@@ -17,7 +17,7 @@ namespace RunnerInterfaces
     }
 
     // Helper class to manage releasing the blob lease. 
-    public class BlobLeaseHolder : IBlobLeaseHolder, IDisposable
+    internal class BlobLeaseHolder : IBlobLeaseHolder, IDisposable
     {
         CloudBlob _blob;
         string _leaseId;

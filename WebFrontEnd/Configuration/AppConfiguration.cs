@@ -32,7 +32,7 @@ namespace WebFrontEnd.Configuration
         /// <summary>
         /// Gets the execution type used by this instance
         /// </summary>
-        public QueueFunctionType ExecutionType { get; set; }
+        //public QueueFunctionType ExecutionType { get; set; }
 
         /// <summary>
         /// Gets the password for this instance.

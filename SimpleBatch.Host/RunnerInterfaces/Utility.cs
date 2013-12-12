@@ -8,7 +8,7 @@ using SimpleBatch;
 
 namespace RunnerInterfaces
 {
-    public static class DictExtensions
+    internal static class DictExtensions
     {
         public static TValue GetOrCreate<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key) where TValue : new()
         {

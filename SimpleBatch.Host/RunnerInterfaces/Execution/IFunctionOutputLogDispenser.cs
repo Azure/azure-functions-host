@@ -8,13 +8,13 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace RunnerInterfaces
 {
     // Interface for creating objects that capture a function execution's Console output. 
-    public interface IFunctionOuputLogDispenser
+    internal interface IFunctionOuputLogDispenser
     {
         FunctionOutputLog CreateLogStream(FunctionInvokeRequest request);
     }
 
     // Dispensers loggers that write to a blob. 
-    public class FunctionOutputLogDispenser : IFunctionOuputLogDispenser
+    internal class FunctionOutputLogDispenser : IFunctionOuputLogDispenser
     {
         private readonly IAccountInfo _accountInfo;
         private readonly Action<TextWriter> _fPAddHeaderInfo;

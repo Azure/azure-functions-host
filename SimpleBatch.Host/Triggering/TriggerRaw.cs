@@ -12,7 +12,7 @@ namespace TriggerService
     /// Define the kind of trigger
     /// </summary>
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum TriggerType
+    internal enum TriggerType
     {
         /// <summary>
         /// Blob trigger, invoked when an input blob is detected. 
@@ -33,7 +33,7 @@ namespace TriggerService
     /// <summary>
     /// Client returns this to register new triggers.  
     /// </summary>
-    public class AddTriggerPayload
+    internal class AddTriggerPayload
     {
         /// <summary>
         /// Provide credential information for the azure storage that the triggers bind against.
@@ -187,7 +187,7 @@ namespace TriggerService
     /// <summary>
     /// Store all sensitive information in one spot.  
     /// </summary>
-    public class Credentials
+    internal class Credentials
     {
         /// <summary>
         /// The azure storage account connection string that blob and queue triggers bind against. 
@@ -199,7 +199,7 @@ namespace TriggerService
     /// Wire protocol for an serializing triggers.
     /// Irrelevant fields should reamin null.
     /// </summary>
-    public class TriggerRaw
+    internal class TriggerRaw
     {
         /// <summary>
         /// Define what type of trigger. 

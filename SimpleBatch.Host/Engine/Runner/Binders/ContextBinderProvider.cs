@@ -8,7 +8,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // Binder for IContext. 
-    public class ContextBinderProvider : ICloudBinderProvider
+    internal class ContextBinderProvider : ICloudBinderProvider
     {
         public ICloudBinder TryGetBinder(Type targetType)
         {

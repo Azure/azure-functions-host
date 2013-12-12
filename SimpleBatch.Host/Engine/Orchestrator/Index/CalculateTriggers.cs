@@ -9,7 +9,7 @@ using TriggerService;
 
 namespace Orchestrator
 {
-    public class CalculateTriggers
+    internal class CalculateTriggers
     {
         public static Trigger GetTrigger(FunctionDefinition func)
         {

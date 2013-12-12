@@ -11,14 +11,14 @@ using System.Runtime.Serialization;
 
 namespace RunnerInterfaces
 {
-    public interface IUrlFunctionLocation
+    internal interface IUrlFunctionLocation
     {
         // To invoke, POST to this URL, with FunctionInvokeRequest as the body. 
         string InvokeUrl { get; }
     }
 
     // Describe a function that lives behind a URL (such as with Kudu). 
-    public class KuduFunctionLocation : FunctionLocation, IUrlFunctionLocation
+    internal class KuduFunctionLocation : FunctionLocation, IUrlFunctionLocation
     {
         // Do a POST to this URI, and pass this instance in the body.  
         public string Uri { get; set; }
@@ -67,7 +67,7 @@ namespace RunnerInterfaces
     }
 
     // Function is already loaded into memory. 
-    public class MethodInfoFunctionLocation : FunctionLocation
+    internal class MethodInfoFunctionLocation : FunctionLocation
     {
         // $$$ Can't serialize this because it has a real methodinfo. We shouldn't be serializing these anyways. 
         // instead:
@@ -137,7 +137,7 @@ namespace RunnerInterfaces
     }
 
     // Function lives on some file-based system. Need to locate (possibly download) the assembly, load the type, and fine the method. 
-    public abstract class FileFunctionLocation : FunctionLocation
+    internal abstract class FileFunctionLocation : FunctionLocation
     {
         // Entry point into the function 
         // TypeName is relative to Blob
@@ -152,7 +152,7 @@ namespace RunnerInterfaces
 
     // Function lives on some blob. 
     // Download this to convert to a LocalFunctionLocation
-    public class RemoteFunctionLocation : FileFunctionLocation
+    internal class RemoteFunctionLocation : FileFunctionLocation
     {
         // Base class has the account connection string. 
         public CloudBlobPath DownloadSource { get; set; }
@@ -201,7 +201,7 @@ namespace RunnerInterfaces
     }
 
     // Function lives on a local disk.  
-    public class LocalFunctionLocation : FileFunctionLocation
+    internal class LocalFunctionLocation : FileFunctionLocation
     {
         // Assumes other dependencies are in the same directory. 
         public string AssemblyPath { get; set; }
@@ -273,7 +273,7 @@ namespace RunnerInterfaces
     // $$$ generalize this. Don't necessarily need the account information 
     // This is static. Still needs args to get invoked. 
     // This can be serialized to JSON. 
-    public abstract class FunctionLocation
+    internal abstract class FunctionLocation
     {
         // The account this function is associated with. 
         // This will be used to resolve all static bindings.

@@ -6,7 +6,7 @@ using TriggerService.Internal;
 
 namespace TriggerService
 {
-    public class Validator
+    internal class Validator
     {
         // $$$ really ought to be in client (but that would need CloudBlobPath and parsing)
         // More static validation on a blob triggers.

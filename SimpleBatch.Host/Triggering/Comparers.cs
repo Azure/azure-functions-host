@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace TriggerService
 {
     // CloudBlobContainers are flyweights, may not compare. 
-    public class CloudBlobClientComparer : IEqualityComparer<CloudBlobClient>
+    internal class CloudBlobClientComparer : IEqualityComparer<CloudBlobClient>
     {
         public bool Equals(CloudBlobClient x, CloudBlobClient y)
         {
@@ -20,7 +20,7 @@ namespace TriggerService
     }
 
     // CloudBlobContainers are flyweights, may not compare. 
-    public class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>
+    internal class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>
     {
         public bool Equals(CloudBlobContainer x, CloudBlobContainer y)
         {
@@ -34,7 +34,7 @@ namespace TriggerService
     }
 
     // CloudQueue are flyweights, may not compare. 
-    public class CloudQueueComparer : IEqualityComparer<CloudQueue>
+    internal class CloudQueueComparer : IEqualityComparer<CloudQueue>
     {
         public bool Equals(CloudQueue x, CloudQueue y)
         {
@@ -47,7 +47,7 @@ namespace TriggerService
         }
     }
 
-    public class AssemblyNameComparer : IEqualityComparer<AssemblyName>
+    internal class AssemblyNameComparer : IEqualityComparer<AssemblyName>
     {
         public bool Equals(AssemblyName x, AssemblyName y)
         {

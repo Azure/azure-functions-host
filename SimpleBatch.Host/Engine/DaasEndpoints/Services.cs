@@ -14,7 +14,7 @@ namespace DaasEndpoints
     // Anything that needs an azure endpoint can go here.
     // This access the raw settings (especially account name) from Secrets, but then also provides the
     // policy and references to stitch everything together.
-    public partial class Services
+    internal partial class Services
     {
         private readonly IAccountInfo _accountInfo;
         private readonly CloudStorageAccount _account;

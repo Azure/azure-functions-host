@@ -5,6 +5,7 @@ using DaasEndpoints;
 using Microsoft.WindowsAzure;
 using Orchestrator;
 using RunnerInterfaces;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd.Controllers
 {
@@ -25,7 +26,7 @@ namespace WebFrontEnd.Controllers
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IRunningHostTableReader _heartbeatTable;
 
-        public HomeController(Services services, IFunctionTableLookup functionTableLookup, IRunningHostTableReader heartbeatTable)
+        internal HomeController(Services services, IFunctionTableLookup functionTableLookup, IRunningHostTableReader heartbeatTable)
         {
             _services = services;
             _functionTableLookup = functionTableLookup;
@@ -50,7 +51,7 @@ namespace WebFrontEnd.Controllers
             model.ExecutionSubstrate = services.GetExecutionSubstrateDescription();
             model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
             model.QueueDepth = services.GetExecutionQueueDepth();
-            model.HealthStatus = services.GetHealthStatus();
+            model.HealthStatus = new ServiceHealthStatusModel(services.GetHealthStatus());
             model.AccountName = services.Account.Credentials.AccountName;
 
             return View(model);
@@ -59,13 +60,13 @@ namespace WebFrontEnd.Controllers
         public ActionResult ListAllFunctions()
         {
             var heartbeats = _heartbeatTable.ReadAll();
-            var allFunctions = _functionTableLookup.ReadAll();
+            var allFunctions = _functionTableLookup.ReadAll().Select(f => new FunctionDefinitionModel(f, heartbeats));
             var model = new FunctionListModel
             {
-                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location), (f) => ToModel(f, heartbeats)),
+                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location.UnderlyingObject)),
             };
 
-            if (model.Functions.Any(g => g.Any(f => !f.HostIsRunning)))
+            if (model.Functions.Any(g => g.Any(f => !f.HostIsRunning.Value)))
             {
                 model.HasWarning = true;
             }
@@ -78,7 +79,7 @@ namespace WebFrontEnd.Controllers
             var remoteLoc = loc as RemoteFunctionLocation;
             if (remoteLoc != null)
             {
-                return remoteLoc.GetBlob();
+                return new CloudBlobDescriptorModel(remoteLoc.GetBlob());
             }
             IUrlFunctionLocation urlLoc = loc as IUrlFunctionLocation;
             if (urlLoc != null)
@@ -86,36 +87,6 @@ namespace WebFrontEnd.Controllers
                 return new Uri(urlLoc.InvokeUrl);
             }
             return "other";
-        }
-
-        private static FunctionDefinitionModel ToModel(FunctionDefinition func, RunningHost[] heartbeats)
-        {
-            return new FunctionDefinitionModel
-            {
-                RowKey = func.ToString(),
-                Timestamp = func.Timestamp,
-                Description = func.Description,
-                LocationId = func.Location.GetId(),
-                LocationName = func.Location.GetShorterName(),
-                HostIsRunning = HasValidHeartbeat(func, heartbeats)
-            };
-        }
-
-        private static bool HasValidHeartbeat(FunctionDefinition func, RunningHost[] heartbeats)
-        {
-            string assemblyFullName = func.GetAssemblyFullName();
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.AssemblyFullName == assemblyFullName);
-            return IsValidHeartbeat(heartbeat);
-        }
-
-        internal static bool IsValidHeartbeat(RunningHost heartbeat)
-        {
-            if (heartbeat == null)
-            {
-                return false;
-            }
-
-            return DateTime.UtcNow < heartbeat.LastHeartbeatUtc.Add(RunningHost.HeartbeatPollInterval);
         }
 
         public ActionResult ListAllBinders()
@@ -127,7 +98,7 @@ namespace WebFrontEnd.Controllers
                         {
                             AccountName = Utility.GetAccountName(kv.Value.AccountConnectionString),
                             TypeName = kv.Key.Item2,
-                            Path = kv.Value.Path,
+                            Path = new CloudBlobPathModel(kv.Value.Path),
                             EntryPoint = string.Format("{0}!{1}", kv.Value.InitAssembly, kv.Value.InitType)
                         };
 
@@ -143,7 +114,7 @@ namespace WebFrontEnd.Controllers
         // Useful when there are paths that are not being listened on
         public ActionResult RequestScan()
         {
-            var functions = _functionTableLookup.ReadAll();
+            var functions = _functionTableLookup.ReadAll().Select(f => new FunctionDefinitionModel(f));
             return View(functions);
         }
 
@@ -160,18 +131,18 @@ namespace WebFrontEnd.Controllers
 
         // Scan a container and queue execution items.
         [HttpPost]
-        public ActionResult RequestScanSubmit(FunctionDefinition function, string accountname, string accountkey, CloudBlobPath containerpath)
+        public ActionResult RequestScanSubmit(FunctionDefinitionModel function, string accountname, string accountkey, CloudBlobPathModel containerpath)
         {
             CloudStorageAccount account;
             if (function != null)
             {
-                account = function.GetAccount();
+                account = function.UnderlyingObject.GetAccount();
             }
             else
             {
                 account = GetAccount(accountname, accountkey);
             }
-            int count = Helpers.ScanBlobDir(GetServices(), account, containerpath);
+            int count = Helpers.ScanBlobDir(GetServices(), account, containerpath.UnderlyingObject);
 
             RequestScanSubmitModel model = new RequestScanSubmitModel();
             model.CountScanned = count;
@@ -239,7 +210,7 @@ namespace WebFrontEnd.Controllers
         }
 
         [HttpPost]
-        public ActionResult DeleteFunction(FunctionDefinition func)
+        public ActionResult DeleteFunction(FunctionDefinitionModel func)
         {
             var model = new ExecutionController(GetServices(), _functionTableLookup).RegisterFuncSubmitworker(
                 new DeleteOperation
@@ -256,18 +227,5 @@ namespace WebFrontEnd.Controllers
 
             return View("RegisterFuncSubmit", model);
         }
-
-        public ActionResult RegisterKuduFunc()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        public ActionResult RegisterKuduFuncSubmit(string url)
-        {
-            var model = WebFrontEnd.ControllersWebApi.KuduController.IndexWorker(url);
-            return View(model);
-        }
-
     }
 }

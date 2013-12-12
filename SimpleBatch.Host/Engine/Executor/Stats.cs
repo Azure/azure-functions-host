@@ -8,7 +8,7 @@ using SimpleBatch;
 namespace Executor
 {
     // Includes both reading and writing the secondary indices together. 
-    public class ExecutionStatsAggregator : IFunctionCompleteLogger, IFunctionInstanceQuery
+    internal class ExecutionStatsAggregator : IFunctionCompleteLogger, IFunctionInstanceQuery
     {
         // in-memory cache of function entries. 
         // This corresponds to the azure table. 
@@ -213,7 +213,7 @@ namespace Executor
     // Statistics per function type, aggregated across all instances.
     // These must all be monotonically increasing numbers, since they're continually aggregated.
     // Eg, we can't do queud. 
-    public class FunctionStatsEntity
+    internal class FunctionStatsEntity
     {
         public DateTime LastWriteTime { get; set; } // last time function was executed and succeeded
 

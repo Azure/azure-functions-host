@@ -1,5 +1,5 @@
 ﻿@using WebFrontEnd.Controllers
-@using Executor
+@using WebFrontEnd.Models.Protocol
 @model LogIndexModel
 @{
     ViewBag.Title = "Function Invocation Log";
@@ -35,26 +35,26 @@
                 string labelText = null;
                 switch (log.GetStatus())
                 {
-                    case FunctionInstanceStatus.CompletedFailed:
+                    case FunctionInstanceStatusModel.CompletedFailed:
                         labelClass = "label-important";
                         descClass = "text-error";
                         labelText = "Failed";
                         break;
-                    case FunctionInstanceStatus.CompletedSuccess:
+                    case FunctionInstanceStatusModel.CompletedSuccess:
                         labelClass = "label-success";
                         descClass = "text-success";
                         labelText = "Success";
                         break;
-                    case FunctionInstanceStatus.Running:
+                    case FunctionInstanceStatusModel.Running:
                         labelClass = "label-info";
                         descClass = "text-info";
                         labelText = "Running";
                         break;
-                    case FunctionInstanceStatus.Queued:
+                    case FunctionInstanceStatusModel.Queued:
                         labelText = "Queued";
                         labelClass = "label-inverse";
                         break;
-                    case FunctionInstanceStatus.AwaitingPrereqs:
+                    case FunctionInstanceStatusModel.AwaitingPrereqs:
                         labelText = "Awaiting Prerequisites";
                         labelClass = "label-inverse";
                         break;

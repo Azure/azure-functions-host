@@ -7,7 +7,7 @@ namespace DaasEndpoints
 {    
     // For using Antares as a worker role. 
     // Queue it like normal, but then do an HTTP ping. 
-    public class AntaresRoleExecutionClient : WorkerRoleExecutionClient
+    internal class AntaresRoleExecutionClient : WorkerRoleExecutionClient
     {
         // The url of the antares worker site to be pinged when new work comes in. 
         private readonly string UrlBase;

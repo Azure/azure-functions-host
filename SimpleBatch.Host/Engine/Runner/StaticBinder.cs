@@ -12,7 +12,7 @@ namespace RunnerHost
     // Bindings use ParameterInfo for a (Type, Name, IsOut) pair. 
     // provide a non-reflection based implementation. 
     // Reuse ParameterInfo rather than creating another abstraction. 
-    public class FakeParameterInfo : ParameterInfo
+    internal class FakeParameterInfo : ParameterInfo
     {
         private readonly string _name;
         private readonly Type _type;
@@ -65,7 +65,7 @@ namespace RunnerHost
     }
 
     // Bind from Attributes to ParameterStaticBinding.
-    public class StaticBinder
+    internal class StaticBinder
     {
         public static ParameterStaticBinding DoStaticBind(Attribute attr, ParameterInfo parameter)
         {

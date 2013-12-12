@@ -14,7 +14,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    public class WatchableStream : DelegatingStream, ISelfWatch
+    internal class WatchableStream : DelegatingStream, ISelfWatch
     {
         private volatile int _countRead;
         private volatile int _countWritten;
@@ -98,7 +98,7 @@ namespace RunnerHost
         }
     }
 
-    public class DelegatingStream : Stream
+    internal class DelegatingStream : Stream
     {        
         protected readonly Stream _inner;
              

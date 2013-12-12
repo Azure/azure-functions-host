@@ -8,7 +8,7 @@ namespace RunnerInterfaces
     // For table access, have a level of indirection so that the TriggerReason is serialized
     // as a JSON object, which then supports polymorphism when we deserialize. 
     // This serailized TriggerReason as a single column (with JSON) rather than a column per property of TriggerReason. 
-    public class TriggerReasonEntity
+    internal class TriggerReasonEntity
     {
         public TriggerReasonEntity() { }
         public TriggerReasonEntity(TriggerReason payload)
@@ -16,7 +16,7 @@ namespace RunnerInterfaces
             this.Data = new Wrapper { Payload = payload };
         }
 
-        public class Wrapper
+        internal class Wrapper
         {
             public TriggerReason Payload { get; set; }
         }
@@ -28,7 +28,7 @@ namespace RunnerInterfaces
     }
         
     // Implements the causality logger interfaces
-    public class CausalityLogger : ICausalityLogger, ICausalityReader
+    internal class CausalityLogger : ICausalityLogger, ICausalityReader
     {
         private readonly IAzureTable<TriggerReasonEntity> _table;
         private readonly IFunctionInstanceLookup _logger; // needed to lookup parents

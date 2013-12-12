@@ -7,7 +7,7 @@ using Executor;
 namespace RunnerInterfaces
 {
     // Interface for managed prerequisites in ICall
-    public interface IPrereqManager
+    internal interface IPrereqManager
     {        
         // Called from any node when queueing. 
         void AddPrereq(Guid func, IEnumerable<Guid> prereqs, IActivateFunction q);

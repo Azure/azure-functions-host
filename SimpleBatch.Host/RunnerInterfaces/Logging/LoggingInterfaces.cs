@@ -8,7 +8,7 @@ namespace RunnerInterfaces
     // This can also write and secondary indices needed for querying the logs. 
     // Called by the Orchestrator. 
     // $$$ can this be infererd when IFunctionUpdatedLogger logs a completed func?
-    public interface IFunctionCompleteLogger
+    internal interface IFunctionCompleteLogger
     {
         // Called by the orchestrator (which gaurantees single-threaded access) sometime shortly after a 
         // function finishes executing.
@@ -20,7 +20,7 @@ namespace RunnerInterfaces
     // Log as an individual function is getting updated. 
     // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
     // Called by whatever node "owns" the function (usually the executor).
-    public interface IFunctionUpdatedLogger
+    internal interface IFunctionUpdatedLogger
     {
         // The func can be partially filled out, and this will merge non-null fields onto the log. 
 
@@ -33,13 +33,13 @@ namespace RunnerInterfaces
     // Looking up a function instance given the key. 
     // Guid is the FunctionInstance identifier
     // Called by any node, after function has been provided by IFunctionUpdatedLogger.
-    public interface IFunctionInstanceLookup
+    internal interface IFunctionInstanceLookup
     {
         // $$$ Can this return null?
         ExecutionInstanceLogEntity Lookup(Guid rowKey);
     }
 
-    public static class IFunctionInstanceLookupExtensions
+    internal static class IFunctionInstanceLookupExtensions
     {
         public static ExecutionInstanceLogEntity Lookup(this IFunctionInstanceLookup lookup, FunctionInvokeRequest instance)
         {
@@ -62,13 +62,13 @@ namespace RunnerInterfaces
     // This may use secondary indices built by IFunctionCompleteLogger.
     // Functions don't show up here until after they've been indexed by IFunctionCompleteLogger.
     // $$$ May need to change from IEnumerable to support pagination + querying?
-    public interface IFunctionInstanceQuery : IFunctionInstanceLookup
+    internal interface IFunctionInstanceQuery : IFunctionInstanceLookup
     {
         IEnumerable<ExecutionInstanceLogEntity> GetRecent(int N, FunctionInstanceQueryFilter filter);
     }
 
     // $$$ Filter to storage container? Function, Date? Success status? Becomes a full-fledged database!
-    public class FunctionInstanceQueryFilter
+    internal class FunctionInstanceQueryFilter
     {
         // Only return functions in the given account name
         public string AccountName { get; set; }

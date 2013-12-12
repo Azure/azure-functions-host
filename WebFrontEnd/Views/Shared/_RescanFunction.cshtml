@@ -1,9 +1,8 @@
-﻿@using WebFrontEnd.Controllers
-@using Orchestrator
+﻿@using WebFrontEnd.Models.Protocol
 @model object
 
 @{
-    var blob = Model as RunnerInterfaces.CloudBlobDescriptor;
+    var blob = Model as CloudBlobDescriptorModel;
     var uri = Model as Uri;
 }
 

@@ -12,7 +12,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    public class BindingContext : IBinderEx, IBinderPrivate
+    internal class BindingContext : IBinderEx, IBinderPrivate
     {
         private readonly IRuntimeBindingInputs _runtimeInputs;
         private readonly IConfiguration _config;
@@ -65,7 +65,7 @@ namespace RunnerHost
     }
 
 
-    public class CollisionDetector
+    internal class CollisionDetector
     {
         // ### We don't have the Static binders...
         // Throw if binds read and write to the same resource. 

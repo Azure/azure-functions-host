@@ -5,7 +5,7 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace RunnerInterfaces
 {
     // CloudBlobContainers are flyweights, may not compare. 
-    public class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>
+    internal class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>
     {
         public bool Equals(CloudBlobContainer x, CloudBlobContainer y)
         {
@@ -19,7 +19,7 @@ namespace RunnerInterfaces
     }
 
     // CloudQueue are flyweights, may not compare. 
-    public class CloudQueueComparer : IEqualityComparer<CloudQueue>
+    internal class CloudQueueComparer : IEqualityComparer<CloudQueue>
     {
         public bool Equals(CloudQueue x, CloudQueue y)
         {
@@ -32,7 +32,7 @@ namespace RunnerInterfaces
         }
     }
 
-    public class AssemblyNameComparer : IEqualityComparer<AssemblyName>
+    internal class AssemblyNameComparer : IEqualityComparer<AssemblyName>
     {
         public bool Equals(AssemblyName x, AssemblyName y)
         {

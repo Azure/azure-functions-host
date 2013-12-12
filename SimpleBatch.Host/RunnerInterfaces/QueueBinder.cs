@@ -7,7 +7,7 @@ using SimpleBatch;
 
 namespace RunnerInterfaces
 {
-    public class QueueBinder<T> : IQueueOutput<T>, ISelfWatch
+    internal class QueueBinder<T> : IQueueOutput<T>, ISelfWatch
     {
         private readonly CloudQueue _queue;
 

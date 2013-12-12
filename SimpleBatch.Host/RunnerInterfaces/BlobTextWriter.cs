@@ -13,7 +13,7 @@ namespace RunnerInterfaces
     // Flush will come on a different thread, so we need to have thread-safe
     // access between the Reader (ToString)  and the Writers (which are happening as our
     // caller uses the textWriter that we return)
-    public class BlobIncrementalTextWriter
+    internal class BlobIncrementalTextWriter
     {
         private CloudBlob _blob;
         private StringWriter _inner;

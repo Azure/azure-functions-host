@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 
 namespace DaasEndpoints
 {
-    public static class Helpers
+    internal static class Helpers
     {
         // Queue execution for any blobs in the given path
         // conatiner\blob1\blobsubdir
@@ -38,7 +38,7 @@ namespace DaasEndpoints
         }
     }
 
-    public static class AzureRuntime
+    internal static class AzureRuntime
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static string GetConfigurationSettingValue(string name)

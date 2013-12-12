@@ -9,7 +9,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // On output, the object payload gets queued
-    public class QueueOutputParameterRuntimeBinding : ParameterRuntimeBinding
+    internal class QueueOutputParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudQueueDescriptor QueueOutput { get; set; }
 

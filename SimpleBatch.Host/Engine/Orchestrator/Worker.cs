@@ -13,7 +13,7 @@ using System.Text;
 
 namespace Orchestrator
 {
-    public class OrchestratorRoleHeartbeat
+    internal class OrchestratorRoleHeartbeat
     {
         public DateTime Uptime { get; set; } // when this node went up
         public DateTime LastCacheReset { get; set; } // when were the caches last reset
@@ -22,7 +22,7 @@ namespace Orchestrator
         // ??? Add something about progress through listening on a large container?
     }
 
-    public class Worker : IDisposable
+    internal class Worker : IDisposable
     {
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
 

@@ -8,7 +8,7 @@ namespace DaasEndpoints
     // Class for submitting a function to be executed.
     // This must enqueue the function, update the logging to mark that we have a function in queue. 
     // Most of the real work here is the Azure worker role that's listening on the queue. 
-    public class WorkerRoleExecutionClient : QueueFunctionBase
+    internal class WorkerRoleExecutionClient : QueueFunctionBase
     {
         private readonly CloudQueue _queue;
 

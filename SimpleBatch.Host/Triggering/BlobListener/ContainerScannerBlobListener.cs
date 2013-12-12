@@ -10,7 +10,7 @@ namespace TriggerService
     // Full scan a container 
     // Uses a naive full-scanning algorithm. Easy, but very inefficient and does not scale to large containers.
     // But it is very deterministic. 
-    public class ContainerScannerBlobListener : IBlobListener
+    internal class ContainerScannerBlobListener : IBlobListener
     {
         // Containers to listen to, and timestamp of last poll
         // Use parallel arrays instead of dicts to allow update during enumeration

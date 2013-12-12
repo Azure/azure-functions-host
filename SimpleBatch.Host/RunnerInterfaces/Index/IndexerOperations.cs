@@ -4,7 +4,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace RunnerInterfaces
 {
-    public class IndexOperation
+    internal class IndexOperation
     {
         // User account that the Blobpath is resolved against
         public string UserAccountConnectionString { get; set; }
@@ -12,19 +12,19 @@ namespace RunnerInterfaces
         public string Blobpath { get; set; }
     }
 
-    public class DeleteOperation
+    internal class DeleteOperation
     {
         public string FunctionToDelete { get; set; }
     }
 
     // Request that APIs at the given Url be indexed.
-    public class IndexUrlOperation
+    internal class IndexUrlOperation
     {
         public string Url { get; set; }
     }
 
     // Queue message payload to request that orchestrator rescan a blob path
-    public class IndexRequestPayload
+    internal class IndexRequestPayload
     {
         // Account that the service is using.
         // This is where the function entries are written.

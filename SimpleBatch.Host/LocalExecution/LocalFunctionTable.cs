@@ -16,7 +16,7 @@ namespace Orchestrator
     // Provide in-memory settings that can glue an indexer, orchestrator, and execution.
     // Executes via in-memory MethodInfos without azure. 
     // $$$ Merge with any other IFunctionTable, like IndexInMemory
-    public class LocalFunctionTable : IFunctionTable
+    internal class LocalFunctionTable : IFunctionTable
     {
         List<FunctionDefinition> _funcs = new List<FunctionDefinition>();
         List<MethodInfo> _mapping = new List<MethodInfo>();

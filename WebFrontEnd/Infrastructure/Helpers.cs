@@ -11,6 +11,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Orchestrator;
 using RunnerInterfaces;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd.Controllers
 {
@@ -94,24 +95,24 @@ namespace WebFrontEnd.Controllers
         // Emit an HTML link to the log for the given function instance.
         public static MvcHtmlString FunctionInstanceLogLinkVerbose(
             this HtmlHelper htmlHelper,
-            ExecutionInstanceLogEntity log)
+            ExecutionInstanceLogEntityModel log)
         {
-            string name = log.ToString();
+            string name = log.Name;
             return FunctionInstanceLogLink(htmlHelper, log.FunctionInstance, name);
         }
 
         // This should be the common link, most friendly version. 
         // Emit an HTML link to the log for the given function instance.
         public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper, 
-            ExecutionInstanceLogEntity log)
+            this HtmlHelper htmlHelper,
+            ExecutionInstanceLogEntityModel log)
         {
             return htmlHelper.Partial("_FunctionInstanceLogLink", log);      
         }
 
         public static MvcHtmlString FunctionInstanceLogLink(
             this HtmlHelper htmlHelper,
-            FunctionInvokeRequest instance,
+            FunctionInvokeRequestModel instance,
             string textLink = null)
         {
             // $$$ Is this used anywhere?
@@ -132,12 +133,12 @@ namespace WebFrontEnd.Controllers
         public static MvcHtmlString FunctionInstanceLogLink(
             this HtmlHelper htmlHelper,
             Guid id,
-            IFunctionInstanceLookup lookup)
+            LogFunctionModel logFunctionModel)
         {
-            ExecutionInstanceLogEntity log = lookup.Lookup(id);
+            ExecutionInstanceLogEntity log = logFunctionModel.Lookup.Lookup(id);
             if (log != null)
             {
-                return FunctionInstanceLogLink(htmlHelper, log);
+                return FunctionInstanceLogLink(htmlHelper, new ExecutionInstanceLogEntityModel(log));
             }
             // No entry matching the guid. Just show the raw guid then. 
             return FunctionInstanceLogLink(htmlHelper, id);
@@ -168,7 +169,7 @@ namespace WebFrontEnd.Controllers
 
          // Emit HTML link to the log for the function descriptor.        
          public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionDefinition func)
+            FunctionDefinitionModel func)
          {
              return LinkExtensions.ActionLink(
                  htmlHelper,
@@ -178,21 +179,9 @@ namespace WebFrontEnd.Controllers
                  null);
          }
 
-        // Emit HTML link to the log for the function descriptor.        
-        public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionDefinitionModel func)
+        public static string GetShorterName(this FunctionLocationModel self)
         {
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                func.LocationName,
-                "Index", "Function", 
-                new { func = func.RowKey }, 
-                null);
-        }
-
-        public static string GetShorterName(this FunctionLocation self)
-        {
-            var shortName = self.GetShortName();
+            var shortName = self.UnderlyingObject.GetShortName();
             var lastDotIndex = shortName.LastIndexOf('.');
             if (lastDotIndex >= 0)
             {
@@ -202,7 +191,7 @@ namespace WebFrontEnd.Controllers
         }
 
         public static MvcHtmlString FunctionFullNameLink(this HtmlHelper htmlHelper,
-            FunctionDefinition func)
+            FunctionDefinitionModel func)
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
@@ -214,11 +203,11 @@ namespace WebFrontEnd.Controllers
 
         // Lists the static information about the given function type.
         public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionLocation func)
+            FunctionLocationModel func)
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                func.GetShortName(),
+                func.GetShorterName(),
                 "Index", "Function",
                 new { func = func.ToString() },
                 null);
@@ -227,15 +216,15 @@ namespace WebFrontEnd.Controllers
         // Emit HTML link to history of a function. 
         // This can list all instances of that function 
         public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
-            FunctionLocation func)
+            FunctionLocationModel func)
         {
             return FunctionLogInvokeHistoryLink(htmlHelper, func, null);
         }
 
         public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
-            FunctionLocation func, string linkText, bool? success = null)
+            FunctionLocationModel func, string linkText, bool? success = null)
         {
-            string msg = linkText ?? string.Format("{0} invoke history", func.GetShortName());
+            string msg = linkText ?? string.Format("{0} invoke history", func.UnderlyingObject.GetShortName());
             return LinkExtensions.ActionLink(
                 htmlHelper,
                 msg,
@@ -250,20 +239,20 @@ namespace WebFrontEnd.Controllers
 
         // Emit link to page describing blob usage and histo
         public static MvcHtmlString BlobLogLink(this HtmlHelper htmlHelper,
-            CloudBlobDescriptor blobPath)
+            CloudBlobDescriptorModel blobPath)
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
-                linkText: blobPath.GetId(),
+                linkText: blobPath.UnderlyingObject.GetId(),
                 actionName: "Blob",
                 routeValues: 
                 new { 
-                    path = new CloudBlobPath(blobPath).ToString(),
-                    accountName = blobPath.GetAccount().Credentials.AccountName
+                    path = new CloudBlobPath(blobPath.UnderlyingObject).ToString(),
+                    accountName = blobPath.UnderlyingObject.GetAccount().Credentials.AccountName
                 });
         }
 
-        public static MvcHtmlString ReplayFunctionInstance(this HtmlHelper htmlHelper, ExecutionInstanceLogEntity log)
+        public static MvcHtmlString ReplayFunctionInstance(this HtmlHelper htmlHelper, ExecutionInstanceLogEntityModel log)
         {
             return LinkExtensions.ActionLink(
                 htmlHelper,
@@ -278,14 +267,14 @@ namespace WebFrontEnd.Controllers
 
         // Renders a link to the console output for the given function instance.
         public static MvcHtmlString FunctionOutputLink(this HtmlHelper htmlHelper,
-            ExecutionInstanceLogEntity log)
+            ExecutionInstanceLogEntityModel log)
         {
-            if (log.OutputUrl == null)
+            if (log.UnderlyingObject.OutputUrl == null)
             {
                 return MvcHtmlString.Create("No console output available.");
             }
             TagBuilder builder = new TagBuilder("a");
-            builder.MergeAttribute("href", log.OutputUrl);
+            builder.MergeAttribute("href", log.UnderlyingObject.OutputUrl);
             builder.InnerHtml = "Console output";
 
             string html = builder.ToString(TagRenderMode.Normal);
@@ -304,8 +293,8 @@ namespace WebFrontEnd.Controllers
                routeValues:
                new
                {
-                   path = new CloudBlobPath(p.ArgBlobLink).ToString(),
-                   accountName = p.ArgBlobLink.GetAccount().Credentials.AccountName
+                   path = new CloudBlobPath(p.ArgBlobLink.UnderlyingObject).ToString(),
+                   accountName = p.ArgBlobLink.UnderlyingObject.GetAccount().Credentials.AccountName
                });
             }
             return MvcHtmlString.Create(p.ArgInvokeString);

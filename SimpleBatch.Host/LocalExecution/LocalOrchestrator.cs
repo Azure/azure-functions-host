@@ -5,10 +5,10 @@ using RunnerInterfaces;
 namespace Orchestrator
 {
     // Create a local orchestrator that can poll. 
-    public class LocalOrchestrator
+    internal class LocalOrchestrator
     {
         // Build by indexing all methods in type
-        public static Worker Build(CloudStorageAccount account, Type typeClass)
+        internal static Worker Build(CloudStorageAccount account, Type typeClass)
         {
             var acs = account.ToString(true);
             var lc = new LocalExecutionContext(acs, typeClass);

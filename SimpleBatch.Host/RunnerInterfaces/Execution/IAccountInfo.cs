@@ -5,7 +5,7 @@ using RunnerInterfaces;
 namespace RunnerInterfaces
 {
     // Provide underlying access to account information. 
-    public interface IAccountInfo
+    internal interface IAccountInfo
     {
         // azure storage Account for the storage items the service uses to operate. 
         // This is a secret.
@@ -17,7 +17,7 @@ namespace RunnerInterfaces
         string WebDashboardUri { get; }
     }
 
-    public static class IAccountInfoExtensions
+    internal static class IAccountInfoExtensions
     {
         public static CloudStorageAccount GetAccount(this IAccountInfo accountInfo)
         {
@@ -33,7 +33,7 @@ namespace RunnerInterfaces
     }
 
     // Default class for explicitly providing account information. 
-    public class AccountInfo : IAccountInfo
+    internal class AccountInfo : IAccountInfo
     {
         // Set via properties
         public AccountInfo()

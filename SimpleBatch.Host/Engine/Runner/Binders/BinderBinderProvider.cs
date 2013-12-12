@@ -14,7 +14,7 @@ namespace RunnerHost
 {
     // Bind to IBinder
     // All return results get tracked on a cleanup list. 
-    public class BinderBinderProvider : ICloudBinderProvider
+    internal class BinderBinderProvider : ICloudBinderProvider
     {
         // Wrap an IBinder to:
         // - ensure we cleanup all BindResults we hand out

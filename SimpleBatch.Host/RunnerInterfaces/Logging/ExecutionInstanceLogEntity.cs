@@ -8,7 +8,7 @@ namespace Executor
     // Get list of inputs for logging. 
     // Times should all be in UTC.
     // This object gets mutated as the function executes. 
-    public class ExecutionInstanceLogEntity
+    internal class ExecutionInstanceLogEntity
     {
         public override string ToString()
         {
@@ -64,7 +64,7 @@ namespace Executor
         }
     }
 
-    public enum FunctionInstanceStatus
+    internal enum FunctionInstanceStatus
     {
         None, // shouldn't be used. Can indicate a serialization error.
         AwaitingPrereqs, // function is not yet queued. Has outstanding prereqs. 
@@ -75,7 +75,7 @@ namespace Executor
     }
 
     // Move to extension methods so that serializers don't pick them up. 
-    public static class ExecutionInstanceLogEntityExtensions
+    internal static class ExecutionInstanceLogEntityExtensions
     {
         // null if job hasn't finished yet.
         public static TimeSpan? GetDuration(this ExecutionInstanceLogEntity obj)

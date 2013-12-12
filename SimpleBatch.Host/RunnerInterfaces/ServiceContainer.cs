@@ -7,13 +7,13 @@ namespace RunnerInterfaces
 {
     // $$$ Not really using this. 
     // Provide basic service resolution
-    public interface IServiceContainer
+    internal interface IServiceContainer
     {
         T GetService<T>();
     }
 
     // Trivial container for service resolution.
-    public class ServiceContainer : IServiceContainer
+    internal class ServiceContainer : IServiceContainer
     {
         Dictionary<Type, object> _map = new Dictionary<Type, object>();
 

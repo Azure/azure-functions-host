@@ -36,11 +36,11 @@
         foreach (var func in group)
         {
             <tr>
-                <td>@Html.FunctionLogLink(func) @if (!func.HostIsRunning) {<span class="text-warning"><i class="icon-warning-sign"></i> Host is not running</span>}</td>
+                <td>@Html.FunctionLogLink(func) @if (func.HostIsRunning.HasValue && !func.HostIsRunning.Value) {<span class="text-warning"><i class="icon-warning-sign"></i> Host is not running</span>}</td>
                 <td>@Html.Partial("_DeleteFunction", func)</td>
                 <td>@func.Timestamp</td>
                 <td>@func.Description</td>
-                <td>@func.LocationId</td>
+                <td>@func.Location.GetId()</td>
             </tr>
         }
     }

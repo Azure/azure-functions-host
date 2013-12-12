@@ -8,7 +8,7 @@ namespace RunnerInterfaces
     // This should be static once a function is uploaded. It can obviously change when we refresh a function and load
     // a new version. So the Timestamp property gives us "last modified time"
     // But it can't change just be executing the function. Store that invocation information somewhere else.
-    public class FunctionDefinition
+    internal class FunctionDefinition
     {
         // User description of the function
         public string Description { get; set; }

@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace RunnerInterfaces
 {    
-    public static class ObjectBinderHelpers
+    internal static class ObjectBinderHelpers
     {
         // Beware, we deserializing, DateTimes may arbitrarily be Local or UTC time.
         // Callers can normalize via DateTime.ToUniversalTime()

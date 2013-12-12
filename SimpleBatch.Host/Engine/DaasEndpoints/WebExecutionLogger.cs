@@ -7,7 +7,7 @@ namespace Executor
     // Provide services for executing a function on a Worker Role.
     // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
     // Everything else is worker role specific. 
-    public class WebExecutionLogger : IExecutionLogger
+    internal class WebExecutionLogger : IExecutionLogger
     {
         // Logging function for adding header info to the start of each log.
         private readonly Services _services;

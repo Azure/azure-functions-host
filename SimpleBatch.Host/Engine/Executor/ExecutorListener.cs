@@ -13,7 +13,7 @@ using RunnerInterfaces;
 namespace Executor
 {
     // health information written by an execution role. 
-    public class ExecutionRoleHeartbeat
+    internal class ExecutionRoleHeartbeat
     {
         // Function instance ID that we're currently processing. 
         public Guid? FunctionInstanceId { get; set; }
@@ -30,7 +30,7 @@ namespace Executor
 
     // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
     // Everything else is worker role specific. 
-    public interface IExecutionLogger
+    internal interface IExecutionLogger
     {
         FunctionExecutionContext GetExecutionContext();
 
@@ -45,7 +45,7 @@ namespace Executor
     }    
 
     // Listens on a queue, deques, and runs
-    public class ExecutorListener : IDisposable
+    internal class ExecutorListener : IDisposable
     {
         readonly private Executor _executor;
         readonly private CloudQueue _executionQueue;

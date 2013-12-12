@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace RunnerHost
 {
     [DebuggerDisplay("{Guid}")]
-    public class SimpleFunctionToken : IFunctionToken
+    internal class SimpleFunctionToken : IFunctionToken
     {
         public SimpleFunctionToken(Guid g)
         {

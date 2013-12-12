@@ -7,7 +7,7 @@ namespace RunnerInterfaces
     // Stuff that's shared between RunnerHost and Executor?
 
     // Full permission to a queue
-    public class CloudQueueDescriptor
+    internal class CloudQueueDescriptor
     {
         public string AccountConnectionString { get; set; }
 
@@ -39,7 +39,7 @@ namespace RunnerInterfaces
 
     // Full permission to a Table
     // This can be serialized.
-    public class CloudTableDescriptor
+    internal class CloudTableDescriptor
     {
         public string AccountConnectionString { get; set; }
 
@@ -55,7 +55,7 @@ namespace RunnerInterfaces
     // $$$ This class morphed a litte. Is this now the same as CloudBlobContainer?
     // - vs. CloudBlob: this blobName can be null, this can refer to open. things.
     // - vs. CloudBlobPath: this has account info.
-    public class CloudBlobDescriptor
+    internal class CloudBlobDescriptor
     {
         public string AccountConnectionString { get; set; }
 

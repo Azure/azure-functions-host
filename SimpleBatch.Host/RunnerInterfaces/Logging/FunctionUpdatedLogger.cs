@@ -5,7 +5,7 @@ using SimpleBatch;
 namespace Executor
 {
     // Primary access to the azure table storing function invoke requests.  
-    public class FunctionUpdatedLogger : IFunctionUpdatedLogger, IFunctionInstanceLookup
+    internal class FunctionUpdatedLogger : IFunctionUpdatedLogger, IFunctionInstanceLookup
     {
         // Partition key is a constant. Row key is ExecutionInstanceLogEntity.GetKey(), which is the function instance Guid. 
         private readonly IAzureTable<ExecutionInstanceLogEntity> _table;

@@ -6,14 +6,14 @@ namespace RunnerInterfaces
 {
     // Log function causality (eg, parent-child relationships). 
     // This is used to create a graph of parent-child causal relationships. 
-    public interface ICausalityLogger
+    internal interface ICausalityLogger
     {
         // Orchestrator (which is the thing that determines a function should get executed) calls this before Child is executed. 
         // ParentGuid is in reason 
         void LogTriggerReason(TriggerReason reason);
     }
 
-    public interface ICausalityReader
+    internal interface ICausalityReader
     {
         // Given a function instance, get all the (immediate) children invoked because of this function. 
         //
@@ -28,7 +28,7 @@ namespace RunnerInterfaces
     // Call ToString() for human readable string. 
     // Cast to a derived class to get more specific structured information.
     // These get serialized via JSON and stored in tables. 
-    public abstract class TriggerReason
+    internal abstract class TriggerReason
     {
         // The "current" guid that the rest of the trigger reason is valid for. 
         public Guid ChildGuid { get; set; }
@@ -48,7 +48,7 @@ namespace RunnerInterfaces
 
     // This function was executed by a new blob was written. 
     // Corresponds to [BlobInput]
-    public class BlobTriggerReason : TriggerReason
+    internal class BlobTriggerReason : TriggerReason
     {
         public CloudBlobPath BlobPath { get; set; }
 
@@ -59,7 +59,7 @@ namespace RunnerInterfaces
     }
 
     // This function was executed via an ICall interface. 
-    public class InvokeTriggerReason : TriggerReason
+    internal class InvokeTriggerReason : TriggerReason
     {        
         public override string ToString()
         {
@@ -71,7 +71,7 @@ namespace RunnerInterfaces
 
     // This function was executed because an AzureQueue Message
     // Corresponds to [QueueInput].
-    public class QueueMessageTriggerReason : TriggerReason
+    internal class QueueMessageTriggerReason : TriggerReason
     {
         public string MessageId { get; set; }
 
@@ -81,7 +81,7 @@ namespace RunnerInterfaces
         }
     }
 
-    public class TimerTriggerReason : TriggerReason
+    internal class TimerTriggerReason : TriggerReason
     {
         public override string ToString()
         {

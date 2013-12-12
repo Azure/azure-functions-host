@@ -9,7 +9,7 @@ using SimpleBatch;
 
 namespace Orchestrator
 {
-    public class ConfigParameterStaticBinding : ParameterStaticBinding
+    internal class ConfigParameterStaticBinding : ParameterStaticBinding
     {
         // Filename that the config is coming from 
         public string Filename { get; set; }

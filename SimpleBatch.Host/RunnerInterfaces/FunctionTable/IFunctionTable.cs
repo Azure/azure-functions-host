@@ -2,19 +2,19 @@
 namespace RunnerInterfaces
 {
     // Manage the function index.
-    public interface IFunctionTable : IFunctionTableLookup
+    internal interface IFunctionTable : IFunctionTableLookup
     {
         void Add(FunctionDefinition func);
         void Delete(FunctionDefinition func);
     }
 
-    public interface IFunctionTableLookup
+    internal interface IFunctionTableLookup
     {
         // Function Id is the location.ToString().
         FunctionDefinition Lookup(string functionId);
         FunctionDefinition[] ReadAll();
     }
-    public static class IFunctionTableLookupExtensions
+    internal static class IFunctionTableLookupExtensions
     {
         public static FunctionDefinition Lookup(this IFunctionTableLookup lookup, FunctionLocation location)
         {

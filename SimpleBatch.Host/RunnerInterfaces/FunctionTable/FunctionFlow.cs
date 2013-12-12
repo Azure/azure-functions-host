@@ -9,7 +9,7 @@ namespace RunnerInterfaces
     // 1) when to invoke functions;
     // 2) how to bind the parameters
     // This should be serializable, it will get persisted in azure tables.
-    public class FunctionFlow
+    internal class FunctionFlow
     {
         // Should all be non-null, else we have error!
         public ParameterStaticBinding[] Bindings { get; set; }

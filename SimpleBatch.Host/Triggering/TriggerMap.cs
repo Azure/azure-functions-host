@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace TriggerService
 {
-    public interface ITriggerMap
+    internal interface ITriggerMap
     {
         // Scope can be a user's site. 
         Trigger[] GetTriggers(string scope);
@@ -18,7 +18,7 @@ namespace TriggerService
         void ClearTriggers(string scope);
     }
 
-    public static class ITriggerMapExtensions
+    internal static class ITriggerMapExtensions
     {
         public static IEnumerable<Trigger> GetTriggers(this ITriggerMap x)
         {
@@ -33,7 +33,7 @@ namespace TriggerService
     }
 
     // In-memory 
-    public class TriggerMap : ITriggerMap
+    internal class TriggerMap : ITriggerMap
     {
         Dictionary<string, Trigger[]> _storage = new Dictionary<string, Trigger[]>();
         

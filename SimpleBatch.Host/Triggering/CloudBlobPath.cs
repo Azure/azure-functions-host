@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 namespace TriggerService.Internal
 {
     // $$$ Unify with one in RunnerInterfaces. But then we get a namespace conflict. 
-    public class CloudBlobPathConverter : StringConverter<CloudBlobPath>
+    internal class CloudBlobPathConverter : StringConverter<CloudBlobPath>
     {
         public override object ReadFromString(string value)
         {
@@ -24,7 +24,7 @@ namespace TriggerService.Internal
     // - ToString should be suitable rowkey to coopreate with table indices.    
     // - Serialize to JSON as a single string. 
     [JsonConverter(typeof(CloudBlobPathConverter))]
-    public class CloudBlobPath
+    internal class CloudBlobPath
     {
         private string _containerName;
 

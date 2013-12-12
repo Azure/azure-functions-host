@@ -7,7 +7,7 @@ namespace RunnerHost
     // BinderProvider for adding an ICall binder. 
     // This binds to a FunctionInvoker object, which doesn't actually implement ICall, so
     // this adds a wrapper.
-    public class CallBinderProvider : ICloudBinderProvider, ICloudBinder
+    internal class CallBinderProvider : ICloudBinderProvider, ICloudBinder
     {
         private ICall _inner;
                 

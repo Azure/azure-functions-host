@@ -3,7 +3,7 @@
 namespace RunnerHost
 {
     // Private extensions to binder, used internally and not exposed to public simple batch model binders. 
-    public interface IBinderPrivate
+    internal interface IBinderPrivate
     {
         INotifyNewBlob NotifyNewBlob { get; }
     }

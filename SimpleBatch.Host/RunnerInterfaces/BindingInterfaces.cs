@@ -12,7 +12,7 @@ namespace RunnerInterfaces
 {
     // This is the basic infomration that a static binding can use to create a runtime binding.
     // There are auxillary interfaces (ITrigger*) which provide additional information specific to certain binding triggers.
-    public interface IRuntimeBindingInputs
+    internal interface IRuntimeBindingInputs
     {
         IDictionary<string, string> NameParameters { get; } 
         string AccountConnectionString { get; }
@@ -20,14 +20,14 @@ namespace RunnerInterfaces
     }
 
     // extension interface to IRuntimeBindingInputs, for when the input is triggered by a new blob
-    public interface ITriggerNewBlob : IRuntimeBindingInputs
+    internal interface ITriggerNewBlob : IRuntimeBindingInputs
     {
         // If null, then ignore.
         CloudBlob BlobInput { get; }
     }
 
     // extension interface for when the input is triggered bya new queue message.
-    public interface ITriggerNewQueueMessage : IRuntimeBindingInputs
+    internal interface ITriggerNewQueueMessage : IRuntimeBindingInputs
     {
         // If null, then ignore. 
         CloudQueueMessage QueueMessageInput { get; }
@@ -40,7 +40,7 @@ namespace RunnerInterfaces
     // Indexer produces derived instances of this. . 
     // This must be serializable to JSON. Derived properties get serialized. 
     // [JsonIgnore] on a virtual property will be respected in derived classes. 
-    public abstract class ParameterStaticBinding
+    internal abstract class ParameterStaticBinding
     {
         // Parameter's name. 
         // This is useful for diagnostic purposes. 
@@ -91,7 +91,7 @@ namespace RunnerInterfaces
         }
     }
 
-    public enum TriggerType
+    internal enum TriggerType
     {
         // Parameter is an input that we can reason about and can trigger (eg,  [BlobInput])
         Input,
@@ -108,7 +108,7 @@ namespace RunnerInterfaces
     // In the runner host process, it gets converted into a System.Object for finally invoking a function.    
     // This can do lots of heavy stuff in the binder, like converting a Blob to 18 different runtime types.     
     // This Serializes to JSON. 
-    public abstract class ParameterRuntimeBinding
+    internal abstract class ParameterRuntimeBinding
     {        
         // Get a "human readable" string that can be displayed and passed to BindFromString
         // This can be part of the UI. 

@@ -8,7 +8,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    public class SelfWatch
+    internal class SelfWatch
     {
         TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
         TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs

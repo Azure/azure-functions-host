@@ -10,7 +10,7 @@ using SimpleBatch;
 
 namespace DaasEndpoints
 {
-    public partial class Services
+    internal partial class Services
     {
         // Get a description of which execution mechanism is used. 
         // This is coupled to IQueueFunction. ($$$ Move this to be on that interface?)
@@ -162,7 +162,7 @@ namespace DaasEndpoints
         }
     }
 
-    public enum QueueFunctionType
+    internal enum QueueFunctionType
     {
         WorkerRoles,
         Antares,

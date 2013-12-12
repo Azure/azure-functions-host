@@ -1,7 +1,7 @@
 ﻿namespace RunnerInterfaces
 {
     // Endpoint names for azure storage resources used for the service. 
-    public class AzureExecutionEndpointNames
+    internal class AzureExecutionEndpointNames
     {
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs

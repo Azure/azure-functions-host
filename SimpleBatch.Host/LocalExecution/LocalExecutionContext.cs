@@ -13,7 +13,7 @@ namespace Orchestrator
 {
     // Support local execution. This does not have a trigger service, but still maintains all of the logging, prereqs, and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 
-    public class LocalExecutionContext : ICall
+    internal class LocalExecutionContext : ICall
     {
         private readonly IConfiguration _config;
         private readonly IPrereqManager _prereq;

@@ -7,11 +7,10 @@ using System.Web.Http;
 using DaasEndpoints;
 using Executor;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
-using System.Linq;
 using RunnerHost;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd
 {
@@ -19,7 +18,7 @@ namespace WebFrontEnd
     {
         private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
-        public ExecutionController(Services services, IFunctionTableLookup functionTableLookup)
+        internal ExecutionController(Services services, IFunctionTableLookup functionTableLookup)
         {
             _services = services;
             _functionTableLookup = functionTableLookup;
@@ -42,19 +41,6 @@ namespace WebFrontEnd
         public void Heartbeat()
         {
             // Lets tooling verify they have a valid service URL.
-        }
-
-        // Called to alert that a new blob is available. This is for fast chaining. 
-        [HttpPost]
-        public void NotifyBlob(BlobWrittenMessage msg)
-        {
-            if (msg == null)
-            {
-                throw NewUserError("payload not specified");
-            }
-
-            NotifyNewBlobViaQueueMessage notify = new NotifyNewBlobViaQueueMessage(GetServices().Account);
-            notify.Notify(msg);            
         }
 
         [HttpPost]
@@ -117,7 +103,7 @@ namespace WebFrontEnd
             var instance = logger.Lookup(id);
             return new FunctionInstanceStatusResult
             {
-                Status = instance.GetStatus(),
+                Status = (FunctionInstanceStatusModel)instance.GetStatus(),
                 OutputUrl = instance.OutputUrl,
                 ExceptionMessage = instance.ExceptionMessage,
                 ExceptionType = instance.ExceptionType,
@@ -154,7 +140,7 @@ namespace WebFrontEnd
         // $$$ Should we just send back ExecutionInstanceLogEntity?
         public class FunctionInstanceStatusResult
         {
-            public FunctionInstanceStatus Status { get; set; }
+            public FunctionInstanceStatusModel Status { get; set; }
 
             // For retrieving the console output.
             // This is incrementally updated.

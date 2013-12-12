@@ -6,7 +6,7 @@ using System.Text;
 
 namespace RunnerInterfaces
 {
-    public class IndexException : Exception
+    internal class IndexException : Exception
     {
         public IndexException(string msg)
             : base(msg)
@@ -35,14 +35,14 @@ namespace RunnerInterfaces
 
     }
 
-    public interface IIndexLocation
+    internal interface IIndexLocation
     {
         string ElementType { get; } // Parameter, Method, etc
         string Name { get; }
         IIndexLocation Parent { get; }
     }
 
-    public class IndexLocation : IIndexLocation
+    internal class IndexLocation : IIndexLocation
     {
         public string ElementType { get; set;  }
         public string Name { get; set; }

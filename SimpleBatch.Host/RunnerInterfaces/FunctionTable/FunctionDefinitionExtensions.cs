@@ -2,9 +2,9 @@
 
 namespace RunnerInterfaces
 {
-    public static class FunctionDefinitionExtensions
+    internal static class FunctionDefinitionExtensions
     {
-        public static string GetAssemblyFullName(this FunctionDefinition func)
+        internal static string GetAssemblyFullName(this FunctionDefinition func)
         {
             if (func == null)
             {

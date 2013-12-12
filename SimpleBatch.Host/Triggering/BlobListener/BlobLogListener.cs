@@ -38,7 +38,7 @@ namespace TriggerService
 
 
     // See list at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx
-    public enum OperationType
+    internal enum OperationType
     {
         AcquireLease,
         BreakLease,
@@ -77,7 +77,7 @@ namespace TriggerService
     }
 
     // Describes an entry in the storage log
-    public class LogRow
+    internal class LogRow
     {
         public static LogRow Parse(string value)
         {
@@ -130,7 +130,7 @@ namespace TriggerService
     }
 
 
-    public enum ServiceType
+    internal enum ServiceType
     {
         Blob,
         Table,
@@ -138,7 +138,7 @@ namespace TriggerService
     }
 
     // Scans storage logs for blob writes
-    public class BlobLogListener
+    internal class BlobLogListener
     {        
         const string LogStartTime = "StartTime";
         const string LogEndTime = "EndTime";

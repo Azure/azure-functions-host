@@ -7,7 +7,7 @@ using RunnerInterfaces;
 namespace RunnerHost
 {
     // Inputs that can impact producing a runtime binding.     
-    public class RuntimeBindingInputs : IRuntimeBindingInputs
+    internal class RuntimeBindingInputs : IRuntimeBindingInputs
     {
         private FunctionLocation _location;
 
@@ -43,7 +43,7 @@ namespace RunnerHost
         }
     }
 
-    public class NewBlobRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewBlob
+    internal class NewBlobRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewBlob
     {
         public NewBlobRuntimeBindingInputs(FunctionLocation location, CloudBlob blobInput)
             : base(location)
@@ -55,7 +55,7 @@ namespace RunnerHost
         public CloudBlob BlobInput { get; private set; }
     }
 
-    public class NewQueueMessageRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewQueueMessage
+    internal class NewQueueMessageRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewQueueMessage
     {
         public NewQueueMessageRuntimeBindingInputs(FunctionLocation location, CloudQueueMessage queueMessage)
             : base(location)

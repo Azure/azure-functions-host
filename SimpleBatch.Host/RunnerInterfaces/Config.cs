@@ -9,7 +9,7 @@ using SimpleBatch;
 
 namespace RunnerInterfaces
 {
-    public static class IConfigurationExtensions
+    internal static class IConfigurationExtensions
     {
         public static ICloudBinder GetBinder(this IConfiguration config, Type targetType)
         {

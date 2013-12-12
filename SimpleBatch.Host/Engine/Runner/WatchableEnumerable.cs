@@ -14,7 +14,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // Tracks number of times MoveNext() is called on the enumerator.
-    public class WatchableEnumerable<T> : IEnumerable<T>, ISelfWatch
+    internal class WatchableEnumerable<T> : IEnumerable<T>, ISelfWatch
     {
         private IEnumerable<T> _inner;
 

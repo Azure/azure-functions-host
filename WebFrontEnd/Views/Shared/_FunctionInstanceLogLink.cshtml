@@ -1,17 +1,17 @@
-﻿@using WebFrontEnd.Controllers
+﻿@using WebFrontEnd.Models.Protocol
 @using Executor
-@model ExecutionInstanceLogEntity
+@model ExecutionInstanceLogEntityModel
 
 @{
     string color = null;
     var status = Model.GetStatus();
     switch (status)
     { 
-        case FunctionInstanceStatus.CompletedFailed:
+        case FunctionInstanceStatusModel.CompletedFailed:
             color = "red"; break;
-        case FunctionInstanceStatus.CompletedSuccess:
+        case FunctionInstanceStatusModel.CompletedSuccess:
             color = "green"; break;
-        case FunctionInstanceStatus.Running:
+        case FunctionInstanceStatusModel.Running:
             color = "blue"; break;
             // don't colorize others.                 
     }       

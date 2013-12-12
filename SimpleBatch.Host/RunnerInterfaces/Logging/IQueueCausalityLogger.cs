@@ -14,7 +14,7 @@ namespace RunnerInterfaces
     // Can we switch to some auxillary table? Beware, CloudQueueMessage.Id is not 
     // filled out until after the message is queued, but then there's a race between updating 
     // the aux storage and another function picking up the message.
-    public class QueueCausalityHelper
+    internal class QueueCausalityHelper
     {
         // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
         const string parentGuidFieldName = "SBParentGuid";

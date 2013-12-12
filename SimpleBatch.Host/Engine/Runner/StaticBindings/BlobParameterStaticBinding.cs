@@ -10,7 +10,7 @@ namespace Orchestrator
 {
     // Side-effects are understood. We'll read/write to a specific blob, 
     // for which we can even get a modification timestamp from.
-    public class BlobParameterStaticBinding : ParameterStaticBinding
+    internal class BlobParameterStaticBinding : ParameterStaticBinding
     {
         public CloudBlobPath Path;
         public bool IsInput;

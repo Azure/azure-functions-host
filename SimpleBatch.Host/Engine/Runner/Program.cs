@@ -12,7 +12,7 @@ namespace RunnerHost
     // This a hook that can be invoked by whoever creates the appdomain.
     // See:
     // http://blogs.artinsoft.net/mrojas/archive/2008/10/02/outofprocess-in-c.aspx
-    public class OutputSetter : MarshalByRefObject
+    internal class OutputSetter : MarshalByRefObject
     {
         public OutputSetter()
         {
@@ -24,7 +24,7 @@ namespace RunnerHost
     }
 
     // Used for launching an instance
-    public class Program
+    internal class Program
     {
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
         {                       

@@ -9,7 +9,7 @@ namespace Orchestrator
 {
     // Represents binding to a named parameter from the named parameter dictionary. 
     // Dictionary could be populated via route parameters in a Blob pattern match, explicitly by user, or somewhere else.
-    public class NameParameterStaticBinding : ParameterStaticBinding
+    internal class NameParameterStaticBinding : ParameterStaticBinding
     {
         public string KeyName { get; set; }
         public bool UserSupplied { get; set; }

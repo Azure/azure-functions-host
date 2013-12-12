@@ -11,7 +11,7 @@ using RunnerInterfaces;
 namespace Executor
 {
     // Executor, can handle multiple execution requests.
-    public class Executor : IDisposable
+    internal class Executor : IDisposable
     {
         private readonly string _localCacheRoot;
         
@@ -78,7 +78,7 @@ namespace Executor
     }
 
     // Represents a single execution request. 
-    public class ExecutionInstance
+    internal class ExecutionInstance
     {    
         // Local directory where execution has been copied to.
         private readonly string _localCopy;

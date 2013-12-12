@@ -23,7 +23,7 @@ namespace OrchestratorUnitTests
     [TestClass]
     public class TableSerializationTests
     {
-        public AzureTable<T> GetTable<T>() where T : new()
+        internal AzureTable<T> GetTable<T>() where T : new()
         {
             return AzureTable<T>.NewInMemory();
         }

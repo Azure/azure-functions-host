@@ -1,5 +1,5 @@
 ﻿@using WebFrontEnd.Controllers
-@using Executor
+@using WebFrontEnd.Models.Protocol
 @model LogFunctionModel
 
 @{
@@ -13,23 +13,23 @@
     string alertHeader = null;
     switch (log.GetStatus())
     {
-        case FunctionInstanceStatus.CompletedFailed:
+        case FunctionInstanceStatusModel.CompletedFailed:
             alertClass = "alert-error";
             alertHeader = "Failed";
             break;
-        case FunctionInstanceStatus.CompletedSuccess:
+        case FunctionInstanceStatusModel.CompletedSuccess:
             alertClass = "alert-success";
             alertHeader = "Completed";
             break;
-        case FunctionInstanceStatus.Running:
+        case FunctionInstanceStatusModel.Running:
             alertClass = "alert-info";
             alertHeader = "Running";
             break;
-        case FunctionInstanceStatus.Queued:
+        case FunctionInstanceStatusModel.Queued:
             alertClass = "alert-info";
             alertHeader = "Queued";
             break;
-        case FunctionInstanceStatus.AwaitingPrereqs:
+        case FunctionInstanceStatusModel.AwaitingPrereqs:
             alertClass = "alert-info";
             alertHeader = "Awaiting Prerequisites";
             break;
@@ -78,7 +78,7 @@
         {
             <a href="@Url.Action("ViewChain", new { func = log.FunctionInstance.Id })" class="btn"><i class="icon-code-fork"></i> View Children</a>
         }
-        @if (log.GetStatus() == FunctionInstanceStatus.Running)
+        @if (log.GetStatus() == FunctionInstanceStatusModel.Running)
         {
             using (Html.BeginForm("AbortFunction", "Log", new { instance = @log.FunctionInstance.Id }, FormMethod.Post, new { @class = "form-inline" }))
             {
@@ -116,7 +116,7 @@
         @foreach (var child in Model.Children)
         {
             <tr>
-                <td>@Html.FunctionInstanceLogLink(child.ChildGuid, Model.Lookup)</td>
+                <td>@Html.FunctionInstanceLogLink(child.ChildGuid, Model)</td>
                 <td>@child.ToString()</td>
             </tr>
         }

@@ -10,7 +10,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // IConfiguration implementation for Registering functions. 
-    public class IndexerConfig : IConfiguration
+    internal class IndexerConfig : IConfiguration
     {
         private readonly List<FunctionDefinition> _functions = new List<FunctionDefinition>();
 

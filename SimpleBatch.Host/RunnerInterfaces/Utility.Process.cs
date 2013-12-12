@@ -9,7 +9,7 @@ namespace RunnerInterfaces
     public static partial class Utility
     {
         // Helper object used in client app to communicate with ProcessExecute<TInput, TResult>
-        public class ProcessExecuteArgs<TInput, TResult>
+        internal class ProcessExecuteArgs<TInput, TResult>
         {
             private readonly string[] _args;
 
@@ -234,7 +234,7 @@ namespace RunnerInterfaces
     }
 
     // Some error in user app (probably a stack overflow) 
-    public class AbnormalTerminationException : Exception
+    internal class AbnormalTerminationException : Exception
     {
         public AbnormalTerminationException(string msg) : base(msg)
         {

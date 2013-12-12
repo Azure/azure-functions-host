@@ -13,7 +13,7 @@ using SimpleBatch;
 namespace AzureTables
 {
     // Typesafe wrappers.
-    public class AzureTable<TPartRowKey, TValue> : AzureTable, IAzureTableReader<TValue>  where TValue : new()
+    internal class AzureTable<TPartRowKey, TValue> : AzureTable, IAzureTableReader<TValue>  where TValue : new()
     {
         private readonly Func<TPartRowKey, Tuple<string, string>> _funcGetRowPartKey;
 
@@ -63,7 +63,7 @@ namespace AzureTables
 
     // Wrapper for when we want to read as a strong type.
     // $$$ Should this implement IDictionary<Tuple<string,string>, TValue> ?
-    public class AzureTable<TValue> : AzureTable, IAzureTable<TValue> where TValue : new()
+    internal class AzureTable<TValue> : AzureTable, IAzureTable<TValue> where TValue : new()
     {
         public AzureTable(CloudStorageAccount account, string tableName)
             : base(account, tableName)
@@ -114,7 +114,7 @@ namespace AzureTables
     }
 
 
-    public class AzureTable : IAzureTable, ISelfWatch
+    internal class AzureTable : IAzureTable, ISelfWatch
     {
         private Stopwatch _timeWrite = new Stopwatch();
         private Stopwatch _timeRead = new Stopwatch();

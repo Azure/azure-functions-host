@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace RunnerHost
 {
-    public class CallUtil
+    internal class CallUtil
     {
         public static IEnumerable<Guid> Unwrap(IEnumerable<IFunctionToken> prereqs)
         {

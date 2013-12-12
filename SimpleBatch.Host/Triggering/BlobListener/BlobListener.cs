@@ -8,14 +8,14 @@ using System.Collections.Concurrent;
 
 namespace TriggerService
 {
-    public interface IBlobListener
+    internal interface IBlobListener
     {
         // Scan the container
         // Callbacks may fire multiple times. Or out of order relative to creation date. 
         void Poll(Action<CloudBlob> callback, CancellationToken cancel);
     }
 
-    public static class IBlobListenerExtensions
+    internal static class IBlobListenerExtensions
     {
         public static void Poll(this IBlobListener p, Action<CloudBlob> callback)
         {
@@ -27,7 +27,7 @@ namespace TriggerService
     // Will do a full scan of all containers on startup 
     // And then listens for logs in steady-state. Note that log listening can have a 10+ minute delay. 
     // Not deterministic when the blobs show up in the logs. 
-    public class BlobListener : IBlobListener
+    internal class BlobListener : IBlobListener
     {
         CloudBlobContainer[] _containers;
         BlobLogListener[] _clientListeners; // for log listening

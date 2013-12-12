@@ -9,7 +9,7 @@ namespace RunnerInterfaces
     //   (Ideally be a struct, but then value-type semantics make serialization unhappy.)
     // - Make sure this JSON serializes like a guid?
     // Entry in a secondary index that points back to the primary table.
-    public class FunctionInstanceGuid
+    internal class FunctionInstanceGuid
     {
         private Guid _instance;
 

@@ -9,7 +9,7 @@ using RunnerInterfaces;
 
 namespace Executor
 {
-    public class ExecutorClient
+    internal class ExecutorClient
     {
         // Queue a message to run the given function instance
         // This just queus it and does not do any logging. 

@@ -5,7 +5,7 @@ namespace TriggerService
 {
     // See example: http://stackoverflow.com/questions/7585593/how-do-i-configure-json-net-custom-serialization
     // General purpose converted for types that have string conversion. 
-    public abstract class StringConverter<T> : JsonConverter
+    internal abstract class StringConverter<T> : JsonConverter
     {
         public override bool CanConvert(Type objectType)
         {

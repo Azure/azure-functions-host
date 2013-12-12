@@ -12,7 +12,7 @@ namespace Orchestrator
 {
     // Abstraction over a MethodInfo so that we can bind from either
     // attributes or code-config.
-    public class MethodDescriptor
+    internal class MethodDescriptor
     {
         public string Name;
         public Attribute[] MethodAttributes;
@@ -21,13 +21,13 @@ namespace Orchestrator
 
     // Context, speciifc to a given type. 
     // Each type can provide its own configuration
-    public class IndexTypeContext
+    internal class IndexTypeContext
     {
         public IConfiguration Config { get; set; }
     }
 
     // Go down and build an index
-    public class Indexer
+    internal class Indexer
     {
         private readonly IFunctionTable _functionTable;
 

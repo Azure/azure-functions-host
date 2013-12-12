@@ -16,7 +16,7 @@ namespace WebFrontEnd.ControllersWebApi
     {
         private readonly Services _services;
 
-        public LogController(Services services)
+        internal LogController(Services services)
         {
             _services = services;
         }

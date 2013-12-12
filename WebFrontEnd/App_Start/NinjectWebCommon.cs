@@ -53,6 +53,7 @@ namespace WebFrontEnd.App_Start
             var kernel = new StandardKernel(GetModules().ToArray());
             try
             {
+                kernel.Settings.InjectNonPublic = true;
                 kernel.Bind<Func<IKernel>>().ToMethod(ctx => () => new Bootstrapper().Kernel);
                 kernel.Bind<IHttpModule>().To<HttpApplicationInitializationHttpModule>();
                 return kernel;

@@ -12,7 +12,7 @@ namespace RunnerInterfaces
     // This is just request information and doesn't contain any response information
     // This can be serialized. 
     // This has private information (account keys via Args) 
-    public class FunctionInvokeRequest
+    internal class FunctionInvokeRequest
     {
         // Versioning, to help detect against stale queue entries
         public int SchemaNumber { get; set; }

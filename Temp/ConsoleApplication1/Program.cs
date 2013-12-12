@@ -21,7 +21,7 @@ using DaasEndpoints;
 using Microsoft.Win32;
 using System.Net;
 using System.Runtime.InteropServices;
-using Microsoft.WindowsAzure.StorageClient.Protocol;
+using Utility = RunnerInterfaces.Utility;
 using System.Text.RegularExpressions;
 using TriggerService;
 

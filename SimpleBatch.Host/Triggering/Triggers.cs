@@ -9,7 +9,7 @@ using TriggerService.Internal;
 namespace TriggerService
 {
     // Base class for triggers that client can listen on. 
-    public abstract class Trigger
+    internal abstract class Trigger
     {
         // Invoke this path when the trigger fires 
         public string CallbackPath { get; set; }
@@ -63,7 +63,7 @@ namespace TriggerService
         }
     }
 
-    public class BlobTrigger : Trigger
+    internal class BlobTrigger : Trigger
     {
         public BlobTrigger()
         {
@@ -88,7 +88,7 @@ namespace TriggerService
         }
     }
 
-    public class QueueTrigger : Trigger
+    internal class QueueTrigger : Trigger
     {
         public QueueTrigger()
         {
@@ -103,7 +103,7 @@ namespace TriggerService
         }
     }
 
-    public class TimerTrigger : Trigger
+    internal class TimerTrigger : Trigger
     {
         public TimerTrigger()
         {

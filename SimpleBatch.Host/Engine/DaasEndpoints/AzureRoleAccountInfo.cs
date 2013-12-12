@@ -5,7 +5,7 @@ using RunnerInterfaces;
 namespace DaasEndpoints
 {
     // Get account information via the Azure role Configuration. 
-    public class AzureRoleAccountInfo : IAccountInfo
+    internal class AzureRoleAccountInfo : IAccountInfo
     {
         //public const string WebDashboardUri = @"http://localhost:44498/";
         // Something like. @"http://daas3.azurewebsites.net/";

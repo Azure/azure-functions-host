@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using DaasEndpoints;
-using Executor;
-using Orchestrator;
 using RunnerInterfaces;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd.Controllers
 {
@@ -27,7 +25,7 @@ namespace WebFrontEnd.Controllers
     {
         public Uri Writeback { get; set; }
     }
-   
+
     public class RegisterFuncSubmitModel : FuncSubmitModel
     {
         public string AccountName { get; set; }
@@ -48,7 +46,7 @@ namespace WebFrontEnd.Controllers
 
         public int? QueueDepth { get; set; }
 
-        public ServiceHealthStatus HealthStatus { get; set; }
+        public ServiceHealthStatusModel HealthStatus { get; set; }
     }
 
     public class RequestScanSubmitModel
@@ -73,21 +71,6 @@ namespace WebFrontEnd.Controllers
         public bool HasWarning { get; set; }
     }
 
-    public class FunctionDefinitionModel
-    {
-        public string RowKey { get; set; }
-
-        public string LocationId { get; set; }
-
-        public string LocationName { get; set; }
-
-        public DateTime Timestamp { get; set; }
-
-        public string Description { get; set; }
-
-        public bool HostIsRunning { get; set; }
-    }
-
     public class BinderListModel
     {
         public Entry[] Binders { get; set; }
@@ -98,7 +81,7 @@ namespace WebFrontEnd.Controllers
 
             public string AccountName { get; set; }
 
-            public CloudBlobPath Path { get; set; }
+            public CloudBlobPathModel Path { get; set; }
 
             public string EntryPoint { get; set; }
         }
@@ -106,9 +89,9 @@ namespace WebFrontEnd.Controllers
 
     public class FunctionChainModel
     {
-        public ICausalityReader Walker { get; set; }
+        internal ICausalityReader Walker { get; set; }
 
-        public IFunctionInstanceLookup Lookup { get; set; }
+        internal IFunctionInstanceLookup Lookup { get; set; }
 
         public IEnumerable<ListNode> Nodes { get; set; }
 
@@ -119,7 +102,7 @@ namespace WebFrontEnd.Controllers
     // Convert tree into flat list so that it's easier to render
     public class ListNode
     {
-        public ExecutionInstanceLogEntity Func { get; set; }
+        public ExecutionInstanceLogEntityModel Func { get; set; }
 
         public int Depth { get; set; }
     }
@@ -127,7 +110,7 @@ namespace WebFrontEnd.Controllers
     // Show static information about the function 
     public class FunctionInfoModel
     {
-        public FunctionDefinition Descriptor { get; set; }
+        public FunctionDefinitionModel Descriptor { get; set; }
 
         public ParamModel[] Parameters { get; set; }
 

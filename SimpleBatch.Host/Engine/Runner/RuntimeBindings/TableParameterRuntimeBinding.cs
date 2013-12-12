@@ -10,7 +10,7 @@ using SimpleBatch;
 
 namespace RunnerHost
 {
-    public class TableParameterRuntimeBinding : ParameterRuntimeBinding
+    internal class TableParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudTableDescriptor Table { get; set; }
 

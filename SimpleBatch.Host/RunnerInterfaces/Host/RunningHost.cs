@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace RunnerInterfaces
 {
@@ -30,6 +31,16 @@ namespace RunnerInterfaces
             {
                 return Timestamp;
             }
+        }
+
+        internal static bool IsValidHeartbeat(RunningHost heartbeat)
+        {
+            if (heartbeat == null)
+            {
+                return false;
+            }
+
+            return DateTime.UtcNow < heartbeat.LastHeartbeatUtc.Add(RunningHost.HeartbeatPollInterval);
         }
     }
 }

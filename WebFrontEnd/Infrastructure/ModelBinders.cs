@@ -13,6 +13,7 @@ using Orchestrator;
 using RunnerInterfaces;
 using WebFrontEnd.Controllers;
 using Ninject;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd
 {
@@ -25,10 +26,10 @@ namespace WebFrontEnd
                 IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
                 IFunctionTableLookup functionTable = kernel.Get<IFunctionTableLookup>();
 
-                ModelBinders.Binders.Add(typeof(FunctionDefinition), new FunctionIndexEntityBinder(functionTable));
-                ModelBinders.Binders.Add(typeof(CloudBlobPath), new CloudBlobPathBinder());
+                ModelBinders.Binders.Add(typeof(FunctionDefinitionModel), new FunctionDefinitionModelBinder(functionTable));
+                ModelBinders.Binders.Add(typeof(CloudBlobPathModel), new CloudBlobPathBinder());
                 ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder(lookup));
-                ModelBinders.Binders.Add(typeof(FunctionInvokeRequest), new FunctionInstanceBinder(lookup));
+                ModelBinders.Binders.Add(typeof(FunctionInvokeRequestModel), new FunctionInstanceBinder(lookup));
 
             }
             catch (ActivationException)
@@ -39,7 +40,7 @@ namespace WebFrontEnd
     }
 
     // Bind FunctionIndexEntity
-    public class FunctionInstanceBinder : ExecutionInstanceLogEntityBinder
+    internal class FunctionInstanceBinder : ExecutionInstanceLogEntityBinder
     {
         public FunctionInstanceBinder(IFunctionInstanceLookup logger)
             : base(logger)
@@ -53,12 +54,12 @@ namespace WebFrontEnd
             {
                 return null;
             }
-            return log.FunctionInstance;            
+            return new FunctionInvokeRequestModel(log.FunctionInstance);
         }
     }
 
     // Bind FunctionIndexEntity
-    public class ExecutionInstanceLogEntityBinder : StringHelperModelBinder
+    internal class ExecutionInstanceLogEntityBinder : StringHelperModelBinder
     {
         private readonly IFunctionInstanceLookup _logger;
 
@@ -116,11 +117,11 @@ namespace WebFrontEnd
     }
 
     // Bind FunctionIndexEntity
-    public class FunctionIndexEntityBinder : StringHelperModelBinder
+    internal class FunctionDefinitionModelBinder : StringHelperModelBinder
     {
         private readonly IFunctionTableLookup _functionTable;
 
-        public FunctionIndexEntityBinder(IFunctionTableLookup functionTable)
+        public FunctionDefinitionModelBinder(IFunctionTableLookup functionTable)
         {
             _functionTable = functionTable;
         }
@@ -132,7 +133,7 @@ namespace WebFrontEnd
             {
                 modelState.AddModelError(modelName, "Invalid function id");
             }            
-            return func;
+            return new FunctionDefinitionModel(func);
         }
     }
 
@@ -144,7 +145,7 @@ namespace WebFrontEnd
             CloudBlobPath path;
             if (CloudBlobPath.TryParse(value, out path))
             {
-                return path;
+                return new CloudBlobPathModel(path);
             }
 
             modelState.AddModelError(modelName, "Illegal path syntax");

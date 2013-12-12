@@ -8,7 +8,7 @@ namespace Executor
     // Help executors queue a "FunctionCompleted" notification and Orchestrator reads it.
     // This keeps the Enqueue and Dequeue operation coupled together.
     // By queueing it, it also serializes write operations (accumulated from multiple executors) and makes them single threaded. 
-    public class ExecutionStatsAggregatorBridge : IFunctionCompleteLogger
+    internal class ExecutionStatsAggregatorBridge : IFunctionCompleteLogger
     {
         private readonly CloudQueue _queue;
 
@@ -17,7 +17,7 @@ namespace Executor
             _queue = queue;
         }
 
-        public class ExecutionFinishedPayload
+        internal class ExecutionFinishedPayload
         {
             // FunctionInstance Ids for functions that we just finished. 
             // Orchestrator cna look these up and apply the deltas. 

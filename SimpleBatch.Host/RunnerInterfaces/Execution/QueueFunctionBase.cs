@@ -7,7 +7,7 @@ using Executor;
 namespace RunnerInterfaces
 {
     // Bunder of interfaces needed for execution. Grouped together for convenience. 
-    public class QueueInterfaces
+    internal class QueueInterfaces
     {
         public IAccountInfo AccountInfo;
         public IFunctionInstanceLookup Lookup;
@@ -43,7 +43,7 @@ namespace RunnerInterfaces
     // Base class for providing a consistent implementation of IQueueFunction
     // this provides consistent treatment of logging facilities around submitting a function (eg, ExecutionInstanceLogEntity)
     // but abstracts away the actual raw queuing mechanism.
-    public abstract class QueueFunctionBase : IQueueFunction, IActivateFunction
+    internal abstract class QueueFunctionBase : IQueueFunction, IActivateFunction
     {
         protected readonly IFunctionUpdatedLogger _logger;
         protected readonly IFunctionInstanceLookup _lookup;

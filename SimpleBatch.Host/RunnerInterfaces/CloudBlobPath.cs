@@ -15,7 +15,7 @@ namespace RunnerInterfaces
     // - ToString should be suitable rowkey to coopreate with table indices.    
     // - Serialize to JSON as a single string. 
     [JsonConverter(typeof(CloudBlobPathConverter))] 
-    public class CloudBlobPath
+    internal class CloudBlobPath
     {
         private readonly string _containerName;
 
@@ -440,7 +440,7 @@ namespace RunnerInterfaces
         } // end class PArser
     }
 
-    public class CloudBlobPathConverter : StringConverter<CloudBlobPath>
+    internal class CloudBlobPathConverter : StringConverter<CloudBlobPath>
     {
         public override object ReadFromString(string value)
         {

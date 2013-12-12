@@ -12,14 +12,14 @@ namespace RunnerInterfaces
 {
     // Manifest of model binders that get dynamically invoked. 
     // This is created during indexing, and consumed by the RunnerHost.
-    public class ModelBinderManifest
+    internal class ModelBinderManifest
     {
         // List of model binders. Invoke these to set the configuration
         public Entry[] Entries { get; set; }
 
         // Call this function in the given assembly, type:
         //   public static Initialize(IConfiguration) 
-        public class Entry
+        internal class Entry
         {
             public string AssemblyName { get; set; }
             public string TypeName { get; set; }
@@ -50,7 +50,7 @@ namespace RunnerInterfaces
     // This BinderEntry then specifies where to find the binder.  
     // This is a table that maps types to model binders on the cloud. 
     // Like a cloud-based IOC. 
-    public class BinderEntry
+    internal class BinderEntry
     {
         public string AccountConnectionString { get; set; }
         public string InitType { get; set; }

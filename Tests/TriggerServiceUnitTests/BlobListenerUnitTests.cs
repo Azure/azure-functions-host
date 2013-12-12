@@ -3,6 +3,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using RunnerInterfaces;
 using TriggerService;
+using Utility = RunnerInterfaces.Utility;
 
 
 namespace TriggerServiceUnitTests

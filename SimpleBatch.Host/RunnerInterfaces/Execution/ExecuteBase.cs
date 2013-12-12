@@ -7,7 +7,7 @@ namespace RunnerInterfaces
 {
     // Various objects needed for execution.
     // @@@ Confirm this can be shared across requests
-    public class FunctionExecutionContext
+    internal class FunctionExecutionContext
     {
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
 
@@ -24,7 +24,7 @@ namespace RunnerInterfaces
 
     // Class to ensure a consistent execution experience w.r.t. logging, ExecutionInstanceLogEntity, etc. 
     // This is coupled to QueueFunctionBase.
-    public static class ExecutionBase
+    internal static class ExecutionBase
     {
         static Exception notFoundException = new System.EntryPointNotFoundException("Function not found");
 

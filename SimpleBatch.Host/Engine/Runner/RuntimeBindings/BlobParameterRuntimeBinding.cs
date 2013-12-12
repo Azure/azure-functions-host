@@ -11,7 +11,7 @@ using SimpleBatch;
 namespace RunnerHost
 {
     // Argument is single blob.
-    public class BlobParameterRuntimeBinding : ParameterRuntimeBinding
+    internal class BlobParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudBlobDescriptor Blob { get; set; }
         public bool IsInput { get; set; }
@@ -140,7 +140,7 @@ namespace RunnerHost
         }
     }
 
-    public class BlobAggregateParameterRuntimeBinding : ParameterRuntimeBinding
+    internal class BlobAggregateParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudBlobDescriptor BlobPathPattern { get; set; }
 

@@ -7,7 +7,7 @@ using SimpleBatch;
 namespace RunnerInterfaces
 {
     // $$$ Really scrutinize for race conditions and hammer stress test this.
-    public class PrereqManager : IPrereqManager
+    internal class PrereqManager : IPrereqManager
     {
         // PartKey, RowKey = PreReqGuid, target Guid. 
         // This is used as a secondary index into the prereq table

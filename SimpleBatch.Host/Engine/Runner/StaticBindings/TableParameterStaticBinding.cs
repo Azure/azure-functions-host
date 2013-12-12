@@ -4,7 +4,7 @@ using RunnerInterfaces;
 
 namespace Orchestrator
 {
-    public class TableParameterStaticBinding : ParameterStaticBinding
+    internal class TableParameterStaticBinding : ParameterStaticBinding
     {
         private string _tableName;
 

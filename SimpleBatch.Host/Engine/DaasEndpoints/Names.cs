@@ -8,7 +8,7 @@ namespace DaasEndpoints
 {
     // Provides common place to list all Azure endpoints.
     // This does not describe the schemas, payloads, etc for those endpoints. 
-    public static class EndpointNames
+    internal static class EndpointNames
     {
         // Suffix for quickly switching betten production and private runs.
         // Use only lowercase, no numbers, to comply with all the naming restrictions.

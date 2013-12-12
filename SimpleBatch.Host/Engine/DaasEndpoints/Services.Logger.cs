@@ -15,7 +15,7 @@ using SimpleBatch;
 namespace DaasEndpoints
 {
     // Services related to logging
-    public partial class Services
+    internal partial class Services
     {
         public IPrereqManager GetPrereqManager()
         {            

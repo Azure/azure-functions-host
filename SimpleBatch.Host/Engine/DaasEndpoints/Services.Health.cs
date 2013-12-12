@@ -13,7 +13,7 @@ using System.Diagnostics;
 
 namespace DaasEndpoints
 {
-    public partial class Services
+    internal partial class Services
     {
         private CloudBlobContainer GetHealthLogContainer()
         {
@@ -88,7 +88,7 @@ namespace DaasEndpoints
     }
 
 
-    public class ServiceHealthStatus
+    internal class ServiceHealthStatus
     {
         public IDictionary<string, ExecutionRoleHeartbeat> Executors { get; set; }
 

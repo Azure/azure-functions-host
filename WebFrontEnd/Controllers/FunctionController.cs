@@ -9,6 +9,7 @@ using Orchestrator;
 using RunnerInterfaces;
 using Microsoft.WindowsAzure.StorageClient;
 using System.IO;
+using WebFrontEnd.Models.Protocol;
 
 namespace WebFrontEnd.Controllers
 {
@@ -21,7 +22,7 @@ namespace WebFrontEnd.Controllers
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IQueueFunction _queueFunction;
 
-        public FunctionController(IQueueFunction queueFunction, IFunctionTableLookup functionTableLookup)
+        internal FunctionController(IQueueFunction queueFunction, IFunctionTableLookup functionTableLookup)
         {
             _queueFunction = queueFunction;
             _functionTableLookup = functionTableLookup;
@@ -32,7 +33,7 @@ namespace WebFrontEnd.Controllers
 
         // Show all the static information 
         [HttpGet]
-        public ActionResult Index(FunctionDefinition func)
+        public ActionResult Index(FunctionDefinitionModel func)
         {
             return RenderInvokePageWorker(func, null);
         }
@@ -53,25 +54,25 @@ namespace WebFrontEnd.Controllers
                     {
                         return b.Path.ContainerName;
                     }
-                }                
+                }
             }
             return null;
         }
 
         [HttpPost]
-        public ActionResult Upload(FunctionDefinition func)
+        public ActionResult Upload(FunctionDefinitionModel func)
         {
-            string inputContainerName = GetInputContainer(func);
+            string inputContainerName = GetInputContainer(func.UnderlyingObject);
 
             if (Request.Files.Count == 1)
-            {            
+            {
                 var file = Request.Files[0];
                 if (file != null && file.ContentLength > 0)
                 {
                     string filename = Path.GetFileName(file.FileName);
 
 
-                    var client = func.GetAccount().CreateCloudBlobClient();
+                    var client = func.UnderlyingObject.GetAccount().CreateCloudBlobClient();
                     var container = client.GetContainerReference(inputContainerName);
                     var blob = container.GetBlobReference(filename);
 
@@ -79,18 +80,16 @@ namespace WebFrontEnd.Controllers
                     blob.UploadFromStream(file.InputStream);
 
                     // Then set invoke args. 
-                    var instance = Orchestrator.Worker.GetFunctionInvocation(func, blob);
+                    var instance = Worker.GetFunctionInvocation(func.UnderlyingObject, blob);
                     return RenderInvokePageWorker(func, instance.Args);
                 }
             }
-
-            return new ContentResult { Content = "Error. Bad upload" };           
-            
+            return new ContentResult { Content = "Error. Bad upload" };
         }
 
         // Called when Run is converting from named parameters to full arg instances
         [HttpPost]
-        public ActionResult ComputeArgsFromNames(FunctionDefinition func, string[] key)
+        public ActionResult ComputeArgsFromNames(FunctionDefinitionModel func, string[] key)
         {
             // Convert to a function instance. 
             string[] names = func.Flow.GetInputParameters().ToArray();
@@ -102,24 +101,24 @@ namespace WebFrontEnd.Controllers
             }
 
             // USe orchestrator to do bindings.
-            var instance = Orchestrator.Worker.GetFunctionInvocation(func, d);
+            var instance = Orchestrator.Worker.GetFunctionInvocation(func.UnderlyingObject, d);
 
             return RenderInvokePageWorker(func, instance.Args);
         }
 
         // Called to get a run request that would "replay" a previous execution instance.
         [HttpGet]
-        public ActionResult InvokeFunctionReplay(FunctionInvokeRequest instance)
+        public ActionResult InvokeFunctionReplay(FunctionInvokeRequestModel instance)
         {
             var parentGuid = instance.Id;
 
-            FunctionDefinition func = _functionTableLookup.Lookup(instance.Location);
-            return RenderInvokePageWorker(func, instance.Args, parentGuid);
+            FunctionDefinition func = _functionTableLookup.Lookup(instance.UnderlyingObject.Location);
+            return RenderInvokePageWorker(new FunctionDefinitionModel(func), instance.UnderlyingObject.Args, parentGuid);
         }
 
         // This is the common worker that everything feeds down into.
         // Seed the input dialog with the given arg instances
-        private ActionResult RenderInvokePageWorker(FunctionDefinition func, ParameterRuntimeBinding[] args, Guid? replayGuid = null)
+        private ActionResult RenderInvokePageWorker(FunctionDefinitionModel func, ParameterRuntimeBinding[] args, Guid? replayGuid = null)
         {
             if (func == null)
             {
@@ -136,7 +135,7 @@ namespace WebFrontEnd.Controllers
             }
             model.Descriptor = func;
             model.KeyNames = flows.GetInputParameters().ToArray();
-            model.Parameters = LogAnalysis.GetParamInfo(func);
+            model.Parameters = LogAnalysis.GetParamInfo(func.UnderlyingObject);
             if (args != null)
             {
                 LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
@@ -144,10 +143,10 @@ namespace WebFrontEnd.Controllers
 
             // If function has an input blob, mark the name (for cosmetic purposes)
             // Uploading to this container can trigger the blob. 
-            string inputContainerName = GetInputContainer(func);
+            string inputContainerName = GetInputContainer(func.UnderlyingObject);
             if (inputContainerName != null)
             {
-                model.UploadContainerName = Utility.GetAccountName(func.GetAccount()) + "/" + inputContainerName;
+                model.UploadContainerName = Utility.GetAccountName(func.UnderlyingObject.GetAccount()) + "/" + inputContainerName;
             }
 
             // Precede the args
@@ -156,7 +155,7 @@ namespace WebFrontEnd.Controllers
 
         // Post when we actually submit the invoke. 
         [HttpPost]
-        public ActionResult InvokeFunctionWithArgs(FunctionDefinition func, string[] argValues, Guid? replayGuid)
+        public ActionResult InvokeFunctionWithArgs(FunctionDefinitionModel func, string[] argValues, Guid? replayGuid)
         {
             if (argValues == null)
             {
@@ -165,9 +164,9 @@ namespace WebFrontEnd.Controllers
             ParameterRuntimeBinding[] args = new ParameterRuntimeBinding[argValues.Length];
 
             var flows = func.Flow.Bindings;
-            var account = func.GetAccount();
+            var account = func.UnderlyingObject.GetAccount();
 
-            IRuntimeBindingInputs inputs = new RunnerHost.RuntimeBindingInputs(func.Location);
+            IRuntimeBindingInputs inputs = new RunnerHost.RuntimeBindingInputs(func.UnderlyingObject.Location);
 
             for (int i = 0; i < argValues.Length; i++)
             {
@@ -182,7 +181,7 @@ namespace WebFrontEnd.Controllers
 
             FunctionInvokeRequest instance = new FunctionInvokeRequest();
             instance.Args = args;
-            instance.Location = func.Location;
+            instance.Location = func.UnderlyingObject.Location;
 
             if (replayGuid.HasValue && replayGuid != Guid.Empty)
             {
