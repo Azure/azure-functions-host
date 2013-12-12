@@ -4,5 +4,18 @@
 
 @Html.Partial("_Header")
 <div class="container-fluid">
-    @RenderBody()  
+    @if (WebFrontEnd.HostVersionConfig.HasWarning)
+    {
+        foreach (RunnerInterfaces.HostVersion warning in WebFrontEnd.HostVersionConfig.Warnings)
+        {
+            <p class="text-warning">
+                <i class="icon-warning-sign"></i> Warning: A host is using @warning.Label, which this site extension does not support.
+                @if (!String.IsNullOrEmpty(warning.Link))
+                {
+                    <a href="@warning.Link">Details</a>
+                }
+            </p>
+        }
+    }
+    @RenderBody()
 </div>

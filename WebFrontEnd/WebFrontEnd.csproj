@@ -145,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Antares\CodeFile1.cs" />
+    <Compile Include="App_Start\HostVersionConfig.cs" />
     <Compile Include="UserFunctions.cs" />
     <Compile Include="App_Start\AppModule.cs" />
     <Compile Include="App_Start\BundleConfig.cs" />

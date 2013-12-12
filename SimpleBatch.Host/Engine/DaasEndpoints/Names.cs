@@ -58,5 +58,7 @@ namespace DaasEndpoints
         public const string DaasControlContainerName = prefix + "-control";
 
         public const string RunningHostTableName = "AzureJobsRunningHost";
+
+        public const string VersionContainerName = "azure-jobs-versions";
     }
 }

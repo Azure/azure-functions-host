@@ -5,7 +5,7 @@
     {
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs
-        public const string ConsoleOuputLogContainerName = "daas" + "-invoke-log";
+        public const string ConsoleOuputLogContainerName = "daas-invoke-log";
 
         // When a function is completed executing, it can queue a message here. The queue reader can then
         // aggregate statistcs in a single threaded way. 

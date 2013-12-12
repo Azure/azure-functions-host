@@ -9,6 +9,7 @@ using DaasEndpoints;
 using RunnerInterfaces;
 using System.Diagnostics;
 using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure;
 
 namespace WebFrontEnd
 {
@@ -34,6 +35,7 @@ namespace WebFrontEnd
                     Bind<ConfigurationService>().ToConstant(configService);
                     Bind<AppConfiguration>().ToConstant(appConfig);
                     Bind<Services>().ToConstant(services); // $$$ eventually remove this.
+                    Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
                 }
                 catch (Exception e)
                 {
@@ -72,6 +74,13 @@ namespace WebFrontEnd
                 return;
             }
             Bind<IQueueFunction>().ToConstant(services.GetQueueFunction());
+        }
+
+        private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
+        {
+            CloudBlobClient client = account.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(EndpointNames.VersionContainerName);
+            return new HostVersionReader(container);
         }
 
         // ### Shouldn't need this. But function instance page demands it just to render.

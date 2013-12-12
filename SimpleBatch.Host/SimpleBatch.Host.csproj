@@ -53,6 +53,7 @@
     <Compile Include="Engine\DaasEndpoints\Helpers.cs" />
     <Compile Include="Engine\DaasEndpoints\KuduQueueFunction.cs" />
     <Compile Include="Engine\DaasEndpoints\Names.cs" />
+    <Compile Include="Engine\DaasEndpoints\HostVersionReader.cs" />
     <Compile Include="Engine\DaasEndpoints\RunningHostTableReader.cs" />
     <Compile Include="Engine\DaasEndpoints\RunningHostTableWriter.cs" />
     <Compile Include="Engine\DaasEndpoints\Services.cs" />
@@ -137,6 +138,8 @@
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionFlow.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionTrigger.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\IFunctionTable.cs" />
+    <Compile Include="RunnerInterfaces\Host\HostVersion.cs" />
+    <Compile Include="RunnerInterfaces\Host\IHostVersionReader.cs" />
     <Compile Include="RunnerInterfaces\Host\IRunningHostTableWriter.cs" />
     <Compile Include="RunnerInterfaces\Host\IRunningHostTableReader.cs" />
     <Compile Include="RunnerInterfaces\Host\RunningHost.cs" />
