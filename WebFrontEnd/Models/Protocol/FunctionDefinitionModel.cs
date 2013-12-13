@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using RunnerInterfaces;
 
 namespace WebFrontEnd.Models.Protocol
@@ -11,12 +10,6 @@ namespace WebFrontEnd.Models.Protocol
         internal FunctionDefinitionModel(FunctionDefinition underlyingObject)
         {
             UnderlyingObject = underlyingObject;
-        }
-
-        internal FunctionDefinitionModel(FunctionDefinition underlyingObject, RunningHost[] hosts)
-            : this(underlyingObject)
-        {
-            HostIsRunning = HasValidHeartbeat(underlyingObject, hosts);
         }
 
         public string Description
@@ -44,16 +37,7 @@ namespace WebFrontEnd.Models.Protocol
             get { return new FunctionTriggerModel(UnderlyingObject.Trigger); }
         }
 
-        public bool? HostIsRunning { get; private set; }
-
         public string RowKey { get { return UnderlyingObject.ToString(); } }
-
-        private static bool HasValidHeartbeat(FunctionDefinition func, RunningHost[] heartbeats)
-        {
-            string assemblyFullName = func.GetAssemblyFullName();
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.AssemblyFullName == assemblyFullName);
-            return RunningHost.IsValidHeartbeat(heartbeat);
-        }
 
         public override string ToString()
         {

@@ -22,12 +22,12 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
 [assembly:
-                InternalsVisibleTo("ConsoleApplication1"),
-                InternalsVisibleTo("TestLocalHost"),
-                InternalsVisibleTo("ConsoleApplication1"),
-                InternalsVisibleTo("OrchestratorUnitTests"),
-                InternalsVisibleTo("Azure20SdkUnitTests"),
-                InternalsVisibleTo("TriggerServiceUnitTests"),
-                InternalsVisibleTo("RebuildFunctionQueryTables"),
-                InternalsVisibleTo("LiveAzureTests"),
-                InternalsVisibleTo("WebFrontEnd")]
+           InternalsVisibleTo("ConsoleApplication1"),
+           InternalsVisibleTo("TestLocalHost"),
+           InternalsVisibleTo("ConsoleApplication1"),
+           InternalsVisibleTo("OrchestratorUnitTests"),
+           InternalsVisibleTo("Azure20SdkUnitTests"),
+           InternalsVisibleTo("TriggerServiceUnitTests"),
+           InternalsVisibleTo("RebuildFunctionQueryTables"),
+           InternalsVisibleTo("LiveAzureTests"),
+           InternalsVisibleTo("WebFrontEnd")]

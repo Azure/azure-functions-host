@@ -60,13 +60,13 @@ namespace WebFrontEnd.Controllers
         public ActionResult ListAllFunctions()
         {
             var heartbeats = _heartbeatTable.ReadAll();
-            var allFunctions = _functionTableLookup.ReadAll().Select(f => new FunctionDefinitionModel(f, heartbeats));
+            var allFunctions = _functionTableLookup.ReadAll().Select(f => new FunctionDefinitionModel(f));
             var model = new FunctionListModel
             {
-                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location.UnderlyingObject)),
+                Functions = allFunctions.GroupBy(f => GetGroupingKey(f.Location.UnderlyingObject), f => new RunningFunctionDefinitionModel(f, heartbeats)),
             };
 
-            if (model.Functions.Any(g => g.Any(f => !f.HostIsRunning.Value)))
+            if (model.Functions.Any(g => g.Any(f => !f.HostIsRunning)))
             {
                 model.HasWarning = true;
             }

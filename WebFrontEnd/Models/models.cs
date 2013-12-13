@@ -66,7 +66,7 @@ namespace WebFrontEnd.Controllers
 
     public class FunctionListModel
     {
-        public IEnumerable<IGrouping<object, FunctionDefinitionModel>> Functions { get; set; }
+        public IEnumerable<IGrouping<object, RunningFunctionDefinitionModel>> Functions { get; set; }
 
         public bool HasWarning { get; set; }
     }

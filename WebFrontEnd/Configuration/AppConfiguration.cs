@@ -30,11 +30,6 @@ namespace WebFrontEnd.Configuration
         public Uri AntaresWorkerUrl { get; set; }
 
         /// <summary>
-        /// Gets the execution type used by this instance
-        /// </summary>
-        //public QueueFunctionType ExecutionType { get; set; }
-
-        /// <summary>
         /// Gets the password for this instance.
         /// </summary>
         public string LoginPassword { get; set; }

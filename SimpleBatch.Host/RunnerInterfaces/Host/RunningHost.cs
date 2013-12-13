@@ -40,7 +40,7 @@ namespace RunnerInterfaces
                 return false;
             }
 
-            return DateTime.UtcNow < heartbeat.LastHeartbeatUtc.Add(RunningHost.HeartbeatPollInterval);
+            return DateTime.UtcNow < heartbeat.LastHeartbeatUtc.Add(HeartbeatPollInterval);
         }
     }
 }

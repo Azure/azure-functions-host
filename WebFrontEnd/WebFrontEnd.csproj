@@ -142,7 +142,6 @@
       <Private>True</Private>
       <HintPath>..\packages\WebGrease.1.1.0\lib\Antlr3.Runtime.dll</HintPath>
     </Reference>
-    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Antares\CodeFile1.cs" />
@@ -160,6 +159,7 @@
     <Compile Include="Models\Protocol\ServiceHealthStatusModel.cs" />
     <Compile Include="Models\Protocol\TriggerReasonModel.cs" />
     <Compile Include="App_Start\HostVersionConfig.cs" />
+    <Compile Include="Models\RunningFunctionDefinitionModel.cs" />
     <Compile Include="UserFunctions.cs" />
     <Compile Include="App_Start\AppModule.cs" />
     <Compile Include="App_Start\BundleConfig.cs" />
