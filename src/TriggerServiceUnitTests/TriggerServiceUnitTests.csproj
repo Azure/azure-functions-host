@@ -3,11 +3,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{CA75D667-A785-4394-AA5C-3A6C658C23A7}</ProjectGuid>
+    <ProjectGuid>{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OrchestratorUnitTests</RootNamespace>
-    <AssemblyName>OrchestratorUnitTests</AssemblyName>
+    <RootNamespace>TriggerServiceUnitTests</RootNamespace>
+    <AssemblyName>TriggerServiceUnitTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -38,14 +38,6 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CsvReader, Version=0.9.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\CsvTools.1.0.7\lib\CsvReader.dll</HintPath>
-    </Reference>
-    <Reference Include="CsvReader.Azure, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\CsvTools.Azure.1.0.1\lib\CsvReader.Azure.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.1.7.0.3\lib\net35-full\Microsoft.WindowsAzure.Configuration.dll</HintPath>
@@ -55,7 +47,7 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Newtonsoft.Json.4.5.8\lib\net40\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\..\packages\Newtonsoft.Json.5.0.4\lib\net40\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -79,41 +71,21 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="CallUnitTests.cs" />
-    <Compile Include="CodeConfigFlowUnitTests.cs" />
-    <Compile Include="FlowUnitTestErrors.cs" />
-    <Compile Include="FlowUnitTests.cs" />
-    <Compile Include="IContextBinderTests.cs" />
-    <Compile Include="LocalOrchestratorTableTests.cs" />
-    <Compile Include="LocalOrchestratorTests.cs" />
-    <Compile Include="Mocks\MockBlobLeaseHolder.cs" />
-    <Compile Include="ModelBindingTests.cs" />
-    <Compile Include="ObjectBinderHelpersTest.cs" />
-    <Compile Include="ParserUnitTests.cs" />
-    <Compile Include="PrereqManagerTests.cs" />
+    <Compile Include="BlobListenerUnitTests.cs" />
+    <Compile Include="TimeCheckTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scenarios.cs" />
-    <Compile Include="TableSerializationTests.cs" />
-    <Compile Include="TableUnitTests.cs" />
-    <Compile Include="QueueCausalityHelper.cs" />
+    <Compile Include="TriggerMapSerializationTests.cs" />
+    <Compile Include="ValidateTriggers.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\SimpleBatch.Host\SimpleBatch.Host.csproj">
-      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
-      <Name>SimpleBatch.Host</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\SimpleBatch\SimpleBatch.csproj">
-      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
-      <Name>SimpleBatch</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ConfigTest.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <ProjectReference Include="..\SimpleBatch.Host\SimpleBatch.Host.csproj">
+      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
+      <Name>SimpleBatch.Host</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

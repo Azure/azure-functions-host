@@ -9,12 +9,8 @@ csx
 /packages
 /WebFrontEnd/Properties/PublishProfiles
 /TestResults
-/Secrets/Secrets.Password.cs
-/Tests/LiveAzureTests/app.config
 
-/CloudBinders/PrivateBinderList.csv
-/PublicDownload/Binaries
-*.azurePubXml
+/samples/Binaries
 
 UpgradeLog.htm
 UpgradeLog.xml

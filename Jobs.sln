@@ -1,29 +1,25 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFrontEnd", "WebFrontEnd\WebFrontEnd.csproj", "{45974999-9C53-48AD-83B9-519ECC8AB8F4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFrontEnd", "src\WebFrontEnd\WebFrontEnd.csproj", "{45974999-9C53-48AD-83B9-519ECC8AB8F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch", "SimpleBatch\SimpleBatch.csproj", "{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch", "src\SimpleBatch\SimpleBatch.csproj", "{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{80A9DA11-5C57-46C8-9B34-087FB663C3F8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrchestratorUnitTests", "src\OrchestratorUnitTests\OrchestratorUnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrchestratorUnitTests", "Tests\OrchestratorUnitTests\OrchestratorUnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveAzureTests", "Tests\LiveAzureTests\LiveAzureTests.csproj", "{CAF02AD6-CF84-41E7-AAB1-F3BE31ECD66D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiveAzureTests", "src\LiveAzureTests\LiveAzureTests.csproj", "{CAF02AD6-CF84-41E7-AAB1-F3BE31ECD66D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CloudBinders", "CloudBinders", "{35F3CED4-2254-4212-90FE-2F05AED993F2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GauntletTest", "src\GauntletTest\GauntletTest.csproj", "{158BAE27-1E61-4DE8-A409-D1FF09336F3D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GauntletTest", "GauntletTest\GauntletTest.csproj", "{158BAE27-1E61-4DE8-A409-D1FF09336F3D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerServiceUnitTests", "src\TriggerServiceUnitTests\TriggerServiceUnitTests.csproj", "{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerServiceUnitTests", "Tests\TriggerServiceUnitTests\TriggerServiceUnitTests.csproj", "{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkBinders", "src\Azure20SdkBinders\Azure20SdkBinders.csproj", "{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkBinders", "CloudBinders\Azure20SdkBinders\Azure20SdkBinders.csproj", "{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkUnitTests", "src\Azure20SdkUnitTests\Azure20SdkUnitTests.csproj", "{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkUnitTests", "Tests\Azure20SdkUnitTests\Azure20SdkUnitTests.csproj", "{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch.Host", "SimpleBatch.Host\SimpleBatch.Host.csproj", "{0E095CB2-3030-49FF-966C-785F1A55F0C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch.Host", "src\SimpleBatch.Host\SimpleBatch.Host.csproj", "{0E095CB2-3030-49FF-966C-785F1A55F0C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -72,12 +68,10 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49} = {80A9DA11-5C57-46C8-9B34-087FB663C3F8}
 		{CAF02AD6-CF84-41E7-AAB1-F3BE31ECD66D} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{158BAE27-1E61-4DE8-A409-D1FF09336F3D} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{71B9C9BA-28D8-4073-B4D5-4B5512807FD0} = {639967B0-0544-4C52-94AC-9A3D25E33256}
-		{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A} = {35F3CED4-2254-4212-90FE-2F05AED993F2}
 	EndGlobalSection
 EndGlobal
