@@ -13,7 +13,7 @@ namespace SimpleBatch
 {
     // Public interface for an app to host SimpleBatch
     // and invoke simple batch functions. 
-    internal class Host
+    public class Host
     {
         // Where we log things to. 
         // Null if logging is not supported (this is required for pumping).        
