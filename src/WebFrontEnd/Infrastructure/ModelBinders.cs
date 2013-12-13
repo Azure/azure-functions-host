@@ -28,7 +28,7 @@ namespace WebFrontEnd
 
                 ModelBinders.Binders.Add(typeof(FunctionDefinitionModel), new FunctionDefinitionModelBinder(functionTable));
                 ModelBinders.Binders.Add(typeof(CloudBlobPathModel), new CloudBlobPathBinder());
-                ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntity), new ExecutionInstanceLogEntityBinder(lookup));
+                ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntityModel), new ExecutionInstanceLogEntityBinder(lookup));
                 ModelBinders.Binders.Add(typeof(FunctionInvokeRequestModel), new FunctionInstanceBinder(lookup));
 
             }
@@ -49,12 +49,14 @@ namespace WebFrontEnd
 
         public override object Parse(string value, string modelName, ModelStateDictionary modelState)
         {
-            ExecutionInstanceLogEntity log = ParseWorker(value, modelName, modelState);
+            var log = ParseWorker(value, modelName, modelState);
             if (log == null)
             {
                 return null;
             }
-            return new FunctionInvokeRequestModel(log.FunctionInstance);
+
+            FunctionInvokeRequest request = log.FunctionInstance.UnderlyingObject;
+            return new FunctionInvokeRequestModel(request);
         }
     }
 
@@ -73,7 +75,7 @@ namespace WebFrontEnd
             return ParseWorker(value, modelName, modelState);
         }
 
-        protected ExecutionInstanceLogEntity ParseWorker(string value, string modelName, ModelStateDictionary modelState)
+        protected ExecutionInstanceLogEntityModel ParseWorker(string value, string modelName, ModelStateDictionary modelState)
         {
             Guid g;
             if (!Guid.TryParse(value, out g))
@@ -87,7 +89,8 @@ namespace WebFrontEnd
             {
                 modelState.AddModelError(modelName, "Invalid function log entry. Either the entry is invalid or logs have been deleted from the server.");
             }
-            return log;
+
+            return new ExecutionInstanceLogEntityModel(log);
         }
     }
 

@@ -7,6 +7,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using RunnerInterfaces;
+using System.Diagnostics;
 
 namespace DaasEndpoints
 {
@@ -24,6 +25,7 @@ namespace DaasEndpoints
             _container = container;
         }
 
+        [DebuggerNonUserCode]
         public HostVersion[] ReadAll()
         {
             BlobRequestOptions options = new BlobRequestOptions
@@ -34,7 +36,7 @@ namespace DaasEndpoints
             };
 
             List<HostVersion> versions = new List<HostVersion>();
-
+                        
             IEnumerable<IListBlobItem> lazyItems = _container.ListBlobs(options);
             IListBlobItem[] items;
 
