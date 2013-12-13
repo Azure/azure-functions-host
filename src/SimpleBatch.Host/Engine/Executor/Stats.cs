@@ -8,11 +8,11 @@ using SimpleBatch;
 namespace Executor
 {
     // Includes both reading and writing the secondary indices together. 
-    internal class ExecutionStatsAggregator : IFunctionCompleteLogger, IFunctionInstanceQuery
+    internal class ExecutionStatsAggregator : IFunctionInstanceLogger, IFunctionInstanceQuery
     {
         // in-memory cache of function entries. 
         // This corresponds to the azure table. 
-        private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs = new Dictionary<FunctionLocation,FunctionStatsEntity>();
+        private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs = new Dictionary<FunctionLocation, FunctionStatsEntity>();
 
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _table;
 
@@ -31,7 +31,7 @@ namespace Executor
         public ExecutionStatsAggregator(
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup)
         {
-            NotNull(tableLookup, "tableLookup");            
+            NotNull(tableLookup, "tableLookup");
             _tableLookup = tableLookup;
         }
 
@@ -39,9 +39,9 @@ namespace Executor
         public ExecutionStatsAggregator(
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup,
             AzureTable<FunctionLocation, FunctionStatsEntity> tableStatsSummary,
-            IAzureTable<FunctionInstanceGuid> tableMru, 
-            IAzureTable<FunctionInstanceGuid> tableMruByFunction, 
-            IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded, 
+            IAzureTable<FunctionInstanceGuid> tableMru,
+            IAzureTable<FunctionInstanceGuid> tableMruByFunction,
+            IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded,
             IAzureTable<FunctionInstanceGuid> tableMruFunctionFailed)
             : this(tableLookup)
         {
@@ -50,12 +50,12 @@ namespace Executor
             NotNull(tableMruByFunction, "tableMruByFunction");
             NotNull(tableMruByFunctionSucceeded, "tableMruByFunctionSucceeded");
             NotNull(tableMruFunctionFailed, "tableMruFunctionFailed");
-            
-            _table = tableStatsSummary;            
+
+            _table = tableStatsSummary;
             _tableMRU = tableMru;
             _tableMRUByFunction = tableMruByFunction;
             _tableMRUByFunctionSucceed = tableMruByFunctionSucceeded;
-            _tableMRUByFunctionFailed = tableMruFunctionFailed;                        
+            _tableMRUByFunctionFailed = tableMruFunctionFailed;
         }
 
         static void NotNull(object o, string paramName)
@@ -121,13 +121,13 @@ namespace Executor
             ptrs = ptrs.Take(N);
 
             IFunctionInstanceLookup lookup = this;
-            return from ptr in ptrs 
+            return from ptr in ptrs
                    let val = lookup.Lookup(ptr)
                    where val != null
                    select val;
         }
 
-        void IFunctionCompleteLogger.Flush()
+        public void Flush()
         {
             _tableMRU.Flush();
             _tableMRUByFunction.Flush();
@@ -143,19 +143,30 @@ namespace Executor
             _funcs.Clear(); // cause it to be reloaded 
         }
 
-        private void LogMru(ExecutionInstanceLogEntity log)
+        private string LogMru(ExecutionInstanceLogEntity log)
         {
-            if (!log.IsCompleted())
-            {
-                return;
-            }
             Guid instance = log.FunctionInstance.Id;
 
-            Dictionary<string, string> d = new Dictionary<string,string>();
-                        
+            Dictionary<string, string> d = new Dictionary<string, string>();
+
+            DateTime rowKeyTimestamp;
+
+            if (log.EndTime.HasValue)
+            {
+                rowKeyTimestamp = log.EndTime.Value;
+            }
+            else if (log.StartTime.HasValue)
+            {
+                rowKeyTimestamp = log.StartTime.Value;
+            }
+            else
+            {
+                rowKeyTimestamp = DateTime.UtcNow;
+            }
+
             // Use function's actual end time (so we can reindex)
             // and append with Now just in case there are ties. 
-            string rowKey = Utility.GetTickRowKey(log.EndTime.Value);
+            string rowKey = Utility.GetTickRowKey(rowKeyTimestamp);
 
             var ptr = new FunctionInstanceGuid(log);
             _tableMRU.Write("1", rowKey, ptr);
@@ -173,18 +184,33 @@ namespace Executor
                     break;
             }
 
+            return rowKey;
         }
 
-        // Called by the orchestrator (which gaurantees single-threaded access) sometime shortly after a 
-        // function finishes executing.
-        void IFunctionCompleteLogger.IndexCompletedFunction(ExecutionInstanceLogEntity log)
-        {   
+        private void DeleteIndex(string rowKey, ExecutionInstanceLogEntity log)
+        {
+            _tableMRU.Delete("1", rowKey);
+            _tableMRUByFunction.Delete(log.FunctionInstance.Location.ToString(), rowKey);
+        }
+
+        string IndexRunningFunction(ExecutionInstanceLogEntity log)
+        {
+            return LogMru(log);
+        }
+
+        void IndexCompletedFunction(ExecutionInstanceLogEntity log)
+        {
             LogMru(log);
 
-            FunctionLocation kind = log.FunctionInstance.Location;            
+            if (!log.IsCompleted())
+            {
+                return;
+            }
+
+            FunctionLocation kind = log.FunctionInstance.Location;
             FunctionStatsEntity stats;
             if (!_funcs.TryGetValue(kind, out stats))
-            {                
+            {
                 stats = _table.Lookup(log.FunctionInstance.Location);
                 if (stats == null)
                 {
@@ -208,7 +234,58 @@ namespace Executor
                     break;
             }
         }
-    }   
+
+        IFunctionInstanceLoggerContext IFunctionInstanceLogger.CreateContext(ExecutionInstanceLogEntity func)
+        {
+            return new InstanceContext(this, func);
+        }
+
+        // Tracks the function instance as it is logged.
+        // For example, logging a completed function deletes old log items from the running state.
+        private class InstanceContext : IFunctionInstanceLoggerContext
+        {
+            private readonly ExecutionStatsAggregator _parent;
+            private readonly ExecutionInstanceLogEntity _logItem;
+
+            private string rowKey;
+
+            public InstanceContext(ExecutionStatsAggregator parent, ExecutionInstanceLogEntity logItem)
+            {
+                if (parent == null)
+                {
+                    throw new ArgumentNullException("parent");
+                }
+
+                if (logItem == null)
+                {
+                    throw new ArgumentNullException("logItem");
+                }
+
+                _parent = parent;
+                _logItem = logItem;
+            }
+
+            public void IndexRunningFunction()
+            {
+                rowKey = _parent.IndexRunningFunction(_logItem);
+            }
+
+            public void IndexCompletedFunction()
+            {
+                if (rowKey != null)
+                {
+                    _parent.DeleteIndex(rowKey, _logItem);
+                }
+
+                _parent.IndexCompletedFunction(_logItem);
+            }
+
+            public void Flush()
+            {
+                _parent.Flush();
+            }
+        }
+    }
 
     // Statistics per function type, aggregated across all instances.
     // These must all be monotonically increasing numbers, since they're continually aggregated.
@@ -220,5 +297,5 @@ namespace Executor
         public int CountCompleted { get; set; } // Total run            
         public int CountErrors { get; set; } // number of runs with failure status
         public TimeSpan Runtime { get; set; } // total time spent running.         
-    }   
+    }
 }

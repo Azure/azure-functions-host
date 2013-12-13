@@ -59,21 +59,12 @@ namespace DaasEndpoints
             return new ExecutionStatsAggregator(tableLookup);
         }
 
-        // Used by Executors to notify of completed functions
-        // Will send a message to orchestrator to aggregate stats together.
-        public ExecutionStatsAggregatorBridge GetStatsAggregatorBridge()
-        {
-            var queue = this.GetExecutionCompleteQueue();
-            return new ExecutionStatsAggregatorBridge(queue);
-        }
-
         public IFunctionInstanceQuery GetFunctionInstanceQuery()
         {
             return GetStatsAggregatorInternal();
         }
 
-        // Actually does the aggregation. Receives a message from the bridge.
-        public IFunctionCompleteLogger GetFunctionCompleteLogger()
+        public IFunctionInstanceLogger GetFunctionInstanceLogger()
         {
             return GetStatsAggregatorInternal();
         }

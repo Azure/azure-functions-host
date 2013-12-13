@@ -26,7 +26,6 @@ namespace Executor
                     addHeaderInfo,
                     AzureExecutionEndpointNames.ConsoleOuputLogContainerName
                 ),
-                Bridge = _services.GetStatsAggregatorBridge(),
                 Logger = _services.GetFunctionUpdatedLogger(),
                 FunctionTable = _services.GetFunctionTable(),
             };

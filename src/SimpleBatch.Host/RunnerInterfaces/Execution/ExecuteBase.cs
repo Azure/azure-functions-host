@@ -16,7 +16,7 @@ namespace RunnerInterfaces
                 
         // Mark when a function has finished execution. This will send a message that causes the function's 
         // execution statistics to get aggregated. 
-        public IFunctionCompleteLogger Bridge { get; set; }
+        public IFunctionInstanceLogger Bridge { get; set; }
 
         // Used to confirm function still exists just prior to execution
         public IFunctionTableLookup FunctionTable { get; set; }
@@ -42,6 +42,16 @@ namespace RunnerInterfaces
 
             var logger = context.Logger;
             var bridge = context.Bridge;
+            IFunctionInstanceLoggerContext logItemContext;
+
+            if (bridge != null)
+            {
+                logItemContext = bridge.CreateContext(logItem);
+            }
+            else
+            {
+                logItemContext = null;
+            }
 
             logItem.FunctionInstance = instance;
             logItem.StartTime = DateTime.UtcNow;
@@ -58,7 +68,7 @@ namespace RunnerInterfaces
 
                 if (functionExists)
                 {
-                    Work(instance, context, fpInvokeFunc, logItem);
+                    Work(instance, context, fpInvokeFunc, logItem, logItemContext);
                 }
                 else
                 {
@@ -72,11 +82,10 @@ namespace RunnerInterfaces
                 logItem.EndTime = DateTime.UtcNow;
                 logger.Log(logItem);
 
-                // Invoke ExecutionStatsAggregatorBridge to queue a message back for the orchestrator. 
-                if (bridge != null) // @@@
+                if (logItemContext != null)
                 {
-                    bridge.IndexCompletedFunction(logItem);
-                    bridge.Flush();
+                    logItemContext.IndexCompletedFunction();
+                    logItemContext.Flush();
                 }
             }
         }
@@ -91,7 +100,8 @@ namespace RunnerInterfaces
             // Returns a FunctionExecutionResult that describes the execution results of the function. 
             Func<TextWriter, FunctionExecutionResult> fpInvokeFunc,
 
-            ExecutionInstanceLogEntity logEntity    // current request log entity
+            ExecutionInstanceLogEntity logEntity,   // current request log entity
+            IFunctionInstanceLoggerContext logEntityContext
             )
         {
             FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
@@ -100,6 +110,12 @@ namespace RunnerInterfaces
 
             IFunctionUpdatedLogger logger = context.Logger;
             logger.Log(logEntity);
+
+            if (logEntityContext != null)
+            {
+                logEntityContext.IndexRunningFunction();
+                logEntityContext.Flush();
+            }
 
             try
             {

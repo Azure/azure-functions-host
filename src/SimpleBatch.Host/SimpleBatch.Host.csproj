@@ -121,7 +121,6 @@
     <Compile Include="RunnerInterfaces\ContainerDownloader.cs" />
     <Compile Include="RunnerInterfaces\Execution\AzureExecutionEndpointNames.cs" />
     <Compile Include="RunnerInterfaces\Execution\ExecuteBase.cs" />
-    <Compile Include="RunnerInterfaces\Execution\ExecutionStatsAggregatorBridge.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionExecutionResult.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionOutputLog.cs" />
     <Compile Include="RunnerInterfaces\Execution\IAccountInfo.cs" />

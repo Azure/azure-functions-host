@@ -51,7 +51,7 @@ namespace SimpleBatch
             var logger = new WebExecutionLogger(services, LogRole, roleName);
             var ctx = logger.GetExecutionContext();
             ctx.FunctionTable = functionTableLookup; 
-            ctx.Bridge = services.GetFunctionCompleteLogger(); // aggregates stats instantly. 
+            ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
 
             // This is direct execution, doesn't queue up. 
             IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, LogInvoke);

@@ -4,15 +4,18 @@ using Executor;
 
 namespace RunnerInterfaces
 {
-    // Log when a function has completed.
-    // This can also write and secondary indices needed for querying the logs. 
-    // Called by the Orchestrator. 
-    // $$$ can this be infererd when IFunctionUpdatedLogger logs a completed func?
-    internal interface IFunctionCompleteLogger
+    internal interface IFunctionInstanceLogger
     {
-        // Called by the orchestrator (which gaurantees single-threaded access) sometime shortly after a 
-        // function finishes executing.
-        void IndexCompletedFunction(ExecutionInstanceLogEntity func);
+        IFunctionInstanceLoggerContext CreateContext(ExecutionInstanceLogEntity func);
+
+        void Flush();
+    }
+
+    internal interface IFunctionInstanceLoggerContext
+    {
+        void IndexRunningFunction();
+
+        void IndexCompletedFunction();
 
         void Flush();
     }

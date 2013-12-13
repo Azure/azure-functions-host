@@ -41,7 +41,7 @@ namespace WebFrontEnd
             var logger = new WebExecutionLogger(services, LogRole, roleName);
             var ctx = logger.GetExecutionContext();
             ctx.FunctionTable = functionTableLookup; // @@@ 
-            ctx.Bridge = services.GetFunctionCompleteLogger(); // aggregates stats instantly. 
+            ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
 
             // kernel.Bind<FunctionExecutionContext>().ToConstant(ctx);
 
