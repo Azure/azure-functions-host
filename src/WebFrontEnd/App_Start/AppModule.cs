@@ -37,7 +37,7 @@ namespace WebFrontEnd
                     Bind<Services>().ToConstant(services); // $$$ eventually remove this.
                     Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     // Invalid
                     SimpleBatchStuff.BadInit = true; // $$$ don't user a global flag.                    
