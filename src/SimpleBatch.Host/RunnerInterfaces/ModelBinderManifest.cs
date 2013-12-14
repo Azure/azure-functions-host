@@ -6,9 +6,9 @@ using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Manifest of model binders that get dynamically invoked. 
     // This is created during indexing, and consumed by the RunnerHost.

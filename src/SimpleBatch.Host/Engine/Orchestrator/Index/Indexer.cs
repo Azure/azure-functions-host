@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Abstraction over a MethodInfo so that we can bind from either
     // attributes or code-config.
@@ -385,8 +385,8 @@ namespace Orchestrator
 
             IndexerConfig config = new IndexerConfig(fpFuncLookup);
             
-            RunnerHost.Program.AddDefaultBinders(config);
-            RunnerHost.Program.ApplyHooks(type, config);
+            RunnerProgram.AddDefaultBinders(config);
+            RunnerProgram.ApplyHooks(type, config);
 
             var context = new IndexTypeContext { Config = config };
 

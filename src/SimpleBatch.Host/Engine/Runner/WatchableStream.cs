@@ -9,10 +9,10 @@ using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class WatchableStream : DelegatingStream, ISelfWatch
     {

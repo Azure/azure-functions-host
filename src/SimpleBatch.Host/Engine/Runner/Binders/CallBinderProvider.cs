@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using SimpleBatch;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // BinderProvider for adding an ICall binder. 
     // This binds to a FunctionInvoker object, which doesn't actually implement ICall, so
@@ -65,7 +65,7 @@ namespace RunnerHost
 
         private IDictionary<string, string> ResolveArgs(object arguments)
         {
-            var d = RunnerInterfaces.ObjectBinderHelpers.ConvertObjectToDict(arguments);
+            var d = ObjectBinderHelpers.ConvertObjectToDict(arguments);
             CallUtil.AddFunctionGuid(_thisFunc, d);
             return d;
         }

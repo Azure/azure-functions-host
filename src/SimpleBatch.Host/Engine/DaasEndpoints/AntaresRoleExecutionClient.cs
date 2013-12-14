@@ -1,9 +1,9 @@
 ﻿using System;
-using Executor;
-using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace DaasEndpoints
+using Microsoft.WindowsAzure.StorageClient;
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {    
     // For using Antares as a worker role. 
     // Queue it like normal, but then do an HTTP ping. 

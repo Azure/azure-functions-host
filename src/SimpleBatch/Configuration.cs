@@ -5,9 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using SimpleBatch;
 
-namespace SimpleBatch
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Argument can implement this to be self describing. 
     // This can be queried on another thread. 

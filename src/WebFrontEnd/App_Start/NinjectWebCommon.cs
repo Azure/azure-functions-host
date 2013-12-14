@@ -5,15 +5,16 @@ using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
 using Microsoft.Web.Infrastructure.DynamicModuleHelper;
+using Microsoft.WindowsAzure.Jobs.Dashboard.App_Start;
 using Ninject;
 using Ninject.Modules;
 using Ninject.Web.Common;
-using WebFrontEnd.Infrastructure;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure;
 
-[assembly: WebActivator.PreApplicationStartMethod(typeof(WebFrontEnd.App_Start.NinjectWebCommon), "Start")]
-[assembly: WebActivator.ApplicationShutdownMethodAttribute(typeof(WebFrontEnd.App_Start.NinjectWebCommon), "Stop")]
+[assembly: WebActivator.PreApplicationStartMethod(typeof(NinjectWebCommon), "Start")]
+[assembly: WebActivator.ApplicationShutdownMethodAttribute(typeof(NinjectWebCommon), "Stop")]
 
-namespace WebFrontEnd.App_Start
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.App_Start
 {
     public static class NinjectWebCommon 
     {

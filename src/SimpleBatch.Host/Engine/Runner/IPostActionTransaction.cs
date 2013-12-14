@@ -1,7 +1,7 @@
 ﻿using System;
-using SimpleBatch;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Bind result. Invoke a cleanup action only if the function runs successfully.
     // Invoked after all other BindResults get OnPostAction

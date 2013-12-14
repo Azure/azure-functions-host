@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Executor;
+
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // This tracks causality via the queue message payload. 
     // Important that this can interoperate with external queue messages, so be resilient to a missing guid marker. 

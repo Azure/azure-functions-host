@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Executor;
+
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Records the function instance that created a blob. 
     // Used to track blob causality. This lets functions that read from a blob know who wrote that blob, and thus

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage;
-using SimpleBatch;
 
-namespace Azure20SdkBinders
+
+namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 {
     public static class Utility
     {

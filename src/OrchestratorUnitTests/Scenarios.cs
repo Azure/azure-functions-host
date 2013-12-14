@@ -7,45 +7,18 @@ using System.Text;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class Scenarios
     {
         // Test basic propagation between blobs. 
-        [TestMethod]
-        public void TestTimer()
-        {
-            var account = TestStorage.GetAccount();
-            string container = @"daas-test-input";
-            Utility.DeleteContainer(account, container);
-
-            ProgramTimer.counter = 0;
-            var w = LocalOrchestrator.Build(account, typeof(ProgramTimer));
-
-            // Fires every 2 seconds. 
-            int waitTime = 5000;
-            int pauseTime = 100;
-
-            while (waitTime > 0)
-            {
-                w.Poll();
-
-                waitTime -= pauseTime;
-                Thread.Sleep(pauseTime);
-            }
-                        
-            // Fires once immediately, at least 2 more times in a 5 second window. 
-            Assert.IsTrue(ProgramTimer.counter < 6, "Counter fired too many times");
-            Assert.IsTrue(ProgramTimer.counter >= 3);
-        }
-
-          // Test basic propagation between blobs. 
         [TestMethod]
         public void TestQueue()
         {
@@ -114,18 +87,7 @@ namespace OrchestratorUnitTests
         }
     }
 
-    class ProgramTimer
-    {
-        public static int counter = 0;
-
-        [Timer("00:00:02")] // String is TimeSpan.ToString()
-        public static void Func1()
-        {
-            counter++;
-        }      
-    }
-
-    // Blob --> queue message --> Blob
+ // Blob --> queue message --> Blob
     class ProgramQueues
     {
         public class Payload

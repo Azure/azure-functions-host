@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure;
 using Newtonsoft.Json;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class JsonCustom
     {

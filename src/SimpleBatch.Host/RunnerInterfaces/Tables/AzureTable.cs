@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure;
-using RunnerInterfaces;
-using SimpleBatch;
+using Microsoft.WindowsAzure.Jobs;
+
 
 namespace AzureTables
 {

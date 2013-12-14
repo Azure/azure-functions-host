@@ -7,10 +7,10 @@ using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Proviide an atomic adjsut on tables.     
-    public static partial class Utility
+    internal static partial class Utility
     {
         public static int AtomicAdjust(CloudStorageAccount account, string tableName,
             string partitionKey, string rowKey, string propName,

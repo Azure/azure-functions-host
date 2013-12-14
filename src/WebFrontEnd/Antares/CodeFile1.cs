@@ -1,19 +1,19 @@
 ﻿// @@@ This needs to get factored out into a nuget package and be reusable. 
 
-using DaasEndpoints;
-using Executor;
+
+
 using Ninject;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using WebFrontEnd.Configuration;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Configuration;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     class SimpleBatchStuff
     {
@@ -97,7 +97,7 @@ namespace WebFrontEnd
                     Console.SetOut(consoleOutput);
 
                     // @@@ May need to override config to set ICall
-                    var result = RunnerHost.Program.MainWorker(request);
+                    var result = RunnerProgram.MainWorker(request);
                     Console.SetOut(oldOutput);
                     return result;
                 };

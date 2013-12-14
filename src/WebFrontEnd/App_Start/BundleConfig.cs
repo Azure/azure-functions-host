@@ -1,7 +1,7 @@
 ﻿using System.Web;
 using System.Web.Optimization;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class BundleConfig
     {

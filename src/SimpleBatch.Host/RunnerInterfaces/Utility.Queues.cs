@@ -4,9 +4,9 @@ using System.Diagnostics;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
-    static partial class Utility
+    internal static partial class Utility
     {
         [DebuggerNonUserCode]
         public static void DeleteQueue(CloudStorageAccount account, string queueName)

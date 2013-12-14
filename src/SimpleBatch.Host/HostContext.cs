@@ -1,8 +1,7 @@
-﻿using DaasEndpoints;
-using Executor;
+﻿using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Jobs.Internals;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch.Internals;
+
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using AzureTables;
 
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Create host services that point to a logging account. 
     // This will scan for all functions in-memory, publish them to the function dashboard, 
@@ -32,7 +31,7 @@ namespace SimpleBatch
 
             _executionQueue = services.GetExecutionQueue();
 
-            IConfiguration config = RunnerHost.Program.InitBinders();
+            IConfiguration config = RunnerProgram.InitBinders();
             InitConfig(config);
 
             // Reflect over assembly, looking for functions 
@@ -74,7 +73,7 @@ namespace SimpleBatch
             foreach (var assembly in GetUserAssemblies())
             {
                 // Only look at assemblies that reference SB
-                if (!Orchestrator.Indexer.DoesAssemblyReferenceSimpleBatch(assembly))
+                if (!Indexer.DoesAssemblyReferenceSimpleBatch(assembly))
                 {
                     continue;
                 }

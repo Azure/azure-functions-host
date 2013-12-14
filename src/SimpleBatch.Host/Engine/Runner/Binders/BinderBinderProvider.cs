@@ -7,10 +7,10 @@ using System.Text;
 using AzureTables;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Bind to IBinder
     // All return results get tracked on a cleanup list. 

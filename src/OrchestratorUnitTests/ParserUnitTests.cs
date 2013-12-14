@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Orchestrator;
+
 using System.Linq;
-using RunnerInterfaces;
+using Microsoft.WindowsAzure.Jobs;
 using Newtonsoft.Json;
 
-namespace OrchestratorUnitTests
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class ParserTests

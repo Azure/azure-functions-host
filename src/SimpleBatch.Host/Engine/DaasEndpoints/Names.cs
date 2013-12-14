@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using RunnerInterfaces;
 
-namespace DaasEndpoints
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provides common place to list all Azure endpoints.
     // This does not describe the schemas, payloads, etc for those endpoints. 

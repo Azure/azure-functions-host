@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ Need to wrap all the other methods too?
     // Flush on a timer so that we get updated input. 

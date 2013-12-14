@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Collections.Concurrent;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IBlobListener
     {

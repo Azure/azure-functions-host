@@ -1,12 +1,14 @@
-﻿@{
+﻿@using Microsoft.WindowsAzure.Jobs
+@using Microsoft.WindowsAzure.Jobs.Dashboard
+@{
     Layout = "~/Views/Shared/_TopLayout.cshtml";
 }
 
 @Html.Partial("_Header")
 <div class="container-fluid">
-    @if (WebFrontEnd.HostVersionConfig.HasWarning)
+    @if (HostVersionConfig.HasWarning)
     {
-        foreach (RunnerInterfaces.HostVersion warning in WebFrontEnd.HostVersionConfig.Warnings)
+        foreach (HostVersion warning in HostVersionConfig.Warnings)
         {
             <p class="text-warning">
                 <i class="icon-warning-sign"></i> Warning: A host is using @warning.Label, which this site extension does not support.

@@ -3,10 +3,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // On output, the object payload gets queued
     internal class QueueOutputParameterRuntimeBinding : ParameterRuntimeBinding

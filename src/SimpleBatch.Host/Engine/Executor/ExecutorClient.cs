@@ -5,9 +5,9 @@ using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
 
-namespace Executor
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class ExecutorClient
     {

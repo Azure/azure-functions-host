@@ -7,8 +7,8 @@
     <ProjectGuid>{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SimpleBatch</RootNamespace>
-    <AssemblyName>SimpleBatch</AssemblyName>
+    <RootNamespace>Microsoft.WindowsAzure.Jobs</RootNamespace>
+    <AssemblyName>Microsoft.WindowsAzure.Jobs</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />

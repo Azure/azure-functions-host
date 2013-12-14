@@ -1,8 +1,8 @@
 ﻿using System;
-using SimpleBatch;
+
 using System.Diagnostics;
 
-namespace RunnerHost
+namespace Microsoft.WindowsAzure.Jobs
 {
     [DebuggerDisplay("{Guid}")]
     internal class SimpleFunctionToken : IFunctionToken

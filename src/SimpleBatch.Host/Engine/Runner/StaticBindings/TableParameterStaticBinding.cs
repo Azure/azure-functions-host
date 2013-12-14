@@ -1,8 +1,8 @@
 ﻿using System.Reflection;
-using RunnerHost;
-using RunnerInterfaces;
 
-namespace Orchestrator
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class TableParameterStaticBinding : ParameterStaticBinding
     {
@@ -26,7 +26,7 @@ namespace Orchestrator
         // This is used for optimizations. 
         public bool IsReadOnly { get; set; }
 
-        public override void Validate(SimpleBatch.IConfiguration config, ParameterInfo parameter)
+        public override void Validate(IConfiguration config, ParameterInfo parameter)
         {
             // Table name was already validated in property-setter
 

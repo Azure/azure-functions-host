@@ -7,8 +7,8 @@
     <ProjectGuid>{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Azure20SdkBinders</RootNamespace>
-    <AssemblyName>Azure20SdkBinders</AssemblyName>
+    <RootNamespace>Microsoft.WindowsAzure.Jobs.Azure20SdkBinders</RootNamespace>
+    <AssemblyName>Microsoft.WindowsAzure.Jobs.Azure20SdkBinders</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

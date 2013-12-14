@@ -1,8 +1,7 @@
 ﻿using System.Linq;
-using RunnerInterfaces;
-using WebFrontEnd.Models.Protocol;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
-namespace WebFrontEnd.Controllers
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     public class RunningFunctionDefinitionModel
     {

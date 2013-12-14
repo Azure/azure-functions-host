@@ -8,10 +8,10 @@ using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Tracks number of times MoveNext() is called on the enumerator.
     internal class WatchableEnumerable<T> : IEnumerable<T>, ISelfWatch

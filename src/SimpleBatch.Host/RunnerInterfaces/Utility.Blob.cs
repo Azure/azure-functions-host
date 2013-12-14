@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {    
-    public static partial class Utility
+    internal static partial class Utility
     {
         public static void WriteBlob(CloudStorageAccount account, string containerName, string blobName, string contents)
         {

@@ -5,11 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
+using Microsoft.WindowsAzure.Jobs;
 
-namespace OrchestratorUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     // Test failure cases for indexing
     [TestClass]

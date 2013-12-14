@@ -6,9 +6,9 @@ using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // This is the basic infomration that a static binding can use to create a runtime binding.
     // There are auxillary interfaces (ITrigger*) which provide additional information specific to certain binding triggers.
@@ -85,13 +85,13 @@ namespace RunnerInterfaces
         }
 
         // Function to avoid being serialized. WCF hangs on seing Enums in a serialization payload.  
-        public virtual TriggerType GetTriggerType()
+        public virtual TriggerDirectionType GetTriggerDirectionType()
         {
-            return TriggerType.Ignore;
+            return TriggerDirectionType.Ignore;
         }
     }
 
-    internal enum TriggerType
+    internal enum TriggerDirectionType
     {
         // Parameter is an input that we can reason about and can trigger (eg,  [BlobInput])
         Input,

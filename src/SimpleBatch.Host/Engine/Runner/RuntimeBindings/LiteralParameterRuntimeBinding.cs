@@ -4,10 +4,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Literal string. Similar to LiteralObjectParameterRuntimeBinding in that they're both literals.
     // Just that the format is different. This is just a string, and not necesasrily json.

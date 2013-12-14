@@ -5,10 +5,10 @@ using System.Reflection;
 using System.Text;
 using AzureTables;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class TableParameterRuntimeBinding : ParameterRuntimeBinding
     {

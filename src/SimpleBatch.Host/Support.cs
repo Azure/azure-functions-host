@@ -1,15 +1,15 @@
 ﻿// @@@ This needs to get factored out into a nuget package and be reusable. 
 
-using Executor;
-using RunnerInterfaces;
+
+
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Orchestrator;
-
 // @@@ Merge with ones in C:\codeplex\azuresimplebatch\WebFrontEnd\Antares\CodeFile1.cs 
-namespace SimpleBatch.Internals
+using Microsoft.WindowsAzure.Jobs;
+
+namespace Microsoft.WindowsAzure.Jobs.Internals
 {
     // In-memory executor. 
     class AntaresQueueFunction : QueueFunctionBase
@@ -48,7 +48,7 @@ namespace SimpleBatch.Internals
                     Console.SetOut(consoleOutput);
 
                     // @@@ May need to override config to set ICall
-                    var result = RunnerHost.Program.MainWorker(request, _config);
+                    var result = RunnerProgram.MainWorker(request, _config);
                     Console.SetOut(oldOutput);
                     return result;
                 };

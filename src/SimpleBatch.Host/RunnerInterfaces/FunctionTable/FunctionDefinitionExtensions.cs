@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class FunctionDefinitionExtensions
     {

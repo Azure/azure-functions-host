@@ -1,7 +1,7 @@
 ﻿using System;
-using Executor;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {   
     // This is a helper class that provides a type-safe wrapper for GUIDs that represent Function instances.
     // $$$ Issues:

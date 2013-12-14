@@ -5,11 +5,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
+using Microsoft.WindowsAzure.Jobs;
 
-namespace OrchestratorUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     // Unit test the static parameter bindings. This primarily tests the indexer.
     [TestClass]
@@ -76,7 +75,7 @@ namespace OrchestratorUnitTests
 
             // Even though it's BlobInput, we don't listen on ref parameters (since that would be a cycle).
             var staticBinding = func.Flow.Bindings[0];
-            Assert.AreNotEqual(TriggerType.Input, staticBinding.GetTriggerType());
+            Assert.AreNotEqual(TriggerDirectionType.Input, staticBinding.GetTriggerDirectionType());
         }
 
 
@@ -133,7 +132,7 @@ namespace OrchestratorUnitTests
             Assert.IsFalse(t.IsInput);
         }
 
-        [SimpleBatch.Description("This is a description")]
+        [Jobs.Description("This is a description")]
         public static void DescriptionOnly(string stuff) { }
 
         [TestMethod]

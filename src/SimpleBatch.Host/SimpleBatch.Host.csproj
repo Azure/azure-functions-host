@@ -7,8 +7,8 @@
     <ProjectGuid>{0E095CB2-3030-49FF-966C-785F1A55F0C1}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SimpleBatch.Host</RootNamespace>
-    <AssemblyName>SimpleBatch.Host</AssemblyName>
+    <RootNamespace>Microsoft.WindowsAzure.Jobs</RootNamespace>
+    <AssemblyName>Microsoft.WindowsAzure.Jobs.Host</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -176,15 +176,12 @@
     <Compile Include="Triggering\BlobListener\BlobListener.cs" />
     <Compile Include="Triggering\BlobListener\BlobLogListener.cs" />
     <Compile Include="Triggering\BlobListener\ContainerScannerBlobListener.cs" />
-    <Compile Include="Triggering\CloudBlobPath.cs" />
     <Compile Include="Triggering\Comparers.cs" />
     <Compile Include="Triggering\ITriggerInvoke.cs" />
     <Compile Include="Triggering\Listener.cs" />
-    <Compile Include="Triggering\StringConverter.cs" />
     <Compile Include="Triggering\TriggerMap.cs" />
     <Compile Include="Triggering\TriggerRaw.cs" />
     <Compile Include="Triggering\Triggers.cs" />
-    <Compile Include="Triggering\Utility.cs" />
     <Compile Include="Triggering\Validate.cs" />
     <Compile Include="Triggering\WebInvoke.cs" />
   </ItemGroup>

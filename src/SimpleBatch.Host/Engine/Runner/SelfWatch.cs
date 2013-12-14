@@ -4,9 +4,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
-using SimpleBatch;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class SelfWatch
     {
@@ -72,7 +72,7 @@ namespace RunnerHost
                 // Not fatal if we can't update selfwatch. 
                 // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
                 Console.WriteLine("---- SelfWatch failed ---");
-                Program.WriteExceptionChain(e);
+                RunnerProgram.WriteExceptionChain(e);
                 Console.WriteLine("-------------------------");
             }
         }

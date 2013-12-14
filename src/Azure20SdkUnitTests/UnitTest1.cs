@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
+
+
+
 
 namespace Azure20SdkUnitTests
 {
@@ -97,7 +98,7 @@ namespace Azure20SdkUnitTests
         class Program
         {
             // Test binding to CloudStorageAccount 
-            [SimpleBatch.Description("test")]
+            [Microsoft.WindowsAzure.Jobs.Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account)
             {                
                 var account2 = CloudStorageAccount.DevelopmentStorageAccount;
@@ -107,14 +108,14 @@ namespace Azure20SdkUnitTests
 
             public static bool _QueueInvoked;
 
-            [SimpleBatch.Description("test")]
+            [Microsoft.WindowsAzure.Jobs.Description("test")]
             public static void Queue(CloudQueue mytestqueue)
             {
                 _QueueInvoked = true;
                 Assert.IsNotNull(mytestqueue);
             }
 
-            [SimpleBatch.Description("test")]
+            [Microsoft.WindowsAzure.Jobs.Description("test")]
             public static void QueueBadName(CloudQueue IllegalName)
             {
                 Assert.Fail("shouldnt get invoked");

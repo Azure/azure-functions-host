@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web.Http;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public static class WebApiConfig
     {

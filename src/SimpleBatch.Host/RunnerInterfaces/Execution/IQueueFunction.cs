@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Executor;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Activate a function that was attempted to be queued, but didn't yet have prereqs. 
     internal interface IActivateFunction

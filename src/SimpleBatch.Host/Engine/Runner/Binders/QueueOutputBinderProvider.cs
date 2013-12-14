@@ -2,10 +2,10 @@
 using System.Reflection;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class QueueOutputBinderProvider : ICloudBinderProvider
     {

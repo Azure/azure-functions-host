@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Web.Mvc;
+﻿using System.Web.Mvc;
 using System.Web.Security;
-using WebFrontEnd.Configuration;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Configuration;
 
-namespace WebFrontEnd.Controllers
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     public class AccountController : Controller
     {

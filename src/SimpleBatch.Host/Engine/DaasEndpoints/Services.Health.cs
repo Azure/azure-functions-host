@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Executor;
+
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
 using System.Diagnostics;
 
-namespace DaasEndpoints
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal partial class Services
     {

@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using TriggerService;
 
-namespace Orchestrator
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class CalculateTriggers
     {

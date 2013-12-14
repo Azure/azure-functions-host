@@ -5,8 +5,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Xml.Linq;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
+
 
 namespace AzureTables
 {

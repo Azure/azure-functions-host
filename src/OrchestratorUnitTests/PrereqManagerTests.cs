@@ -5,14 +5,13 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using AzureTables;
-using DaasEndpoints;
-using Executor;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class PrereqManagerTests

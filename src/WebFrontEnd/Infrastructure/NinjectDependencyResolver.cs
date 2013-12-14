@@ -8,7 +8,7 @@ using IHttpDependencyResolver = System.Web.Http.Dependencies.IDependencyResolver
 using IHttpDependencyScope = System.Web.Http.Dependencies.IDependencyScope;
 using Ninject;
 
-namespace WebFrontEnd.Infrastructure
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure
 {
     public class NinjectDependencyResolver : IMvcDependencyResolver, IHttpDependencyResolver, IHttpDependencyScope
     {

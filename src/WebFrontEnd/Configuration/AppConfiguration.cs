@@ -4,11 +4,11 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Web;
-using DaasEndpoints;
-using Microsoft.WindowsAzure;
-using WebFrontEnd.Infrastructure;
 
-namespace WebFrontEnd.Configuration
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure;
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Configuration
 {
     public class AppConfiguration
     {

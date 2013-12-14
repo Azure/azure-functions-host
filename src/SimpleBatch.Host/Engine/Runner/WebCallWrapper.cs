@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using SimpleBatch;
+
 using System.Linq;
 
-namespace RunnerHost
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class CallUtil
     {

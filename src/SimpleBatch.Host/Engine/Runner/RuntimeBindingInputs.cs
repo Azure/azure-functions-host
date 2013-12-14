@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Inputs that can impact producing a runtime binding.     
     internal class RuntimeBindingInputs : IRuntimeBindingInputs

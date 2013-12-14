@@ -1,8 +1,8 @@
 ﻿using System;
 using Microsoft.WindowsAzure;
-using RunnerInterfaces;
 
-namespace Orchestrator
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Create a local orchestrator that can poll. 
     internal class LocalOrchestrator

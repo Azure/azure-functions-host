@@ -5,7 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class RouteConfig
     {

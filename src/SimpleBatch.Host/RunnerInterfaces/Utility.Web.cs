@@ -2,9 +2,9 @@
 using System.Net;
 using System.Text;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
-    public static partial class Utility
+    internal static partial class Utility
     {
         // Move to utility
         public static void PostJson(string url, object body)

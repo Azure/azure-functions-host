@@ -3,14 +3,14 @@ using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RunnerInterfaces;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using System.Reflection;
-using Orchestrator;
-using SimpleBatch;
+
+
 using System.IO;
 
-namespace OrchestratorUnitTests
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     /// <summary>
     /// Summary description for ModelbindingTests
@@ -123,7 +123,7 @@ namespace OrchestratorUnitTests
 
         class Program
         {
-            [SimpleBatch.Description("Invoke with an IBinder")]
+            [Jobs.Description("Invoke with an IBinder")]
             public static void TestBinder(IBinder binder)
             {
                 TextWriter tw = binder.BindWriteStream<TextWriter>("daas-test-input", "directout.txt");

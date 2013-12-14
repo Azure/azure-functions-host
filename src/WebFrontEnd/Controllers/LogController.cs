@@ -6,15 +6,15 @@ using System.Text;
 using System.Web;
 using System.Web.Mvc;
 using AzureTables;
-using DaasEndpoints;
-using Executor;
+
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using WebFrontEnd.Models.Protocol;
 
-namespace WebFrontEnd.Controllers
+
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     // Controller that access the function invocation logging service to view log information.
 #if !SITE_EXTENSION
@@ -174,7 +174,7 @@ namespace WebFrontEnd.Controllers
         public ActionResult GetChargebackLog(int N = 200, string account = null)
         {
             // Defer to the WebAPI controller for the real work. 
-            var controller = new WebFrontEnd.ControllersWebApi.LogController(GetServices());
+            var controller = new ControllersWebApi.LogController(GetServices());
             var resp = controller.GetFunctionLog(N, account);
             var content = resp.Content.ReadAsStringAsync().Result;
 
@@ -322,7 +322,7 @@ namespace WebFrontEnd.Controllers
         private FunctionInvokeRequest[] PeekQueuedInstances()
         {
             var services = GetServices();
-            List<FunctionInvokeRequest> list = new List<RunnerInterfaces.FunctionInvokeRequest>();
+            List<FunctionInvokeRequest> list = new List<FunctionInvokeRequest>();
 
             var q = services.GetExecutionQueue();
             var msgs = q.PeekMessages(messageCount: 30);

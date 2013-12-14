@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using Microsoft.WindowsAzure;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Side-effects are understood. We'll read/write to a specific blob, 
     // for which we can even get a modification timestamp from.
@@ -16,7 +14,7 @@ namespace Orchestrator
         public bool IsInput;
 
         // $$$ Ratioanlize these rules with BlobParameterRuntimeBinding
-        public override void Validate(SimpleBatch.IConfiguration config, System.Reflection.ParameterInfo parameter)
+        public override void Validate(IConfiguration config, System.Reflection.ParameterInfo parameter)
         {
             Utility.ValidateContainerName(this.Path.ContainerName);
 
@@ -97,15 +95,15 @@ namespace Orchestrator
             }
         }
 
-        public override TriggerType GetTriggerType()
+        public override TriggerDirectionType GetTriggerDirectionType()
         {
             if (this.IsInput)
             {
-                return TriggerType.Input;
+                return TriggerDirectionType.Input;
             }
             else
             {
-                return TriggerType.Output;
+                return TriggerDirectionType.Output;
             }
         }
     }

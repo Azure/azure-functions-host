@@ -1,8 +1,9 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TriggerService;
+using Microsoft.WindowsAzure.Jobs;
 
-namespace TriggerServiceUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class ValidateTests

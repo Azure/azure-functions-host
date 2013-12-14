@@ -1,5 +1,5 @@
 ﻿
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Manage the function index.
     internal interface IFunctionTable : IFunctionTableLookup

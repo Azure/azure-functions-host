@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     public interface IAzureTableReader
     {

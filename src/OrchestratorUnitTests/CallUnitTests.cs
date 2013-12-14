@@ -6,16 +6,17 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using Executor;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class CallUnitTests

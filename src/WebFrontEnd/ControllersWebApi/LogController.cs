@@ -5,12 +5,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using DaasEndpoints;
+
 using DataAccess;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace WebFrontEnd.ControllersWebApi
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
 {
     public class LogController : ApiController
     {

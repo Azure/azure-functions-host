@@ -4,10 +4,10 @@ using System.Reflection;
 using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provide an IDictionary interface over an AzureTable
     // Tuple is (Partition, Row) key.

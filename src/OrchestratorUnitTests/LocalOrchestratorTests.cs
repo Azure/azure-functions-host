@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
-using Executor;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using Orchestrator;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class LocalOrchestratorTests
@@ -542,7 +543,7 @@ namespace OrchestratorUnitTests
                 myoutputqueue = payloads;
             }
 
-            [SimpleBatch.Description("cloud queue function")] // needed for indexing since we have no other attrs
+            [Jobs.Description("cloud queue function")] // needed for indexing since we have no other attrs
             public static void FuncCloudQueueEnqueue(
                 CloudQueue myoutputqueue)
             {
@@ -551,7 +552,7 @@ namespace OrchestratorUnitTests
                 myoutputqueue.AddMessage(new CloudQueueMessage("30"));
             }
 
-            [SimpleBatch.Description("queue function")] // needed for indexing since we have no other attrs
+            [Jobs.Description("queue function")] // needed for indexing since we have no other attrs
             public static void FuncMultiEnqueue(
                IQueueOutput<Payload> myoutputqueue)
             {
@@ -566,7 +567,7 @@ namespace OrchestratorUnitTests
             }
 
             // Test binding to CloudStorageAccount 
-            [SimpleBatch.Description("test")]
+            [Jobs.Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account, string value, string containerName, string blobName)
             {
                 Utility.WriteBlob(account, containerName, blobName, value);

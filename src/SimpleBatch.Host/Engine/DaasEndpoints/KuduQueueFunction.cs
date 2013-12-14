@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using Executor;
-using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace DaasEndpoints
+using Microsoft.WindowsAzure.StorageClient;
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Run a function where the source (and binaries) are via Kudu
     class KuduQueueFunction : QueueFunctionBase

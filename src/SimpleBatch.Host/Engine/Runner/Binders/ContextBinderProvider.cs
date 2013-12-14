@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using SimpleBatch;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Binder for IContext. 
     internal class ContextBinderProvider : ICloudBinderProvider

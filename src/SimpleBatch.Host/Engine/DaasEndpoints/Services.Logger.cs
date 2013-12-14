@@ -1,18 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Executor;
+
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System.Linq;
 using Newtonsoft.Json;
 using System.Threading;
 using AzureTables;
 using Microsoft.WindowsAzure;
-using SimpleBatch;
 
-namespace DaasEndpoints
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Services related to logging
     internal partial class Services

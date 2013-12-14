@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
 using Newtonsoft.Json;
 using System.Linq;
-using TriggerService;
-using TriggerService.Internal;
+
+
 using System.Text;
 
-namespace TriggerServiceUnitTests
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class TriggerMapSerializationTests

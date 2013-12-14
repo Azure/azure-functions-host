@@ -1,17 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using Ninject;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Configuration;
 using Ninject.Modules;
-using WebFrontEnd.Configuration;
-using DaasEndpoints;
-using RunnerInterfaces;
-using System.Diagnostics;
 using Microsoft.WindowsAzure.StorageClient;
-using Microsoft.WindowsAzure;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class AppModule : NinjectModule
     {
@@ -86,7 +79,7 @@ namespace WebFrontEnd
         // ### Shouldn't need this. But function instance page demands it just to render.
         class EmptyQueueFunction : IQueueFunction
         {
-            public Executor.ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
+            public ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
             {
                 throw new NotImplementedException();
             }

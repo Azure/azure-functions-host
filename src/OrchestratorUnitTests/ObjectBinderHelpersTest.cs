@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using RunnerInterfaces;
+using Microsoft.WindowsAzure.Jobs;
 
-namespace OrchestratorUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class ObjectBinderHelpersTest

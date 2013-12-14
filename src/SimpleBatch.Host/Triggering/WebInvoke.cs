@@ -8,7 +8,7 @@ using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {
     /*
     public class WebInvoke : ITriggerInvoke

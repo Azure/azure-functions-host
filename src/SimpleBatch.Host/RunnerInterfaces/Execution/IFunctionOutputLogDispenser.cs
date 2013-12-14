@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Interface for creating objects that capture a function execution's Console output. 
     internal interface IFunctionOuputLogDispenser

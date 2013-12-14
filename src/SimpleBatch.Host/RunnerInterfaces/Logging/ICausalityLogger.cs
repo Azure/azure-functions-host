@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Executor;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Log function causality (eg, parent-child relationships). 
     // This is used to create a graph of parent-child causal relationships. 

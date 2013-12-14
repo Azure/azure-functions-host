@@ -1,8 +1,7 @@
 ﻿using System;
 using System.IO;
-using DaasEndpoints;
-using RunnerInterfaces;
-namespace Executor
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provide services for executing a function on a Worker Role.
     // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.

@@ -4,9 +4,9 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
-    public static partial class Utility
+    internal  static partial class Utility
     {
         // Helper object used in client app to communicate with ProcessExecute<TInput, TResult>
         internal class ProcessExecuteArgs<TInput, TResult>

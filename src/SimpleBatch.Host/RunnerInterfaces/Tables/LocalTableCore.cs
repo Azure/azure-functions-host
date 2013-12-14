@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure.Jobs;
 
 namespace AzureTables
 {
@@ -52,7 +53,7 @@ namespace AzureTables
             void ITableCorePartitionWriter.AddObject(GenericEntity entity)
             {
                 // Azure always adds an automatic property for the timestamp.
-                string timeStamp = RunnerInterfaces.ObjectBinderHelpers.SerializeDateTime(DateTime.UtcNow);
+                string timeStamp = ObjectBinderHelpers.SerializeDateTime(DateTime.UtcNow);
                 entity.properties["Timestamp"] = timeStamp;
                 _rows[entity.RowKey] = entity.properties;
             }

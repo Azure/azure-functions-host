@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // For table access, have a level of indirection so that the TriggerReason is serialized
     // as a JSON object, which then supports polymorphism when we deserialize. 

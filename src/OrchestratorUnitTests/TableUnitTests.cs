@@ -7,17 +7,18 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using AzureTables;
-using Executor;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using Orchestrator;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     // Ensure that various "currency" types can be properly serialized and deserialized to AzureTables.
     [TestClass]

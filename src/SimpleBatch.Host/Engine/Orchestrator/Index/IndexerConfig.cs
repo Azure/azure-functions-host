@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // IConfiguration implementation for Registering functions. 
     internal class IndexerConfig : IConfiguration

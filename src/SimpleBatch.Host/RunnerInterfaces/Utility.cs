@@ -4,9 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Microsoft.WindowsAzure;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class DictExtensions
     {
@@ -22,7 +22,7 @@ namespace RunnerInterfaces
         }
     }
 
-    public static partial class Utility
+    internal static partial class Utility
     {
         public static BindResult<T> StrongWrapper<T>(BindResult b)
         {

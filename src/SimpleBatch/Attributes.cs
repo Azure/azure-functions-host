@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text;
 
 // Attributes used by test functions
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Specify this parameter comes from configuration 
     [AttributeUsage(AttributeTargets.Parameter)]

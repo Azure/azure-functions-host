@@ -5,7 +5,7 @@ using System.Linq;
 using System.Web;
 using Microsoft.WindowsAzure;
 
-namespace WebFrontEnd.Infrastructure
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure
 {
     public class CloudStorageAccountTypeConverter : TypeConverter
     {

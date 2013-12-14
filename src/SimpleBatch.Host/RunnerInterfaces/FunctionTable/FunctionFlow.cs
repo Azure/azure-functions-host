@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Describes the input and output flows to a function.
     // This can be determined from a function by analyzing the declarative attributes,

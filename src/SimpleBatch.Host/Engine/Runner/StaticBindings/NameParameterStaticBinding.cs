@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Reflection;
 using Microsoft.WindowsAzure;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Represents binding to a named parameter from the named parameter dictionary. 
     // Dictionary could be populated via route parameters in a Blob pattern match, explicitly by user, or somewhere else.
@@ -78,9 +78,9 @@ namespace Orchestrator
             }
         }
 
-        public override TriggerType GetTriggerType()
+        public override TriggerDirectionType GetTriggerDirectionType()
         {
-            return TriggerType.Ignore; // Constants
+            return TriggerDirectionType.Ignore; // Constants
         }
     }
 }

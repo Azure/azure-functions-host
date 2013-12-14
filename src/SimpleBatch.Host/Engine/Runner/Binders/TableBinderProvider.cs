@@ -4,10 +4,10 @@ using System.Reflection;
 using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Allow hooking the azure table creation for unit testing.
     // Lets tests use in-memory tables instead of live azure storage.

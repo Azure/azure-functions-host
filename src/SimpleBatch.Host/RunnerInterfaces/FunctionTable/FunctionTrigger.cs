@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Describes how a function can get triggered.
     // This is orthogonal to the binding.

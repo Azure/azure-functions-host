@@ -3,10 +3,10 @@ using System.IO;
 using System.Reflection;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Helper to redirect std.out if this function is launched as an appdomain.
     // This a hook that can be invoked by whoever creates the appdomain.
@@ -24,7 +24,7 @@ namespace RunnerHost
     }
 
     // Used for launching an instance
-    internal class Program
+    internal class RunnerProgram
     {
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
         {                       

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using Newtonsoft.Json;
-using TriggerService.Internal;
 
-namespace TriggerService
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Base class for triggers that client can listen on. 
     internal abstract class Trigger

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
-    static partial class Utility
+    internal static partial class Utility
     {
         // This function from: http://blogs.msdn.com/b/neilkidd/archive/2008/11/11/windows-azure-queues-are-quite-particular.aspx
         // See http://msdn.microsoft.com/library/dd179349.aspx for rules to enforce.

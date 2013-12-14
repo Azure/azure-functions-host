@@ -6,11 +6,11 @@ using System.Reflection;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace OrchestratorUnitTests
+
+
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     /* TODO: Reinstate fluent configuration
     // Unit test the static parameter bindings. This primarily tests the indexer.

@@ -1,6 +1,4 @@
-﻿using RunnerInterfaces;
-
-namespace WebFrontEnd.Models.Protocol
+﻿namespace Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol
 {
     public class FunctionLocationModel
     {

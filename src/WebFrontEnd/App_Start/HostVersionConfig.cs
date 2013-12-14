@@ -1,10 +1,10 @@
 ﻿using System.Configuration;
-using DaasEndpoints;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace WebFrontEnd
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public static class HostVersionConfig
     {

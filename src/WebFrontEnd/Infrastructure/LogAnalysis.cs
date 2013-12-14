@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using DaasEndpoints;
-using Executor;
-using Orchestrator;
-using RunnerHost;
-using RunnerInterfaces;
-using WebFrontEnd.Controllers;
-using WebFrontEnd.Models.Protocol;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Controllers;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class ParamModel
     {

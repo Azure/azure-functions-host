@@ -1,4 +1,4 @@
-﻿namespace RunnerInterfaces
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Endpoint names for azure storage resources used for the service. 
     internal class AzureExecutionEndpointNames

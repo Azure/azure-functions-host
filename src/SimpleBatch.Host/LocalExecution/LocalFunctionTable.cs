@@ -4,14 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Executor;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provide in-memory settings that can glue an indexer, orchestrator, and execution.
     // Executes via in-memory MethodInfos without azure. 

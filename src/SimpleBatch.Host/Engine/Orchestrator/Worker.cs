@@ -3,15 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Executor;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerHost;
-using RunnerInterfaces;
-using TriggerService;
+
+
+
 using System.Text;
 
-namespace Orchestrator
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class OrchestratorRoleHeartbeat
     {

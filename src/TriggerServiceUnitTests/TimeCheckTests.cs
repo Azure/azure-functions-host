@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TriggerService;
-using TriggerService.Internal;
+using Microsoft.WindowsAzure.Jobs;
 
-namespace TriggerServiceUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class TimeCheckTests

@@ -1,8 +1,8 @@
-﻿using SimpleBatch;
+﻿
 using System;
 using System.IO;
 
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     // interface for easily binding custom types to streams
     public interface ICloudBlobStreamBinder<T>

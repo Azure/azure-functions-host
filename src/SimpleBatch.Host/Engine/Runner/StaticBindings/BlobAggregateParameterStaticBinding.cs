@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure;
-using RunnerHost;
-using RunnerInterfaces;
 
-namespace Orchestrator
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Binds to multiple blobs. All blobs that matche the given pattern.
     class BlobAggregateParameterStaticBinding : ParameterStaticBinding

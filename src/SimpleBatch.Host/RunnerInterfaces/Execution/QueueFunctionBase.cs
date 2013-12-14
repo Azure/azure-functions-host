@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Executor;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Bunder of interfaces needed for execution. Grouped together for convenience. 
     internal class QueueInterfaces

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Bindings use ParameterInfo for a (Type, Name, IsOut) pair. 
     // provide a non-reflection based implementation. 

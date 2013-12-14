@@ -1,12 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using TriggerService;
-using Utility = RunnerInterfaces.Utility;
 
-
-namespace TriggerServiceUnitTests
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class BlobListenerTests

@@ -1,7 +1,7 @@
 ﻿using System;
-using RunnerInterfaces;
 
-namespace Executor
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Like  FunctionInstance plus output stats?
     // Provide the function instance for reply. 

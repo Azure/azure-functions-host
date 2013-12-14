@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Reflection;
 using AzureTables;
-using Executor;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerHost;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Support local execution. This does not have a trigger service, but still maintains all of the logging, prereqs, and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 
@@ -64,13 +64,13 @@ namespace Orchestrator
         // Need Config that binds ICall back to invoke here. 
         private static IConfiguration CreateConfig(ICall call, Type scope)
         {
-            IConfiguration config = RunnerHost.Program.InitBinders();
+            IConfiguration config = RunnerProgram.InitBinders();
 
             CallBinderProvider.Insert(config, call);
 
             if (scope != null)
             {
-                RunnerHost.Program.ApplyHooks(scope, config);
+                RunnerProgram.ApplyHooks(scope, config);
             }
             return config;
         }
@@ -241,7 +241,7 @@ namespace Orchestrator
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    Program.Invoke(logItem.FunctionInstance, _parent._config);
+                    RunnerProgram.Invoke(logItem.FunctionInstance, _parent._config);
                 }
                 catch (Exception e)
                 {

@@ -5,15 +5,15 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Mvc.Html;
 using System.Web.Routing;
-using DaasEndpoints;
-using Executor;
+
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using WebFrontEnd.Models.Protocol;
 
-namespace WebFrontEnd.Controllers
+
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     // HTML helpers for emitting links and things for various interfaces.
     // Another benefit to HTML helpers is that is that the IDE doesn't find property references in CSHTML.

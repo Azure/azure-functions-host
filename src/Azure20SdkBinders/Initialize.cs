@@ -1,6 +1,8 @@
-﻿using SimpleBatch;
+﻿
 
-namespace Azure20SdkBinders
+using Microsoft.WindowsAzure.Jobs;
+
+namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 {
     public static class Initialize
     {

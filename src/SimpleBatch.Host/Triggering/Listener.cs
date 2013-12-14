@@ -5,9 +5,9 @@ using System.Linq;
 using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using TriggerService.Internal;
 
-namespace TriggerService
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Listens on the triggers and invokes them when they fire
     internal class Listener : IDisposable

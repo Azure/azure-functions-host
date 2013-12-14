@@ -1,14 +1,14 @@
 ﻿using System;
 using System.IO;
 using AzureTables;
-using Executor;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace DaasEndpoints
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal partial class Services
     {

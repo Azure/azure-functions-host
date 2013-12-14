@@ -12,7 +12,7 @@ using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Functions for working with azure tables.
     // See http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
@@ -20,7 +20,7 @@ namespace RunnerInterfaces
     // Naming rules:
     // RowKey  - no \,/, #, ?, less than 1 kb in size
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
-    public static partial class Utility
+    internal static partial class Utility
     {
         // Convert key into something that can be used as a row or partition key. Removes invalid chars.
         public static string GetAsTableKey(string key)

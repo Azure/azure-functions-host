@@ -1,4 +1,4 @@
-﻿namespace RunnerInterfaces
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     public interface IRunningHostTableReader
     {

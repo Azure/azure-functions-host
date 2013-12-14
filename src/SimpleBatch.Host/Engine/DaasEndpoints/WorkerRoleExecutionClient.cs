@@ -1,8 +1,8 @@
-﻿using Executor;
+﻿
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace DaasEndpoints
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Execution client using WorkerRoles (submits to an Azure Queue that's picked up by a worker role).
     // Class for submitting a function to be executed.

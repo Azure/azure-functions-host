@@ -5,7 +5,7 @@ using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure.StorageClient.Protocol;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IBlobLeaseHolder : IDisposable
     {

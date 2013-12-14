@@ -7,9 +7,9 @@ using System.Threading;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient.Protocol;
 using System.IO;
-using TriggerService.Internal;
 
-namespace TriggerService
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Format for 1.0 logs:
     // <version-number>;<request-start-time>;<operation-type>;<request-status>;<http-status-code>;<end-to-end-latency-in-ms>;<server-latency-in-ms>;<authentication-type>;<requester-account-name>;<owner-account-name>;<service-type>;<request-url>;<requested-object-key>;<request-id-header>;<operation-count>;<requester-ip-address>;<request-version-header>;<request-header-size>;<request-packet-size>;<response-header-size>;<response-packet-size>;<request-content-length>;<request-md5>;<server-md5>;<etag-identifier>;<last-modified-time>;<conditions-used>;<user-agent-header>;<referrer-header>;<client-request-id> 
@@ -108,7 +108,7 @@ namespace TriggerService
         // Null if not a blob. 
         public CloudBlobPath ToPath()
         {
-            if (ServiceType != TriggerService.ServiceType.Blob)
+            if (ServiceType != ServiceType.Blob)
             {
                 return null;
             }

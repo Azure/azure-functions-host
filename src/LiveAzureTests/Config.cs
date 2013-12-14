@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Configuration;
 using Microsoft.WindowsAzure;
-using RunnerInterfaces;
+using Microsoft.WindowsAzure.Jobs;
+
 
 public partial class AzureConfig
 {

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Data.Services.Common;
 using System.Reflection;
 using AzureTables;
-using SimpleBatch;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System.Linq;
 
 namespace LiveAzureTests

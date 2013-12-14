@@ -1,6 +1,6 @@
-﻿using SimpleBatch;
+﻿
 
-namespace RunnerHost
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Input argument is currently null
     class NullBindResult : BindResult, ISelfWatch

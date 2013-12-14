@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Wrap facilities for logging a function's output. 
     // This means capturing console out, redirecting to a textwriter that is available at a blob.

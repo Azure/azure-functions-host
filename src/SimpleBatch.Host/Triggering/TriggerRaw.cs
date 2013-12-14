@@ -6,7 +6,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {    
     /// <summary>
     /// Define the kind of trigger

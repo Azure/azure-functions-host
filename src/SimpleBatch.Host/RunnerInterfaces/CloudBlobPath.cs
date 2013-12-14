@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Class for describing a container and blob (no account info)
     // - Encapsulate path with {name} wildcards to cloud blob. (which is why this isn't just a CloudBlob)
@@ -118,6 +118,11 @@ namespace RunnerInterfaces
         public CloudBlob Resolve(CloudStorageAccount account)
         {
             var client = account.CreateCloudBlobClient();
+            return this.Resolve(client);
+        }
+
+        public CloudBlob Resolve(CloudBlobClient client)
+        {
             var container = client.GetContainerReference(this.ContainerName);
             var blob = container.GetBlobReference(this.BlobName);
             return blob;

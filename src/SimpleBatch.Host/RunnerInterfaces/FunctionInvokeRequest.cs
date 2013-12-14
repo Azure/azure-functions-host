@@ -6,7 +6,7 @@ using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {   
     // Request information to invoke a function. 
     // This is just request information and doesn't contain any response information

@@ -30,4 +30,4 @@ using System.Runtime.InteropServices;
            InternalsVisibleTo("TriggerServiceUnitTests"),
            InternalsVisibleTo("RebuildFunctionQueryTables"),
            InternalsVisibleTo("LiveAzureTests"),
-           InternalsVisibleTo("WebFrontEnd")]
+           InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Dashboard")]

@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure;
 using Newtonsoft.Json;
-using RunnerHost;
-using RunnerInterfaces;
 
-namespace Orchestrator
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class QueueParameterStaticBinding : ParameterStaticBinding
     {

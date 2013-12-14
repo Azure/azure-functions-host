@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Web.Mvc;
-using DaasEndpoints;
-using Microsoft.WindowsAzure;
-using Orchestrator;
-using RunnerInterfaces;
-using WebFrontEnd.Models.Protocol;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
-namespace WebFrontEnd.Controllers
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     public class BadConfigController : Controller
     {

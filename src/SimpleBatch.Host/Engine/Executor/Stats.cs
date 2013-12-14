@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using AzureTables;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Executor
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Includes both reading and writing the secondary indices together. 
     internal class ExecutionStatsAggregator : IFunctionInstanceLogger, IFunctionInstanceQuery

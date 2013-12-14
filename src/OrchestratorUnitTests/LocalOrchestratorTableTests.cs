@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Services.Common;
-using System.Reflection;
 using AzureTables;
-using SimpleBatch;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.JobsUnitTests;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System.Linq;
-using RunnerHost;
+
 using Microsoft.WindowsAzure;
-using OrchestratorUnitTests;
 
 namespace LocalOrchestratorTableTests
 {

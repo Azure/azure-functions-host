@@ -4,15 +4,15 @@ using System.Collections.Specialized;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using DaasEndpoints;
-using Executor;
-using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using WebFrontEnd.Controllers;
-using RunnerHost;
-using WebFrontEnd.Models.Protocol;
 
-namespace WebFrontEnd
+
+using Microsoft.WindowsAzure.StorageClient;
+
+using Microsoft.WindowsAzure.Jobs.Dashboard.Controllers;
+
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class ExecutionController : ApiController
     {
@@ -78,7 +78,7 @@ namespace WebFrontEnd
             // Queue could be an hour deep
             try
             {
-                var instance = Orchestrator.Worker.GetFunctionInvocation(f, parameters, prereqs);
+                var instance = Worker.GetFunctionInvocation(f, parameters, prereqs);
                 instance.TriggerReason = new InvokeTriggerReason
                 {
                     Message = "Explicitly invoked via POST WebAPI.",

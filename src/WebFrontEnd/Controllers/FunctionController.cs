@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
-using DaasEndpoints;
-using Executor;
-using Orchestrator;
-using RunnerInterfaces;
+
+
+
+
 using Microsoft.WindowsAzure.StorageClient;
 using System.IO;
-using WebFrontEnd.Models.Protocol;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
-namespace WebFrontEnd.Controllers
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     // Controller for viewing details (mainly invocation) on an individual function.
 #if !SITE_EXTENSION
@@ -101,7 +101,7 @@ namespace WebFrontEnd.Controllers
             }
 
             // USe orchestrator to do bindings.
-            var instance = Orchestrator.Worker.GetFunctionInvocation(func.UnderlyingObject, d);
+            var instance = Worker.GetFunctionInvocation(func.UnderlyingObject, d);
 
             return RenderInvokePageWorker(func, instance.Args);
         }
@@ -166,7 +166,7 @@ namespace WebFrontEnd.Controllers
             var flows = func.Flow.Bindings;
             var account = func.UnderlyingObject.GetAccount();
 
-            IRuntimeBindingInputs inputs = new RunnerHost.RuntimeBindingInputs(func.UnderlyingObject.Location);
+            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(func.UnderlyingObject.Location);
 
             for (int i = 0; i < argValues.Length; i++)
             {

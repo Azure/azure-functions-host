@@ -8,9 +8,9 @@ using System.Threading;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
 
-namespace Executor
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // health information written by an execution role. 
     internal class ExecutionRoleHeartbeat

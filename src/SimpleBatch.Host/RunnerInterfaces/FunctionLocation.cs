@@ -9,7 +9,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using System.Runtime.Serialization;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IUrlFunctionLocation
     {

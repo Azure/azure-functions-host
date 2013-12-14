@@ -1,10 +1,11 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-using RunnerInterfaces;
 
-namespace OrchestratorUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
     public class QueueCausalityHelperTests

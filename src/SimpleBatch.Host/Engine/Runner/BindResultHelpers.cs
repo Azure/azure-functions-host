@@ -1,8 +1,8 @@
 ﻿using System;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Helper to include a cleanup function with bind result
     internal class BindCleanupResult : BindResult

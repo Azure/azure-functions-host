@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 using Microsoft.WindowsAzure;
-using RunnerInterfaces;
 
-namespace DaasEndpoints
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class Helpers
     {

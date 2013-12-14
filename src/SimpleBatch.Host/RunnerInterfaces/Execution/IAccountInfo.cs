@@ -1,8 +1,8 @@
 ﻿using System.Linq;
 using Microsoft.WindowsAzure;
-using RunnerInterfaces;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provide underlying access to account information. 
     internal interface IAccountInfo

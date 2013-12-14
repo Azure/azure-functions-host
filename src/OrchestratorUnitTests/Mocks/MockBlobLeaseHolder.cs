@@ -4,10 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
 
-namespace OrchestratorUnitTests
+
+namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     // $$$ Get more aggressive testing here. 
     // We can Read a blob without a lease. 

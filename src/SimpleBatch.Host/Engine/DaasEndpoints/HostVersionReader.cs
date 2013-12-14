@@ -6,10 +6,10 @@ using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using RunnerInterfaces;
+
 using System.Diagnostics;
 
-namespace DaasEndpoints
+namespace Microsoft.WindowsAzure.Jobs
 {
     public class HostVersionReader : IHostVersionReader
     {

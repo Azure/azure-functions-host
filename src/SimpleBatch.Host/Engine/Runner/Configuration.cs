@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using SimpleBatch;
 
-namespace RunnerHost
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class Configuration : IConfiguration
     {

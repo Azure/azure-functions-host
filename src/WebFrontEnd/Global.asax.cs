@@ -3,11 +3,9 @@ using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
-using DaasEndpoints;
-using RunnerInterfaces;
-using WebFrontEnd.App_Start;
+using Microsoft.WindowsAzure.Jobs.Dashboard.App_Start;
 
-namespace WebFrontEnd
+namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
     public class MvcApplication : System.Web.HttpApplication
     {

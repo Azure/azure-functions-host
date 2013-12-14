@@ -6,10 +6,10 @@ using System.Text;
 using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Orchestrator
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     class BinderLookup
     {

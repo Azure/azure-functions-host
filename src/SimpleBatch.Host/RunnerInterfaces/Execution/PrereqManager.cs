@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Executor;
-using SimpleBatch;
 
-namespace RunnerInterfaces
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ Really scrutinize for race conditions and hammer stress test this.
     internal class PrereqManager : IPrereqManager

@@ -9,7 +9,7 @@ using System.Web;
 using System.Web.Configuration;
 using System.Diagnostics;
 
-namespace WebFrontEnd.Configuration
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Configuration
 {
     public class ConfigurationService
     {

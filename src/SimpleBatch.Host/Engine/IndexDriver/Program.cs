@@ -4,14 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using AzureTables;
-using DaasEndpoints;
+
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace IndexDriver
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ Use this
     internal class IndexDriverInput
@@ -40,7 +40,7 @@ namespace IndexDriver
     }
 
     // Do indexing in app.
-    internal class Program
+    internal class IndexerProgram
     {
         public static void Main(string[] args)
         {

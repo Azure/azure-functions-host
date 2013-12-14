@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface ITriggerMap
     {

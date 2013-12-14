@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Callback interface for invoking triggers.
     internal interface ITriggerInvoke

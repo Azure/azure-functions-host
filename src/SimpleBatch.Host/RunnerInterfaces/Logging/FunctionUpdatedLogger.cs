@@ -1,8 +1,8 @@
 ﻿using System;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace Executor
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Primary access to the azure table storing function invoke requests.  
     internal class FunctionUpdatedLogger : IFunctionUpdatedLogger, IFunctionInstanceLookup

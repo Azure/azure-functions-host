@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Executor;
 
-namespace RunnerInterfaces
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IFunctionInstanceLogger
     {

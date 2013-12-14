@@ -1,4 +1,4 @@
-﻿namespace RunnerInterfaces
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Results from function execution, produced by runner host. 
     // Function's side-effects (console output logging) is also captured separately.

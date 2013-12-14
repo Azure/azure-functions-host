@@ -3,11 +3,11 @@ using System.IO;
 using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace DaasEndpoints
+
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Despite the name, this is not an IOC container.
     // This provides a global view of the distributed application (service, webpage, logging, tooling, etc)

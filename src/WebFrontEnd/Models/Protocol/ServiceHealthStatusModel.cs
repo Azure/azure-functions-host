@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using DaasEndpoints;
 
-namespace WebFrontEnd.Models.Protocol
+
+namespace Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol
 {
     public class ServiceHealthStatusModel
     {

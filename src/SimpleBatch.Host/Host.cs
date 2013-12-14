@@ -1,15 +1,15 @@
-﻿using Executor;
+﻿
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Orchestrator;
-using RunnerInterfaces;
+
+
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Reflection;
 using System.Threading;
 
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Public interface for an app to host SimpleBatch
     // and invoke simple batch functions. 

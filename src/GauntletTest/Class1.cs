@@ -4,7 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using SimpleBatch;
+using Microsoft.WindowsAzure.Jobs;
+
 
 namespace GauntletTest
 {

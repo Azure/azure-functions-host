@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using TriggerService.Internal;
 
 
-namespace TriggerService
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal class Validator
     {

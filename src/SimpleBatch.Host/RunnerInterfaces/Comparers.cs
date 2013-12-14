@@ -2,7 +2,7 @@
 using System.Reflection;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // CloudBlobContainers are flyweights, may not compare. 
     internal class CloudContainerComparer : IEqualityComparer<CloudBlobContainer>

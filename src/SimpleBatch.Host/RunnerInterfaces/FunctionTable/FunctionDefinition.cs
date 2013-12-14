@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.WindowsAzure;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Basic static definition for a function within SimpleBatch.
     // This has extra metadata beyond just FunctionLocation (like Descr, Guid (rowkey), in/out, ... )

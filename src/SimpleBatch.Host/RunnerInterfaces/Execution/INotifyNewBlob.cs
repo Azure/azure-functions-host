@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Threading;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ ISn't th
     // $$$ USe CloudBlobDescriptor? AccountName vs. AccountConnectionString

@@ -5,7 +5,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.Linq;
 using System.Threading;
 
-namespace TriggerService
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Full scan a container 
     // Uses a naive full-scanning algorithm. Easy, but very inefficient and does not scale to large containers.

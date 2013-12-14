@@ -6,10 +6,10 @@ using System.Reflection;
 using System.Text;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Bind directly to a CloudBlob. 
     class CloudBlobBinderProvider : ICloudBlobBinderProvider

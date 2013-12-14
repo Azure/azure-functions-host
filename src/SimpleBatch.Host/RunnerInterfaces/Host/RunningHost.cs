@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     public class RunningHost
     {

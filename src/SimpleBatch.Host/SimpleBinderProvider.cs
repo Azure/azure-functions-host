@@ -1,8 +1,8 @@
-﻿using SimpleBatch;
+﻿
 using System;
 using System.IO;
 
-namespace SimpleBatch
+namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ Share with implementation in SimpleBatch.dll. Both are private 
     // Really... can we get rid of this completely? It's just glue for binding T to streams. 

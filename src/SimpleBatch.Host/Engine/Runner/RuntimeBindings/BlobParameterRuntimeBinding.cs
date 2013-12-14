@@ -5,10 +5,10 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
-using RunnerInterfaces;
-using SimpleBatch;
 
-namespace RunnerHost
+
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Argument is single blob.
     internal class BlobParameterRuntimeBinding : ParameterRuntimeBinding

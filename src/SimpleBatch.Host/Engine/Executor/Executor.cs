@@ -6,9 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
-using RunnerInterfaces;
 
-namespace Executor
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Executor, can handle multiple execution requests.
     internal class Executor : IDisposable
@@ -109,7 +109,7 @@ namespace Executor
             var localInstance = ConvertToLocal(instance);
 
             var result = Utility.ProcessExecute<FunctionInvokeRequest, FunctionExecutionResult>(
-                typeof(RunnerHost.Program),
+                typeof(RunnerProgram),
                 _localCopy,
                 localInstance, _output,
                 token);

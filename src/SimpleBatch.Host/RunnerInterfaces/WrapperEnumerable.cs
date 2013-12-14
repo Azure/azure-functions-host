@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RunnerInterfaces
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Wrap an IEnumerable<T> and invoke OnBefore/OnAfter methods around each MoveNext().
     internal class WrapperEnumerable<T> : IEnumerable<T>
