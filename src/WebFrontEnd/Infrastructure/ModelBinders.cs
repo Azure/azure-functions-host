@@ -9,21 +9,13 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
     {
         public static void Register(IKernel kernel)
         {
-            try
-            {
-                IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
-                IFunctionTableLookup functionTable = kernel.Get<IFunctionTableLookup>();
+            IFunctionInstanceLookup lookup = kernel.Get<IFunctionInstanceLookup>();
+            IFunctionTableLookup functionTable = kernel.Get<IFunctionTableLookup>();
 
-                ModelBinders.Binders.Add(typeof(FunctionDefinitionModel), new FunctionDefinitionModelBinder(functionTable));
-                ModelBinders.Binders.Add(typeof(CloudBlobPathModel), new CloudBlobPathBinder());
-                ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntityModel), new ExecutionInstanceLogEntityBinder(lookup));
-                ModelBinders.Binders.Add(typeof(FunctionInvokeRequestModel), new FunctionInstanceBinder(lookup));
-
-            }
-            catch (ActivationException)
-            {
-                // Ignore. Storage account may be invalid. 
-            }
+            ModelBinders.Binders.Add(typeof(FunctionDefinitionModel), new FunctionDefinitionModelBinder(functionTable));
+            ModelBinders.Binders.Add(typeof(CloudBlobPathModel), new CloudBlobPathBinder());
+            ModelBinders.Binders.Add(typeof(ExecutionInstanceLogEntityModel), new ExecutionInstanceLogEntityBinder(lookup));
+            ModelBinders.Binders.Add(typeof(FunctionInvokeRequestModel), new FunctionInstanceBinder(lookup));
         }
     }
 

@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
 
         public static bool HasWarning
         {
-            get { return _warnings.Length > 0; }
+            get { return (_warnings != null) && (_warnings.Length > 0); }
         }
 
         public static HostVersion[] Warnings

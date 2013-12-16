@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
 
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -74,6 +75,35 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     // File lock or missing dir. Ignore. 
                 }
+            }
+        }
+
+        // Throw if the account string is bad (parser error, wrong credentials). 
+        public static void ValidateConnectionString(string accountConnectionString)
+        {
+            // Will throw on parser errors. 
+            CloudStorageAccount account;
+            if (!CloudStorageAccount.TryParse(accountConnectionString, out account))
+            {
+                throw new InvalidOperationException("Account connection string is an invalid format");
+            }
+
+            // Verify the credentials are correct.
+            // Have to actually ping a storage operation. 
+            try
+            {
+                var client = account.CreateCloudBlobClient();
+
+                // This can hang for a long time if the account name is wrong. 
+                // If will fail fast if the password is incorrect.
+                client.GetServiceProperties();
+
+                // Success
+            }
+            catch
+            {
+                string msg = string.Format("The account credentials for '{0}' are inccorect.", account.Credentials.AccountName);
+                throw new InvalidOperationException(msg);
             }
         }
     }
