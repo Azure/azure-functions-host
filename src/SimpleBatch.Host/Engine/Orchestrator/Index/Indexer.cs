@@ -5,9 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Abstraction over a MethodInfo so that we can bind from either
@@ -29,6 +26,9 @@ namespace Microsoft.WindowsAzure.Jobs
     // Go down and build an index
     internal class Indexer
     {
+        private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
+        private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
+
         private readonly IFunctionTable _functionTable;
 
         // If this config is set, use it. 
@@ -44,6 +44,11 @@ namespace Microsoft.WindowsAzure.Jobs
             _functionTable = functionTable;
         }
 
+        public static string AzureJobsFileName
+        {
+            get { return _azureJobsFileName; }
+        }
+
         // Index all things in the container
         // account - account that binderLookupTable paths resolve to. ($$$ move account info int ot he table too?)
         public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable)
@@ -54,8 +59,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 string localCache = helper.LocalCachePrivate;
 
                 {
-                    // Delete the user's instance of SimpleBatch just to force it to bind against the host instance.
-                    string path = Path.Combine(localCache, "Microsoft.WindowsAzure.Jobs.dll");
+                    // Delete the user's instance of Microsoft.WindowsAzure.Jobs just to force it to bind against the host instance.
+                    string path = Path.Combine(localCache, _azureJobsFileName);
                     if (File.Exists(path))
                     {
                         File.Delete(path);
@@ -286,7 +291,7 @@ namespace Microsoft.WindowsAzure.Jobs
             var names = a.GetReferencedAssemblies();
             foreach (var name in names)
             {
-                if (string.Compare(name.Name, "Microsoft.WindowsAzure.Jobs", StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Compare(name.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     return true;
                 }

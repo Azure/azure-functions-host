@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
         protected void Application_Start()
         {
             var kernel = NinjectWebCommon.Kernel;
-
+            
             AreaRegistration.RegisterAllAreas();
                 
             WebApiConfig.Register(GlobalConfiguration.Configuration);
