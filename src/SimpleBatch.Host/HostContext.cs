@@ -73,7 +73,7 @@ namespace Microsoft.WindowsAzure.Jobs
             foreach (var assembly in GetUserAssemblies())
             {
                 // Only look at assemblies that reference SB
-                if (!Indexer.DoesAssemblyReferenceSimpleBatch(assembly))
+                if (!Indexer.DoesAssemblyReferenceAzureJobs(assembly))
                 {
                     continue;
                 }

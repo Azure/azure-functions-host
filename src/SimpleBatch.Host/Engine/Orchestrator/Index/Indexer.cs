@@ -55,7 +55,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 {
                     // Delete the user's instance of SimpleBatch just to force it to bind against the host instance.
-                    string path = Path.Combine(localCache, "SimpleBatch.dll");
+                    string path = Path.Combine(localCache, "Microsoft.WindowsAzure.Jobs.dll");
                     if (File.Exists(path))
                     {
                         File.Delete(path);
@@ -139,7 +139,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private Assembly CurrentDomain_ReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
         {
-            // Name is "SimpleBatch, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
+            // Name is "Microsoft.WindowsAzure.Jobs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
 
             var name = new AssemblyName(args.Name);
 
@@ -281,12 +281,12 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public static bool DoesAssemblyReferenceSimpleBatch(Assembly a)
+        public static bool DoesAssemblyReferenceAzureJobs(Assembly a)
         {
             var names = a.GetReferencedAssemblies();
             foreach (var name in names)
             {
-                if (string.Compare(name.Name, "SimpleBatch", StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Compare(name.Name, "Microsoft.WindowsAzure.Jobs", StringComparison.OrdinalIgnoreCase) == 0)
                 {
                     return true;
                 }
@@ -297,9 +297,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public void IndexAssembly(Func<MethodInfo, FunctionLocation> funcApplyLocation, Assembly a)
         {
-            // Only try to index assemblies that reference SimpleBatch.
+            // Only try to index assemblies that reference Azure Jobs.
             // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
-            bool skip = !DoesAssemblyReferenceSimpleBatch(a);
+            bool skip = !DoesAssemblyReferenceAzureJobs(a);
             if (skip)
             {
                 return;
@@ -313,10 +313,10 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             catch
             {
-                // This is bad. The assembly refers to SimpleBatch.dll, so it ought to be indexable.
+                // This is bad. The assembly refers to Microsoft.WindowsAzure.Jobs.dll, so it ought to be indexable.
                 // But we can't read the types.
-                // This could be because it refers to a stale/corrupted version of SimpleBatch.dll (or maybe 
-                // even a dll that has the same name but is totally different).
+                // This could be because it refers to a stale/corrupted version of Microsoft.WindowsAzure.Jobs.dll
+                // (or maybe  even a dll that has the same name but is totally different).
                 Console.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
                 return;
             }

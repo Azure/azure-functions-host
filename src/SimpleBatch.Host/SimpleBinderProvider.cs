@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // $$$ Share with implementation in SimpleBatch.dll. Both are private 
+    // $$$ Share with implementation in Microsoft.WindowsAzure.Jobs.dll. Both are private 
     // Really... can we get rid of this completely? It's just glue for binding T to streams. 
     // seems like there ought to be some existing FX convention for that. 
     class SimpleBinderProvider<T> : ICloudBlobBinderProvider
