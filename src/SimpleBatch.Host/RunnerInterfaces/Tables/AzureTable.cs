@@ -97,7 +97,21 @@ namespace AzureTables
         IEnumerable<TValue> IAzureTableReader<TValue>.Enumerate(string partitionKey)
         {
             return from item in this.Enumerate(partitionKey)
-                   select ObjectBinderHelpers.ConvertDictToObject<TValue>(item);
+                   let obj = Parse<TValue>(item)
+                   where obj != null
+                   select obj;
+        }
+
+        static T Parse<T>(IDictionary<string, string> item) where T : new()
+        {
+            try
+            {
+                return ObjectBinderHelpers.ConvertDictToObject<T>(item);
+            }
+            catch
+            {
+                return default(T);
+            }
         }
 
         // Enumerate, providing the PartRow key as well as the strongly-typed value. 

@@ -42,8 +42,16 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public static ExecutionInstanceLogEntity RawLookup(IAzureTableReader<ExecutionInstanceLogEntity> table, string rowKey)
         {
-            ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
-            return func;
+            try
+            {
+                ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
+                return func;
+            }
+            catch
+            {
+                // Likely failed to deserialize, which means stale data. Just ignore it. 
+                return null;
+            }
         }
                
 
