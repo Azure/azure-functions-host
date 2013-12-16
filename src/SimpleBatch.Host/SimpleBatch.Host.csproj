@@ -130,6 +130,7 @@
     <Compile Include="RunnerInterfaces\Execution\IQueueFunction.cs" />
     <Compile Include="RunnerInterfaces\Execution\PrereqManager.cs" />
     <Compile Include="RunnerInterfaces\Execution\QueueFunctionBase.cs" />
+    <Compile Include="RunnerInterfaces\MethodInfoFunctionLocationExtensions.cs" />
     <Compile Include="RunnerInterfaces\FunctionInvokeRequest.cs" />
     <Compile Include="RunnerInterfaces\FunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\FunctionTable\FunctionDefinition.cs" />

@@ -15,7 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
             string password = config.ReadSetting("LoginPassword");
             _password = string.IsNullOrWhiteSpace(password) ? "12345" : password;
         }
-
+        
         public ActionResult Login()
         {
             return View();

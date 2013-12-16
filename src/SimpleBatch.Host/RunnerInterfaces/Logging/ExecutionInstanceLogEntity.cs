@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string ToString()
         {
             var name = this.FunctionInstance.Location.GetShortName();
-            string queueTime = this.QueueTime.HasValue ? 
+            string queueTime = this.QueueTime.HasValue ?
                 this.QueueTime.Value.ToUniversalTime().ToString() :
                 "(awaiting prereqs)";
             return string.Format("{0} @ {1}", name, queueTime);
@@ -26,7 +26,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
         public FunctionInvokeRequest FunctionInstance { get; set; }
-        
+
         // If function threw an exception, set to type.fullname of that exception.
         // It's important that this is top-level and queryable because it's a key scenario to find failures. 
         // Provides a quick way to know if function failed. Get exception details from the logging. 
@@ -45,6 +45,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Set once we start to execute. null if only queued. 
         public DateTime? StartTime { get; set; }
+
+        // If a function is running after this time, its host process has ended; it never finished executing.
+        public DateTime? HeartbeatExpires { get; set; }
 
         // Time that the job was completed (approximately when the user's code has finished running). 
         // Null if job is not yet complete.
@@ -72,6 +75,7 @@ namespace Microsoft.WindowsAzure.Jobs
         Running, // Now running. An execution node has picked up ownership.
         CompletedSuccess, // ran to completion, either via success or a user error (threw exception)
         CompletedFailed, // ran to completion, but function through an exception before finishing
+        NeverFinished // Had not finished when host stopped running
     }
 
     // Move to extension methods so that serializers don't pick them up. 
@@ -80,14 +84,35 @@ namespace Microsoft.WindowsAzure.Jobs
         // null if job hasn't finished yet.
         public static TimeSpan? GetDuration(this ExecutionInstanceLogEntity obj)
         {
-            if (obj.EndTime.HasValue && obj.StartTime.HasValue)
+            if (!obj.StartTime.HasValue)
             {
-                return obj.EndTime.Value - obj.StartTime.Value;
+                return null;
             }
-            return null;
+
+            DateTime? endTime;
+
+            if (obj.EndTime.HasValue)
+            {
+                endTime = obj.EndTime.Value;
+            }
+            else if (obj.HeartbeatExpires.HasValue)
+            {
+                endTime = obj.HeartbeatExpires.Value;
+            }
+            else
+            {
+                endTime = null;
+            }
+
+            if (!endTime.HasValue)
+            {
+                return null;
+            }
+
+            return endTime.Value - obj.StartTime.Value;
         }
 
-        // GEt a short summary string describing the queued, in-progress, completed info.
+        // Get a short summary string describing the queued, in-progress, completed info.
         public static string GetRunStatusString(this ExecutionInstanceLogEntity obj)
         {
             switch (obj.GetStatus())
@@ -103,6 +128,8 @@ namespace Microsoft.WindowsAzure.Jobs
                     return string.Format("Completed (at {0}, duration={1})", obj.EndTime, obj.GetDuration());
                 case FunctionInstanceStatus.CompletedFailed:
                     return string.Format("Failed with exception: {1} (duration={0})", obj.GetDuration(), obj.ExceptionMessage);
+                case FunctionInstanceStatus.NeverFinished:
+                    return string.Format("Never finished (duration={0})", obj.GetDuration());
                 default:
                     return "???";
             }
@@ -111,7 +138,11 @@ namespace Microsoft.WindowsAzure.Jobs
         // beware, object may be partially filled out. So bias checks to fields that are present rather than missing. 
         public static FunctionInstanceStatus GetStatus(this ExecutionInstanceLogEntity obj)
         {
-            if (obj.EndTime.HasValue)
+            if (obj.HeartbeatExpires.HasValue && obj.HeartbeatExpires.Value < DateTime.UtcNow)
+            {
+                return FunctionInstanceStatus.NeverFinished;
+            }
+            else if (obj.EndTime.HasValue)
             {
                 if (obj.ExceptionType == null)
                 {
@@ -129,11 +160,11 @@ namespace Microsoft.WindowsAzure.Jobs
             if (obj.QueueTime.HasValue)
             {
                 // Queued, but not started or completed. 
-                return FunctionInstanceStatus.Queued;    
+                return FunctionInstanceStatus.Queued;
             }
 
             // Not even queued. 
-            return FunctionInstanceStatus.AwaitingPrereqs;            
+            return FunctionInstanceStatus.AwaitingPrereqs;
         }
 
         public static bool IsCompleted(this ExecutionInstanceLogEntity obj)

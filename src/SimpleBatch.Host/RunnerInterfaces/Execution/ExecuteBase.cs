@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
 
@@ -13,7 +14,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Used to update function as its being executed
         public IFunctionUpdatedLogger Logger { get; set; }
-                
+
         // Mark when a function has finished execution. This will send a message that causes the function's 
         // execution statistics to get aggregated. 
         public IFunctionInstanceLogger Bridge { get; set; }
@@ -117,37 +118,140 @@ namespace Microsoft.WindowsAzure.Jobs
                 logItemContext.Flush();
             }
 
-            try
+            using (RunningFunctionHeartbeat heartbeat = new RunningFunctionHeartbeat(logger, logItem))
             {
-                // Invoke the function. Redirect all console output to the given stream.
-                // (Function may be invoked in a different process, so we can't just set Console.Out here)
-                FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
+                // Set an initial heartbeat without relying on another thread to start.
+                heartbeat.Signal();
 
-                // User errors should be caught and returned in result message.
-                logItem.ExceptionType = result.ExceptionType;
-                logItem.ExceptionMessage = result.ExceptionMessage;
-            }
-            catch (Exception e)
-            {
-                if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error.
-                    (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
+                Thread heartbeatThread = new Thread(FunctionRunningThreadCallback);
+                heartbeatThread.Start(heartbeat);
+
+                try
                 {
-                    logItem.ExceptionType = e.GetType().FullName;
-                    logItem.ExceptionMessage = e.Message;
+                    // Invoke the function. Redirect all console output to the given stream.
+                    // (Function may be invoked in a different process, so we can't just set Console.Out here)
+                    FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
 
-                    return;
+                    // User errors should be caught and returned in result message.
+                    logItem.ExceptionType = result.ExceptionType;
+                    logItem.ExceptionMessage = result.ExceptionMessage;
+                }
+                catch (Exception e)
+                {
+                    if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error.
+                        (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
+                    {
+                        logItem.ExceptionType = e.GetType().FullName;
+                        logItem.ExceptionMessage = e.Message;
+
+                        return;
+                    }
+
+                    // Non-user error. Something really bad happened! This shouldn't be happening.
+                    // Suggests something critically wrong with the execution infrastructure that wasn't properly
+                    // handled elsewhere. 
+                    functionOutput.Output.WriteLine("Error: {0}", e.Message);
+                    functionOutput.Output.WriteLine("stack: {0}", e.StackTrace);
+                    throw;
+                }
+                finally
+                {
+                    heartbeat.Cancel();
+                    heartbeatThread.Join();
+                    functionOutput.CloseOutput();
+                }
+            }
+        }
+
+        static private void FunctionRunningThreadCallback(object state)
+        {
+            IHeartbeatThread thread = (IHeartbeatThread)state;
+            thread.Run();
+        }
+
+        private interface IHeartbeatThread
+        {
+            void Run();
+        }
+
+        private sealed class RunningFunctionHeartbeat : IDisposable, IHeartbeatThread
+        {
+            private const int _heartbeatFrequencyInSeconds = 30;
+            private const int _heartbeatInvalidationInSeconds = 45;
+            private const int _millisecondsInSecond = 1000;
+            private const int _heartbeatFrequencyInMilliseconds = _heartbeatFrequencyInSeconds * _millisecondsInSecond;
+
+            private readonly EventWaitHandle _event = new ManualResetEvent(initialState: false);
+            private readonly IFunctionUpdatedLogger _logger;
+            private readonly ExecutionInstanceLogEntity _logItem;
+
+            private bool _disposed;
+
+            public RunningFunctionHeartbeat(IFunctionUpdatedLogger logger, ExecutionInstanceLogEntity logItem)
+            {
+                if (logger == null)
+                {
+                    throw new ArgumentNullException("logger");
                 }
 
-                // Non-user error. Something really bad happened! This shouldn't be happening.
-                // Suggests something critically wrong with the execution infrastructure that wasn't properly
-                // handled elsewhere. 
-                functionOutput.Output.WriteLine("Error: {0}", e.Message);
-                functionOutput.Output.WriteLine("stack: {0}", e.StackTrace);
-                throw;
+                if (logItem == null)
+                {
+                    throw new ArgumentNullException("logItem");
+                }
+
+                _logger = logger;
+                _logItem = logItem;
             }
-            finally
+
+            public void Cancel()
             {
-                functionOutput.CloseOutput();
+                ThrowIfDisposed();
+                bool succeeded = _event.Set();
+                // EventWaitHandle.Set can never return false (see implementation).
+                Contract.Assert(succeeded);
+            }
+
+            public void Run()
+            {
+                // Keep signaling until cancelled
+                while (!WaitForCancellation())
+                {
+                    Signal();
+                }
+            }
+
+            public void Signal()
+            {
+                Signal(DateTime.UtcNow.AddSeconds(_heartbeatInvalidationInSeconds));
+            }
+
+            private void Signal(DateTime invalidAfterUtc)
+            {
+                ThrowIfDisposed();
+                _logItem.HeartbeatExpires = invalidAfterUtc;
+                _logger.Log(_logItem);
+            }
+
+            private bool WaitForCancellation()
+            {
+                return _event.WaitOne(_heartbeatFrequencyInMilliseconds);
+            }
+
+            void IDisposable.Dispose()
+            {
+                if (!_disposed)
+                {
+                    _event.Dispose();
+                    _disposed = true;
+                }
+            }
+
+            private void ThrowIfDisposed()
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(null);
+                }
             }
         }
     }
