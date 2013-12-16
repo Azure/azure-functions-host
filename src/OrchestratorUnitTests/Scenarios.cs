@@ -48,7 +48,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         // Test basic propagation between blobs. 
         [TestMethod]
         public void Test()
-        {
+         {
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
             Utility.DeleteContainer(account, container);
@@ -61,28 +61,22 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Assert.IsFalse(Utility.DoesBlobExist(account, container, "foo.output.csv"));
 
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
-            Thread.Sleep(3000); // $$$ Why are these sleeps needed?
             Utility.WriteBlob(account, container, "foo.csv", "abc");
-            Thread.Sleep(3000);
+            
 
             w.Poll();
 
+            // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
+            Thread.Sleep(1000);
             string middle = Utility.ReadBlob(account, container, "foo.middle.csv");
             Assert.IsNotNull(middle, "blob should have been written");
-
             Assert.AreEqual("foo", middle);
 
-            // Orchestrator propagation is still deterministic, so we know this isn't written yet.
-            // If this fails, it's not so bad. It means the orchestrator is propagating faster than expected.
-            // It could be the result of some optimization.
-            Assert.IsFalse(Utility.DoesBlobExist(account, container, "foo.output.csv"), "output shouldn't be written yet");
-            
-            // Now poll again. Should trigger func2
-            w.Poll();
-
+            // The *single* poll a few lines up will cause *both* actions to run as they are chained.
+            // this makes sure that our chaining optimization works correctly!
+            Thread.Sleep(1000);
             string output = Utility.ReadBlob(account, container, "foo.output.csv");
             Assert.IsNotNull(output, "blob should have been written");
-
             Assert.AreEqual("*foo*", output);
         }
     }

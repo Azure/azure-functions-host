@@ -59,11 +59,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
                     AccountConnectionString = acs,
                     CallbackPath = "http://callback?type=queue",
                     QueueName = "myqueue"
-                },
-                new TimerTrigger
-                {
-                    CallbackPath = "http://callback?type=timer",
-                    Interval = TimeSpan.FromMinutes(30)
                 }
                 );
 
@@ -139,7 +134,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
   'Storage': {
     'http://scope1': [
       {
-        '$type': 'TriggerService.BlobTrigger, TriggerService',
+        '$type': 'Microsoft.WindowsAzure.Jobs.BlobTrigger, Microsoft.WindowsAzure.Jobs.Host',
         'BlobInput': 'container\\input\\{name}.txt',
         'BlobOutputs': [
           'container\\output\\{name}.txt',
@@ -152,17 +147,11 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
     ],
     'http://scope2': [
       {
-        '$type': 'TriggerService.QueueTrigger, TriggerService',
+        '$type': 'Microsoft.WindowsAzure.Jobs.QueueTrigger, Microsoft.WindowsAzure.Jobs.Host',
         'QueueName': 'myqueue',
         'CallbackPath': 'http://callback?type=queue',
         'AccountConnectionString': 'a=1;b=2',
         'Type': 'Queue'
-      },
-      {
-        '$type': 'TriggerService.TimerTrigger, TriggerService',
-        'Interval': '00:30:00',
-        'CallbackPath': 'http://callback?type=timer',
-        'Type': 'Timer'
       }
     ]
   }
