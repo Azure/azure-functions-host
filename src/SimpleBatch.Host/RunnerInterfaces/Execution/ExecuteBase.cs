@@ -100,21 +100,21 @@ namespace Microsoft.WindowsAzure.Jobs
             // Returns a FunctionExecutionResult that describes the execution results of the function. 
             Func<TextWriter, FunctionExecutionResult> fpInvokeFunc,
 
-            ExecutionInstanceLogEntity logEntity,   // current request log entity
-            IFunctionInstanceLoggerContext logEntityContext
+            ExecutionInstanceLogEntity logItem,   // current request log entity
+            IFunctionInstanceLoggerContext logItemContext
             )
         {
             FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
             instance.ParameterLogBlob = functionOutput.ParameterLogBlob;
-            logEntity.OutputUrl = functionOutput.Uri;
+            logItem.OutputUrl = functionOutput.Uri;
 
             IFunctionUpdatedLogger logger = context.Logger;
-            logger.Log(logEntity);
+            logger.Log(logItem);
 
-            if (logEntityContext != null)
+            if (logItemContext != null)
             {
-                logEntityContext.IndexRunningFunction();
-                logEntityContext.Flush();
+                logItemContext.IndexRunningFunction();
+                logItemContext.Flush();
             }
 
             try
@@ -124,16 +124,16 @@ namespace Microsoft.WindowsAzure.Jobs
                 FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
 
                 // User errors should be caught and returned in result message.
-                logEntity.ExceptionType = result.ExceptionType;
-                logEntity.ExceptionMessage = result.ExceptionMessage;
+                logItem.ExceptionType = result.ExceptionType;
+                logItem.ExceptionMessage = result.ExceptionMessage;
             }
             catch (Exception e)
             {
                 if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error.
                     (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
                 {
-                    logEntity.ExceptionType = e.GetType().FullName;
-                    logEntity.ExceptionMessage = e.Message;
+                    logItem.ExceptionType = e.GetType().FullName;
+                    logItem.ExceptionMessage = e.Message;
 
                     return;
                 }
