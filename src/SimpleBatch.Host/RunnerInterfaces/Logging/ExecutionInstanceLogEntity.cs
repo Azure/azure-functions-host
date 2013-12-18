@@ -138,11 +138,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // beware, object may be partially filled out. So bias checks to fields that are present rather than missing. 
         public static FunctionInstanceStatus GetStatus(this ExecutionInstanceLogEntity obj)
         {
-            if (obj.HeartbeatExpires.HasValue && obj.HeartbeatExpires.Value < DateTime.UtcNow)
-            {
-                return FunctionInstanceStatus.NeverFinished;
-            }
-            else if (obj.EndTime.HasValue)
+            if (obj.EndTime.HasValue)
             {
                 if (obj.ExceptionType == null)
                 {
@@ -153,18 +149,31 @@ namespace Microsoft.WindowsAzure.Jobs
                     return FunctionInstanceStatus.CompletedFailed;
                 }
             }
-            if (obj.StartTime.HasValue)
+            else if (obj.HeartbeatExpires.HasValue)
+            {
+                if (obj.HeartbeatExpires.Value < DateTime.UtcNow)
+                {
+                    return FunctionInstanceStatus.NeverFinished;
+                }
+                else
+                {
+                    return FunctionInstanceStatus.Running;
+                }
+            }
+            else if (obj.StartTime.HasValue)
             {
                 return FunctionInstanceStatus.Running;
             }
-            if (obj.QueueTime.HasValue)
+            else if (obj.QueueTime.HasValue)
             {
                 // Queued, but not started or completed. 
                 return FunctionInstanceStatus.Queued;
             }
-
-            // Not even queued. 
-            return FunctionInstanceStatus.AwaitingPrereqs;
+            else
+            {
+                // Not even queued. 
+                return FunctionInstanceStatus.AwaitingPrereqs;
+            }
         }
 
         public static bool IsCompleted(this ExecutionInstanceLogEntity obj)
