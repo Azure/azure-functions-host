@@ -1,11 +1,10 @@
 ﻿
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
-
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 
@@ -47,11 +46,25 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 _ctx = GetHostContext();
             }
+
+            WriteAntaresManifest();
         }
 
         public string UserAccountName
         {
             get { return Utility.GetAccountName(_userAccountConnectionString); }
+        }
+
+        // When running in Antares, write out a manifest file.
+        private static void WriteAntaresManifest()
+        {
+            string filename = Environment.GetEnvironmentVariable("JOB_EXTRA_INFO_URL_PATH");
+            if (filename != null) 
+            {                
+                string manifestContents = "/sb";
+
+                File.WriteAllText(filename, manifestContents); 
+            }
         }
 
         private static string GetSetting(string overrideValue, string settingName)
