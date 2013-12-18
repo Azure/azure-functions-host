@@ -11,21 +11,28 @@ using Microsoft.WindowsAzure.Jobs;
 
 namespace Microsoft.WindowsAzure.Jobs.Internals
 {
+    // Callback interface to let host log things to the console. 
+    interface IHostLogger
+    {
+        void LogFunctionStart(FunctionInvokeRequest request);
+        void LogFunctionEnd(ExecutionInstanceLogEntity logItem);
+    }
+
     // In-memory executor. 
     class AntaresQueueFunction : QueueFunctionBase
     {
         // Logging hook for each function invoked. 
-        private readonly Action<FunctionInvokeRequest> _fpLog;
+        private readonly IHostLogger _fpLog;
 
         private readonly FunctionExecutionContext _ctx;
 
         private readonly IConfiguration _config;
 
-        public AntaresQueueFunction(QueueInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, Action<FunctionInvokeRequest> fpLog = null)
+        public AntaresQueueFunction(QueueInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IHostLogger hostLogger = null)
             : base(interfaces)
         {
             _config = config;
-            _fpLog = fpLog;
+            _fpLog = hostLogger;
             _ctx = ctx;
         }
         protected override void Work(ExecutionInstanceLogEntity logItem)
@@ -33,14 +40,12 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
             var request = logItem.FunctionInstance;
             var loc = request.Location;
 
-
-
             Func<TextWriter, FunctionExecutionResult> fpInvokeFunc =
                 (consoleOutput) =>
                 {
                     if (_fpLog != null)
                     {
-                        _fpLog(request);
+                        _fpLog.LogFunctionStart(request);
                     }
                     
                     // @@@ May need to be in a new appdomain. 
@@ -50,6 +55,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
                     // @@@ May need to override config to set ICall
                     var result = RunnerProgram.MainWorker(request, _config);
                     Console.SetOut(oldOutput);
+                 
                     return result;
                 };
 
@@ -58,6 +64,12 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
                 request,
                 _ctx,
                 fpInvokeFunc);
+                        
+            if (_fpLog != null)
+            {
+                var logFinal = _lookup.Lookup(request);
+                _fpLog.LogFunctionEnd(logFinal);
+            }
         }
     }
 

@@ -50,7 +50,7 @@ namespace Microsoft.WindowsAzure.Jobs
             ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
 
             // This is direct execution, doesn't queue up. 
-            IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, LogInvoke);
+            IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, new ConsoleHostLogger());
 
             this._functionTableLookup = functionTableLookup;
             this._heartbeatTable = services.GetRunningHostTableWriter();
@@ -187,11 +187,25 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private void LogInvoke(FunctionInvokeRequest request)
+        class ConsoleHostLogger : IHostLogger
         {
-            Console.WriteLine("Executing: '{0}' because {1}", request.Location.GetShortName(), request.TriggerReason);
-        }
+            public void LogFunctionStart(FunctionInvokeRequest request)
+            {
+                Console.WriteLine("Executing: '{0}' because {1}", request.Location.GetShortName(), request.TriggerReason);
+            }
 
+            public void LogFunctionEnd(ExecutionInstanceLogEntity logItem)
+            {
+                if (logItem.GetStatus() == FunctionInstanceStatus.CompletedFailed)
+                {
+                    var oldColor = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("  Function had errors. See SimpleBatch dashboard for details. Instance id is {0}", logItem.FunctionInstance.Id);
+                    Console.ForegroundColor = oldColor;
+                }
+            }
+        }
+        
         private static void LogRole(TextWriter output)
         {
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
