@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -30,13 +26,6 @@ namespace Microsoft.WindowsAzure.Jobs
             CloudQueueMessage msg = new CloudQueueMessage(json);
             // Beware, msg.id is not filled out yet. 
             return msg;
-        }
-
-        public string DecodePayload(CloudQueueMessage msg)
-        {
-            // Beware, if payload was queued externally, this may not even be valid JSON. 
-            string payload = msg.AsString;            
-            return payload;
         }
 
         public Guid GetOwner(CloudQueueMessage msg)

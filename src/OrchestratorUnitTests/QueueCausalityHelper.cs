@@ -23,7 +23,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Guid g = qcm.GetOwner(msg);
             Assert.AreEqual(Guid.Empty, g);
 
-            string payload = qcm.DecodePayload(msg);
+            string payload = msg.AsString;
             Assert.AreEqual(val, payload);
         }
 
@@ -47,7 +47,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Guid g = Guid.NewGuid();
             var msg = qcm.EncodePayload(g, new Payload { Val = 123 });
 
-            var payload = qcm.DecodePayload(msg);
+            var payload = msg.AsString;
             var result = JsonCustom.DeserializeObject<Payload>(payload);
             Assert.AreEqual(result.Val, 123);
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
 
@@ -29,26 +30,24 @@ namespace Microsoft.WindowsAzure.Jobs
                 Utility.ValidateQueueName(name);
                 this._queueName = name;
             }
-        }        
+        }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
-            string payload = null;
+            string invokeString = null;
             if (this.IsInput)
             {
                 var inputQueueMsg = (ITriggerNewQueueMessage)inputs;
-
-                QueueCausalityHelper qcm = new QueueCausalityHelper();
-                payload = qcm.DecodePayload(inputQueueMsg.QueueMessageInput);
+                invokeString = inputQueueMsg.QueueMessageInput.AsString;
             }
-            return this.BindFromInvokeString(inputs, payload);
+            return this.BindFromInvokeString(inputs, invokeString);
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             if (this.IsInput)
             {
-                return new LiteralObjectParameterRuntimeBinding { LiteralJson = invokeString };
+                return new QueueInputParameterRuntimeBinding { Content = invokeString };
             }
             else
             {
@@ -67,7 +66,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override string Description
         {
-            get {
+            get
+            {
                 if (this.IsInput)
                 {
                     return string.Format("dequeue from '{0}'", this.QueueName);

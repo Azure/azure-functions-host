@@ -91,6 +91,7 @@
     <Compile Include="Engine\Runner\RuntimeBindings\BlobParameterRuntimeBinding.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\LiteralParameterRuntimeBinding.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\NullBindResult.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\QueueInputParameterRuntimeBinding.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\TableParameterRuntimeBinding.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\UnknownParameterRuntimeBinding.cs" />

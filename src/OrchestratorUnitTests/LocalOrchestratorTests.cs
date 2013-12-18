@@ -180,8 +180,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             var msg = queue.GetMessage();
             Assert.IsNotNull(msg);
 
-            QueueCausalityHelper qcm = new QueueCausalityHelper();
-            string data = qcm.DecodePayload(msg);
+            string data = msg.AsString;
             Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
             Assert.AreEqual(15, payload.Value);
@@ -203,8 +202,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
                 var msg = queue.GetMessage();
                 Assert.IsNotNull(msg);
 
-                QueueCausalityHelper qcm = new QueueCausalityHelper();
-                string data = qcm.DecodePayload(msg);
+                string data = msg.AsString;
                 queue.DeleteMessage(msg);
 
                 Payload payload = JsonConvert.DeserializeObject<Payload>(data);
