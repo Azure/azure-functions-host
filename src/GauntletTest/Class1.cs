@@ -1,11 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure.Jobs;
-
 
 namespace GauntletTest
 {
@@ -26,7 +23,7 @@ namespace GauntletTest
         
         const string CookieBlobName = @"cookies\{0}.txt";
 
-        public static void Initialize(IConfiguration config)
+        private static void Initialize(IConfiguration config)
         {
             config.Add<Guid>(new GuidBlobBinder());
 
@@ -40,7 +37,7 @@ namespace GauntletTest
         }
 
         [NoAutomaticTrigger]
-        public static void Start(
+        internal static void Start(
             ICall call,
             [Table(TableName)] IDictionary<Tuple<string, string>, object> dict,
             [Config(ConfigBlobName)] Payload val)
@@ -129,8 +126,9 @@ namespace GauntletTest
             tw.WriteLine(cookie);
         }
 
+
         // This function is registered via IConfig
-        public static void FromBlob2(
+        internal static void FromBlob2(
             Stream input, // bound to BlobInput via config
             TextWriter receipt,
             Guid cookie, // bound as an event arg from the input 

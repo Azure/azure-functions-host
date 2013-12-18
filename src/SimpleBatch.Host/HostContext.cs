@@ -1,14 +1,11 @@
-﻿using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Internals;
-using Microsoft.WindowsAzure.StorageClient;
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Internals;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -67,7 +64,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Searhc for any types tha implement ICloudBlobStreamBinder<T>
         // When found, automatically add them as binders to our config. 
-        static void InitConfig(IConfiguration config)
+        internal static void InitConfig(IConfiguration config)
         {
             // Scan for any binders
             foreach (var assembly in GetUserAssemblies())
@@ -102,8 +99,6 @@ namespace Microsoft.WindowsAzure.Jobs
                                     }
                                 }
                             }
-
-                            //config.BlobBinders.Add(
                         }
                         catch
                         {

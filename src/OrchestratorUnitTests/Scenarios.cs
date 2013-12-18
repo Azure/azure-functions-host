@@ -1,17 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
-
-
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
@@ -67,7 +57,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             w.Poll();
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
-            Thread.Sleep(1000);
+            Thread.Sleep(3000);
             string middle = Utility.ReadBlob(account, container, "foo.middle.csv");
             Assert.IsNotNull(middle, "blob should have been written");
             Assert.AreEqual("foo", middle);

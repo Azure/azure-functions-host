@@ -1,12 +1,6 @@
-﻿using System.Configuration;
-
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
-
 namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
-    public static class HostVersionConfig
+    internal static class HostVersionConfig
     {
         private static HostVersion[] _warnings;
 

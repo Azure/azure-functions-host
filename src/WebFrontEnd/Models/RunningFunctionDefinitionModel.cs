@@ -1,11 +1,11 @@
-﻿using System.Linq;
+using System.Linq;
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
     public class RunningFunctionDefinitionModel
     {
-        public RunningFunctionDefinitionModel(FunctionDefinitionModel functionDefinition, RunningHost[] heartbeats)
+        internal RunningFunctionDefinitionModel(FunctionDefinitionModel functionDefinition, RunningHost[] heartbeats)
         {
             HostIsRunning = HasValidHeartbeat(functionDefinition.UnderlyingObject, heartbeats);
             FunctionDefinition = functionDefinition;

@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Reflection;
-using System.Text;
 
 // Attributes used by test functions
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Specify this parameter comes from configuration 
     [AttributeUsage(AttributeTargets.Parameter)]
-    public class ConfigAttribute : Attribute
+    internal class ConfigAttribute : Attribute
     {
         // Short name of the file containing the configuration. 
         public string Filename { get; set; }
@@ -27,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // This can be useful to avoid the performance impact of listening on a large container. 
     // Method must be invoked explicitly.
     [AttributeUsage(AttributeTargets.Method)]
-    public class NoAutomaticTriggerAttribute : Attribute
+    internal class NoAutomaticTriggerAttribute : Attribute
     {
         public static NoAutomaticTriggerAttribute Build(CustomAttributeData attr)
         {
@@ -66,27 +64,6 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             return string.Format("[Table{0})]", TableName);
         }
-    }
-
-    [AttributeUsage(AttributeTargets.Method)]
-    public class TimerAttribute : Attribute
-    {
-        public TimeSpan TimeSpan { get; set; }
-
-        public TimerAttribute(string intervalTimeSpan)
-        {
-            this.TimeSpan = TimeSpan.Parse(intervalTimeSpan);
-        }
-
-        public static TimerAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(TimerAttribute).FullName)
-            {
-                return null;
-            }
-            var arg = (string)attr.ConstructorArguments[0].Value;
-            return new TimerAttribute(arg);
-        }  
     }
 
     [AttributeUsage(AttributeTargets.Method)]

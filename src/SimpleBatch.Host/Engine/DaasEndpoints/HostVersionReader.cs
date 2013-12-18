@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -7,11 +8,9 @@ using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-using System.Diagnostics;
-
 namespace Microsoft.WindowsAzure.Jobs
 {
-    public class HostVersionReader : IHostVersionReader
+    internal class HostVersionReader : IHostVersionReader
     {
         private readonly CloudBlobContainer _container;
 

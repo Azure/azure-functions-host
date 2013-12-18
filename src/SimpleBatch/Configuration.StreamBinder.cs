@@ -1,4 +1,3 @@
-﻿
 using System;
 using System.IO;
 
@@ -12,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs
     }
 
     // Extension method for easily binding to types to Streams via ICloudBlobStreamBinder<T>
-    public static class IConfigExtensions
+    internal static class IConfigExtensions
     {
         public static void Add<T>(this IConfiguration config, ICloudBlobStreamBinder<T> binder)
         {

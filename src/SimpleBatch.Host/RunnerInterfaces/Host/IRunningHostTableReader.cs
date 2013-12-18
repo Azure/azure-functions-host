@@ -1,6 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs
 {
-    public interface IRunningHostTableReader
+    internal interface IRunningHostTableReader
     {
         RunningHost[] ReadAll();
     }

@@ -1,13 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using AzureTables;
-
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -72,6 +67,9 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 RunnerProgram.ApplyHooks(scope, config);
             }
+
+            HostContext.InitConfig(config);
+
             return config;
         }
 

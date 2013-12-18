@@ -1,22 +1,16 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    public interface ICall
+    internal interface ICall
     {
         // Queues a call to the given function. Function is resolved against the current "scope". 
         // arguments can be either an IDictionary or an anonymous object with fields.         
         IFunctionToken QueueCall(string functionName, object arguments = null, IEnumerable<IFunctionToken> prereqs = null);
     }
 
-    public static class ICallExtensions
+    internal static class ICallExtensions
     {
         public static IFunctionToken QueueCall(this ICall call, string functionName, object arguments = null, params IFunctionToken[] prereqs)
         {
@@ -24,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
     }
 
-    public interface IFunctionToken
+    internal interface IFunctionToken
     {
         Guid Guid { get; }
     }

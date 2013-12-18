@@ -1,11 +1,8 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    public interface IAzureTableReader
+    internal interface IAzureTableReader
     {
         // Lookup an azure entity by the partition and row key.
         // Returns null on missing. 
@@ -19,7 +16,7 @@ namespace Microsoft.WindowsAzure.Jobs
     }
 
     // Like IAzureTableReader, but has strong binding instead of just IDictionary<>
-    public interface IAzureTableReader<T>
+    internal interface IAzureTableReader<T>
     {
         T Lookup(string partitionKey, string rowKey);
 
@@ -28,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
         IEnumerable<T> Enumerate(string partitionKey = null);
     }
 
-    public interface IAzureTableWriter
+    internal interface IAzureTableWriter
     {
         // Dictionary should have RowKey and PartitionKey
         // This is Upsert by default. 
@@ -52,11 +49,11 @@ namespace Microsoft.WindowsAzure.Jobs
     // Interface to request if you want both reading and writing. 
     // This is better than getting a separate reader and writer because this allows them to coordinate
     // on flushing writes before doing reads. Separate table objects may get out of sync.
-    public interface IAzureTable : IAzureTableReader, IAzureTableWriter
+    internal interface IAzureTable : IAzureTableReader, IAzureTableWriter
     {
     }
 
-    public interface IAzureTable<TValue> : IAzureTableReader<TValue>, IAzureTableWriter
+    internal interface IAzureTable<TValue> : IAzureTableReader<TValue>, IAzureTableWriter
     {
     }
 }

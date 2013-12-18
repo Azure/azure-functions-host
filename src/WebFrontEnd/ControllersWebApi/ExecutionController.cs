@@ -1,15 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-
-
 using Microsoft.WindowsAzure.StorageClient;
-
 using Microsoft.WindowsAzure.Jobs.Dashboard.Controllers;
-
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard

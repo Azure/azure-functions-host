@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -188,6 +188,10 @@
     <Compile Include="Triggering\WebInvoke.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Azure20SdkBinders\Azure20SdkBinders.csproj">
+      <Project>{56b62fe7-c1f6-4200-9b4c-2a1677e53d1a}</Project>
+      <Name>Azure20SdkBinders</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>SimpleBatch</Name>
@@ -196,6 +200,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -1,24 +1,19 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Argument can implement this to be self describing. 
     // This can be queried on another thread. 
-    public interface ISelfWatch
+    internal interface ISelfWatch
     {
         // $$$ Expected that string is a single line. 
         // Use "; " to denote multiple lines. 
         string GetStatus();
     }
 
-    public class BindResult
+    internal class BindResult
     {
         // The actual object passed into the user's method.
         // This can be updated on function return if the parameter is an out-parameter.
@@ -44,7 +39,7 @@ namespace Microsoft.WindowsAzure.Jobs
     }     
    
     // Get the function instance guid for the currently executing function 
-    public interface IContext
+    internal interface IContext
     {
         Guid FunctionInstanceGuid { get; }
     }
@@ -58,14 +53,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
     // $$$ Remove this one and merge with IBinder. 
     // Internal one, exposes the BindResult.
-    public interface IBinderEx
+    internal interface IBinderEx
     {
         BindResult<T> Bind<T>(Attribute a);
         string AccountConnectionString { get; }
         Guid FunctionInstanceGuid { get; }
     }
 
-    public static class IBinderExtensions
+    internal static class IBinderExtensions
     {
         // Get a stream for the given blob. The storage account is relative to binder.AccountConnetionString,
         // and the container and blob name are specified.
@@ -103,7 +98,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // Strongly typed wrapper around a result.
     // This is useful in model binders.
     // ### Call cleanup function? And how does that interfere with out parameter?
-    public class BindResult<T> : BindResult
+    internal class BindResult<T> : BindResult
     {
         private readonly BindResult[] _inners;
         public Action<T> Cleanup;
@@ -168,43 +163,44 @@ namespace Microsoft.WindowsAzure.Jobs
 
     // Bind a CloudBlob to something more structured.
     // Use CloudBlob instead of Stream so that we have metadata, filename.
-    public interface ICloudBlobBinder
+    internal interface ICloudBlobBinder
     {
         // Returned object should be assignable to target type.
         BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType);
     }
 
-    public interface ICloudBlobBinderProvider
+    internal interface ICloudBlobBinderProvider
     {
         // Can this binder read/write the given type?
         // This could be a straight type match, or a generic type.
         ICloudBlobBinder TryGetBinder(Type targetType, bool isInput);
     }
 
-    public interface ICloudTableBinder
+    internal interface ICloudTableBinder
     {
         BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName);
     }
-    public interface ICloudTableBinderProvider
+
+    internal interface ICloudTableBinderProvider
     {
         // isReadOnly - True if we know we want it read only (must have been specified in the attribute).
         ICloudTableBinder TryGetBinder(Type targetType, bool isReadOnly);
     }
 
     // Binds to arbitrary entities in the cloud
-    public interface ICloudBinder
+    internal interface ICloudBinder
     {
         BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter);
     }
 
     // Binder for any arbitrary azure things. Could even bind to multiple things. 
     // No meta infromation here, so we can't reason anything about it (Reader, writer, etc)
-    public interface ICloudBinderProvider
+    internal interface ICloudBinderProvider
     {
         ICloudBinder TryGetBinder(Type targetType);
     }
 
-    public interface IConfiguration
+    internal interface IConfiguration
     {
         // Could cache a wrapper directly binding against IClourBlobBinder.
         IList<ICloudBlobBinderProvider> BlobBinders { get; }
@@ -213,49 +209,5 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // General type binding. 
         IList<ICloudBinderProvider> Binders { get; }
-    }
-
-    public interface IFluentConfig
-    {
-        IFluentConfig Bind(string parameterName, Attribute binderAttribute);
-    }
-    
-    // Extension methods to provide a convenience operation over binding
-    public static class IFluentConfigExtensions
-    {
-        public static IFluentConfig Description(this IFluentConfig config, string description)
-        {
-            return config.Bind(null, new DescriptionAttribute(description));
-        }
-
-        public static IFluentConfig TriggerNoAutomatic(this IFluentConfig config)
-        {
-            return config.Bind(null, new NoAutomaticTriggerAttribute());
-        }
-
-        public static IFluentConfig TriggerTimer(this IFluentConfig config, TimeSpan interval)
-        {
-            return config.Bind(null, new TimerAttribute(interval.ToString()));
-        }
-
-        public static IFluentConfig BindConfig(this IFluentConfig config, string parameterName, string filename)
-        {
-            return config.Bind(parameterName, new ConfigAttribute(filename));
-        }
-
-        public static IFluentConfig BindBlobInput(this IFluentConfig config, string parameterName, string path)
-        {
-            return config.Bind(parameterName, new BlobInputAttribute(path));
-        }
-
-        public static IFluentConfig BindBlobOutput(this IFluentConfig config, string parameterName, string path)
-        {
-            return config.Bind(parameterName, new BlobOutputAttribute(path));
-        }
-
-        public static IFluentConfig BindTable(this IFluentConfig config, string parameterName, string tableName)
-        {
-            return config.Bind(parameterName, new TableAttribute(tableName));
-        }
     }
 }

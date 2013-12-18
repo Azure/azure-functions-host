@@ -1,6 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs
 {
-    public interface IHostVersionReader
+    internal interface IHostVersionReader
     {
         HostVersion[] ReadAll();
     }

@@ -1,14 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Services.Common;
-using System.Reflection;
-using AzureTables;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.StorageClient;
-
-
+using System;
 using System.Linq;
+using AzureTables;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace LiveAzureTests
 {

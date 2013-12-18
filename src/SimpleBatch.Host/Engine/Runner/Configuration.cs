@@ -1,6 +1,4 @@
-﻿using System;
 using System.Collections.Generic;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -22,12 +20,6 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             get { return _Binders; }
         }
-
-        public IFluentConfig Register(string functionName)
-        {
-            throw new NotImplementedException();
-        }
-
 
         public IList<ICloudTableBinderProvider> TableBinders
         {

@@ -1,14 +1,9 @@
-﻿using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
-
-
-
 
 namespace Azure20SdkUnitTests
 {
@@ -99,14 +94,6 @@ namespace Azure20SdkUnitTests
 
         class Program
         {
-            // this test does not do automatic reflection based binder hookup, which is OK as the test assert that the binders
-            // work, not that the system knows how to bind to custom binders.
-            // so we need to use the 'Initialize' hook and manually add the Azure 2.0 binders.
-            public static void Initialize(IConfiguration config)
-            {
-                Microsoft.WindowsAzure.Jobs.Azure20SdkBinders.Initialize.Add(config);
-            }
-
             // Test binding to CloudStorageAccount 
             [Microsoft.WindowsAzure.Jobs.Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account)

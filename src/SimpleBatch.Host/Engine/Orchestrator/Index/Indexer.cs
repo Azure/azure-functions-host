@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -395,13 +395,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             var context = new IndexTypeContext { Config = config };
 
-            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
-
-
-            foreach (var descr in config.GetRegisteredMethods())
-            {
-                IndexMethod(funcApplyLocation2, descr, context);
-            }
             return context;
         }
 
@@ -614,12 +607,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     description = descriptionAttr.Description;
                 }
-
-                var timerAttr = attr as TimerAttribute;
-                if (timerAttr != null)
-                {
-                    interval = timerAttr.TimeSpan;
-                }
             }
 
             // $$$ Lots of other static checks to add.
@@ -646,12 +633,8 @@ namespace Microsoft.WindowsAzure.Jobs
             // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
 
             FunctionTrigger trigger;
-            if (interval.HasValue)
-            {
-                // Timer supercedes listening on blobs
-                trigger = new FunctionTrigger { TimerInterval = interval.Value, ListenOnBlobs = false };
-            }
-            else if (triggerAttr != null)
+
+            if (triggerAttr != null)
             {
                 // Explicit [NoTrigger] attribute.
                 trigger = new FunctionTrigger(); // no triggers

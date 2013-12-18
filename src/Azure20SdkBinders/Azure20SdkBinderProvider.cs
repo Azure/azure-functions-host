@@ -1,21 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using System.Reflection;
-using System.Text;
-using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 {
     // Providers binders for Azure 2.0 types. These are in different assemblies than 1.*
     //  2.0 is in Microsoft.WindowsAzure.Storage.dll
     //  1.7 is in Microsoft.WindowsAzure.StorageClient.dll
-    public class Azure20SdkBinderProvider : ICloudBinderProvider
+    internal class Azure20SdkBinderProvider : ICloudBinderProvider
     {
         public ICloudBinder TryGetBinder(Type targetType)
         {

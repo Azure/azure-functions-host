@@ -1,9 +1,8 @@
-﻿using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
 using System;
 using System.Collections.Concurrent;
 using System.Text;
 using System.Threading;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

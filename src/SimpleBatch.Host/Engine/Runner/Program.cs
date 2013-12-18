@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
+using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -251,7 +250,8 @@ namespace Microsoft.WindowsAzure.Jobs
             config.Binders.Add(new ContextBinderProvider()); // for IContext
 
             // Hook in optional binders for Azure 2.0 data types. 
-            //Azure20SdkBinders.Initialize.Add(config);
+            config.Binders.Add(new Azure20SdkBinderProvider());
+            config.BlobBinders.Add(new BlobBinderProvider());
         }
 
         private static void ApplyHooks(MethodInfo method, IConfiguration config)
@@ -265,7 +265,9 @@ namespace Microsoft.WindowsAzure.Jobs
         
         public static void ApplyHooks(Type t, IConfiguration config)
         {
-            var methodInit = t.GetMethod("Initialize", new Type[] { typeof(IConfiguration) } );
+            var methodInit = t.GetMethod("Initialize",
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public, null,
+                new Type[] {typeof (IConfiguration)}, null);
             if (methodInit != null)
             {
                 if (methodInit.IsStatic && methodInit.IsPublic)

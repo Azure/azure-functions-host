@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
@@ -33,9 +27,5 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         private static void BadTableName([Table(@"#")] IAzureTableReader t) { }
 
         private static void MultipleQueueParams([QueueInput] int p123, [QueueInput] int p234) { }
-
-        [Timer("01:00:00")]
-        private static void QueueAndTimer([QueueInput] int p123) { }
-        
     }
 }

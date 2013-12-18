@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Mvc.Html;
 using System.Web.Routing;
-
-
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
 
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
 

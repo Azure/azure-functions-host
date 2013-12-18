@@ -1,6 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs
 {
-    public class HostVersion
+    internal class HostVersion
     {
         public string Label { get; set; }
 

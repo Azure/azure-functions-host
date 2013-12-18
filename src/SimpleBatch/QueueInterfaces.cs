@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
+using System;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Allow for queuing multiple output parameters
-    public interface IQueueOutput<T>
+    internal interface IQueueOutput<T>
     {
         void Add(T payload);
 

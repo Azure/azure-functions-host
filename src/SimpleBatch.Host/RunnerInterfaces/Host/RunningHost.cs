@@ -1,9 +1,8 @@
-﻿using System;
-using System.Linq;
+using System;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    public class RunningHost
+    internal class RunningHost
     {
         public static readonly TimeSpan HeartbeatSignalInterval = new TimeSpan(0, 0, 30);
         public static readonly TimeSpan HeartbeatPollInterval = new TimeSpan(0, 0, 45);

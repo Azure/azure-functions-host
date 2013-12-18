@@ -1,14 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Text;
-using AzureTables;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {

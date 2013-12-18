@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure.Jobs;
+using System;
 using Microsoft.WindowsAzure.Storage;
-
 
 namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 {
-    public static class Utility
+    internal static class Utility
     {
         // Do a string check on type name first to avoid eagerly loading Azure SDK 2.0 types  if we don't need it. 
         public static bool IsAzureSdk20Type(Type targetType)
@@ -22,7 +17,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
         }
     }
 
-    public static class IBinderExtensions
+    internal static class IBinderExtensions
     {
         public static CloudStorageAccount GetAccount(this IBinderEx bindingContext)
         {
