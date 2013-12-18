@@ -102,7 +102,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             catch
             {
-                string msg = string.Format("The account credentials for '{0}' are inccorect.", account.Credentials.AccountName);
+                string msg = string.Format("The account credentials for '{0}' are incorrect.", account.Credentials.AccountName);
                 throw new InvalidOperationException(msg);
             }
         }

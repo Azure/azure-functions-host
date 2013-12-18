@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Newtonsoft.Json;
 
 
 namespace AzureTables
@@ -97,18 +98,18 @@ namespace AzureTables
         IEnumerable<TValue> IAzureTableReader<TValue>.Enumerate(string partitionKey)
         {
             return from item in this.Enumerate(partitionKey)
-                   let obj = Parse<TValue>(item)
+                   let obj = ParseOrNull<TValue>(item)
                    where obj != null
                    select obj;
         }
 
-        static T Parse<T>(IDictionary<string, string> item) where T : new()
+        static T ParseOrNull<T>(IDictionary<string, string> item) where T : new()
         {
             try
             {
                 return ObjectBinderHelpers.ConvertDictToObject<T>(item);
             }
-            catch
+            catch (JsonSerializationException)
             {
                 return default(T);
             }

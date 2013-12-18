@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 
 
@@ -47,7 +48,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
                 return func;
             }
-            catch
+            catch (JsonSerializationException)
             {
                 // Likely failed to deserialize, which means stale data. Just ignore it. 
                 return null;
