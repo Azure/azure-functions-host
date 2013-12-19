@@ -1,22 +1,20 @@
 ﻿using System.Reflection;
 
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     internal class TableParameterStaticBinding : ParameterStaticBinding
     {
         private string _tableName;
 
-        public string TableName 
-        { 
+        public string TableName
+        {
             get
             {
                 return _tableName;
             }
             set
             {
-                Utility.ValidateAzureTableName(value);
+                TableClient.ValidateAzureTableName(value);
                 _tableName = value;
             }
         }
@@ -66,9 +64,10 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override string Description
         {
-            get {
+            get
+            {
                 return string.Format("Access table: {0}", this.TableName);
             }
-        }    
+        }
     }
 }

@@ -1,7 +1,5 @@
 ﻿using System;
-
 using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {    
@@ -33,7 +31,7 @@ namespace Microsoft.WindowsAzure.Jobs
         void PingWorker()
         {
             string url = UrlBase + "/api/Worker";
-            Utility.PostJson(url, new AccountInfo(this._account));
+            Web.PostJson(url, new AccountInfo(this._account));
         }
     }
 }

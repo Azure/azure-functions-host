@@ -1,11 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using AzureTables;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
-
-
+using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -62,12 +61,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public void PostDeleteRequest(FunctionInvokeRequest instance)
         {
-            Utility.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
+            BlobClient.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
         }
 
         public bool IsDeleteRequested(Guid instanceId)
         {
-            bool x = Utility.DoesBlobExist(_account, "abort-requests", instanceId.ToString());
+            bool x = BlobClient.DoesBlobExist(_account, "abort-requests", instanceId.ToString());
             return x;
         }
 
@@ -87,7 +86,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
-            Utility.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
+            BlobClient.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
         }
 
         public void QueueIndexRequest(IndexRequestPayload payload)
@@ -160,6 +159,318 @@ namespace Microsoft.WindowsAzure.Jobs
                 c.SetPermissions(permissions);
             }
             return c;
+        }
+
+        // Get a description of which execution mechanism is used. 
+        // This is coupled to IQueueFunction. ($$$ Move this to be on that interface?)
+        public string GetExecutionSubstrateDescription()
+        {
+            try
+            {
+                QueueFunctionType t = GetExecutionType();
+                switch (t)
+                {
+                    case QueueFunctionType.Antares:
+                        string url = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
+                        return "Antares: " + url;
+                    default:
+                        return t.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+
+        }
+
+        public QueueFunctionType GetExecutionType()
+        {
+            if (!AzureRuntime.IsAvailable)
+            {
+                return QueueFunctionType.Unknown;
+            }
+            string value = AzureRuntime.GetConfigurationSettingValue("ExecutionType");
+
+            QueueFunctionType t;
+            if (Enum.TryParse<QueueFunctionType>(value, out t))
+            {
+                return t;
+            }
+            string msg = string.Format("unknown execution substrate:{0}", value);
+            throw new InvalidOperationException(msg);
+        }
+
+
+        public IActivateFunction GetActivator(QueueInterfaces qi = null)
+        {
+            var q = GetQueueFunctionInternal(qi);
+            return q;
+        }
+
+        // Get the object that will queue function invoke requests to the execution substrate.
+        // This may pick from multiple substrates.
+        public IQueueFunction GetQueueFunction(QueueInterfaces qi = null)
+        {
+            return GetQueueFunctionInternal(qi);
+        }
+
+        private QueueFunctionBase GetQueueFunctionInternal(QueueInterfaces qi = null)
+        {
+            if (qi == null)
+            {
+                qi = this.GetQueueInterfaces();
+            }
+            // Pick the appropriate queuing function to use.
+            QueueFunctionType t = GetExecutionType();
+            // Keep a runtime codepath for all cases so that we ensure all cases always compile.
+            switch (t)
+            {
+                case QueueFunctionType.Antares:
+                    return GetAntaresQueueFunction(qi);
+                case QueueFunctionType.AzureTasks:
+                    return GetAzureTasksQueueFunction(qi);
+                case QueueFunctionType.WorkerRoles:
+                    return GetWorkerRoleQueueFunction(qi);
+                case QueueFunctionType.Kudu:
+                    return GetKuduQueueFunction(qi);
+                default:
+                    // should have already thrown before getting here. 
+                    throw new InvalidOperationException("Unknown");
+            }
+        }
+
+        // $$$ Returning bundles of interfaces... this is really looking like we need IOC.
+        // Similar bundle with FunctionExecutionContext
+        public QueueInterfaces GetQueueInterfaces()
+        {
+            var x = GetFunctionUpdatedLogger();
+
+            return new QueueInterfaces
+            {
+                AccountInfo = this._accountInfo,
+                Logger = x,
+                Lookup = x,
+                CausalityLogger = GetCausalityLogger(),
+                PreqreqManager = GetPrereqManager(x)
+            };
+        }
+
+        // Run via Azure tasks. 
+        // This requires that an existing azure task pool has been setup. 
+        private QueueFunctionBase GetAzureTasksQueueFunction(QueueInterfaces qi)
+        {
+#if false
+            // Based on AzureTasks
+            TaskConfig taskConfig = GetAzureTaskConfig();
+            return new TaskExecutor(taskConfig, qi);            
+#else
+            throw new NotImplementedException("Azure tasks disabled");
+#endif
+        }
+
+#if false // $$$ Move this to DI
+        // Gets AzureTask configuration from the Azure config settings
+        private static TaskConfig GetAzureTaskConfig()
+        {
+            var taskConfig = new TaskConfig
+            {
+                TenantUrl = RoleEnvironment.GetConfigurationSettingValue("AzureTaskTenantUrl"),
+                AccountName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskAccountName"),
+                Key = RoleEnvironment.GetConfigurationSettingValue("AzureTaskKey"),
+                PoolName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskPoolName")
+            };
+            return taskConfig;
+        }
+#endif
+
+        // Run via Antares. 
+        // This requires that an existing antares site was deployed. 
+        private QueueFunctionBase GetAntaresQueueFunction(QueueInterfaces qi)
+        {
+            // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
+            string urlBase = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
+
+            var queue = this.GetExecutionQueue();
+            return new AntaresRoleExecutionClient(urlBase, queue, qi);
+        }
+
+        private QueueFunctionBase GetKuduQueueFunction(QueueInterfaces qi)
+        {
+            var queue = this.GetExecutionQueue();
+            return new KuduQueueFunction(qi);
+        }
+
+        // Run via Azure Worker Roles
+        // These worker roles should have been deployed automatically.
+        private QueueFunctionBase GetWorkerRoleQueueFunction(QueueInterfaces qi)
+        {
+            // Based on WorkerRoles (submitted via a Queue)
+            var queue = this.GetExecutionQueue();
+            return new WorkerRoleExecutionClient(queue, qi);
+        }
+
+        private CloudBlobContainer GetHealthLogContainer()
+        {
+            CloudBlobClient client = _account.CreateCloudBlobClient();
+            CloudBlobContainer c = client.GetContainerReference(EndpointNames.HealthLogContainerName);
+            c.CreateIfNotExist();
+            return c;
+        }
+
+        [DebuggerNonUserCode]
+        public ServiceHealthStatus GetHealthStatus()
+        {
+            var stats = new ServiceHealthStatus();
+
+            stats.Executors = new Dictionary<string, ExecutionRoleHeartbeat>();
+
+            BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
+            foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
+            {
+                try
+                {
+                    string json = blob.DownloadText();
+                    if (blob.Name.StartsWith(@"orch", StringComparison.OrdinalIgnoreCase))
+                    {
+                        stats.Orchestrator = JsonCustom.DeserializeObject<OrchestratorRoleHeartbeat>(json);
+                    }
+                    else
+                    {
+                        stats.Executors[blob.Name] = JsonCustom.DeserializeObject<ExecutionRoleHeartbeat>(json);
+                    }
+                }
+                catch (StorageClientException)
+                {
+                }
+                catch (JsonSerializationException)
+                {
+                    // Ignore serialization errors. This is just health status. 
+                }
+            }
+
+            return stats;
+        }
+
+        public void WriteHealthStatus(OrchestratorRoleHeartbeat status)
+        {
+            string content = JsonCustom.SerializeObject(status);
+            GetHealthLogContainer().GetBlobReference(@"orch\role.txt").UploadText(content);
+        }
+
+        public void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
+        {
+            string content = JsonCustom.SerializeObject(status);
+            GetHealthLogContainer().GetBlobReference(@"exec\" + role + ".txt").UploadText(content);
+        }
+
+        // Delete all the blobs in the hleath status container. This will clear out stale entries.
+        // active nodes will refresh. 
+        public void ResetHealthStatus()
+        {
+            try
+            {
+                BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
+                foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
+                {
+                    blob.DeleteIfExists();
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        public IPrereqManager GetPrereqManager()
+        {
+            IFunctionInstanceLookup lookup = GetFunctionInstanceLookup();
+            return GetPrereqManager(lookup);
+        }
+
+        public IPrereqManager GetPrereqManager(IFunctionInstanceLookup lookup)
+        {
+            IAzureTable prereqTable = new AzureTable(_account, "schedPrereqTable");
+            IAzureTable successorTable = new AzureTable(_account, "schedSuccessorTable");
+
+            return new PrereqManager(prereqTable, successorTable, lookup);
+        }
+
+        public ICausalityLogger GetCausalityLogger()
+        {
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IFunctionInstanceLookup logger = null; // write-only mode
+            return new CausalityLogger(table, logger);
+        }
+
+        public ICausalityReader GetCausalityReader()
+        {
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IFunctionInstanceLookup logger = this.GetFunctionInstanceLookup(); // read-mode
+            return new CausalityLogger(table, logger);
+        }
+
+        public FunctionUpdatedLogger GetFunctionUpdatedLogger()
+        {
+            var table = new AzureTable<ExecutionInstanceLogEntity>(_account, EndpointNames.FunctionInvokeLogTableName);
+            return new FunctionUpdatedLogger(table);
+        }
+
+        // Streamlined case if we just need to lookup specific function instances.
+        // In this case, we don't need all the secondary indices.
+        public IFunctionInstanceLookup GetFunctionInstanceLookup()
+        {
+            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
+            return new ExecutionStatsAggregator(tableLookup);
+        }
+
+        public IFunctionInstanceQuery GetFunctionInstanceQuery()
+        {
+            return GetStatsAggregatorInternal();
+        }
+
+        public IFunctionInstanceLogger GetFunctionInstanceLogger()
+        {
+            return GetStatsAggregatorInternal();
+        }
+
+        private ExecutionStatsAggregator GetStatsAggregatorInternal()
+        {
+            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
+            var tableStatsSummary = GetInvokeStatsTable();
+            var tableMru = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMru);
+            var tableMruByFunction = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunction);
+            var tableMruByFunctionSucceeded = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunctionSucceeded);
+            var tableMruFunctionFailed = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunctionFailed);
+
+            return new ExecutionStatsAggregator(
+                tableLookup,
+                tableStatsSummary,
+                tableMru,
+                tableMruByFunction,
+                tableMruByFunctionSucceeded,
+                tableMruFunctionFailed);
+        }
+
+        // Table that maps function types to summary statistics. 
+        // Table is populated by the ExecutionStatsAggregator
+        public AzureTable<FunctionLocation, FunctionStatsEntity> GetInvokeStatsTable()
+        {
+            return new AzureTable<FunctionLocation, FunctionStatsEntity>(
+                _account,
+                EndpointNames.FunctionInvokeStatsTableName,
+                 row => Tuple.Create("1", row.ToString()));
+        }
+
+        private IAzureTable<FunctionInstanceGuid> GetIndexTable(string tableName)
+        {
+            return new AzureTable<FunctionInstanceGuid>(_account, tableName);
+        }
+
+        private IAzureTableReader<ExecutionInstanceLogEntity> GetFunctionLookupTable()
+        {
+            return new AzureTable<ExecutionInstanceLogEntity>(
+                  _account,
+                  EndpointNames.FunctionInvokeLogTableName);
         }
     }
 }

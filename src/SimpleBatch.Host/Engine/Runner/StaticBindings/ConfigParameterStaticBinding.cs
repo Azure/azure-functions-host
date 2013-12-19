@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using Microsoft.WindowsAzure;
-
-
-
-
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     internal class ConfigParameterStaticBinding : ParameterStaticBinding
     {
@@ -52,4 +43,3 @@ namespace Microsoft.WindowsAzure.Jobs
         }
     }
 }
-

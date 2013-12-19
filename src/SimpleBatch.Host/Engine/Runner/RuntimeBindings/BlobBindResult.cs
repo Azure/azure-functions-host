@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -64,7 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // On input, special-case non-existent blob to provide the function with null regardless of the requested Type.
             // $$$ May need to be extended when we improve value Type support.
-            if (isInput && !Utility.DoesBlobExist(blob))
+            if (isInput && !BlobClient.DoesBlobExist(blob))
             {
                 return new NullBindResult("Input blob was not found");
             }

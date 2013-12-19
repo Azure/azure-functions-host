@@ -1,27 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
-
-
-using System.Text;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    internal class OrchestratorRoleHeartbeat
-    {
-        public DateTime Uptime { get; set; } // when this node went up
-        public DateTime LastCacheReset { get; set; } // when were the caches last reset
-        public DateTime Heartbeat { get; set; } // last scan time
-
-        // ??? Add something about progress through listening on a large container?
-    }
-
     internal class Worker : IDisposable
     {
         OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
@@ -245,7 +229,6 @@ namespace Microsoft.WindowsAzure.Jobs
             var instance = BindParameters(ctx, func);
             return instance;
         }
-
 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
         {

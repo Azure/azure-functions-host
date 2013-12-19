@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 
-
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Side-effects are understood. We'll read/write to a specific blob, 
@@ -16,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // $$$ Ratioanlize these rules with BlobParameterRuntimeBinding
         public override void Validate(IConfiguration config, System.Reflection.ParameterInfo parameter)
         {
-            Utility.ValidateContainerName(this.Path.ContainerName);
+            BlobClient.ValidateContainerName(this.Path.ContainerName);
 
             bool useLease;
             Type type = BlobParameterRuntimeBinding.GetBinderType(parameter, this.IsInput, out useLease);
@@ -67,7 +64,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 BlobName = NormalizeBlobName(path.BlobName)
             };
 
-            Utility.ValidateContainerName(arg.ContainerName);
+            BlobClient.ValidateContainerName(arg.ContainerName);
 
             return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput };
         }

@@ -14,12 +14,12 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         {
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
-            Utility.DeleteContainer(account, container);
-            Utility.DeleteQueue(account, "queuetest");
+            BlobClient.DeleteContainer(account, container);
+            QueueClient.DeleteQueue(account, "queuetest");
 
             var w = LocalOrchestrator.Build(account, typeof(ProgramQueues));
 
-            Utility.WriteBlob(account, container, "foo.csv", "15");
+            BlobClient.WriteBlob(account, container, "foo.csv", "15");
 
             // Unspecified the exact number of polls it will take to push through both functions. 
             // Should be less than total length of functions to call.
@@ -28,11 +28,11 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
                 w.Poll();
             }
 
-            string output = Utility.ReadBlob(account, container, "foo.output");
+            string output = BlobClient.ReadBlob(account, container, "foo.output");
             Assert.IsNotNull(output, "blob should have been written");
             Assert.AreEqual("16", output);
 
-            Utility.DeleteQueue(account, "queuetest");
+            QueueClient.DeleteQueue(account, "queuetest");
         }
 
         // Test basic propagation between blobs. 
@@ -41,31 +41,31 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
          {
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
-            Utility.DeleteContainer(account, container);
+            BlobClient.DeleteContainer(account, container);
 
             var w = LocalOrchestrator.Build(account, typeof(Program));
             
             // Nothing written yet, so polling shouldn't execute anything
-            w.Poll(); 
-            Assert.IsFalse(Utility.DoesBlobExist(account, container, "foo.middle.csv"));
-            Assert.IsFalse(Utility.DoesBlobExist(account, container, "foo.output.csv"));
+            w.Poll();
+            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.middle.csv"));
+            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.output.csv"));
 
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
-            Utility.WriteBlob(account, container, "foo.csv", "abc");
+            BlobClient.WriteBlob(account, container, "foo.csv", "abc");
             
 
             w.Poll();
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
             Thread.Sleep(3000);
-            string middle = Utility.ReadBlob(account, container, "foo.middle.csv");
+            string middle = BlobClient.ReadBlob(account, container, "foo.middle.csv");
             Assert.IsNotNull(middle, "blob should have been written");
             Assert.AreEqual("foo", middle);
 
             // The *single* poll a few lines up will cause *both* actions to run as they are chained.
             // this makes sure that our chaining optimization works correctly!
             Thread.Sleep(1000);
-            string output = Utility.ReadBlob(account, container, "foo.output.csv");
+            string output = BlobClient.ReadBlob(account, container, "foo.output.csv");
             Assert.IsNotNull(output, "blob should have been written");
             Assert.AreEqual("*foo*", output);
         }

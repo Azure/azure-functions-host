@@ -1,134 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Services.Client;
-using System.Data.Services.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Newtonsoft.Json;
-
 
 namespace AzureTables
 {
-    // Typesafe wrappers.
-    internal class AzureTable<TPartRowKey, TValue> : AzureTable, IAzureTableReader<TValue>  where TValue : new()
-    {
-        private readonly Func<TPartRowKey, Tuple<string, string>> _funcGetRowPartKey;
-
-        // Helper for when we have a constant partition key 
-        public AzureTable(CloudStorageAccount account, string tableName, string constPartKey)
-            : this(account, tableName, rowKey => Tuple.Create(constPartKey, rowKey.ToString()))
-        {
-        }
-
-        public AzureTable(CloudStorageAccount account, string tableName, Func<TPartRowKey, Tuple<string, string>> funcGetRowPartKey)
-            : this(new LiveTableCore(account, tableName), funcGetRowPartKey)
-        {
-        }
-
-        internal AzureTable(TableCore core, Func<TPartRowKey, Tuple<string, string>> funcGetRowPartKey)
-            : base(core)
-        {
-            _funcGetRowPartKey = funcGetRowPartKey;
-        }
-
-        public TValue Lookup(TPartRowKey row)
-        {
-            var tuple = _funcGetRowPartKey(row);
-
-            IAzureTableReader<TValue> x = this;
-            return x.Lookup(tuple.Item1, tuple.Item2);            
-        }
-
-        public void Add(TPartRowKey row, TValue value)
-        {
-            var tuple = _funcGetRowPartKey(row);
-            this.Write(tuple.Item1, tuple.Item2, value);
-        }
-
-        TValue IAzureTableReader<TValue>.Lookup(string partitionKey, string rowKey)
-        {
-            IDictionary<string, string> data = this.Lookup(partitionKey, rowKey);
-            return ObjectBinderHelpers.ConvertDictToObject<TValue>(data);
-        }
-
-        IEnumerable<TValue> IAzureTableReader<TValue>.Enumerate(string partitionKey)
-        {
-            return from item in this.Enumerate(partitionKey)
-                   select ObjectBinderHelpers.ConvertDictToObject<TValue>(item);
-        }
-    }
-
-    // Wrapper for when we want to read as a strong type.
-    // $$$ Should this implement IDictionary<Tuple<string,string>, TValue> ?
-    internal class AzureTable<TValue> : AzureTable, IAzureTable<TValue> where TValue : new()
-    {
-        public AzureTable(CloudStorageAccount account, string tableName)
-            : base(account, tableName)
-        {            
-        }
-
-        internal AzureTable(TableCore core)
-            : base(core)
-        {
-        }
-
-        public static new AzureTable<TValue> NewInMemory()
-        {
-            return new AzureTable<TValue>(new LocalTableCore());
-        }
-
-        TValue IAzureTableReader<TValue>.Lookup(string partitionKey, string rowKey)
-        {
-            IDictionary<string, string> data = this.Lookup(partitionKey, rowKey);
-
-            if (data == null)
-            {
-                return default(TValue);
-            }
-
-            data["PartitionKey"] = partitionKey; // include in case T wants to bind against these.
-            data["RowKey"] = rowKey; 
-            return ObjectBinderHelpers.ConvertDictToObject<TValue>(data);
-        }
-
-        IEnumerable<TValue> IAzureTableReader<TValue>.Enumerate(string partitionKey)
-        {
-            return from item in this.Enumerate(partitionKey)
-                   let obj = ParseOrNull<TValue>(item)
-                   where obj != null
-                   select obj;
-        }
-
-        static T ParseOrNull<T>(IDictionary<string, string> item) where T : new()
-        {
-            try
-            {
-                return ObjectBinderHelpers.ConvertDictToObject<T>(item);
-            }
-            catch (JsonSerializationException)
-            {
-                return default(T);
-            }
-        }
-
-        // Enumerate, providing the PartRow key as well as the strongly-typed value. 
-        // This is a compatible signature with IDictionary
-        public IEnumerable<KeyValuePair<Tuple<string, string>, TValue>> EnumerateDict(string partitionKey = null)
-        {
-            foreach (var dict in this.Enumerate(partitionKey))
-            {
-                var partRowKey = Tuple.Create(dict["PartitionKey"], dict["RowKey"]);
-                var val = ObjectBinderHelpers.ConvertDictToObject<TValue>(dict);
-                yield return new KeyValuePair<Tuple<string, string>, TValue>(partRowKey, val);
-            }
-        }
-    }
-
-
     internal class AzureTable : IAzureTable, ISelfWatch
     {
         private Stopwatch _timeWrite = new Stopwatch();
@@ -139,7 +20,7 @@ namespace AzureTables
         // Writes must be batched by partition key. This means if the caller hits us with different partition keys, they'll keep forcing flushes.
         // Do some batching to protect against that. 
         // key value is the partition key. 
-        private Dictionary<string, WriterState> _writerMap = new Dictionary<string,WriterState>();
+        private Dictionary<string, WriterState> _writerMap = new Dictionary<string, WriterState>();
 
         internal AzureTable(TableCore core)
         {
@@ -153,7 +34,7 @@ namespace AzureTables
 
         public AzureTable(CloudStorageAccount account, string tableName)
         {
-            Utility.ValidateAzureTableName(tableName);
+            TableClient.ValidateAzureTableName(tableName);
             _core = new LiveTableCore(account, tableName);
         }
 
@@ -189,9 +70,8 @@ namespace AzureTables
         // Need co create more cache space. 
         private void FlushPartial()
         {
-            Flush();         
-        } 
-
+            Flush();
+        }
 
         // Delete the entire table
         public void Clear()
@@ -222,7 +102,6 @@ namespace AzureTables
             }
         }
 
-
         public IEnumerable<IDictionary<string, string>> Enumerate(string partitionKey = null)
         {
             Flush();
@@ -234,7 +113,7 @@ namespace AzureTables
                 _countRowsRead++;
 
                 results = _core.Enumerate(partitionKey);
-               
+
             }
             finally
             {
@@ -259,7 +138,7 @@ namespace AzureTables
             return list;
         }
 
-        private static IDictionary<string, string>  Normalize(GenericEntity item)
+        private static IDictionary<string, string> Normalize(GenericEntity item)
         {
             item.properties["PartitionKey"] = item.PartitionKey;
             item.properties["RowKey"] = item.RowKey;
@@ -282,7 +161,7 @@ namespace AzureTables
                     return null;
                 }
 
-                return Normalize(all);                
+                return Normalize(all);
             }
             finally
             {
@@ -311,7 +190,7 @@ namespace AzureTables
                 }
 
                 writer = new WriterState(_core);
-                _writerMap.Add(partitionKey, writer);                
+                _writerMap.Add(partitionKey, writer);
             }
 
             try
@@ -476,15 +355,5 @@ namespace AzureTables
             // Larger batches are more efficient. 
             private const int UploadBatchSize = 90;
         }
-
-    }
-
-    // The DataServiceKey is needed to work with the Azure SDK's Table client. 
-    [DataServiceKey("PartitionKey", "RowKey")]
-    internal class GenericEntity
-    {
-        public string PartitionKey { get; set; }
-        public string RowKey { get; set; }
-        public IDictionary<string, string> properties = new Dictionary<string, string>();
     }
 }

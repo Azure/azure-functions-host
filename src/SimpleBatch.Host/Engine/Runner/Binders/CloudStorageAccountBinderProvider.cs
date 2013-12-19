@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Reflection;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -32,5 +28,4 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
     }
-
 }

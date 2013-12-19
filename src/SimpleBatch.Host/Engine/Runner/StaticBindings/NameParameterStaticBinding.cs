@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Reflection;
-using Microsoft.WindowsAzure;
-
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {

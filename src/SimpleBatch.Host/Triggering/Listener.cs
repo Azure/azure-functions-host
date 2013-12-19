@@ -3,9 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -43,7 +41,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             var keys = _map.Keys;
-                        
+
             // IF we're listening on DevStorage, use a full scanner, since DevStorage doesn't support log listening. 
             // This also gives us very deterministic behavior for unit tests. 
             bool includesDevStorage = (keys.Count > 0) && (keys.First().ServiceClient.Credentials.AccountName == "devstoreaccount1");
@@ -53,7 +51,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Full scan, very deterministic. But doesn't scale.
                 _blobListener = new ContainerScannerBlobListener(keys);
             }
-            else 
+            else
             {
                 // highly scalable, non-deterministic, less responsive.
                 _blobListener = new BlobListener(keys);
@@ -101,7 +99,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     };
 
                     timer = new Timer(callback, null, TimeSpan.FromMinutes(0), period);
-                    _timers.Add(timer);                    
+                    _timers.Add(timer);
                 }
 
 
@@ -127,7 +125,6 @@ namespace Microsoft.WindowsAzure.Jobs
             CloudStorageAccount account = CloudStorageAccount.Parse(func.AccountConnectionString);
             return account;
         }
-
 
         public void Poll()
         {
@@ -165,7 +162,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     break;
                 }
 
-                _invoker.OnNewTimer(func, token);                
+                _invoker.OnNewTimer(func, token);
             }
         }
 
@@ -181,7 +178,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     if (sameAccount)
                     {
                         var blob = container.GetBlobReference(blobName);
-                        OnNewBlobWorker(blob);                        
+                        OnNewBlobWorker(blob);
                     }
                 }
             }
@@ -196,7 +193,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             DateTime inputTime;
             {
-                var inputTimeCheck = Utility.GetBlobModifiedUtcTime(blob);
+                var inputTimeCheck = BlobClient.GetBlobModifiedUtcTime(blob);
                 if (!inputTimeCheck.HasValue)
                 {
                     // Shouldn't happen. This means blob is missing, but we were called because blob was discovered.
@@ -242,10 +239,9 @@ namespace Microsoft.WindowsAzure.Jobs
             var container = client.GetContainerReference(path.ContainerName);
             var blob = container.GetBlobReference(path.BlobName);
 
-            var time = Utility.GetBlobModifiedUtcTime(blob);
+            var time = BlobClient.GetBlobModifiedUtcTime(blob);
             return time;
         }
-
 
         // Return true if we should invoke the blob trigger. Called when a corresponding input is detected.
         // trigger - the blob trigger to evaluate. 
@@ -282,7 +278,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             return false;
         }
-                        
+
         // Listen for all queue results.
         private void PollQueues(CancellationToken token)
         {

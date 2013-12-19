@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.WindowsAzure.Jobs;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

@@ -8,17 +8,8 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 
-
 namespace AzureTables
 {
-    // Constants for writing the XML schema for Azure Tables.
-    class AzureTableConstants
-    {
-        public static XNamespace AtomNamespace = "http://www.w3.org/2005/Atom";
-        public static XNamespace DataNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices";
-        public static XNamespace MetadataNamespace = "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata";
-    }
-    
     // Connects an AzureTable class to a live azure table. 
     class LiveTableCore : TableCore
     {
@@ -86,7 +77,7 @@ namespace AzureTables
                 _ctx = null;
 
                 var opts = SaveChangesOptions.Batch | SaveChangesOptions.ReplaceOnUpdate;
-                var result = ctx.SaveChangesWithRetries(opts);        
+                var result = ctx.SaveChangesWithRetries(opts);
             }
 
             void ITableCorePartitionWriter.AddObject(GenericEntity entity)
@@ -105,7 +96,7 @@ namespace AzureTables
         public override void DeleteTable()
         {
             // This could take minutes.
-            Utility.DeleteTable(_account, _tableName);
+            TableClient.DeleteTable(_account, _tableName);
         }
 
         public override void DeleteTableAsync()
@@ -117,17 +108,16 @@ namespace AzureTables
 
         public override void DeleteTablePartition(string partitionKey)
         {
-            Utility.DeleteTablePartition(_account, _tableName, partitionKey);
+            TableClient.DeleteTablePartition(_account, _tableName, partitionKey);
         }
 
         public override void DeleteTableRow(string partitionKey, string rowKey)
         {
-            Utility.DeleteTableRow(_account, _tableName, partitionKey, rowKey);
+            TableClient.DeleteTableRow(_account, _tableName, partitionKey, rowKey);
         }
 
         public override IEnumerable<GenericEntity> Enumerate(string partitionKey)
         {
-            
             // Azure will special case this lookup pattern for a single entity. 
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try
@@ -169,7 +159,7 @@ namespace AzureTables
 
         [DebuggerNonUserCode]
         public override GenericEntity Lookup(string partitionKey, string rowKey)
-        {            
+        {
             // Azure will special case this lookup pattern for a single entity. 
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try

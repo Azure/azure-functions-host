@@ -1,42 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    internal interface ITriggerMap
-    {
-        // Scope can be a user's site. 
-        Trigger[] GetTriggers(string scope);
-
-        void AddTriggers(string scope, params Trigger[] triggers);
-
-        IEnumerable<string> GetScopes();
-
-        void ClearTriggers(string scope);
-    }
-
-    internal static class ITriggerMapExtensions
-    {
-        public static IEnumerable<Trigger> GetTriggers(this ITriggerMap x)
-        {
-            foreach (var scope in x.GetScopes())
-            {
-                foreach (var trigger in x.GetTriggers(scope))
-                {
-                    yield return trigger;
-                }
-            }
-        }
-    }
-
     // In-memory 
     internal class TriggerMap : ITriggerMap
     {
         Dictionary<string, Trigger[]> _storage = new Dictionary<string, Trigger[]>();
-        
+
         [JsonProperty]
         Dictionary<string, Trigger[]> Storage
         {
@@ -74,7 +46,6 @@ namespace Microsoft.WindowsAzure.Jobs
             var result = JsonConvert.DeserializeObject<TriggerMap>(json, _settings);
             return result;
         }
-
 
         public Trigger[] GetTriggers(string scope)
         {

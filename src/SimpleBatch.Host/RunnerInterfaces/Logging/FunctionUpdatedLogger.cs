@@ -1,8 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
 
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Primary access to the azure table storing function invoke requests.  
@@ -21,10 +19,10 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             _table = table;
         }
-                       
+
         // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)
         public void Log(ExecutionInstanceLogEntity log)
-        {            
+        {
             string rowKey = log.GetKey();
             var l2 = RawLookup(_table, rowKey);
             if (l2 == null)
@@ -54,7 +52,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 return null;
             }
         }
-               
 
         // $$$ Should be a merge. Move this merge operation in IAzureTable?
         public static void Merge<T>(T mutate, T delta)
@@ -73,5 +70,5 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             return RawLookup(_table, rowKey.ToString());
         }
-    }    
+    }
 }

@@ -17,12 +17,12 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            Utility.DeleteContainer(account, "daas-test-input");
+            BlobClient.DeleteContainer(account, "daas-test-input");
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("TestBinder");                        
 
-            string content = Utility.ReadBlob(account, "daas-test-input", "directout.txt");
+            string content = BlobClient.ReadBlob(account, "daas-test-input", "directout.txt");
             Assert.AreEqual("output", content);
         }
 
@@ -31,15 +31,15 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         {
             var account = TestStorage.GetAccount();
 
-            Utility.DeleteContainer(account, "daas-test-input");
-            Utility.WriteBlob(account, "daas-test-input", "input.txt", "abc");
+            BlobClient.DeleteContainer(account, "daas-test-input");
+            BlobClient.WriteBlob(account, "daas-test-input", "input.txt", "abc");
 
             var lc = TestStorage.New<Program>(account);
             IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
             lc.CallOnBlob("Func", @"daas-test-input\input.txt");
 
-            string content = Utility.ReadBlob(account, "daas-test-input", "output.txt");
+            string content = BlobClient.ReadBlob(account, "daas-test-input", "output.txt");
             Assert.AreEqual("*abc*", content);
         }
 

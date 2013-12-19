@@ -55,7 +55,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-
         // BCL implementation may get wrong converters
         // It appears to use Type.GetType() to find a converter, and so has trouble looking up converters from different loader contexts.
         static TypeConverter GetConverter(Type type)
@@ -213,7 +212,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return value;
         }
 
-
         // DateTime.ToString() is not specific enough, so need better serialization functions.
         public static string SerializeDateTime(DateTime date)
         {
@@ -257,7 +255,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 
             // That gives them higher compatibily with just regular strings. 
-            return Utility.IsDefaultTableType(t) || 
+            return TableClient.IsDefaultTableType(t) || 
                 (t == typeof(char)) ||
                 (t.IsEnum) || // ensures Enums are represented as string values instead of numerical.
                 (t == typeof(TimeSpan)) || 

@@ -1,8 +1,7 @@
 ﻿using System;
 
-
 namespace Microsoft.WindowsAzure.Jobs
-{   
+{
     // This is a helper class that provides a type-safe wrapper for GUIDs that represent Function instances.
     // $$$ Issues:
     // - Change to struct? Rename to FunctionIndexGuid so it's obvious it's a guid wrapper.
@@ -18,7 +17,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _instance = Guid.Empty;
         }
 
-        public FunctionInstanceGuid(Guid guid) 
+        public FunctionInstanceGuid(Guid guid)
         {
             _instance = guid;
         }

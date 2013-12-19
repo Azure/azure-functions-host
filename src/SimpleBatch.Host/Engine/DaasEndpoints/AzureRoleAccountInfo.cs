@@ -1,8 +1,4 @@
-﻿using System.Linq;
-using Microsoft.WindowsAzure;
-
-
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Get account information via the Azure role Configuration. 
     internal class AzureRoleAccountInfo : IAccountInfo

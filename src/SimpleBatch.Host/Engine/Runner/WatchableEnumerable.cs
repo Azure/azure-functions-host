@@ -1,15 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
-
+﻿using System.Collections.Generic;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

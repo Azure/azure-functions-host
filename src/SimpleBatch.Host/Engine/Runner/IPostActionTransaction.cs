@@ -1,7 +1,4 @@
-﻿using System;
-
-
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Bind result. Invoke a cleanup action only if the function runs successfully.
     // Invoked after all other BindResults get OnPostAction
@@ -9,17 +6,5 @@ namespace Microsoft.WindowsAzure.Jobs
     internal interface IPostActionTransaction
     {
         void OnSuccessAction();
-    }
-    internal class BindResultTransaction : BindResult, IPostActionTransaction
-    {
-        public Action Cleanup;
-
-        public void OnSuccessAction()
-        {
-            if (Cleanup != null)
-            {
-                Cleanup();
-            }
-        }
     }
 }

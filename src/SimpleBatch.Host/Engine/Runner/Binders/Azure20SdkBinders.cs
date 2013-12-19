@@ -132,7 +132,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
             void ICloudBinderVerify.Validate(ParameterInfo parameter)
             {
                 string queueName = parameter.Name;
-                Microsoft.WindowsAzure.Jobs.Utility.ValidateQueueName(queueName);
+                QueueClient.ValidateQueueName(queueName);
             }
         }
     }

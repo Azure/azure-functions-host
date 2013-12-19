@@ -5,14 +5,12 @@ using System.Text;
 using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
 
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     internal class SelfWatch
     {
         TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
         TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
-        
 
         volatile bool _exitThread;
 

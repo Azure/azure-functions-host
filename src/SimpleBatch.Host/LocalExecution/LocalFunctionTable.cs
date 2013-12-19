@@ -1,15 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Threading;
-
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -76,13 +67,13 @@ namespace Microsoft.WindowsAzure.Jobs
         FunctionDefinition[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();
-        }  
+        }
 
         public DateTime? GetLastExecutionTime(FunctionLocation func)
         {
             return null;
         }
-       
+
         public FunctionDefinition Lookup(string functionId)
         {
             throw new NotImplementedException();

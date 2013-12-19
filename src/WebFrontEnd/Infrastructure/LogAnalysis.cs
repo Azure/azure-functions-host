@@ -100,7 +100,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
 
                 var blob = instance.ParameterLogBlob.GetBlob();
 
-                if (!Utility.DoesBlobExist(blob))
+                if (!BlobClient.DoesBlobExist(blob))
                 {
                     return null; // common case, no selfwatch information written.
                 }

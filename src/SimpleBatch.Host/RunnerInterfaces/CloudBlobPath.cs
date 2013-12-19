@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
@@ -14,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // - Standardized parser
     // - ToString should be suitable rowkey to coopreate with table indices.    
     // - Serialize to JSON as a single string. 
-    [JsonConverter(typeof(CloudBlobPathConverter))] 
+    [JsonConverter(typeof(CloudBlobPathConverter))]
     internal class CloudBlobPath
     {
         private readonly string _containerName;
@@ -22,7 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Name is flattened for blob subdirectories.
         // May have {key} embedded.
         private readonly string _blobName;
-        
+
         public string ContainerName
         {
             get { return _containerName; }
@@ -146,7 +145,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     yield return b;
                 }
-            }        
+            }
         }
 
         public CloudBlobContainer GetContainer(CloudStorageAccount account)
@@ -165,7 +164,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             var container = this.GetContainer(account);
             var dir = this.GetBlobDir(container);
-            
+
             IEnumerable<IListBlobItem> source = (dir == null) ? container.ListBlobs(opt) : dir.ListBlobs(opt);
 
             var count = source.Count();
@@ -195,9 +194,9 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 string blobPath = this.BlobName.Replace('/', '\\');
                 string[] parts = blobPath.Split('\\');
-                                
+
                 var dir = container.GetDirectoryReference(parts[0]);
-                for(int i = 1; i < parts.Length; i++)
+                for (int i = 1; i < parts.Length; i++)
                 {
                     dir = dir.GetSubdirectory(parts[i]);
                 }
@@ -442,15 +441,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 return names;
             }
-        } // end class PArser
-    }
-
-    internal class CloudBlobPathConverter : StringConverter<CloudBlobPath>
-    {
-        public override object ReadFromString(string value)
-        {
-            return new CloudBlobPath(value);
-        }        
+        } // end class Parser
     }
 }
-

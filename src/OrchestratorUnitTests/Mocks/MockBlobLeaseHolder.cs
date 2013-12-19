@@ -26,7 +26,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             _blob = blob;
 
             var blobLock = GetBlobSuffix(_blob, ".lease");
-            Assert.IsFalse(Utility.DoesBlobExist(blobLock), "Somebody else has the lease");
+            Assert.IsFalse(BlobClient.DoesBlobExist(blobLock), "Somebody else has the lease");
             blobLock.UploadText("held");
         }
 
@@ -53,7 +53,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
 
 
             var blobLock = GetBlobSuffix(_blob, ".lease");            
-            Assert.IsTrue(Utility.DoesBlobExist(blobLock), "Writing without a lease");
+            Assert.IsTrue(BlobClient.DoesBlobExist(blobLock), "Writing without a lease");
         }
 
         public void Dispose()

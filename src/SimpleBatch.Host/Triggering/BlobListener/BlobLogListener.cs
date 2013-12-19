@@ -1,149 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using System.Linq;
-using System.Threading;
-using System.Text;
-using Microsoft.WindowsAzure.StorageClient.Protocol;
 using System.IO;
-
+using System.Text;
+using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.StorageClient.Protocol;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // Format for 1.0 logs:
-    // <version-number>;<request-start-time>;<operation-type>;<request-status>;<http-status-code>;<end-to-end-latency-in-ms>;<server-latency-in-ms>;<authentication-type>;<requester-account-name>;<owner-account-name>;<service-type>;<request-url>;<requested-object-key>;<request-id-header>;<operation-count>;<requester-ip-address>;<request-version-header>;<request-header-size>;<request-packet-size>;<response-header-size>;<response-packet-size>;<request-content-length>;<request-md5>;<server-md5>;<etag-identifier>;<last-modified-time>;<conditions-used>;<user-agent-header>;<referrer-header>;<client-request-id> 
-    // Schema defined at: http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx
-    enum LogColumnId
-    {
-        VersionNumber = 0,
-        RequestStartTime = 1, // DateTime
-        OperationType = 2, // See list at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx 
-        RequestStatus = 3,
-        HttpStatusCode = 4,
-        EndToEndLatencyInMs = 5,
-        ServerLatencyInMs = 6,
-        AuthenticationType = 7, // Authenticated
-        RequesterAccountName = 8,
-        OwnerAccountName = 9,
-        ServiceType = 10, // matches ServiceType
-        RequestUrl = 11,
-        RequestedObjectKey = 12, // This is the CloudBlobPath, specifies the blob name! eg, /Account/Container/Blob
-        RequestIdHeader = 13, // a GUID
-        OperationCount = 14,
-
-        // Rest of the fields:
-        // ;<requester-ip-address>;<request-version-header>;<request-header-size>;<request-packet-size>;<response-header-size>;<response-packet-size>;<request-content-length>;<request-md5>;<server-md5>;<etag-identifier>;<last-modified-time>;<conditions-used>;<user-agent-header>;<referrer-header>;<client-request-id> 
-    }
-
-
-    // See list at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx
-    internal enum OperationType
-    {
-        AcquireLease,
-        BreakLease,
-        ClearPage,
-        CopyBlob,
-        CopyBlobSource,
-        CopyBlobDestination,
-        CreateContainer,
-        DeleteBlob,
-        DeleteContainer,
-        GetBlob,
-        GetBlobMetadata,
-        GetBlobProperties,
-        GetBlockList,
-        GetContainerACL,
-        GetContainerMetadata,
-        GetContainerProperties,
-        GetLeaseInfo,
-        GetPageRegions,
-        LeaseBlob,
-        ListBlobs,
-        ListContainers,
-        PutBlob,
-        PutBlockList,
-        PutBlock,
-        PutPage,
-        ReleaseLease,
-        RenewLease,
-        SetBlobMetadata,
-        SetBlobProperties,
-        SetContainerACL,
-        SetContainerMetadata,
-        SnapshotBlob,
-        SetBlobServiceProperties,
-        GetBlobServiceProperties,
-    }
-
-    // Describes an entry in the storage log
-    internal class LogRow
-    {
-        public static LogRow Parse(string value)
-        {
-            string[] parts = value.Split(';');
-
-            var x = new LogRow();
-            x.RequestStartTime = DateTime.Parse(parts[(int)LogColumnId.RequestStartTime]);
-
-            ServiceType serviceType;
-            Enum.TryParse<ServiceType>(parts[(int)LogColumnId.ServiceType], out serviceType);
-            x.ServiceType = serviceType;
-
-            OperationType operationType;
-            Enum.TryParse<OperationType>(parts[(int)LogColumnId.OperationType], out operationType);
-            x.OperationType = operationType;
-
-            x.RequestedObjectKey = parts[(int)LogColumnId.RequestedObjectKey];
-
-            return x;
-        }
-
-        public DateTime RequestStartTime { get; set; }
-        public OperationType OperationType { get; set; }
-        public ServiceType ServiceType { get; set; }
-        public string RequestedObjectKey { get; set; }
-
-
-        // Null if not a blob. 
-        public CloudBlobPath ToPath()
-        {
-            if (ServiceType != ServiceType.Blob)
-            {
-                return null;
-            }
-
-            // key is "/account/container/blob"
-            // - it's enclosed in quotes 
-            // - first token is the account name
-            string key = this.RequestedObjectKey;
-
-            int x = key.IndexOf('/', 2); // skip past opening quote (+1) and opening / (+1)
-            if (x > 0)
-            {
-                int start = x + 1;
-                string path = key.Substring(start, key.Length - start - 1); // -1 for closing quote
-                return new CloudBlobPath(path);
-            }
-            return null;
-        }
-    }
-
-
-    internal enum ServiceType
-    {
-        Blob,
-        Table,
-        Queue
-    }
-
     // Scans storage logs for blob writes
     internal class BlobLogListener
-    {        
+    {
         const string LogStartTime = "StartTime";
         const string LogEndTime = "EndTime";
         const string LogType = "LogType";
-
 
         private readonly CloudBlobClient _blobClient;
         private readonly HashSet<string> _scannedBlobNames = new HashSet<string>();
@@ -206,7 +75,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 (row.OperationType == OperationType.SetBlobProperties));
             return isBlobWrite;
         }
-        
+
         public static IEnumerable<CloudBlobPath> GetRecentBlobWrites(CloudBlobClient blobClient, int hoursWindow = 2)
         {
             var time = DateTime.UtcNow; // will scan back 2 hours, which is enough to deal with clock sqew
@@ -404,8 +273,8 @@ namespace Microsoft.WindowsAzure.Jobs
             lp.LoggingOperations |= LoggingOperations.Write;
 
             // Leave metrics untouched           
-            
+
             blobClient.SetServiceProperties(sp);
         }
-    } // end class
+    }
 }

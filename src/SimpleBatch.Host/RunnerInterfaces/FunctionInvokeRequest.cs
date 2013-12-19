@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
-{   
+{
     // Request information to invoke a function. 
     // This is just request information and doesn't contain any response information
     // This can be serialized. 
@@ -48,7 +42,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
-        
+
         // List of prerequisites. Null if no prereqs. 
         public Guid[] Prereqs { get; set; }
 

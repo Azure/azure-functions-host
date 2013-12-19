@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -33,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {            
             string name = f.ToString() + ".txt";
 
-            var c = Utility.GetContainer(accountConnectionString, containerName);
+            var c = BlobClient.GetContainer(accountConnectionString, containerName);
             if (c.CreateIfNotExist())
             {
                 c.SetPermissions(new BlobContainerPermissions() { PublicAccess = BlobContainerPublicAccessType.Off });

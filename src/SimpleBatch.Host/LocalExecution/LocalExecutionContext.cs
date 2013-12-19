@@ -77,13 +77,13 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var account = CloudStorageAccount.Parse(accountConnectionString);
 
-            _config = CreateConfig(this, scope);        
-       
+            _config = CreateConfig(this, scope);
+
             // These resolution functions are "open". We lazily resolve to any method on the scope type. 
             _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
             _fpResolveFuncDefinition = method => Resolve(account, _config, method); // MethodInfo-->FunctionDefinition
 
-            _fpResolveBlobs = blobPath => new CloudBlobPath(blobPath).Resolve(account); 
+            _fpResolveBlobs = blobPath => new CloudBlobPath(blobPath).Resolve(account);
 
             {
                 var x = new LocalFunctionLogger();
@@ -138,13 +138,13 @@ namespace Microsoft.WindowsAzure.Jobs
 
             IFunctionTable functionTable = store;
             var funcs = functionTable.ReadAll();
-                        
+
             if (funcs.Length == 0)
             {
                 string msg = string.Format("Function '{0}' is not found. Is it missing Simple Batch attributes?", method);
                 throw new InvalidOperationException(msg);
             }
-            
+
             FunctionDefinition func = funcs[0];
             return func;
         }
@@ -160,7 +160,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return _fpResolveFuncDefinition(methodInfo);
         }
 
-
         // Direct call from outside of a simple batch function. No current function guid. 
         IFunctionToken ICall.QueueCall(string functionName, object arguments, IEnumerable<IFunctionToken> prereqs)
         {
@@ -172,7 +171,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public Guid Call(MethodInfo method, object arguments = null, IEnumerable<Guid> prereqs = null)
         {
             var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
-            
+
             var guid = Call(method, args2, prereqs);
             return guid;
         }
@@ -217,7 +216,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public Guid CallOnBlob(string functionName, string blobPath)
         {
             CloudBlob blobInput = _fpResolveBlobs(blobPath);
-            FunctionDefinition func = ResolveFunctionDefinition(functionName);            
+            FunctionDefinition func = ResolveFunctionDefinition(functionName);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, blobInput);
 
             return CallInner(instance);
@@ -256,7 +255,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 _parent._prereq.OnComplete(guid, _parent._activator);
             }
         }
-
 
         // Ideally use FunctionUpdatedLogger with in-memory azure tables (this would minimize code deltas).
         // For local execution, we may have function objects that don't serialize. So we can't run through azure tables.

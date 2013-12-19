@@ -60,7 +60,7 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         public void InvokeChain()
         {            
             var account = TestStorage.GetAccount();
-            Utility.DeleteContainer(account, "daas-test-input");
+            BlobClient.DeleteContainer(account, "daas-test-input");
             Program._sb.Clear();
 
             var lc = TestStorage.New<Program>(account);
@@ -170,20 +170,20 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
         {
             // Test invoking a delete operation 
             var account = TestStorage.GetAccount();
-            Utility.DeleteContainer(account, "daas-test-input");
-            Utility.DeleteContainer(account, "daas-test-archive");
+            BlobClient.DeleteContainer(account, "daas-test-input");
+            BlobClient.DeleteContainer(account, "daas-test-archive");
 
-            Utility.WriteBlob(account, "daas-test-input", "foo-input.txt", "12");
+            BlobClient.WriteBlob(account, "daas-test-input", "foo-input.txt", "12");
 
             var l = TestStorage.New<Program2>(account);
             l.Call("Chain1", new { name = "foo" }); // blocks
 
-            Assert.IsFalse(Utility.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
+            Assert.IsFalse(BlobClient.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
             
-            string content = Utility.ReadBlob(account, "daas-test-input", "foo-output.txt");
+            string content = BlobClient.ReadBlob(account, "daas-test-input", "foo-output.txt");
             Assert.AreEqual("13", content); // ouput
 
-            string content2 = Utility.ReadBlob(account, "daas-test-archive", "foo-input.txt");
+            string content2 = BlobClient.ReadBlob(account, "daas-test-archive", "foo-input.txt");
             Assert.AreEqual("12", content2); // archive of input
         }
 

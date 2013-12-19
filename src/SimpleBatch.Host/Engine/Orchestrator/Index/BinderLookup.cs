@@ -2,12 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using AzureTables;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {

@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -74,58 +69,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public void Dispose()
         {
             ClearCache();
-        }
-    }
-
-    // Represents a single execution request. 
-    internal class ExecutionInstance
-    {    
-        // Local directory where execution has been copied to.
-        private readonly string _localCopy;
-
-        // Capture output and logging. 
-        private TextWriter _output;
-
-        // localCopy - local directory where execution has been copied to.
-        // Facilitates multiple instances sharing the same execution path.
-        internal ExecutionInstance(string localCopy, TextWriter outputLogging)
-        {
-            _output = outputLogging;
-            _localCopy = localCopy;
-        }
-
-        internal FunctionExecutionResult Execute(FunctionInvokeRequest instance, CancellationToken token)
-        {
-            Console.WriteLine("# Executing: {0}", instance.Location.GetId());
-            
-            // Log
-            _output.WriteLine("Executing: {0}", instance.Location.GetId());
-            foreach (var arg in instance.Args)
-            {
-                _output.WriteLine("  Arg:{0}", arg.ToString());
-            }
-            _output.WriteLine();
-
-            var localInstance = ConvertToLocal(instance);
-
-            var result = Utility.ProcessExecute<FunctionInvokeRequest, FunctionExecutionResult>(
-                typeof(RunnerProgram),
-                _localCopy,
-                localInstance, _output,
-                token);
-
-            return result;
-        }
-
-        private FunctionInvokeRequest ConvertToLocal(FunctionInvokeRequest remoteFunc)
-        {
-            var remoteLoc = (RemoteFunctionLocation) remoteFunc.Location;
-
-            var localLocation = remoteLoc.GetAsLocal(_localCopy);
-
-            var localFunc = remoteFunc.CloneUpdateLocation(localLocation);            
-
-            return localFunc;
         }
     }
 }

@@ -377,7 +377,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 
             CloudBlob x = p.Resolve(account);
 
-            if (!Utility.DoesBlobExist(x))
+            if (!BlobClient.DoesBlobExist(x))
             {
                 return new ContentResult { Content = string.Format("Blob doesn't exist.") };
             }
@@ -386,7 +386,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
             model.AccountName = accountName;
             model.ContainerName = container;
             model.BlobName = blob;
-            model.LastModifiedTime = Utility.GetBlobModifiedUtcTime(x);
+            model.LastModifiedTime = BlobClient.GetBlobModifiedUtcTime(x);
             model.Uri = x.Uri;
 
             IBlobCausalityLogger logger = new BlobCausalityLogger();

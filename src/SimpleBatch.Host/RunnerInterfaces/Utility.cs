@@ -1,34 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    internal static class DictExtensions
-    {
-        public static TValue GetOrCreate<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key) where TValue : new()
-        {
-            TValue value;
-            if (!dict.TryGetValue(key, out value))
-            {
-                value = new TValue();
-                dict[key] = value;
-            }
-            return value;
-        }
-    }
-
     internal static partial class Utility
     {
         public static BindResult<T> StrongWrapper<T>(BindResult b)
         {
             return new BindResult<T>((T)b.Result, b);
-
         }
 
         // C# "ref" keyword

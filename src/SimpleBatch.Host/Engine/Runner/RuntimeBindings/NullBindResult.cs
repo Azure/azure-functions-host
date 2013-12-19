@@ -1,6 +1,4 @@
-﻿
-
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Input argument is currently null
     class NullBindResult : BindResult, ISelfWatch

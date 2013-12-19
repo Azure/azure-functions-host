@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.WindowsAzure.StorageClient;
 
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // On output, the object payload gets queued

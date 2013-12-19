@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
-
+﻿using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -27,7 +19,7 @@ namespace Microsoft.WindowsAzure.Jobs
             set
             {
                 string name = value.ToLower(); // must be lowercase. coerce here to be nice.
-                Utility.ValidateQueueName(name);
+                QueueClient.ValidateQueueName(name);
                 this._queueName = name;
             }
         }

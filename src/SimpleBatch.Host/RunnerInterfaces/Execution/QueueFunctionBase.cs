@@ -1,45 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // Bunder of interfaces needed for execution. Grouped together for convenience. 
-    internal class QueueInterfaces
-    {
-        public IAccountInfo AccountInfo;
-        public IFunctionInstanceLookup Lookup;
-        public IFunctionUpdatedLogger Logger;
-        public ICausalityLogger CausalityLogger;
-        public IPrereqManager PreqreqManager;
-
-        public void VerifyNotNull()
-        {
-            if (Logger == null)
-            {
-                throw new ArgumentNullException("Logger");
-            }
-            if (Lookup == null)
-            {
-                throw new ArgumentNullException("Lookup");
-            }
-            if (AccountInfo == null)
-            {
-                throw new ArgumentNullException("AccountInfo");
-            }
-            if (CausalityLogger == null)
-            {
-                throw new ArgumentNullException("CausalityLogger");
-            }
-            if (PreqreqManager == null)
-            {
-                throw new ArgumentNullException("PreqreqManager");
-            }
-        }
-    }
-
     // Base class for providing a consistent implementation of IQueueFunction
     // this provides consistent treatment of logging facilities around submitting a function (eg, ExecutionInstanceLogEntity)
     // but abstracts away the actual raw queuing mechanism.
@@ -84,18 +46,18 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             instance.TriggerReason.ChildGuid = instance.Id;
             _causalityLogger.LogTriggerReason(instance.TriggerReason);
-            
+
             // Log that the function is now queued.
             // Do this before queueing to avoid racing with execution 
             var logItem = new ExecutionInstanceLogEntity();
             logItem.FunctionInstance = instance;
-            
+
             if (instance.Prereqs != null && instance.Prereqs.Length > 0)
             {
                 // Has prereqs. don't queue yet. Instead, setup in the pre-req table.                
                 _logger.Log(logItem);
 
-                _preqreqManager.AddPrereq(instance.Id, instance.Prereqs, this);                
+                _preqreqManager.AddPrereq(instance.Id, instance.Prereqs, this);
             }
             else
             {

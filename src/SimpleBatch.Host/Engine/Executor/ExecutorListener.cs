@@ -1,49 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // health information written by an execution role. 
-    internal class ExecutionRoleHeartbeat
-    {
-        // Function instance ID that we're currently processing. 
-        public Guid? FunctionInstanceId { get; set; }
-
-        // Times are UTC. 
-        public DateTime Uptime { get; set; } // when this node went up
-        public DateTime LastCacheReset { get; set; } // when were the caches last reset
-        public DateTime Heartbeat { get; set; } // last time written
-
-        public int RunCount { get; set; }
-        public int CriticalErrors { get; set; }
-        
-    }
-
-    // FunctionExecutionContext is the common execution operations that aren't Worker-role specific.
-    // Everything else is worker role specific. 
-    internal interface IExecutionLogger
-    {
-        FunctionExecutionContext GetExecutionContext();
-
-        void LogFatalError(string info, Exception e);
-                
-        // Write health status for the worker role. 
-        void WriteHeartbeat(ExecutionRoleHeartbeat stats);
-
-        // Check if a delete is requested and then set a Cancellation token 
-        // The communication here could be from detecting a blob; or it could be from WorkerRole-WorkerRole communication.
-        bool IsDeleteRequested(Guid id);
-    }    
-
     // Listens on a queue, deques, and runs
     internal class ExecutorListener : IDisposable
     {
@@ -55,8 +16,6 @@ namespace Microsoft.WindowsAzure.Jobs
             _executionQueue = executionQueue;
             _executor = new Executor(localCache);
         }
-
-        
 
         public void Run(IExecutionLogger logger)
         {
@@ -217,7 +176,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             string json = msg.AsString;
             FunctionInvokeRequest instance = JsonCustom.DeserializeObject<FunctionInvokeRequest>(json);
-
 
             if (instance.SchemaNumber != FunctionInvokeRequest.CurrentSchema)
             {

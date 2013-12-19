@@ -1,7 +1,4 @@
-﻿
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
@@ -25,13 +22,14 @@ namespace Microsoft.WindowsAzure.Jobs
         private HostContext _ctx;
 
         // Get from app settings 
-        public Host() : this(null, null)
-        {            
+        public Host()
+            : this(null, null)
+        {
         }
 
         // Ctor for when the User account and Logging account go to the same thing. 
         public Host(string userAndLoggingAccountConnectionString)
-            : this (userAndLoggingAccountConnectionString, userAndLoggingAccountConnectionString)
+            : this(userAndLoggingAccountConnectionString, userAndLoggingAccountConnectionString)
         {
         }
 
@@ -59,11 +57,11 @@ namespace Microsoft.WindowsAzure.Jobs
         private static void WriteAntaresManifest()
         {
             string filename = Environment.GetEnvironmentVariable("JOB_EXTRA_INFO_URL_PATH");
-            if (filename != null) 
-            {                
+            if (filename != null)
+            {
                 string manifestContents = "/sb";
 
-                File.WriteAllText(filename, manifestContents); 
+                File.WriteAllText(filename, manifestContents);
             }
         }
 
@@ -115,7 +113,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             RunAndBlock(CancellationToken.None);
         }
-                        
+
         public void RunAndBlock(CancellationToken token)
         {
             //INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaQueueMessage(Utility.GetAccount(_loggingAccountConnectionString));
@@ -145,7 +143,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 try
                 {
-                    bool handled = Utility.ApplyToQueue<FunctionInvokeRequest>(request => HandleFromExecutionQueue(request), _ctx._executionQueue);
+                    bool handled = QueueClient.ApplyToQueue<FunctionInvokeRequest>(request => HandleFromExecutionQueue(request), _ctx._executionQueue);
                     return handled;
                 }
                 catch
@@ -159,11 +157,11 @@ namespace Microsoft.WindowsAzure.Jobs
         private void HandleFromExecutionQueue(FunctionInvokeRequest request)
         {
             // Function was already queued (from the dashboard). So now we just need to activate it.
-             //_ctx._queueFunction.Queue(request);
-            IActivateFunction activate = (IActivateFunction) _ctx._queueFunction; // ### Make safe. 
+            //_ctx._queueFunction.Queue(request);
+            IActivateFunction activate = (IActivateFunction)_ctx._queueFunction; // ### Make safe. 
             activate.ActivateFunction(request.Id);
         }
-      
+
         // Invoke a single function 
         // arguments can be an anonymous object of an IDictionary
         public void Call(MethodInfo method, object arguments = null)
@@ -198,7 +196,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             VerifySuccess(logItem);
         }
-        
+
         // Invoke the function via the SimpleBatch binders. 
         // Function execution is logged and viewable via the function dashboard.
         private void CallWithLogging(MethodInfo method, object arguments = null)
@@ -243,6 +241,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             string msg = string.Format("'{0}' can't be invoked from simplebatch. Is it missing simple batch bindings?", method);
             throw new InvalidOperationException(msg);
-        }        
+        }
     }
 }

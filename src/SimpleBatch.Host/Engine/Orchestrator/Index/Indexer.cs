@@ -7,22 +7,6 @@ using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // Abstraction over a MethodInfo so that we can bind from either
-    // attributes or code-config.
-    internal class MethodDescriptor
-    {
-        public string Name;
-        public Attribute[] MethodAttributes;
-        public ParameterInfo[] Parameters;
-    }
-
-    // Context, speciifc to a given type. 
-    // Each type can provide its own configuration
-    internal class IndexTypeContext
-    {
-        public IConfiguration Config { get; set; }
-    }
-
     // Go down and build an index
     internal class Indexer
     {

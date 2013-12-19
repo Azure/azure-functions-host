@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -41,29 +38,5 @@ namespace Microsoft.WindowsAzure.Jobs
             string content = _location.ReadFile(filename);
             return content;
         }
-    }
-
-    internal class NewBlobRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewBlob
-    {
-        public NewBlobRuntimeBindingInputs(FunctionLocation location, CloudBlob blobInput)
-            : base(location)
-        {
-            this.BlobInput = blobInput;
-        }
-
-        // The blob that triggered this input
-        public CloudBlob BlobInput { get; private set; }
-    }
-
-    internal class NewQueueMessageRuntimeBindingInputs : RuntimeBindingInputs, ITriggerNewQueueMessage
-    {
-        public NewQueueMessageRuntimeBindingInputs(FunctionLocation location, CloudQueueMessage queueMessage)
-            : base(location)
-        {
-            this.QueueMessageInput = queueMessage;
-        }
-
-        // Non-null if this was triggered by a new azure Q message. 
-        public CloudQueueMessage QueueMessageInput { get; private set; }        
     }
 }

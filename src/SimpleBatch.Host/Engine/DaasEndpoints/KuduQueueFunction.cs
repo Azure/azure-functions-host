@@ -2,9 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 
-using Microsoft.WindowsAzure.StorageClient;
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Run a function where the source (and binaries) are via Kudu
@@ -32,7 +29,7 @@ namespace Microsoft.WindowsAzure.Jobs
         KuduFunctionExecutionResult Invoke(IUrlFunctionLocation x, FunctionInvokeRequest request)
         {
             // $$$ This is synchronous. Make it async. But that means plumbing through ExecutionBase.Work.
-            return Utility.PostJson<KuduFunctionExecutionResult>(x.InvokeUrl, request);
+            return Web.PostJson<KuduFunctionExecutionResult>(x.InvokeUrl, request);
         }
 
         void Run(FunctionInvokeRequest request)

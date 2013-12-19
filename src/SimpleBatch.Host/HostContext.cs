@@ -46,7 +46,7 @@ namespace Microsoft.WindowsAzure.Jobs
             string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
             var logger = new WebExecutionLogger(services, LogRole, roleName);
             var ctx = logger.GetExecutionContext();
-            ctx.FunctionTable = functionTableLookup; 
+            ctx.FunctionTable = functionTableLookup;
             ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
 
             // This is direct execution, doesn't queue up. 
@@ -81,7 +81,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     {
                         try
                         {
-                            foreach(var ti in type.GetInterfaces())
+                            foreach (var ti in type.GetInterfaces())
                             {
                                 if (ti.IsGenericType)
                                 {
@@ -205,7 +205,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
         }
-        
+
         private static void LogRole(TextWriter output)
         {
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);

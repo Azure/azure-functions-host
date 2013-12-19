@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 
-
-
 namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ Really scrutinize for race conditions and hammer stress test this.
@@ -18,7 +16,6 @@ namespace Microsoft.WindowsAzure.Jobs
         private readonly IAzureTable _prereqTable;
 
         Func<Guid, FunctionInstanceStatus> _fpGetStatus;
-
 
         public PrereqManager(IAzureTable prereqTable, IAzureTable successorTable, IFunctionInstanceLookup lookup)
             : this(prereqTable, successorTable, guid => GetFunctionStatus(lookup, guid))
@@ -64,7 +61,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private bool IsCompletedFail(Guid func)
         {
             var status = this._fpGetStatus(func);
-            return status == FunctionInstanceStatus.CompletedFailed; 
+            return status == FunctionInstanceStatus.CompletedFailed;
         }
 
         private void Activate(IActivateFunction q, Guid func)
@@ -94,7 +91,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // Function has finished executing, so we can delete all related entries.
             string partKey = func.ToString();
-            _successorTable.Delete(partKey);            
+            _successorTable.Delete(partKey);
         }
 
         // Is the given function already completed?
@@ -124,4 +121,4 @@ namespace Microsoft.WindowsAzure.Jobs
             return from dict in _successorTable.Enumerate(partKey) select Guid.Parse(dict["RowKey"]);
         }
     }
-};
+}

@@ -1,6 +1,4 @@
 ﻿using System;
-using Microsoft.WindowsAzure;
-
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -12,7 +10,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var acs = account.ToString(true);
             var lc = new LocalExecutionContext(acs, typeClass);
-            
+
             LocalFunctionTable store = new LocalFunctionTable(account);
             Indexer i = new Indexer(store);
 
@@ -21,7 +19,7 @@ namespace Microsoft.WindowsAzure.Jobs
             IQueueFunction executor = lc.QueueFunction;
 
             var worker = new Worker(typeClass.Assembly.FullName, functionTable, new NullRunningHostTableWriter(), executor);
-            return worker;        
+            return worker;
         }
 
         private class NullRunningHostTableWriter : IRunningHostTableWriter

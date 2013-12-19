@@ -15,7 +15,6 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _blobBinders; }
         }
 
-
         public IList<ICloudBinderProvider> Binders
         {
             get { return _Binders; }

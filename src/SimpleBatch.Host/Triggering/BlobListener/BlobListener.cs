@@ -1,28 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
 using System.Linq;
 using System.Threading;
-using System.Collections.Concurrent;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    internal interface IBlobListener
-    {
-        // Scan the container
-        // Callbacks may fire multiple times. Or out of order relative to creation date. 
-        void Poll(Action<CloudBlob> callback, CancellationToken cancel);
-    }
-
-    internal static class IBlobListenerExtensions
-    {
-        public static void Poll(this IBlobListener p, Action<CloudBlob> callback)
-        {
-            p.Poll(callback, CancellationToken.None);
-        }
-    }
-
     // Hybrid blob listening. 
     // Will do a full scan of all containers on startup 
     // And then listens for logs in steady-state. Note that log listening can have a 10+ minute delay. 
@@ -35,8 +19,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // Union of container names across all clients. For fast filtering. 
         // $$$ could optimize this by making it client specific. 
         HashSet<string> _containerNames = new HashSet<string>();
-                
-        bool _completedFullScanOnStartup; 
+
+        bool _completedFullScanOnStartup;
         CancellationToken _backgroundCancel; // cancellation token for the full scan running in the background
 
         public BlobListener(IEnumerable<CloudBlobContainer> containers)
@@ -53,8 +37,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
 
             List<BlobLogListener> x = new List<BlobLogListener>();
-            
-            foreach(var client in clients)
+
+            foreach (var client in clients)
             {
                 try
                 {
@@ -73,7 +57,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Need to do a full scan on startup 
         // This can take a while so kick off on background thread and queues results to main thread?        
         void InitialScan()
-        {            
+        {
             // Include cancellation
 
             foreach (var container in _containers)
@@ -110,7 +94,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-               
+
         // Blob could have been deleted by the time the callback is invoked. 
         // - race where it was explicitly deleted
         // - if we detected blob via a log, then there's a long window (possibly hours) where it could have easily been deleted. 
@@ -131,11 +115,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     break;
                 }
-                callback(b);                
+                callback(b);
             }
 
             // Listen on logs for new events. 
-            foreach(var client in _clientListeners)
+            foreach (var client in _clientListeners)
             {
                 cancel.ThrowIfCancellationRequested();
                 foreach (var path in client.GetRecentBlobWrites())
@@ -147,9 +131,9 @@ namespace Microsoft.WindowsAzure.Jobs
                     {
                         continue;
                     }
-                    
+
                     var blob = path.Resolve(client.Client);
-                    
+
                     callback(blob);
                 }
             }
