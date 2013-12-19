@@ -1,22 +1,22 @@
-using System.Linq;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
 using Microsoft.Web.Infrastructure.DynamicModuleHelper;
 using Microsoft.WindowsAzure.Jobs.Dashboard.App_Start;
+using Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure;
 using Ninject;
 using Ninject.Modules;
 using Ninject.Web.Common;
-using Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure;
 
 [assembly: WebActivator.PreApplicationStartMethod(typeof(NinjectWebCommon), "Start")]
 [assembly: WebActivator.ApplicationShutdownMethodAttribute(typeof(NinjectWebCommon), "Stop")]
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.App_Start
 {
-    public static class NinjectWebCommon 
+    public static class NinjectWebCommon
     {
         private static readonly Bootstrapper bootstrapper = new Bootstrapper();
 
@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.App_Start
         /// <summary>
         /// Starts the application
         /// </summary>
-        public static void Start() 
+        public static void Start()
         {
             // Registration must occur before application start. So use: WebActivator.PreApplicationStartMethod 
             DynamicModuleUtility.RegisterModule(typeof(OnePerRequestHttpModule));
@@ -37,7 +37,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.App_Start
             DependencyResolver.SetResolver(resolver);
             GlobalConfiguration.Configuration.DependencyResolver = resolver;
         }
-        
+
         /// <summary>
         /// Stops the application.
         /// </summary>
@@ -65,7 +65,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.App_Start
                 throw;
             }
         }
-                
+
         private static IEnumerable<NinjectModule> GetModules()
         {
             yield return new AppModule();

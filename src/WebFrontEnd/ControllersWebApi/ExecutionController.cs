@@ -4,9 +4,9 @@ using System.Collections.Specialized;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using Microsoft.WindowsAzure.StorageClient;
 using Microsoft.WindowsAzure.Jobs.Dashboard.Controllers;
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
@@ -239,7 +239,6 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
                 SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
             });
             model.Writeback = new Uri(blobResults.Uri.AbsoluteUri + sas);
-            
 
             // Upload some text as a placeholder while the message waits in the queue.
             // Exercise the SAS too before handing it back to the service.

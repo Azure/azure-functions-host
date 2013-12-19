@@ -1,5 +1,4 @@
-﻿using System.Web;
-using System.Web.Optimization;
+﻿using System.Web.Optimization;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
@@ -31,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
 
             bundles.Add(new StyleBundle("~/components/font-awesome/css/bundle").Include("~/components/font-awesome/css/font-awesome.css"));
 
-            
+
             bundles.Add(new StyleBundle("~/Content/themes/base/css").Include(
                         "~/Content/themes/base/jquery.ui.core.css",
                         "~/Content/themes/base/jquery.ui.resizable.css",

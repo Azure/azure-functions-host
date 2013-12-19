@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol
 {
     public class ServiceHealthStatusModel

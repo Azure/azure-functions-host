@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
-
-
-
-
-using Microsoft.WindowsAzure.StorageClient;
-using System.IO;
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {

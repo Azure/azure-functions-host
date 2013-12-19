@@ -3,16 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Web;
 using System.Web.Mvc;
 using AzureTables;
-
-
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
-
-
 using Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
 {
@@ -54,7 +48,6 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
             return View();
         }
 
-
         // Given a function, view the entire causal chain.  
         public ActionResult ViewChain(ExecutionInstanceLogEntityModel func)
         {
@@ -91,11 +84,9 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
                  Walker = reader
             };
 
-            
             List<ListNode> nodes = new List<ListNode>();
             model.Nodes = nodes;
             Walk(funcHead, nodes, 0, model);
-
 
             // Compute stats
             var minStart = DateTime.MaxValue;
@@ -143,7 +134,6 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.Controllers
                 Walk(childFunc, list, depth, model);
             }
         }
-
 
         //
         // GET: /Log/

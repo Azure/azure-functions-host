@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-
-using DataAccess;
 using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
 {
@@ -31,10 +27,11 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
         {
             // Parse the ID
             Guid funcId;
-            if(!Guid.TryParse(id, out funcId)) {
+            if (!Guid.TryParse(id, out funcId))
+            {
                 return new HttpResponseMessage(HttpStatusCode.BadRequest);
             }
-            
+
             // Get the invocation log
             var instance = GetServices().GetFunctionInstanceLookup().Lookup(funcId);
             if (instance == null)
@@ -63,7 +60,7 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
                 Permissions = SharedAccessPermissions.Read,
                 SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(10)
             });
-            
+
             // Redirect to it
             var resp = new HttpResponseMessage(HttpStatusCode.Found);
             resp.Headers.Location = new Uri(blob.Uri.AbsoluteUri + sas);
@@ -71,12 +68,12 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
         }
 
         [HttpGet]
-        public HttpResponseMessage GetFunctionLog(int N = 20, string account=null)
+        public HttpResponseMessage GetFunctionLog(int N = 20, string account = null)
         {
             LogAnalysis l = new LogAnalysis();
             IFunctionInstanceQuery query = GetServices().GetFunctionInstanceQuery();
             IEnumerable<ChargebackRow> logs = l.GetChargebackLog(N, account, query);
-            
+
             using (var tw = new StringWriter())
             {
                 tw.WriteLine("Name, Id, ParentId, GroupId, FirstParam, Duration");
@@ -100,11 +97,11 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard.ControllersWebApi
 
                 var content = tw.ToString();
 
-                
+
                 var httpContent = new StringContent(content, System.Text.Encoding.UTF8, @"text/csv");
                 var resp = new HttpResponseMessage { Content = httpContent };
                 return resp;
             }
-        }        
-    }  
+        }
+    }
 }

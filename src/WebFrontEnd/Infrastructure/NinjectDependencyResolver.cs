@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-
-using IMvcDependencyResolver = System.Web.Mvc.IDependencyResolver;
+using Ninject;
 using IHttpDependencyResolver = System.Web.Http.Dependencies.IDependencyResolver;
 using IHttpDependencyScope = System.Web.Http.Dependencies.IDependencyScope;
-using Ninject;
+using IMvcDependencyResolver = System.Web.Mvc.IDependencyResolver;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Infrastructure
 {

@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Text;
 using Microsoft.WindowsAzure.Jobs.Dashboard.Configuration;
-using Ninject.Modules;
 using Microsoft.WindowsAzure.StorageClient;
+using Ninject.Modules;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard
 {
@@ -65,14 +64,14 @@ namespace Microsoft.WindowsAzure.Jobs.Dashboard
 
             Utility.ValidateConnectionString(val);
 
-            
+
             // Antares mode
             var ai = new AccountInfo
             {
                 AccountConnectionString = val,
                 WebDashboardUri = "illegal2"
             };
-            return new Services(ai);           
+            return new Services(ai);
         }
     }
 }

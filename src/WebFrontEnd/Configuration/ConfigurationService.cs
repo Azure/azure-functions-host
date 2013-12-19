@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Configuration;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Web;
 using System.Web.Configuration;
-using System.Diagnostics;
 
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Configuration
 {

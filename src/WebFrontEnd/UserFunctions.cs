@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.IO;
 using Microsoft.WindowsAzure.Jobs;
 

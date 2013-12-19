@@ -147,7 +147,20 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Antares\CodeFile1.cs" />
+    <Compile Include="App_Start\SimpleBatchStuff.cs" />
+    <Compile Include="Models\LogOnViewModel.cs" />
+    <Compile Include="Models\FuncSubmitModel.cs" />
+    <Compile Include="Models\BinderListModel.cs" />
+    <Compile Include="Models\FunctionChainModel.cs" />
+    <Compile Include="Models\ListNode.cs" />
+    <Compile Include="Models\FunctionInfoModel.cs" />
+    <Compile Include="Models\RegisterFuncSubmitModel.cs" />
+    <Compile Include="Models\DeleteFuncSubmitModel.cs" />
+    <Compile Include="Models\OverviewModel.cs" />
+    <Compile Include="Models\RequestScanSubmitModel.cs" />
+    <Compile Include="Models\ExecutionModel.cs" />
+    <Compile Include="Models\FunctionSubmitModel.cs" />
+    <Compile Include="Models\FunctionListModel.cs" />
     <Compile Include="Models\Protocol\CloudBlobDescriptorModel.cs" />
     <Compile Include="Models\Protocol\CloudBlobPathModel.cs" />
     <Compile Include="Models\Protocol\ExecutionInstanceLogEntityModel.cs" />
@@ -181,14 +194,13 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Infrastructure\Helpers.cs" />
+    <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Infrastructure\CloudStorageAccountTypeConverter.cs" />
     <Compile Include="Infrastructure\NinjectDependencyResolver.cs" />
     <Compile Include="Infrastructure\LogAnalysis.cs" />
     <Compile Include="Infrastructure\ModelBinders.cs" />
-    <Compile Include="Models\models.cs" />
+    <Compile Include="Models\HostVersionConfigWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Infrastructure\WebWorker.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="components\bootstrap\css\bootstrap-responsive.css" />

@@ -1,6 +1,5 @@
 ﻿using System;
 
-
 namespace Microsoft.WindowsAzure.Jobs.Dashboard.Models.Protocol
 {
     public class ExecutionInstanceLogEntityModel
