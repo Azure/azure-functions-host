@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -83,10 +83,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Azure20SdkBinders\Azure20SdkBinders.csproj">
-      <Project>{56b62fe7-c1f6-4200-9b4c-2a1677e53d1a}</Project>
-      <Name>Azure20SdkBinders</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SimpleBatch.Host\SimpleBatch.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>SimpleBatch.Host</Name>

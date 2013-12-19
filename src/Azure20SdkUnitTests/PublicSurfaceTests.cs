@@ -3,12 +3,49 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
+using System;
 
 namespace Azure20SdkUnitTests
 {
     [TestClass]
     public class PublicSurfaceTests
     {
+        [TestMethod]
+        public void AssemblyReferencesMinDll()
+        {            
+            // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
+            var assembly = typeof(BlobInputAttribute).Assembly;
+            var assemblyRefs = assembly.GetReferencedAssemblies();
+            var names = Array.ConvertAll(assemblyRefs, x => x.Name);
+            Array.Sort(names);
+
+            Assert.AreEqual(2, names.Length);
+            Assert.AreEqual("mscorlib", names[0]);
+            Assert.AreEqual("System.Core", names[1]);
+        }
+
+        [TestMethod]
+        public void AssemblyReferencesHost()
+        {
+            var assembly = typeof(Host).Assembly;
+            var assemblyRefs = assembly.GetReferencedAssemblies();
+            var names = Array.ConvertAll(assemblyRefs, x => x.Name);
+            
+            // The Azure SDK is brittle and has breaking changes. 
+            // We just depend on 1.7 and avoid a direct dependency on 2x or later. 
+            foreach (var name in names)
+            {
+                if (name.Equals("Microsoft.WindowsAzure.Jobs"))
+                {
+                    continue;
+                }
+                if (name.StartsWith("Microsoft.WindowsAzure"))
+                {             
+                    Assert.AreEqual("Microsoft.WindowsAzure.StorageClient", name, "Only azure dependency is on the 1.7 sdk");
+                }
+            }            
+        }
+
         [TestMethod]
         public void JobsPublicSurface()
         {
@@ -35,16 +72,6 @@ namespace Azure20SdkUnitTests
             var assembly = typeof(Host).Assembly;
 
             var expected = new[] { "Host" };
-
-            AssertPublicTypes(expected, assembly);
-        }
-
-        [TestMethod]
-        public void Azure20SDKBindersPublicSurface()
-        {
-            var assembly = typeof(Microsoft.WindowsAzure.Jobs.Azure20SdkBinders.Utility).Assembly;
-
-            var expected = Enumerable.Empty<string>();
 
             AssertPublicTypes(expected, assembly);
         }

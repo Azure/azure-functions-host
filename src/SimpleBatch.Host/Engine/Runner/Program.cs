@@ -250,8 +250,9 @@ namespace Microsoft.WindowsAzure.Jobs
             config.Binders.Add(new ContextBinderProvider()); // for IContext
 
             // Hook in optional binders for Azure 2.0 data types. 
-            config.Binders.Add(new Azure20SdkBinderProvider());
-            config.BlobBinders.Add(new BlobBinderProvider());
+            var azure20sdkBinderProvider = new Azure20SdkBinderProvider();
+            config.Binders.Add(azure20sdkBinderProvider);
+            config.BlobBinders.Add(azure20sdkBinderProvider);
         }
 
         private static void ApplyHooks(MethodInfo method, IConfiguration config)

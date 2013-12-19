@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -81,9 +81,11 @@
     <Compile Include="Engine\Runner\Binders\QueueOutputBinderProvider.cs" />
     <Compile Include="Engine\Runner\Binders\TableBinderProvider.cs" />
     <Compile Include="Engine\Runner\BindResultHelpers.cs" />
+    <Compile Include="Engine\Runner\Binders\Azure20SdkBinders.cs" />
     <Compile Include="Engine\Runner\Configuration.cs" />
     <Compile Include="Engine\Runner\DictionaryTableBinder.cs" />
     <Compile Include="Engine\Runner\IBinderPrivate.cs" />
+    <Compile Include="Engine\Runner\ICloudBinderVerify.cs" />
     <Compile Include="Engine\Runner\IPostActionTransaction.cs" />
     <Compile Include="Engine\Runner\Program.cs" />
     <Compile Include="Engine\Runner\RuntimeBindingInputs.cs" />
@@ -188,10 +190,6 @@
     <Compile Include="Triggering\WebInvoke.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Azure20SdkBinders\Azure20SdkBinders.csproj">
-      <Project>{56b62fe7-c1f6-4200-9b4c-2a1677e53d1a}</Project>
-      <Name>Azure20SdkBinders</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SimpleBatch\SimpleBatch.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>SimpleBatch</Name>

@@ -28,13 +28,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 // Verify that a binder exists. 
                 var binder = UnknownParameterRuntimeBinding.GetBinderOrThrow(config, parameter);
-                /*
+                
                 var verify = binder as ICloudBinderVerify;
                 if (verify != null)
                 {
                     verify.Validate(parameter);
-                }
-                 * */
+                }                
             }
         }
 

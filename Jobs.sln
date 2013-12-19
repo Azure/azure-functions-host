@@ -15,8 +15,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GauntletTest", "src\Gauntle
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriggerServiceUnitTests", "src\TriggerServiceUnitTests\TriggerServiceUnitTests.csproj", "{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkBinders", "src\Azure20SdkBinders\Azure20SdkBinders.csproj", "{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Azure20SdkUnitTests", "src\Azure20SdkUnitTests\Azure20SdkUnitTests.csproj", "{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBatch.Host", "src\SimpleBatch.Host\SimpleBatch.Host.csproj", "{0E095CB2-3030-49FF-966C-785F1A55F0C1}"
@@ -51,10 +49,6 @@ Global
 		{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1EAB24F-CA88-4CD7-A7C4-8F2C0BD4380D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{56B62FE7-C1F6-4200-9B4C-2A1677E53D1A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71B9C9BA-28D8-4073-B4D5-4B5512807FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
