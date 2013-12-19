@@ -30,11 +30,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 // We don't have a more derived type to serialize as. 
                 result = Content;
             }
-            if (parameterType == typeof(string))
+            else if (parameterType == typeof(string))
             {                
                 result = Content;
             }
-            else if (parameterType.IsAssignableFrom(typeof(byte[])))
+            else if (parameterType == typeof(byte[]))
             {
                 // Use IsAssignableFrom to include interfaces implemeneted by byte[], like IEnumerable<Byte>
                 result = AsBytes(Content);
