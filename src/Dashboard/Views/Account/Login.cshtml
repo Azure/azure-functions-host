@@ -1,0 +1,19 @@
+﻿@using Dashboard.Controllers
+@model LogOnViewModel
+@{
+    Layout = "~/Views/Shared/_TopLayout.cshtml";
+    ViewBag.Title = "LogOn";
+}
+
+<div class="container-fluid">
+@using (Html.BeginForm())
+{
+    <fieldset>
+        <legend>Log On</legend>
+        <p>Enter credentials:</p>
+        @Html.ValidationSummary()
+        @Html.EditorForModel()
+        <input class="btn btn-primary" type="submit" value = "Log in" />                             
+    </fieldset>
+}
+</div>

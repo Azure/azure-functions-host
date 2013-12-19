@@ -1,0 +1,26 @@
+﻿@using Dashboard.Models.Protocol
+@model ExecutionInstanceLogEntityModel
+
+@{
+    string color = null;
+    var status = Model.GetStatus();
+    switch (status)
+    { 
+        case FunctionInstanceStatusModel.CompletedFailed:
+            color = "red"; break;
+        case FunctionInstanceStatusModel.CompletedSuccess:
+            color = "green"; break;
+        case FunctionInstanceStatusModel.Running:
+            color = "blue"; break;
+            // don't colorize others.                 
+    }       
+    
+    string shortName = Model.FunctionInstance.Location.GetShortName();    
+}        
+
+@Html.ActionLink(shortName, "FunctionInstance", new { func = Model.FunctionInstance.Id })
+&nbsp(
+<font color="@color">
+    @status
+</font>
+)

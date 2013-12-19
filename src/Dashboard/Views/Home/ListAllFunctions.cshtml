@@ -1,0 +1,52 @@
+﻿@using Dashboard.Controllers
+@model FunctionListModel
+
+@{
+    ViewBag.Title = "ListAllFunctions";
+}
+
+<div class="page-header">
+    <div class="pull-right">
+        <a class="btn btn-primary" href="@Url.Action("RegisterFunc", "Home")"><i class="icon-plus"></i> Register a new Function</a>
+    </div>
+
+    <h1>Functions <small>A list of all functions registered with the system</small></h1>
+    @if (Model.HasWarning)
+    {
+        <p class="text-warning"><i class="icon-warning-sign"></i> One or more hosts are not running correctly. See below for details.</p>
+    }
+</div>
+
+@if(Model.Functions.Any()) {
+    <table class="table">
+    @foreach (var group in Model.Functions)
+    {
+        <tr>
+            <th colspan="4">@group.Key</th>
+            <th>@Html.Partial("_RescanFunction", group.Key)</th>
+        </tr>
+        <tr>
+            <th>Name</th>
+            <th>Commands</th>
+            <th>Last Updated</th>
+            <th>Description</th>
+            <th>Location</th>
+            <th></th>
+        </tr>
+        foreach (var runningFunc in group)
+        {
+            var func = runningFunc.FunctionDefinition;
+            <tr>
+                <td>@Html.FunctionLogLink(func) @if (!runningFunc.HostIsRunning) {<span class="text-warning"><i class="icon-warning-sign"></i> Host is not running</span>}</td>
+                <td>@Html.Partial("_DeleteFunction", func)</td>
+                <td>@func.Timestamp</td>
+                <td>@func.Description</td>
+                <td>@func.Location.GetId()</td>
+            </tr>
+        }
+    }
+
+    </table>
+} else {
+    <p class="alert alert-info">There are no functions registered in the system.</p>
+}

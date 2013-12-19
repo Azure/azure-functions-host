@@ -1,0 +1,40 @@
+﻿@using Dashboard.Models.Protocol
+@model IEnumerable<FunctionDefinitionModel>
+@{
+    ViewBag.Title = "RequestScan";
+}
+
+<h2>RequestScan</h2>
+
+Notify the orchestration service to scan the following container for new 
+
+@using (Html.BeginForm("RequestScanSubmit", "Home"))
+{
+    <p>Provide a storage account</p>
+    <p>
+        1. Provide account name and key information: <br/>
+        <input type="text" name="accountname" />     <br/>
+        <input type="text" name="accountkey" />     <br/>
+    </p>
+    <p>2. or use the storage account that this function is stored in:</p>
+<select name="function">
+    <option value="">(none)</option>        
+    @foreach(var item in Model)
+    {
+        //string message = string.Format("{0}: \r\n{1}", item.Signature, item.Description);
+        string message = item.Location.GetId();
+        <option value="@item.ToString()">@message</option>        
+    }
+</select>
+          
+            
+    <p>        
+        Enter a blob path to be scanned (eg, "container\blob\blobsubdir"):<br/>
+        <input type="text" size="80" name="containerpath" />     <br/>
+    </p>
+    
+    <p>
+    <input type="submit" value="Queue" />
+    </p>
+}
+

@@ -1,0 +1,19 @@
+﻿@using Microsoft.WindowsAzure.Jobs
+@using Dashboard
+@{
+    ViewBag.Title = "BadConfig";
+}
+
+<h2>Bad Config</h2>
+<p>
+The configuration is not properly set for the SimpleBatch Function Dashboard.
+In your configuration (such as web.config), you must set a key <i>SimpleBatchLoggingACS</i> that points to the account connection string where the sb logs are being stored. EG, under "AppSettings" in Web.config, add a value like:
+</p>
+<pre>
+  &lt;add key="SimpleBatchLoggingACS" value="DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b>" /&gt;
+</pre>
+
+<p>
+This is the storage account that your user functions will bind against.  This is also where logging will be stored.
+</p>
+<p class="alert alert-error">@SimpleBatchStuff.BadInitErrorMessage</p>
