@@ -47,6 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="Engine\DaasEndpoints\AntaresRoleExecutionClient.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />

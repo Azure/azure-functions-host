@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="BlobInputAttribute.cs" />
     <Compile Include="BlobOutputAttribute.cs" />
     <Compile Include="CallExtensions.cs" />
