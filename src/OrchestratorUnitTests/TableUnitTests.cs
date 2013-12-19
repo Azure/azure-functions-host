@@ -1,22 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Services.Common;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using AzureTables;
-
+﻿using AzureTables;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
-
-
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {

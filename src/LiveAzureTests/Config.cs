@@ -3,7 +3,6 @@ using System.Configuration;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 
-
 public partial class AzureConfig
 {
     public static CloudStorageAccount GetAccount()

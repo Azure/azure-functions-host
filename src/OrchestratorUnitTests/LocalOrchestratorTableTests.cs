@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Services.Common;
+using System.Linq;
 using AzureTables;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.JobsUnitTests;
 using Microsoft.WindowsAzure.StorageClient;
-
-
-using System.Linq;
-
-using Microsoft.WindowsAzure;
 
 namespace LocalOrchestratorTableTests
 {
@@ -61,7 +57,6 @@ namespace LocalOrchestratorTableTests
             var store = new InMemoryTableProviderTestHook();
             TableProviderTestHook.Default = store;
             var account = CloudStorageAccount.DevelopmentStorageAccount;
-
 
             var lc = TestStorage.New<TableProgram>(account);
             lc.Call("TableWrite");
@@ -145,7 +140,6 @@ namespace LocalOrchestratorTableTests
                 val = table.Lookup("x", "y");
                 Assert.AreEqual("50", val["myvalue"]);
             }
-
 
             public const string TableNameDict = "testtable2";
             public static void TableDict([Table(TableNameDict)] IDictionary<Tuple<string, string>, OtherStuff> dict)

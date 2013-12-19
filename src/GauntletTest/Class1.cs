@@ -146,29 +146,29 @@ namespace GauntletTest
         {
             Console.WriteLine("Success! {0}", cookie);
         }
-    }
 
-    public class Payload
-    {
-        public string Name { get; set; }
-        public int Quota { get; set; }
-        public Guid Cookie { get; set; }
-    }
-
-    // Test a custom Blob binder. 
-    public class GuidBlobBinder : ICloudBlobStreamBinder<Guid>
-    {
-        public Guid ReadFromStream(Stream input)
+        public class Payload
         {
-            string content = new StreamReader(input).ReadToEnd();
-            return Guid.Parse(content);
+            public string Name { get; set; }
+            public int Quota { get; set; }
+            public Guid Cookie { get; set; }
         }
 
-        public void WriteToStream(Guid result, Stream output)
+        // Test a custom Blob binder. 
+        private class GuidBlobBinder : ICloudBlobStreamBinder<Guid>
         {
-            using (var tw = new StreamWriter(output))
+            public Guid ReadFromStream(Stream input)
             {
-                tw.WriteLine(result.ToString());
+                string content = new StreamReader(input).ReadToEnd();
+                return Guid.Parse(content);
+            }
+
+            public void WriteToStream(Guid result, Stream output)
+            {
+                using (var tw = new StreamWriter(output))
+                {
+                    tw.WriteLine(result.ToString());
+                }
             }
         }
     }

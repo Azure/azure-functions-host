@@ -4,7 +4,6 @@ using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
-
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
@@ -54,7 +53,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             var owner = qcm.GetOwner(msg);
             Assert.AreEqual(g, owner);
         }
-
 
         public class Payload
         {

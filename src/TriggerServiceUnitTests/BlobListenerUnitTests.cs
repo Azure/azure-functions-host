@@ -40,7 +40,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             });            
         }
 
-
         // Set dev storage. These are well known values.
         class TestStorage
         {

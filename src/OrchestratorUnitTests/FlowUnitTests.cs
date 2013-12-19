@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Reflection;
-using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
@@ -43,7 +38,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Assert.AreEqual(true, func.Trigger.ListenOnBlobs);
         }
 
-
         [NoAutomaticTrigger]
         public static void NoAutoTrigger2(int x, int y) { }
                    
@@ -77,7 +71,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             var staticBinding = func.Flow.Bindings[0];
             Assert.AreNotEqual(TriggerDirectionType.Input, staticBinding.GetTriggerDirectionType());
         }
-
 
         // Runtime type is irrelevant for table. 
         private static void Table([Table("TableName")] object reader) { }

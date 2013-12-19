@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
@@ -24,7 +18,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             CloudBlob blob2 = container.GetBlobReference(name);
             return blob2;
         }
-
 
         public void BlockUntilAcquired(CloudBlob blob)
         {

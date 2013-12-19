@@ -5,7 +5,6 @@ using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 
-
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
@@ -177,7 +176,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Pear,
         }
 
-
         [TestMethod]
         public void ConvertWithTypeDescriptor()
         {
@@ -219,7 +217,5 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Smile,
             Frown,
         }
-
-    
     }
 }

@@ -3,21 +3,13 @@ using System.IO;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    // interface for easily binding custom types to streams
-    public interface ICloudBlobStreamBinder<T>
-    {
-        T ReadFromStream(Stream input);
-        void WriteToStream(T result, Stream output);
-    }
-
     // Extension method for easily binding to types to Streams via ICloudBlobStreamBinder<T>
-    internal static class IConfigExtensions
+    internal static class ConfigurationExtensions
     {
         public static void Add<T>(this IConfiguration config, ICloudBlobStreamBinder<T> binder)
         {
             config.BlobBinders.Add(new SimpleBinderProvider<T>(binder));
         }
-
 
         // Keyed off a type
         class SimpleBinderProvider<T> : ICloudBlobBinderProvider

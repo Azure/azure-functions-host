@@ -1,20 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Common;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-
-
-
 
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
@@ -63,7 +55,6 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
                 // This should not be called
             }
         }
-
 
         [TestMethod]
         public void InvokeChain()

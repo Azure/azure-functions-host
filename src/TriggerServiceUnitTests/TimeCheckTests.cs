@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 
-
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
@@ -132,7 +131,5 @@ namespace Microsoft.WindowsAzure.JobsUnitTests
             Assert.Fail("Unexpected blob name: " + path.ToString());
             return null;
         }
-
-
     }
 }

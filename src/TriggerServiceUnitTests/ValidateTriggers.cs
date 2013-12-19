@@ -2,7 +2,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 
-
 namespace Microsoft.WindowsAzure.JobsUnitTests
 {
     [TestClass]
