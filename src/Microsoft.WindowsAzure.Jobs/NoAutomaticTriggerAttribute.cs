@@ -7,7 +7,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // This can be useful to avoid the performance impact of listening on a large container. 
     // Method must be invoked explicitly.
     [AttributeUsage(AttributeTargets.Method)]
-    internal class NoAutomaticTriggerAttribute : Attribute
+    public class NoAutomaticTriggerAttribute : Attribute
     {
         public static NoAutomaticTriggerAttribute Build(CustomAttributeData attr)
         {
