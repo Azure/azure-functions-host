@@ -11,9 +11,13 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         public CloudQueueDescriptor QueueOutput { get; set; }
 
-        private abstract class QueueBaseResult : BindResult
+        private abstract class QueueResult : BindResult
         {
             public CloudQueue Queue;
+        }
+
+        private abstract class CorrelatedQueueResult : QueueResult
+        {
             public Guid thisFunction;
 
             protected virtual void AddMessage(object result)
@@ -31,7 +35,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Queues a single message.
-        private class QueueResult : QueueBaseResult
+        private class SingleJsonQueueResult : CorrelatedQueueResult
         {
             public override void OnPostAction()
             {
@@ -40,7 +44,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Queues multiple messages.
-        private class QueueCollectionResult : QueueBaseResult
+        private class CollectionJsonQueueResult : CorrelatedQueueResult
         {
             public override void OnPostAction()
             {
@@ -55,6 +59,32 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
+        private class StringQueueResult : QueueResult
+        {
+            public override void OnPostAction()
+            {
+                string content = Result as string;
+
+                if (content != null)
+                {
+                    Queue.AddMessage(new CloudQueueMessage(content));
+                }
+            }
+        }
+
+        private class ByteArrayQueueResult : QueueResult
+        {
+            public override void OnPostAction()
+            {
+                byte[] content = Result as byte[];
+
+                if (content != null)
+                {
+                    Queue.AddMessage(new CloudQueueMessage(content));
+                }
+            }
+        }
+
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             if (!targetParameter.IsOut)
@@ -62,6 +92,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 var msg = string.Format("[QueueOutput] is only valid on 'out' parameters. Can't use on '{0}'", targetParameter);
                 throw new InvalidOperationException(msg);
             }
+
+            CloudQueue queue = this.QueueOutput.GetQueue();
 
             Type parameterType = targetParameter.ParameterType;
             if (parameterType.IsByRef)
@@ -74,18 +106,28 @@ namespace Microsoft.WindowsAzure.Jobs
             if (parameterType.IsGenericType && parameterType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
                 CheckCollectionType(parameterType);
-                return new QueueCollectionResult
+                return new CollectionJsonQueueResult
                 {
                     thisFunction = bindingContext.FunctionInstanceGuid,
-                    Queue = this.QueueOutput.GetQueue()
+                    Queue = queue
                 };
             }
 
+            if (parameterType == typeof(string))
+            {
+                return new StringQueueResult { Queue = queue };
+            }
+
+            if (parameterType == typeof(byte[]))
+            {
+                return new ByteArrayQueueResult { Queue = queue };
+            }
+
             CheckElementType(parameterType);
-            return new QueueResult
+            return new SingleJsonQueueResult
             {
                 thisFunction = bindingContext.FunctionInstanceGuid,
-                Queue = this.QueueOutput.GetQueue()
+                Queue = queue
             };
         }
 
