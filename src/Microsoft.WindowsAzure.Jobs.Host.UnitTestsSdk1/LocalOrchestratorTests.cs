@@ -13,15 +13,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     public class LocalOrchestratorTests
     {
         [TestMethod]
-        public void InvokeConfig()
-        {
-            var account = TestStorage.GetAccount();
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("TestConfig");
-        }
-
-        [TestMethod]
         public void InvokeWithParams()
         {
             var account = TestStorage.GetAccount();
@@ -550,11 +541,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 myoutputqueue.Add(new Payload { Value = 10 });
                 myoutputqueue.Add(new Payload { Value = 20 });
                 myoutputqueue.Add(new Payload { Value = 30 });
-            }
-
-            public static void TestConfig([Config("ConfigTest.txt")] Payload payload)
-            {
-                Assert.AreEqual(payload.Value, 15);
             }
 
             // Test binding to CloudStorageAccount 
