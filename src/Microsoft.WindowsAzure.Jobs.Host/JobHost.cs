@@ -11,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs
     /// Defines properties and methods to locate Job methods and listen to trigger events in order
     /// to execute Job methods.
     /// </summary>
-    public class Host
+    public class JobHost
     {
         // Where we log things to. 
         // Null if logging is not supported (this is required for pumping).        
@@ -21,31 +21,31 @@ namespace Microsoft.WindowsAzure.Jobs
         // This is the account that the bindings resolve against.
         private readonly string _userAccountConnectionString;
 
-        private HostContext _hostContext;
+        private JobHostContext _hostContext;
 
         /// <summary>
-        /// Initializes a new instance of the Host class, using a Windows Azure Storage connection string located
+        /// Initializes a new instance of the JobHost class, using a Windows Azure Storage connection string located
         /// in the appSettings section of the configuration file.
         /// </summary>
-        public Host()
+        public JobHost()
             : this(userAccountConnectionString: null, loggingAccountConnectionString: null)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the Host class, using a single Windows Azure Storage connection string for
+        /// Initializes a new instance of the JobHost class, using a single Windows Azure Storage connection string for
         /// both reading and writing data as well as logging.
         /// </summary>
-        public Host(string userAndLoggingAccountConnectionString)
+        public JobHost(string userAndLoggingAccountConnectionString)
             : this(userAndLoggingAccountConnectionString, userAndLoggingAccountConnectionString)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the Host class, using one Windows Azure Storage connection string for
+        /// Initializes a new instance of the JobHost class, using one Windows Azure Storage connection string for
         /// reading and writing data and another connection string for logging.
         /// </summary>
-        public Host(string userAccountConnectionString, string loggingAccountConnectionString)
+        public JobHost(string userAccountConnectionString, string loggingAccountConnectionString)
         {
             _loggingAccountConnectionString = GetConfigSetting(loggingAccountConnectionString, "SimpleBatchLoggingACS");
             _userAccountConnectionString = GetConfigSetting(userAccountConnectionString, "SimpleBatchUserACS");
@@ -101,9 +101,9 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private HostContext GetHostContext()
+        private JobHostContext GetHostContext()
         {
-            var hostContext = new HostContext(_userAccountConnectionString, _loggingAccountConnectionString);
+            var hostContext = new JobHostContext(_userAccountConnectionString, _loggingAccountConnectionString);
             return hostContext;
         }
 

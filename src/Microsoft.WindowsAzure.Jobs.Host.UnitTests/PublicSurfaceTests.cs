@@ -27,7 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         [TestMethod]
         public void AssemblyReferencesHost()
         {
-            var assembly = typeof(Host).Assembly;
+            var assembly = typeof(JobHost).Assembly;
             var assemblyRefs = assembly.GetReferencedAssemblies();
             var names = Array.ConvertAll(assemblyRefs, x => x.Name);
             
@@ -70,9 +70,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         [TestMethod]
         public void JobsHostPublicSurface()
         {
-            var assembly = typeof(Microsoft.WindowsAzure.Jobs.Host).Assembly;
+            var assembly = typeof(Microsoft.WindowsAzure.Jobs.JobHost).Assembly;
 
-            var expected = new[] { "Host" };
+            var expected = new[] { "JobHost" };
 
             AssertPublicTypes(expected, assembly);
         }

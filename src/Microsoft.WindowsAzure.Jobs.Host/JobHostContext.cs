@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // Create host services that point to a logging account. 
     // This will scan for all functions in-memory, publish them to the function dashboard, 
     // and return a set of services that the host can use for invoking, listening, etc. 
-    internal class HostContext
+    internal class JobHostContext
     {
         private readonly string _hostName;
 
@@ -22,7 +22,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public CloudQueue _executionQueue;
 
-        public HostContext(string userAccountConnectionString, string loggingAccountConnectionString)
+        public JobHostContext(string userAccountConnectionString, string loggingAccountConnectionString)
         {
             var services = GetServices(loggingAccountConnectionString);
 
@@ -192,7 +192,7 @@ namespace Microsoft.WindowsAzure.Jobs
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
         }
 
-        private class ConsoleHostLogger : IHostLogger
+        private class ConsoleHostLogger : IJobHostLogger
         {
             public void LogFunctionStart(FunctionInvokeRequest request)
             {

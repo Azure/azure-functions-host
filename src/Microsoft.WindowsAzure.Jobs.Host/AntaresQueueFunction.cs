@@ -7,13 +7,13 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
     class AntaresQueueFunction : QueueFunctionBase
     {
         // Logging hook for each function invoked. 
-        private readonly IHostLogger _fpLog;
+        private readonly IJobHostLogger _fpLog;
 
         private readonly FunctionExecutionContext _ctx;
 
         private readonly IConfiguration _config;
 
-        public AntaresQueueFunction(QueueInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IHostLogger hostLogger = null)
+        public AntaresQueueFunction(QueueInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
             : base(interfaces)
         {
             _config = config;

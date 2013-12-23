@@ -68,7 +68,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 RunnerProgram.ApplyHooks(scope, config);
             }
 
-            HostContext.InitConfig(config);
+            JobHostContext.InitConfig(config);
 
             return config;
         }

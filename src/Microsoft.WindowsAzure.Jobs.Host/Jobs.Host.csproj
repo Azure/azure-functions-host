@@ -140,8 +140,8 @@
     <Compile Include="Engine\Runner\DelegatingStream.cs" />
     <Compile Include="Engine\Runner\WatchableStream.cs" />
     <Compile Include="Engine\Runner\CallUtil.cs" />
-    <Compile Include="Host.cs" />
-    <Compile Include="HostContext.cs" />
+    <Compile Include="JobHost.cs" />
+    <Compile Include="JobHostContext.cs" />
     <Compile Include="Engine\Runner\BindResultTransaction.cs" />
     <Compile Include="LocalExecution\LocalExecutionContext.cs" />
     <Compile Include="LocalExecution\LocalFunctionTable.cs" />
@@ -267,7 +267,7 @@
     <Compile Include="RunnerInterfaces\Web.cs" />
     <Compile Include="RunnerInterfaces\WrapperEnumerable.cs" />
     <Compile Include="SimpleBinderProvider.cs" />
-    <Compile Include="IHostLogger.cs" />
+    <Compile Include="IJobHostLogger.cs" />
     <Compile Include="AntaresQueueFunction.cs" />
     <Compile Include="IndexInMemory.cs" />
     <Compile Include="FunctionStore.cs" />
