@@ -219,7 +219,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (qi == null)
             {
-                qi = this.GetQueueInterfaces();
+                qi = GetQueueInterfaces();
             }
             // Pick the appropriate queuing function to use.
             QueueFunctionType t = GetExecutionType();
@@ -228,12 +228,6 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 case QueueFunctionType.Antares:
                     return GetAntaresQueueFunction(qi);
-                case QueueFunctionType.AzureTasks:
-                    return GetAzureTasksQueueFunction(qi);
-                case QueueFunctionType.WorkerRoles:
-                    return GetWorkerRoleQueueFunction(qi);
-                case QueueFunctionType.Kudu:
-                    return GetKuduQueueFunction(qi);
                 default:
                     // should have already thrown before getting here. 
                     throw new InvalidOperationException("Unknown");
@@ -248,41 +242,13 @@ namespace Microsoft.WindowsAzure.Jobs
 
             return new QueueInterfaces
             {
-                AccountInfo = this._accountInfo,
+                AccountInfo = _accountInfo,
                 Logger = x,
                 Lookup = x,
                 CausalityLogger = GetCausalityLogger(),
-                PreqreqManager = GetPrereqManager(x)
+                PrereqManager = GetPrereqManager(x)
             };
         }
-
-        // Run via Azure tasks. 
-        // This requires that an existing azure task pool has been setup. 
-        private QueueFunctionBase GetAzureTasksQueueFunction(QueueInterfaces qi)
-        {
-#if false
-            // Based on AzureTasks
-            TaskConfig taskConfig = GetAzureTaskConfig();
-            return new TaskExecutor(taskConfig, qi);            
-#else
-            throw new NotImplementedException("Azure tasks disabled");
-#endif
-        }
-
-#if false // $$$ Move this to DI
-        // Gets AzureTask configuration from the Azure config settings
-        private static TaskConfig GetAzureTaskConfig()
-        {
-            var taskConfig = new TaskConfig
-            {
-                TenantUrl = RoleEnvironment.GetConfigurationSettingValue("AzureTaskTenantUrl"),
-                AccountName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskAccountName"),
-                Key = RoleEnvironment.GetConfigurationSettingValue("AzureTaskKey"),
-                PoolName = RoleEnvironment.GetConfigurationSettingValue("AzureTaskPoolName")
-            };
-            return taskConfig;
-        }
-#endif
 
         // Run via Antares. 
         // This requires that an existing antares site was deployed. 
@@ -291,23 +257,8 @@ namespace Microsoft.WindowsAzure.Jobs
             // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
             string urlBase = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
 
-            var queue = this.GetExecutionQueue();
+            var queue = GetExecutionQueue();
             return new AntaresRoleExecutionClient(urlBase, queue, qi);
-        }
-
-        private QueueFunctionBase GetKuduQueueFunction(QueueInterfaces qi)
-        {
-            var queue = this.GetExecutionQueue();
-            return new KuduQueueFunction(qi);
-        }
-
-        // Run via Azure Worker Roles
-        // These worker roles should have been deployed automatically.
-        private QueueFunctionBase GetWorkerRoleQueueFunction(QueueInterfaces qi)
-        {
-            // Based on WorkerRoles (submitted via a Queue)
-            var queue = this.GetExecutionQueue();
-            return new WorkerRoleExecutionClient(queue, qi);
         }
 
         private CloudBlobContainer GetHealthLogContainer()

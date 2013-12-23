@@ -108,7 +108,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
                 Logger = _functionUpdate,
                 Lookup = _lookup,
-                PreqreqManager = _prereq,
+                PrereqManager = _prereq,
                 CausalityLogger = _causalityLogger
             };
 

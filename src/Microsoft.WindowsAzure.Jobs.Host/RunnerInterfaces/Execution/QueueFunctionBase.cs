@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
         protected readonly IAccountInfo _account;
         protected readonly ICausalityLogger _causalityLogger;
 
-        private readonly IPrereqManager _preqreqManager;
+        private readonly IPrereqManager _prereqManager;
 
         // account - this is the internal storage account for using the service. 
         // logger - used for updating the status of the function that gets queued. This must be serializable with JSon since
@@ -29,7 +29,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _account = interfaces.AccountInfo;
             _logger = interfaces.Logger;
             _causalityLogger = interfaces.CausalityLogger;
-            _preqreqManager = interfaces.PreqreqManager;
+            _prereqManager = interfaces.PrereqManager;
         }
 
         public ExecutionInstanceLogEntity Queue(FunctionInvokeRequest instance)
@@ -57,7 +57,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Has prereqs. don't queue yet. Instead, setup in the pre-req table.                
                 _logger.Log(logItem);
 
-                _preqreqManager.AddPrereq(instance.Id, instance.Prereqs, this);
+                _prereqManager.AddPrereq(instance.Id, instance.Prereqs, this);
             }
             else
             {

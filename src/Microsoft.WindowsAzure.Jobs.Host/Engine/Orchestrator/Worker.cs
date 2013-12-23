@@ -8,7 +8,7 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     internal class Worker : IDisposable
     {
-        OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
+        private OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
 
         private readonly string _hostName;
 
@@ -24,7 +24,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private INotifyNewBlobListener _blobListener;
 
         private DateTime _nextHeartbeat;
-        
+
         public Worker(string hostName, IFunctionTableLookup functionTable, IRunningHostTableWriter heartbeatTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
         {
             _blobListener = blobListener;
@@ -51,7 +51,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             CreateInputMap();
 
-            this._heartbeat.LastCacheReset = DateTime.UtcNow;
+            _heartbeat.LastCacheReset = DateTime.UtcNow;
         }
 
         public OrchestratorRoleHeartbeat Heartbeat
@@ -98,12 +98,12 @@ namespace Microsoft.WindowsAzure.Jobs
             Poll(CancellationToken.None);
         }
 
-        int _triggerCount = 0;
+        private int _triggerCount = 0;
 
         public void Poll(CancellationToken token)
         {
             _heartbeat.Heartbeat = DateTime.UtcNow;
-            
+
             if (_heartbeat.Heartbeat > _nextHeartbeat)
             {
                 _heartbeatTable.SignalHeartbeat(_hostName);
@@ -136,7 +136,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     continue;
                 }
                 break;
-            }            
+            }
         }
 
         // Poll blob notifications from the fast path that may be detected ahead of our
@@ -170,7 +170,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func)
         {
             var instance = GetFunctionInvocation(func, msg);
-            
+
             if (instance != null)
             {
                 _triggerCount++;
@@ -200,9 +200,9 @@ namespace Microsoft.WindowsAzure.Jobs
             QueueCausalityHelper qcm = new QueueCausalityHelper();
             return qcm.GetOwner(msg);
         }
-        
+
         public static FunctionInvokeRequest GetFunctionInvocation(
-            FunctionDefinition func, 
+            FunctionDefinition func,
             IDictionary<string, string> parameters,
             IEnumerable<Guid> prereqs = null)
         {
@@ -255,8 +255,8 @@ namespace Microsoft.WindowsAzure.Jobs
             // blobInput was the one that triggered it.
             // Get the path from the first blob input parameter.
             var flow = func.Flow;
-            CloudBlobPath firstInput = flow.Bindings.OfType<BlobParameterStaticBinding>().Where(b => b.IsInput).Select(b=>b.Path).FirstOrDefault();
-                        
+            CloudBlobPath firstInput = flow.Bindings.OfType<BlobParameterStaticBinding>().Where(b => b.IsInput).Select(b => b.Path).FirstOrDefault();
+
             var p = firstInput.Match(new CloudBlobPath(blobInput));
             if (p == null)
             {
@@ -268,7 +268,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 NameParameters = p,
             };
-            var instance = BindParameters(ctx, func);
+            FunctionInvokeRequest instance = BindParameters(ctx, func);
 
             Guid parentGuid = GetBlobWriterGuid(blobInput);
             instance.TriggerReason = new BlobTriggerReason
@@ -301,7 +301,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // plug into Trigger Service to queue invocations on triggers. 
-        class MyInvoker : ITriggerInvoke
+        private class MyInvoker : ITriggerInvoke
         {
             private readonly Worker _parent;
             public MyInvoker(Worker parent)

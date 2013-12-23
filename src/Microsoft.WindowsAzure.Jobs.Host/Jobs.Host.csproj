@@ -20,6 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\Microsoft.WindowsAzure.Jobs.Host.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -28,6 +29,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\Microsoft.WindowsAzure.Jobs.Host.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.WindowsAzure.Configuration">
@@ -59,7 +61,6 @@
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
     <Compile Include="Engine\DaasEndpoints\Helpers.cs" />
-    <Compile Include="Engine\DaasEndpoints\KuduQueueFunction.cs" />
     <Compile Include="Engine\DaasEndpoints\EndpointNames.cs" />
     <Compile Include="Engine\DaasEndpoints\HostVersionReader.cs" />
     <Compile Include="Engine\DaasEndpoints\RunningHostTableReader.cs" />
@@ -77,9 +78,6 @@
     <Compile Include="Engine\Executor\ExecutorListener.cs" />
     <Compile Include="Engine\Executor\ExecutionStatsAggregator.cs" />
     <Compile Include="Engine\Executor\FunctionStatsEntity.cs" />
-    <Compile Include="Engine\IndexDriver\IndexDriverInput.cs" />
-    <Compile Include="Engine\IndexDriver\IndexResults.cs" />
-    <Compile Include="Engine\IndexDriver\IndexerProgram.cs" />
     <Compile Include="Engine\Orchestrator\Index\BinderLookup.cs" />
     <Compile Include="Engine\Orchestrator\Index\CalculateTriggers.cs" />
     <Compile Include="Engine\Orchestrator\Index\IndexTypeContent.cs" />
@@ -165,7 +163,6 @@
     <Compile Include="RunnerInterfaces\LocalFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\RemoteFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\MethodInfoFunctionLocation.cs" />
-    <Compile Include="RunnerInterfaces\KuduFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\IUrlFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\IBlobLeaseHolder.cs" />
     <Compile Include="RunnerInterfaces\TriggerDirectionType.cs" />
@@ -193,7 +190,6 @@
     <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobViaInMemory.cs" />
     <Compile Include="RunnerInterfaces\Execution\INotifyNewBlobListener.cs" />
     <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobExtensions.cs" />
-    <Compile Include="RunnerInterfaces\Execution\KuduFunctionExecutionResult.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionExecutionResult.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionOutputLog.cs" />
     <Compile Include="RunnerInterfaces\Execution\IAccountInfo.cs" />

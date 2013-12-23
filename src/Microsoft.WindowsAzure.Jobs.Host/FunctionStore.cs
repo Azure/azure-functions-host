@@ -4,11 +4,10 @@ using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs.Internals
 {
-    class FunctionStore : IFunctionTableLookup
+    internal class FunctionStore : IFunctionTableLookup
     {
-        IndexInMemory _store;
-
-        string _prefix;
+        private IndexInMemory _store;
+        private string _prefix;
 
         // userAccountConnectionString - the account that the functions will bind against. 
         public FunctionStore(string userAccountConnectionString, IEnumerable<Assembly> assemblies, IConfiguration config)
@@ -56,7 +55,6 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
             loc.Id = _prefix + "." + loc.Id;
             return loc;
         }
-
 
         public FunctionDefinition Lookup(string functionId)
         {

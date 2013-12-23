@@ -2,10 +2,7 @@
 {
     internal enum QueueFunctionType
     {
-        WorkerRoles,
         Antares,
-        AzureTasks,
-        Kudu,
         Unknown,
     }
 }

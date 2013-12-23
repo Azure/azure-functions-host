@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
             Assembly attrAssembly = attr.GetType().Assembly;
             string pathUserAttribute = attrAssembly.Location;
             string shortName = System.IO.Path.GetFileName(pathUserAttribute);
-            if (string.Compare(shortName, Indexer.AzureJobsFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            if (String.Equals(shortName, Indexer.AzureJobsFileName, StringComparison.OrdinalIgnoreCase))
             {
                 Assembly hostAssembly = typeof(BlobInputAttribute).Assembly;
                 if (attrAssembly != hostAssembly)

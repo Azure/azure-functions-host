@@ -9,7 +9,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public IFunctionInstanceLookup Lookup;
         public IFunctionUpdatedLogger Logger;
         public ICausalityLogger CausalityLogger;
-        public IPrereqManager PreqreqManager;
+        public IPrereqManager PrereqManager;
 
         public void VerifyNotNull()
         {
@@ -29,9 +29,9 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 throw new ArgumentNullException("CausalityLogger");
             }
-            if (PreqreqManager == null)
+            if (PrereqManager == null)
             {
-                throw new ArgumentNullException("PreqreqManager");
+                throw new ArgumentNullException("PrereqManager");
             }
         }
     }

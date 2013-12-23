@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -21,12 +22,12 @@ namespace Microsoft.WindowsAzure.Jobs
             return new WrapperEnumerator { _inner = _inner.GetEnumerator(), _parent = this };
         }
 
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
             return this.GetEnumerator();
         }
 
-        class WrapperEnumerator : IEnumerator<T>
+        private class WrapperEnumerator : IEnumerator<T>
         {
             public WrapperEnumerable<T> _parent;
             public IEnumerator<T> _inner;
@@ -41,11 +42,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 _inner.Dispose();
             }
 
-            object System.Collections.IEnumerator.Current
+            object IEnumerator.Current
             {
                 get
                 {
-                    System.Collections.IEnumerator x = _inner;
+                    IEnumerator x = _inner;
                     return x.Current;
                 }
             }
@@ -54,19 +55,19 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 try
                 {
-                    var func = _parent.OnBefore;
-                    if (func != null)
+                    Action onBeforeAction  = _parent.OnBefore;
+                    if (onBeforeAction != null)
                     {
-                        func();
+                        onBeforeAction();
                     }
                     return _inner.MoveNext();
                 }
                 finally
                 {
-                    var func = _parent.OnAfter;
-                    if (func != null)
+                    Action onAfterAction = _parent.OnAfter;
+                    if (onAfterAction != null)
                     {
-                        func();
+                        onAfterAction();
                     }
                 }
             }

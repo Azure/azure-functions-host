@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -17,6 +15,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // If this config is set, use it. 
         public IConfiguration _configOverride;
+
+        private HashSet<Type> _binderTypes = new HashSet<Type>();
+
 
         // Account for where index lives
         public Indexer(IFunctionTable functionTable)
@@ -33,249 +34,12 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _azureJobsFileName; }
         }
 
-        // Index all things in the container
-        // account - account that binderLookupTable paths resolve to. ($$$ move account info int ot he table too?)
-        public void IndexContainer(CloudBlobDescriptor containerDescriptor, string localCacheRoot, IAzureTableReader<BinderEntry> binderLookupTable)
-        {
-            // Locally copy
-            using (var helper = new ContainerDownloader(containerDescriptor, localCacheRoot, uploadNewFiles: true))
-            {
-                string localCache = helper.LocalCachePrivate;
-
-                {
-                    // Delete the user's instance of Microsoft.WindowsAzure.Jobs just to force it to bind against the host instance.
-                    string path = Path.Combine(localCache, _azureJobsFileName);
-                    if (File.Exists(path))
-                    {
-                        File.Delete(path);
-                    }
-                }
-
-                BinderLookup binderLookup = new BinderLookup(binderLookupTable, localCache);
-
-                RemoveStaleFunctions(containerDescriptor, localCache);
-
-                // Copying funcs out of a container, apply locations to that container.
-                Func<MethodInfo, FunctionLocation> funcApplyLocation = method => GetLocationInfoFromContainer(containerDescriptor, method);
-
-                IndexLocalDir(funcApplyLocation, localCache);
-
-                CopyCloudModelBinders(binderLookup);
-            }
-        }
-
-        private void CopyCloudModelBinders(BinderLookup b)
-        {
-            int countCustom = 0;
-
-            var types = _binderTypes;
-
-            bool first = true;
-
-            foreach (var t in types)
-            {
-                bool found = b.Lookup(t);
-
-                if (found)
-                {
-                    if (first)
-                    {
-                        Console.WriteLine();
-                        Console.WriteLine("Using custom binders:");
-                        first = false;
-                    }
-
-                    Console.WriteLine("  {0}", t.FullName);
-                    countCustom++;
-                }
-            }
-
-            if (countCustom > 0)
-            {
-                Console.WriteLine();
-                b.WriteManifest("manifest.txt");
-            }
-        }
-
-        // Remove any functions that are in the container. 
-        private void RemoveStaleFunctions(CloudBlobDescriptor containerDescriptor, string localCache)
-        {
-            FunctionDefinition[] funcs = _functionTable.ReadAll();
-
-            string connection = containerDescriptor.AccountConnectionString;
-            string containerName = containerDescriptor.ContainerName;
-
-            foreach (var file in Directory.EnumerateFiles(localCache))
-            {
-                string name = Path.GetFileName(file);
-
-                foreach (FunctionDefinition func in funcs)
-                {
-                    var loc = func.Location as RemoteFunctionLocation;
-                    if (loc != null)
-                    {
-                        if ((loc.DownloadSource.BlobName == name) && (loc.DownloadSource.ContainerName == containerName) && (loc.AccountConnectionString == connection))
-                        {
-                            _functionTable.Delete(func);
-                        }
-                    }
-                }
-            }
-        }
-
-        // AssemblyName doesn't implement GetHashCode().
-        private Dictionary<AssemblyName, string> _fileLocations = new Dictionary<AssemblyName, string>(new AssemblyNameComparer());
-
-        private Assembly CurrentDomain_ReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            // Name is "Microsoft.WindowsAzure.Jobs, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"
-
-            var name = new AssemblyName(args.Name);
-
-            string file;
-            if (_fileLocations.TryGetValue(name, out file))
-            {
-                return Assembly.LoadFrom(file);
-            }
-            else
-            {
-                return Assembly.Load(args.Name);
-            }
-        }
-
-        private HashSet<Type> _binderTypes = new HashSet<Type>();
-
-        // Look at each assembly
-        public void IndexLocalDir(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
-        {
-            // See http://blogs.msdn.com/b/jmstall/archive/2006/11/22/reflection-type-load-exception.aspx
-
-            // Use live loading (not just reflection-only) so that we can invoke teh Initialization method.
-            var handler = new ResolveEventHandler(CurrentDomain_ReflectionOnlyAssemblyResolve);
-            AppDomain.CurrentDomain.AssemblyResolve += handler;
-            try
-            {
-                IndexLocalDirWorker(funcApplyLocation, localDirectory);
-            }
-            finally
-            {
-                AppDomain.CurrentDomain.AssemblyResolve -= handler;
-            }
-        }
-
-        private string[] GetFileList(string localDirectory)
-        {
-            var filesDll = Directory.EnumerateFiles(localDirectory, "*.dll");
-            var filesExe = Directory.EnumerateFiles(localDirectory, "*.exe");
-                        
-            List<string> list = new List<string>();
-            foreach (var file in filesExe.Concat(filesDll))
-            {
-                // Omit anything with .vshost.exe:
-                // 1. It won't have SB functions anyways.
-                // 2. we often can't index it, so it produces noisy errors even trying
-                // 3. they all have the same AssemblyName, and so trying to load can produce naming collisions. 
-                if (file.EndsWith(".vshost.exe", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    continue;
-                }
-                list.Add(file);
-            }
-            return list.ToArray();
-        }
-
-        [DebuggerNonUserCode]
-        private AssemblyName GetAssemblyName(string file)
-        {
-            try
-            {
-                var name = AssemblyName.GetAssemblyName(file);
-                return name;
-            }
-            catch (BadImageFormatException)
-            {
-                // Can happen normally for Native dlls. 
-                return null;
-            }
-        }
-
-        private void IndexLocalDirWorker(Func<MethodInfo, FunctionLocation> funcApplyLocation, string localDirectory)
-        {
-            string[] fileList = GetFileList(localDirectory);
-
-            foreach (string file in fileList)
-            {
-                var name = GetAssemblyName(file);
-                if (name != null)
-                {
-                    _fileLocations[name] = file;
-                }
-            }
-
-            foreach (string file in fileList)
-            {
-                Assembly a = null;
-                try
-                {
-                    a = Assembly.LoadFrom(file);
-                }
-                catch (Exception exception)
-                {
-                    Console.WriteLine("Warning: The assembly '{0}' has been skipped. This is ok if there are no simplebatch entry point functions in that file.  Exception Type: '{1}', Exception Message: {2}", file, exception.GetType(), exception.Message);
-                    continue;
-                }
-
-                if (a != null && string.Compare(a.Location, file, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    // $$$
-                    // Stupid loader, loaded the assembly from the wrong spot.
-                    // This is important when an assembly has been updated and recompiled,
-                    // but it still has the same identity, and so the loader foolishly pulls the old
-                    // assembly.
-                    // This goes away when the process is recycled.
-                    // Get a warning now so that we don't have subtle bugs from processing the wrong assembly.
-                    bool isGacDll = a.Location.Contains(@"\GAC_MSIL\");
-
-                    if (isGacDll)
-                    {
-                        // Stupid loader will forcibly resolve dlls against the GAC. That's ok here since GAC
-                        // dlls are framework and won't contain user code and so can't be simple batch dlls.
-                        // So don't need to even index them.
-                        continue;
-                    }
-
-                    // One way this can happen is if 2 assemblies have the same assembly name but different filenames.
-                    // The loader will match on assembly name and reuse. 
-                    // This is the case with Vshost.exe. 
-                    string msg = string.Format("CLR loaded wrong assembly. Tried to load {0} but actually loaded {1}.", file, a.Location);
-                    throw new InvalidOperationException(msg);
-                }
-
-                // The hosts and binders are IL-only and running in 64-bit environments.
-                // So the entry point can't require 32-bit.
-                {
-                    var mainModule = a.GetLoadedModules(false)[0];
-                    PortableExecutableKinds peKind;
-                    ImageFileMachine machine;
-                    mainModule.GetPEKind(out peKind, out machine);
-
-                    // Net.45 adds new flags for preference, which can be a superset of IL Only.
-                    if ((peKind & PortableExecutableKinds.ILOnly) != PortableExecutableKinds.ILOnly)
-                    {
-                        throw new InvalidOperationException("Indexing must be in IL-only entry points.");
-                    }
-                }
-
-                IndexAssembly(funcApplyLocation, a);
-            }
-        }
-
         public static bool DoesAssemblyReferenceAzureJobs(Assembly a)
         {
-            var names = a.GetReferencedAssemblies();
-            foreach (var name in names)
+            var referencedAssemblyNames = a.GetReferencedAssemblies();
+            foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
-                if (string.Compare(name.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase) == 0)
+                if (String.Equals(referencedAssemblyName.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -288,11 +52,10 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             // Only try to index assemblies that reference Azure Jobs.
             // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
-            bool skip = !DoesAssemblyReferenceAzureJobs(a);
-            if (skip)
+            if (!DoesAssemblyReferenceAzureJobs(a))
             {
                 return;
-            }            
+            }
 
             Type[] types;
 
@@ -338,12 +101,12 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 IndexMethod(funcApplyLocation, method, context);
             }
-            
-            CheckDups();            
+
+            CheckDups();
         }
 
         // Check for duplicate names. Indexing doesn't support overloads.
-        void CheckDups()
+        private void CheckDups()
         {
             HashSet<string> locs = new HashSet<string>();
 
@@ -373,7 +136,7 @@ namespace Microsoft.WindowsAzure.Jobs
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
 
             IndexerConfig config = new IndexerConfig(fpFuncLookup);
-            
+
             RunnerProgram.AddDefaultBinders(config);
             RunnerProgram.ApplyHooks(type, config);
 
@@ -393,25 +156,6 @@ namespace Microsoft.WindowsAzure.Jobs
              };
 
             return funcApplyLocation2;
-        }
-
-        // Default policy, assumes that the function originally came from the container.
-        private FunctionLocation GetLocationInfoFromContainer(CloudBlobDescriptor container, MethodInfo method)
-        {
-            Type type = method.DeclaringType;
-
-
-            string containerName = container.ContainerName;
-            string blobName = Path.GetFileName(type.Assembly.Location);
-
-            // This is effectively serializing out a MethodInfo.
-            return new RemoteFunctionLocation
-            {
-                AccountConnectionString = container.AccountConnectionString,
-                DownloadSource = new CloudBlobPath(containerName, blobName),                
-                MethodName = method.Name,
-                TypeName = type.FullName
-            };
         }
 
         // Entry-point from reflection-based configuration. This is looking at inline attributes.
@@ -516,7 +260,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 return null;
             }
-            catch (Exception  e)
+            catch (Exception e)
             {
                 throw IndexException.NewParameter(parameter, e);
             }
@@ -671,8 +415,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // Throw if we detect an error. 
         private static void ValidateParameters(ParameterStaticBinding[] parameterBindings, ParameterInfo[] parameters, IConfiguration config)
         {
-            for(int i = 0; i < parameterBindings.Length; i++)
-            { 
+            for (int i = 0; i < parameterBindings.Length; i++)
+            {
                 var binding = parameterBindings[i];
                 var param = parameters[i];
                 binding.Validate(config, param);
@@ -685,7 +429,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // Throw on multiple QueueInputs
             int qc = 0;
-            foreach (var flow in index.Flow.Bindings)
+            foreach (ParameterStaticBinding flow in index.Flow.Bindings)
             {
                 var q = flow as QueueParameterStaticBinding;
                 if (q != null && q.IsInput)

@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // Create host services that point to a logging account. 
     // This will scan for all functions in-memory, publish them to the function dashboard, 
     // and return a set of services that the host can use for invoking, listening, etc. 
-    class HostContext
+    internal class HostContext
     {
         private readonly string _hostName;
 
@@ -45,16 +45,16 @@ namespace Microsoft.WindowsAzure.Jobs
 
             string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
             var logger = new WebExecutionLogger(services, LogRole, roleName);
-            var ctx = logger.GetExecutionContext();
+            FunctionExecutionContext ctx = logger.GetExecutionContext();
             ctx.FunctionTable = functionTableLookup;
             ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
 
             // This is direct execution, doesn't queue up. 
             IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, new ConsoleHostLogger());
 
-            this._functionTableLookup = functionTableLookup;
-            this._heartbeatTable = services.GetRunningHostTableWriter();
-            this._queueFunction = queueFunction;
+            _functionTableLookup = functionTableLookup;
+            _heartbeatTable = services.GetRunningHostTableWriter();
+            _queueFunction = queueFunction;
         }
 
         public string HostName
@@ -138,7 +138,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return "Unknown";
         }
 
-        static IEnumerable<Assembly> GetUserAssemblies()
+        private static IEnumerable<Assembly> GetUserAssemblies()
         {
             return AppDomain.CurrentDomain.GetAssemblies();
         }
@@ -162,7 +162,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string userAccountConnectionString, string loggingAccountConnectionString)
+        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string userAccountConnectionString, string loggingAccountConnectionString)
         {
             var services = GetServices(loggingAccountConnectionString);
             var cloudTable = services.GetFunctionTable();
@@ -187,7 +187,12 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        class ConsoleHostLogger : IHostLogger
+        private static void LogRole(TextWriter output)
+        {
+            output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
+        }
+
+        private class ConsoleHostLogger : IHostLogger
         {
             public void LogFunctionStart(FunctionInvokeRequest request)
             {
@@ -204,11 +209,6 @@ namespace Microsoft.WindowsAzure.Jobs
                     Console.ForegroundColor = oldColor;
                 }
             }
-        }
-
-        private static void LogRole(TextWriter output)
-        {
-            output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
         }
     }
 }

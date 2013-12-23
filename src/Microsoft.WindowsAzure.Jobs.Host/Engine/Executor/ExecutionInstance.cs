@@ -6,7 +6,7 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     // Represents a single execution request. 
     internal class ExecutionInstance
-    {    
+    {
         // Local directory where execution has been copied to.
         private readonly string _localCopy;
 
@@ -24,7 +24,7 @@ namespace Microsoft.WindowsAzure.Jobs
         internal FunctionExecutionResult Execute(FunctionInvokeRequest instance, CancellationToken token)
         {
             Console.WriteLine("# Executing: {0}", instance.Location.GetId());
-            
+
             // Log
             _output.WriteLine("Executing: {0}", instance.Location.GetId());
             foreach (var arg in instance.Args)
@@ -46,11 +46,11 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private FunctionInvokeRequest ConvertToLocal(FunctionInvokeRequest remoteFunc)
         {
-            var remoteLoc = (RemoteFunctionLocation) remoteFunc.Location;
+            var remoteLoc = (RemoteFunctionLocation)remoteFunc.Location;
 
             var localLocation = remoteLoc.GetAsLocal(_localCopy);
 
-            var localFunc = remoteFunc.CloneUpdateLocation(localLocation);            
+            var localFunc = remoteFunc.CloneUpdateLocation(localLocation);
 
             return localFunc;
         }

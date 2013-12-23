@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private readonly IAzureTable<FunctionDefinition> _table;
 
-        private const string PartionKey = "1";
+        private const string PartitionKey = "1";
 
         public FunctionTable(IAzureTable<FunctionDefinition> table)
         {
@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 throw new ArgumentNullException("functionId");
             }
-            FunctionDefinition func = _table.Lookup(PartionKey, functionId);
+            FunctionDefinition func = _table.Lookup(PartitionKey, functionId);
             return func;
         }
 
@@ -39,12 +39,12 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (func == null)
             {
-                throw new ArgumentNullException("func ");
+                throw new ArgumentNullException("func");
             }
 
             // $$$ Batch this (AzureTable would handle that)
             string rowKey = func.ToString();
-            _table.Write(PartionKey, rowKey, func);
+            _table.Write(PartitionKey, rowKey, func);
             _table.Flush();
         }
 
@@ -52,11 +52,11 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (func == null)
             {
-                throw new ArgumentNullException("func ");
+                throw new ArgumentNullException("func");
             }
 
             string rowKey = func.ToString();
-            _table.Delete(PartionKey, rowKey);
+            _table.Delete(PartitionKey, rowKey);
         }
     }
 }
