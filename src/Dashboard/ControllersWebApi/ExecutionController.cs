@@ -53,46 +53,6 @@ namespace Dashboard
             Helpers.ScanBlobDir(GetServices(), account, new CloudBlobPath(container));
         }
 
-        // Execute the given function.
-        // Assumes execution is used via named parameters.
-        [HttpPost]
-        public BeginRunResult Run(string func, [FromBody] Guid[] prereqs)
-        {
-            FunctionDefinition f = _functionTableLookup.Lookup(func);
-            if (f == null)
-            {
-                throw NewUserError("Function not found. Do you need to add it to the index? '{0}'", func);
-            }
-
-            // Get query parameters
-            var uri = this.Request.RequestUri;
-            Dictionary<string, string> parameters = GetParamsFromQuery(uri);
-            parameters.Remove("func"); //  remove query parameter that we added for the function id
-
-            FunctionInstanceGuid parentGuid = CallUtil.GetParentGuid(parameters);
-
-            // Bind and queue.
-            // Queue could be an hour deep
-            try
-            {
-                var instance = Worker.GetFunctionInvocation(f, parameters, prereqs);
-                instance.TriggerReason = new InvokeTriggerReason
-                {
-                    Message = "Explicitly invoked via POST WebAPI.",
-                    ParentGuid = parentGuid
-                };
-
-                IQueueFunction executor = GetServices().GetQueueFunction();
-                ExecutionInstanceLogEntity result = executor.Queue(instance);
-
-                return new BeginRunResult { Instance = result.FunctionInstance.Id };
-            }
-            catch (InvalidOperationException ex)
-            {
-                throw NewUserError(ex.Message);
-            }
-        }
-
         [HttpGet]
         public FunctionInstanceStatusResult GetStatus(Guid id)
         {
@@ -105,17 +65,6 @@ namespace Dashboard
                 ExceptionMessage = instance.ExceptionMessage,
                 ExceptionType = instance.ExceptionType,
             };
-        }
-
-        private static Dictionary<string, string> GetParamsFromQuery(Uri uri)
-        {
-            NameValueCollection nvc = uri.ParseQueryString();
-            Dictionary<string, string> parameters = new Dictionary<string, string>();
-            foreach (var key in nvc.AllKeys)
-            {
-                parameters[key] = nvc[key];
-            }
-            return parameters;
         }
 
         [HttpPost]

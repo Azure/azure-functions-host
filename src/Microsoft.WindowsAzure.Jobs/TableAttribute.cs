@@ -1,5 +1,5 @@
 using System;
-using System.Reflection;
+using System.Globalization;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -30,19 +30,10 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public string TableName { get; set; }
 
-        public static TableAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(TableAttribute).FullName)
-            {
-                return null;
-            }
-            string arg = (string)attr.ConstructorArguments[0].Value;
-            return new TableAttribute(arg);
-        }
-
+        /// <inheritdoc />
         public override string ToString()
         {
-            return string.Format("[Table{0})]", TableName);
+            return String.Format(CultureInfo.InvariantCulture, "[Table{0})]", TableName);
         }
     }
 }

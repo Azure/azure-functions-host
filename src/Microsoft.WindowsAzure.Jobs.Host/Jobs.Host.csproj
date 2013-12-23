@@ -56,7 +56,6 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Engine\DaasEndpoints\AntaresRoleExecutionClient.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
@@ -66,7 +65,6 @@
     <Compile Include="Engine\DaasEndpoints\RunningHostTableReader.cs" />
     <Compile Include="Engine\DaasEndpoints\RunningHostTableWriter.cs" />
     <Compile Include="Engine\DaasEndpoints\Services.cs" />
-    <Compile Include="Engine\DaasEndpoints\QueueFunctionType.cs" />
     <Compile Include="Engine\DaasEndpoints\ServiceHealthStatus.cs" />
     <Compile Include="Engine\DaasEndpoints\WebExecutionLogger.cs" />
     <Compile Include="Engine\DaasEndpoints\WorkerRoleExecutionClient.cs" />

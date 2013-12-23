@@ -46,7 +46,6 @@ namespace Dashboard.Controllers
 
             // Get health
             var services = GetServices();
-            model.ExecutionSubstrate = services.GetExecutionSubstrateDescription();
             model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
             model.QueueDepth = services.GetExecutionQueueDepth();
             model.HealthStatus = new ServiceHealthStatusModel(services.GetHealthStatus());

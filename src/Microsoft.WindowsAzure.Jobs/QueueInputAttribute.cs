@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -23,14 +22,5 @@ namespace Microsoft.WindowsAzure.Jobs
         /// as the queue name.
         /// </summary>
         public string QueueName { get; set; }
-
-        public static QueueInputAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(QueueInputAttribute).FullName)
-            {
-                return null;
-            }
-            return new QueueInputAttribute(); // $$$
-        }
     }
 }

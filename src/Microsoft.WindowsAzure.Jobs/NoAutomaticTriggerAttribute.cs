@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -17,14 +16,5 @@ namespace Microsoft.WindowsAzure.Jobs
         public NoAutomaticTriggerAttribute()
         {
         }
-
-        public static NoAutomaticTriggerAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(NoAutomaticTriggerAttribute).FullName)
-            {
-                return null;
-            }
-            return new NoAutomaticTriggerAttribute();
-        } 
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -22,15 +21,5 @@ namespace Microsoft.WindowsAzure.Jobs
         /// Gets or sets the description of the Job function.
         /// </summary>
         public string Description { get; set; }
-
-        public static DescriptionAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(DescriptionAttribute).FullName)
-            {
-                return null;
-            }
-            string arg = (string)attr.ConstructorArguments[0].Value;
-            return new DescriptionAttribute(arg);        
-        }    
     }
 }

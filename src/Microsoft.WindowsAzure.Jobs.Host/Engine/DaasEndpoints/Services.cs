@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // Anything that needs an azure endpoint can go here.
     // This access the raw settings (especially account name) from Secrets, but then also provides the
     // policy and references to stitch everything together.
-    internal partial class Services
+    internal class Services
     {
         private readonly IAccountInfo _accountInfo;
         private readonly CloudStorageAccount _account;
@@ -37,26 +37,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public IAccountInfo AccountInfo
         {
             get { return _accountInfo; }
-        }
-
-        // This blob is used by orchestrator to signal to all the executor nodes to reset.
-        // THis is needed when orchestrator makes an update (like upgrading a funcioin) and needs
-        // the executors to clear their caches.
-        public CloudBlob GetExecutorResetControlBlob()
-        {
-            CloudBlobClient client = _account.CreateCloudBlobClient();
-            CloudBlobContainer c = client.GetContainerReference(EndpointNames.DaasControlContainerName);
-            c.CreateIfNotExist();
-            CloudBlob b = c.GetBlobReference("executor-reset");
-            return b;
-        }
-
-        public CloudQueue GetExecutionCompleteQueue()
-        {
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            var queue = client.GetQueueReference(EndpointNames.FunctionInvokeDoneQueue);
-            queue.CreateIfNotExist();
-            return queue;
         }
 
         public void PostDeleteRequest(FunctionInvokeRequest instance)
@@ -161,79 +141,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return c;
         }
 
-        // Get a description of which execution mechanism is used. 
-        // This is coupled to IQueueFunction. ($$$ Move this to be on that interface?)
-        public string GetExecutionSubstrateDescription()
-        {
-            try
-            {
-                QueueFunctionType t = GetExecutionType();
-                switch (t)
-                {
-                    case QueueFunctionType.Antares:
-                        string url = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
-                        return "Antares: " + url;
-                    default:
-                        return t.ToString();
-                }
-            }
-            catch (Exception e)
-            {
-                return e.Message;
-            }
-
-        }
-
-        public QueueFunctionType GetExecutionType()
-        {
-            if (!AzureRuntime.IsAvailable)
-            {
-                return QueueFunctionType.Unknown;
-            }
-            string value = AzureRuntime.GetConfigurationSettingValue("ExecutionType");
-
-            QueueFunctionType t;
-            if (Enum.TryParse<QueueFunctionType>(value, out t))
-            {
-                return t;
-            }
-            string msg = string.Format("unknown execution substrate:{0}", value);
-            throw new InvalidOperationException(msg);
-        }
-
-
-        public IActivateFunction GetActivator(QueueInterfaces qi = null)
-        {
-            var q = GetQueueFunctionInternal(qi);
-            return q;
-        }
-
-        // Get the object that will queue function invoke requests to the execution substrate.
-        // This may pick from multiple substrates.
-        public IQueueFunction GetQueueFunction(QueueInterfaces qi = null)
-        {
-            return GetQueueFunctionInternal(qi);
-        }
-
-        private QueueFunctionBase GetQueueFunctionInternal(QueueInterfaces qi = null)
-        {
-            if (qi == null)
-            {
-                qi = GetQueueInterfaces();
-            }
-            // Pick the appropriate queuing function to use.
-            QueueFunctionType t = GetExecutionType();
-            // Keep a runtime codepath for all cases so that we ensure all cases always compile.
-            switch (t)
-            {
-                case QueueFunctionType.Antares:
-                    return GetAntaresQueueFunction(qi);
-                default:
-                    // should have already thrown before getting here. 
-                    throw new InvalidOperationException("Unknown");
-            }
-        }
-
         // $$$ Returning bundles of interfaces... this is really looking like we need IOC.
         // Similar bundle with FunctionExecutionContext
         public QueueInterfaces GetQueueInterfaces()
@@ -248,17 +155,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 CausalityLogger = GetCausalityLogger(),
                 PrereqManager = GetPrereqManager(x)
             };
-        }
-
-        // Run via Antares. 
-        // This requires that an existing antares site was deployed. 
-        private QueueFunctionBase GetAntaresQueueFunction(QueueInterfaces qi)
-        {
-            // Get url for notifying Antares worker. Eg, like: http://simplebatchworker.azurewebsites.net
-            string urlBase = AzureRuntime.GetConfigurationSettingValue("AntaresWorkerUrl");
-
-            var queue = GetExecutionQueue();
-            return new AntaresRoleExecutionClient(urlBase, queue, qi);
         }
 
         private CloudBlobContainer GetHealthLogContainer()
@@ -303,33 +199,10 @@ namespace Microsoft.WindowsAzure.Jobs
             return stats;
         }
 
-        public void WriteHealthStatus(OrchestratorRoleHeartbeat status)
-        {
-            string content = JsonCustom.SerializeObject(status);
-            GetHealthLogContainer().GetBlobReference(@"orch\role.txt").UploadText(content);
-        }
-
         public void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
         {
             string content = JsonCustom.SerializeObject(status);
             GetHealthLogContainer().GetBlobReference(@"exec\" + role + ".txt").UploadText(content);
-        }
-
-        // Delete all the blobs in the hleath status container. This will clear out stale entries.
-        // active nodes will refresh. 
-        public void ResetHealthStatus()
-        {
-            try
-            {
-                BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
-                foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
-                {
-                    blob.DeleteIfExists();
-                }
-            }
-            catch
-            {
-            }
         }
 
         public IPrereqManager GetPrereqManager()

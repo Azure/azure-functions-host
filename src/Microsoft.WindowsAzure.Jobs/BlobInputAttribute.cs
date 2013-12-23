@@ -1,5 +1,5 @@
 using System;
-using System.Reflection;
+using System.Globalization;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -32,20 +32,10 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public string ContainerName { get; set; }
 
-        public static BlobInputAttribute Build(CustomAttributeData attr)
-        {
-            if (attr.Constructor.DeclaringType.FullName != typeof(BlobInputAttribute).FullName)
-            {
-                return null;
-            }
-
-            string arg = (string)attr.ConstructorArguments[0].Value;
-            return new BlobInputAttribute(arg);
-        }
-
+        /// <inheritdoc />
         public override string ToString()
         {
-            return string.Format("[BlobInput({0})]", ContainerName);
+            return String.Format(CultureInfo.InvariantCulture, "[BlobInput({0})]", ContainerName);
         }
     }
 }
