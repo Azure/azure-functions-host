@@ -58,6 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
                 "DescriptionAttribute",
                 "QueueInputAttribute",
                 "QueueOutputAttribute",
+                "NoAutomaticTriggerAttribute",
                 "TableAttribute",
                 "IBinder",
                 "ICloudBlobStreamBinder`1",
