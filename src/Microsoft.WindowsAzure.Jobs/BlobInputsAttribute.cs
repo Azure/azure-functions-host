@@ -8,12 +8,12 @@ namespace Microsoft.WindowsAzure.Jobs
     [AttributeUsage(AttributeTargets.Parameter)]
     public class BlobInputsAttribute : Attribute
     {
-        public string BlobPathPattern { get; set; }
-
         public BlobInputsAttribute(string blobPathPattern)
         {
-            this.BlobPathPattern = blobPathPattern;
+            BlobPathPattern = blobPathPattern;
         }
+
+        public string BlobPathPattern { get; set; }
 
         public static BlobInputsAttribute Build(CustomAttributeData attr)
         {

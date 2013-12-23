@@ -95,7 +95,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         class Program
         {
             // Test binding to CloudStorageAccount 
-            [Microsoft.WindowsAzure.Jobs.Description("test")]
+            [Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account)
             {                
                 var account2 = CloudStorageAccount.DevelopmentStorageAccount;
@@ -105,14 +105,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 
             public static bool _QueueInvoked;
 
-            [Microsoft.WindowsAzure.Jobs.Description("test")]
+            [Description("test")]
             public static void Queue(CloudQueue mytestqueue)
             {
                 _QueueInvoked = true;
                 Assert.IsNotNull(mytestqueue);
             }
 
-            [Microsoft.WindowsAzure.Jobs.Description("test")]
+            [Description("test")]
             public static void QueueBadName(CloudQueue IllegalName)
             {
                 Assert.Fail("shouldnt get invoked");
