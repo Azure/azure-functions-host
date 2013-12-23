@@ -1,0 +1,65 @@
+﻿@using Dashboard.ViewModels
+@model InvocationLogViewModel
+@{
+    string labelClass = null;
+    string descClass = null;
+    string labelText = null;
+    switch (Model.Status)
+    {
+        case FunctionInstanceStatus.CompletedFailed:
+            labelClass = "label-important";
+            descClass = "text-error";
+            labelText = "Failed";
+            break;
+        case FunctionInstanceStatus.CompletedSuccess:
+            labelClass = "label-success";
+            descClass = "text-success";
+            labelText = "Success";
+            break;
+        case FunctionInstanceStatus.NeverFinished:
+            labelClass = "label-important";
+            descClass = "text-error";
+            labelText = "Never Finished";
+            break;
+        case FunctionInstanceStatus.Running:
+            labelClass = "label-info";
+            descClass = "text-info";
+            labelText = "Running";
+            break;
+        case FunctionInstanceStatus.Queued:
+            labelText = "Queued";
+            labelClass = "label-inverse";
+            break;
+        case FunctionInstanceStatus.AwaitingPrereqs:
+            labelText = "Awaiting Prerequisites";
+            labelClass = "label-inverse";
+            break;
+            // don't colorize others.
+    }
+    <tr class="@descClass">
+
+        <td>
+            @*@Html.FunctionInstanceLogLinkVerbose(log)*@
+            @*@Html.FunctionInstanceLogLink(Model.Id, Model.FunctionName)*@
+            @Html.ActionLink(Model.FunctionName, "FunctionInstance", "Dashboard", new { Model.Id }, new { })
+        </td>
+
+        <td>
+            @if (!String.IsNullOrEmpty(labelText))
+            {
+                <span class="label @labelClass">@labelText</span>
+            }
+        </td>
+        <td>
+            @if (Model.WhenUtc.HasValue)
+            {
+                @MoreHtmlHelpers.DateTimeRelative(Model.WhenUtc.Value)
+            }
+
+            @if (Model.Duration.HasValue)
+            {
+                <span>(@MoreHtmlHelpers.TimeSpanRelative(Model.Duration.Value))</span>
+            }
+        </td>
+    </tr>
+}

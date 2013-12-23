@@ -8,6 +8,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // $$$ May need to change from IEnumerable to support pagination + querying?
     internal interface IFunctionInstanceQuery : IFunctionInstanceLookup
     {
-        IEnumerable<ExecutionInstanceLogEntity> GetRecent(int N, FunctionInstanceQueryFilter filter);
+        IEnumerable<ExecutionInstanceLogEntity> GetRecent(int take, FunctionInstanceQueryFilter filter);
+        IEnumerable<ExecutionInstanceLogEntity> GetRecent(int take, int skip, FunctionInstanceQueryFilter filter);
     }
 }

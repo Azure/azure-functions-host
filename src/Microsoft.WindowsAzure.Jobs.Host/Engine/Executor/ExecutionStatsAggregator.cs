@@ -10,7 +10,8 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         // in-memory cache of function entries. 
         // This corresponds to the azure table. 
-        private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs = new Dictionary<FunctionLocation, FunctionStatsEntity>();
+        private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs =
+            new Dictionary<FunctionLocation, FunctionStatsEntity>();
 
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _table;
 
@@ -56,7 +57,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _tableMRUByFunctionFailed = tableMruFunctionFailed;
         }
 
-        static void NotNull(object o, string paramName)
+        private static void NotNull(object o, string paramName)
         {
             if (o == null)
             {
@@ -72,7 +73,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // This is the inverse operation of LogMru.
         // Lookup using secondary indices.
-        IEnumerable<ExecutionInstanceLogEntity> IFunctionInstanceQuery.GetRecent(int N, FunctionInstanceQueryFilter filter)
+        IEnumerable<ExecutionInstanceLogEntity> IFunctionInstanceQuery.GetRecent(int take, FunctionInstanceQueryFilter filter)
+        {
+            return ((IFunctionInstanceQuery)this).GetRecent(take, 0, filter);
+        }
+
+        // This is the inverse operation of LogMru.
+        // Lookup using secondary indices.
+        IEnumerable<ExecutionInstanceLogEntity> IFunctionInstanceQuery.GetRecent(int take, int skip, FunctionInstanceQueryFilter filter)
         {
             if (_tableMRU == null)
             {
@@ -116,7 +124,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 ptrs = table.Enumerate();
             }
 
-            ptrs = ptrs.Take(N);
+            ptrs = ptrs.Skip(skip).Take(take);
 
             IFunctionInstanceLookup lookup = this;
             return from ptr in ptrs

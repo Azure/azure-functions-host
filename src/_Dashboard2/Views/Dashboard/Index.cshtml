@@ -1,0 +1,98 @@
+﻿@using Dashboard.ViewModels
+@model DashboardIndexViewModel
+@{
+    ViewBag.Title = "Dashboard";
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Functions <small>Registered functions in the system</small></h3>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th class="col-md-3">Function Name</th>
+                    <th class="col-md-2">Statistics</th>
+                    <th class="col-md-1">Last Execution</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var statistics in Model.FunctionStatisticsViewModels)
+                {
+                    <tr>
+                        <td>
+                            @if (statistics.IsRunning)
+                            {
+                            }
+                            else
+                            {
+                                <span title="Not running" class="glyphicon glyphicon-exclamation-sign not-running" style="color:darkorange"></span>
+                            }
+                            @Html.ActionLink(statistics.FunctionName, "FunctionInstances", "Dashboard", new { functionName = statistics.FunctionFullName }, new { })
+                        </td>
+                        <td>
+                            <span class="label label-success statistics" data-url="@Url.Action("FunctionInstances", "Dashboard", new { func = statistics.FunctionFullName, success= true })">@String.Format("{0:#,0}", statistics.SuccessCount)</span>
+                            <span class="label label-danger statistics" data-url="@Url.Action("FunctionInstances", "Dashboard", new { func = statistics.FunctionFullName, success = false })">@String.Format("{0:#,0}", statistics.FailedCount)</span>
+                        </td>
+                        <td>
+                            @if (statistics.LastWriteTime.HasValue)
+                            {
+                                <span class="pull-right">@MoreHtmlHelpers.DateTimeRelative(statistics.LastWriteTime.Value)</span>
+                            }                     
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>    
+    <div class="col-md-6">
+        <h3>Invocation Log <small>Recently executed jobs</small></h3>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th class="col-md-3">Function Name</th>
+                    <th class="col-md-1">Status</th>
+                    <th class="col-md-2">Status Detail</th>
+                </tr>
+            </thead>
+            <tbody id="invocation-log-body">
+                @{ Html.RenderPartial("PartialInvocationLog", Model.InvocationLogViewModels); }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function() {
+        $('.not-running').tooltip();
+
+        var updateLogUrl = '@Url.Action("PartialInvocationLog", "Dashboard")';
+
+        var iID = setInterval(function() {
+
+            var paused = false;
+            if (!paused) {
+                $.ajax({
+                    type: 'GET',
+                    url: updateLogUrl,
+                    async: true,
+                    cache: false,
+                    success: function(data) {
+                        if (console && console.log) {
+                            console.log(data);
+                        }
+                        $('#invocation-log-body').html(data);
+                    },
+                    fail: function(result) {
+                    }
+                });
+            }
+            
+            var stopRequested = false;
+            if (stopRequested) {
+                clearInterval(iID);
+            }
+            
+        }, 2000);
+
+    });
+</script>
