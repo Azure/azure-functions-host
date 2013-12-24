@@ -1,0 +1,15 @@
+﻿@model Dashboard.ViewModels.DashboardAboutViewModel
+@{
+    ViewBag.Title = "About";
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Dashboard <small>Configuration settings for service</small></h3>
+        <table class="table table-striped">
+            <tr><td><b>Account name</b></td><td>@Model.AccountName</td></tr>
+            <tr><td><b>Execution</b></td><td>@Model.ExecutionSubstrate</td></tr>
+            <tr><td><b>Version</b></td><td>1-@Model.VersionInformation</td></tr>
+        </table>
+    </div>
+</div>

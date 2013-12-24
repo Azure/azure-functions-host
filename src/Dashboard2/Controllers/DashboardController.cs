@@ -78,6 +78,19 @@ namespace Dashboard.Controllers
             return View(model);
         }
 
+        public ActionResult About()
+        {
+            var model = new DashboardAboutViewModel();
+
+            // Get health
+            model.ExecutionSubstrate = _services.GetExecutionSubstrateDescription();
+            model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
+            model.QueueDepth = _services.GetExecutionQueueDepth();
+            model.AccountName = _services.Account.Credentials.AccountName;
+
+            return View(model);
+        }
+
         private static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
         {
             string assemblyFullName = func.GetAssemblyFullName();
