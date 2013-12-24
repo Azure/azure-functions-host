@@ -8,16 +8,14 @@ namespace Microsoft.WindowsAzure.Jobs
     // Go down and build an index
     internal class Indexer
     {
+        private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
         private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
         private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
 
         private readonly IFunctionTable _functionTable;
 
-        // If this config is set, use it. 
-        public IConfiguration _configOverride;
-
         private HashSet<Type> _binderTypes = new HashSet<Type>();
-
 
         // Account for where index lives
         public Indexer(IFunctionTable functionTable)
@@ -34,9 +32,12 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _azureJobsFileName; }
         }
 
+        // If this config is set, use it. 
+        public IConfiguration ConfigOverride { get; set; }
+
         public static bool DoesAssemblyReferenceAzureJobs(Assembly a)
         {
-            var referencedAssemblyNames = a.GetReferencedAssemblies();
+            AssemblyName[] referencedAssemblyNames = a.GetReferencedAssemblies();
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
                 if (String.Equals(referencedAssemblyName.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
@@ -57,36 +58,43 @@ namespace Microsoft.WindowsAzure.Jobs
                 return;
             }
 
-            Type[] types;
+            Type[] types = null;
 
             try
             {
                 types = a.GetTypes();
             }
-            catch
+            catch (ReflectionTypeLoadException ex)
             {
-                // This is bad. The assembly refers to Microsoft.WindowsAzure.Jobs.dll, so it ought to be indexable.
-                // But we can't read the types.
-                // This could be because it refers to a stale/corrupted version of Microsoft.WindowsAzure.Jobs.dll
-                // (or maybe  even a dll that has the same name but is totally different).
+                // TODO: Log this somewhere?
+                Console.WriteLine("Warning: Only got partial types from assembly: {0}", a.FullName);
+                Console.WriteLine("Exception message: {0}", ex.ToString());
+
+                // In case of a type load exception, at least get the types that did succeed in loading
+                types = ex.Types;
+            }
+            catch (Exception ex)
+            {
+                // TODO: Log this somewhere?
                 Console.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
-                return;
+                Console.WriteLine("Exception message: {0}", ex.ToString());
             }
 
-            foreach (var type in types)
+            if (types != null)
             {
-                IndexType(funcApplyLocation, type);
+                foreach (var type in types)
+                {
+                    IndexType(funcApplyLocation, type);
+                }
             }
         }
 
-        private static BindingFlags MethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
-
         private static MethodInfo ResolveMethod(Type type, string name)
         {
-            var method = type.GetMethod(name, MethodFlags);
+            var method = type.GetMethod(name, _publicStaticMethodFlags);
             if (method == null)
             {
-                string msg = string.Format("No method '{0}' found on type '{1}'", name, type.FullName);
+                string msg = string.Format("A public static method '{0}' could not be found on type '{1}'.", name, type.FullName);
                 throw new InvalidOperationException(msg);
             }
             return method;
@@ -97,26 +105,26 @@ namespace Microsoft.WindowsAzure.Jobs
             var context = InvokeInitMethodOnType(type, funcApplyLocation);
 
             // Now register any declaritive methods
-            foreach (MethodInfo method in type.GetMethods(MethodFlags))
+            foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags))
             {
                 IndexMethod(funcApplyLocation, method, context);
             }
 
-            CheckDups();
+            EnsureNoDuplicateFunctions();
         }
 
         // Check for duplicate names. Indexing doesn't support overloads.
-        private void CheckDups()
+        private void EnsureNoDuplicateFunctions()
         {
-            HashSet<string> locs = new HashSet<string>();
+            HashSet<string> locations = new HashSet<string>();
 
-            foreach (var func in _functionTable.ReadAll())
+            foreach (FunctionDefinition func in _functionTable.ReadAll())
             {
-                var key = func.Location.ToString();
-                if (!locs.Add(key))
+                var locationKey = func.Location.ToString();
+                if (!locations.Add(locationKey))
                 {
                     // Dup found!
-                    string msg = string.Format("SimpleBatch doesn't support function overloads. There are multiple overloads for: {0}", key);
+                    string msg = string.Format("Method overloads are not supported. There are multiple methods with the name '{0}'.", locationKey);
                     throw new InvalidOperationException(msg);
                 }
             }
@@ -126,16 +134,12 @@ namespace Microsoft.WindowsAzure.Jobs
         // Register any functions provided by code-configuration.
         private IndexTypeContext InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
-            if (_configOverride != null)
+            if (ConfigOverride != null)
             {
-                return new IndexTypeContext { Config = _configOverride };
+                return new IndexTypeContext { Config = ConfigOverride };
             }
 
-            // Invoke initialization function on this type.
-            // This may register functions imperatively.
-            Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(type, name);
-
-            IndexerConfig config = new IndexerConfig(fpFuncLookup);
+            IndexerConfig config = new IndexerConfig();
 
             RunnerProgram.AddDefaultBinders(config);
             RunnerProgram.ApplyHooks(type, config);

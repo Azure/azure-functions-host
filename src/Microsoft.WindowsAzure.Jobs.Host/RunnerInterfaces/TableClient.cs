@@ -87,8 +87,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 (t == typeof(DateTime)) ||
                 (t == typeof(double)) ||
                 (t == typeof(Guid)) ||
-                (t == typeof(System.Int32)) ||
-                (t == typeof(System.Int64)) ||
+                (t == typeof(Int32)) ||
+                (t == typeof(Int64)) ||
                 (t == typeof(string))
                 )
             {

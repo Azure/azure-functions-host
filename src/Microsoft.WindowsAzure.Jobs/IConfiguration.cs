@@ -4,7 +4,7 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IConfiguration
     {
-        // Could cache a wrapper directly binding against IClourBlobBinder.
+        // Could cache a wrapper directly binding against ICloudBlobBinder.
         IList<ICloudBlobBinderProvider> BlobBinders { get; }
 
         IList<ICloudTableBinderProvider> TableBinders { get; }

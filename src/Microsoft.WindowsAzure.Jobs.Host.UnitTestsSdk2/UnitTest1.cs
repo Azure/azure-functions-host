@@ -15,7 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         [TestMethod]
         public void TestBindCloudStorageAccount()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;                     
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
             var acs = account.ToString(true);
 
             var lc = new LocalExecutionContext(acs, typeof(Program));
@@ -34,12 +34,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 
             var stream = new MemoryStream(new byte[] { 1, 2, 3 });
 
-            var block = container.GetBlockBlobReference("block");            
+            var block = container.GetBlockBlobReference("block");
             block.UploadFromStream(stream);
 
             var page = container.GetPageBlobReference("page");
             page.UploadFromStream(stream);
-            
+
             var lc = new LocalExecutionContext(acs, typeof(Program));
             lc.Call("IBlob");
 
@@ -72,8 +72,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             lc.Call("Queue");
             Assert.IsTrue(Program._QueueInvoked);
         }
-        
-        //[TestMethod]
+
+        [TestMethod]
+        [Ignore]
         // TODO: ammend this!
         public void TestQueueBadName()
         {
@@ -97,7 +98,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             // Test binding to CloudStorageAccount 
             [Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account)
-            {                
+            {
                 var account2 = CloudStorageAccount.DevelopmentStorageAccount;
 
                 Assert.AreEqual(account.ToString(), account2.ToString());
@@ -143,7 +144,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 
             public static void PageBlob(
                 [BlobInput("daas-test/page")] CloudPageBlob page)
-            {                
+            {
                 Assert.AreEqual(BlobType.PageBlob, page.BlobType);
             }
 

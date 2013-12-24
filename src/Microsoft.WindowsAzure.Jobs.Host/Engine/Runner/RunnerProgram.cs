@@ -214,6 +214,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return config;
 
         }
+
         public static void AddDefaultBinders(IConfiguration config)
         {
             // Blobs

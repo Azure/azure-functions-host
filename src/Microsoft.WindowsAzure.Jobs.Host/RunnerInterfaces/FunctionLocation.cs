@@ -34,7 +34,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // ToString can be used as an azure row key.
         public override string ToString()
         {
-            return TableClient.GetAsTableKey(this.GetId());
+            return TableClient.GetAsTableKey(GetId());
         }
 
         public override bool Equals(object obj)
@@ -45,12 +45,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 return false;
             }
 
-            return this.GetId() == other.GetId();
+            return GetId() == other.GetId();
         }
 
         public override int GetHashCode()
         {
-            return this.GetId().GetHashCode();
+            return GetId().GetHashCode();
         }
 
         // Read a file from the function's location. 

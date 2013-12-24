@@ -12,14 +12,32 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Keyed off a type
-        class SimpleBinderProvider<T> : ICloudBlobBinderProvider
+        private class SimpleBinderProvider<T> : ICloudBlobBinderProvider
         {
-            ICloudBlobStreamBinder<T> _inner;
+            private ICloudBlobStreamBinder<T> _inner;
+
             public SimpleBinderProvider(ICloudBlobStreamBinder<T> inner)
             {
                 _inner = inner;
             }
-            class InputBinder : ICloudBlobBinder
+
+            public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+            {
+                if (targetType == typeof(T))
+                {
+                    if (isInput)
+                    {
+                        return new InputBinder { _inner = this._inner };
+                    }
+                    else
+                    {
+                        return new OutputBinder { _inner = this._inner };
+                    }
+                }
+                return null;
+            }
+
+            private class InputBinder : ICloudBlobBinder
             {
                 public ICloudBlobStreamBinder<T> _inner;
 
@@ -30,7 +48,8 @@ namespace Microsoft.WindowsAzure.Jobs
                     return new BindResult<T>(obj, bindStream);
                 }
             }
-            class OutputBinder : ICloudBlobBinder
+
+            private class OutputBinder : ICloudBlobBinder
             {
                 public ICloudBlobStreamBinder<T> _inner;
 
@@ -51,21 +70,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
-            {
-                if (targetType == typeof(T))
-                {
-                    if (isInput)
-                    {
-                        return new InputBinder { _inner = this._inner };
-                    }
-                    else
-                    {
-                        return new OutputBinder { _inner = this._inner };
-                    }
-                }
-                return null;
-            }
         }
     }
 }

@@ -27,13 +27,13 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public CloudStorageAccount GetAccount()
         {
-            return Utility.GetAccount(this.Location.AccountConnectionString);
+            return Utility.GetAccount(Location.AccountConnectionString);
         }
 
         // This can be used as an azure row/partition key.
         public override string ToString()
         {
-            return this.Location.ToString();
+            return Location.ToString();
         }
 
         // Do a clone of this object, but update the location.

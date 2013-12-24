@@ -6,8 +6,8 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
 {
     internal class FunctionStore : IFunctionTableLookup
     {
-        private IndexInMemory _store;
-        private string _prefix;
+        private readonly IndexInMemory _store;
+        private readonly string _prefix;
 
         // userAccountConnectionString - the account that the functions will bind against. 
         public FunctionStore(string userAccountConnectionString, IEnumerable<Assembly> assemblies, IConfiguration config)
@@ -16,7 +16,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
 
             _store = new IndexInMemory();
             var indexer = new Indexer(_store);
-            indexer._configOverride = config;
+            indexer.ConfigOverride = config;
 
             foreach (Assembly a in assemblies)
             {
@@ -45,7 +45,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
             return accountName + "." + appName;
         }
 
-        FunctionLocation OnApplyLocationInfo(string accountConnectionString, MethodInfo method)
+        private FunctionLocation OnApplyLocationInfo(string accountConnectionString, MethodInfo method)
         {
             var loc = new MethodInfoFunctionLocation(method)
             {
