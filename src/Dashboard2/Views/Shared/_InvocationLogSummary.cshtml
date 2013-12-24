@@ -7,7 +7,7 @@
     switch (Model.Status)
     {
         case FunctionInstanceStatus.CompletedFailed:
-            labelClass = "label-important";
+            labelClass = "label-danger";
             descClass = "text-error";
             labelText = "Failed";
             break;
@@ -17,22 +17,22 @@
             labelText = "Success";
             break;
         case FunctionInstanceStatus.NeverFinished:
-            labelClass = "label-important";
+            labelClass = "label-warning";
             descClass = "text-error";
             labelText = "Never Finished";
             break;
         case FunctionInstanceStatus.Running:
-            labelClass = "label-info";
+            labelClass = "label-primary";
             descClass = "text-info";
             labelText = "Running";
             break;
         case FunctionInstanceStatus.Queued:
             labelText = "Queued";
-            labelClass = "label-inverse";
+            labelClass = "label-info";
             break;
         case FunctionInstanceStatus.AwaitingPrereqs:
             labelText = "Awaiting Prerequisites";
-            labelClass = "label-inverse";
+            labelClass = "label-info";
             break;
             // don't colorize others.
     }

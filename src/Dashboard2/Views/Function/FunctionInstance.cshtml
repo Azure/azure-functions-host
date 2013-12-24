@@ -112,7 +112,7 @@
                         switch (child.Status)
                         {
                             case FunctionInstanceStatus.CompletedFailed:
-                                childLabelClass = "label-important";
+                                childLabelClass = "label-danger";
                                 childDescClass = "text-error";
                                 childLabelText = "Failed";
                                 break;
@@ -122,22 +122,22 @@
                                 childLabelText = "Success";
                                 break;
                             case FunctionInstanceStatus.NeverFinished:
-                                childLabelClass = "label-important";
+                                childLabelClass = "label-warning";
                                 childDescClass = "text-error";
                                 childLabelText = "Never Finished";
                                 break;
                             case FunctionInstanceStatus.Running:
-                                childLabelClass = "label-info";
+                                childLabelClass = "label-primary";
                                 childDescClass = "text-info";
                                 childLabelText = "Running";
                                 break;
                             case FunctionInstanceStatus.Queued:
                                 childLabelText = "Queued";
-                                childLabelClass = "label-inverse";
+                                childLabelClass = "label-info";
                                 break;
                             case FunctionInstanceStatus.AwaitingPrereqs:
                                 childLabelText = "Awaiting Prerequisites";
-                                childLabelClass = "label-inverse";
+                                childLabelClass = "label-info";
                                 break;
                                 // don't colorize others.
                         }
