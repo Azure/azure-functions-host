@@ -20,6 +20,6 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Gets or sets the description of the Job function.
         /// </summary>
-        public string Description { get; set; }
+        public string Description { get; private set; }
     }
 }

@@ -9,7 +9,8 @@ namespace Microsoft.WindowsAzure.Jobs
     /// <summary>
     /// Represents an attribute that is used to provide details about how a Windows Azure Blob is
     /// bound as a method input parameter.
-    /// The method parameter type can be a Stream, TextReader, string, CloudBlob, ICloudBlob, CloudPageBlob, or CloudBlockBlob.
+    /// This attribute also serves as a trigger that will run the Job function when a new blob is uploaded.
+    /// The method parameter type by default can be a Stream, TextReader, string, CloudBlob, ICloudBlob, CloudPageBlob, or CloudBlockBlob.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
     public class BlobInputAttribute : Attribute
@@ -17,25 +18,25 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Initializes a new instance of the BlobInputAttribute class.
         /// </summary>
-        /// <param name="containerName">Name of the container to bind to. The path can contain tokens in curly
-        /// braces to indicate a pattern to match. The matched name can be used in other binding attributes to
-        /// define the output name of a Job function.</param>
-        public BlobInputAttribute(string containerName)
+        /// <param name="blobPath">Path of the blob to bind to. The blob portion of the path can contain
+        /// tokens in curly braces to indicate a pattern to match. The matched name can be used in other
+        /// binding attributes to define the output name of a Job function.</param>
+        public BlobInputAttribute(string blobPath)
         {
-            ContainerName = containerName;
+            BlobPath = blobPath;
         }
 
         /// <summary>
-        /// Gets or sets the name of the container to bind to. The path can contain tokens in curly
-        /// braces to indicate a pattern to match. The matched name can be used in other binding attributes to
-        /// define the output name of a Job function.
+        /// Gets or sets the path of the blob to bind to. The blob portion of the path can contain
+        /// tokens in curly braces to indicate a pattern to match. The matched name can be used in other
+        /// binding attributes to define the output name of a Job function.
         /// </summary>
-        public string ContainerName { get; set; }
+        public string BlobPath { get; private set; }
 
         /// <inheritdoc />
         public override string ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "[BlobInput({0})]", ContainerName);
+            return String.Format(CultureInfo.InvariantCulture, "[BlobInput({0})]", BlobPath);
         }
     }
 }

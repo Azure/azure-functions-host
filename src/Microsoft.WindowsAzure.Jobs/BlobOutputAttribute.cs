@@ -6,7 +6,7 @@ namespace Microsoft.WindowsAzure.Jobs
     /// <summary>
     /// Represents an attribute that is used to provide details about how a Windows Azure Blob is
     /// bound as a method input parameter.
-    /// The method parameter type can be a Stream, TextWriter, string (declared as "out"), CloudBlob, ICloudBlob, CloudPageBlob, or CloudBlockBlob.
+    /// The method parameter type by default can be a Stream, TextWriter, string (declared as "out"), CloudBlob, ICloudBlob, CloudPageBlob, or CloudBlockBlob.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
     public class BlobOutputAttribute : Attribute
@@ -14,23 +14,23 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Initializes a new instance of the BlobOutputAttribute class.
         /// </summary>
-        /// <param name="containerName">Name of the container to bind to. The path can contain tokens in curly
-        /// braces to indicate a named parameter from an input attribute to substitute.</param>
-        public BlobOutputAttribute(string containerName)
+        /// <param name="blobPath">Path of the blob to bind to. The blob portion of the path can contain
+        /// tokens in curly braces to indicate a named parameter from an input attribute to substitute.</param>
+        public BlobOutputAttribute(string blobPath)
         {
-            ContainerName = containerName;
+            BlobPath = blobPath;
         }
 
         /// <summary>
-        /// Gets or sets the name of the container to bind to. The path can contain tokens in curly
-        /// braces to indicate a named parameter from an input attribute to substitute.
+        /// Gets or sets the path of the blob to bind to. The blob portion of the path can contain
+        /// tokens in curly braces to indicate a named parameter from an input attribute to substitute.
         /// </summary>
-        public string ContainerName { get; set; }
+        public string BlobPath { get; private set; }
 
         /// <inheritdoc />
         public override string ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "[BlobOutput({0})]", ContainerName);
+            return String.Format(CultureInfo.InvariantCulture, "[BlobOutput({0})]", BlobPath);
         }
     }
 }

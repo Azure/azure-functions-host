@@ -5,7 +5,8 @@ namespace Microsoft.WindowsAzure.Jobs
     /// <summary>
     /// Represents an attribute that is used to provide details about how a Windows Azure Queue is
     /// bound as a method input parameter.
-    /// The method parameter type can be either a user-defined type, or a string, object, or byte array.
+    /// This attribute also serves as a trigger that will run the Job function when a new message is enqueued.
+    /// The method parameter type by default can be either a user-defined type, or a string, object, or byte array.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
     public class QueueInputAttribute : Attribute

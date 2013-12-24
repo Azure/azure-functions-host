@@ -70,7 +70,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // - it's output since we're writing to it. So we do need to stamp it with a function guid.
             bool isInput = !isLease;
 
-            var path = new CloudBlobPath(attr.ContainerName);
+            var path = new CloudBlobPath(attr.BlobPath);
             return new BlobParameterStaticBinding
             {
                 Path = path,
@@ -80,7 +80,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static ParameterStaticBinding Bind(BlobOutputAttribute attr, ParameterInfo parameter)
         {
-            var path = new CloudBlobPath(attr.ContainerName);
+            var path = new CloudBlobPath(attr.BlobPath);
             return new BlobParameterStaticBinding
             {
                 Path = path,

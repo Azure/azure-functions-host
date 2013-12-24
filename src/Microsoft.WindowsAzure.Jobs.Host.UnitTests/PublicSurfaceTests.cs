@@ -53,7 +53,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             var expected = new[] {
                 "BlobInputAttribute",
-                "BlobInputsAttribute",
                 "BlobOutputAttribute",
                 "DescriptionAttribute",
                 "QueueInputAttribute",

@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
             BlobPathPattern = blobPathPattern;
         }
 
-        public string BlobPathPattern { get; set; }
+        public string BlobPathPattern { get; private set; }
 
         public override string ToString()
         {
