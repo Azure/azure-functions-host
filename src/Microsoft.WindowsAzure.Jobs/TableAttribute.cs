@@ -16,6 +16,13 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Initializes a new instance of the TableAttribute class.
         /// </summary>
+        public TableAttribute()
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the TableAttribute class.
+        /// </summary>
         /// <param name="tableName">If empty, the name of the method parameter is used
         /// as the table name.</param>
         public TableAttribute(string tableName)
@@ -25,10 +32,10 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Beware of table name restrictions.
         /// <summary>
-        /// Gets or sets the name of the table to bind to. If empty, the name of the method parameter is used
+        /// Gets the name of the table to bind to. If empty, the name of the method parameter is used
         /// as the table name.
         /// </summary>
-        public string TableName { get; set; }
+        public string TableName { get; private set; }
 
         /// <inheritdoc />
         public override string ToString()
