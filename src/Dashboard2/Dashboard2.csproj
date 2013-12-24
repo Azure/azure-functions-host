@@ -155,6 +155,7 @@
     <Compile Include="Configuration\ConfigurationService.cs" />
     <Compile Include="Controllers\FunctionController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
+    <Compile Include="Controllers\BadConfigController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -225,7 +226,7 @@
     <Content Include="Views\Function\FunctionInstances.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
     <Content Include="Views\Function\PartialInvocationLog.cshtml" />
-    <Content Include="Views\Shared\BadConfig.cshtml" />
+    <Content Include="Views\BadConfig\Index.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Header.cshtml" />
     <Content Include="Views\Shared\_InvocationLogSummary.cshtml" />

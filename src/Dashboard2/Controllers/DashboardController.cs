@@ -77,7 +77,7 @@ namespace Dashboard.Controllers
 
             return View(model);
         }
-        
+
         private static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
         {
             string assemblyFullName = func.GetAssemblyFullName();
