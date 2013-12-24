@@ -53,8 +53,19 @@ namespace Dashboard.Controllers
             {
                 string rowKey = item["RowKey"];
                 var func = _functionTableLookup.Lookup(rowKey);
-                var statsModel = model.FunctionStatisticsViewModels
-                    .FirstOrDefault(x => x.FunctionFullName == func.ToString());
+
+                if (func == null)
+                {
+                    // ignore functions in stats but not found
+                    continue;
+                }
+
+                var statsModel = model
+                    .FunctionStatisticsViewModels
+                    .FirstOrDefault(x => 
+                        x.FunctionFullName == func.ToString()
+                    );
+
                 if (statsModel != null)
                 {
                     var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
@@ -62,7 +73,6 @@ namespace Dashboard.Controllers
                     statsModel.SuccessCount = stats.CountCompleted;
                     statsModel.LastWriteTime = stats.LastWriteTime;
                 }
-
             }
 
             return View(model);
