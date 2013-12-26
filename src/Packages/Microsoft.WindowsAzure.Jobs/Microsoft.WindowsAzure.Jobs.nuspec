@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+    <metadata>
+        <id>Microsoft.WindowsAzure.Jobs</id>
+        <title>$NuGetPackageTitle$</title>
+        <version>$JobsPackageVersion$</version>
+        <authors>Microsoft</authors>
+        <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
+        <description>TODO TODO TODO This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.</description>
+        <summary>TODO TODO TODO This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.</summary>
+        <language>en-US</language>
+        <projectUrl>http://www.microsoft.com/sample/TODO/TODO/TODO</projectUrl>
+        <licenseUrl>$PackageEULA$</licenseUrl>
+        <requireLicenseAcceptance>true</requireLicenseAcceptance>
+        <tags>Microsoft Azure WebJobs Jobs Batch</tags>
+    </metadata>
+</package>

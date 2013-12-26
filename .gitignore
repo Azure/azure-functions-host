@@ -15,3 +15,4 @@ csx
 UpgradeLog.htm
 UpgradeLog.xml
 /_UpgradeReport_Files
+/.nuget/nuget.exe
