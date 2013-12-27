@@ -31,14 +31,14 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             // Implements simplified IBinder instead of IBinderEx. Doesn't expose BindResult.
-            public T Bind<T>(Attribute a)
+            public T Bind<T>(Attribute attribute)
             {
-                var result = _inner.Bind<T>(a);
+                var result = _inner.Bind<T>(attribute);
 
                 // For selfwatch 
                 Watches w = new Watches
                 {
-                    Name = a.ToString(),
+                    Name = attribute.ToString(),
                     Watch = SelfWatch.GetWatcher(result, typeof(T))
                 };
                 lock (_watches)

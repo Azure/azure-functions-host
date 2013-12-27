@@ -20,14 +20,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
         // names would just resolve against {} tokens in attributes?
-        public BindResult<T> Bind<T>(Attribute a)
+        public BindResult<T> Bind<T>(Attribute attribute)
         {
             // Always bind as input parameters, eg no 'out' keyword. 
             // The binding could still have output semantics. Eg, bind to a TextWriter. 
             ParameterInfo p = new FakeParameterInfo(typeof(T), name: "?", isOut: false);
 
             // Same static binding as used in indexing
-            ParameterStaticBinding staticBind = StaticBinder.DoStaticBind(a, p);
+            ParameterStaticBinding staticBind = StaticBinder.DoStaticBind(attribute, p);
 
             // If somebody tried an non-sensical bind, we'd get the failure here 
             // here because the binding input doesn't have the information. 

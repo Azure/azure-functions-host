@@ -18,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             set
             {
-                string name = value.ToLower(); // must be lowercase. coerce here to be nice.
+                string name = value.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
                 QueueClient.ValidateQueueName(name);
                 this._queueName = name;
             }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
@@ -239,8 +240,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 if (log != null)
                 {
                     // we will exclude the file if the file does not have log entries in the interested time range.
-                    DateTime startTime = DateTime.Parse(log.Metadata[LogStartTime]).ToUniversalTime();
-                    DateTime endTime = DateTime.Parse(log.Metadata[LogEndTime]).ToUniversalTime();
+                    DateTime startTime = DateTime.Parse(log.Metadata[LogStartTime], CultureInfo.InvariantCulture).ToUniversalTime();
+                    DateTime endTime = DateTime.Parse(log.Metadata[LogEndTime], CultureInfo.InvariantCulture).ToUniversalTime();
 
                     string logType = log.Metadata[LogType];
                     bool hasWrites = logType.Contains("write");

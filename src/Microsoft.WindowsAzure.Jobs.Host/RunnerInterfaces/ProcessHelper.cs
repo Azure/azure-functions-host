@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -68,7 +69,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (!DebugRunInProc)
             {
-                string args = string.Format("\"{0}\" \"{1}\"", inputPath, outputPath);
+                string args = String.Format(CultureInfo.InvariantCulture, "\"{0}\" \"{1}\"", inputPath, outputPath);
                 processExitCode = RunInSeparateProcess(path, args, output, token);
             }
             else

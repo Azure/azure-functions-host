@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.Globalization;
+using System.IO;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -22,7 +24,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override string GetId()
         {
-            return string.Format(@"{0}\{1}\{2}", GetBlob().GetId(), TypeName, MethodName);
+            return String.Format(CultureInfo.InvariantCulture, @"{0}\{1}\{2}", GetBlob().GetId(), TypeName, MethodName);
         }
 
         // Read a file from the function's location. 

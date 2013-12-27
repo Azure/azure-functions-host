@@ -15,23 +15,23 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (Logger == null)
             {
-                throw new ArgumentNullException("Logger");
+                throw new InvalidOperationException("Logger cannot be null.");
             }
             if (Lookup == null)
             {
-                throw new ArgumentNullException("Lookup");
+                throw new InvalidOperationException("Lookup cannot be null.");
             }
             if (AccountInfo == null)
             {
-                throw new ArgumentNullException("AccountInfo");
+                throw new InvalidOperationException("AccountInfo cannot be null.");
             }
             if (CausalityLogger == null)
             {
-                throw new ArgumentNullException("CausalityLogger");
+                throw new InvalidOperationException("CausalityLogger cannot be null.");
             }
             if (PrereqManager == null)
             {
-                throw new ArgumentNullException("PrereqManager");
+                throw new InvalidOperationException("PrereqManager cannot be null.");
             }
         }
     }

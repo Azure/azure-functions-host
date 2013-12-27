@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -10,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs
             string[] parts = value.Split(';');
 
             var x = new LogRow();
-            x.RequestStartTime = DateTime.Parse(parts[(int)LogColumnId.RequestStartTime]);
+            x.RequestStartTime = DateTime.Parse(parts[(int)LogColumnId.RequestStartTime], CultureInfo.InvariantCulture);
 
             ServiceType serviceType;
             Enum.TryParse<ServiceType>(parts[(int)LogColumnId.ServiceType], out serviceType);

@@ -1,4 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using System;
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Manifest of model binders that get dynamically invoked. 
     // This is created during indexing, and consumed by the RunnerHost.
@@ -21,8 +23,8 @@
                 {
                     return false;
                 }
-                return (string.Compare(this.AssemblyName, x.AssemblyName, true) == 0) &&
-                       (string.Compare(this.TypeName, x.TypeName, true) == 0);
+                return (String.Equals(AssemblyName, x.AssemblyName, StringComparison.OrdinalIgnoreCase)) &&
+                       (String.Equals(TypeName, x.TypeName, StringComparison.OrdinalIgnoreCase));
             }
             public override int GetHashCode()
             {

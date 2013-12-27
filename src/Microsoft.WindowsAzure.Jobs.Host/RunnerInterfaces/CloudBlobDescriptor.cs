@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -41,7 +42,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public string GetId()
         {
             string accountName = GetAccount().Credentials.AccountName;
-            return string.Format(@"{0}\{1}\{2}", accountName, ContainerName, BlobName);
+            return String.Format(CultureInfo.InvariantCulture, @"{0}\{1}\{2}", accountName, ContainerName, BlobName);
         }
 
         public override string ToString()

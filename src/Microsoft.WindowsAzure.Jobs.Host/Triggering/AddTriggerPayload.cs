@@ -47,7 +47,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                         case TriggerType.Blob:
                             Verify(trigger.BlobInput != null, "Blob trigger is missing blob input");
-                            Verify(string.Compare(trigger.BlobInput, trigger.BlobOutput, true) != 0, "Blob trigger output is identical to input");
+                            Verify(!String.Equals(trigger.BlobInput, trigger.BlobOutput, StringComparison.OrdinalIgnoreCase), "Blob trigger output is identical to input");
 
                             VerifyNotTimer(trigger);
                             VerifyNotQueue(trigger);

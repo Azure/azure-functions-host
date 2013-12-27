@@ -174,7 +174,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 if (containerName == container.Name) // names must be lowercase, so technically case-sensitive
                 {
-                    bool sameAccount = string.Compare(container.ServiceClient.Credentials.AccountName, accountName, ignoreCase: true) == 0;
+                    bool sameAccount = String.Equals(container.ServiceClient.Credentials.AccountName, accountName, StringComparison.OrdinalIgnoreCase);
                     if (sameAccount)
                     {
                         var blob = container.GetBlobReference(blobName);

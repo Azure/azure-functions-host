@@ -240,7 +240,7 @@ namespace AzureTables
         // Also good to hit from multiple threads and even multiple nodes.
         class WriterState
         {
-            TableCore _core;
+            private TableCore _core;
 
             public WriterState(TableCore core)
             {
@@ -249,13 +249,13 @@ namespace AzureTables
 
             // Writer state
 
-            int _rowCounter = 0;
-            int _batchSize = 0;
+            private int _rowCounter = 0;
+            private int _batchSize = 0;
 
-            ITableCorePartitionWriter _coreCtx = null;
+            private ITableCorePartitionWriter _coreCtx;
 
-            string _lastPartitionKey = null;
-            HashSet<Tuple<string, string>> _dups = new HashSet<Tuple<string, string>>();
+            private string _lastPartitionKey;
+            private HashSet<Tuple<string, string>> _dups = new HashSet<Tuple<string, string>>();
 
             public int BatchSize { get { return _batchSize; } }
 

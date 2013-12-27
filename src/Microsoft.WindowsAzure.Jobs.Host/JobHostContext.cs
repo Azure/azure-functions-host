@@ -174,7 +174,7 @@ namespace Microsoft.WindowsAzure.Jobs
             foreach (var func in funcs)
             {
                 // ### This isn't right. 
-                if (func.Location.GetId().StartsWith(scopePrefix))
+                if (func.Location.GetId().StartsWith(scopePrefix, StringComparison.Ordinal))
                 {
                     cloudTable.Delete(func);
                 }

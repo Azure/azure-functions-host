@@ -79,7 +79,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 return false;
             }
 
-            return string.Compare(this.ToString(), other.ToString(), true) == 0;
+            return String.Equals(ToString(), other.ToString(), StringComparison.OrdinalIgnoreCase);
         }
         public override int GetHashCode()
         {
@@ -289,7 +289,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 Split(actualPath, out container2, out blob2); // should always be full
 
                 // Containers must match
-                if (string.Compare(container1, container2, true) != 0)
+                if (!String.Equals(container1, container2, StringComparison.OrdinalIgnoreCase))
                 {
                     return null;
                 }

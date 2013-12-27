@@ -26,7 +26,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 if (IsInput)
                 {
-                    throw new InvalidOperationException("Input blob paramater can't have [Out] keyword");
+                    throw new InvalidOperationException("Input blob parameter can't have [Out] keyword");
                 }
             }
 
@@ -97,7 +97,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 if (blobBinder != null)
                 {
-                    string msg = string.Format("The binder for {0} type does not support the 'ByRef keyword.", type.FullName);
+                    string msg = string.Format("The binder for {0} type does not support the ByRef keyword.", type.FullName);
                     throw new NotImplementedException(msg);
                 }
             }

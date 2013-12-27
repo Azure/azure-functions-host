@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -56,7 +57,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 // $$$ Settle on convention 
                 // Don't conflict with app.config filenames either. 
-                filename = string.Format("{0}.config.txt", parameter.Name);
+                filename = String.Format(CultureInfo.InvariantCulture, "{0}.config.txt", parameter.Name);
             }
             return new ConfigParameterStaticBinding { Filename = filename };
         }

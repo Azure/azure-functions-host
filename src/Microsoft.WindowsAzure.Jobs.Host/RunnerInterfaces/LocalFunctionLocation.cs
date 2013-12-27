@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 
@@ -30,7 +31,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // $$$ How consistent should this be with a the RemoteFunctionLocation that this was downloaded from?
         public override string GetId()
         {
-            return string.Format(@"{0}\{1}\{2}", AssemblyPath, TypeName, MethodName);
+            return String.Format(CultureInfo.InvariantCulture, @"{0}\{1}\{2}", AssemblyPath, TypeName, MethodName);
         }
 
         public override string ReadFile(string filename)

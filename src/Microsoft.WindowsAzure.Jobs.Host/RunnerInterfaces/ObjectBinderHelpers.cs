@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -68,7 +69,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     // Type.GetType() may fail due to loader context issues.
                     string assemblyName = type.Assembly.FullName;
 
-                    if (assemblyQualifiedName.EndsWith(assemblyName))
+                    if (assemblyQualifiedName.EndsWith(assemblyName, StringComparison.OrdinalIgnoreCase))
                     {
                         int i = assemblyQualifiedName.IndexOf(',');
                         if (i > 0)
@@ -228,13 +229,13 @@ namespace Microsoft.WindowsAzure.Jobs
             // http://msdn.microsoft.com/en-us/library/az4se3k1.aspx
             // This is the same format JSON.Net will use, although it will write as a string
             // so the result is embedded in quotes. 
-            return date.ToUniversalTime().ToString("o");
+            return date.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
         }
 
         public static DateTime DeserializeDateTime(string s)
         {
             // Parse will read in a variety of formats (even ones not written without timezone info)
-            var x = DateTime.Parse(s);
+            var x = DateTime.Parse(s, CultureInfo.InvariantCulture);
 
             if (x.Kind == DateTimeKind.Unspecified)
             {                

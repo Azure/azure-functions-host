@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -30,8 +31,8 @@ namespace Microsoft.WindowsAzure.Jobs
         public MethodInfoFunctionLocation(MethodInfo method)
         {
             MethodInfo = method;
-            ShortName = string.Format("{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
-            Id = string.Format("{0}.{1}", MethodInfo.DeclaringType.FullName, MethodInfo.Name);
+            ShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
+            Id = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", MethodInfo.DeclaringType.FullName, MethodInfo.Name);
 
             this.AssemblyQualifiedTypeName = MethodInfo.DeclaringType.AssemblyQualifiedName;
             this.MethodName = MethodInfo.Name;
