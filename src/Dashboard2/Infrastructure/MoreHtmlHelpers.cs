@@ -127,8 +127,11 @@ namespace Dashboard.Controllers
             if (timeSpan.TotalSeconds > 10)
                 return Plural("1 second", "{0} seconds", timeSpan.Seconds);
 
+            if (timeSpan.TotalMilliseconds > 1000)
+                return Plural("1 s", "{0} s", timeSpan.Seconds);
+
             if (timeSpan.TotalMilliseconds > 0)
-                return Plural("1 ms", "{0} ms", timeSpan.Milliseconds);
+                return Plural("1 ms", "{0} ms", (int)timeSpan.TotalMilliseconds);
 
             return "less than 1ms";
         }
