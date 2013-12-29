@@ -80,11 +80,10 @@ namespace Dashboard.Controllers
 
         public static string DateTimeRelative(DateTime dateTimeUtc)
         {
-            dateTimeUtc = ConvertToTimeZone(dateTimeUtc);
             var time = DateTime.UtcNow - dateTimeUtc;
 
             if (time.TotalDays > 7 || time.TotalDays < -7)
-                return dateTimeUtc.ToString("'on' MMM d yyyy 'at' h:mm tt");
+                return ConvertToTimeZone(dateTimeUtc).ToString("'on' MMM d yyyy 'at' h:mm tt");
 
             if (time.TotalHours > 24)
                 return Plural("1 day ago", "{0} days ago", time.Days);
