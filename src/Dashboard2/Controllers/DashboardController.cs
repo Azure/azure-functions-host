@@ -43,7 +43,8 @@ namespace Dashboard.Controllers
                     FunctionName = f.Location.GetShortName(),
                     IsRunning = HasValidHeartbeat(f, hearbeats),
                     FailedCount = 0,
-                    SuccessCount = 0
+                    SuccessCount = 0,
+                    LastWriteTime = f.Timestamp
                 }).ToArray();
 
             var table = _services.GetInvokeStatsTable();
@@ -71,7 +72,6 @@ namespace Dashboard.Controllers
                     var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
                     statsModel.FailedCount = stats.CountErrors;
                     statsModel.SuccessCount = stats.CountCompleted;
-                    statsModel.LastWriteTime = stats.LastWriteTime;
                 }
             }
 
