@@ -26,6 +26,7 @@ namespace Dashboard.ViewModels
                     WhenUtc = log.QueueTime;
                     break;
                 case FunctionInstanceStatus.Running:
+                    WhenUtc = log.StartTime;
                     Duration = DateTime.UtcNow - log.StartTime.Value;
                     break;
                 case FunctionInstanceStatus.CompletedSuccess:
@@ -33,9 +34,11 @@ namespace Dashboard.ViewModels
                     Duration = log.GetDuration();
                     break;
                 case FunctionInstanceStatus.CompletedFailed:
+                    WhenUtc = log.EndTime;
                     Duration = log.GetDuration();
                     break;
                 case FunctionInstanceStatus.NeverFinished:
+                    WhenUtc = log.StartTime;
                     Duration = log.GetDuration();
                     break;
             }
