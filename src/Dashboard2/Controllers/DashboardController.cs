@@ -83,7 +83,6 @@ namespace Dashboard.Controllers
             var model = new DashboardAboutViewModel();
 
             // Get health
-            model.ExecutionSubstrate = _services.GetExecutionSubstrateDescription();
             model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
             model.QueueDepth = _services.GetExecutionQueueDepth();
             model.AccountName = _services.Account.Credentials.AccountName;
