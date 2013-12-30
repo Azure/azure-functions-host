@@ -12,7 +12,7 @@
     switch (log.Status)
     {
         case FunctionInstanceStatus.CompletedFailed:
-            alertClass = "alert-error";
+            alertClass = "alert-danger";
             alertHeader = "Failed";
             break;
         case FunctionInstanceStatus.CompletedSuccess:
@@ -20,7 +20,7 @@
             alertHeader = "Completed";
             break;
         case FunctionInstanceStatus.NeverFinished:
-            alertClass = "alert-error";
+            alertClass = "alert-danger";
             alertHeader = "Never Finished";
             break;
         case FunctionInstanceStatus.Running:
@@ -51,7 +51,7 @@
         <p class="alert @alertClass">
             @if (!String.IsNullOrEmpty(alertHeader))
             {
-                @alertHeader
+                <b>@alertHeader</b>
             }
             
             @if (log.WhenUtc.HasValue)
@@ -62,6 +62,14 @@
             @if (log.Duration.HasValue)
             {
                 <span>(@MoreHtmlHelpers.TimeSpanRelative(log.Duration.Value))</span>
+            }
+
+            @if (!String.IsNullOrEmpty(log.ExceptionMessage))
+            {
+                <br/>
+                <span>
+                    <b>@log.ExceptionType</b>: @log.ExceptionMessage 
+                </span>
             }
         </p>
 

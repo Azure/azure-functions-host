@@ -36,6 +36,8 @@ namespace Dashboard.ViewModels
                 case FunctionInstanceStatus.CompletedFailed:
                     WhenUtc = log.EndTime;
                     Duration = log.GetDuration();
+                    ExceptionType = log.ExceptionType;
+                    ExceptionMessage = log.ExceptionMessage;
                     break;
                 case FunctionInstanceStatus.NeverFinished:
                     WhenUtc = log.StartTime;
@@ -50,6 +52,8 @@ namespace Dashboard.ViewModels
         public FunctionInstanceStatus Status { get; set; }
         public DateTime? WhenUtc { get; set; }
         public TimeSpan? Duration { get; set; }
+        public string ExceptionMessage { get; set; }
+        public string ExceptionType { get; set; }
     }
 
     public class FunctionStatisticsViewModel
