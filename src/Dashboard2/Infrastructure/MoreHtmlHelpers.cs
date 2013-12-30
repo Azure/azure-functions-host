@@ -141,10 +141,11 @@ namespace Dashboard.Controllers
             return String.Format(count == 1 ? singular : plural, new object[] { count }.Concat(args).ToArray());
         }
 
-        // todo: implement this when there is a way to get the current user's timezone 
         private static DateTime ConvertToTimeZone(DateTime dateTimeUtc)
         {
-            var timeZone = TimeZoneInfo.Local;
+            // using UTC as the default time zone for displaying times
+            // this code is useless for now
+            var timeZone = TimeZoneInfo.Utc;
             return TimeZoneInfo.ConvertTimeFromUtc(dateTimeUtc, timeZone);
         }
     }
