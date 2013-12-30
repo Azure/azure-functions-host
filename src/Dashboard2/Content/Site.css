@@ -17,6 +17,11 @@
     cursor: pointer;
 }
 
+.modal .modal-body {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
 /* labels */
 .label, .badge {
 	font-weight: lighter;
