@@ -13,14 +13,11 @@ namespace Dashboard
             {
                 routes.MapRoute(
                 name: "Default",
-                url: "{a}/{b}/{id}",
+                url: "{*path}",
                 defaults: new
                     {
                         controller = "BadConfig",
-                        action = "Index",
-                        a = UrlParameter.Optional,
-                        b = UrlParameter.Optional,
-                        id = UrlParameter.Optional
+                        action = "Index"
                     }
                 );
 
