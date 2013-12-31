@@ -1,4 +1,5 @@
 ﻿@using Dashboard.ViewModels
+@using Microsoft.Ajax.Utilities
 @model FunctionInstanceDetailsViewModel
 
 @{
@@ -106,7 +107,16 @@
                 {
                     <tr>
                         <td><b>@param.Name</b></td>
-                        <td>@param.ArgInvokeString</td>
+                        <td>
+                            @if (param.ArgBlobLink != null)
+                            {
+                                <a href="@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Blob", path = param.ArgInvokeString })">@param.ArgInvokeString</a>
+                            }
+                            else
+                            {
+                                @param.ArgInvokeString
+                            }
+                        </td>
                         <td>@param.SelfWatch</td>
                     </tr>
                 }

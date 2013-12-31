@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Web.Http;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 
@@ -78,6 +79,38 @@ namespace Dashboard.ApiControllers
             };
 
             return resp;
+        }
+
+        [HttpGet]
+        public HttpResponseMessage Blob(string path)
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            var p = new CloudBlobPath(path);
+
+            CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
+
+            if (account == null)
+            {
+                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+            }
+
+            var blob = p.Resolve(account);
+
+            // Get a SAS for the next 10 mins
+            string sas = blob.GetSharedAccessSignature(new SharedAccessPolicy
+            {
+                Permissions = SharedAccessPermissions.Read,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(10)
+            });
+
+            // Redirect to it
+            var resp = new HttpResponseMessage(HttpStatusCode.Found);
+            resp.Headers.Location = new Uri(blob.Uri.AbsoluteUri + sas);
+            return resp;            
         }
     }
 }
