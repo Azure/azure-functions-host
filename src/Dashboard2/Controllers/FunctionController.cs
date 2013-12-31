@@ -132,9 +132,17 @@ namespace Dashboard.Controllers
 
             ICausalityReader causalityReader = _services.GetCausalityReader();
 
+            // fetch direct children
             model.Children = causalityReader
                 .GetChildren(func.FunctionInstance.Id)
                 .Select(r => new InvocationLogViewModel(_functionInstanceLookup.Lookup(r.ChildGuid))).ToArray();
+
+            // fetch ancestor
+            var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
+            if (parentGuid != Guid.Empty)
+            {
+                model.Ancestor = new InvocationLogViewModel(_functionInstanceLookup.Lookup(parentGuid));
+            }
 
             return View("FunctionInstance", model);
         }

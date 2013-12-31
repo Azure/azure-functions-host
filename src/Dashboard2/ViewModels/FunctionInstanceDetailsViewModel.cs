@@ -10,6 +10,8 @@ namespace Dashboard.ViewModels
 
         public IEnumerable<InvocationLogViewModel> Children { get; set; }
 
+        public InvocationLogViewModel Ancestor { get; set; }
+
         public TriggerReasonViewModel TriggerReason { get; set; }
 
         public bool IsAborted { get; set; }
