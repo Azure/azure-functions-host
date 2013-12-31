@@ -15,10 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         [TestMethod]
         public void TestBindCloudStorageAccount()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var acs = account.ToString(true);
-
-            var lc = new LocalExecutionContext(acs, typeof(Program));
+            var lc = new TestJobHost<Program>();
             lc.Call("FuncCloudStorageAccount");
         }
 
@@ -26,7 +23,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         public void TestIBlob()
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var acs = account.ToString(true);
 
             CloudBlobClient client = account.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference("daas-test");
@@ -40,7 +36,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             var page = container.GetPageBlobReference("page");
             page.UploadFromStream(stream);
 
-            var lc = new LocalExecutionContext(acs, typeof(Program));
+            var lc = new TestJobHost<Program>();
+
             lc.Call("IBlob");
 
             lc.Call("BlockBlob");
@@ -53,10 +50,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         [TestMethod]
         public void TestMissingIBlob()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var acs = account.ToString(true);
-
-            var lc = new LocalExecutionContext(acs, typeof(Program));
+            var lc = new TestJobHost<Program>();
             lc.Call("IBlobMissing");
             lc.Call("BlockBlobMissing");
             lc.Call("PageBlobMissing");
@@ -65,31 +59,66 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         [TestMethod]
         public void TestQueue()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var acs = account.ToString(true);
-
-            var lc = new LocalExecutionContext(acs, typeof(Program));
+            var lc = new TestJobHost<Program>();
             lc.Call("Queue");
             Assert.IsTrue(Program._QueueInvoked);
         }
 
-        [TestMethod]
-        [Ignore]
-        // TODO: ammend this!
+        // Helper for calling individual methods. 
+        class TestJobHost<T>
+        {
+            public JobHost Host { get; private set; }
+
+            public TestJobHost()
+            {
+                var account = CloudStorageAccount.DevelopmentStorageAccount;
+                var acs = account.ToString(true);
+
+                var hooks = new JobHostTestHooks
+                {
+                    SkipStorageValidation = true,
+                    TypeToIndex = typeof(T)
+                };
+
+                // If there is an indexing error, we'll throw here. 
+                Host = new JobHost(acs, acs, hooks);
+            }
+
+            public void Call(string methodName)
+            {
+                var methodInfo = typeof(T).GetMethod(methodName);
+                Host.Call(methodInfo);
+            }
+        }        
+
+        [TestMethod]        
         public void TestQueueBadName()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            var acs = account.ToString(true);
-
-            var lc = new LocalExecutionContext(acs, typeof(Program));
-
+            var hooks = new JobHostTestHooks 
+            { 
+                SkipStorageValidation = true, 
+                TypeToIndex = typeof(ProgramBadQueueName)
+            };
+            
             try
             {
-                lc.Call("QueueBadName");
+                string acs = null;
+                JobHost h = new JobHost(acs, acs, hooks);
+
                 Assert.Fail("indexer should have noticed bad queue name and failed immediately");
             }
             catch (IndexException)
             {
+            }
+        }
+
+
+        class ProgramBadQueueName
+        {
+            [Description("test")]
+            public static void QueueBadName(CloudQueue IllegalName)
+            {
+                Assert.Fail("shouldnt get invoked");
             }
         }
 
@@ -111,12 +140,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             {
                 _QueueInvoked = true;
                 Assert.IsNotNull(mytestqueue);
-            }
-
-            [Description("test")]
-            public static void QueueBadName(CloudQueue IllegalName)
-            {
-                Assert.Fail("shouldnt get invoked");
             }
 
             public static void IBlobMissing(

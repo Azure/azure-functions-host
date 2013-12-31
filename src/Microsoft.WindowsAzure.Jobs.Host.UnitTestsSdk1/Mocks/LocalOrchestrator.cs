@@ -21,12 +21,5 @@ namespace Microsoft.WindowsAzure.Jobs
             var worker = new Worker(typeClass.Assembly.FullName, functionTable, new NullRunningHostTableWriter(), executor);
             return worker;
         }
-
-        private class NullRunningHostTableWriter : IRunningHostTableWriter
-        {
-            public void SignalHeartbeat(string hostName)
-            {
-            }
-        }
     }
 }

@@ -46,17 +46,23 @@ namespace Microsoft.WindowsAzure.Jobs
         /// reading and writing data and another connection string for logging.
         /// </summary>
         public JobHost(string userAccountConnectionString, string loggingAccountConnectionString)
+            : this(userAccountConnectionString, loggingAccountConnectionString, new JobHostTestHooks())
+        {
+        }
+
+        internal JobHost(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
         {
             _loggingAccountConnectionString = GetConfigSetting(loggingAccountConnectionString, "SimpleBatchLoggingACS");
             _userAccountConnectionString = GetConfigSetting(userAccountConnectionString, "SimpleBatchUserACS");
 
-            ValidateConnectionStrings();
-
-            if (_loggingAccountConnectionString != null)
+            if (!hooks.SkipStorageValidation)
             {
-                _hostContext = GetHostContext();
+                ValidateConnectionStrings();
             }
 
+            // This will do heavy operations like indexing. 
+            _hostContext = GetHostContext(hooks);
+            
             WriteAntaresManifest();
         }
 
@@ -101,9 +107,9 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private JobHostContext GetHostContext()
+        private JobHostContext GetHostContext(JobHostTestHooks hooks)
         {
-            var hostContext = new JobHostContext(_userAccountConnectionString, _loggingAccountConnectionString);
+            var hostContext = new JobHostContext(_userAccountConnectionString, _loggingAccountConnectionString, hooks);
             return hostContext;
         }
 
@@ -211,36 +217,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new ArgumentNullException("method");
             }
 
-            if (_loggingAccountConnectionString != null)
-            {
-                CallWithLogging(method, arguments);
-            }
-            else
-            {
-                CallNoLogging(method, arguments);
-            }
-        }
-
-        // Invoke the function via the SimpleBatch binders. 
-        // All invoke is in-memory. Don't log anything to azure storage / function dashboard.
-        private void CallNoLogging(MethodInfo method, object arguments = null)
-        {
-            // This creates with in-memory logging. Create against Azure logging. 
-            var lc = new LocalExecutionContext(_userAccountConnectionString, method.DeclaringType);
-
-            Guid guid = lc.Call(method, arguments);
-
-            // If function fails, this should throw
-            IFunctionInstanceLookup lookup = lc.FunctionInstanceLookup;
-            ExecutionInstanceLogEntity logItem = lookup.LookupOrThrow(guid);
-
-            VerifySuccess(logItem);
-        }
-
-        // Invoke the function via the SimpleBatch binders. 
-        // Function execution is logged and viewable via the function dashboard.
-        private void CallWithLogging(MethodInfo method, object arguments)
-        {
             IDictionary<string, string> args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
 
             FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext._functionTableLookup);
@@ -255,7 +231,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             VerifySuccess(logItem);
         }
-
+      
         // Throw if the function failed. 
         private static void VerifySuccess(ExecutionInstanceLogEntity logItem)
         {

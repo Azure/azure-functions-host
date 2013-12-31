@@ -55,9 +55,13 @@
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUnitTests.cs" />
     <Compile Include="FlowUnitTests.cs" />
+    <Compile Include="HostTests.cs" />
     <Compile Include="IContextBinderTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
+    <Compile Include="Mocks\LocalExecutionContext.cs" />
+    <Compile Include="Mocks\LocalFunctionTable.cs" />
+    <Compile Include="Mocks\LocalOrchestrator.cs" />
     <Compile Include="Mocks\MockBlobLeaseHolder.cs" />
     <Compile Include="ModelBindingTests.cs" />
     <Compile Include="ParserUnitTests.cs" />

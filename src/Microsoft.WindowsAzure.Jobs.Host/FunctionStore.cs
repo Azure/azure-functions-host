@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
@@ -6,22 +7,36 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
 {
     internal class FunctionStore : IFunctionTableLookup
     {
-        private readonly IndexInMemory _store;
-        private readonly string _prefix;
+        private IndexInMemory _store;
+        private string _prefix;
 
         // userAccountConnectionString - the account that the functions will bind against. 
-        public FunctionStore(string userAccountConnectionString, IEnumerable<Assembly> assemblies, IConfiguration config)
+        // Index all methods in the assemblies. 
+        public FunctionStore(string userAccountConnectionString, IConfiguration config, IEnumerable<Assembly> assemblies)
+        {
+            var indexer = Init(userAccountConnectionString, config);
+            foreach (Assembly a in assemblies)
+            {
+                indexer.IndexAssembly(m => OnApplyLocationInfo(userAccountConnectionString, m), a);
+            }
+        }
+
+        // userAccountConnectionString - the account that the functions will bind against. 
+        // Index methods in the type program
+        public FunctionStore(string userAccountConnectionString, IConfiguration config, Type program)
+        {
+            var indexer = Init(userAccountConnectionString, config);
+            indexer.IndexType(m => OnApplyLocationInfo(userAccountConnectionString, m), program);
+        }
+
+        private Indexer Init(string userAccountConnectionString, IConfiguration config)
         {
             _prefix = GetPrefix(userAccountConnectionString);
 
             _store = new IndexInMemory();
             var indexer = new Indexer(_store);
             indexer.ConfigOverride = config;
-
-            foreach (Assembly a in assemblies)
-            {
-                indexer.IndexAssembly(m => OnApplyLocationInfo(userAccountConnectionString, m), a);
-            }
+            return indexer;
         }
 
         // Get a prefix for function IDs. 
@@ -36,6 +51,11 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
             if (a != null)
             {
                 appName = Path.GetFileNameWithoutExtension(a.Location);
+            }
+
+            if (accountConnectionString == null)
+            {
+                return "_." + appName;
             }
 
             //%USERNAME% is too volatile. Instead, get identity based on the user's storage account name.

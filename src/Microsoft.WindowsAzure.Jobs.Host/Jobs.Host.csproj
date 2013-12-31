@@ -144,9 +144,10 @@
     <Compile Include="JobHost.cs" />
     <Compile Include="JobHostContext.cs" />
     <Compile Include="Engine\Runner\BindResultTransaction.cs" />
-    <Compile Include="LocalExecution\LocalExecutionContext.cs" />
-    <Compile Include="LocalExecution\LocalFunctionTable.cs" />
-    <Compile Include="LocalExecution\LocalOrchestrator.cs" />
+    <Compile Include="JobHostTestHooks.cs" />
+    <Compile Include="LocalExecution\ConsoleFunctionOutputLogDispenser.cs" />
+    <Compile Include="LocalExecution\NullRunningHostTableWriter.cs" />
+    <Compile Include="LocalExecution\LocalFunctionLogger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RunnerInterfaces\BlobClient.cs" />
     <Compile Include="RunnerInterfaces\CloudBlobPathConverter.cs" />

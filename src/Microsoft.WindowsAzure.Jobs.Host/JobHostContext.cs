@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.WindowsAzure.Jobs.Internals;
 using Microsoft.WindowsAzure.StorageClient;
+using AzureTables;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -16,45 +17,114 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private readonly string _hostName;
 
-        public IFunctionTableLookup _functionTableLookup;
-        public IQueueFunction _queueFunction;
-        public IRunningHostTableWriter _heartbeatTable;
+        public readonly IFunctionTableLookup _functionTableLookup;
+        public readonly IQueueFunction _queueFunction;
+        public readonly IRunningHostTableWriter _heartbeatTable;
 
-        public CloudQueue _executionQueue;
+        public readonly CloudQueue _executionQueue;
 
-        public JobHostContext(string userAccountConnectionString, string loggingAccountConnectionString)
+        public JobHostContext(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
         {
-            var services = GetServices(loggingAccountConnectionString);
-
-            _executionQueue = services.GetExecutionQueue();
-
             IConfiguration config = RunnerProgram.InitBinders();
-            InitConfig(config);
 
-            // Reflect over assembly, looking for functions 
-            var functionTableLookup = new FunctionStore(userAccountConnectionString, GetUserAssemblies(), config);
+            IFunctionTableLookup functionTableLookup;
+            if (hooks.TypeToIndex == null)
+            {
+                // Normal path
+                InitConfig(config);
+                functionTableLookup = new FunctionStore(userAccountConnectionString, config, GetUserAssemblies());
+            }
+            else
+            {
+                // Just do a single type. Great for unit testing. 
+                functionTableLookup = new FunctionStore(userAccountConnectionString, config, hooks.TypeToIndex);
+            }
 
             // Determine the host name from the function list
             _hostName = GetHostName(functionTableLookup.ReadAll());
 
-            // Publish this to Azure logging account so that a web dashboard can see it. 
-            PublishFunctionTable(functionTableLookup, userAccountConnectionString, loggingAccountConnectionString);
+            QueueInterfaces qi;
+            FunctionExecutionContext ctx;
 
-            // Queue interfaces            
-            QueueInterfaces qi = services.GetQueueInterfaces(); // All for logging. 
+            if (loggingAccountConnectionString != null)
+            {
+                // Create logging against a live azure account 
 
-            string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
-            var logger = new WebExecutionLogger(services, LogRole, roleName);
-            FunctionExecutionContext ctx = logger.GetExecutionContext();
+                // Publish this to Azure logging account so that a web dashboard can see it. 
+                PublishFunctionTable(functionTableLookup, userAccountConnectionString, loggingAccountConnectionString);
+
+                var services = GetServices(loggingAccountConnectionString);
+                _executionQueue = services.GetExecutionQueue();
+
+                // Queue interfaces            
+                qi = services.GetQueueInterfaces(); // All for logging. 
+
+                string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
+                var logger = new WebExecutionLogger(services, LogRole, roleName);
+                ctx = logger.GetExecutionContext();
+                ctx.FunctionTable = functionTableLookup;
+                ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
+
+                _heartbeatTable = services.GetRunningHostTableWriter();
+            }
+            else
+            {
+                // No auxillary logging. Logging interfaces are nops or in-memory.
+                _heartbeatTable = new NullRunningHostTableWriter();
+
+                ctx = new FunctionExecutionContext
+                {
+                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
+                };
+
+                qi = CreateInMemoryQueueInterfaces();                
+            }
+
             ctx.FunctionTable = functionTableLookup;
-            ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly. 
+            ctx.Logger = qi.Logger;
 
             // This is direct execution, doesn't queue up. 
-            IQueueFunction queueFunction = new AntaresQueueFunction(qi, config, ctx, new ConsoleHostLogger());
-
+            _queueFunction = new AntaresQueueFunction(qi, config, ctx, new ConsoleHostLogger());
             _functionTableLookup = functionTableLookup;
-            _heartbeatTable = services.GetRunningHostTableWriter();
-            _queueFunction = queueFunction;
+        }
+
+        // Factory for creating interface implementations that are all in-memory and don't need an 
+        // azure storage account.
+        private static QueueInterfaces CreateInMemoryQueueInterfaces()
+        {
+            IPrereqManager prereqManager;
+            IFunctionInstanceLookup lookup;
+            IFunctionUpdatedLogger functionUpdate;
+            ICausalityLogger causalityLogger;
+            ICausalityReader causalityReader;
+
+            {
+                var x = new LocalFunctionLogger();
+                functionUpdate = x;
+                lookup = x;
+            }
+
+            IAzureTable prereqTable = AzureTable.NewInMemory();
+            IAzureTable successorTable = AzureTable.NewInMemory();
+
+            prereqManager = new PrereqManager(prereqTable, successorTable, lookup);
+
+            {
+                IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
+                var x = new CausalityLogger(table, lookup);
+                causalityLogger = x;
+                causalityReader = x;
+            }
+
+            var qi = new QueueInterfaces
+            {
+                AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
+                Logger = functionUpdate,
+                Lookup = lookup,
+                PrereqManager = prereqManager,
+                CausalityLogger = causalityLogger
+            };
+            return qi;
         }
 
         public string HostName
@@ -62,7 +132,7 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _hostName; }
         }
 
-        // Searhc for any types tha implement ICloudBlobStreamBinder<T>
+        // Search for any types that implement ICloudBlobStreamBinder<T>
         // When found, automatically add them as binders to our config. 
         internal static void InitConfig(IConfiguration config)
         {
