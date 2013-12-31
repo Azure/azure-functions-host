@@ -33,7 +33,7 @@
     $(function() {
         $('input[name="status"]').on('change', function () {
             var value = $(this).attr('value');
-            var url = '@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.PageSize })';
+            var url = '@Html.Raw(HttpUtility.JavaScriptStringEncode(Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.PageSize })))';
 
             if (value == "All") {
                 window.location = url;
@@ -72,12 +72,12 @@
             }
             else
             {
-               <li class="previous disabled"><a href="#">&larr; Newer</a></li>
+               @*<li class="previous disabled"><a href="#">&larr; Newer</a></li>*@
             }
             
             @if (Model.PageSize > Model.InvocationLogViewModels.Count())
             {
-                <li class="next disabled"><a href="#">Older &rarr;</a></li>
+                @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
             }
             else
             {
@@ -94,7 +94,7 @@
 
             <ul class="pager">
                 <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
-                <li class="next disabled"><a href="#">Older &rarr;</a></li>
+                @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
             </ul>
         }
         else
