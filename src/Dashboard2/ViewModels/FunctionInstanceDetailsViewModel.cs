@@ -11,5 +11,7 @@ namespace Dashboard.ViewModels
         public IEnumerable<InvocationLogViewModel> Children { get; set; }
 
         public TriggerReasonViewModel TriggerReason { get; set; }
+
+        public bool IsAborted { get; set; }
     }
 }

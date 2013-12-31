@@ -48,6 +48,23 @@
     <div class="col-md-9">
         <h3>Invocation Details <small>@Model.InvocationLogViewModel.FunctionName</small></h3>
         
+        @if (Model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running)
+        {
+            <p>
+            @using (Html.BeginForm("Abort", "Function", new { id = Model.InvocationLogViewModel.Id }, FormMethod.Post, new { @class = "form-inline" }))
+            {
+                if (!Model.IsAborted)
+                {
+                    <button class="btn btn-danger btn-sm" type="submit"><span class="glyphicon glyphicon-remove"></span> Abort</button>
+                }
+                else
+                {
+                    <button class="btn btn-danger btn-sm" disabled>Aborted</button>
+                }
+            }
+            </p>
+        }
+        
         <p class="alert @alertClass">
             @if (!String.IsNullOrEmpty(alertHeader))
             {

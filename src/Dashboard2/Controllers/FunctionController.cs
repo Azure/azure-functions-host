@@ -3,6 +3,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Dashboard.ViewModels;
 using Microsoft.WindowsAzure.Jobs;
+using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 
 namespace Dashboard.Controllers
 {
@@ -114,6 +115,7 @@ namespace Dashboard.Controllers
             var model = new FunctionInstanceDetailsViewModel();
             model.InvocationLogViewModel = new InvocationLogViewModel(func);
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
+            model.IsAborted = model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running && _services.IsDeleteRequested(func.FunctionInstance.Id);
 
             // Do some analysis to find inputs, outputs, 
 
@@ -137,5 +139,30 @@ namespace Dashboard.Controllers
             return View("FunctionInstance", model);
         }
 
+        [HttpPost]
+        public ActionResult Abort(string id)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+            {
+                return HttpNotFound();
+            }
+
+            Guid guid;
+            if (!Guid.TryParse(id, out guid))
+            {
+                return HttpNotFound();
+            }
+
+            var func = _functionInstanceLookup.Lookup(guid);
+
+            if (func == null)
+            {
+                return HttpNotFound();
+            }
+
+            _services.PostDeleteRequest(func.FunctionInstance);
+
+            return RedirectToAction("FunctionInstance", new { id });
+        }
     }
 }
