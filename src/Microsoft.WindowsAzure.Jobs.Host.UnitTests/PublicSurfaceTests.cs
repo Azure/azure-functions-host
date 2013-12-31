@@ -1,9 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
@@ -11,26 +9,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
     public class PublicSurfaceTests
     {
         [TestMethod]
-        public void AssemblyReferencesMinDll()
-        {            
+        public void AssemblyReferences_InJobsAssembly()
+        {
             // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
-            var assembly = typeof(BlobInputAttribute).Assembly;
-            var assemblyRefs = assembly.GetReferencedAssemblies();
-            var names = Array.ConvertAll(assemblyRefs, x => x.Name);
-            Array.Sort(names);
+            var names = GetAssemblyReferences(typeof(BlobInputAttribute).Assembly);
 
-            Assert.AreEqual(2, names.Length);
+            Assert.AreEqual(1, names.Count);
             Assert.AreEqual("mscorlib", names[0]);
-            Assert.AreEqual("System.Core", names[1]);
         }
 
         [TestMethod]
-        public void AssemblyReferencesHost()
+        public void AssemblyReferences_InJobsHostAssembly()
         {
-            var assembly = typeof(JobHost).Assembly;
-            var assemblyRefs = assembly.GetReferencedAssemblies();
-            var names = Array.ConvertAll(assemblyRefs, x => x.Name);
-            
+            var names = GetAssemblyReferences(typeof(JobHost).Assembly);
+
             // The Azure SDK is brittle and has breaking changes. 
             // We just depend on 1.7 and avoid a direct dependency on 2x or later. 
             foreach (var name in names)
@@ -40,14 +32,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
                     continue;
                 }
                 if (name.StartsWith("Microsoft.WindowsAzure"))
-                {             
+                {
                     Assert.AreEqual("Microsoft.WindowsAzure.StorageClient", name, "Only azure dependency is on the 1.7 sdk");
                 }
-            }            
+            }
         }
 
         [TestMethod]
-        public void JobsPublicSurface()
+        public void JobsPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(QueueInputAttribute).Assembly;
 
@@ -67,7 +59,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         }
 
         [TestMethod]
-        public void JobsHostPublicSurface()
+        public void JobsHostPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(Microsoft.WindowsAzure.Jobs.JobHost).Assembly;
 
@@ -76,7 +68,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             AssertPublicTypes(expected, assembly);
         }
 
-        static void AssertPublicTypes(IEnumerable<string> expected, Assembly assembly)
+        private static List<string> GetAssemblyReferences(Assembly assembly)
+        {
+            var assemblyRefs = assembly.GetReferencedAssemblies();
+            var names = (from assemblyRef in assemblyRefs
+                         orderby assemblyRef.Name.ToLowerInvariant()
+                         select assemblyRef.Name).ToList();
+            return names;
+        }
+
+        private static void AssertPublicTypes(IEnumerable<string> expected, Assembly assembly)
         {
             var publicTypes = (assembly.GetExportedTypes()
                 .Select(type => type.Name)
@@ -85,7 +86,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             AssertPublicTypes(expected.ToArray(), publicTypes.ToArray());
         }
 
-        static void AssertPublicTypes(string[] expected, string[] actual)
+        private static void AssertPublicTypes(string[] expected, string[] actual)
         {
             var newlyIntroducedPublicTypes = actual.Except(expected).ToArray();
 
