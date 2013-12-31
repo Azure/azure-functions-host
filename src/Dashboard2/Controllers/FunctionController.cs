@@ -54,6 +54,7 @@ namespace Dashboard.Controllers
 
             // ensure PageSize is not too big, and define a default value if not provided
             pageSize = pageSize.HasValue ? Math.Min(MaxPageSize, pageSize.Value) : DefaultPageSize;
+            pageSize = Math.Max(0, pageSize.Value);
 
             page = page.HasValue ? page : 1;
             
