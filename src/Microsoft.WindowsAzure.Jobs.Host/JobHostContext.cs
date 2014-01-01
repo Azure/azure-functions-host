@@ -28,17 +28,11 @@ namespace Microsoft.WindowsAzure.Jobs
             IConfiguration config = RunnerProgram.InitBinders();
 
             IFunctionTableLookup functionTableLookup;
-            if (hooks.TypeToIndex == null)
-            {
-                // Normal path
-                InitConfig(config);
-                functionTableLookup = new FunctionStore(userAccountConnectionString, config, GetUserAssemblies());
-            }
-            else
-            {
-                // Just do a single type. Great for unit testing. 
-                functionTableLookup = new FunctionStore(userAccountConnectionString, config, hooks.TypeToIndex);
-            }
+
+            var types = hooks.TypeLocator.FindTypes();
+            AddCustomerBinders(config, types);
+            functionTableLookup = new FunctionStore(userAccountConnectionString, config, types);
+            
 
             // Determine the host name from the function list
             _hostName = GetHostName(functionTableLookup.ReadAll());
@@ -134,44 +128,29 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Search for any types that implement ICloudBlobStreamBinder<T>
         // When found, automatically add them as binders to our config. 
-        internal static void InitConfig(IConfiguration config)
+        internal static void AddCustomerBinders(IConfiguration config, IEnumerable<Type> types)
         {
             // Scan for any binders
-            foreach (var assembly in GetUserAssemblies())
+            foreach (var type in types)
             {
-                // Only look at assemblies that reference SB
-                if (!Indexer.DoesAssemblyReferenceAzureJobs(assembly))
-                {
-                    continue;
-                }
-
                 try
                 {
-                    foreach (var type in assembly.GetTypes())
+                    foreach (var ti in type.GetInterfaces())
                     {
-                        try
+                        if (ti.IsGenericType)
                         {
-                            foreach (var ti in type.GetInterfaces())
+                            var ti2 = ti.GetGenericTypeDefinition();
+                            if (ti2 == typeof(ICloudBlobStreamBinder<>))
                             {
-                                if (ti.IsGenericType)
-                                {
-                                    var ti2 = ti.GetGenericTypeDefinition();
-                                    if (ti2 == typeof(ICloudBlobStreamBinder<>))
-                                    {
-                                        var tyArg = ti.GetGenericArguments()[0];
-                                        var tyBinder = typeof(SimpleBinderProvider<>).MakeGenericType(tyArg);
+                                var tyArg = ti.GetGenericArguments()[0];
+                                var tyBinder = typeof(SimpleBinderProvider<>).MakeGenericType(tyArg);
 
-                                        var objInner = Activator.CreateInstance(type);
-                                        var obj = Activator.CreateInstance(tyBinder, objInner);
-                                        var it = (ICloudBlobBinderProvider)obj;
+                                var objInner = Activator.CreateInstance(type);
+                                var obj = Activator.CreateInstance(tyBinder, objInner);
+                                var it = (ICloudBlobBinderProvider)obj;
 
-                                        config.BlobBinders.Add(it);
-                                    }
-                                }
+                                config.BlobBinders.Add(it);
                             }
-                        }
-                        catch
-                        {
                         }
                     }
                 }
@@ -206,11 +185,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // 3. If there's no entry assembly either, we don't have anything to use.
             return "Unknown";
-        }
-
-        private static IEnumerable<Assembly> GetUserAssemblies()
-        {
-            return AppDomain.CurrentDomain.GetAssemblies();
         }
 
         // This is a factory for getting interfaces that are bound against azure storage.

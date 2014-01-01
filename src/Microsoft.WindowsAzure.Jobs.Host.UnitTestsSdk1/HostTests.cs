@@ -25,8 +25,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 // don't use storage account at all, just testing the manifest file. 
                 var hooks = new JobHostTestHooks 
                 { 
-                    SkipStorageValidation = true,
-                    TypeToIndex = typeof(object)
+                    StorageValidator = new NullStorageValidator(),
+                    TypeLocator = new SimpleTypeLocator() // No types
                 };
                 string acs = null;
                 JobHost h = new JobHost(acs, acs, hooks);
@@ -50,9 +50,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // Use public surface to do an in-memory call.
             var t = typeof(ProgramSimple);
             var hooks = new JobHostTestHooks 
-            { 
-                SkipStorageValidation = true, 
-                TypeToIndex = t
+            {
+                StorageValidator = new NullStorageValidator(),                    
+                TypeLocator = new SimpleTypeLocator(t)
             };
 
             // Doesn't need a storage account. No logging, doesn't bind to blobs, doesn't listen on azure, etc.

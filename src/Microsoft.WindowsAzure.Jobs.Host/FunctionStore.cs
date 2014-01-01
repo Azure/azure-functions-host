@@ -11,24 +11,16 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
         private string _prefix;
 
         // userAccountConnectionString - the account that the functions will bind against. 
-        // Index all methods in the assemblies. 
-        public FunctionStore(string userAccountConnectionString, IConfiguration config, IEnumerable<Assembly> assemblies)
+        // Index all methods in the types provided by the locator
+        public FunctionStore(string userAccountConnectionString, IConfiguration config, IEnumerable<Type> types)
         {
             var indexer = Init(userAccountConnectionString, config);
-            foreach (Assembly a in assemblies)
+            foreach (Type t in types)
             {
-                indexer.IndexAssembly(m => OnApplyLocationInfo(userAccountConnectionString, m), a);
+                indexer.IndexType(m => OnApplyLocationInfo(userAccountConnectionString, m), t);
             }
         }
-
-        // userAccountConnectionString - the account that the functions will bind against. 
-        // Index methods in the type program
-        public FunctionStore(string userAccountConnectionString, IConfiguration config, Type program)
-        {
-            var indexer = Init(userAccountConnectionString, config);
-            indexer.IndexType(m => OnApplyLocationInfo(userAccountConnectionString, m), program);
-        }
-
+        
         private Indexer Init(string userAccountConnectionString, IConfiguration config)
         {
             _prefix = GetPrefix(userAccountConnectionString);

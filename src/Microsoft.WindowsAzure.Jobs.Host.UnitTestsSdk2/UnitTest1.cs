@@ -76,8 +76,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 
                 var hooks = new JobHostTestHooks
                 {
-                    SkipStorageValidation = true,
-                    TypeToIndex = typeof(T)
+                    StorageValidator = new NullStorageValidator(),
+                    TypeLocator = new SimpleTypeLocator(typeof(T))                    
                 };
 
                 // If there is an indexing error, we'll throw here. 
@@ -95,9 +95,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
         public void TestQueueBadName()
         {
             var hooks = new JobHostTestHooks 
-            { 
-                SkipStorageValidation = true, 
-                TypeToIndex = typeof(ProgramBadQueueName)
+            {
+                StorageValidator = new NullStorageValidator(),
+                TypeLocator = new SimpleTypeLocator(typeof(ProgramBadQueueName))
             };
             
             try

@@ -10,7 +10,6 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
-        private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
         private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
 
         private readonly IFunctionTable _functionTable;
@@ -34,61 +33,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // If this config is set, use it. 
         public IConfiguration ConfigOverride { get; set; }
-
-        public static bool DoesAssemblyReferenceAzureJobs(Assembly a)
-        {
-            AssemblyName[] referencedAssemblyNames = a.GetReferencedAssemblies();
-            foreach (var referencedAssemblyName in referencedAssemblyNames)
-            {
-                if (String.Equals(referencedAssemblyName.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public void IndexAssembly(Func<MethodInfo, FunctionLocation> funcApplyLocation, Assembly a)
-        {
-            // Only try to index assemblies that reference Azure Jobs.
-            // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
-            if (!DoesAssemblyReferenceAzureJobs(a))
-            {
-                return;
-            }
-
-            Type[] types = null;
-
-            try
-            {
-                types = a.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                // TODO: Log this somewhere?
-                Console.WriteLine("Warning: Only got partial types from assembly: {0}", a.FullName);
-                Console.WriteLine("Exception message: {0}", ex.ToString());
-
-                // In case of a type load exception, at least get the types that did succeed in loading
-                types = ex.Types;
-            }
-            catch (Exception ex)
-            {
-                // TODO: Log this somewhere?
-                Console.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
-                Console.WriteLine("Exception message: {0}", ex.ToString());
-            }
-
-            if (types != null)
-            {
-                foreach (var type in types)
-                {
-                    IndexType(funcApplyLocation, type);
-                }
-            }
-        }
-
+         
         private static MethodInfo ResolveMethod(Type type, string name)
         {
             var method = type.GetMethod(name, _publicStaticMethodFlags);

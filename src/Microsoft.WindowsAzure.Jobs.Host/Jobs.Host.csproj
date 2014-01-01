@@ -153,6 +153,8 @@
     <Compile Include="RunnerInterfaces\CloudBlobPathConverter.cs" />
     <Compile Include="RunnerInterfaces\CloudContainerComparer.cs" />
     <Compile Include="RunnerInterfaces\CloudQueueComparer.cs" />
+    <Compile Include="RunnerInterfaces\DefaultStorageValidator.cs" />
+    <Compile Include="RunnerInterfaces\DefaultTypeLocator.cs" />
     <Compile Include="RunnerInterfaces\FileFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\CloudQueueDescriptor.cs" />
     <Compile Include="RunnerInterfaces\CloudTableDescriptor.cs" />
@@ -160,6 +162,10 @@
     <Compile Include="RunnerInterfaces\BinderEntry.cs" />
     <Compile Include="RunnerInterfaces\IServiceContainer.cs" />
     <Compile Include="RunnerInterfaces\AbnormalTerminationException.cs" />
+    <Compile Include="RunnerInterfaces\IStorageValidator.cs" />
+    <Compile Include="RunnerInterfaces\ITypeLocator.cs" />
+    <Compile Include="RunnerInterfaces\NullStorageValidator.cs" />
+    <Compile Include="RunnerInterfaces\SimpleTypeLocator.cs" />
     <Compile Include="RunnerInterfaces\StringConverter.cs" />
     <Compile Include="RunnerInterfaces\JsonCustom.cs" />
     <Compile Include="RunnerInterfaces\LocalFunctionLocation.cs" />

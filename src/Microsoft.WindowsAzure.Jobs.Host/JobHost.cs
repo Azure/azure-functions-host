@@ -46,7 +46,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// reading and writing data and another connection string for logging.
         /// </summary>
         public JobHost(string userAccountConnectionString, string loggingAccountConnectionString)
-            : this(userAccountConnectionString, loggingAccountConnectionString, new JobHostTestHooks())
+            : this(userAccountConnectionString, loggingAccountConnectionString, DefaultHooks())
         {
         }
 
@@ -55,15 +55,22 @@ namespace Microsoft.WindowsAzure.Jobs
             _loggingAccountConnectionString = GetConfigSetting(loggingAccountConnectionString, "SimpleBatchLoggingACS");
             _userAccountConnectionString = GetConfigSetting(userAccountConnectionString, "SimpleBatchUserACS");
 
-            if (!hooks.SkipStorageValidation)
-            {
-                ValidateConnectionStrings();
-            }
+            var storageValidator = hooks.StorageValidator;
+            storageValidator.Validate(userAccountConnectionString, loggingAccountConnectionString);
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(hooks);
             
             WriteAntaresManifest();
+        }
+
+        static JobHostTestHooks DefaultHooks()
+        {
+            return new JobHostTestHooks
+            {
+                StorageValidator = new DefaultStorageValidator(),
+                TypeLocator = new DefaultTypeLocator()
+            };
         }
 
         /// <summary>
@@ -89,22 +96,6 @@ namespace Microsoft.WindowsAzure.Jobs
         private static string GetConfigSetting(string overrideValue, string settingName)
         {
             return overrideValue ?? ConfigurationManager.AppSettings[settingName];
-        }
-
-        private void ValidateConnectionStrings()
-        {
-            if (_userAccountConnectionString == null)
-            {
-                throw new InvalidOperationException("User account connection string is missing. This can be set via the 'SimpleBatchUserACS' appsetting or via the constructor.");
-            }
-            Utility.ValidateConnectionString(_userAccountConnectionString);
-            if (_loggingAccountConnectionString != null)
-            {
-                if (_loggingAccountConnectionString != _userAccountConnectionString)
-                {
-                    Utility.ValidateConnectionString(_loggingAccountConnectionString);
-                }
-            }
         }
 
         private JobHostContext GetHostContext(JobHostTestHooks hooks)
