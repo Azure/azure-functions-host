@@ -21,6 +21,11 @@
     max-height: 420px;
     overflow-y: auto;
 }
+/* checkboxes */
+
+input[type="checkbox"] {
+    margin-top: 2px;
+}
 
 /* labels */
 .label, .badge {

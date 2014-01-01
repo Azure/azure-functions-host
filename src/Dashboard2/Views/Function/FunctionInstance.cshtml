@@ -1,8 +1,9 @@
 ﻿@using Dashboard.ViewModels
-@using Microsoft.Ajax.Utilities
 @model FunctionInstanceDetailsViewModel
 
 @{
+    var isRunning = Model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running;
+    
     ViewBag.Title = "FunctionInstance";
 
     var log = Model.InvocationLogViewModel;
@@ -49,7 +50,7 @@
     <div class="col-md-9">
         <h3>Invocation Details <small>@Model.InvocationLogViewModel.FunctionName</small></h3>
         
-        @if (Model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running)
+        @if (isRunning)
         {
             <p>
             @using (Html.BeginForm("Abort", "Function", new { id = Model.InvocationLogViewModel.Id }, FormMethod.Post, new { @class = "form-inline" }))
@@ -130,35 +131,36 @@
 
 </div>
 
-<a class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal">Show Output</a>
+<button type="button" class="btn btn-primary btn-sm" data-toggle="collapse" data-target="#output">
+    Toggle Output
+</button>
 
-<!-- Modal -->
-<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title">Output Content</h4>
 
-            </div>
-            <div class="modal-body">
-                loading...
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
-            </div>
+<form id="output" class="collapse" role="form">
+    
+    @if (isRunning)
+    {
+        <div class="checkbox">
+            <label>
+                <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+            </label>
         </div>
-        <!-- /.modal-content -->
+    }
+    
+    <div class="form-group">
+        <textarea id="output-body" rows="10" placeholder="loading..." class="form-control"></textarea>
+        <span class="help-block">This represents the console output. It is automatically refreshed.</span>
     </div>
-    <!-- /.modal-dialog -->
-</div>
-<!-- /.modal -->
+</form>
 
 <script type="text/javascript">
     $(function () {
-        $('#myModal').on('shown.bs.modal', function(e) {
+        var paused = true;
+        var output = $('#output-body');
+        var url = '@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Output", id = Model.InvocationLogViewModel.Id })';
+        var isRunning = @(isRunning ? "true" : "false")
             
-            var url = '@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Output", id = Model.InvocationLogViewModel.Id })';
+        $('#output').on('shown.bs.collapse', function (e) {
             $.ajax({
                 url: url,
                 cache: false,
@@ -166,11 +168,53 @@
                     start: 0
                 },
                 success: function(result) {
-                    $('.modal-body').html('<pre>' + result + '</pre>');
+                    output.text(result);
                 }
             });
 
+            paused = false;
         });
+
+        $('#output').on('hidden.bs.collapse', function (e) {
+            // disable auto-refresh
+            paused = true;
+        });
+        
+        var iID = setInterval(function () {
+            
+            if (!paused && isRunning) {
+                var currentLines = output.text().split(/\n/).length;
+
+                $.ajax({
+                    type: 'GET',
+                    url: url,
+                    async: true,
+                    cache: false,
+                    data: {
+                        start: currentLines
+                    },
+                    success: function (data) {
+                        // append the text
+                        if (data.length > 0) {
+                            output.append('\n' + data);
+                        }
+
+                        // scroll to bottom
+                        if ($('#auto-scroll:checked').length > 0) {
+                            output.scrollTop(output[0].scrollHeight - output.height());
+                        }
+                    },
+                    fail: function (result) {
+                    }
+                });
+            }
+
+            var stopRequested = false;
+            if (stopRequested) {
+                clearInterval(iID);
+            }
+
+        }, 5000);
     });  
 </script>
 
