@@ -37,13 +37,13 @@
                             @if (statistics.LastWriteTime.HasValue)
                             {
                                 <span class="pull-right">@MoreHtmlHelpers.DateTimeRelative(statistics.LastWriteTime.Value)</span>
-                            }                     
+                            }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
-    </div>    
+    </div>
     <div class="col-md-6">
         <h3>Invocation Log <small>Recently executed jobs</small></h3>
         <table class="table table-striped table-hover">
@@ -60,43 +60,58 @@
         </table>
     </div>
 </div>
+<div class="row">
+    <div class="col-md-6">
+        <h3>Blobs <small>Search for a specific blob</small></h3>
+        @using (Html.BeginForm("LookupBlob", "Function", FormMethod.Get))
+        {
+            <div class="row form-group">
+                <div class="col-md-10 col-xs-8">
+                    <input type="text" name="path" placeholder="container/filename.ext" class="form-control input-sm" />
+                </div>
+                <div class="col-md-2 col-xs-4">
+                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+        <script type="text/javascript">
+            $(function () {
+                $('.not-running').tooltip();
 
-<script type="text/javascript">
-    $(function() {
-        $('.not-running').tooltip();
-
-        $("span.statistics").on('click', function () {
-            window.location = $(this).data('url');
-        });
-        
-        var updateLogUrl = '@Url.Action("PartialInvocationLog", "Function")';
-
-        var iID = setInterval(function() {
-
-            var paused = false;
-            if (!paused) {
-                $.ajax({
-                    type: 'GET',
-                    url: updateLogUrl,
-                    async: true,
-                    cache: false,
-                    success: function(data) {
-                        if (console && console.log) {
-                            console.log(data);
-                        }
-                        $('#invocation-log-body').html(data);
-                    },
-                    fail: function(result) {
-                    }
+                $("span.statistics").on('click', function () {
+                    window.location = $(this).data('url');
                 });
-            }
-            
-            var stopRequested = false;
-            if (stopRequested) {
-                clearInterval(iID);
-            }
-            
-        }, 2000);
 
-    });
-</script>
+                var updateLogUrl = '@Url.Action("PartialInvocationLog", "Function")';
+
+                var iID = setInterval(function () {
+
+                    var paused = false;
+                    if (!paused) {
+                        $.ajax({
+                            type: 'GET',
+                            url: updateLogUrl,
+                            async: true,
+                            cache: false,
+                            success: function (data) {
+                                if (console && console.log) {
+                                    console.log(data);
+                                }
+                                $('#invocation-log-body').html(data);
+                            },
+                            fail: function (result) {
+                            }
+                        });
+                    }
+
+                    var stopRequested = false;
+                    if (stopRequested) {
+                        clearInterval(iID);
+                    }
+
+                }, 2000);
+
+            });
+        </script>

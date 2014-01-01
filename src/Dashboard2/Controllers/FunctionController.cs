@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Linq;
 using System.Web.Mvc;
+using System.Web.Routing;
 using Dashboard.ViewModels;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.StorageClient;
 using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 
 namespace Dashboard.Controllers
@@ -145,6 +148,62 @@ namespace Dashboard.Controllers
             }
 
             return View("FunctionInstance", model);
+        }
+
+        public ActionResult LookupBlob(string path)
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                TempData["Message.Text"] = "Blob path can't be empty";
+                TempData["Message.Level"] = "danger";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var p = new CloudBlobPath(path);
+
+            CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
+
+            if (account == null)
+            {
+                TempData["Message.Text"] = "Account not found";
+                TempData["Message.Level"] = "danger";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            CloudBlob blob;
+
+            try
+            {
+                blob = p.Resolve(account);
+            }
+            catch
+            {
+                blob = null;
+            }
+
+            if (blob == null)
+            {
+                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Level"] = "warning";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            IBlobCausalityLogger logger = new BlobCausalityLogger();
+            var guid = logger.GetWriter(blob);
+
+            if (guid == Guid.Empty)
+            {
+                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Level"] = "warning";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            IFunctionInstanceLookup lookup = _services.GetFunctionInstanceLookup();
+
+            TempData["Message.Text"] = "Job found for: " + path;
+            TempData["Message.Level"] = "info";
+            
+            return RedirectToAction("FunctionInstance", new {lookup.Lookup(guid).FunctionInstance.Id});
         }
 
         [HttpPost]
