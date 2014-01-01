@@ -58,7 +58,7 @@ namespace Dashboard.Controllers
 
             // ensure PageSize is not too big, and define a default value if not provided
             pageSize = pageSize.HasValue ? Math.Min(MaxPageSize, pageSize.Value) : DefaultPageSize;
-            pageSize = Math.Max(0, pageSize.Value);
+            pageSize = Math.Max(1, pageSize.Value);
 
             page = page.HasValue ? page : 1;
             
@@ -70,7 +70,7 @@ namespace Dashboard.Controllers
                 FunctionName = functionName,
                 Success = success,
                 Page = page,
-                PageSize = pageSize
+                PageSize = pageSize.Value
             };
 
             var query = new FunctionInstanceQueryFilter
@@ -80,8 +80,10 @@ namespace Dashboard.Controllers
             };
 
             var logger = _services.GetFunctionInstanceQuery();
+
+            // load pageSize + 1 to check if there is another page
             model.InvocationLogViewModels = logger
-                .GetRecent(pageSize.Value, skip, query)
+                .GetRecent(pageSize.Value + 1, skip, query)
                 .Select(e => new InvocationLogViewModel(e))
                 .ToArray();
 
@@ -159,7 +161,7 @@ namespace Dashboard.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            var p = new CloudBlobPath(path);
+            var p = new CloudBlobPath(path.Trim());
 
             CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
 
@@ -188,8 +190,17 @@ namespace Dashboard.Controllers
                 return RedirectToAction("Index", "Dashboard");
             }
 
-            IBlobCausalityLogger logger = new BlobCausalityLogger();
-            var guid = logger.GetWriter(blob);
+            Guid guid;
+
+            try
+            {
+                IBlobCausalityLogger logger = new BlobCausalityLogger();
+                guid = logger.GetWriter(blob);
+            }
+            catch
+            {
+                guid = Guid.Empty;
+            } 
 
             if (guid == Guid.Empty)
             {

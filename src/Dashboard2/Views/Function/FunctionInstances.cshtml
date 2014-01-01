@@ -59,7 +59,8 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var log in Model.InvocationLogViewModels)
+                @* Take only the specified page size as an extra item is loaded *@
+                @foreach (var log in Model.InvocationLogViewModels.Take(Model.PageSize))
                 {
                     Html.RenderPartial("_InvocationLogSummary", log);
                 }
@@ -75,7 +76,7 @@
                @*<li class="previous disabled"><a href="#">&larr; Newer</a></li>*@
             }
             
-            @if (Model.PageSize > Model.InvocationLogViewModels.Count())
+            @if (Model.PageSize >= Model.InvocationLogViewModels.Count())
             {
                 @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
             }
