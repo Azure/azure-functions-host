@@ -1,18 +1,18 @@
 ﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Input argument is currently null
-    class NullBindResult : BindResult, ISelfWatch
+    internal class NullBindResult : BindResult, ISelfWatch
     {
-        string message;
+        private string _message;
 
         public NullBindResult()
         {
-            this.message = "Azure object not found";
+            _message = "Azure object not found";
         }
 
         public NullBindResult(string message)
         {
-            this.message = message;
+            _message = message;
         }
 
         public override ISelfWatch Watcher
@@ -25,7 +25,7 @@
 
         public string GetStatus()
         {
-            return this.message;
+            return _message;
         }
     }
 }

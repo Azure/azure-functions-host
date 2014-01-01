@@ -163,9 +163,9 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Entry-point from reflection-based configuration. This is looking at inline attributes.
-        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method, IndexTypeContext context = null)
+        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method, IndexTypeContext context)
         {
-            MethodDescriptor descr = GetFromMethod(method);
+            MethodDescriptor descr = GetMethodDescriptor(method);
 
             Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(method.DeclaringType, name);
             Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
@@ -175,9 +175,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Container is where the method lived on the cloud.
         // Common path for both attribute-cased and code-based configuration.
-        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr, IndexTypeContext context = null)
+        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr, IndexTypeContext context)
         {
-            FunctionDefinition index = GetDescriptionForMethod(descr, context);
+            FunctionDefinition index = GetFunctionDefinition(descr, context);
             if (index != null)
             {
                 FunctionLocation loc = funcApplyLocation(descr);
@@ -252,22 +252,25 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static ParameterStaticBinding BindParameter(ParameterInfo parameter)
         {
-            try
+
+            foreach (Attribute attr in parameter.GetCustomAttributes(true))
             {
-                foreach (Attribute attr in parameter.GetCustomAttributes(true))
+                ParameterStaticBinding staticBinding;
+                try
                 {
-                    var bind = StaticBinder.DoStaticBind(attr, parameter);
-                    if (bind != null)
-                    {
-                        return bind;
-                    }
+                    staticBinding = StaticBinder.DoStaticBind(attr, parameter);
                 }
-                return null;
+                catch (Exception e)
+                {
+                    throw IndexException.NewParameter(parameter, e);
+                }
+                if (staticBinding != null)
+                {
+                    return staticBinding;
+                }
             }
-            catch (Exception e)
-            {
-                throw IndexException.NewParameter(parameter, e);
-            }
+            return null;
+
         }
 
         // Note any remaining unbound parameters must be provided by the user.
@@ -289,7 +292,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return hasUnboundParams;
         }
 
-        private static MethodDescriptor GetFromMethod(MethodInfo method)
+        private static MethodDescriptor GetMethodDescriptor(MethodInfo method)
         {
             var descr = new MethodDescriptor();
             descr.Name = method.Name;
@@ -299,15 +302,15 @@ namespace Microsoft.WindowsAzure.Jobs
             return descr;
         }
 
-        public static FunctionDefinition GetDescriptionForMethod(MethodInfo method, IndexTypeContext context = null)
+        public static FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context = null)
         {
-            MethodDescriptor descr = GetFromMethod(method);
-            return GetDescriptionForMethod(descr, context);
+            MethodDescriptor descr = GetMethodDescriptor(method);
+            return GetFunctionDefinition(descr, context);
         }
 
         // Returns a partially instantiated FunctionIndexEntity.
         // Caller must add Location information.
-        public static FunctionDefinition GetDescriptionForMethod(MethodDescriptor descr, IndexTypeContext context = null)
+        public static FunctionDefinition GetFunctionDefinition(MethodDescriptor descr, IndexTypeContext context)
         {
             try
             {
@@ -444,7 +447,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (qc > 1)
             {
-                string msg = string.Format("Can't have multiple QueueInputs on a single function definition");
+                string msg = string.Format("Can't have multiple QueueInput parameters on a single function.");
                 throw new InvalidOperationException(msg);
             }
 
@@ -457,7 +460,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 if (index.Trigger.TimerInterval.HasValue)
                 {
-                    throw new InvalidOperationException("Can't have a QueueInput and Timer triggers on the same function ");
+                    throw new InvalidOperationException("Can't have a QueueInput and Timer triggers on the same function.");
                 }
 
                 if (!index.Trigger.ListenOnBlobs)

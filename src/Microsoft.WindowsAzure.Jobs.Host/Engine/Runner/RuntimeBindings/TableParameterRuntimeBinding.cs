@@ -30,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs
             ICloudTableBinder binder = config.GetTableBinder(type, isReadOnly);
             if (binder == null)
             {
-                string msg = string.Format("Can't bind an azure table to type '{0}'", type.AssemblyQualifiedName);
+                string msg = string.Format("Can't bind an Azure table to type '{0}'", type.AssemblyQualifiedName);
                 throw new InvalidOperationException(msg);
             }
             return binder;

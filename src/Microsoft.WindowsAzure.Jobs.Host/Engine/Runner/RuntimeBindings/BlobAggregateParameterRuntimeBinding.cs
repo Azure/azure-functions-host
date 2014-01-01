@@ -17,11 +17,11 @@ namespace Microsoft.WindowsAzure.Jobs
             var t = targetParameter.ParameterType;
             if (!t.IsArray)
             {
-                throw new InvalidOperationException("Matching to multiple blobs requires the parameter be an array type");
+                throw new InvalidOperationException("Matching to multiple blobs requires the parameter be an array type.");
             }
             if (t.GetArrayRank() != 1)
             {
-                throw new InvalidOperationException("Array must be single dimension");
+                throw new InvalidOperationException("Array must be one-dimensional.");
             }
             var tElement = t.GetElementType(); // Inner
             

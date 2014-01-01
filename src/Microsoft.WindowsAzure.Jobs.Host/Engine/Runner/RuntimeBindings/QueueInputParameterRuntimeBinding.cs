@@ -49,9 +49,9 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     // Easy to have the queue payload not deserialize properly. So give a useful error. 
                     string msg = string.Format(
-@"Binding parameters to complex objects (such as '{0}') uses JSON.Net serialization. 
+@"Binding parameters to complex objects (such as '{0}') uses Json.NET serialization. 
 1. Bind the parameter type as 'string' instead of '{0}' to get the raw values and avoid JSON deserialization, or
-2. Change the queue payload to be valid json. The json parser failed: {1}
+2. Change the queue payload to be valid json. The JSON parser failed: {1}
 ", parameterType.Name, e.Message); 
                     throw new InvalidOperationException(msg);
                 }

@@ -26,7 +26,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 if (IsInput)
                 {
-                    throw new InvalidOperationException("Input blob parameter can't have [Out] keyword");
+                    throw new InvalidOperationException("Input blob parameter can't have [Out] keyword.");
                 }
             }
 

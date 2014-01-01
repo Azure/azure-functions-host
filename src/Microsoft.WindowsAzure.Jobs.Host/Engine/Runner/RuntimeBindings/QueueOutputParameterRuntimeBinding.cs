@@ -11,85 +11,11 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         public CloudQueueDescriptor QueueOutput { get; set; }
 
-        private abstract class QueueResult : BindResult
-        {
-            public CloudQueue Queue;
-        }
-
-        private abstract class CorrelatedQueueResult : QueueResult
-        {
-            public Guid thisFunction;
-
-            protected virtual void AddMessage(object result)
-            {
-                if (Result != null)
-                {
-                    QueueCausalityHelper qcm = new QueueCausalityHelper();
-                    CloudQueueMessage msg = qcm.EncodePayload(thisFunction, result);
-
-                    // Beware, as soon as this is added,
-                    // another worker can pick up the message and start running.
-                    this.Queue.AddMessage(msg);
-                }
-            }
-        }
-
-        // Queues a single message.
-        private class SingleJsonQueueResult : CorrelatedQueueResult
-        {
-            public override void OnPostAction()
-            {
-                AddMessage(Result);
-            }
-        }
-
-        // Queues multiple messages.
-        private class CollectionJsonQueueResult : CorrelatedQueueResult
-        {
-            public override void OnPostAction()
-            {
-                if (Result != null)
-                {
-                    IEnumerable collection = (IEnumerable)Result;
-                    foreach (var value in collection)
-                    {
-                        AddMessage(value);
-                    }
-                }
-            }
-        }
-
-        private class StringQueueResult : QueueResult
-        {
-            public override void OnPostAction()
-            {
-                string content = Result as string;
-
-                if (content != null)
-                {
-                    Queue.AddMessage(new CloudQueueMessage(content));
-                }
-            }
-        }
-
-        private class ByteArrayQueueResult : QueueResult
-        {
-            public override void OnPostAction()
-            {
-                byte[] content = Result as byte[];
-
-                if (content != null)
-                {
-                    Queue.AddMessage(new CloudQueueMessage(content));
-                }
-            }
-        }
-
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             if (!targetParameter.IsOut)
             {
-                var msg = string.Format("[QueueOutput] is only valid on 'out' parameters. Can't use on '{0}'", targetParameter);
+                var msg = string.Format("[QueueOutput] is valid only on 'out' parameters. Can't use on '{0}'.", targetParameter);
                 throw new InvalidOperationException(msg);
             }
 
@@ -168,6 +94,80 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string ToString()
         {
             return string.Format("Output to queue: {0}", QueueOutput.QueueName);
+        }
+
+        private abstract class QueueResult : BindResult
+        {
+            public CloudQueue Queue;
+        }
+
+        private abstract class CorrelatedQueueResult : QueueResult
+        {
+            public Guid thisFunction;
+
+            protected virtual void AddMessage(object result)
+            {
+                if (Result != null)
+                {
+                    QueueCausalityHelper qcm = new QueueCausalityHelper();
+                    CloudQueueMessage msg = qcm.EncodePayload(thisFunction, result);
+
+                    // Beware, as soon as this is added,
+                    // another worker can pick up the message and start running.
+                    this.Queue.AddMessage(msg);
+                }
+            }
+        }
+
+        // Queues a single message.
+        private class SingleJsonQueueResult : CorrelatedQueueResult
+        {
+            public override void OnPostAction()
+            {
+                AddMessage(Result);
+            }
+        }
+
+        // Queues multiple messages.
+        private class CollectionJsonQueueResult : CorrelatedQueueResult
+        {
+            public override void OnPostAction()
+            {
+                if (Result != null)
+                {
+                    IEnumerable collection = (IEnumerable)Result;
+                    foreach (var value in collection)
+                    {
+                        AddMessage(value);
+                    }
+                }
+            }
+        }
+
+        private class StringQueueResult : QueueResult
+        {
+            public override void OnPostAction()
+            {
+                string content = Result as string;
+
+                if (content != null)
+                {
+                    Queue.AddMessage(new CloudQueueMessage(content));
+                }
+            }
+        }
+
+        private class ByteArrayQueueResult : QueueResult
+        {
+            public override void OnPostAction()
+            {
+                byte[] content = Result as byte[];
+
+                if (content != null)
+                {
+                    Queue.AddMessage(new CloudQueueMessage(content));
+                }
+            }
         }
     }
 }

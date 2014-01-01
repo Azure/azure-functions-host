@@ -15,7 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             {
                 try
                 {
-                    FunctionDefinition func = Indexer.GetDescriptionForMethod(method);
+                    FunctionDefinition func = Indexer.GetFunctionDefinition(method);
                     Assert.Fail("Expected error from method: {0}", method.Name);
                 }
                 catch (IndexException)

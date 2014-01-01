@@ -15,7 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.IsNotNull(m);
 
-            FunctionDefinition func = Indexer.GetDescriptionForMethod(m);
+            FunctionDefinition func = Indexer.GetFunctionDefinition(m);
             return func;
         }
 
