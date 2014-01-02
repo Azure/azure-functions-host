@@ -130,6 +130,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             Poll(CancellationToken.None);
         }
+
         public void Poll(CancellationToken token)
         {
             try
@@ -152,10 +153,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // Listen on timers
         private void PollTimers(CancellationToken token)
         {
-            while (true)
+            while (!token.IsCancellationRequested)
             {
-                token.ThrowIfCancellationRequested();
-
                 TimerTrigger func;
                 if (!_queueExecuteFuncs.TryDequeue(out func))
                 {
@@ -284,7 +283,10 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             foreach (var kv in _mapQueues)
             {
-                token.ThrowIfCancellationRequested();
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 var queue = kv.Key;
                 var funcs = kv.Value;
@@ -301,7 +303,10 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     foreach (var func in funcs)
                     {
-                        token.ThrowIfCancellationRequested();
+                        if (token.IsCancellationRequested)
+                        {
+                            return;
+                        }
 
                         _invoker.OnNewQueueItem(msg, func, token);
                     }

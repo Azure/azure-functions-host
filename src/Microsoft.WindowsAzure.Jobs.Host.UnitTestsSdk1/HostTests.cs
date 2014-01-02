@@ -1,8 +1,6 @@
-﻿using System.IO;
-using System.Reflection;
+﻿using System;
+using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
-using System;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
@@ -47,17 +45,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         [TestMethod]
         public void SimpleInvoke()
         {
-            // Use public surface to do an in-memory call.
-            var t = typeof(ProgramSimple);
-            var hooks = new JobHostTestHooks 
-            {
-                StorageValidator = new NullStorageValidator(),                    
-                TypeLocator = new SimpleTypeLocator(t)
-            };
-
-            // Doesn't need a storage account. No logging, doesn't bind to blobs, doesn't listen on azure, etc.
-            string acs = null;
-            JobHost h = new JobHost(acs, acs, hooks);
+            Type t = typeof(ProgramSimple);
+            JobHost h = CreateInMemoryHost(t);
 
             var x = "abc";
             ProgramSimple._value = null;
@@ -75,6 +64,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 _value = value;
             }
+        }
+
+        private static JobHost CreateInMemoryHost(Type programType)
+        {
+            // Use public surface to do an in-memory call.
+            var hooks = new JobHostTestHooks
+            {
+                StorageValidator = new NullStorageValidator(),
+                TypeLocator = new SimpleTypeLocator(programType)
+            };
+
+            // Doesn't need a storage account. No logging, doesn't bind to blobs, doesn't listen on azure, etc.
+            string accountConnectionString = null;
+            return new JobHost(accountConnectionString, accountConnectionString, hooks);
         }
     }
 }

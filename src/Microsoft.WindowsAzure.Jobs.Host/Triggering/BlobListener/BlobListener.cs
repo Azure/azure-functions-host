@@ -86,7 +86,10 @@ namespace Microsoft.WindowsAzure.Jobs
             opt.UseFlatBlobListing = true;
             foreach (var blobItem in container.ListBlobs(opt))
             {
-                _backgroundCancel.ThrowIfCancellationRequested();
+                if (_backgroundCancel.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
 
@@ -121,10 +124,17 @@ namespace Microsoft.WindowsAzure.Jobs
             // Listen on logs for new events. 
             foreach (var client in _clientListeners)
             {
-                cancel.ThrowIfCancellationRequested();
+                if (cancel.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 foreach (var path in client.GetRecentBlobWrites())
                 {
-                    cancel.ThrowIfCancellationRequested();
+                    if (cancel.IsCancellationRequested)
+                    {
+                        return;
+                    }
 
                     // Log listening is Client wide. So filter out things that aren't in the container list. 
                     if (!_containerNames.Contains(path.ContainerName))

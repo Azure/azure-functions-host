@@ -34,9 +34,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // $$$ Switch to queuing instead of just invoking callback
         public void Poll(Action<CloudBlob> callback, CancellationToken cancel)
         {
-            for (int i = 0; i < _containers.Length; i++)
+            for (int i = 0; !cancel.IsCancellationRequested && i < _containers.Length; i++)
             {
-                cancel.ThrowIfCancellationRequested();
                 var time = _lastUpdateTimes[i];
 
                 var newBlobs = PollNewBlobs(_containers[i], time, cancel, ref _lastUpdateTimes[i]);
@@ -68,7 +67,10 @@ namespace Microsoft.WindowsAzure.Jobs
             opt.UseFlatBlobListing = true;
             foreach (var blobItem in container.ListBlobs(opt))
             {
-                cancel.ThrowIfCancellationRequested();
+                if (cancel.IsCancellationRequested)
+                {
+                    return new CloudBlob[0];
+                }
 
                 CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
 

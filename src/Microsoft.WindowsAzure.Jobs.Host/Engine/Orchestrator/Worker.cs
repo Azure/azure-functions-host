@@ -110,13 +110,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 _nextHeartbeat = DateTime.UtcNow.Add(RunningHost.HeartbeatSignalInterval);
             }
 
-            while (true)
+            while (!token.IsCancellationRequested)
             {
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
                 int lastCount = _triggerCount;
 
                 // this is a fast poll (checking a queue), so give it high priority

@@ -153,7 +153,13 @@ namespace Microsoft.WindowsAzure.Jobs
                     do
                     {
                         worker.Poll(token);
-                        handled = HandleExecutionQueue(token);
+
+                        if (token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        handled = HandleExecutionQueue();
                     }
                     while (handled);
 
@@ -163,7 +169,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private bool HandleExecutionQueue(CancellationToken token)
+        private bool HandleExecutionQueue()
         {
             if (_hostContext._executionQueue != null)
             {
