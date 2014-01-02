@@ -71,6 +71,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="PrereqManagerTests.cs" />

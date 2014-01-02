@@ -12,17 +12,20 @@ namespace Microsoft.WindowsAzure.Jobs
     // caller uses the textWriter that we return)
     internal class BlobIncrementalTextWriter
     {
-        private CloudBlob _blob;
+        // Called on background timer to flush contents of TextWriter
+        private Action<string> _fpFlush;        
+
+        // contents for what's written. Owned by the timer thread.
         private StringWriter _inner;
+
+        // thread-safe access to _inner so that user threads can write to it. 
         private TextWriter _syncWrapper;
+
         private Timer _timer;
 
         public BlobIncrementalTextWriter(CloudBlob blob, TimeSpan refreshRate)
+            : this(content => blob.UploadText(content))
         {
-            _blob = blob;
-            _inner = new StringWriter();
-            _syncWrapper = TextWriter.Synchronized(_inner);
-
             // Prepend existing 
             string existingContent = BlobClient.ReadBlob(blob); // null if no exist            
             if (existingContent != null)
@@ -42,6 +45,20 @@ namespace Microsoft.WindowsAzure.Jobs
                 _inner.WriteLine("========================");
             }
 
+            Start(refreshRate);
+        }
+
+        // Doesn't start the timer. 
+        internal BlobIncrementalTextWriter(Action<string> fpFlush)
+        {
+            _fpFlush = fpFlush;
+            _inner = new StringWriter();
+            _syncWrapper = TextWriter.Synchronized(_inner);            
+        }
+
+        internal void Start(TimeSpan refreshRate)
+        {
+            Callback(null);
             _timer = new Timer(Callback, null, TimeSpan.FromMinutes(0), refreshRate);
         }
 
@@ -52,17 +69,27 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private void Callback(object obj)
         {
+            _syncWrapper.Flush();
+
             // For synchronized text writer, the object is its own lock.
             lock (_syncWrapper)
             {
                 string content = _inner.ToString();
-                _blob.UploadText(content);
+                _fpFlush(content);
             }
         }
 
         public void Close()
         {
             _timer.Dispose();
+
+            try
+            {
+                _syncWrapper.Flush();
+            }
+            catch
+            {
+            }
             Callback(null);
         }
     }
