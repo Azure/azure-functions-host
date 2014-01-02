@@ -110,13 +110,6 @@ namespace Dashboard.Controllers
                 return HttpNotFound();
             }
 
-            var functionModel = _functionTableLookup.Lookup(func.FunctionInstance.Location.GetId());
-            if (functionModel == null)
-            {
-                string msg = string.Format("Function {0} has been unloaded from the server. Can't get log information", func.FunctionInstance.Location.GetId());
-                return HttpNotFound(msg);
-            }
-
             var model = new FunctionInstanceDetailsViewModel();
             model.InvocationLogViewModel = new InvocationLogViewModel(func);
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
@@ -124,16 +117,19 @@ namespace Dashboard.Controllers
 
             // Do some analysis to find inputs, outputs, 
 
-            var descriptor = new FunctionDefinitionViewModel(functionModel);
+            var functionModel = _functionTableLookup.Lookup(func.FunctionInstance.Location.GetId());
 
+            if (functionModel != null)
+            {
+                var descriptor = new FunctionDefinitionViewModel(functionModel);
 
-            // Parallel arrays of static descriptor and actual instance info 
-            ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
+                // Parallel arrays of static descriptor and actual instance info 
+                ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
 
-            model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
-            LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
-            LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
-
+                model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
+                LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
+                LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
+            }
 
             ICausalityReader causalityReader = _services.GetCausalityReader();
 

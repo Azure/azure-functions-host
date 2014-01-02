@@ -99,15 +99,22 @@
                 <span> on @Html.ActionLink(Model.Ancestor.FunctionName, "FunctionInstance", "Function", new {id = Model.Ancestor.Id}, new {title = "The parent job which triggered this function" })</span>
             }
         </p>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th class="col-md-2">Parameter</th>
-                    <th class="col-md-3">Value</th>
-                    <th class="col-md-4">Notes</th>
-                </tr>
-            </thead>
-            <tbody>
+        
+        @if (Model.Parameters == null)
+        {
+            // the function is no more available, optionally display a message here
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th class="col-md-2">Parameter</th>
+                        <th class="col-md-3">Value</th>
+                        <th class="col-md-4">Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
                 @foreach (var param in Model.Parameters)
                 {
                     <tr>
@@ -115,7 +122,7 @@
                         <td>
                             @if (param.ArgBlobLink != null)
                             {
-                                <a href="@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Blob", path = param.ArgInvokeString })">@param.ArgInvokeString</a>
+                                <a href="@Url.HttpRouteUrl("DefaultApi", new {controller = "Log", action = "Blob", path = param.ArgInvokeString})">@param.ArgInvokeString</a>
                             }
                             else
                             {
@@ -132,8 +139,9 @@
                         </td>
                     </tr>
                 }
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        }
     </div>
 
 </div>
