@@ -3,24 +3,16 @@
   font-size: 12px;
 }
 
-#chart {
-    width: 100%;
-    height: 200px;
-    margin: 10px 0px;
-}
-
-.not-running:before {
+.not-running {
     color: darkorange;
-}
-
-.statistics {
-    cursor: pointer;
+    width: 1em;
 }
 
 .modal .modal-body {
     max-height: 420px;
     overflow-y: auto;
 }
+
 /* checkboxes */
 
 input[type="checkbox"] {
@@ -28,6 +20,7 @@ input[type="checkbox"] {
 }
 
 /* labels */
+
 .label, .badge {
 	font-weight: lighter;
 	font-size: 90%;
@@ -84,31 +77,6 @@ table th span.line{
 	border-left: 1px solid #dee3ea;
 	height: 10px;
 }
-
-/* alerts */
-.alert [class^="icon-"], 
-.alert [class*=" icon-"] {
-	font-size: 27px;
-	position: relative;
-	top: 4px;
-	margin-bottom: 8px;
-	margin-right: 17px;
-	display: inline-block;
-	color: #f1c359;
-}
-.alert-success [class^="icon-"], 
-.alert-success [class*=" icon-"] {
-	color: #81ad53;
-}
-.alert-info [class^="icon-"], 
-.alert-info [class*=" icon-"] {
-	color: #4993c6;
-}
-.alert-danger [class^="icon-"], 
-.alert-danger [class*=" icon-"] {
-	color: #d5393e;
-}
-
 
 /* toolbars */
 

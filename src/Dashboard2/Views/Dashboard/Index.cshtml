@@ -10,9 +10,9 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th class="col-md-3">Function Name</th>
-                    <th class="col-md-2">Statistics</th>
-                    <th class="col-md-1">Last Execution</th>
+                    <th>Function Name</th>
+                    <th>Statistics</th>
+                    <th>Last Execution</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,13 +25,13 @@
                             }
                             else
                             {
-                                <span title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running" style="color:darkorange"></span>
+                                <span title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
                             }
                             @Html.ActionLink(statistics.FunctionName, "FunctionInstances", "Function", new { functionName = statistics.FunctionFullName }, new { })
                         </td>
                         <td>
-                            <span class="label label-success statistics" data-url="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = true })">@String.Format("{0:#,0}", statistics.SuccessCount)</span>
-                            <span class="label label-danger statistics" data-url="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = false })">@String.Format("{0:#,0}", statistics.FailedCount)</span>
+                            <a class="label label-success" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = true })">@String.Format("{0:#,0}", statistics.SuccessCount)</a>
+                            <a class="label label-danger" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = false })">@String.Format("{0:#,0}", statistics.FailedCount)</a>
                         </td>
                         <td>
                             @if (statistics.LastWriteTime.HasValue)
@@ -79,10 +79,6 @@
         <script type="text/javascript">
             $(function () {
                 $('.not-running').tooltip();
-
-                $("span.statistics").on('click', function () {
-                    window.location = $(this).data('url');
-                });
 
                 var updateLogUrl = '@Url.Action("PartialInvocationLog", "Function")';
 
