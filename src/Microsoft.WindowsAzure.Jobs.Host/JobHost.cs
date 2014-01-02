@@ -56,7 +56,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _userAccountConnectionString = GetConfigSetting(userAccountConnectionString, "SimpleBatchUserACS");
 
             var storageValidator = hooks.StorageValidator;
-            storageValidator.Validate(userAccountConnectionString, loggingAccountConnectionString);
+            storageValidator.Validate(_userAccountConnectionString, _loggingAccountConnectionString);
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(hooks);

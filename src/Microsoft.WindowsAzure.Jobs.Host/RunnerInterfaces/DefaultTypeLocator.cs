@@ -9,6 +9,8 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
 
+        private static Type[] EmptyTypeArray = new Type[0];
+
         // Helper to filter out assemblies that don't even reference SimpleBatch.
         private static bool DoesAssemblyReferenceAzureJobs(Assembly a)
         {
@@ -29,9 +31,13 @@ namespace Microsoft.WindowsAzure.Jobs
             var assemblies = GetUserAssemblies();
             foreach (var assembly in assemblies)
             {
-                foreach (var type in FindTypes(assembly))
+                var types = FindTypes(assembly);
+                if (types != null)
                 {
-                    yield return type;
+                    foreach (var type in types)
+                    {
+                        yield return type;
+                    }
                 }
             }
         }
