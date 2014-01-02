@@ -20,6 +20,8 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             CloudQueue queue = this.QueueOutput.GetQueue();
+            Guid functionInstance = bindingContext.FunctionInstanceGuid;
+            IQueueResultConverter converter;
 
             Type parameterType = targetParameter.ParameterType;
             if (parameterType.IsByRef)
@@ -31,59 +33,16 @@ namespace Microsoft.WindowsAzure.Jobs
             // Special-case IEnumerable<T> to do multiple enqueue
             if (parameterType.IsGenericType && parameterType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
-                CheckCollectionType(parameterType);
-                return new CollectionJsonQueueResult
-                {
-                    thisFunction = bindingContext.FunctionInstanceGuid,
-                    Queue = queue
-                };
+                Type elementType = GetCollectionElementType(parameterType);
+                IQueueResultConverter itemConverter = CreateElementConverter(elementType);
+                converter = new EnumerableQueueResultConverter(itemConverter);
+            }
+            else
+            {
+                converter = CreateElementConverter(parameterType);
             }
 
-            if (parameterType == typeof(string))
-            {
-                return new StringQueueResult { Queue = queue };
-            }
-
-            if (parameterType == typeof(byte[]))
-            {
-                return new ByteArrayQueueResult { Queue = queue };
-            }
-
-            CheckElementType(parameterType);
-            return new SingleJsonQueueResult
-            {
-                thisFunction = bindingContext.FunctionInstanceGuid,
-                Queue = queue
-            };
-        }
-
-        // Make sure the expected type is used for multiple message payloads.
-        // Here we can assume that the collectionType is IEnumerable<T>
-        private void CheckCollectionType(Type collectionType)
-        {
-            Type elementType = collectionType.GetGenericArguments()[0];
-
-            // elementType cannot be another IEnumerable<T>
-            if (elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-            {
-                throw new InvalidOperationException("Nested IEnumerable<T> is not supported.");
-            }
-
-            CheckElementType(elementType);
-        }
-
-        // Make sure the expected type is used for a single message payload.
-        private void CheckElementType(Type elementType)
-        {
-            if (elementType == typeof(object))
-            {
-                throw new InvalidOperationException(string.Format("[QueueOutput] cannot be used on type '{0}'.", typeof(object).Name));
-            }
-
-            if (typeof(IEnumerable).IsAssignableFrom(elementType) && (!elementType.IsGenericType || elementType.GetGenericTypeDefinition() != typeof(IEnumerable<>)))
-            {
-                throw new InvalidOperationException(string.Format("[QueueOutput] cannot be used on the collection type '{0}'. Use IEnumerable<T> for collection parameters.", elementType.Name));
-            }
+            return new QueueResult(queue, converter, functionInstance);
         }
 
         public override string ConvertToInvokeString()
@@ -96,77 +55,167 @@ namespace Microsoft.WindowsAzure.Jobs
             return string.Format("Output to queue: {0}", QueueOutput.QueueName);
         }
 
-        private abstract class QueueResult : BindResult
+        // Make sure the expected type is used for a single message payload.
+        private static void CheckElementType(Type elementType)
         {
-            public CloudQueue Queue;
+            if (elementType == typeof(object))
+            {
+                throw new InvalidOperationException(string.Format("[QueueOutput] cannot be used on type '{0}'.", typeof(object).Name));
+            }
+
+            if (elementType == typeof(string) || elementType == typeof(byte[]))
+            {
+                // string and byte[] are IEnumerable, but that's OK.
+                return;
+            }
+
+            if (typeof(IEnumerable).IsAssignableFrom(elementType) && (!elementType.IsGenericType || elementType.GetGenericTypeDefinition() != typeof(IEnumerable<>)))
+            {
+                throw new InvalidOperationException(string.Format("[QueueOutput] cannot be used on the collection type '{0}'. Use IEnumerable<T> for collection parameters.", elementType.Name));
+            }
         }
 
-        private abstract class CorrelatedQueueResult : QueueResult
+        private static IQueueResultConverter CreateElementConverter(Type elementType)
         {
-            public Guid thisFunction;
+            CheckElementType(elementType);
 
-            protected virtual void AddMessage(object result)
+            if (elementType == typeof(string))
             {
-                if (Result != null)
-                {
-                    QueueCausalityHelper qcm = new QueueCausalityHelper();
-                    CloudQueueMessage msg = qcm.EncodePayload(thisFunction, result);
+                return new StringQueueResultConverter();
+            }
+            else if (elementType == typeof(byte[]))
+            {
+                return new ByteArrayQueueResultConverter();
+            }
+            else
+            {
+                return new JsonQueueResultConverter();
+            }
+        }
 
-                    // Beware, as soon as this is added,
-                    // another worker can pick up the message and start running.
-                    this.Queue.AddMessage(msg);
+        // Make sure the expected type is used for multiple message payloads.
+        // Here we can assume that the collectionType is IEnumerable<T>
+        private static Type GetCollectionElementType(Type collectionType)
+        {
+            Type elementType = collectionType.GetGenericArguments()[0];
+
+            // elementType cannot be another IEnumerable<T>
+            if (elementType.IsGenericType && elementType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            {
+                throw new InvalidOperationException("Nested IEnumerable<T> is not supported.");
+            }
+
+            return elementType;
+        }
+
+        // Defines a sink for queue messages.
+        private interface IQueueMessageCollector
+        {
+            void Add(CloudQueueMessage message);
+        }
+
+        // Defines a converter that takes a result and produces one or more enqueued messages.
+        private interface IQueueResultConverter
+        {
+            void Convert(object result, Guid functionInstance, IQueueMessageCollector collector);
+        }
+
+        private class ByteArrayQueueResultConverter : IQueueResultConverter
+        {
+            public void Convert(object result, Guid functionInstance, IQueueMessageCollector collector)
+            {
+                byte[] content = result as byte[];
+
+                if (content != null)
+                {
+                    collector.Add(new CloudQueueMessage(content));
                 }
             }
         }
 
-        // Queues a single message.
-        private class SingleJsonQueueResult : CorrelatedQueueResult
+        private class EnumerableQueueResultConverter : IQueueResultConverter
         {
-            public override void OnPostAction()
-            {
-                AddMessage(Result);
-            }
-        }
+            private readonly IQueueResultConverter _itemConverter;
 
-        // Queues multiple messages.
-        private class CollectionJsonQueueResult : CorrelatedQueueResult
-        {
-            public override void OnPostAction()
+            public EnumerableQueueResultConverter(IQueueResultConverter itemConverter)
             {
-                if (Result != null)
+                _itemConverter = itemConverter;
+            }
+
+            public void Convert(object result, Guid functionInstance, IQueueMessageCollector collector)
+            {
+                if (result != null)
                 {
-                    IEnumerable collection = (IEnumerable)Result;
-                    foreach (var value in collection)
+                    IEnumerable enumerable = (IEnumerable)result;
+
+                    foreach (object item in enumerable)
                     {
-                        AddMessage(value);
+                        _itemConverter.Convert(item, functionInstance, collector);
                     }
                 }
             }
         }
 
-        private class StringQueueResult : QueueResult
+        private class JsonQueueResultConverter : IQueueResultConverter
         {
-            public override void OnPostAction()
+            public void Convert(object result, Guid functionInstance, IQueueMessageCollector collector)
             {
-                string content = Result as string;
-
-                if (content != null)
+                if (result != null)
                 {
-                    Queue.AddMessage(new CloudQueueMessage(content));
+                    QueueCausalityHelper causality = new QueueCausalityHelper();
+                    CloudQueueMessage message = causality.EncodePayload(functionInstance, result);
+
+                    // Beware, as soon as this is added,
+                    // another worker can pick up the message and start running.
+                    collector.Add(message);
                 }
             }
         }
 
-        private class ByteArrayQueueResult : QueueResult
+        private class StringQueueResultConverter : IQueueResultConverter
         {
-            public override void OnPostAction()
+            public void Convert(object result, Guid functionInstance, IQueueMessageCollector collector)
             {
-                byte[] content = Result as byte[];
+                string content = result as string;
 
                 if (content != null)
                 {
-                    Queue.AddMessage(new CloudQueueMessage(content));
+                    collector.Add(new CloudQueueMessage(content));
                 }
+            }
+        }
+
+        private class QueueMessageCollector : IQueueMessageCollector
+        {
+            private readonly CloudQueue _queue;
+
+            public QueueMessageCollector(CloudQueue queue)
+            {
+                _queue = queue;
+            }
+
+            public void Add(CloudQueueMessage message)
+            {
+                _queue.AddMessage(message);
+            }
+        }
+
+        private class QueueResult : BindResult
+        {
+            private readonly Guid _functionInstance;
+            private readonly IQueueMessageCollector _collector;
+            private readonly IQueueResultConverter _converter;
+
+            public QueueResult(CloudQueue queue, IQueueResultConverter converter, Guid functionInstance)
+            {
+                _collector = new QueueMessageCollector(queue);
+                _converter = converter;
+                _functionInstance = functionInstance;
+            }
+
+            public override void OnPostAction()
+            {
+                _converter.Convert(Result, _functionInstance, _collector);
             }
         }
     }
