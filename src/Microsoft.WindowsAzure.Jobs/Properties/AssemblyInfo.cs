@@ -9,4 +9,5 @@ using System.Runtime.CompilerServices;
            InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.UnitTests"),
            InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1"),
            InternalsVisibleTo("GauntletTest"),
+           InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.Test.Common")
 ]

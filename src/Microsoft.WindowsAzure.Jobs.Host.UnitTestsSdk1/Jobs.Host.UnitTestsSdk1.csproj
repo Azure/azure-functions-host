@@ -90,6 +90,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Jobs.Host.Test.Common\Jobs.Host.Test.Common.csproj">
+      <Project>{4a832c21-66ea-4de4-8124-f27f8900cba9}</Project>
+      <Name>Jobs.Host.Test.Common</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>

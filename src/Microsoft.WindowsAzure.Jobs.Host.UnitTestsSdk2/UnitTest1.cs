@@ -4,6 +4,7 @@ using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Jobs.Test;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 {
@@ -63,33 +64,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             lc.Call("Queue");
             Assert.IsTrue(Program._QueueInvoked);
         }
-
-        // Helper for calling individual methods. 
-        class TestJobHost<T>
-        {
-            public JobHost Host { get; private set; }
-
-            public TestJobHost()
-            {
-                var account = CloudStorageAccount.DevelopmentStorageAccount;
-                var acs = account.ToString(true);
-
-                var hooks = new JobHostTestHooks
-                {
-                    StorageValidator = new NullStorageValidator(),
-                    TypeLocator = new SimpleTypeLocator(typeof(T))                    
-                };
-
-                // If there is an indexing error, we'll throw here. 
-                Host = new JobHost(acs, acs, hooks);
-            }
-
-            public void Call(string methodName)
-            {
-                var methodInfo = typeof(T).GetMethod(methodName);
-                Host.Call(methodInfo);
-            }
-        }        
 
         [TestMethod]        
         public void TestQueueBadName()

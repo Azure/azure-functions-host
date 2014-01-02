@@ -9,9 +9,7 @@ using System.Runtime.CompilerServices;
            InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.UnitTests"),
            InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1"),
            InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2"),
-           InternalsVisibleTo("ConsoleApplication1"),
            InternalsVisibleTo("GauntletTest"),
            InternalsVisibleTo("LiveAzureTests"),
-           InternalsVisibleTo("RebuildFunctionQueryTables"),
-           InternalsVisibleTo("TestLocalHost")
+           InternalsVisibleTo("Microsoft.WindowsAzure.Jobs.Host.Test.Common")
            ]

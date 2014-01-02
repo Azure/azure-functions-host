@@ -2,6 +2,7 @@ using System.IO;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Jobs.Test;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
@@ -52,7 +53,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             BlobClient.DeleteContainer(account, container);                       
 
             // Nothing written yet, so polling shouldn't execute anything
-            RunOneIteration(host);
+            host.RunOneIteration();
 
             Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.2"));
             Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.3"));
@@ -60,7 +61,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
             BlobClient.WriteBlob(account, container, "foo.1", "abc");
 
-            RunOneIteration(host);
+            host.RunOneIteration();
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
             string middle = BlobClient.ReadBlob(account, container, "foo.2");
@@ -72,14 +73,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             string output = BlobClient.ReadBlob(account, container, "foo.3");
             Assert.IsNotNull(output, "blob should have been written");
             Assert.AreEqual("*foo*", output);
-        }
-
-        // Run one iteration through the host. This does as much work as possible, and then returns. 
-        // It won't loop and poll.
-        static void RunOneIteration(JobHost host)
-        {
-            var cts = new CancellationTokenSource();
-            host.RunAndBlock(cts.Token, () => { cts.Cancel(); });
         }
     }
 
