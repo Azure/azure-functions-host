@@ -87,6 +87,7 @@
     <Compile Include="Engine\Orchestrator\Index\IndexerConfig.cs" />
     <Compile Include="Engine\Orchestrator\OrchestratorRoleHeartbeat.cs" />
     <Compile Include="Engine\Orchestrator\Worker.cs" />
+    <Compile Include="Engine\Runner\Binders\StringBlobBinderProvider.cs" />
     <Compile Include="Engine\Runner\BindingContext.cs" />
     <Compile Include="Engine\Runner\BindCleanupResult.cs" />
     <Compile Include="Engine\Runner\CollisionDetector.cs" />

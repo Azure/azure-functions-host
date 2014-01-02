@@ -222,6 +222,7 @@ namespace Microsoft.WindowsAzure.Jobs
             config.BlobBinders.Add(new BlobStreamBinderProvider());
             config.BlobBinders.Add(new TextReaderProvider());
             config.BlobBinders.Add(new TextWriterProvider());
+            config.BlobBinders.Add(new StringBlobBinderProvider());
 
             // Tables
             config.TableBinders.Add(new TableBinderProvider());

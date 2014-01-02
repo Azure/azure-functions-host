@@ -54,6 +54,23 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("FuncWithBlob");
         }
 
+        // Test binding blobs to strings. 
+        [TestMethod]
+        public void InvokeWithBlobToString()
+        {
+            CloudStorageAccount account = TestStorage.GetAccount();
+            BlobClient.DeleteContainer(account, "daas-test-input");
+
+            string value = "abc";
+            BlobClient.WriteBlob(account, "daas-test-input", "blob.txt", value);
+
+            var lc = TestStorage.New<Program>(account);
+            lc.Call("BindBlobToString");
+
+            string content = BlobClient.ReadBlob(account, "daas-test-input", "blob.out");
+            Assert.AreEqual(value, content);
+        }
+
         [TestMethod]
         public void InvokeWithMissingBlob()
         {
@@ -415,6 +432,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 Assert.AreEqual("abc", content);
 
                 output.Write("done");
+            }
+
+            public static void BindBlobToString(
+                [BlobInput(@"daas-test-input\blob.txt")] string blobIn,
+                [BlobOutput(@"daas-test-input\blob.out")] out string blobOut
+                )
+            {
+                blobOut = blobIn;
             }
 
             [NoAutomaticTrigger]
