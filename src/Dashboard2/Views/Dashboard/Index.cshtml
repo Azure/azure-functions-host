@@ -15,32 +15,8 @@
                     <th>Last Execution</th>
                 </tr>
             </thead>
-            <tbody>
-                @foreach (var statistics in Model.FunctionStatisticsViewModels)
-                {
-                    <tr>
-                        <td>
-                            @if (statistics.IsRunning)
-                            {
-                            }
-                            else
-                            {
-                                <span title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
-                            }
-                            @Html.ActionLink(statistics.FunctionName, "FunctionInstances", "Function", new { functionName = statistics.FunctionFullName }, new { })
-                        </td>
-                        <td>
-                            <a class="label label-success" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = true })">@String.Format("{0:#,0}", statistics.SuccessCount)</a>
-                            <a class="label label-danger" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = false })">@String.Format("{0:#,0}", statistics.FailedCount)</a>
-                        </td>
-                        <td>
-                            @if (statistics.LastWriteTime.HasValue)
-                            {
-                                <span class="pull-right">@MoreHtmlHelpers.DateTimeRelative(statistics.LastWriteTime.Value)</span>
-                            }
-                        </td>
-                    </tr>
-                }
+            <tbody id="function-statistics-body">
+                @{ Html.RenderPartial("../Dashboard/PartialFunctionStatistics", Model.FunctionStatisticsViewModels); }
             </tbody>
         </table>
     </div>
@@ -81,10 +57,12 @@
                 $('.not-running').tooltip();
 
                 var updateLogUrl = '@Url.Action("PartialInvocationLog", "Function")';
+                var updateStatisticsUrl = '@Url.Action("PartialFunctionStatistics", "Dashboard")';
+                var paused = false;
+                var stopRequested = false;
+                
+                var logTimer = setInterval(function () {
 
-                var iID = setInterval(function () {
-
-                    var paused = false;
                     if (!paused) {
                         $.ajax({
                             type: 'GET',
@@ -92,9 +70,6 @@
                             async: true,
                             cache: false,
                             success: function (data) {
-                                if (console && console.log) {
-                                    console.log(data);
-                                }
                                 $('#invocation-log-body').html(data);
                             },
                             fail: function (result) {
@@ -102,12 +77,32 @@
                         });
                     }
 
-                    var stopRequested = false;
                     if (stopRequested) {
-                        clearInterval(iID);
+                        clearInterval(logTimer);
                     }
 
                 }, 2000);
 
+                var logStatistics = setInterval(function () {
+
+                    if (!paused) {
+                        $.ajax({
+                            type: 'GET',
+                            url: updateStatisticsUrl,
+                            async: true,
+                            cache: false,
+                            success: function (data) {
+                                $('#function-statistics-body').html(data);
+                            },
+                            fail: function (result) {
+                            }
+                        });
+                    }
+
+                    if (stopRequested) {
+                        clearInterval(logStatistics);
+                    }
+
+                }, 2000);
             });
         </script>

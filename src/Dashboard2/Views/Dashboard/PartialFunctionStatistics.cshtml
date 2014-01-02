@@ -1,0 +1,28 @@
+﻿@using Dashboard.ViewModels
+@model IEnumerable<FunctionStatisticsViewModel>
+
+@foreach (var statistics in Model)
+{
+    <tr>
+        <td>
+            @if (statistics.IsRunning)
+            {
+            }
+            else
+            {
+                <span title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
+            }
+            @Html.ActionLink(statistics.FunctionName, "FunctionInstances", "Function", new { functionName = statistics.FunctionFullName }, new { })
+        </td>
+        <td>
+            <a class="label label-success" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = true })">@String.Format("{0:#,0}", statistics.SuccessCount)</a>
+            <a class="label label-danger" href="@Url.Action("FunctionInstances", "Function", new { functionName = statistics.FunctionFullName, success = false })">@String.Format("{0:#,0}", statistics.FailedCount)</a>
+        </td>
+        <td>
+            @if (statistics.LastWriteTime.HasValue)
+            {
+                <span class="pull-right">@MoreHtmlHelpers.DateTimeRelative(statistics.LastWriteTime.Value)</span>
+            }
+        </td>
+    </tr>
+}

@@ -90,6 +90,50 @@ namespace Dashboard.Controllers
             return View(model);
         }
 
+        public ActionResult PartialFunctionStatistics()
+        {
+            var hearbeats = _heartbeatTable.ReadAll();
+            var model = _functionTableLookup
+                .ReadAll()
+                .Select(f => new FunctionStatisticsViewModel
+                {
+                    FunctionFullName = f.ToString(),
+                    FunctionName = f.Location.GetShortName(),
+                    IsRunning = HasValidHeartbeat(f, hearbeats),
+                    FailedCount = 0,
+                    SuccessCount = 0,
+                    LastWriteTime = f.Timestamp
+                }).ToArray();
+
+            var table = _services.GetInvokeStatsTable();
+
+            var all = table.Enumerate();
+            foreach (var item in all)
+            {
+                string rowKey = item["RowKey"];
+                var func = _functionTableLookup.Lookup(rowKey);
+
+                if (func == null)
+                {
+                    // ignore functions in stats but not found
+                    continue;
+                }
+
+                var statsModel = model.FirstOrDefault(x =>
+                        x.FunctionFullName == func.ToString()
+                    );
+
+                if (statsModel != null)
+                {
+                    var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
+                    statsModel.FailedCount = stats.CountErrors;
+                    statsModel.SuccessCount = stats.CountCompleted;
+                }
+            }
+
+            return PartialView(model);
+        }
+
         private static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
         {
             string assemblyFullName = func.GetAssemblyFullName();
