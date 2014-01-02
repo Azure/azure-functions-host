@@ -142,7 +142,16 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <param name="token">The token to monitor for cancellation requests.</param>
         public void RunAndBlock(CancellationToken token)
         {
-            //INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaQueueMessage(Utility.GetAccount(_loggingAccountConnectionString));
+            RunAndBlock(token, () => {
+                Thread.Sleep(2 * 1000);
+                Console.Write(".");
+            });
+        }
+
+        // Run the jobs on the current thread. 
+        // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
+        internal void RunAndBlock(CancellationToken token, Action pauseAction)
+        {
             INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
 
             using (Worker worker = new Worker(_hostContext.HostName, _hostContext._functionTableLookup, _hostContext._heartbeatTable, _hostContext._queueFunction, fastpathNotify))
@@ -163,8 +172,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     }
                     while (handled);
 
-                    Thread.Sleep(2 * 1000);
-                    Console.Write(".");
+                    pauseAction();
                 }
             }
         }

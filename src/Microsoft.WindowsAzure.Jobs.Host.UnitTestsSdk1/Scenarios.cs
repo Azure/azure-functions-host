@@ -37,37 +37,49 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         // Test basic propagation between blobs. 
         [TestMethod]
-        public void Test()
-         {
+        public void TestAggressiveBlobChaining()
+        {
             var account = TestStorage.GetAccount();
-            string container = @"daas-test-input";
-            BlobClient.DeleteContainer(account, container);
+            var acs = account.ToString(true);
 
-            var w = LocalOrchestrator.Build(account, typeof(Program));
+            JobHost host = new JobHost(acs, null, new JobHostTestHooks
+            {
+                 StorageValidator = new NullStorageValidator(),
+                 TypeLocator = new SimpleTypeLocator(typeof(Program))
+            });
             
+            string container = @"daas-test-input";
+            BlobClient.DeleteContainer(account, container);                       
+
             // Nothing written yet, so polling shouldn't execute anything
-            w.Poll();
-            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.middle.csv"));
-            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.output.csv"));
+            RunOneIteration(host);
+
+            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.2"));
+            Assert.IsFalse(BlobClient.DoesBlobExist(account, container, "foo.3"));
 
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
-            BlobClient.WriteBlob(account, container, "foo.csv", "abc");
-            
+            BlobClient.WriteBlob(account, container, "foo.1", "abc");
 
-            w.Poll();
+            RunOneIteration(host);
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
-            Thread.Sleep(3000);
-            string middle = BlobClient.ReadBlob(account, container, "foo.middle.csv");
+            string middle = BlobClient.ReadBlob(account, container, "foo.2");
             Assert.IsNotNull(middle, "blob should have been written");
             Assert.AreEqual("foo", middle);
 
             // The *single* poll a few lines up will cause *both* actions to run as they are chained.
             // this makes sure that our chaining optimization works correctly!
-            Thread.Sleep(1000);
-            string output = BlobClient.ReadBlob(account, container, "foo.output.csv");
+            string output = BlobClient.ReadBlob(account, container, "foo.3");
             Assert.IsNotNull(output, "blob should have been written");
             Assert.AreEqual("*foo*", output);
+        }
+
+        // Run one iteration through the host. This does as much work as possible, and then returns. 
+        // It won't loop and poll.
+        static void RunOneIteration(JobHost host)
+        {
+            var cts = new CancellationTokenSource();
+            host.RunAndBlock(cts.Token, () => { cts.Cancel(); });
         }
     }
 
@@ -96,16 +108,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     class Program
     {
         public static void Func1(
-            [BlobInput(@"daas-test-input\{name}.csv")] TextReader values,
+            [BlobInput(@"daas-test-input\{name}.1")] TextReader values,
             string name,
-            [BlobOutput(@"daas-test-input\{name}.middle.csv")] TextWriter output)
+            [BlobOutput(@"daas-test-input\{name}.2")] TextWriter output)
         {
             output.Write(name);
         }
 
         public static void Func2(
-            [BlobInput(@"daas-test-input\{name}.middle.csv")] TextReader values,            
-            [BlobOutput(@"daas-test-input\{name}.output.csv")] TextWriter output)
+            [BlobInput(@"daas-test-input\{name}.2")] TextReader values,            
+            [BlobOutput(@"daas-test-input\{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();
 
