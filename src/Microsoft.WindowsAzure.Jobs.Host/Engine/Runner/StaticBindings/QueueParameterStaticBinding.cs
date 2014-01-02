@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -29,8 +30,14 @@ namespace Microsoft.WindowsAzure.Jobs
             string invokeString = null;
             if (this.IsInput)
             {
-                var inputQueueMsg = (ITriggerNewQueueMessage)inputs;
-                invokeString = inputQueueMsg.QueueMessageInput.AsString;
+                ITriggerNewQueueMessage trigger = inputs as ITriggerNewQueueMessage;
+
+                if (trigger == null)
+                {
+                    throw new InvalidOperationException("Direct calls are not supported for QueueInput methods.");
+                }
+
+                invokeString = trigger.QueueMessageInput.AsString;
             }
             return this.BindFromInvokeString(inputs, invokeString);
         }

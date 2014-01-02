@@ -30,8 +30,15 @@ namespace Microsoft.WindowsAzure.Jobs
             if (path.BlobName == null)
             {
                 // Just a container match. Match to the input blob.
-                var inputBlob = (ITriggerNewBlob)inputs;
-                path = new CloudBlobPath(inputBlob.BlobInput);
+                ITriggerNewBlob trigger = inputs as ITriggerNewBlob;
+
+                if (trigger == null)
+                {
+                    throw new InvalidOperationException(
+                        "Direct calls are not supported for BlobInput methods bound only to a container name.");
+                }
+
+                path = new CloudBlobPath(trigger.BlobInput);
             }
             else
             {
