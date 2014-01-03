@@ -91,9 +91,11 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static ParameterStaticBinding Bind(TableAttribute attr, ParameterInfo parameter)
         {
+            string tableName = attr.TableName ?? parameter.Name;
+            
             return new TableParameterStaticBinding
             {
-                TableName = attr.TableName,
+                TableName = tableName,
             };
         }
 
