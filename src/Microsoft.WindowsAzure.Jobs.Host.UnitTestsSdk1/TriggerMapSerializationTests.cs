@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         public void SerializeCloudBlobPathAsString()
         {
             // CloudPath serializes just like string 
-            string str = @"container\dir\{name}.txt";
+            string str = @"container/dir/{name}.txt";
 
             var path = new CloudBlobPath(str);
 
@@ -130,10 +130,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     'http://scope1': [
       {
         '$type': 'Microsoft.WindowsAzure.Jobs.BlobTrigger, Microsoft.WindowsAzure.Jobs.Host',
-        'BlobInput': 'container\\input\\{name}.txt',
+        'BlobInput': 'container/input/{name}.txt',
         'BlobOutputs': [
-          'container\\output\\{name}.txt',
-          'container\\output2\\{name}.txt'
+          'container/output/{name}.txt',
+          'container/output2/{name}.txt'
         ],
         'CallbackPath': 'http://callback?type=blob',
         'AccountConnectionString': 'a=1;b=2',

@@ -77,7 +77,6 @@
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
     <Compile Include="Engine\Runner\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Engine\Runner\StaticBindings\BlobParameterStaticBindingTests.cs" />
-    <Compile Include="ExceptionAssert.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="PrereqManagerTests.cs" />
@@ -97,6 +96,10 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Jobs.Host.Test.Common\Jobs.Host.Test.Common.csproj">
+      <Project>{4A832C21-66EA-4DE4-8124-F27F8900CBA9}</Project>
+      <Name>Jobs.Host.Test.Common</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>

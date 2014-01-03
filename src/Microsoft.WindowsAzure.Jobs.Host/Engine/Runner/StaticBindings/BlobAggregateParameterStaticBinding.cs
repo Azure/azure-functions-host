@@ -9,11 +9,11 @@
         {
             // plug in any unbounded parameters. 
             //    deploydId=123
-            //    "daas-test-input\{deployId}\{names}.csv"
-            //  becomees: "daas-test-input\123\{names}.csv"
+            //    "daas-test-input/{deployId}/{names}.csv"
+            //  becomees: "daas-test-input/123/{names}.csv"
             CloudBlobPath path = this.BlobPathPattern.ApplyNamesPartial(inputs.NameParameters);
 
-            // Pass to arg Instance "daas-test-input\123\{names}.csv"
+            // Pass to arg Instance "daas-test-input/123/{names}.csv"
             // RuntimeHost binder gets that, does enumeration (of entire container?) and match. 
             // builds up Dict<string, List<string>>,  [names] = "first","second", "third"
             // Can then bind names to string[] names parameter.

@@ -10,7 +10,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public CloudBlobDescriptor BlobPathPattern { get; set; }
 
         // Descriptor has wildcards in it. 
-        // "container\{name}.csv" --> Stream[] all blobs that match
+        // "container/{name}.csv" --> Stream[] all blobs that match
         // 
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {

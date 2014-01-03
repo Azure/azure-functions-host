@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs.Test;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Engine.Runner.StaticBindings
 {
@@ -11,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Engine.Runner.StaticBinding
         {
             // Arrange
             BlobParameterStaticBinding product = new BlobParameterStaticBinding();
-            product.Path = new CloudBlobPath(containerName: null, blobName: null);
+            product.Path = new CloudBlobPath(containerName: "container", blobName: null);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(String.Empty);
 
             // Act & Assert

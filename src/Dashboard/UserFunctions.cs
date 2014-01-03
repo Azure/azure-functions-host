@@ -5,8 +5,8 @@ using Microsoft.WindowsAzure.Jobs;
 class UserFunctions
 {
     public static void CopyXYZ(
-        [BlobInput(@"test8\{name}.input.txt")] TextReader input,
-        [BlobOutput(@"test8\{name}.output.txt")] TextWriter output,
+        [BlobInput(@"test8/{name}.input.txt")] TextReader input,
+        [BlobOutput(@"test8/{name}.output.txt")] TextWriter output,
         string name)
     {
         Console.WriteLine("Hi from Kudu!");
@@ -17,7 +17,7 @@ class UserFunctions
 
     // Manually kick this off, should chain to CopyXYZ
     public static void StartIt(
-        [BlobOutput(@"test8\bongo.input.txt")] TextWriter output)
+        [BlobOutput(@"test8/bongo.input.txt")] TextWriter output)
     {        
         output.Write("test!");
     }

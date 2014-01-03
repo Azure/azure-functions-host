@@ -154,7 +154,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             // Take a second pass to bind params directly to {key} in the attributes above,.
-            // So if we have p1 with attr [BlobInput(@"daas-test-input2\{name}.csv")],
+            // So if we have p1 with attr [BlobInput(@"daas-test-input2/{name}.csv")],
             // then we'll bind 'string name' to the {name} value.
             int pos = 0;
             foreach (ParameterInfo p in ps)

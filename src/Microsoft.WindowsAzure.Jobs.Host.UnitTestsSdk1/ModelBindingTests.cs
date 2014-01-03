@@ -37,7 +37,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var lc = TestStorage.New<Program>(account);
             IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
-            lc.CallOnBlob("Func", @"daas-test-input\input.txt");
+            lc.CallOnBlob("Func", @"daas-test-input/input.txt");
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "output.txt");
             Assert.AreEqual("*abc*", content);
@@ -128,8 +128,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
 
             public static void Func(
-                [BlobInput(@"daas-test-input\input.txt")] Model input,
-                [BlobOutput(@"daas-test-input\output.txt")] out Model output)
+                [BlobInput(@"daas-test-input/input.txt")] Model input,
+                [BlobOutput(@"daas-test-input/output.txt")] out Model output)
             {
                 output = new Model { Value = "*" + input.Value + "*" };
             }

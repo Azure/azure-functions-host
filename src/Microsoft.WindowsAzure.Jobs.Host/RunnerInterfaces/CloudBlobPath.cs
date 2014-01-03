@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
@@ -34,13 +35,27 @@ namespace Microsoft.WindowsAzure.Jobs
         // Parse the string. 
         public CloudBlobPath(string containerName, string blobName)
         {
+            BlobClient.ValidateContainerName(containerName);
+            if (blobName != null)
+            {
+                BlobClient.ValidateBlobName(blobName);
+            }
             _containerName = containerName;
             _blobName = blobName;
         }
 
         public CloudBlobPath(string blobInput)
         {
-            Parser.Split(blobInput, out _containerName, out _blobName);
+            string containerName, blobName;
+            Parser.SplitBlobPath(blobInput, out containerName, out blobName);
+
+            BlobClient.ValidateContainerName(containerName);
+            if (blobName != null)
+            {
+                BlobClient.ValidateBlobName(blobName);
+            }
+            _containerName = containerName;
+            _blobName = blobName;
         }
 
         // Create arround actual blob. Loses the account information. 
@@ -68,7 +83,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 return _containerName;
             }
-            return _containerName + "\\" + _blobName;
+            return _containerName + "/" + _blobName;
         }
 
         public override bool Equals(object obj)
@@ -192,8 +207,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             try
             {
-                string blobPath = this.BlobName.Replace('/', '\\');
-                string[] parts = blobPath.Split('\\');
+                string[] parts = BlobName.Split('/');
 
                 var dir = container.GetDirectoryReference(parts[0]);
                 for (int i = 1; i < parts.Length; i++)
@@ -221,8 +235,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 return ApplyNamesWorker(pattern, nameParameters, allowUnbound: true);
             }
 
-            // Given "daas-test-input\{name}.csv" and a dict {name:bob}, 
-            // returns: "daas-test-input\bob.csv"
+            // Given "daas-test-input/{name}.csv" and a dict {name:bob}, 
+            // returns: "daas-test-input/bob.csv"
             public static string ApplyNames(string pattern, IDictionary<string, string> nameParameters)
             {
                 return ApplyNamesWorker(pattern, nameParameters, allowUnbound: false);
@@ -250,7 +264,7 @@ namespace Microsoft.WindowsAzure.Jobs
                         {
                             if (!allowUnbound)
                             {
-                                throw new InvalidOperationException(string.Format("No value for name parameter '{0}'", name));
+                                throw new InvalidOperationException(String.Format("No value for name parameter '{0}'", name));
                             }
                             // preserve the unbound {name} pattern.
                             sb.Append('{');
@@ -276,17 +290,14 @@ namespace Microsoft.WindowsAzure.Jobs
             // Null if no match 
             public static IDictionary<string, string> Match(string pattern, string actualPath)
             {
-                pattern = pattern.Replace('/', '\\');
-                actualPath = actualPath.Replace('/', '\\');
-
                 string container1;
                 string blob1;
 
                 string container2;
                 string blob2;
 
-                Split(pattern, out container1, out blob1); // may just bec container
-                Split(actualPath, out container2, out blob2); // should always be full
+                SplitBlobPath(pattern, out container1, out blob1); // may just bec container
+                SplitBlobPath(actualPath, out container2, out blob2); // should always be full
 
                 // Containers must match
                 if (!String.Equals(container1, container2, StringComparison.OrdinalIgnoreCase))
@@ -393,25 +404,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new NotImplementedException();
             }
 
-            public static void Split(string input, out string container, out string blob)
-            {
-                input = input.Replace('/', '\\');
-                container = null;
-                blob = null;
-
-                int i = input.IndexOf('\\');
-                if (i <= 0)
-                {
-                    // No blob name
-                    container = input;
-                    return;
-                }
-
-                container = input.Substring(0, i);
-                blob = input.Substring(i + 1);
-            }
-
-
             // Given a path, return all the keys in the path.
             // Eg "{name},{date}" would return "name" and "date".
             public static IEnumerable<string> GetParameterNames(string pattern)
@@ -440,6 +432,23 @@ namespace Microsoft.WindowsAzure.Jobs
                     }
                 }
                 return names;
+            }
+
+            public static void SplitBlobPath(string input, out string container, out string blob)
+            {
+                Debug.Assert(input != null);
+
+                var parts = input.Split(new[] { '/' }, 2);
+                if (parts.Length == 1)
+                {
+                    // No blob name
+                    container = input;
+                    blob = null;
+                    return;
+                }
+
+                container = parts[0]; ;
+                blob = parts[1];
             }
         } // end class Parser
     }

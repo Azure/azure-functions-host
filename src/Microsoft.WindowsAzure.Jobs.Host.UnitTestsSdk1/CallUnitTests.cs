@@ -113,7 +113,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             [NoAutomaticTrigger]
             public static void Chain1(ICall caller,
-                [BlobOutput(@"daas-test-input\test.txt")] TextWriter tw, 
+                [BlobOutput(@"daas-test-input/test.txt")] TextWriter tw, 
                 string inheritedArg)
             {
                 _sb.Append("1");
@@ -139,7 +139,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             [NoAutomaticTrigger]
             public static void Chain2(ICall caller, 
                 string arg, 
-                [BlobInput(@"daas-test-input\test.txt")] TextReader tr)
+                [BlobInput(@"daas-test-input/test.txt")] TextReader tr)
             {
                 Assert.AreEqual("abc", arg);
 
@@ -191,8 +191,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         {
             [NoAutomaticTrigger]
             public static void Chain1(
-                [BlobOutput(@"daas-test-input\{name}-input.txt")] TextReader tr,
-                [BlobOutput(@"daas-test-input\{name}-output.txt")] TextWriter tw,
+                [BlobOutput(@"daas-test-input/{name}-input.txt")] TextReader tr,
+                [BlobOutput(@"daas-test-input/{name}-output.txt")] TextWriter tw,
                 string name,
                 ICall caller)
             {
@@ -205,8 +205,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // Move a blob out of the listening folder and into an archive folder
             [NoAutomaticTrigger]
             public static void ArchiveInput(
-                [BlobOutput(@"daas-test-input\{name}-input.txt")] CloudBlob original,
-                [BlobOutput(@"daas-test-archive\{name}-input.txt")] CloudBlob archive
+                [BlobOutput(@"daas-test-input/{name}-input.txt")] CloudBlob original,
+                [BlobOutput(@"daas-test-archive/{name}-input.txt")] CloudBlob archive
                 )
             {
                 archive.CopyFromBlob(original); // blocks           

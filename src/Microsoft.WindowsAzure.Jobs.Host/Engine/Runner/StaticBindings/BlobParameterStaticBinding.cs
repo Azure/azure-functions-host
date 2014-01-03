@@ -49,12 +49,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return Bind(inputs, path);            
         }
 
-        static string NormalizeBlobName(string blobName)
-        {
-            // Azure directories use '/', and azure sdk libraries fail with '\\'.
-            return blobName.Replace('\\', '/');
-        }
-
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             var path = (string.IsNullOrWhiteSpace(invokeString)) ? this.Path : new CloudBlobPath(invokeString);
@@ -68,7 +62,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 AccountConnectionString = inputs.AccountConnectionString,
                 ContainerName = path.ContainerName,
-                BlobName = NormalizeBlobName(path.BlobName)
+                BlobName = path.BlobName
             };
 
             BlobClient.ValidateContainerName(arg.ContainerName);

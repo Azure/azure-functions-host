@@ -84,14 +84,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             public int Value { get; set; }
         }
 
-        public static void AddToQueue([BlobInput(@"daas-test-input\{name}.csv")] TextReader values, [QueueOutput] out Payload queueTest)
+        public static void AddToQueue([BlobInput(@"daas-test-input/{name}.csv")] TextReader values, [QueueOutput] out Payload queueTest)
         {
             string content = values.ReadToEnd();
             int val = int.Parse(content);
             queueTest = new Payload { Value = val + 1 };
         }
 
-        public static void GetFromQueue([QueueInput] Payload queueTest, [BlobOutput(@"daas-test-input\foo.output")] TextWriter output)
+        public static void GetFromQueue([QueueInput] Payload queueTest, [BlobOutput(@"daas-test-input/foo.output")] TextWriter output)
         {
             output.Write(queueTest.Value);
         }
@@ -101,16 +101,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     class Program
     {
         public static void Func1(
-            [BlobInput(@"daas-test-input\{name}.1")] TextReader values,
+            [BlobInput(@"daas-test-input/{name}.1")] TextReader values,
             string name,
-            [BlobOutput(@"daas-test-input\{name}.2")] TextWriter output)
+            [BlobOutput(@"daas-test-input/{name}.2")] TextWriter output)
         {
             output.Write(name);
         }
 
         public static void Func2(
-            [BlobInput(@"daas-test-input\{name}.2")] TextReader values,            
-            [BlobOutput(@"daas-test-input\{name}.3")] TextWriter output)
+            [BlobInput(@"daas-test-input/{name}.2")] TextReader values,            
+            [BlobOutput(@"daas-test-input/{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();
 

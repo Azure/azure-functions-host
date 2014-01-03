@@ -20,7 +20,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
 
         [NoAutomaticTrigger]
-        private static void NoAutoTrigger1([BlobInput(@"daas-test-input\{name}.csv")] TextReader inputs) { }
+        private static void NoAutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
 
         [TestMethod]
         public void TestNoAutoTrigger1()
@@ -29,7 +29,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.AreEqual(false, func.Trigger.ListenOnBlobs);
         }
 
-        public static void AutoTrigger1([BlobInput(@"daas-test-input\{name}.csv")] TextReader inputs) { }
+        public static void AutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
                    
         [TestMethod]
         public void AutoTrigger1()        
@@ -59,7 +59,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.IsNull(func);
         }
 
-        public static void BlobLease([BlobInput(@"daas-test-input\foo.txt")] ref int x) { }
+        public static void BlobLease([BlobInput(@"daas-test-input/foo.txt")] ref int x) { }
 
         [TestMethod]
         public void TestBlobLease()
@@ -170,7 +170,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         // Both parameters are bound. 
         // Trigger: Automatic listener
-        public static void HasBlobAndBoundParameter([BlobInput(@"container\{bound}")] Stream input, int bound) { }
+        public static void HasBlobAndBoundParameter([BlobInput(@"container/{bound}")] Stream input, int bound) { }
 
         [TestMethod]
         public void TestHasBlobAndBoundParameter()

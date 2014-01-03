@@ -129,7 +129,7 @@ namespace Dashboard
 #endif
             var container = services.GetExecutionLogContainer();
 
-            string blobResultName = string.Format(@"index\{0}.txt", Guid.NewGuid());
+            string blobResultName = string.Format(@"index/{0}.txt", Guid.NewGuid());
             var blobResults = container.GetBlobReference(blobResultName);
 
             string sasQueryString = blobResults.GetSharedAccessSignature(
@@ -152,7 +152,7 @@ namespace Dashboard
             if (indexOperation != null)
             {
                 string accountName = Utility.GetAccount(indexOperation.UserAccountConnectionString).Credentials.AccountName;
-                msgStart = string.Format(@"Index request for {0}\{1} is in queue and waiting to be processed.", accountName, indexOperation.Blobpath);
+                msgStart = string.Format(@"Index request for {0}/{1} is in queue and waiting to be processed.", accountName, indexOperation.Blobpath);
                 model = new RegisterFuncSubmitModel
                 {
                     AccountName = accountName,

@@ -1,7 +1,7 @@
 ﻿using System;
 using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
+namespace Microsoft.WindowsAzure.Jobs.Test
 {
     public static class ExceptionAssert
     {
@@ -17,6 +17,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
         public static void ThrowsInvalidOperation(Action action, string expectedMessage)
         {
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => action.Invoke());
+            Assert.Equal(expectedMessage, exception.Message);
+        }
+
+        public static void ThrowsFormat(Action action, string expectedMessage)
+        {
+            var exception = Assert.Throws<FormatException>(() => action.Invoke());
             Assert.Equal(expectedMessage, exception.Message);
         }
     }

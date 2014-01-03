@@ -4,7 +4,7 @@ using System.Globalization;
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Take in multiple inputs. Used for aggregation. 
-    // [BlobInputs("container\{deployId}\{date}\{name}.csv"]
+    // [BlobInputs("container/{deployId}/{date}/{name}.csv"]
     [AttributeUsage(AttributeTargets.Parameter)]
     internal class BlobInputsAttribute : Attribute
     {

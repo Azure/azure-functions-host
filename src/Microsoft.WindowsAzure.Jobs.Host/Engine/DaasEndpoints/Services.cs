@@ -65,7 +65,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 e = e.InnerException;
             }
 
-            string path = @"service.error\" + Guid.NewGuid().ToString() + ".txt";
+            string path = @"service.error/" + Guid.NewGuid().ToString() + ".txt";
             BlobClient.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
         }
 
@@ -202,7 +202,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
         {
             string content = JsonCustom.SerializeObject(status);
-            GetHealthLogContainer().GetBlobReference(@"exec\" + role + ".txt").UploadText(content);
+            GetHealthLogContainer().GetBlobReference(@"exec/" + role + ".txt").UploadText(content);
         }
 
         public IPrereqManager GetPrereqManager()

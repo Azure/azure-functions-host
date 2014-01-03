@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure.StorageClient;
@@ -150,8 +152,48 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (!Regex.IsMatch(containerName, @"^[a-z0-9](([a-z0-9\-[^\-])){1,61}[a-z0-9]$"))
             {
-                throw new Exception("Invalid container name: " + containerName);
+                throw new FormatException("Invalid container name: " + containerName);
             }
         }
+
+
+        // See http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx.
+        // The fun part is that it is not fully correct - the \, [ and ] characters do fail anyway!
+        public static void ValidateBlobName(string blobName)
+        {
+            Debug.Assert(blobName != null);
+
+            const string unsafeCharactersMessage =
+                "The given blob name '{0}' contains illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.";
+            const string tooLongErrorMessage =
+                "The given blob name '{0}' is too long. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
+            const string tooShortErrorMessage =
+                "The given blob name '{0}' is too short. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
+            const string invalidSuffixErrorMessage =
+                "The given blob name '{0}' had invalid suffix. Avoid blob names that end with a dot ('.'), a forward slash ('/'), or a sequence or combination of the two.";
+
+            if (blobName.Length == 0)
+            {
+                throw new FormatException(string.Format(tooShortErrorMessage, blobName));
+            }
+
+            if (blobName.Length > 1024)
+            {
+                throw new FormatException(string.Format(tooLongErrorMessage, blobName));
+            }
+
+            if (blobName.EndsWith(".") || blobName.EndsWith("/"))
+            {
+                throw new FormatException(string.Format(invalidSuffixErrorMessage, blobName));
+            }
+
+            if (blobName.IndexOfAny(UnsafeBlobNameCharacters) > -1)
+            {
+                throw new FormatException(string.Format(unsafeCharactersMessage, blobName));
+            }
+        }
+
+        // Tested against storage service on Jan 2014. All other unsafe and reserved characters work fine.
+        static readonly char[] UnsafeBlobNameCharacters = { '\\', '[', ']' };
     }
 }

@@ -12,9 +12,37 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         public string AccountConnectionString { get; set; }
 
-        public string ContainerName { get; set; }
+        public string ContainerName
+        {
+            get
+            {
+                return containerName;
+            }
+            set
+            {
+                BlobClient.ValidateContainerName(value);
+                containerName = value;
+            }
+        }
 
-        public string BlobName { get; set; }
+        private string blobName;
+        private string containerName;
+
+        public string BlobName
+        {
+            get
+            {
+                return blobName;
+            }
+            set
+            {
+                if (blobName != null)
+                {
+                    BlobClient.ValidateBlobName(blobName);
+                }
+                blobName = value;
+            }
+        }
 
         public CloudStorageAccount GetAccount()
         {
@@ -32,16 +60,14 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var c = GetContainer();
             c.CreateIfNotExist();
-            string blobName = this.BlobName.Replace('\\', '/');
-
-            // SDK has bug in computing signature with \ in blob names. Should be using /
-            var blob = c.GetBlobReference(blobName);
+            var blob = c.GetBlobReference(BlobName);
             return blob;
         }
 
         public string GetId()
         {
             string accountName = GetAccount().Credentials.AccountName;
+            // TODO: shuold we generate an Id that is a valid blob path? (i.e. using '/' instead of '\' ?)
             return String.Format(CultureInfo.InvariantCulture, @"{0}\{1}\{2}", accountName, ContainerName, BlobName);
         }
 

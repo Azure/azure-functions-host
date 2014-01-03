@@ -366,16 +366,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         private class Program
         {
-            public static void BlobLease([BlobInput(@"daas-test-input\counter.txt")]  ref int x)
+            public static void BlobLease([BlobInput(@"daas-test-input/counter.txt")]  ref int x)
             {
                 x++;
             }
 
             public static void Aggregate1(
-                [BlobInputs(@"daas-test-input\{names}.csv")] TextReader[] inputs,
+                [BlobInputs(@"daas-test-input/{names}.csv")] TextReader[] inputs,
 
                 //string[] names, // $$$ How do we get this?
-                [BlobOutput(@"daas-test-input\output.csv")] TextWriter output
+                [BlobOutput(@"daas-test-input/output.csv")] TextWriter output
                 )
             {
                 int len = 2;
@@ -395,10 +395,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // Test with user-provided parameters
             public static void Aggregate2(
                 string deployId, // user provided? or from attribute (like names?)
-                [BlobInputsAttribute(@"daas-test-input\{deployId}\{names}.csv")] TextReader[] inputs,
+                [BlobInputsAttribute(@"daas-test-input/{deployId}/{names}.csv")] TextReader[] inputs,
 
                 //string[] names
-                [BlobOutput(@"daas-test-input\{outdir}\output.csv")] TextWriter output
+                [BlobOutput(@"daas-test-input/{outdir}/output.csv")] TextWriter output
             )
             {
                 Aggregate1(inputs, output);
@@ -407,8 +407,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // $$$ What does this mean? Multiple inputs. Do they need to match? Is there a precedence?
             public static void Aggregate3(
                 string deployId, // user provided
-                [BlobInputsAttribute(@"daas-test-input\{deployId}\{names}.csv")] TextReader[] inputs,
-                [BlobInputsAttribute(@"daas-test-input\other\{names}.csv")] TextReader[] inputs2,
+                [BlobInputsAttribute(@"daas-test-input/{deployId}/{names}.csv")] TextReader[] inputs,
+                [BlobInputsAttribute(@"daas-test-input/other/{names}.csv")] TextReader[] inputs2,
                 string[] names // $$$ which populates this? are arrays parallel?
             )
             {
@@ -420,8 +420,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 string name, string date,  // used by input
                 string unbound, // not used by in/out
                 string target, // only used by output
-                [BlobInput(@"daas-test-input\{name}-{date}.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input\{target}.csv")] TextWriter output
+                [BlobInput(@"daas-test-input/{name}-{date}.csv")] TextReader values,
+                [BlobOutput(@"daas-test-input/{target}.csv")] TextWriter output
                 )
             {
                 Assert.AreEqual("test", unbound);
@@ -435,8 +435,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
 
             public static void BindBlobToString(
-                [BlobInput(@"daas-test-input\blob.txt")] string blobIn,
-                [BlobOutput(@"daas-test-input\blob.out")] out string blobOut
+                [BlobInput(@"daas-test-input/blob.txt")] string blobIn,
+                [BlobOutput(@"daas-test-input/blob.out")] out string blobOut
                 )
             {
                 blobOut = blobIn;
@@ -444,8 +444,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             [NoAutomaticTrigger]
             public static void FuncWithBlob(
-                [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
-                [BlobInput(@"daas-test-input\blob.csv")] Stream stream
+                [BlobInput(@"daas-test-input/blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input/blob.csv")] Stream stream
                 )
             {
                 Assert.IsNotNull(blob, "Unexpectedly null CloudBlob");
@@ -481,9 +481,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             [NoAutomaticTrigger]
             public static void FuncWithMissingBlob(
-                [BlobInput(@"daas-test-input\blob.csv")] CloudBlob blob,
-                [BlobInput(@"daas-test-input\blob.csv")] Stream stream,
-                [BlobInput(@"daas-test-input\blob.csv")] TextReader reader
+                [BlobInput(@"daas-test-input/blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input/blob.csv")] Stream stream,
+                [BlobInput(@"daas-test-input/blob.csv")] TextReader reader
                 )
             {
                 Assert.IsNull(blob, "Unexpectedly non-null CloudBlob");
@@ -492,14 +492,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
 
             [NoAutomaticTrigger]
-            public static void ParseArgument(int x, [BlobOutput(@"daas-test-input\out.csv")] TextWriter output)
+            public static void ParseArgument(int x, [BlobOutput(@"daas-test-input/out.csv")] TextWriter output)
             {
                 output.Write(x + 1);
             }
 
             public static void Func1(
-                [BlobInput(@"daas-test-input\input.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input\output.csv")] TextWriter output)
+                [BlobInput(@"daas-test-input/input.csv")] TextReader values,
+                [BlobOutput(@"daas-test-input/output.csv")] TextWriter output)
             {
                 string content = values.ReadToEnd();
                 output.Write(content);

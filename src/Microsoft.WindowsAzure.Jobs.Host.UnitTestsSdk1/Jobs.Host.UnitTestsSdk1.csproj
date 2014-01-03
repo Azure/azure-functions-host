@@ -54,6 +54,7 @@
     </Compile>
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUnitTests.cs" />
+    <Compile Include="CloudBlobPathTests.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
     <Compile Include="IContextBinderTests.cs" />
@@ -64,7 +65,7 @@
     <Compile Include="Mocks\LocalOrchestrator.cs" />
     <Compile Include="Mocks\MockBlobLeaseHolder.cs" />
     <Compile Include="ModelBindingTests.cs" />
-    <Compile Include="ParserUnitTests.cs" />
+    <Compile Include="CloudBlobPathParserTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Scenarios.cs" />

@@ -40,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public abstract ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString);
 
         // Describe the binding, as understood by the indexer. 
-        //   Read from blob "container\blob\{name}.csv"
+        //   Read from blob "container/blob/{name}.csv"
         //   Write to table  'foo'
         //   Access route parameter {name}
         //
