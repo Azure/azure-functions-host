@@ -7,12 +7,7 @@ csx
 *.cscfg
 
 /packages
-/WebFrontEnd/Properties/PublishProfiles
+/samples/Binaries
 /TestResults
 
-/samples/Binaries
-
-UpgradeLog.htm
-UpgradeLog.xml
-/_UpgradeReport_Files
-/.nuget/nuget.exe
+/tools/NuGet.exe
