@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Pa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.Test.Common", "src\Jobs.Host.Test.Common\Jobs.Host.Test.Common.csproj", "{4A832C21-66EA-4DE4-8124-F27F8900CBA9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.EndToEndTests", "src\Microsoft.WindowsAzure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,10 @@ Global
 		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -78,5 +84,6 @@ Global
 		{40728169-A18A-49C8-A618-B585DFA0D0D2} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{4A832C21-66EA-4DE4-8124-F27F8900CBA9} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal
