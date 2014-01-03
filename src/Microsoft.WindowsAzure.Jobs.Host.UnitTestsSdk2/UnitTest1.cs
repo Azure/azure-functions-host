@@ -67,17 +67,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 
         [TestMethod]        
         public void TestQueueBadName()
-        {
-            var hooks = new JobHostTestHooks 
-            {
-                StorageValidator = new NullStorageValidator(),
-                TypeLocator = new SimpleTypeLocator(typeof(ProgramBadQueueName))
-            };
-            
+        {           
             try
             {
-                string acs = null;
-                JobHost h = new JobHost(acs, acs, hooks);
+                var host = new TestJobHost<ProgramBadQueueName>(null);
 
                 Assert.Fail("indexer should have noticed bad queue name and failed immediately");
             }

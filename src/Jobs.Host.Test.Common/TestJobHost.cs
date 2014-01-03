@@ -34,8 +34,13 @@ namespace Microsoft.WindowsAzure.Jobs.Test
 
         public void Call(string methodName)
         {
+            Call(methodName, null);
+        }
+
+        public void Call(string methodName, object arguments)
+        {
             var methodInfo = typeof(T).GetMethod(methodName);
-            Host.Call(methodInfo);
+            Host.Call(methodInfo, arguments);
         }
     }  
 }

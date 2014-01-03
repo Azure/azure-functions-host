@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.WindowsAzure.Jobs.Test;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
@@ -45,12 +46,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         [TestMethod]
         public void SimpleInvoke()
         {
-            Type t = typeof(ProgramSimple);
-            JobHost h = CreateInMemoryHost(t);
+            var host = new TestJobHost<ProgramSimple>(null);
 
             var x = "abc";
             ProgramSimple._value = null;
-            h.Call(t.GetMethod("Test"), new { value = x });
+            host.Call("Test", new { value = x });
 
             Assert.AreEqual(x, ProgramSimple._value, "Test method was not invoked properly.");
         }
@@ -64,20 +64,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 _value = value;
             }
-        }
-
-        private static JobHost CreateInMemoryHost(Type programType)
-        {
-            // Use public surface to do an in-memory call.
-            var hooks = new JobHostTestHooks
-            {
-                StorageValidator = new NullStorageValidator(),
-                TypeLocator = new SimpleTypeLocator(programType)
-            };
-
-            // Doesn't need a storage account. No logging, doesn't bind to blobs, doesn't listen on azure, etc.
-            string accountConnectionString = null;
-            return new JobHost(accountConnectionString, accountConnectionString, hooks);
         }
     }
 }
