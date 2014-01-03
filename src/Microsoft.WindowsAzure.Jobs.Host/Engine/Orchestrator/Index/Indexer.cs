@@ -14,8 +14,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private readonly IFunctionTable _functionTable;
 
-        private HashSet<Type> _binderTypes = new HashSet<Type>();
-
         // Account for where index lives
         public Indexer(IFunctionTable functionTable)
         {
@@ -129,31 +127,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 index.Location = loc;
 
                 _functionTable.Add(index);
-
-                // Add custom binders for parameter types
-                foreach (var parameter in descr.Parameters)
-                {
-                    var t = parameter.ParameterType;
-                    MaybeAddBinderType(t);
-                }
             }
-        }
-
-        // Determine if we should check for a custom binder for the given type.
-        private void MaybeAddBinderType(Type type)
-        {
-            if (type.IsPrimitive || type == typeof(string))
-            {
-                return;
-            }
-            if (type.IsByRef)
-            {
-                // T& --> T
-                MaybeAddBinderType(type.GetElementType());
-                return;
-            }
-
-            _binderTypes.Add(type);
         }
 
         // Get any bindings that can be explicitly deduced.

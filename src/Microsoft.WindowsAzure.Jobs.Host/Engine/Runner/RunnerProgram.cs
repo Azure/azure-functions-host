@@ -101,7 +101,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            Invoke(config, method, invoke.Id, invoke.ServiceUrl, inputs, invoke.Args);
+            Invoke(config, method, invoke.Id, inputs, invoke.Args);
         }
 
         public static void Invoke(FunctionInvokeRequest invoke)
@@ -111,7 +111,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // Get standard config. 
             // Use an ICall that binds against the WebService provided by the local function instance.
             IConfiguration config = InitBinders();
-            ApplyManifestBinders(invoke, config);
+
             ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
 
             // Don't bind ICall if we have no WebService URL. 
@@ -126,59 +126,6 @@ namespace Microsoft.WindowsAzure.Jobs
             Invoke(invoke, config);
         }
 
-        // Manifests are a way of adding binders to the configuration. 
-        static void ApplyManifestBinders(FunctionInvokeRequest invoke, IConfiguration config)
-        {
-            var localLoc = invoke.Location as LocalFunctionLocation;
-            if (localLoc == null)
-            {
-                // $$$ Assumes manifest only exists on disk. What about other types?
-                return;
-            }
-            // Is there a manifest file?
-            string path = Path.GetDirectoryName(localLoc.AssemblyPath);
-            string file = Path.Combine(path, "manifest.txt");
-            if (!File.Exists(file))
-            {
-                return;
-            }
-            string json = File.ReadAllText(file);
-            var manifest = JsonConvert.DeserializeObject<ModelBinderManifest>(json);
-
-            ApplyManifestBinders(manifest, path, config);
-        }
-
-        // Path is the local path that the model binder assemblies are relative too. 
-        static void ApplyManifestBinders(ModelBinderManifest manifest, string path, IConfiguration config)
-        {
-            foreach (var entry in manifest.Entries)
-            {
-                var assembly = Assembly.LoadFrom(Path.Combine(path, entry.AssemblyName));
-                var t = assembly.GetType(entry.TypeName);
-                if (t == null)
-                {
-                    throw new InvalidOperationException(string.Format("Type '{0}' does not exist.", entry.TypeName));
-                }
-
-                ApplyHooks(t, config);
-            }
-        }
-        /*
-        static ICall GetWebInvoker(FunctionInvokeRequest instance)
-        {
-            string url = instance.ServiceUrl;
-
-            Func<string, string> functionResolver = (shortName) =>
-                {
-                    var newLoc = instance.Location.ResolveFunctionLocation(shortName);
-                    var functionId = newLoc.ToString(); // Used with IFunctionTableLookup.
-                    return functionId;
-                };
-            var result = new WebFunctionInvoker(functionResolver, url);
-
-            return new WebCallWrapper(result);
-        }
-        */
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
         {
             // For a RemoteFunctionLocation, we could download it and invoke. But assuming caller already did that. 
@@ -277,18 +224,11 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, string serviceUrl, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
+        private static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
-
-            // ###
-            //INotifyNewBlob notificationService = new NotifyNewBlobViaWebApi(serviceUrl);
-            INotifyNewBlob notificationService = null;
-            if (_parameterLogger != null)
-            {
-                //notificationService = new NotifyNewBlobViaQueueMessage(Utility.GetAccount(_parameterLogger.AccountConnectionString));
-            }
-            notificationService = new NotifyNewBlobViaInMemory();
+                        
+            INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
 
 
             IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService);
