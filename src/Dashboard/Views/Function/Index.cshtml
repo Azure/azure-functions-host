@@ -20,46 +20,9 @@
     <text>This function is invoked automatically on a timer at frequency (@trigger.TimerInterval)</text>
 } else 
 {
-    <text>This function is not automatically invoked. You can invoke it explicitly via this webpage or via an HTTP RPC call.</text>
+    <text>This function is not automatically invoked. You can invoke it explicitly via an HTTP RPC call.</text>
 }
 </div>
-
-<h2>Invoke <small>the function with explicit arguments</small></h2>
-@using (Html.BeginForm("InvokeFunctionWithArgs", "Function", FormMethod.Post, new { @class = "form-horizontal" }))
-{
-    <div class="hero-unit call-unit" id="invoke-unit">
-        <div id="invoke-unit-body">
-            <span id="invoke-unit-function">@(Model.Descriptor.Location.GetShorterName())</span>
-
-              <div id="invoke-unit-params">
-                <input type="hidden" value="@Model.Descriptor.ToString()" name ="func"/>
-                <input type="hidden" value="@Model.ReplayGuid" name ="replayGuid"/>
-
-            @if(Model.Parameters.Length == 0) {
-                <text>()</text>
-            } else {
-                <text>
-                    (                      
-                            @for(int i =0; i < Model.Parameters.Length; i++) {
-                                var param = Model.Parameters[i];
-                                <div class="control-group">
-                                    <label class="control-label" for="argValues[@i]">@param.Name:</label>
-                                    <div class="controls">
-                                        <input name="argValues[@i]" value="@param.ArgInvokeString" size="100" placeholder="@param.Description"/>
-                                    </div>
-                                </div>
-                            }
-                        
-                    )
-                </text>
-            }
-                  </div>
-        </div>
-        <p class="call-unit-commands">
-            <button type="submit" class="btn btn-primary"><i class="icon-play-sign"></i> Invoke</button><small> This will execute the function using the supplied parameters.</small>
-        </p>
-    </div>
-}
 
 @if (!string.IsNullOrWhiteSpace(Model.UploadContainerName))
 {

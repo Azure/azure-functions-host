@@ -43,11 +43,6 @@ namespace Dashboard
             Bind<IFunctionTableLookup>().ToConstant(services.GetFunctionTable());
             Bind<IRunningHostTableReader>().ToConstant(services.GetRunningHostTableReader());
 
-            var qi = services.GetQueueInterfaces();
-            var q = services.GetExecutionQueue();
-            var qc = new WorkerRoleExecutionClient(q, qi);
-
-            Bind<IQueueFunction>().ToConstant(qc);
             return;
         }
 

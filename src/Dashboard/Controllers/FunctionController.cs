@@ -17,11 +17,9 @@ namespace Dashboard.Controllers
     public class FunctionController : Controller
     {
         private readonly IFunctionTableLookup _functionTableLookup;
-        private readonly IQueueFunction _queueFunction;
 
-        internal FunctionController(IQueueFunction queueFunction, IFunctionTableLookup functionTableLookup)
+        internal FunctionController(IFunctionTableLookup functionTableLookup)
         {
-            _queueFunction = queueFunction;
             _functionTableLookup = functionTableLookup;
         }
 
@@ -148,61 +146,6 @@ namespace Dashboard.Controllers
 
             // Precede the args
             return View("Index", model);
-        }
-
-        // Post when we actually submit the invoke. 
-        [HttpPost]
-        public ActionResult InvokeFunctionWithArgs(FunctionDefinitionModel func, string[] argValues, Guid? replayGuid)
-        {
-            if (argValues == null)
-            {
-                argValues = new string[0];
-            }
-            ParameterRuntimeBinding[] args = new ParameterRuntimeBinding[argValues.Length];
-
-            var flows = func.Flow.Bindings;
-            var account = func.UnderlyingObject.GetAccount();
-
-            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(func.UnderlyingObject.Location);
-
-            for (int i = 0; i < argValues.Length; i++)
-            {
-                var flow = flows[i];
-                args[i] = flow.BindFromInvokeString(inputs, argValues[i]);
-
-                if (args[i] == null)
-                {
-                    // ### Error
-                }
-            }
-
-            FunctionInvokeRequest instance = new FunctionInvokeRequest();
-            instance.Args = args;
-            instance.Location = func.UnderlyingObject.Location;
-
-            if (replayGuid.HasValue && replayGuid != Guid.Empty)
-            {
-                instance.TriggerReason = new InvokeTriggerReason
-                {
-                    Message = "Invoked by replaying a previous function.",
-                    ParentGuid = replayGuid.Value
-                };
-            }
-            else
-            {
-                instance.TriggerReason = new InvokeTriggerReason
-                {
-                    Message = "Explicitly requested via web dashboard",
-                    ParentGuid = Guid.Empty, // Invoked directly by user, so no parent function. 
-                };
-            }
-
-            // Get instance ID from queuing. Use that to redict to view 
-            var instanceLog = _queueFunction.Queue(instance);
-
-            // We got here via a POST. 
-            // Switch to a GET so that users can do a page refresh as the function updates. 
-            return RedirectLogFunctionInstance(instanceLog);
         }
 
         private ActionResult RedirectLogFunctionInstance(ExecutionInstanceLogEntity func)

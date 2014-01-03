@@ -70,13 +70,8 @@
     <Compile Include="Engine\DaasEndpoints\Services.cs" />
     <Compile Include="Engine\DaasEndpoints\ServiceHealthStatus.cs" />
     <Compile Include="Engine\DaasEndpoints\WebExecutionLogger.cs" />
-    <Compile Include="Engine\DaasEndpoints\WorkerRoleExecutionClient.cs" />
-    <Compile Include="Engine\Executor\ExecutionInstance.cs" />
-    <Compile Include="Engine\Executor\Executor.cs" />
-    <Compile Include="Engine\Executor\ExecutorClient.cs" />
     <Compile Include="Engine\Executor\ExecutionRoleHeartbeat.cs" />
     <Compile Include="Engine\Executor\IExecutionLogger.cs" />
-    <Compile Include="Engine\Executor\ExecutorListener.cs" />
     <Compile Include="Engine\Executor\ExecutionStatsAggregator.cs" />
     <Compile Include="Engine\Executor\FunctionStatsEntity.cs" />
     <Compile Include="Engine\Orchestrator\Index\BinderLookup.cs" />
