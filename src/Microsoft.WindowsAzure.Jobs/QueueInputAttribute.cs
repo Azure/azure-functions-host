@@ -16,12 +16,23 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public QueueInputAttribute()
         {
+            
         }
 
         /// <summary>
-        /// Gets or sets the name of the queue to bind to. If empty, the name of the method parameter is used
+        /// Initializes a new instance of the QueueInputAttribute class.
+        /// </summary>
+        /// <param name="queueName">The name of the queue to bind to. If empty, the 
+        /// name of the method parameter is used as the queue name.</param>
+        public QueueInputAttribute(string queueName)
+        {
+            QueueName = queueName;
+        }
+
+        /// <summary>
+        /// Gets the name of the queue to bind to. If empty, the name of the method parameter is used
         /// as the queue name.
         /// </summary>
-        public string QueueName { get; set; }
+        public string QueueName { get; private set; }
     }
 }

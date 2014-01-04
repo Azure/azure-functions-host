@@ -56,7 +56,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
         /// Used to syncronize the application start and blob creation
         /// </summary>
         public static void NotifyStart(
-            [QueueInput(QueueName = HostStartQueueName)] string input)
+            [QueueInput(HostStartQueueName)] string input)
         {
             _startWaitHandle.Set();
         }
@@ -71,7 +71,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
         public static void BlobToQueue(
             [BlobInput(ContainerName + @"/{name}")] CustomObject input,
             string name,
-            [QueueOutput(QueueName = TestQueueName)] out CustomObject output)
+            [QueueOutput(TestQueueName)] out CustomObject output)
         {
             CustomObject result = new CustomObject()
             {
