@@ -22,6 +22,13 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var type = targetParameter.ParameterType;
 
+            // Unwrap T& --> T
+            // don't forget - IsByRef is true for both 'ref' and 'out' parameters
+            if (type.IsByRef)
+            {
+                type = type.GetElementType();
+            } 
+
             if (targetParameter.IsOut)
             {
                 if (IsInput)
@@ -30,20 +37,15 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            if (type.IsByRef) // Unwrap T& --> T
+            var isRefKeyword = Utility.IsRefKeyword(targetParameter);
+            if (isRefKeyword)
             {
-                type = type.GetElementType();
+                throw new InvalidOperationException("Input blob parameter can't have [Ref] keyword.");
             }
 
-            useLease = Utility.IsRefKeyword(targetParameter);
-            if (useLease)
-            {
-                // This means we had a bad request formed. 
-                if (IsInput)
-                {
-                    throw new InvalidOperationException("Blob is leased, but marked as input-only.");
-                }
-            }
+            // TODO: 'ref' support was cut from alpha1, will be reinstated later
+            useLease = false;
+
             return type;
         }
 

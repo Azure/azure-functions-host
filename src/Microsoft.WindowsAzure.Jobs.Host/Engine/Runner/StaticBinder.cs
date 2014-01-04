@@ -64,12 +64,16 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
         {
-            bool isLease = Utility.IsRefKeyword(parameter);
+            var isRefKeyword = Utility.IsRefKeyword(parameter);
+            if (isRefKeyword)
+            {
+                throw new InvalidOperationException("Input blob parameter can't have [Ref] keyword.");
+            }
 
             // Treat ByRef as output. 
             // - for blob listening: if it were input, this would cause a cycle (since we write to the input)
             // - it's output since we're writing to it. So we do need to stamp it with a function guid.
-            bool isInput = !isLease;
+            bool isInput = !isRefKeyword;
 
             var path = new CloudBlobPath(attr.BlobPath);
             return new BlobParameterStaticBinding

@@ -113,6 +113,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.AreEqual("abc", content);
         }
 
+        // TODO: enable the test when we support ref (with proper lease)
+        [Ignore]
         [TestMethod]
         public void TestBlobLease()
         {

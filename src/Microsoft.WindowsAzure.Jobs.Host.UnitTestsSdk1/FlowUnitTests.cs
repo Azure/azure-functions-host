@@ -61,6 +61,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         public static void BlobLease([BlobInput(@"daas-test-input/foo.txt")] ref int x) { }
 
+        // TODO: enable the test when we support ref (with proper lease)
+        [Ignore]
         [TestMethod]
         public void TestBlobLease()
         {
