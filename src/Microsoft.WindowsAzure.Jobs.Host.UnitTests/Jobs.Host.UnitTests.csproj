@@ -73,6 +73,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\QueueInputParameterRuntimeBindingsTest.cs" />
     <Compile Include="Engine\Runner\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Engine\Runner\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />

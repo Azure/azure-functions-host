@@ -13,21 +13,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         [TestMethod]
         public void TestQueue()
         {
+            var host = new TestJobHost<ProgramQueues>();
+
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
             BlobClient.DeleteContainer(account, container);
             QueueClient.DeleteQueue(account, "queuetest");
-
-            var w = LocalOrchestrator.Build(account, typeof(ProgramQueues));
-
+                        
             BlobClient.WriteBlob(account, container, "foo.csv", "15");
 
-            // Unspecified the exact number of polls it will take to push through both functions. 
-            // Should be less than total length of functions to call.
-            for (int i = 0; i < 3; i++)
-            {
-                w.Poll();
-            }
+            host.Host.RunOneIteration();
 
             string output = BlobClient.ReadBlob(account, container, "foo.output");
             Assert.IsNotNull(output, "blob should have been written");
@@ -82,17 +77,31 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         public class Payload
         {
             public int Value { get; set; }
+
+            public string Output { get; set; }
         }
 
-        public static void AddToQueue([BlobInput(@"daas-test-input/{name}.csv")] TextReader values, [QueueOutput] out Payload queueTest)
+        public static void AddToQueue(
+            [BlobInput(@"daas-test-input/{name}.csv")] TextReader values, 
+            [QueueOutput] out Payload queueTest)
         {
             string content = values.ReadToEnd();
             int val = int.Parse(content);
-            queueTest = new Payload { Value = val + 1 };
+            queueTest = new Payload { 
+                Value = val + 1,
+                Output = "foo.output"
+            };
         }
 
-        public static void GetFromQueue([QueueInput] Payload queueTest, [BlobOutput(@"daas-test-input/foo.output")] TextWriter output)
+        // Triggered on queue. 
+        // Route parameters are bound from queue values
+        public static void GetFromQueue(
+            [QueueInput] Payload queueTest, 
+            [BlobOutput(@"daas-test-input/{Output}")] TextWriter output,
+            int Value // bound from queueTest.Value
+            )
         {
+            Assert.AreEqual(Value, queueTest.Value);
             output.Write(queueTest.Value);
         }
     }

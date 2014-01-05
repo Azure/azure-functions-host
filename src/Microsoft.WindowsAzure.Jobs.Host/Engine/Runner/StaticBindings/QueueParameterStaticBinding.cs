@@ -1,5 +1,6 @@
 ﻿using System;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -7,6 +8,10 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         // Is this enqueue or dequeue?
         public bool IsInput { get; set; }
+
+        // Route params produced from this queue. 
+        // This likely corresponds to simply properties on the QueueInput Parameter type.
+        public string[] Params { get; set; }
 
         [JsonIgnore]
         private string _queueName;
@@ -22,6 +27,14 @@ namespace Microsoft.WindowsAzure.Jobs
                 string name = value.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
                 QueueClient.ValidateQueueName(name);
                 this._queueName = name;
+            }
+        }
+
+        public override IEnumerable<string> ProducedRouteParameters
+        {
+            get
+            {
+                return Params ?? new string[0];
             }
         }
 

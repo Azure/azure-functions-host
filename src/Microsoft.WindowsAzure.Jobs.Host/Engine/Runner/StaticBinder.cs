@@ -136,10 +136,13 @@ namespace Microsoft.WindowsAzure.Jobs
                 queueName = parameter.Name;
             }
 
+            string[] namedParams = QueueInputParameterRuntimeBinding.GetRouteParametersFromParamType(parameter.ParameterType);
+            
             return new QueueParameterStaticBinding
             {
                 QueueName = queueName,
-                IsInput = true
+                IsInput = true,
+                Params = namedParams
             };
         }
     }

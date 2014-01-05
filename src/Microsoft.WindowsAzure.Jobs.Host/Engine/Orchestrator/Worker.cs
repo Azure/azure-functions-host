@@ -229,9 +229,16 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             string payload = msg.AsString;
 
-            // msg was the one that triggered it.            
-
-            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg);
+            // Extract any named parameters from the queue payload.
+            var flow = func.Flow;
+            QueueParameterStaticBinding qb = flow.Bindings.OfType<QueueParameterStaticBinding>().Where(b => b.IsInput).First();
+            IDictionary<string, string> p = QueueInputParameterRuntimeBinding.GetRouteParameters(payload, qb.Params);
+            
+            // msg was the one that triggered it.
+            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg)
+            {
+                NameParameters = p
+            };
 
             var instance = BindParameters(ctx, func);
 
