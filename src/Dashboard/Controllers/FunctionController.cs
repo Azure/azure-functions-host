@@ -15,18 +15,24 @@ namespace Dashboard.Controllers
         private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IProcessTerminationSignalReader _terminationSignalReader;
+        private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
 
         private const int MaxPageSize = 50;
         private const int DefaultPageSize = 10;
 
         internal FunctionController(
-            Services services, 
-            IFunctionTableLookup functionTableLookup, 
-            IFunctionInstanceLookup functionInstanceLookup)
+            Services services,
+            IFunctionTableLookup functionTableLookup,
+            IFunctionInstanceLookup functionInstanceLookup,
+            IProcessTerminationSignalReader terminationSignalReader,
+            IProcessTerminationSignalWriter terminationSignalWriter)
         {
             _services = services;
             _functionTableLookup = functionTableLookup;
             _functionInstanceLookup = functionInstanceLookup;
+            _terminationSignalReader = terminationSignalReader;
+            _terminationSignalWriter = terminationSignalWriter;
         }
 
         public ActionResult PartialInvocationLog()
@@ -113,7 +119,7 @@ namespace Dashboard.Controllers
             var model = new FunctionInstanceDetailsViewModel();
             model.InvocationLogViewModel = new InvocationLogViewModel(func);
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
-            model.IsAborted = model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running && _services.IsDeleteRequested(func.FunctionInstance.Id);
+            model.IsAborted = model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
 
             // Do some analysis to find inputs, outputs, 
 
@@ -234,7 +240,7 @@ namespace Dashboard.Controllers
                 return HttpNotFound();
             }
 
-            _services.PostDeleteRequest(func.FunctionInstance);
+            _terminationSignalWriter.RequestTermination(func.HostInstanceId);
 
             return RedirectToAction("FunctionInstance", new { id });
         }

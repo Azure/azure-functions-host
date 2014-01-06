@@ -22,6 +22,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // This is the last time the object was updated. 
         public DateTime Timestamp { get; set; }
 
+        public Guid HostInstanceId { get; set; }
+
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
         public FunctionInvokeRequest FunctionInstance { get; set; }

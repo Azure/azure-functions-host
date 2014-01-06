@@ -36,6 +36,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 logItemContext = null;
             }
 
+            logItem.HostInstanceId = context.HostInstanceId;
             logItem.FunctionInstance = instance;
             logItem.StartTime = DateTime.UtcNow;
 
@@ -100,13 +101,9 @@ namespace Microsoft.WindowsAzure.Jobs
                 logItemContext.Flush();
             }
 
-            using (RunningFunctionHeartbeat heartbeat = new RunningFunctionHeartbeat(logger, logItem))
+            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(logger, logItem))
             {
-                // Set an initial heartbeat without relying on another thread to start.
-                heartbeat.Signal();
-
-                Thread heartbeatThread = new Thread(FunctionRunningThreadCallback);
-                heartbeatThread.Start(heartbeat);
+                heartbeat.Start();
 
                 try
                 {
@@ -138,103 +135,21 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 finally
                 {
-                    heartbeat.Cancel();
-                    heartbeatThread.Join();
+                    heartbeat.Stop();
                     functionOutput.CloseOutput();
                 }
             }
         }
 
-        static private void FunctionRunningThreadCallback(object state)
+        private static HeartbeatTimer CreateHeartbeatTimer(IFunctionUpdatedLogger logger,
+            ExecutionInstanceLogEntity logItem)
         {
-            IHeartbeatThread thread = (IHeartbeatThread)state;
-            thread.Run();
-        }
-
-        private interface IHeartbeatThread
-        {
-            void Run();
-        }
-
-        private sealed class RunningFunctionHeartbeat : IDisposable, IHeartbeatThread
-        {
-            private const int _heartbeatFrequencyInSeconds = 30;
-            private const int _heartbeatInvalidationInSeconds = 45;
-            private const int _millisecondsInSecond = 1000;
-            private const int _heartbeatFrequencyInMilliseconds = _heartbeatFrequencyInSeconds * _millisecondsInSecond;
-
-            private readonly EventWaitHandle _event = new ManualResetEvent(initialState: false);
-            private readonly IFunctionUpdatedLogger _logger;
-            private readonly ExecutionInstanceLogEntity _logItem;
-
-            private bool _disposed;
-
-            public RunningFunctionHeartbeat(IFunctionUpdatedLogger logger, ExecutionInstanceLogEntity logItem)
-            {
-                if (logger == null)
-                {
-                    throw new ArgumentNullException("logger");
-                }
-
-                if (logItem == null)
-                {
-                    throw new ArgumentNullException("logItem");
-                }
-
-                _logger = logger;
-                _logItem = logItem;
-            }
-
-            public void Cancel()
-            {
-                ThrowIfDisposed();
-                bool succeeded = _event.Set();
-                // EventWaitHandle.Set can never return false (see implementation).
-                Contract.Assert(succeeded);
-            }
-
-            public void Run()
-            {
-                // Keep signaling until cancelled
-                while (!WaitForCancellation())
-                {
-                    Signal();
-                }
-            }
-
-            public void Signal()
-            {
-                Signal(DateTime.UtcNow.AddSeconds(_heartbeatInvalidationInSeconds));
-            }
-
-            private void Signal(DateTime invalidAfterUtc)
-            {
-                ThrowIfDisposed();
-                _logItem.HeartbeatExpires = invalidAfterUtc;
-                _logger.Log(_logItem);
-            }
-
-            private bool WaitForCancellation()
-            {
-                return _event.WaitOne(_heartbeatFrequencyInMilliseconds);
-            }
-
-            void IDisposable.Dispose()
-            {
-                if (!_disposed)
-                {
-                    _event.Dispose();
-                    _disposed = true;
-                }
-            }
-
-            private void ThrowIfDisposed()
-            {
-                if (_disposed)
-                {
-                    throw new ObjectDisposedException(null);
-                }
-            }
+            const int millisecondsInSecond = 1000;
+            const int heartbeatInMilliseconds = 30 * millisecondsInSecond;
+            const int invalidationInMilliseconds = 45 * millisecondsInSecond;
+            RunningFunctionHeartbeat heartbeat =
+                new RunningFunctionHeartbeat(logger, logItem, invalidationInMilliseconds);
+            return new HeartbeatTimer(heartbeat, heartbeatInMilliseconds);
         }
     }
 }

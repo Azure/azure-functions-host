@@ -10,11 +10,8 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
 
-        private readonly string _hostName;
-
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
-        private readonly IRunningHostTableWriter _heartbeatTable;
         private readonly IQueueFunction _execute;
 
         // General purpose listener for blobs, queues. 
@@ -23,30 +20,18 @@ namespace Microsoft.WindowsAzure.Jobs
         // Fast-path blob listener. 
         private INotifyNewBlobListener _blobListener;
 
-        private DateTime _nextHeartbeat;
-
-        public Worker(string hostName, IFunctionTableLookup functionTable, IRunningHostTableWriter heartbeatTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
+        public Worker(IFunctionTableLookup functionTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
         {
             _blobListener = blobListener;
-            if (hostName == null)
-            {
-                throw new ArgumentNullException("hostName");
-            }
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
-            }
-            if (heartbeatTable == null)
-            {
-                throw new ArgumentNullException("heartbeatTable");
             }
             if (execute == null)
             {
                 throw new ArgumentNullException("execute");
             }
-            _hostName = hostName;
             _functionTable = functionTable;
-            _heartbeatTable = heartbeatTable;
             _execute = execute;
 
             CreateInputMap();
@@ -79,37 +64,10 @@ namespace Microsoft.WindowsAzure.Jobs
             _listener = new Listener(map, new MyInvoker(this));
         }
 
-        public void Run()
-        {
-            while (true)
-            {
-                Poll(CancellationToken.None);
-
-                // This sleep is a propagation delay for wiring an output up to the next thing to run. 
-                // Could optimize that away by analyzing outputs and determining if we should immediately execute a new func.
-                Thread.Sleep(2 * 1000);
-            }
-        }
-
-        // Does one iteration
-        // Polling can take a long time, so pass in a cancellation token to allow aborting. 
-        public void Poll()
-        {
-            Poll(CancellationToken.None);
-        }
-
         private int _triggerCount = 0;
 
         public void Poll(CancellationToken token)
         {
-            _heartbeat.Heartbeat = DateTime.UtcNow;
-
-            if (_heartbeat.Heartbeat > _nextHeartbeat)
-            {
-                _heartbeatTable.SignalHeartbeat(_hostName);
-                _nextHeartbeat = DateTime.UtcNow.Add(RunningHost.HeartbeatSignalInterval);
-            }
-
             while (!token.IsCancellationRequested)
             {
                 int lastCount = _triggerCount;
@@ -233,7 +191,7 @@ namespace Microsoft.WindowsAzure.Jobs
             var flow = func.Flow;
             QueueParameterStaticBinding qb = flow.Bindings.OfType<QueueParameterStaticBinding>().Where(b => b.IsInput).First();
             IDictionary<string, string> p = QueueInputParameterRuntimeBinding.GetRouteParameters(payload, qb.Params);
-            
+
             // msg was the one that triggered it.
             RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg)
             {

@@ -34,6 +34,8 @@ namespace Dashboard
             Bind<AppConfiguration>().ToConstant(appConfig);
             Bind<Services>().ToConstant(services); // $$$ eventually remove this.
             Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
+            Bind<IProcessTerminationSignalReader>().ToConstant(CreateProcessTerminationSignalReader(services.Account));
+            Bind<IProcessTerminationSignalWriter>().ToConstant(CreateProcessTerminationSignalWriter(services.Account));
 
             // $$$ This list should eventually just cover all of Services, and then we can remove services.
             // $$$ We don't want Services() floating around. It's jsut a default factory for producing objects that 
@@ -51,6 +53,16 @@ namespace Dashboard
             CloudBlobClient client = account.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(EndpointNames.VersionContainerName);
             return new HostVersionReader(container);
+        }
+
+        private static IProcessTerminationSignalReader CreateProcessTerminationSignalReader(CloudStorageAccount account)
+        {
+            return new ProcessTerminationSignalReader(account);
+        }
+
+        private static IProcessTerminationSignalWriter CreateProcessTerminationSignalWriter(CloudStorageAccount account)
+        {
+            return new ProcessTerminationSignalWriter(account);
         }
 
         // Get a Services object based on current configuration.

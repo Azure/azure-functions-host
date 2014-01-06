@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -66,6 +66,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="CompositeHeartbeat.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
@@ -88,6 +89,8 @@
     <Compile Include="Engine\Orchestrator\Index\Indexer.cs" />
     <Compile Include="Engine\Orchestrator\Index\IndexerConfig.cs" />
     <Compile Include="Engine\Orchestrator\OrchestratorRoleHeartbeat.cs" />
+    <Compile Include="TerminateProcessUponRequestHeartbeat.cs" />
+    <Compile Include="RunningHostHeartbeat.cs" />
     <Compile Include="Engine\Orchestrator\Worker.cs" />
     <Compile Include="Engine\Runner\Binders\StringBlobBinderProvider.cs" />
     <Compile Include="Engine\Runner\BindingContext.cs" />
@@ -144,6 +147,8 @@
     <Compile Include="Engine\Runner\DelegatingStream.cs" />
     <Compile Include="Engine\Runner\WatchableStream.cs" />
     <Compile Include="Engine\Runner\CallUtil.cs" />
+    <Compile Include="HeartbeatTimer.cs" />
+    <Compile Include="IHeartbeat.cs" />
     <Compile Include="JobHost.cs" />
     <Compile Include="JobHostContext.cs" />
     <Compile Include="Engine\Runner\BindResultTransaction.cs" />
@@ -158,11 +163,17 @@
     <Compile Include="RunnerInterfaces\CloudQueueComparer.cs" />
     <Compile Include="RunnerInterfaces\DefaultStorageValidator.cs" />
     <Compile Include="RunnerInterfaces\DefaultTypeLocator.cs" />
+    <Compile Include="RunnerInterfaces\Execution\RunningFunctionHeartbeat.cs" />
     <Compile Include="RunnerInterfaces\FileFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\CloudQueueDescriptor.cs" />
     <Compile Include="RunnerInterfaces\CloudTableDescriptor.cs" />
     <Compile Include="RunnerInterfaces\CloudBlobDescriptor.cs" />
     <Compile Include="RunnerInterfaces\BinderEntry.cs" />
+    <Compile Include="RunnerInterfaces\Host\IProcessTerminationSignalWriter.cs" />
+    <Compile Include="RunnerInterfaces\Host\NullProcessTerminationSignalReader.cs" />
+    <Compile Include="RunnerInterfaces\Host\ProcessTerminationSignalWriter.cs" />
+    <Compile Include="RunnerInterfaces\Host\ProcessTerminationSignalReader.cs" />
+    <Compile Include="RunnerInterfaces\Host\IProcessTerminationSignalReader.cs" />
     <Compile Include="RunnerInterfaces\IServiceContainer.cs" />
     <Compile Include="RunnerInterfaces\AbnormalTerminationException.cs" />
     <Compile Include="RunnerInterfaces\IStorageValidator.cs" />

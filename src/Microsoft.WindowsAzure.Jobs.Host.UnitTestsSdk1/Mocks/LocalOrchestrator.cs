@@ -18,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs
             IFunctionTable functionTable = store; // $$$ Merge with LC
             IQueueFunction executor = lc.QueueFunction;
 
-            var worker = new Worker(typeClass.Assembly.FullName, functionTable, new NullRunningHostTableWriter(), executor);
+            var worker = new Worker(functionTable, executor);
             return worker;
         }
     }

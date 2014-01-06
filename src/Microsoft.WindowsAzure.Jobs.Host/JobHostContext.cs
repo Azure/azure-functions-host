@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -15,16 +15,19 @@ namespace Microsoft.WindowsAzure.Jobs
     // and return a set of services that the host can use for invoking, listening, etc. 
     internal class JobHostContext
     {
+        private readonly Guid _id;
         private readonly string _hostName;
+        private readonly IProcessTerminationSignalReader _terminationSignalReader;
+        private readonly IRunningHostTableWriter _heartbeatTable;
 
         public readonly IFunctionTableLookup _functionTableLookup;
         public readonly IQueueFunction _queueFunction;
-        public readonly IRunningHostTableWriter _heartbeatTable;
 
         public readonly CloudQueue _executionQueue;
 
         public JobHostContext(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
         {
+            _id = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
 
             IFunctionTableLookup functionTableLookup;
@@ -54,11 +57,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 qi = services.GetQueueInterfaces(); // All for logging. 
 
                 string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
-                var logger = new WebExecutionLogger(services, LogRole, roleName);
+                var logger = new WebExecutionLogger(_id, services, LogRole, roleName);
                 ctx = logger.GetExecutionContext();
                 ctx.FunctionTable = functionTableLookup;
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
 
+                _terminationSignalReader = new ProcessTerminationSignalReader(services.Account);
                 _heartbeatTable = services.GetRunningHostTableWriter();
             }
             else
@@ -71,7 +75,9 @@ namespace Microsoft.WindowsAzure.Jobs
                     OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
                 };
 
-                qi = CreateInMemoryQueueInterfaces();                
+                qi = CreateInMemoryQueueInterfaces();
+                _terminationSignalReader = new NullProcessTerminationSignalReader();
+                _heartbeatTable = new NullRunningHostTableWriter();
             }
 
             ctx.FunctionTable = functionTableLookup;
@@ -124,6 +130,21 @@ namespace Microsoft.WindowsAzure.Jobs
         public string HostName
         {
             get { return _hostName; }
+        }
+
+        public Guid HostInstanceId
+        {
+            get { return _id; }
+        }
+
+        public IRunningHostTableWriter RunningHostTableWriter
+        {
+            get { return _heartbeatTable; }
+        }
+
+        public IProcessTerminationSignalReader TerminationSignalReader
+        {
+            get { return _terminationSignalReader; }
         }
 
         // Search for any types that implement ICloudBlobStreamBinder<T>

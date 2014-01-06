@@ -13,13 +13,14 @@ namespace Microsoft.WindowsAzure.Jobs
         private readonly FunctionExecutionContext _ctx;
         private readonly string _roleName; // for logging heartbeat
 
-        public WebExecutionLogger(Services services, Action<TextWriter> addHeaderInfo, string roleName)
+        public WebExecutionLogger(Guid hostInstanceId, Services services, Action<TextWriter> addHeaderInfo, string roleName)
         {
             _services = services;
             _roleName = roleName;
 
             _ctx = new FunctionExecutionContext
             {
+                HostInstanceId = hostInstanceId,
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     _services.AccountInfo,
                     addHeaderInfo,

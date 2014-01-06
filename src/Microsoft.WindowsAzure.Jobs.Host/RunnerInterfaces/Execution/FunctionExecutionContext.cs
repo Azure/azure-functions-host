@@ -1,9 +1,12 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using System;
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Various objects needed for execution.
     // @@@ Confirm this can be shared across requests
     internal class FunctionExecutionContext
     {
+        public Guid HostInstanceId { get; set; }
+
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
 
         // Used to update function as its being executed

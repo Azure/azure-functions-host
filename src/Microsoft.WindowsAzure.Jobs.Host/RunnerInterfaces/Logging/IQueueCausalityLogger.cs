@@ -46,6 +46,10 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 return Guid.Empty;
             }
+            catch (InvalidOperationException)
+            {
+                return Guid.Empty;
+            }
         }
     }
 }

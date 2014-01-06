@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
@@ -60,7 +60,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(hooks);
-            
+
             WriteAntaresManifest();
         }
 
@@ -142,7 +142,8 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <param name="token">The token to monitor for cancellation requests.</param>
         public void RunAndBlock(CancellationToken token)
         {
-            RunAndBlock(token, () => {
+            RunAndBlock(token, () =>
+            {
                 Thread.Sleep(2 * 1000);
                 Console.Write(".");
             });
@@ -152,27 +153,39 @@ namespace Microsoft.WindowsAzure.Jobs
         // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
         internal void RunAndBlock(CancellationToken token, Action pauseAction)
         {
-            INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
-
-            using (Worker worker = new Worker(_hostContext.HostName, _hostContext._functionTableLookup, _hostContext._heartbeatTable, _hostContext._queueFunction, fastpathNotify))
+            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(hostIsRunning: true))
             {
-                while (!token.IsCancellationRequested)
+                heartbeat.Start();
+
+                try
                 {
-                    bool handled;
-                    do
+                    INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
+
+                    using (Worker worker = new Worker(_hostContext._functionTableLookup, _hostContext._queueFunction, fastpathNotify))
                     {
-                        worker.Poll(token);
-
-                        if (token.IsCancellationRequested)
+                        while (!token.IsCancellationRequested)
                         {
-                            return;
+                            bool handled;
+                            do
+                            {
+                                worker.Poll(token);
+
+                                if (token.IsCancellationRequested)
+                                {
+                                    return;
+                                }
+
+                                handled = HandleExecutionQueue();
+                            }
+                            while (handled);
+
+                            pauseAction();
                         }
-
-                        handled = HandleExecutionQueue();
                     }
-                    while (handled);
-
-                    pauseAction();
+                }
+                finally
+                {
+                    heartbeat.Stop();
                 }
             }
         }
@@ -206,7 +219,8 @@ namespace Microsoft.WindowsAzure.Jobs
         /// Invoke a specific function specified by the method parameter.
         /// </summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
-        public void Call(MethodInfo method) {
+        public void Call(MethodInfo method)
+        {
             Call(method, arguments: null);
         }
 
@@ -232,11 +246,56 @@ namespace Microsoft.WindowsAzure.Jobs
                 Message = String.Format("This was function was programmatically called via the host APIs.")
             };
 
-            ExecutionInstanceLogEntity logItem = _hostContext._queueFunction.Queue(instance);
+            ExecutionInstanceLogEntity logItem;
+
+            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(hostIsRunning: false))
+            {
+                heartbeat.Start();
+
+                try
+                {
+                    logItem = _hostContext._queueFunction.Queue(instance);
+                }
+                finally
+                {
+                    heartbeat.Stop();
+                }
+            }
 
             VerifySuccess(logItem);
         }
-      
+
+        private HeartbeatTimer CreateHeartbeatTimer(bool hostIsRunning)
+        {
+            IHeartbeat heartbeat = CreateHeartbeat(hostIsRunning);
+            return new HeartbeatTimer(heartbeat, (int)RunningHost.HeartbeatSignalInterval.TotalMilliseconds);
+        }
+
+        private IHeartbeat CreateHeartbeat(bool hostIsRunning)
+        {
+            IHeartbeat terminationHeartbeat = CreateTerminateProcessUponRequestHeartbeat();
+
+            if (!hostIsRunning)
+            {
+                return terminationHeartbeat;
+            }
+            else
+            {
+                IHeartbeat runningHostHeartbeat = CreateRunningHostHeartbeat();
+                return new CompositeHeartbeat(terminationHeartbeat, runningHostHeartbeat);
+            }
+        }
+
+        private RunningHostHeartbeat CreateRunningHostHeartbeat()
+        {
+            return new RunningHostHeartbeat(_hostContext.RunningHostTableWriter, _hostContext.HostName);
+        }
+
+        private TerminateProcessUponRequestHeartbeat CreateTerminateProcessUponRequestHeartbeat()
+        {
+            return new TerminateProcessUponRequestHeartbeat(_hostContext.TerminationSignalReader, _hostContext.HostInstanceId);
+        }
+
         // Throw if the function failed. 
         private static void VerifySuccess(ExecutionInstanceLogEntity logItem)
         {

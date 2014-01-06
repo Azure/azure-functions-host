@@ -54,5 +54,7 @@
         public const string RunningHostTableName = "AzureJobsRunningHost";
 
         public const string VersionContainerName = "azure-jobs-versions";
+
+        public const string AbortHostInstanceBlobContainerName = "azure-jobs-aborts";
     }
 }
