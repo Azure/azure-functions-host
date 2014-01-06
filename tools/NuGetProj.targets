@@ -20,8 +20,7 @@ Relevant parameters:
 * NuGetOutputPath property:
   Represents the directory where the package is to be created.
 ****************************************************************************************************-->
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <OutputPath Condition="'$(OutputPath)' == ''">bin\$(Configuration)\</OutputPath>
@@ -29,6 +28,8 @@ Relevant parameters:
     <IntermediateOutputPath Condition="'$(NuGetPackageLanguage)' != ''">$(IntermediateOutputPath)$(NuGetPackageLanguage)\</IntermediateOutputPath>
   </PropertyGroup>
 
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  
   <PropertyGroup>
     <NuGetPackageId Condition="'$(NuGetPackageId)' == ''">$(MSBuildProjectName)</NuGetPackageId>
     <NuGetPackSymbols Condition="'$(NuGetPackOptions.ToLower().Contains(symbols))'">true</NuGetPackSymbols>
@@ -46,7 +47,7 @@ Relevant parameters:
     <NuGetOutputPath Condition="'$(NuGetOutputPath)' == ''">$(PackageOutputDir)</NuGetOutputPath>
     <ProjectPath>$(IntermediateOutputPath)$(NuSpecFileName)</ProjectPath>
     <NuGetToolsPath>$(MsBuildThisFileDirectory)</NuGetToolsPath>
-    <NuGetExePath Condition=" '$(NuGetExePath)' == '' ">$(NuGetToolsPath)\NuGet.exe</NuGetExePath>
+    <NuGetExePath Condition=" '$(NuGetExePath)' == '' ">$(NuGetToolsPath)NuGet.exe</NuGetExePath>
   </PropertyGroup>
 
   <!-- 
@@ -132,7 +133,7 @@ if not needed and play nicely when building incrementally.
 ****************************************************************************************************
 NuGetPack: Creates a nuget package.  
 **************************************************************************************************** -->
-  <Target Name="NuGetPack" DependsOnTargets="EnsureNuGet;GenerateNuSpecFile" Condition="'$(OutputsOutdated)' == 'true'">
+  <Target Name="NuGetPack" DependsOnTargets="EnsureNuGet;GenerateNuSpecFile;ResolveReferences" Condition="'$(OutputsOutdated)' == 'true'">
     <PropertyGroup>
       <NuSpecProperties>$(NuSpecProperties.Trim(';'))</NuSpecProperties>
       <NuGetPackOptions Condition="'$(NuGetPackOptions)' == '' AND '$(NuGetPackSymbols)' != 'true'">-NoPackageAnalysis</NuGetPackOptions>

@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <NuGetExe>tools\NuGet.exe</NuGetExe>
+  </PropertyGroup>
+
+  <Target Name="DownloadNuGet">
+    <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
+  </Target>
+
+  <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
+    <Message Text="Restoring NuGet packages..." Importance="High" />
+    <ItemGroup>
+      <Restore Include="src\Microsoft.WindowsAzure.Jobs.Host\packages.config"/>
+    </ItemGroup>
+    <Exec Command='"$(NuGetExe)" restore "%(Restore.Identity)" -PackagesDirectory packages -NonInteractive -Verbosity quiet' />
+  </Target>
+
+  <Target Name="Official" DependsOnTargets="RestorePackages">
+    <ItemGroup>
+      <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj"/>
+      <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj"/>
+    </ItemGroup>
+    <MSBuild Projects="@(Build)" BuildInParallel="true" Properties="Configuration=Release" UnloadProjectsOnCompletion="true"></MSBuild>
+  </Target>
+
+  <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
+    <ParameterGroup>
+      <OutputFileName ParameterType="System.String" Required="true" />
+      <MinimumVersion ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.Net" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+                Version minimumRequiredVersion;
+                
+                if (!Version.TryParse(MinimumVersion, out minimumRequiredVersion))
+                {
+                    Log.LogError("MinimumVersion '{0}' is not a valid Version.", MinimumVersion);
+                }
+        
+                try
+                {
+                    OutputFileName = Path.GetFullPath(OutputFileName);
+                    
+                    if (File.Exists(OutputFileName))
+                    {
+                        // If NuGet.exe exists but is less than the minimum required version, delete it so that the
+                        // latest version will be downloaded.
+                        FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(OutputFileName);
+                        
+                        string toParse;
+                        
+                        if (versionInfo != null && versionInfo.ProductVersion != null)
+                        {
+                            toParse = versionInfo.ProductVersion;
+                        }
+                        else
+                        {
+                            toParse = null;
+                        }
+                        
+                        Version current;
+                        Version parsed;
+                        
+                        if (toParse != null && Version.TryParse(toParse, out parsed))
+                        {
+                            current = parsed;
+                        }
+                        else
+                        {
+                            // Treat a missing or invalid version like V0.0 (which will trigger a delete and download).
+                            current = new Version(0, 0);
+                        }
+                        
+                        if (current < minimumRequiredVersion)
+                        {
+                            File.Delete(OutputFileName);
+                        }
+                    }
+                    
+                    if (!File.Exists(OutputFileName))
+                    {
+                        Log.LogMessage("Downloading latest version of NuGet.exe...");
+                        WebClient webClient = new WebClient();
+                        webClient.DownloadFile("https://nuget.org/nuget.exe", OutputFileName);
+                    }
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Log.LogErrorFromException(ex);
+                    return false;
+                }
+            ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>
