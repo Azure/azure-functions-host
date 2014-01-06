@@ -1,22 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <PropertyGroup>
-        <JobsRootPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</JobsRootPath>
-        <JobsToolsPath>$(MSBuildThisFileDirectory)</JobsToolsPath>
-
-        <!-- Define default configuration (so building from command line is consistent) -->
-        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-
-        <BinPath>$(JobsRootPath)bin\</BinPath>
-        <ObjPath>$(JobsRootPath)obj\</ObjPath>
-        <OutputPath>$(BinPath)$(Configuration)\</OutputPath>
-        <IntermediateOutputPath>$(ObjPath)$(Configuration)\$(MSBuildProjectName)\</IntermediateOutputPath>
-        <PackagesOutputPath>$(OutputPath)Packages\</PackagesOutputPath>
-
-        <!-- This property is used by NuGetProj.targets. Setting it here allows us to specify it globally. -->
-        <NuGetOutputPath>$(PackagesOutputPath)</NuGetOutputPath>
-
-        <JobsPackageEULA>http://www.microsoft.com/sample/TODO/TODO/TODO</JobsPackageEULA>
-        <JobsPackageVersion>1.0.0-alpha1</JobsPackageVersion>
-    </PropertyGroup>
+  <PropertyGroup>
+    <JobsRootPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</JobsRootPath>
+    <JobsToolsPath>$(MSBuildThisFileDirectory)</JobsToolsPath>
+    
+    <JobsPackageEULA>http://www.microsoft.com/sample/TODO/TODO/TODO</JobsPackageEULA>
+    <JobsPackageVersion>1.0.0-alpha1</JobsPackageVersion>
+  </PropertyGroup>
 </Project>
