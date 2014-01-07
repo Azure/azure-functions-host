@@ -1,3 +1,1 @@
 src\Dashboard\bin\Dashboard.dll
-src\Microsoft.WindowsAzure.Jobs\bin\Release\Microsoft.WindowsAzure.Jobs.dll
-src\Microsoft.WindowsAzure.Jobs.Host\bin\Release\Microsoft.WindowsAzure.Jobs.Host.dll
