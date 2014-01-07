@@ -87,7 +87,7 @@ namespace Microsoft.WindowsAzure.Jobs
             string filename = Environment.GetEnvironmentVariable("JOB_EXTRA_INFO_URL_PATH");
             if (filename != null)
             {
-                const string manifestContents = "/sb";
+                const string manifestContents = "/azurejobs";
 
                 File.WriteAllText(filename, manifestContents);
             }

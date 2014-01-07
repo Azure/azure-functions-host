@@ -34,7 +34,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
                 // Validate contents
                 string contents = File.ReadAllText(path);
-                Assert.AreEqual("/sb", contents);
+                Assert.AreEqual("/azurejobs", contents);
             }
             finally
             {
