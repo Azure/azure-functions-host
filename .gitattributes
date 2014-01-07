@@ -4,5 +4,6 @@
 *.ico binary
 *.otf binary
 *.png binary
+*.snk binary
 *.ttf binary
 *.woff binary

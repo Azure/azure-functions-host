@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assemblies defaultPublicKeyToken="31bf3856ad364e35">
+  <!-- Production assemblies -->
+  <assembly name="Dashboard"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host"/>
+
+  <!-- Unit test assemblies -->
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host.Test.Common"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTests"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2"/>
+</assemblies>

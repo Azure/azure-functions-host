@@ -35,6 +35,15 @@
     <DocumentationFile>bin\Release\Microsoft.WindowsAzure.Jobs.XML</DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DelaySign>true</DelaySign>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>..\PublicKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
@@ -75,6 +84,11 @@
     <Compile Include="IAzureTableWriter.cs" />
     <Compile Include="IAzureTable.cs" />
     <Compile Include="IAzureTableOfT.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\PublicKey.snk">
+      <Link>Properties\PublicKey.snk</Link>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

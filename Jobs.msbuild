@@ -1,23 +1,57 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="CheckSkipStrongNames" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
+    <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
+    <SkipStrongNamesXml>src\SkipStrongNames.xml</SkipStrongNamesXml>
   </PropertyGroup>
 
+  <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
+  
   <Target Name="DownloadNuGet">
     <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
   </Target>
 
-  <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
+  <Target Name="RestoreSkipStrongNames" DependsOnTargets="DownloadNuGet">
+    <Exec Command='"$(NuGetExe)" restore .nuget\packages.config -PackagesDirectory packages -NonInteractive -Verbosity quiet' />
+  </Target>
+
+  <Target Name="CheckSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Error Text="Unit tests will not run correctly unless SkipStrongNames is Enabled. Current status: $(Status). Run the EnableSkipStrongNames target to fix this problem." Condition="'$(Status)' != 'Enabled'" />
+  </Target>
+
+  <Target Name="EnableSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <Exec Command='"$(SkipStrongNamesExe)" -e "$(SkipStrongNamesXml)"' />
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Message Text="SkipStrongNames: $(Status)" Importance="High" />
+  </Target>
+
+  <Target Name="DisableSkipStrongNames" DependsOnTargets="RestoreSkipStrongNames">
+    <Exec Command='"$(SkipStrongNamesExe)" -d "$(SkipStrongNamesXml)"' />
+    <CheckSkipStrongNamesStatus AssembliesFile="$(SkipStrongNamesXml)">
+      <Output TaskParameter="Status" PropertyName="Status" />
+    </CheckSkipStrongNamesStatus>
+    <Message Text="SkipStrongNames: $(Status)" Importance="High" />
+  </Target>
+
+  <Target Name="RestoreOfficialPackages" DependsOnTargets="DownloadNuGet">
     <Message Text="Restoring NuGet packages..." Importance="High" />
     <ItemGroup>
+      <Restore Include=".nuget\packages.config"/>
+      <Restore Include="src\Dashboard\packages.config"/>
       <Restore Include="src\Microsoft.WindowsAzure.Jobs.Host\packages.config"/>
     </ItemGroup>
     <Exec Command='"$(NuGetExe)" restore "%(Restore.Identity)" -PackagesDirectory packages -NonInteractive -Verbosity quiet' />
   </Target>
 
-  <Target Name="Official" DependsOnTargets="RestorePackages">
+  <Target Name="Official" DependsOnTargets="RestoreOfficialPackages">
     <ItemGroup>
+      <Build Include="src\Dashboard\Dashboard.csproj"/>
       <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj"/>
       <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj"/>
     </ItemGroup>
