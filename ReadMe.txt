@@ -34,4 +34,3 @@ Copy and rename it to:
 This will make you local build pass, but won't get checked in by Git.
 
 NuGet will pull down depedencies. 
-

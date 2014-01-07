@@ -62,4 +62,3 @@ class TableBinderProvider : ICloudTableBinderProvider
         return (targetType == typeof(ILookup)) ? _singleton : null;
     }
 }
-

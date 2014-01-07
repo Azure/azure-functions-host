@@ -57,4 +57,3 @@ public class QueueTest
         Console.WriteLine("{0},{1}", myTestQueue.Name, myTestQueue.Value);
     }
 }
-

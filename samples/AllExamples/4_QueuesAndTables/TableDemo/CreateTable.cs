@@ -100,4 +100,3 @@ public partial class TableFuncs
     #endregion
 
 }
-

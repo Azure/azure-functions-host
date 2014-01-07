@@ -33,4 +33,3 @@ public partial class TimerTestFuncs
         output = new SyndicationFeed("Status", "Status from SimpleBatch", null, sorted);        
     }
 }
-

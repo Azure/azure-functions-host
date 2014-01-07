@@ -52,4 +52,3 @@ public partial class TableFuncs2
         return val.ToLower();
     }
 }
-
