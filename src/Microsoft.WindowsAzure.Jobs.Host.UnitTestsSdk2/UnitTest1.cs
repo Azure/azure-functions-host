@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage;

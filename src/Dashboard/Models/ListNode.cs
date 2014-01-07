@@ -1,4 +1,4 @@
-using Dashboard.Models.Protocol;
+﻿using Dashboard.Models.Protocol;
 
 namespace Dashboard.Controllers
 {

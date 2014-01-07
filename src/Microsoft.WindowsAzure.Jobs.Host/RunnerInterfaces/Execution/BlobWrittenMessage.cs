@@ -1,4 +1,4 @@
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // $$$ ISn't th
     // $$$ USe CloudBlobDescriptor? AccountName vs. AccountConnectionString

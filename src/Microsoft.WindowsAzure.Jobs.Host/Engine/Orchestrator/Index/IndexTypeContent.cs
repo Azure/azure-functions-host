@@ -1,4 +1,4 @@
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Context, specific to a given type. 
     // Each type can provide its own configuration

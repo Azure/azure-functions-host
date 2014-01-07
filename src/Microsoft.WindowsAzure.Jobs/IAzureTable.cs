@@ -1,4 +1,4 @@
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Interface to request if you want both reading and writing. 
     // This is better than getting a separate reader and writer because this allows them to coordinate

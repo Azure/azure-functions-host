@@ -1,4 +1,4 @@
-*** Steps for installing Simple Batch ***
+﻿*** Steps for installing Simple Batch ***
 
 Install Visual Studio 2013
 

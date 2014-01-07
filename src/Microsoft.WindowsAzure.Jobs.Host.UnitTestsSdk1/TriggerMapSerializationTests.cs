@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 using Newtonsoft.Json;

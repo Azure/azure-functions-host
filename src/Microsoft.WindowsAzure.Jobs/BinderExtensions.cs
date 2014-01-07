@@ -1,4 +1,4 @@
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class BinderExtensions
     {

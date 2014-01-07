@@ -1,4 +1,4 @@
-using Microsoft.WindowsAzure.Jobs;
+﻿using Microsoft.WindowsAzure.Jobs;
 
 namespace Dashboard
 {

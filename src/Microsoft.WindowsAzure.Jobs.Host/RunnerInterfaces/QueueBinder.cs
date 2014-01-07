@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs

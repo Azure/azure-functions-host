@@ -1,4 +1,4 @@
-namespace Dashboard.Controllers
+﻿namespace Dashboard.Controllers
 {
     public class FunctionSubmitModel
     {

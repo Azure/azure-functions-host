@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using Dashboard.Models.Protocol;
 using Microsoft.WindowsAzure.Jobs;
 

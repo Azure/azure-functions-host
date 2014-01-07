@@ -1,4 +1,4 @@
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Argument can implement this to be self describing. 
     // This can be queried on another thread. 

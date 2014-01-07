@@ -1,4 +1,4 @@
-namespace Dashboard.ViewModels
+﻿namespace Dashboard.ViewModels
 {
     public class DashboardAboutViewModel
     {
