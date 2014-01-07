@@ -447,7 +447,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     return;
                 }
 
-                container = parts[0]; ;
+                container = parts[0];
                 blob = parts[1];
             }
         } // end class Parser

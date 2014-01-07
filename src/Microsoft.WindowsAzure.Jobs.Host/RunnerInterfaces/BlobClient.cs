@@ -164,13 +164,13 @@ namespace Microsoft.WindowsAzure.Jobs
             Debug.Assert(blobName != null);
 
             const string unsafeCharactersMessage =
-                "The given blob name '{0}' contains illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.";
+                "The given blob name '{0}' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.";
             const string tooLongErrorMessage =
                 "The given blob name '{0}' is too long. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
             const string tooShortErrorMessage =
                 "The given blob name '{0}' is too short. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
             const string invalidSuffixErrorMessage =
-                "The given blob name '{0}' had invalid suffix. Avoid blob names that end with a dot ('.'), a forward slash ('/'), or a sequence or combination of the two.";
+                "The given blob name '{0}' has an invalid suffix. Avoid blob names that end with a dot ('.'), a forward slash ('/'), or a sequence or combination of the two.";
 
             if (blobName.Length == 0)
             {
