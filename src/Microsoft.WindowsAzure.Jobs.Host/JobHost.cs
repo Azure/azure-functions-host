@@ -23,6 +23,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private JobHostContext _hostContext;
 
+        internal const string LoggingConnectionStringName = "AzureJobsRuntime";
+
         /// <summary>
         /// Initializes a new instance of the JobHost class, using a Windows Azure Storage connection string located
         /// in the appSettings section of the configuration file.
@@ -52,7 +54,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         internal JobHost(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
         {
-            _loggingAccountConnectionString = GetConnectionString(loggingAccountConnectionString, "SimpleBatchLoggingACS");
+            _loggingAccountConnectionString = GetConnectionString(loggingAccountConnectionString, LoggingConnectionStringName);
             _userAccountConnectionString = GetConnectionString(userAccountConnectionString, "SimpleBatchUserACS");
 
             var storageValidator = hooks.StorageValidator;

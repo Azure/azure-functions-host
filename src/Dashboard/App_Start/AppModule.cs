@@ -63,7 +63,7 @@ namespace Dashboard
         // $$$ Really should just get rid of this object and use DI all the way through. 
         static Services GetServices()
         {
-            var val = JobHost.ReadConnectionStringWithEnvironmentFallback("SimpleBatchLoggingACS");
+            var val = JobHost.ReadConnectionStringWithEnvironmentFallback(JobHost.LoggingConnectionStringName);
 
             Utility.ValidateConnectionString(val);
 
