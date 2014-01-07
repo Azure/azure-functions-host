@@ -29,6 +29,11 @@
       <Link>Jobs.Host\Jobs.Host.nuspec</Link>
     </NuGetSpec>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\tools\Jobs.settings.targets">
+      <Link>Jobs.settings.targets</Link>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="Build">
     <MSBuild Projects="@(NuGetProject)" Targets="Build" />

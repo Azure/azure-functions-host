@@ -5,6 +5,6 @@
     <JobsToolsPath>$(MSBuildThisFileDirectory)</JobsToolsPath>
     
     <JobsPackageEULA>http://www.microsoft.com/sample/TODO/TODO/TODO</JobsPackageEULA>
-    <JobsPackageVersion>1.0.0-alpha1</JobsPackageVersion>
+    <JobsPackageVersion>0.1.0-alpha1</JobsPackageVersion>
   </PropertyGroup>
 </Project>

@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyProduct("Microsoft Windows Azure Jobs")]
-[assembly: AssemblyCopyright("Copyright © 2013 Microsoft")]
+[assembly: AssemblyCompany("Microsoft Corporation")]
+[assembly: AssemblyCopyright("© Microsoft Corporation. All rights reserved.")]
 
 [assembly: ComVisible(false)]
