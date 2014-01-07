@@ -1,5 +1,4 @@
 ﻿using System;
-using Dashboard.Configuration;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
@@ -11,16 +10,13 @@ namespace Dashboard
     {
         public override void Load()
         {
-            var configService = new ConfigurationService();
-            var appConfig = configService.Current;
-
             Services services;
 
             // Validate services
             {
                 try
                 {
-                    services = GetServices(configService);
+                    services = GetServices();
                 }
                 catch (Exception e)
                 {
@@ -30,8 +26,6 @@ namespace Dashboard
                 }
             }
 
-            Bind<ConfigurationService>().ToConstant(configService);
-            Bind<AppConfiguration>().ToConstant(appConfig);
             Bind<Services>().ToConstant(services); // $$$ eventually remove this.
             Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
             Bind<IProcessTerminationSignalReader>().ToConstant(CreateProcessTerminationSignalReader(services.Account));
@@ -67,9 +61,9 @@ namespace Dashboard
 
         // Get a Services object based on current configuration.
         // $$$ Really should just get rid of this object and use DI all the way through. 
-        static Services GetServices(ConfigurationService config)
+        static Services GetServices()
         {
-            var val = config.ReadSetting("SimpleBatchLoggingACS");
+            var val = JobHost.ReadConnectionStringWithEnvironmentFallback("SimpleBatchLoggingACS");
 
             Utility.ValidateConnectionString(val);
 

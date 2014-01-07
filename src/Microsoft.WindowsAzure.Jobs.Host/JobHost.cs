@@ -52,8 +52,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         internal JobHost(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
         {
-            _loggingAccountConnectionString = GetConfigSetting(loggingAccountConnectionString, "SimpleBatchLoggingACS");
-            _userAccountConnectionString = GetConfigSetting(userAccountConnectionString, "SimpleBatchUserACS");
+            _loggingAccountConnectionString = GetConnectionString(loggingAccountConnectionString, "SimpleBatchLoggingACS");
+            _userAccountConnectionString = GetConnectionString(userAccountConnectionString, "SimpleBatchUserACS");
 
             var storageValidator = hooks.StorageValidator;
             storageValidator.Validate(_userAccountConnectionString, _loggingAccountConnectionString);
@@ -93,9 +93,9 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private static string GetConfigSetting(string overrideValue, string settingName)
+        private static string GetConnectionString(string overrideValue, string connectionStringName)
         {
-            return overrideValue ?? ConfigurationManager.AppSettings[settingName];
+            return overrideValue ?? ReadConnectionStringWithEnvironmentFallback(connectionStringName);
         }
 
         private JobHostContext GetHostContext(JobHostTestHooks hooks)
@@ -321,6 +321,32 @@ namespace Microsoft.WindowsAzure.Jobs
 
             string msg = String.Format("'{0}' can't be invoked from simplebatch. Is it missing simple batch bindings?", method);
             throw new InvalidOperationException(msg);
+        }
+
+        /// <summary>
+        /// Reads connection string from the connectionstrings section, or from ENV if it is missing from the config, or is an empty string or a whitespace.
+        /// </summary>
+        /// <param name="connectionStringName">The name of the connection string to look up.</param>
+        /// <returns>The connection string.</returns>
+        internal static string ReadConnectionStringWithEnvironmentFallback(string connectionStringName)
+        {
+            string connectionStringInConfig = null;
+            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
+            if (connectionStringEntry != null)
+            {
+                connectionStringInConfig = connectionStringEntry.ConnectionString;
+            }
+
+            if (!string.IsNullOrWhiteSpace(connectionStringInConfig))
+            {
+                return connectionStringInConfig;
+            }
+
+            return
+                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.Process) ??
+                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.User) ??
+                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.Machine) ??
+                connectionStringInConfig;
         }
     }
 }

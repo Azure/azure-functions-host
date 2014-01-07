@@ -40,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
         /// </summary>
         public EndToEndTests()
         {
-            _connectionString = ConfigurationManager.AppSettings["TestConnectionString"];
+            _connectionString = ConfigurationManager.ConnectionStrings["Test"].ConnectionString;
 
             try
             {

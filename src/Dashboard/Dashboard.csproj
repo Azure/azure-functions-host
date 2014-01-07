@@ -151,8 +151,6 @@
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\SimpleBatchStuff.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
-    <Compile Include="Configuration\AppConfiguration.cs" />
-    <Compile Include="Configuration\ConfigurationService.cs" />
     <Compile Include="Controllers\FunctionController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\BadConfigController.cs" />
