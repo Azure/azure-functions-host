@@ -8,7 +8,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (userAccountConnectionString == null)
             {
-                throw new InvalidOperationException("User account connection string is missing. This can be set via the 'SimpleBatchUserACS' appsetting or via the constructor.");
+                throw new InvalidOperationException(string.Format("User account connection string is missing. This can be set via the '{0}' connection string or via the constructor.", JobHost.DataConnectionStringName));
             }
             Utility.ValidateConnectionString(userAccountConnectionString);
             if (loggingAccountConnectionString != null)
