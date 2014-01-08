@@ -141,7 +141,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (funcs.Length == 0)
             {
-                string msg = string.Format("Function '{0}' is not found. Is it missing Simple Batch attributes?", method);
+                string msg = string.Format("Function '{0}' is not found. Is it missing Azure Jobs attributes?", method);
                 throw new InvalidOperationException(msg);
             }
 

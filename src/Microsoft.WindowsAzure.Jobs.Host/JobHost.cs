@@ -322,7 +322,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            string msg = String.Format("'{0}' can't be invoked from simplebatch. Is it missing simple batch bindings?", method);
+            string msg = String.Format("'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
             throw new InvalidOperationException(msg);
         }
 

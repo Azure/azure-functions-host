@@ -270,7 +270,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     var oldColor = Console.ForegroundColor;
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("  Function had errors. See SimpleBatch dashboard for details. Instance id is {0}", logItem.FunctionInstance.Id);
+                    Console.WriteLine("  Function had errors. See Azure Jobs dashboard for details. Instance id is {0}", logItem.FunctionInstance.Id);
                     Console.ForegroundColor = oldColor;
                 }
             }
