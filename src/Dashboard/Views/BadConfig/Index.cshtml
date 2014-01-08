@@ -10,7 +10,7 @@ The configuration is not properly set for the Windows Azure Web Jobs SDK Dashboa
 In your configuration (such as web.config), you must set a connection string named <i>@JobHost.LoggingConnectionStringName</i> that points to the account connection string where the sb logs are being stored. EG, under "connectionStrings" in Web.config, add a value like:
 </p>
 <pre>
-  &lt;add name="@JobHost.LoggingConnectionStringName" value="DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b>" /&gt;
+  &lt;add name="@JobHost.LoggingConnectionStringName" connectionString="DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b>" /&gt;
 </pre>
 
 <p>
