@@ -340,16 +340,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 connectionStringInConfig = connectionStringEntry.ConnectionString;
             }
 
-            if (!string.IsNullOrWhiteSpace(connectionStringInConfig))
+            if (!String.IsNullOrEmpty(connectionStringInConfig))
             {
                 return connectionStringInConfig;
             }
 
-            return
-                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.Process) ??
-                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.User) ??
-                Environment.GetEnvironmentVariable(connectionStringName, EnvironmentVariableTarget.Machine) ??
-                connectionStringInConfig;
+            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
         }
     }
 }

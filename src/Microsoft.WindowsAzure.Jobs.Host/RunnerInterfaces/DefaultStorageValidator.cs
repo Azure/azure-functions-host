@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -8,7 +9,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (dataConnectionString == null)
             {
-                throw new InvalidOperationException(string.Format("User account connection string is missing. This can be set via the '{0}' connection string or via the constructor.", JobHost.DataConnectionStringName));
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "User account connection string is missing. This can be set via the '{0}' connection string or via the constructor.", JobHost.DataConnectionStringName));
             }
             Utility.ValidateConnectionString(dataConnectionString);
             if (runtimeConnectionString != null)
