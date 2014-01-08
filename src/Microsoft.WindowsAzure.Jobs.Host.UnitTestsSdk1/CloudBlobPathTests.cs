@@ -16,19 +16,19 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         [TestMethod]
         public void BackslashInBlobName_ShouldThrowFormatException()
         {
-            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my\name"), "The given blob name 'my\\name' contains illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
+            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my\name"), "The given blob name 'my\\name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
         }
 
         [TestMethod]
         public void OpenSquareBracketInBlobName_ShouldThrowFormatException()
         {
-            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my[name"), "The given blob name 'my[name' contains illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
+            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my[name"), "The given blob name 'my[name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
         }
 
         [TestMethod]
         public void CloseSquareBracketInBlobName_ShouldThrowFormatException()
         {
-            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my]name"), "The given blob name 'my]name' contains illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
+            ExceptionAssert.ThrowsFormat(() => new CloudBlobPath(@"container/my]name"), "The given blob name 'my]name' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.");
         }
 
         [TestMethod]
