@@ -58,7 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (_started)
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("The HeartbeatTimer has already been started; it may not be restarted.");
             }
 
             // Do an initial heartbeat without waiting for the thread to start.
@@ -72,9 +72,14 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             ThrowIfDisposed();
 
-            if (!_started || _stopped)
+            if (!_started)
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("The HeartbeatTimer has not yet been started.");
+            }
+
+            if (_stopped)
+            {
+                throw new InvalidOperationException("The HeartbeatTimer has already been stopped.");
             }
 
             // Signal the thread to complete.

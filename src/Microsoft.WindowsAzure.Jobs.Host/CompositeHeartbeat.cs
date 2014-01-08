@@ -17,8 +17,6 @@ namespace Microsoft.WindowsAzure.Jobs
             _heartbeats = heartbeats;
         }
 
-
-
         public void Beat()
         {
             foreach (IHeartbeat heartbeat in _heartbeats)
