@@ -70,6 +70,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new InvalidOperationException("Account connection string is an invalid format");
             }
 
+            if (IsDevelopmentStorageAccount(account))
+            {
+                throw new InvalidOperationException("The storage emulator is not supported, please use a storage account hosted in Windows Azure.");
+            }
+
             // Verify the credentials are correct.
             // Have to actually ping a storage operation. 
             try
@@ -87,6 +92,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 string msg = string.Format("The account credentials for '{0}' are incorrect.", account.Credentials.AccountName);
                 throw new InvalidOperationException(msg);
             }
+        }
+
+        private static bool IsDevelopmentStorageAccount(CloudStorageAccount account)
+        {
+            // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx 
+            return account.BlobEndpoint.PathAndQuery.TrimStart('/') == account.Credentials.AccountName;
         }
     }
 }
