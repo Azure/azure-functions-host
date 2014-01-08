@@ -28,7 +28,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         /// <summary>
         /// Initializes a new instance of the JobHost class, using a Windows Azure Storage connection string located
-        /// in the appSettings section of the configuration file.
+        /// in the connectionStrings section of the configuration file.
         /// </summary>
         public JobHost()
             : this(dataConnectionString: null, runtimeConnectionString: null)
