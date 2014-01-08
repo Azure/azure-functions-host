@@ -10,7 +10,7 @@ namespace Microsoft.WindowsAzure.Jobs
     // StorageValidator that skips validation. 
     internal class NullStorageValidator : IStorageValidator
     {
-        public void Validate(string userAccountConnectionString, string loggingAccountConnectionString)
+        public void Validate(string dataConnectionString, string runtimeConnectionString)
         {
             // nop
         }

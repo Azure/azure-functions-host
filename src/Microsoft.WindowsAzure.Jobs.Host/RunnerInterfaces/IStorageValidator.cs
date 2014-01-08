@@ -12,6 +12,6 @@ namespace Microsoft.WindowsAzure.Jobs
     internal interface IStorageValidator
     {
         // User account may be mandatory, logging may be optional. 
-        void Validate(string userAccountConnectionString, string loggingAccountConnectionString);
+        void Validate(string dataConnectionString, string runtimeConnectionString);
     }
 }

@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public readonly CloudQueue _executionQueue;
 
-        public JobHostContext(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
+        public JobHostContext(string dataConnectionString, string runtimeConnectionString, JobHostTestHooks hooks)
         {
             _id = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
@@ -34,7 +34,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             var types = hooks.TypeLocator.FindTypes();
             AddCustomerBinders(config, types);
-            functionTableLookup = new FunctionStore(userAccountConnectionString, config, types);
+            functionTableLookup = new FunctionStore(dataConnectionString, config, types);
             
 
             // Determine the host name from the function list
@@ -43,14 +43,14 @@ namespace Microsoft.WindowsAzure.Jobs
             QueueInterfaces qi;
             FunctionExecutionContext ctx;
 
-            if (loggingAccountConnectionString != null)
+            if (runtimeConnectionString != null)
             {
                 // Create logging against a live azure account 
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(functionTableLookup, userAccountConnectionString, loggingAccountConnectionString);
+                PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString);
 
-                var services = GetServices(loggingAccountConnectionString);
+                var services = GetServices(runtimeConnectionString);
                 _executionQueue = services.GetExecutionQueue();
 
                 // Queue interfaces            
@@ -209,16 +209,16 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // This is a factory for getting interfaces that are bound against azure storage.
-        private static Services GetServices(string loggingAccountConnectionString)
+        private static Services GetServices(string runtimeConnectionString)
         {
-            if (loggingAccountConnectionString == null)
+            if (runtimeConnectionString == null)
             {
                 throw new InvalidOperationException("Logging account string must be set");
             }
 
             AccountInfo accountInfo = new AccountInfo
             {
-                AccountConnectionString = loggingAccountConnectionString,
+                AccountConnectionString = runtimeConnectionString,
                 WebDashboardUri = "illegal" // have non-null value.  @@@
             };
 
@@ -227,14 +227,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string userAccountConnectionString, string loggingAccountConnectionString)
+        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString, string runtimeConnectionString)
         {
-            var services = GetServices(loggingAccountConnectionString);
+            var services = GetServices(runtimeConnectionString);
             var cloudTable = services.GetFunctionTable();
 
             FunctionDefinition[] funcs = cloudTable.ReadAll();
 
-            string scopePrefix = FunctionStore.GetPrefix(userAccountConnectionString);
+            string scopePrefix = FunctionStore.GetPrefix(dataConnectionString);
 
             foreach (var func in funcs)
             {

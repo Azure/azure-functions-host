@@ -15,11 +15,11 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         // Where we log things to. 
         // Null if logging is not supported (this is required for pumping).        
-        private readonly string _loggingAccountConnectionString;
+        private readonly string _runtimeConnectionString;
 
         // The user account that we listen on.
         // This is the account that the bindings resolve against.
-        private readonly string _userAccountConnectionString;
+        private readonly string _dataConnectionString;
 
         private JobHostContext _hostContext;
 
@@ -31,7 +31,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// in the appSettings section of the configuration file.
         /// </summary>
         public JobHost()
-            : this(userAccountConnectionString: null, loggingAccountConnectionString: null)
+            : this(dataConnectionString: null, runtimeConnectionString: null)
         {
         }
 
@@ -39,8 +39,8 @@ namespace Microsoft.WindowsAzure.Jobs
         /// Initializes a new instance of the JobHost class, using a single Windows Azure Storage connection string for
         /// both reading and writing data as well as logging.
         /// </summary>
-        public JobHost(string userAndLoggingAccountConnectionString)
-            : this(userAndLoggingAccountConnectionString, userAndLoggingAccountConnectionString)
+        public JobHost(string dataAndRuntimeConnectionString)
+            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString)
         {
         }
 
@@ -48,18 +48,18 @@ namespace Microsoft.WindowsAzure.Jobs
         /// Initializes a new instance of the JobHost class, using one Windows Azure Storage connection string for
         /// reading and writing data and another connection string for logging.
         /// </summary>
-        public JobHost(string userAccountConnectionString, string loggingAccountConnectionString)
-            : this(userAccountConnectionString, loggingAccountConnectionString, DefaultHooks())
+        public JobHost(string dataConnectionString, string runtimeConnectionString)
+            : this(dataConnectionString, runtimeConnectionString, DefaultHooks())
         {
         }
 
-        internal JobHost(string userAccountConnectionString, string loggingAccountConnectionString, JobHostTestHooks hooks)
+        internal JobHost(string dataConnectionString, string runtimeConnectionString, JobHostTestHooks hooks)
         {
-            _loggingAccountConnectionString = GetConnectionString(loggingAccountConnectionString, LoggingConnectionStringName);
-            _userAccountConnectionString = GetConnectionString(userAccountConnectionString, DataConnectionStringName);
+            _runtimeConnectionString = GetConnectionString(runtimeConnectionString, LoggingConnectionStringName);
+            _dataConnectionString = GetConnectionString(dataConnectionString, DataConnectionStringName);
 
             var storageValidator = hooks.StorageValidator;
-            storageValidator.Validate(_userAccountConnectionString, _loggingAccountConnectionString);
+            storageValidator.Validate(_dataConnectionString, _runtimeConnectionString);
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(hooks);
@@ -81,7 +81,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public string UserAccountName
         {
-            get { return Utility.GetAccountName(_userAccountConnectionString); }
+            get { return Utility.GetAccountName(_dataConnectionString); }
         }
 
         // When running in Antares, write out a manifest file.
@@ -103,7 +103,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private JobHostContext GetHostContext(JobHostTestHooks hooks)
         {
-            var hostContext = new JobHostContext(_userAccountConnectionString, _loggingAccountConnectionString, hooks);
+            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, hooks);
             return hostContext;
         }
 
