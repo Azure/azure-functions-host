@@ -2,10 +2,7 @@
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
-using System.Web.Mvc.Html;
 using System.Web.Routing;
-using Dashboard.Models.Protocol;
-using Microsoft.WindowsAzure.Jobs;
 
 namespace Dashboard.Controllers
 {
@@ -57,243 +54,6 @@ namespace Dashboard.Controllers
             return new HtmlString(li.ToString(TagRenderMode.Normal));
         }
 
-        public static MvcHtmlString TimeLapse(
-            this HtmlHelper htmlHelper,
-            DateTime now, DateTime past)
-        {
-            var span = now - past;
-            return TimeLapse(htmlHelper, span);
-        }
-
-        public static MvcHtmlString TimeLapse(
-            this HtmlHelper htmlHelper,
-            TimeSpan span)
-        {
-            string s;
-            if (span.TotalSeconds < 60)
-            {
-                s = string.Format("{0:0.0}s ago", span.TotalSeconds);
-            }
-            else if (span.TotalSeconds < 60 * 60)
-            {
-                s = string.Format("{0}m {1:0.0}s ago", span.Minutes, span.Seconds);
-            }
-            else
-            {
-                s = string.Format("{0} ago", span);
-            }
-            return MvcHtmlString.Create(s);
-
-        }
-
-        // Emit an HTML link to the log for the given function instance.
-        public static MvcHtmlString FunctionInstanceLogLinkVerbose(
-            this HtmlHelper htmlHelper,
-            ExecutionInstanceLogEntityModel log)
-        {
-            string name = log.Name;
-            return FunctionInstanceLogLink(htmlHelper, log.FunctionInstance, name);
-        }
-
-        // This should be the common link, most friendly version. 
-        // Emit an HTML link to the log for the given function instance.
-        public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper,
-            ExecutionInstanceLogEntityModel log)
-        {
-            return htmlHelper.Partial("_FunctionInstanceLogLink", log);      
-        }
-
-        public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper,
-            FunctionInvokeRequestModel instance,
-            string textLink = null)
-        {
-            // $$$ Is this used anywhere?
-            if (textLink == null)
-            {
-                textLink = instance.ToString();
-            }
-
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                textLink,
-                "FunctionInstance", "Log",
-                new { func = instance.Id },
-                null);
-        }
-
-        // Overload when we have a guid. Includes the resolve to resolve to a nice function name.
-        public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper,
-            Guid id,
-            LogFunctionModel logFunctionModel)
-        {
-            ExecutionInstanceLogEntity log = logFunctionModel.Lookup.Lookup(id);
-            if (log != null)
-            {
-                return FunctionInstanceLogLink(htmlHelper, new ExecutionInstanceLogEntityModel(log));
-            }
-            // No entry matching the guid. Just show the raw guid then. 
-            return FunctionInstanceLogLink(htmlHelper, id);
-        }
-
-        // Overload when we only have a guid, no resolver. 
-        public static MvcHtmlString FunctionInstanceLogLink(
-            this HtmlHelper htmlHelper,
-            Guid? id,
-            string textLink = null)
-        {
-            if (!id.HasValue)
-            {
-                return MvcHtmlString.Empty;
-            }
-            if (textLink == null)
-            {
-                textLink = id.ToString();
-            }
-
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                textLink,
-                "FunctionInstance", "Log",
-                new { func = id.Value},
-                null);
-        }
-
-         // Emit HTML link to the log for the function descriptor.        
-         public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionDefinitionModel func)
-         {
-             return LinkExtensions.ActionLink(
-                 htmlHelper,
-                func.Location.GetShorterName(),
-                 "Index", "Function", 
-                new { func = func.ToString() }, 
-                 null);
-         }
-
-        public static string GetShorterName(this FunctionLocationModel self)
-        {
-            var shortName = self.UnderlyingObject.GetShortName();
-            var lastDotIndex = shortName.LastIndexOf('.');
-            if (lastDotIndex >= 0)
-            {
-                return shortName.Substring(lastDotIndex + 1);
-            }
-            return shortName;
-        }
-
-        public static MvcHtmlString FunctionFullNameLink(this HtmlHelper htmlHelper,
-            FunctionDefinitionModel func)
-        {
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                func.Location.ToString(),
-                "Index", "Function",
-                new { func = func.ToString() },
-                null);
-        }
-
-        // Lists the static information about the given function type.
-        public static MvcHtmlString FunctionLogLink(this HtmlHelper htmlHelper,
-            FunctionLocationModel func)
-        {
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                func.GetShorterName(),
-                "Index", "Function",
-                new { func = func.ToString() },
-                null);
-        }
-
-        // Emit HTML link to history of a function. 
-        // This can list all instances of that function 
-        public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
-            FunctionLocationModel func)
-        {
-            return FunctionLogInvokeHistoryLink(htmlHelper, func, null);
-        }
-
-        public static MvcHtmlString FunctionLogInvokeHistoryLink(this HtmlHelper htmlHelper,
-            FunctionLocationModel func, string linkText, bool? success = null)
-        {
-            string msg = linkText ?? string.Format("{0} invoke history", func.UnderlyingObject.GetShortName());
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                msg,
-                "ListFunctionInstances", "Log",
-                new { 
-                    func = func.ToString(),
-                    success = success
-                },
-                null);
-        }
-
-
-        // Emit link to page describing blob usage and histo
-        public static MvcHtmlString BlobLogLink(this HtmlHelper htmlHelper,
-            CloudBlobDescriptorModel blobPath)
-        {
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                linkText: blobPath.UnderlyingObject.GetId(),
-                actionName: "Blob",
-                routeValues: 
-                new { 
-                    path = new CloudBlobPath(blobPath.UnderlyingObject).ToString(),
-                    accountName = blobPath.UnderlyingObject.GetAccount().Credentials.AccountName
-                });
-        }
-
-        public static MvcHtmlString ReplayFunctionInstance(this HtmlHelper htmlHelper, ExecutionInstanceLogEntityModel log)
-        {
-            return LinkExtensions.ActionLink(
-                htmlHelper,
-                linkText: "Replay " + log.ToString(),
-                actionName: "InvokeFunctionReplay", 
-                controllerName: "Function",
-                routeValues: new { instance =  log.GetKey() },
-                htmlAttributes: null                
-                );
-
-        }
-
-        // Renders a link to the console output for the given function instance.
-        public static MvcHtmlString FunctionOutputLink(this HtmlHelper htmlHelper,
-            ExecutionInstanceLogEntityModel log)
-        {
-            if (log.UnderlyingObject.OutputUrl == null)
-            {
-                return MvcHtmlString.Create("No console output available.");
-            }
-            TagBuilder builder = new TagBuilder("a");
-            builder.MergeAttribute("href", log.UnderlyingObject.OutputUrl);
-            builder.InnerHtml = "Console output";
-
-            string html = builder.ToString(TagRenderMode.Normal);
-            return MvcHtmlString.Create(html);
-        }
-
-        // Get an optional link for the parameter value
-        public static MvcHtmlString ParamArgValueLink(this HtmlHelper htmlHelper, ParamModel p)
-        {
-            if (p.ArgBlobLink != null)
-            {
-                return LinkExtensions.ActionLink(
-               htmlHelper,
-               linkText: p.ArgInvokeString,
-               actionName: "Blob",
-               routeValues:
-               new
-               {
-                   path = new CloudBlobPath(p.ArgBlobLink.UnderlyingObject).ToString(),
-                   accountName = p.ArgBlobLink.UnderlyingObject.GetAccount().Credentials.AccountName
-               });
-            }
-            return MvcHtmlString.Create(p.ArgInvokeString);
-        }
-
         /// <summary>
         /// Helper to check if two RouteValueDictionaries have the same values
         /// </summary>
@@ -304,6 +64,89 @@ namespace Dashboard.Controllers
                 .Select(pair => pair.Key);
             var mismatches = routeValueDictionary.Keys.Except(matches);
             return !mismatches.Any();
+        }
+
+
+        // Renders a relative DateTime string representation
+        public static string DateTimeRelative(this HtmlHelper htmlHelper, DateTime dateTimeUtc)
+        {
+            return DateTimeRelative(dateTimeUtc);
+        }
+        // Renders a relative TimeSpan string representation
+        public static string TimeSpanRelative(this HtmlHelper htmlHelper, TimeSpan timeSpan)
+        {
+            return TimeSpanRelative(timeSpan);
+        }
+
+        public static string DateTimeRelative(DateTime dateTimeUtc)
+        {
+            var time = DateTime.UtcNow - dateTimeUtc;
+
+            if (time.TotalDays > 7 || time.TotalDays < -7)
+                return ConvertToTimeZone(dateTimeUtc).ToString("'on' MMM d yyyy 'at' h:mm tt");
+
+            if (time.TotalHours > 24)
+                return Plural("1 day ago", "{0} days ago", time.Days);
+            if (time.TotalHours < -24)
+                return Plural("in 1 day", "in {0} days", -time.Days);
+
+            if (time.TotalMinutes > 60)
+                return Plural("1 hour ago", "{0} hours ago", time.Hours);
+            if (time.TotalMinutes < -60)
+                return Plural("in 1 hour", "in {0} hours", -time.Hours);
+
+            if (time.TotalSeconds > 60)
+                return Plural("1 minute ago", "{0} minutes ago", time.Minutes);
+            if (time.TotalSeconds < -60)
+                return Plural("in 1 minute", "in {0} minutes", -time.Minutes);
+
+            if (time.TotalSeconds > 10)
+                return Plural("1 second ago", "{0} seconds ago", time.Seconds); //aware that the singular won't be used
+            if (time.TotalSeconds < -10)
+                return Plural("in 1 second", "in {0} seconds", -time.Seconds);
+
+            return time.TotalMilliseconds > 0
+                       ? "a moment ago"
+                       : "in a moment";
+        }
+
+        public static string TimeSpanRelative(TimeSpan timeSpan)
+        {
+            if (timeSpan.TotalDays > 7)
+                return timeSpan.ToString(Plural("1 week", "{0} weeks", timeSpan.Days));
+
+            if (timeSpan.TotalHours > 24)
+                return Plural("1 day", "{0} days", timeSpan.Days);
+
+            if (timeSpan.TotalMinutes > 60)
+                return Plural("1 hour", "{0} hours", timeSpan.Hours);
+
+            if (timeSpan.TotalSeconds > 60)
+                return Plural("1 minute", "{0} minutes", timeSpan.Minutes);
+
+            if (timeSpan.TotalSeconds > 10)
+                return Plural("1 second", "{0} seconds", timeSpan.Seconds);
+
+            if (timeSpan.TotalMilliseconds > 1000)
+                return Plural("1 s", "{0} s", timeSpan.Seconds);
+
+            if (timeSpan.TotalMilliseconds > 0)
+                return Plural("1 ms", "{0} ms", (int)timeSpan.TotalMilliseconds);
+
+            return "less than 1ms";
+        }
+
+        private static string Plural(string singular, string plural, int count, params object[] args)
+        {
+            return String.Format(count == 1 ? singular : plural, new object[] { count }.Concat(args).ToArray());
+        }
+
+        private static DateTime ConvertToTimeZone(DateTime dateTimeUtc)
+        {
+            // using UTC as the default time zone for displaying times
+            // this code is useless for now
+            var timeZone = TimeZoneInfo.Utc;
+            return TimeZoneInfo.ConvertTimeFromUtc(dateTimeUtc, timeZone);
         }
     }
 }

@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title</title>
     @Styles.Render("~/bundles/css")
-    @Styles.Render("~/components/font-awesome/css/bundle")
     @Scripts.Render("~/bundles/modernizr")
+    @Scripts.Render("~/bundles/js")
 </head>
 
 <body>
     @RenderBody()
 
-    @Scripts.Render("~/bundles/js")
     @RenderSection("scripts", required: false)
 </body>
 </html>

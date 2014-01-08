@@ -1,15 +1,14 @@
-﻿@using Dashboard
-@{
+﻿@{
     Layout = "~/Views/Shared/_TopLayout.cshtml";
 }
 
-<div class="container">
 @Html.Partial("_Header")
+<div class="container-fluid">
     @if (HostVersionConfigWrapper.HasWarning)
     {
         foreach (var warning in HostVersionConfigWrapper.Warnings)
         {
-            <p class="warning">
+            <p class="text-warning">
                 <i class="icon-warning-sign"></i> Warning: A host is using @warning.Label, which this site extension does not support.
                 @if (!String.IsNullOrEmpty(warning.Link))
                 {
@@ -17,10 +16,6 @@
                 }
             </p>
         }
-    }
-    @if (TempData.ContainsKey("Message.Text"))
-    {
-        <div class="alert alert-@TempData["Message.Level"]">@TempData["Message.Text"]</div>
     }
     @RenderBody()
 </div>

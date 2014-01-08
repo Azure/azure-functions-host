@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Dashboard.Controllers;
-using Dashboard.Models.Protocol;
 using Microsoft.WindowsAzure.Jobs;
 
 namespace Dashboard
@@ -36,7 +34,7 @@ namespace Dashboard
             for (int i = 0; i < len; i++)
             {
                 var flow = flows[i];
-                string msg = flow.Description;            
+                string msg = flow.Description;
 
                 ps[i] = new ParamModel
                 {
@@ -57,18 +55,18 @@ namespace Dashboard
                 try
                 {
                     s = arg.ConvertToInvokeString();
-                    
+
                     // If arg is a blob, provide a blob-aware link to explore that further.
                     var blobArg = arg as BlobParameterRuntimeBinding;
                     if (blobArg != null)
                     {
                         ps[i].ArgBlobLink = new CloudBlobDescriptorModel(blobArg.Blob);
-                    }                    
+                    }
                 }
                 catch (NotImplementedException)
                 {
                 }
-                ps[i].ArgInvokeString = s;                
+                ps[i].ArgInvokeString = s;
             }
         }
 
@@ -139,197 +137,9 @@ namespace Dashboard
             {
                 // Not fatal. 
                 // This could happen if the app wrote a corrupted log. 
-                return null; 
+                return null;
             }
         }
-
-
-        // Mine all the logs to determine blob readers and writers
-        private static LogBlobModel Compute(IFunctionTable functionTable, CloudBlobDescriptor blobPathAndAccount, IEnumerable<ExecutionInstanceLogEntity> logs)
-        {
-            string blobPath = blobPathAndAccount.GetId();
-
-            var reader = new List<ExecutionInstanceLogEntityModel>();
-            var writer = new List<ExecutionInstanceLogEntityModel>();
-
-            foreach (var log in logs)
-            {
-                FunctionInvokeRequest instance = log.FunctionInstance;
-                ParameterRuntimeBinding[] args = instance.Args;
-                var descriptor = functionTable.Lookup(instance.Location);
-                var flows = descriptor.Flow.Bindings;
-
-                for (int i = 0; i < args.Length; i++)
-                {
-                    var blobBinding = flows[i] as BlobParameterStaticBinding;
-                    if (blobBinding == null)
-                    {
-                        continue;
-                    }
-
-                    ParameterRuntimeBinding arg = args[i];
-                    var blobArg = arg as BlobParameterRuntimeBinding;
-                    if (blobArg == null)
-                    {
-                        continue;
-                    }
-
-                    string path = blobArg.Blob.GetId();
-                    if (string.Compare(path, blobPath, StringComparison.OrdinalIgnoreCase) == 0)
-                    {
-                        if (blobBinding.IsInput)
-                        {
-                            reader.Add(new ExecutionInstanceLogEntityModel(log));
-                        }
-                        else
-                        {
-                            writer.Add(new ExecutionInstanceLogEntityModel(log));
-                        }
-                    }                    
-                }
-            }
-
-            return new LogBlobModel
-            {
-                BlobPath = blobPath,
-                Readers = reader.ToArray(),
-                Writer = writer.ToArray()
-            };
-        }
-
-        // Return a function log that includes causality information. 
-        internal IEnumerable<ChargebackRow> GetChargebackLog(int recentCount, string storageName, IFunctionInstanceQuery logger)
-        {
-            Walker w = new Walker(logger);
-
-            var query = new FunctionInstanceQueryFilter
-            {
-                Succeeded = true,
-                AccountName = storageName
-            };
-            IEnumerable<ExecutionInstanceLogEntity> logs = logger.GetRecent(recentCount, query);
-
-
-            List<ChargebackRow> rows = new List<ChargebackRow>();
-                
-            // First loop through and get row-independent stats.
-            foreach (var log in logs)
-            {
-                ChargebackRow row = new ChargebackRow();
-                rows.Add(row);
-                                
-                var instance = log.FunctionInstance;
-                row.Name = instance.Location.GetShortName();
-                row.Id = instance.Id;
-                row.ParentId = instance.TriggerReason.ParentGuid;
-
-                w.SetParent(row.Id, row.ParentId);
-                
-                if (instance.Args.Length > 0)
-                {
-                    row.FirstParam = instance.Args[0].ToString();
-                }
-
-                row.Duration = log.GetDuration().Value;
-            }
-            
-
-            // Now go back and fill in GroupId
-            // This is more efficient in a separate pass because the first pass pre-populated via SetParent()
-            foreach (var row in rows)
-            {
-                Guid g = w.LookupGroupId(row.Id);
-                row.GroupId = g;
-            }
-
-            return rows;
-        }
-
-        // Find GroupIds (the top-most ancestor). Has local caches to minimize # of network fetches. 
-        internal class Walker
-        {
-            private readonly Dictionary<Guid, Guid> _parentMap = new Dictionary<Guid, Guid>();
-            private readonly Dictionary<Guid, Guid> _groupMap = new Dictionary<Guid, Guid>();
-            private readonly IFunctionInstanceLookup _lookup;
-
-            public Walker(IFunctionInstanceLookup lookup)
-            {
-                if (lookup == null)
-                {
-                    throw new ArgumentNullException("lookup");
-                }
-                _lookup = lookup;
-            }
-
-            public Guid LookupGroupId(Guid id)
-            {
-                Guid g;
-                if (_groupMap.TryGetValue(id, out g))
-                {
-                    return g;
-                }
-
-                Guid parent = LookupParent(id);
-                if (parent == Guid.Empty)
-                {
-                    g = id;
-                }
-                else
-                {
-                    g = LookupGroupId(parent);
-                }
-                _groupMap[id] = g;
-
-                return g;
-            }
-
-            public Guid LookupParent(Guid child)
-            {
-                Guid g;
-                if (_parentMap.TryGetValue(child, out g))
-                {
-                    return g;
-                }
-
-                var parentFunc = _lookup.Lookup(child);
-                if (parentFunc == null)
-                {
-                    // Unknown parent
-                    return Guid.Empty;
-                }
-                g = parentFunc.FunctionInstance.TriggerReason.ParentGuid;
-                _parentMap[child] = g;
-                return g;
-            }
-
-            public void SetParent(Guid child, Guid parent)
-            {
-                _parentMap[child] = parent;
-            }
-        }
-    }
-
-    // Row for a function instance. 
-    public class ChargebackRow
-    {
-        // Function's name. This may be a shortened form, so don't parse it. 
-        public string Name { get; set; }
-
-        // Function instance Id. The definitive instance record. 
-        public Guid Id { get; set; } 
-
-        // Parent for this instance. Guid.Empty if no parent. 
-        public Guid ParentId { get; set; }
-
-        // top-most ancestor for the instance Id. 
-        public Guid GroupId { get; set; } 
-
-        // String representation of the first parameter. 
-        // This can be used to infer ownership. 
-        public string FirstParam { get; set; }
-
-        // How long this function ran.
-        public TimeSpan Duration { get; set; }
 
     }
 

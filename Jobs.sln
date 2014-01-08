@@ -17,8 +17,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk1", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk2", "src\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2\Jobs.Host.UnitTestsSdk2.csproj", "{58DF758F-D7EF-4275-9E25-8A79A5057C69}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard2", "src\Dashboard2\Dashboard2.csproj", "{A9A2C41E-F243-4AC7-A428-DC555EF6745A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Packages.csproj", "{34AB8F63-18DE-4E0D-B21C-15E33B091634}"
 	ProjectSection(ProjectDependencies) = postProject
 		{0E095CB2-3030-49FF-966C-785F1A55F0C1} = {0E095CB2-3030-49FF-966C-785F1A55F0C1}
@@ -64,10 +62,6 @@ Global
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A9A2C41E-F243-4AC7-A428-DC555EF6745A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A9A2C41E-F243-4AC7-A428-DC555EF6745A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A9A2C41E-F243-4AC7-A428-DC555EF6745A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A9A2C41E-F243-4AC7-A428-DC555EF6745A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.ActiveCfg = Release|Any CPU

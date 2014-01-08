@@ -1,40 +1,99 @@
-﻿div.call-unit {
-    padding: 30px;
+﻿body {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 12px;
 }
 
-div.call-unit form {
-    margin: 0;
+.not-running {
+    color: darkorange;
+    width: 1em;
 }
 
-div.call-unit div.control-group {
-    margin: 0;
+.modal .modal-body {
+    max-height: 420px;
+    overflow-y: auto;
 }
 
-div.call-unit .control-label {
-    width: 80px;
+/* navbar */
+
+.navbar {
+    background-color: #3c454f;
 }
 
-div.call-unit .controls {
-    margin-left: 85px;
+.navbar-default .navbar-brand, .navbar-default .navbar-nav > li > a {
+    color: white;
 }
 
-div.call-unit .call-unit-commands {
-    margin-top: 1em;
+.navbar-default .navbar-brand:hover, .navbar-default .navbar-nav > li > a:hover {
+    background-color: #526273;
+    color: white;
+}
+/* checkboxes */
+
+input[type="checkbox"] {
+    margin-top: 2px;
 }
 
-div#invoke-unit #invoke-unit-function {
-    font-size: 31.5px;
-    font-weight: bold;
-    color: black;
-    text-rendering: optimizeLegibility;
+/* labels */
+
+.label, .badge {
+	font-weight: lighter;
+	font-size: 90%;
+}
+.label-success, .badge-success {
+	background-color: rgb(129, 189, 130);
+}
+.label-info, .badge-info {
+	background-color: rgb(104, 163, 213);
 }
 
-div#invoke-unit #invoke-unit-body {
-    font-size: 17.5px;
-    color: #999999;
-    line-height: 1;
+/* tables */
+
+.table thead{
+	border-top:1px solid #dee3ea;
+}
+.table-hover tbody tr:hover > td,
+.table-hover tbody tr:hover > th {
+  background-color: rgb(225, 243, 251);
+}
+.table th.sortable {
+	cursor: pointer;
+}
+.table th.sortable:hover {
+	text-decoration: underline;
+}
+.table thead th{
+	font-weight: bold;
+	position: relative;
+	padding-bottom: 20px !important;
+	padding-top: 5px !important;
+	text-transform: uppercase;
+	font-size: 11px;
+	vertical-align: top !important;
+	border-bottom: 0px !important;
+}
+.table td{
+	color: #526273;
+	border-top-color: #edf2f7 !important;
+	vertical-align: middle !important;
+}
+.table th.align-right,
+.table td.align-right {
+	text-align: right;
+	padding-right: 10px !important;
+}
+table tr.first td{
+	border-top: 0 none;
+}
+table th span.line{
+	position: absolute;
+	top: 0;
+	left: -8px;
+	border-left: 1px solid #dee3ea;
+	height: 10px;
 }
 
-div#invoke-unit #invoke-unit-params {
-    margin-top: 10px;
+/* toolbars */
+
+.btn-toolbar {
+    margin-bottom: 10px;
 }

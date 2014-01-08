@@ -1,24 +1,16 @@
-﻿<div class="navbar">
-    <div class="navbar-inner">
-        <div class="container">
-            <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
-            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </a>
-            <ul class="nav pull-right">
-                <li><a title="Log Out" href="@Url.Action("Logout", "Account")"><i class="icon-signout"></i><span class="hidden-phone"> Log Out</span></a></li>
-            </ul>
-            <p class="navbar-text pull-right visible-desktop">Server time: @DateTime.UtcNow</p>
-            <a class="brand" href="@Url.Action("ListAllInstances", "Log")">SimpleBatch</a>
-            <div class="nav-collapse collapse">
-                <ul class="nav">
-                    @Html.MenuLink("History", icon: "icon-cogs", action: "ListAllInstances", controller: "Log")
-                    @Html.MenuLink("Function Definitions", icon: "icon-cogs", action: "ListAllFunctions", controller: "Home")
-                    @Html.MenuLink("About", icon: "icon-home", action: "Index", controller: "Home")
-                </ul>
-            </div>
-        </div>
+﻿<div class="navbar navbar-default" role="navigation">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="@Url.Action("Index", "Dashboard")">Windows Azure Web Jobs SDK</a>
+    </div>
+    <div class="collapse navbar-collapse">
+        <ul class="nav navbar-nav navbar-right">
+            @Html.MenuLink("About", icon: "", action: "About", controller: "Dashboard")
+        </ul>
     </div>
 </div>

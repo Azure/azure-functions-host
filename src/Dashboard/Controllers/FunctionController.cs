@@ -1,157 +1,242 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
-using Dashboard.Models.Protocol;
+using System.Web.Routing;
+using Dashboard.ViewModels;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
+using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 
 namespace Dashboard.Controllers
 {
-    // Controller for viewing details (mainly invocation) on an individual function.
-#if !SITE_EXTENSION
-    [Authorize]
-#endif
     public class FunctionController : Controller
     {
+        private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
 
-        internal FunctionController(IFunctionTableLookup functionTableLookup)
+        private const int MaxPageSize = 50;
+        private const int DefaultPageSize = 10;
+
+        internal FunctionController(
+            Services services, 
+            IFunctionTableLookup functionTableLookup, 
+            IFunctionInstanceLookup functionInstanceLookup)
         {
+            _services = services;
             _functionTableLookup = functionTableLookup;
+            _functionInstanceLookup = functionInstanceLookup;
         }
 
-        //
-        // GET: /Function/
-
-        // Show all the static information 
-        [HttpGet]
-        public ActionResult Index(FunctionDefinitionModel func)
+        public ActionResult PartialInvocationLog()
         {
-            return RenderInvokePageWorker(func, null);
+            var logger = _services.GetFunctionInstanceQuery();
+
+            var query = new FunctionInstanceQueryFilter();
+            var model = logger
+                .GetRecent(10, query)
+                .Select(x => new InvocationLogViewModel(x))
+                .ToArray();
+
+            return PartialView(model);
         }
 
-        public static bool HasFile(HttpPostedFileBase file)
+        public ActionResult FunctionInstances(string functionName, bool? success, int? page, int? pageSize)
         {
-            return (file != null && file.ContentLength > 0) ? true : false;
-        }
-
-        static string GetInputContainer(FunctionDefinition func)
-        {
-            foreach (var binding in func.Flow.Bindings)
+            if (String.IsNullOrWhiteSpace(functionName))
             {
-                BlobParameterStaticBinding b = binding as BlobParameterStaticBinding;
-                if (b != null)
-                {
-                    if (b.IsInput)
-                    {
-                        return b.Path.ContainerName;
-                    }
-                }
-            }
-            return null;
-        }
-
-        [HttpPost]
-        public ActionResult Upload(FunctionDefinitionModel func)
-        {
-            string inputContainerName = GetInputContainer(func.UnderlyingObject);
-
-            if (Request.Files.Count == 1)
-            {
-                var file = Request.Files[0];
-                if (file != null && file.ContentLength > 0)
-                {
-                    string filename = Path.GetFileName(file.FileName);
-
-
-                    var client = func.UnderlyingObject.GetAccount().CreateCloudBlobClient();
-                    var container = client.GetContainerReference(inputContainerName);
-                    var blob = container.GetBlobReference(filename);
-
-                    // Upload the blob
-                    blob.UploadFromStream(file.InputStream);
-
-                    // Then set invoke args. 
-                    var instance = Worker.GetFunctionInvocation(func.UnderlyingObject, blob);
-                    return RenderInvokePageWorker(func, instance.Args);
-                }
-            }
-            return new ContentResult { Content = "Error. Bad upload" };
-        }
-
-        // Called when Run is converting from named parameters to full arg instances
-        [HttpPost]
-        public ActionResult ComputeArgsFromNames(FunctionDefinitionModel func, string[] key)
-        {
-            // Convert to a function instance. 
-            string[] names = func.Flow.GetInputParameters().ToArray();
-
-            Dictionary<string, string> d = new Dictionary<string, string>();
-            for (int i = 0; i < key.Length; i++)
-            {
-                d[names[i]] = key[i];
+                return HttpNotFound();
             }
 
-            // USe orchestrator to do bindings.
-            var instance = Worker.GetFunctionInvocation(func.UnderlyingObject, d);
+            FunctionDefinition func = _functionTableLookup.Lookup(functionName);
 
-            return RenderInvokePageWorker(func, instance.Args);
-        }
-
-        // Called to get a run request that would "replay" a previous execution instance.
-        [HttpGet]
-        public ActionResult InvokeFunctionReplay(FunctionInvokeRequestModel instance)
-        {
-            var parentGuid = instance.Id;
-
-            FunctionDefinition func = _functionTableLookup.Lookup(instance.UnderlyingObject.Location);
-            return RenderInvokePageWorker(new FunctionDefinitionModel(func), instance.UnderlyingObject.Args, parentGuid);
-        }
-
-        // This is the common worker that everything feeds down into.
-        // Seed the input dialog with the given arg instances
-        private ActionResult RenderInvokePageWorker(FunctionDefinitionModel func, ParameterRuntimeBinding[] args, Guid? replayGuid = null)
-        {
             if (func == null)
             {
-                // ### Give this better UI. Chain to the error on Log.Error
-                // Function was probably unloaded from server. 
-                return View("Error");
-            }
-            var flows = func.Flow;
-
-            var model = new FunctionInfoModel();
-            if (replayGuid.HasValue)
-            {
-                model.ReplayGuid = replayGuid.Value;
-            }
-            model.Descriptor = func;
-            model.KeyNames = flows.GetInputParameters().ToArray();
-            model.Parameters = LogAnalysis.GetParamInfo(func.UnderlyingObject);
-            if (args != null)
-            {
-                LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
+                return HttpNotFound();
             }
 
-            // If function has an input blob, mark the name (for cosmetic purposes)
-            // Uploading to this container can trigger the blob. 
-            string inputContainerName = GetInputContainer(func.UnderlyingObject);
-            if (inputContainerName != null)
-            {
-                model.UploadContainerName = Utility.GetAccountName(func.UnderlyingObject.GetAccount()) + "/" + inputContainerName;
-            }
+            // ensure PageSize is not too big, and define a default value if not provided
+            pageSize = pageSize.HasValue ? Math.Min(MaxPageSize, pageSize.Value) : DefaultPageSize;
+            pageSize = Math.Max(1, pageSize.Value);
 
-            // Precede the args
-            return View("Index", model);
+            page = page.HasValue ? page : 1;
+            
+            var skip = ((page - 1)*pageSize.Value).Value;
+
+            // Do some analysis to find inputs, outputs, 
+            var model = new FunctionInstancesViewModel
+            {
+                FunctionName = functionName,
+                Success = success,
+                Page = page,
+                PageSize = pageSize.Value
+            };
+
+            var query = new FunctionInstanceQueryFilter
+            {
+                Location = func.Location,
+                Succeeded = success
+            };
+
+            var logger = _services.GetFunctionInstanceQuery();
+
+            // load pageSize + 1 to check if there is another page
+            model.InvocationLogViewModels = logger
+                .GetRecent(pageSize.Value + 1, skip, query)
+                .Select(e => new InvocationLogViewModel(e))
+                .ToArray();
+
+            return View(model);
         }
 
-        private ActionResult RedirectLogFunctionInstance(ExecutionInstanceLogEntity func)
+        public ActionResult FunctionInstance(string id)
         {
-            return RedirectToAction("FunctionInstance", "Log", new { func = func.GetKey() });
+            if (String.IsNullOrWhiteSpace(id))
+            {
+                return HttpNotFound();
+            }
+
+            Guid guid;
+            if (!Guid.TryParse(id, out guid))
+            {
+                return HttpNotFound();
+            }
+
+            var func = _functionInstanceLookup.Lookup(guid);
+
+            if (func == null)
+            {
+                return HttpNotFound();
+            }
+
+            var model = new FunctionInstanceDetailsViewModel();
+            model.InvocationLogViewModel = new InvocationLogViewModel(func);
+            model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
+            model.IsAborted = model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running && _services.IsDeleteRequested(func.FunctionInstance.Id);
+
+            // Do some analysis to find inputs, outputs, 
+
+            var functionModel = _functionTableLookup.Lookup(func.FunctionInstance.Location.GetId());
+
+            if (functionModel != null)
+            {
+                var descriptor = new FunctionDefinitionViewModel(functionModel);
+
+                // Parallel arrays of static descriptor and actual instance info 
+                ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
+
+                model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
+                LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
+                LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
+            }
+
+            ICausalityReader causalityReader = _services.GetCausalityReader();
+
+            // fetch direct children
+            model.Children = causalityReader
+                .GetChildren(func.FunctionInstance.Id)
+                .Select(r => new InvocationLogViewModel(_functionInstanceLookup.Lookup(r.ChildGuid))).ToArray();
+
+            // fetch ancestor
+            var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
+            if (parentGuid != Guid.Empty)
+            {
+                model.Ancestor = new InvocationLogViewModel(_functionInstanceLookup.Lookup(parentGuid));
+            }
+
+            return View("FunctionInstance", model);
         }
 
+        public ActionResult LookupBlob(string path)
+        {
+            if (String.IsNullOrEmpty(path))
+            {
+                TempData["Message.Text"] = "Blob path can't be empty";
+                TempData["Message.Level"] = "danger";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var p = new CloudBlobPath(path.Trim());
+
+            CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
+
+            if (account == null)
+            {
+                TempData["Message.Text"] = "Account not found";
+                TempData["Message.Level"] = "danger";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            CloudBlob blob;
+
+            try
+            {
+                blob = p.Resolve(account);
+            }
+            catch
+            {
+                blob = null;
+            }
+
+            if (blob == null)
+            {
+                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Level"] = "warning";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            Guid guid;
+
+            try
+            {
+                IBlobCausalityLogger logger = new BlobCausalityLogger();
+                guid = logger.GetWriter(blob);
+            }
+            catch
+            {
+                guid = Guid.Empty;
+            } 
+
+            if (guid == Guid.Empty)
+            {
+                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Level"] = "warning";
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            IFunctionInstanceLookup lookup = _services.GetFunctionInstanceLookup();
+
+            TempData["Message.Text"] = "Job found for: " + path;
+            TempData["Message.Level"] = "info";
+            
+            return RedirectToAction("FunctionInstance", new {lookup.Lookup(guid).FunctionInstance.Id});
+        }
+
+        [HttpPost]
+        public ActionResult Abort(string id)
+        {
+            if (String.IsNullOrWhiteSpace(id))
+            {
+                return HttpNotFound();
+            }
+
+            Guid guid;
+            if (!Guid.TryParse(id, out guid))
+            {
+                return HttpNotFound();
+            }
+
+            var func = _functionInstanceLookup.Lookup(guid);
+
+            if (func == null)
+            {
+                return HttpNotFound();
+            }
+
+            _services.PostDeleteRequest(func.FunctionInstance);
+
+            return RedirectToAction("FunctionInstance", new { id });
+        }
     }
 }
