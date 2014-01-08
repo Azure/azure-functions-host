@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.WindowsAzure.Jobs;
 
 namespace Dashboard
 {
@@ -15,6 +16,11 @@ namespace Dashboard
         internal static IEnumerable<Assembly> GetUserAssemblies()
         {
             return AppDomain.CurrentDomain.GetAssemblies();
+        }
+
+        public static string LoggingConnectionStringName
+        {
+            get { return JobHost.LoggingConnectionStringName; }
         }
     }
 }
