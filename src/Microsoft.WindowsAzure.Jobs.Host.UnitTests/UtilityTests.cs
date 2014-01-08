@@ -11,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
         {
             ExceptionAssert.ThrowsInvalidOperation(
                 () => Utility.ValidateConnectionString("UseDevelopmentStorage=true"),
-                "The storage emulator is not supported, please use a storage account hosted in Windows Azure.");
+                "The Windows Azure Storage Emulator is not supported, please use a Windows Azure Storage account hosted in Windows Azure.");
         }
 
         [TestMethod]
@@ -19,7 +19,23 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
         {
             ExceptionAssert.ThrowsInvalidOperation(
                 () => Utility.ValidateConnectionString("UseDevelopmentStorage=true;DevelopmentStorageProxyUri=http://myProxyUri"),
-                "The storage emulator is not supported, please use a storage account hosted in Windows Azure.");
+                "The Windows Azure Storage Emulator is not supported, please use a Windows Azure Storage account hosted in Windows Azure.");
+        }
+
+        [TestMethod]
+        public void ValidateConnectionString_WithEmpty_Throws()
+        {
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => Utility.ValidateConnectionString(string.Empty),
+                "Windows Azure Storage account connection string value is missing.");
+        }
+
+        [TestMethod]
+        public void ValidateConnectionString_WithNull_Throws()
+        {
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => Utility.ValidateConnectionString(null),
+                "Windows Azure Storage account connection string is missing.");
         }
     }
 }

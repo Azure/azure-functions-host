@@ -40,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <inheritdoc />
         public override string ToString()
         {
-            return String.Format(CultureInfo.InvariantCulture, "[Table{0})]", TableName);
+            return String.Format(CultureInfo.InvariantCulture, "[Table({0})]", TableName);
         }
     }
 }

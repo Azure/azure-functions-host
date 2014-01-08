@@ -265,7 +265,7 @@ namespace AzureTables
             {
                 if (string.IsNullOrWhiteSpace(value))
                 {
-                    throw new InvalidOperationException("invalid key");
+                    throw new InvalidOperationException("Table key can not be empty");
                 }
 
                 if (value.Length >= 512)
