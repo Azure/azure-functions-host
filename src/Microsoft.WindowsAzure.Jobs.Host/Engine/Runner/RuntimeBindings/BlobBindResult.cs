@@ -35,18 +35,21 @@ namespace Microsoft.WindowsAzure.Jobs
         public override void OnPostAction()
         {
             _inner.Result = this.Result;
-            _inner.OnPostAction(); // important, this is what may write the blob. 
+            _inner.OnPostAction(); // important, this is what may write the blob.
 
-            // This is the critical call to record causality. 
-            // The entire purpose of this wrapper class is to make this call. 
-            // This must be called after the blbo is written, since it may stamp the blob. 
-            _logger.SetWriter(_blob, _functionWriter);
-
-            // Notify that blob is available. 
-            if (_notify != null)
+            if (BlobClient.DoesBlobExist(_blob))
             {
-                string name = _blob.ServiceClient.Credentials.AccountName;
-                _notify.Notify(name, _blob.Container.Name, _blob.Name);
+                // This is the critical call to record causality. 
+                // The entire purpose of this wrapper class is to make this call. 
+                // This must be called after the blob is written, since it may stamp the blob. 
+                _logger.SetWriter(_blob, _functionWriter);
+
+                // Notify that blob is available. 
+                if (_notify != null)
+                {
+                    string name = _blob.ServiceClient.Credentials.AccountName;
+                    _notify.Notify(name, _blob.Container.Name, _blob.Name);
+                }
             }
         }
 

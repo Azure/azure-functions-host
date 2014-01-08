@@ -13,23 +13,34 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
-                Stream blobStream = IsInput ? blob.OpenRead() : blob.OpenWrite();
+                BlobStream originalBlobStream = IsInput ? blob.OpenRead() : blob.OpenWrite();
+                Stream watchableBlobStream;
 
                 if (IsInput)
                 {
                     blob.FetchAttributes();
                     long length = blob.Properties.Length;
-                    blobStream = new WatchableStream(blobStream, length);
+                    watchableBlobStream = new WatchableStream(originalBlobStream, length);
                 }
                 else
                 {
-                    blobStream = new WatchableStream(blobStream);
+                    watchableBlobStream = new WatchableStream(originalBlobStream);
                 }
 
                 return new BindCleanupResult
                 {
-                    Result = blobStream,
-                    Cleanup = () => blobStream.Close()
+                    Result = watchableBlobStream,
+                    Cleanup = () =>
+                    {
+                        if (originalBlobStream.CanWrite && originalBlobStream.Length == 0)
+                        {
+                            // Don't commit unless the user either wrote at least one byte or explicitly closed the
+                            // stream.
+                            originalBlobStream.Abort();
+                        }
+
+                        watchableBlobStream.Close();
+                    }
                 };
             }
         }

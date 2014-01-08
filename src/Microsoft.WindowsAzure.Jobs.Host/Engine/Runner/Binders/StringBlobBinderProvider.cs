@@ -36,8 +36,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 var result = new BindCleanupResult();
                 result.Cleanup = () =>
                     {
-                        string content = (string) result.Result;
-                        blob.UploadText(content);
+                        string content = (string)result.Result;
+                        if (content != null)
+                        {
+                            blob.UploadText(content);
+                        }
                     };
                 return result;
             }
