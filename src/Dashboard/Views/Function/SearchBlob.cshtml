@@ -1,0 +1,23 @@
+﻿@model string
+
+@{
+    ViewBag.Title = "Search Blobs";
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Blobs <small>Search for a specific Blob. You can search for a Blob and find out which function wrote to that Blob.</small></h3>
+        @using (Html.BeginForm("SearchBlob", "Function", FormMethod.Get))
+        {
+            <div class="row form-group">
+                <div class="col-md-10 col-xs-8">
+                    <input type="text" name="path" placeholder="container/filename.ext" class="form-control input-sm" value="@ViewBag.Path" />
+                </div>
+                <div class="col-md-2 col-xs-4">
+                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+

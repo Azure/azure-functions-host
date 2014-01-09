@@ -214,6 +214,7 @@
     </Content>
     <Content Include="Views\Dashboard\About.cshtml" />
     <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
+    <Content Include="Views\Function\SearchBlob.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

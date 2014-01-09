@@ -134,7 +134,7 @@
 
                             @if (param.ArgBlobLink != null)
                             {
-                                <a title="Search for the function which generated this file" href="@Url.Action("LookupBlob", "Function", new {path = param.ArgInvokeString})" class="btn btn-primary pull-right btn-xs">lookup</a>
+                                <a title="Search for the function which generated this file" href="@Url.Action("SearchBlob", "Function", new {path = param.ArgInvokeString})" class="btn btn-primary pull-right btn-xs">lookup</a>
                             }
                         </td>
                     </tr>

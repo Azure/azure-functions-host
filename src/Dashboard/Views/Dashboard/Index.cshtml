@@ -36,22 +36,7 @@
         </table>
     </div>
 </div>
-<div class="row">
-    <div class="col-md-6">
-        <h3>Blobs <small>Search for a specific blob</small></h3>
-        @using (Html.BeginForm("LookupBlob", "Function", FormMethod.Get))
-        {
-            <div class="row form-group">
-                <div class="col-md-10 col-xs-8">
-                    <input type="text" name="path" placeholder="container/filename.ext" class="form-control input-sm" />
-                </div>
-                <div class="col-md-2 col-xs-4">
-                    <button type="submit" class="btn btn-primary btn-sm">Search</button>
-                </div>
-            </div>
-        }
-    </div>
-</div>
+
         <script type="text/javascript">
             $(function () {
                 $('.not-running').tooltip();

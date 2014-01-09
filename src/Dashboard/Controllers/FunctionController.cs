@@ -154,13 +154,13 @@ namespace Dashboard.Controllers
             return View("FunctionInstance", model);
         }
 
-        public ActionResult LookupBlob(string path)
+        public ActionResult SearchBlob(string path)
         {
+            ViewBag.Path = path; 
+            
             if (String.IsNullOrEmpty(path))
             {
-                TempData["Message.Text"] = "Blob path can't be empty";
-                TempData["Message.Level"] = "danger";
-                return RedirectToAction("Index", "Dashboard");
+                return View();
             }
 
             var p = new CloudBlobPath(path.Trim());
@@ -171,7 +171,7 @@ namespace Dashboard.Controllers
             {
                 TempData["Message.Text"] = "Account not found";
                 TempData["Message.Level"] = "danger";
-                return RedirectToAction("Index", "Dashboard");
+                return View();
             }
 
             CloudBlob blob;
@@ -189,7 +189,7 @@ namespace Dashboard.Controllers
             {
                 TempData["Message.Text"] = "No job found for: " + path;
                 TempData["Message.Level"] = "warning";
-                return RedirectToAction("Index", "Dashboard");
+                return View();
             }
 
             Guid guid;
@@ -208,15 +208,15 @@ namespace Dashboard.Controllers
             {
                 TempData["Message.Text"] = "No job found for: " + path;
                 TempData["Message.Level"] = "warning";
-                return RedirectToAction("Index", "Dashboard");
+                return View();
             }
 
             IFunctionInstanceLookup lookup = _services.GetFunctionInstanceLookup();
 
             TempData["Message.Text"] = "Job found for: " + path;
             TempData["Message.Level"] = "info";
-            
-            return RedirectToAction("FunctionInstance", new {lookup.Lookup(guid).FunctionInstance.Id});
+
+            return RedirectToAction("FunctionInstance", new { lookup.Lookup(guid).FunctionInstance.Id });
         }
 
         [HttpPost]
