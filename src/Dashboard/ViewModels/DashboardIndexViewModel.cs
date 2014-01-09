@@ -63,6 +63,6 @@ namespace Dashboard.ViewModels
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
         public bool IsRunning { get; set; }
-        public DateTime? LastWriteTime { get; set; }
+        public DateTime? LastStartTime { get; set; }
     }
 }

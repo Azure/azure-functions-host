@@ -44,7 +44,7 @@ namespace Dashboard.Controllers
                     IsRunning = HasValidHeartbeat(f, hearbeats),
                     FailedCount = 0,
                     SuccessCount = 0,
-                    LastWriteTime = f.Timestamp
+                    LastStartTime = f.Timestamp
                 }).ToArray();
 
             var table = _services.GetInvokeStatsTable();
@@ -102,7 +102,7 @@ namespace Dashboard.Controllers
                     IsRunning = HasValidHeartbeat(f, hearbeats),
                     FailedCount = 0,
                     SuccessCount = 0,
-                    LastWriteTime = f.Timestamp
+                    LastStartTime = f.Timestamp
                 }).ToArray();
 
             var table = _services.GetInvokeStatsTable();
