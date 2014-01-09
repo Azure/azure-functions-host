@@ -163,8 +163,6 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            var p = new CloudBlobPath(path.Trim());
-
             CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
 
             if (account == null)
@@ -178,7 +176,14 @@ namespace Dashboard.Controllers
 
             try
             {
+                var p = new CloudBlobPath(path.Trim());
                 blob = p.Resolve(account);
+            }
+            catch (FormatException e)
+            {
+                TempData["Message.Text"] = e.Message;
+                TempData["Message.Level"] = "danger";
+                return View();
             }
             catch
             {
