@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
     internal class QueueCausalityHelper
     {
         // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
-        const string parentGuidFieldName = "SBParentGuid";
+        const string parentGuidFieldName = "$AzureJobsParentId";
 
         // When we enqueue, add the 
         public CloudQueueMessage EncodePayload(Guid functionOwner, object payload)
