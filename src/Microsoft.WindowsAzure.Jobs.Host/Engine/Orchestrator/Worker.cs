@@ -202,6 +202,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             instance.TriggerReason = new QueueMessageTriggerReason
             {
+                QueueName = qb.QueueName,
                 MessageId = msg.Id,
                 ParentGuid = GetOwnerFromMessage(msg)
             };

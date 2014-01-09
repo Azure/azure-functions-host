@@ -1,7 +1,8 @@
-﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+﻿using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Diagnostics;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -28,6 +29,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return msg;
         }
 
+        [DebuggerNonUserCode]
         public Guid GetOwner(CloudQueueMessage msg)
         {
             string json = msg.AsString;
