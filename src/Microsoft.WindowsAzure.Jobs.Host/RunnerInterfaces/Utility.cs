@@ -69,7 +69,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new InvalidOperationException("Windows Azure Storage account connection string is missing.");
             }
 
-            if (accountConnectionString == string.Empty)
+            if (accountConnectionString.Length == 0)
             {
                 throw new InvalidOperationException("Windows Azure Storage account connection string value is missing.");
             }
