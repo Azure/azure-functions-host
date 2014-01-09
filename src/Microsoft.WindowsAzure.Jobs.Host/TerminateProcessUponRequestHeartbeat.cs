@@ -23,7 +23,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             if (HasTerminationRequest())
             {
-                Environment.FailFast("Host aborted.");
+                Environment.Exit(1);
             }
         }
 
