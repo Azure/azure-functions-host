@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Reflection;
 using Microsoft.WindowsAzure.StorageClient;
@@ -63,16 +64,26 @@ namespace Microsoft.WindowsAzure.Jobs
         // Throw if the account string is bad (parser error, wrong credentials). 
         public static void ValidateConnectionString(string accountConnectionString)
         {
+            if (accountConnectionString == null)
+            {
+                throw new InvalidOperationException("Windows Azure Storage account connection string is missing.");
+            }
+
+            if (accountConnectionString == string.Empty)
+            {
+                throw new InvalidOperationException("Windows Azure Storage account connection string value is missing.");
+            }
+
             // Will throw on parser errors. 
             CloudStorageAccount account;
             if (!CloudStorageAccount.TryParse(accountConnectionString, out account))
             {
-                throw new InvalidOperationException("Account connection string is an invalid format");
+                throw new InvalidOperationException("Windows Azure Storage account connection string is not formatted correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for details about configuring Windows Azure Storage connection strings.");
             }
 
             if (IsDevelopmentStorageAccount(account))
             {
-                throw new InvalidOperationException("The storage emulator is not supported, please use a storage account hosted in Windows Azure.");
+                throw new InvalidOperationException("The Windows Azure Storage Emulator is not supported, please use a Windows Azure Storage account hosted in Windows Azure.");
             }
 
             // Verify the credentials are correct.
@@ -84,8 +95,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 // This can hang for a long time if the account name is wrong. 
                 // If will fail fast if the password is incorrect.
                 client.GetServiceProperties();
-
-                // Success
             }
             catch
             {

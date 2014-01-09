@@ -4,16 +4,11 @@
     ViewBag.Title = "Configuration Error";
 }
 
-<h2>Bad Config</h2>
+<h2>Bad Configuration</h2>
 <p>
-The configuration is not properly set for the Windows Azure Web Jobs SDK Dashboard.
-In your configuration (such as web.config), you must set a connection string named <i>@SimpleBatchStuff.LoggingConnectionStringName</i> that points to the account connection string where the sb logs are being stored. EG, under "connectionStrings" in Web.config, add a value like:
-</p>
-<pre>
-  &lt;add name="@SimpleBatchStuff.LoggingConnectionStringName" connectionString="DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b>" /&gt;
-</pre>
-
-<p>
-This is the storage account that your user functions will bind against.  This is also where logging will be stored.
+    The configuration is not properly set for the Windows Azure Web Jobs SDK Dashboard.
+    In your Windows Azure Website configuration you must set a connection string named <code>@SimpleBatchStuff.LoggingConnectionStringName</code> with
+    a value similar to <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Windows Azure Storage account where the Windows Azure Jobs Runtime logs are stored. <br/>
+    Please visit <a href="http://go.microsoft.com/fwlink/?LinkID=320957">this article</a> for more information on how you can configure connection strings in your Windows Azure Website.
 </p>
 <p class="alert alert-danger">@SimpleBatchStuff.BadInitErrorMessage</p>
