@@ -213,8 +213,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public IPrereqManager GetPrereqManager(IFunctionInstanceLookup lookup)
         {
-            IAzureTable prereqTable = new AzureTable(_account, "schedPrereqTable");
-            IAzureTable successorTable = new AzureTable(_account, "schedSuccessorTable");
+            IAzureTable prereqTable = new AzureTable(_account, EndpointNames.PrereqTableName);
+            IAzureTable successorTable = new AzureTable(_account, EndpointNames.PrereqTableName);
 
             return new PrereqManager(prereqTable, successorTable, lookup);
         }

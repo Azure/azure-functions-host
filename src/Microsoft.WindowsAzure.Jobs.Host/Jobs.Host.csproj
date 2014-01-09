@@ -199,7 +199,6 @@
     <Compile Include="RunnerInterfaces\AssemblyNameComparer.cs" />
     <Compile Include="RunnerInterfaces\ConfigurationExtensions.cs" />
     <Compile Include="RunnerInterfaces\ContainerDownloader.cs" />
-    <Compile Include="RunnerInterfaces\Execution\AzureExecutionEndpointNames.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionExecutionContext.cs" />
     <Compile Include="RunnerInterfaces\Execution\ExecuteBase.cs" />
     <Compile Include="RunnerInterfaces\Execution\AccountInfo.cs" />

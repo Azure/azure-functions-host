@@ -4,57 +4,57 @@
     // This does not describe the schemas, payloads, etc for those endpoints. 
     internal static class EndpointNames
     {
-        // Suffix for quickly switching betten production and private runs.
-        // Use only lowercase, no numbers, to comply with all the naming restrictions.
-        // (queues are only lower, tables are only alphanumeric)
-        //private const string prefix = "daaspriv";
-        private const string prefix = "daas";
-
         // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
-        public const string FunctionIndexTableName = "DaasFunctionIndex5";
+        private const string tablePrefix = "AzureJobs";
+        private const string queuePrefix = "azure-jobs";
+        private const string containerOrBlobPrefix = "azure-jobs";
 
-        public const string FunctionInvokeStatsTableName = "DaasFunctionInvokeStats";
+        public const string FunctionIndexTableName = tablePrefix + "FunctionIndex5";
 
-        public const string BindersTableName = "SimpleBatchBinders";
+        public const string FunctionInvokeStatsTableName = tablePrefix + "FunctionInvokeStats";
+
+        public const string BindersTableName = tablePrefix + "Binders";
 
         // Where all function instance logging is written.
         // Table is indexed by FunctionInstance.Guid
-        public const string FunctionInvokeLogTableName = prefix + "functionlogs";
+        public const string FunctionInvokeLogTableName = tablePrefix + "FunctionLogs";
 
         // 2ndary table for FunctionInvokeLogTableName, providing an index by time.
-        public const string FunctionInvokeLogIndexMru = "functionlogsIndexMRU";
-        public const string FunctionInvokeLogIndexMruFunction = "functionlogsIndexMRUByFunction";
-        public const string FunctionInvokeLogIndexMruFunctionSucceeded = "functionlogsIndexMRUByFunctionSucceeded";
-        public const string FunctionInvokeLogIndexMruFunctionFailed = "functionlogsIndexMRUByFunctionFailed";
+        public const string FunctionInvokeLogIndexMru = tablePrefix + "FunctionlogsIndexMRU";
+        public const string FunctionInvokeLogIndexMruFunction = tablePrefix + "FunctionlogsIndexMRUByFunction";
+        public const string FunctionInvokeLogIndexMruFunctionSucceeded = tablePrefix + "FunctionlogsIndexMRUByFunctionSucceeded";
+        public const string FunctionInvokeLogIndexMruFunctionFailed = tablePrefix + "FunctionlogsIndexMRUByFunctionFailed";
 
-
-        public const string FunctionCausalityLog = "functionCausalityLog";
+        public const string FunctionCausalityLog = tablePrefix + "FunctionCausalityLog";
 
         // Queuenames must be all lowercase. 
-        public const string ExecutionQueueName = prefix + "-execution";
+        public const string ExecutionQueueName = queuePrefix + "-execution";
 
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs
-        public const string ConsoleOuputLogContainerName = AzureExecutionEndpointNames.ConsoleOuputLogContainerName;
+        public const string ConsoleOuputLogContainerName = containerOrBlobPrefix + "-invoke-log";
 
         // Container where various roles write critical health status. 
-        public const string HealthLogContainerName = prefix + "-health-log";
+        public const string HealthLogContainerName = containerOrBlobPrefix + "-health-log";
 
-        public const string OrchestratorControlQueue = prefix + "-orch-control";
+        public const string OrchestratorControlQueue = queuePrefix + "-orch-control";
 
-        public const string FunctionInvokeDoneQueue = AzureExecutionEndpointNames.FunctionInvokeDoneQueue;
+        public const string FunctionInvokeDoneQueue = queuePrefix + "-invoke-done";
 
         // Key optimization for blob listening: Blob listening on external blobs can have a 30 minute lag. 
         // make it fast to detect blobs that we wrote ourselves. When we write a blob, queueue a notification
         // message.
-        public const string BlobWrittenQueue = "blob-written";
+        public const string BlobWrittenQueue = containerOrBlobPrefix + "-blob-written";
 
-        public const string DaasControlContainerName = prefix + "-control";
+        public const string DaasControlContainerName = containerOrBlobPrefix + "-control";
 
-        public const string RunningHostTableName = "AzureJobsRunningHost";
+        public const string RunningHostTableName = tablePrefix + "RunningHost";
 
-        public const string VersionContainerName = "azure-jobs-versions";
+        public const string VersionContainerName = containerOrBlobPrefix + "-versions";
 
-        public const string AbortHostInstanceBlobContainerName = "azure-jobs-aborts";
+        public const string AbortHostInstanceBlobContainerName = containerOrBlobPrefix + "-aborts";
+
+        public const string PrereqTableName = tablePrefix + "SchedPrereqTable";
+        public const string SuccessorTableName = tablePrefix + "SchedSuccessorTable";
     }
 }
