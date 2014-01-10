@@ -1,2 +1,0 @@
-﻿src\Microsoft.WindowsAzure.Jobs.NuGet\bin\Release\NuGet\Microsoft.WindowsAzure.Jobs.0.1.0-alpha1.nupkg
-src\Microsoft.WindowsAzure.Jobs.Host.NuGet\bin\Release\NuGet\Microsoft.WindowsAzure.Jobs.Host.0.1.0-alpha1.nupkg

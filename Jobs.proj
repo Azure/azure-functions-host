@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The Assembly items below MUST be kept in dependency order. -->
     <Build Include="src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
@@ -104,6 +105,15 @@
   </Target>
 
   <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
+
+  <Target Name="GetOfficialProjects" Returns="@(OfficialProjects)">
+    <ItemGroup>
+      <OfficialProjects Include="%(Build.FullPath)">
+        <PublishType>%(Build.PublishType)</PublishType>
+        <PublishPath>$([System.IO.Path]::GetFullPath('%(Build.PublishPath)'))</PublishPath>
+      </OfficialProjects>
+    </ItemGroup>
+  </Target>
 
   <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
     <ParameterGroup>
