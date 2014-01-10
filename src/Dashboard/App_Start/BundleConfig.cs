@@ -26,6 +26,9 @@ namespace Dashboard
             bundles.Add(new StyleBundle("~/bundles/css").Include(
                 "~/Content/bootstrap/css/bootstrap.css",
                 "~/Content/Site.css"));
+
+            // disable bundling optimizations for now
+            BundleTable.EnableOptimizations = false;
         }
     }
 }
