@@ -156,14 +156,16 @@ namespace Microsoft.WindowsAzure.Jobs
             // Take a second pass to bind params directly to {key} in the attributes above,.
             // So if we have p1 with attr [BlobInput(@"daas-test-input2/{name}.csv")],
             // then we'll bind 'string name' to the {name} value.
-            int pos = 0;
-            foreach (ParameterInfo p in ps)
+            for (int pos = 0; pos < ps.Length; ++pos)
             {
-                if (paramNames.Contains(p.Name))
+                if (flows[pos] == null)
                 {
-                    flows[pos] = new NameParameterStaticBinding { KeyName = p.Name, Name = p.Name };
+                    var parameterName = ps[pos].Name;
+                    if (paramNames.Contains(parameterName))
+                    {
+                        flows[pos] = new NameParameterStaticBinding { KeyName = parameterName, Name = parameterName };
+                    }
                 }
-                pos++;
             }
 
             return flows;
