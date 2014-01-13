@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package>
     <metadata>
-        <id>Microsoft.WindowsAzure.Jobs</id>
-        <title>$NuGetPackageTitle$</title>
-        <version>$JobsPackageVersion$</version>
+        <id>$NuGetPackageId$</id>
+        <title>Microsoft.WindowsAzure.Jobs</title>
+        <version>$NuGetPackageVersion$</version>
         <authors>Microsoft</authors>
         <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
         <description>TODO TODO TODO This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.</description>

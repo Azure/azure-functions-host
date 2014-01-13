@@ -29,7 +29,7 @@ Relevant parameters:
   </PropertyGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
-  
+
   <PropertyGroup>
     <NuGetPackageId Condition="'$(NuGetPackageId)' == ''">$(MSBuildProjectName)</NuGetPackageId>
     <NuGetPackSymbols Condition="'$(NuGetPackOptions.ToLower().Contains(symbols))'">true</NuGetPackSymbols>
@@ -48,6 +48,7 @@ Relevant parameters:
     <ProjectPath>$(IntermediateOutputPath)$(NuSpecFileName)</ProjectPath>
     <NuGetToolsPath>$(MsBuildThisFileDirectory)</NuGetToolsPath>
     <NuGetExePath Condition=" '$(NuGetExePath)' == '' ">$(NuGetToolsPath)NuGet.exe</NuGetExePath>
+    <TargetPath>$(MsBuildProjectDirectory)\$(PackageOutputDir)\$(NuGetPackageId).$(NuGetPackageVersion).nupkg</TargetPath>
   </PropertyGroup>
 
   <!-- 

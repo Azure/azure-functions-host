@@ -3,7 +3,8 @@
   <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), Jobs.sln))\tools\Jobs.settings.targets"/>
   <PropertyGroup>
     <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
-    <NuGetPackageTitle>Microsoft.WindowsAzure.Jobs</NuGetPackageTitle>
+    <NuGetPackageId>Microsoft.WindowsAzure.Jobs</NuGetPackageId>
+    <NuGetPackageVersion>$(JobsPackageVersion)</NuGetPackageVersion>
     <NuGetPackSymbols>false</NuGetPackSymbols>
   </PropertyGroup>
   <ItemGroup>
@@ -24,7 +25,7 @@
   <Target Name="BeforeBuild">
     <PropertyGroup>
       <!-- Define properties you want to use inside your nuspec file. -->
-      <NuSpecProperties>NuGetPackageTitle=$(NuGetPackageTitle);PackageEULA=$(JobsPackageEULA);JobsPackageVersion=$(JobsPackageVersion)</NuSpecProperties>
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(JobsPackageEULA)</NuSpecProperties>
     </PropertyGroup>    
   </Target>
 </Project>
