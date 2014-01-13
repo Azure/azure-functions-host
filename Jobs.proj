@@ -1,15 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>src\SkipStrongNames.xml</SkipStrongNamesXml>
+    <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <Build Include="src\Dashboard.Publish\Dashboard.Publish.proj"/>
-    <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj"/>
-    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj"/>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
+    <Build Include="src\Dashboard\Dashboard.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
+    
+    <Build Include="src\Dashboard.Publish\Dashboard.Publish.proj">
+      <PublishType>Website</PublishType>
+      <PublishPath>$(PublishPath)\Websites\Dashboard</PublishPath>
+    </Build>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj">
+      <PublishType>Package</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj">
+      <PublishType>Package</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
   </ItemGroup>
 
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
@@ -54,13 +78,27 @@
     <Exec Command='"$(NuGetExe)" restore "%(Restore.Identity)" -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
   </Target>
 
-  <Target Name="Build" DependsOnTargets="RestorePackages">
-    <MSBuild Projects="@(Build)"
+  <Target Name="GetBinplace">
+    <PropertyGroup>
+      <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
+      <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
+      <NestedBuildProperties Condition=" '$(SetConfiguration)' != '' or '$(SetPlatform)' != ''">$(SetConfiguration); $(SetPlatform)</NestedBuildProperties>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Binplace Include="src\Binplace\%(Build.PublishType).proj">
+        <Properties>ProjectFile=%(FullPath); BinplaceOutputPath=$([System.IO.Path]::GetFullPath('%(PublishPath)')); Properties=$(NestedBuildProperties)</Properties>
+      </Binplace>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace">
+    <MSBuild Projects="@(Binplace)"
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
 
-  <Target Name="Clean">
-    <MSBuild Projects="@(Build)"
+  <Target Name="Clean" DependsOnTargets="GetBinplace">
+    <MSBuild Projects="@(Binplace)"
              Targets="Clean"
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
