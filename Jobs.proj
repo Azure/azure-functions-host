@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="CheckSkipStrongNames" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>src\SkipStrongNames.xml</SkipStrongNamesXml>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Build Include="src\Dashboard.Publish\Dashboard.Publish.proj"/>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj"/>
+    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj"/>
+  </ItemGroup>
+
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
-  
+
   <Target Name="DownloadNuGet">
     <DownloadNuGet OutputFileName="$(NuGetExe)" MinimumVersion="2.7.0" />
   </Target>
@@ -39,26 +45,27 @@
     <Message Text="SkipStrongNames: $(Status)" Importance="High" />
   </Target>
 
-  <Target Name="RestoreOfficialPackages" DependsOnTargets="DownloadNuGet">
+  <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
     <Message Text="Restoring NuGet packages..." Importance="High" />
     <ItemGroup>
-      <Restore Include=".nuget\packages.config"/>
       <Restore Include="src\Dashboard\packages.config"/>
       <Restore Include="src\Microsoft.WindowsAzure.Jobs.Host\packages.config"/>
     </ItemGroup>
     <Exec Command='"$(NuGetExe)" restore "%(Restore.Identity)" -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
   </Target>
 
-  <Target Name="Official" DependsOnTargets="RestoreOfficialPackages">
-    <ItemGroup>
-      <Build Include="src\Dashboard\Dashboard.csproj"/>
-      <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj"/>
-      <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj"/>
-    </ItemGroup>
-    <MSBuild Projects="@(Build)" BuildInParallel="true" Properties="Configuration=Release" UnloadProjectsOnCompletion="true"/>
-    <MSBuild Projects="src\Dashboard\Dashboard.csproj" Targets="PipelineCopyAllFilesToOneFolderForMsdeploy"
-             BuildInParallel="true" Properties="Configuration=Release" UnloadProjectsOnCompletion="true"/>
+  <Target Name="Build" DependsOnTargets="RestorePackages">
+    <MSBuild Projects="@(Build)"
+             BuildInParallel="$(BuildInParallel)"/>
   </Target>
+
+  <Target Name="Clean">
+    <MSBuild Projects="@(Build)"
+             Targets="Clean"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
 
   <UsingTask TaskName="DownloadNuGet" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
     <ParameterGroup>

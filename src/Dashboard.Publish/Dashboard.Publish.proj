@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
+    <WebsiteProjectFile>..\Dashboard\Dashboard.csproj</WebsiteProjectFile>
+    <OutputPath>bin</OutputPath>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <_FullOutputPath>$(MSBuildThisFileDirectory)$(OutputPath)</_FullOutputPath>
+    <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
+    <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
+  </PropertyGroup>
+  
+  <Target Name="Build">
+    <MSBuild Projects="$(WebsiteProjectFile)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)"/>
+    
+    <MSBuild Projects="$(WebsiteProjectFile)"
+             Targets="PipelineCopyAllFilesToOneFolderForMsdeploy"
+             Properties="$(SetConfiguration); $(SetPlatform); WPPAllFilesInSingleFolder=$(_FullOutputPath)"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+  
+  <Target Name="CleanProjectFile">
+    <MSBuild Projects="$(WebsiteProjectFile)"
+             Targets="Clean"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="Clean" DependsOnTargets="CleanProjectFile">
+    <RemoveDir Directories="$(OutputPath)" Condition="Exists('$(OutputPath)')"/>
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
+  
+  <Target Name="GetOutputPath" Returns="$(_FullOutputPath)"/>
+</Project>
