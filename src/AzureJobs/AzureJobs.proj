@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <DirectoryProjectFile>..\AzureJobs.Directory\AzureJobs.Directory.proj</DirectoryProjectFile>
+    <SiteExtensionName>AzureJobs</SiteExtensionName>
+    <OutputPath>bin</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
+    <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
+    <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
+  </PropertyGroup>
+
+  <Target Name="GetTargetPath" Returns="$(_FullTargetPath)">
+    <MSBuild Projects="$(DirectoryProjectFile)"
+             Targets="GetVersion"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" PropertyName="Version"/>
+    </MSBuild>
+
+    <PropertyGroup>
+      <TargetPath>$(OutputPath)\$(SiteExtensionName).$(Version).zip</TargetPath>
+      <_FullTargetPath>$(MSBuildThisFileDirectory)$(TargetPath)</_FullTargetPath>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="BuildDirectoryProject">
+    <MSBuild Projects="$(DirectoryProjectFile)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="GetZip">
+    <MSBuild Projects="$(DirectoryProjectFile)"
+             Targets="GetOutputPath"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" PropertyName="ZipSourceDirectory"/>
+    </MSBuild>
+
+    <ItemGroup>
+      <ZipInput Include="$(ZipSourceDirectory)\**"/>
+      <Zip Include="@(ZipInput)">
+        <EntryName>%(RecursiveDir)%(Filename)%(Extension)</EntryName>
+      </Zip>
+    </ItemGroup>
+  </Target>
+
+  <Target Name="Build"
+          DependsOnTargets="BuildDirectoryProject;GetTargetPath;GetZip"
+          Inputs="@(Zip)"
+          Outputs="$(TargetPath)">
+    <MakeDir Directories="$(OutputPath)" Condition="!Exists($(OutputPath))"/>
+
+    <Zip SourceFiles="@(Zip)" DestinationFile="$(TargetPath)"/>
+  </Target>
+
+  <Target Name="CleanDirectoryProject">
+    <MSBuild Projects="$(DirectoryProjectFile)"
+             Targets="Clean"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <Target Name="Clean" DependsOnTargets="CleanDirectoryProject;GetTargetPath">
+    <Delete Files="$(TargetPath)" Condition="Exists($(TargetPath))"/>
+  </Target>
+
+  <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
+
+  <UsingTask TaskName="Zip" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v12.0.dll">
+    <ParameterGroup>
+      <SourceFiles ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <DestinationFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="System.IO.Compression" />
+      <Reference Include="System.IO.Compression.FileSystem" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.IO.Compression" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          if (File.Exists(DestinationFile))
+          {
+              File.Delete(DestinationFile);
+          }
+        
+          using (ZipArchive archive = ZipFile.Open(DestinationFile, ZipArchiveMode.Create))
+          {
+              foreach (ITaskItem sourceFile in SourceFiles)
+              {
+                  archive.CreateEntryFromFile(sourceFile.ItemSpec, sourceFile.GetMetadata("EntryName"));
+              }
+          }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>

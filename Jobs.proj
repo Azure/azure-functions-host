@@ -22,17 +22,21 @@
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
-    
-    <Build Include="src\Dashboard.Publish\Dashboard.Publish.proj">
-      <PublishType>Website</PublishType>
-      <PublishPath>$(PublishPath)\Websites\Dashboard</PublishPath>
+
+    <Build Include="src\AzureJobs\AzureJobs.proj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\SiteExtensions</PublishPath>
+    </Build>
+    <Build Include="src\AzureJobs.Directory\AzureJobs.Directory.proj">
+      <PublishType>Directory</PublishType>
+      <PublishPath>$(PublishPath)\SiteExtensionsUnzipped\AzureJobs</PublishPath>
     </Build>
     <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj">
-      <PublishType>Package</PublishType>
+      <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
     <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj">
-      <PublishType>Package</PublishType>
+      <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
   </ItemGroup>
