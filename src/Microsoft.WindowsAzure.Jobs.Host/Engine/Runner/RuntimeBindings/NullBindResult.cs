@@ -1,13 +1,15 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using System;
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Input argument is currently null
-    internal class NullBindResult : BindResult, ISelfWatch
+    internal class NullBindResult : BindResult, ISelfWatch, IMaybeErrorBindResult
     {
-        private string _message;
+        private readonly string _message;
 
         public NullBindResult()
+            : this("Azure object not found")
         {
-            _message = "Azure object not found";
         }
 
         public NullBindResult(string message)
@@ -23,9 +25,12 @@
             }
         }
 
+        private static readonly string[] LineDelimiter = { Environment.NewLine };
         public string GetStatus()
         {
-            return _message;
+            return string.Join("; ", _message.Split(LineDelimiter, StringSplitOptions.None));
         }
+
+        public bool IsErrorResult { get; set; }
     }
 }

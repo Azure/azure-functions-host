@@ -251,7 +251,7 @@ namespace Microsoft.WindowsAzure.Jobs
             FunctionFlow flow = func.Flow;
             int len = flow.Bindings.Length;
 
-            var args = Array.ConvertAll(flow.Bindings, staticBinding => staticBinding.Bind(ctx));
+            var args = Array.ConvertAll(flow.Bindings, staticBinding => BindParameter(ctx, staticBinding));
 
             FunctionInvokeRequest instance = new FunctionInvokeRequest
             {
@@ -259,6 +259,18 @@ namespace Microsoft.WindowsAzure.Jobs
                 Args = args
             };
             return instance;
+        }
+
+        private static ParameterRuntimeBinding BindParameter(RuntimeBindingInputs ctx, ParameterStaticBinding staticBinding)
+        {
+            try
+            {
+                return staticBinding.Bind(ctx);
+            }
+            catch (InvalidOperationException ioe)
+            {
+                return new FailedParameterRuntimeBinding {BindingErrorMessage = ioe.Message};
+            }
         }
 
         // plug into Trigger Service to queue invocations on triggers. 

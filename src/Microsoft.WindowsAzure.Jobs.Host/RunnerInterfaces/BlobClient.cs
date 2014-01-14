@@ -61,12 +61,18 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             try
             {
-                blob.FetchAttributes(); // force network call to test whether it exists
+                // force network call to test whether it exists
+                blob.FetchAttributes(); 
                 return true;
             }
-            catch
+            catch (StorageClientException e)
             {
-                return false;
+                if (e.ErrorCode == StorageErrorCode.ResourceNotFound)
+                {
+                    return false;
+                }
+
+                throw;
             }
         }
 

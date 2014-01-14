@@ -1,9 +1,8 @@
 ﻿using System;
-using System.IO;
+using System.Linq;
 using System.Reflection;
 using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
 using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -227,7 +226,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
-                        
+
             INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
 
 
@@ -245,7 +244,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 catch (Exception e)
                 {
                     string msg = string.Format("Error while binding parameter #{0} '{1}':{2}", i, p, e.Message);
-                    throw new InvalidOperationException(msg, e);
+                    binds[i] = new NullBindResult(msg) { IsErrorResult = true };
                 }
             }
 
@@ -324,7 +323,15 @@ namespace Microsoft.WindowsAzure.Jobs
 
             try
             {
-                m.Invoke(null, args);
+                var hasBindErrors = binds.OfType<IMaybeErrorBindResult>().Any(r => r.IsErrorResult);
+                if (!hasBindErrors)
+                {
+                    m.Invoke(null, args);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Error while binding function parameters.");
+                }
             }
             catch (TargetInvocationException e)
             {

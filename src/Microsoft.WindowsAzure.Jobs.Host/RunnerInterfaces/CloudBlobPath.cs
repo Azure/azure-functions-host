@@ -258,8 +258,11 @@ namespace Microsoft.WindowsAzure.Jobs
                             throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket");
                         }
                         string name = pattern.Substring(i + 1, iEnd - i - 1);
-                        string value;
-                        names.TryGetValue(name, out value);
+                        string value = null;
+                        if (names != null)
+                        {
+                            names.TryGetValue(name, out value);
+                        }
                         if (value == null)
                         {
                             if (!allowUnbound)

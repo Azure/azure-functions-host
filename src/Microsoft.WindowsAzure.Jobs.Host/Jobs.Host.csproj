@@ -89,6 +89,8 @@
     <Compile Include="Engine\Orchestrator\Index\Indexer.cs" />
     <Compile Include="Engine\Orchestrator\Index\IndexerConfig.cs" />
     <Compile Include="Engine\Orchestrator\OrchestratorRoleHeartbeat.cs" />
+    <Compile Include="Engine\Runner\RuntimeBindings\IErrorBindResult.cs" />
+    <Compile Include="RunnerInterfaces\FailedParameterRuntimeBinding.cs" />
     <Compile Include="TerminateProcessUponRequestHeartbeat.cs" />
     <Compile Include="RunningHostHeartbeat.cs" />
     <Compile Include="Engine\Orchestrator\Worker.cs" />
