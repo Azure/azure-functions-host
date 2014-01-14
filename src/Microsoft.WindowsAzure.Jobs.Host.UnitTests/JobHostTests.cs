@@ -16,7 +16,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             {
                 Environment.SetEnvironmentVariable(JobHost.LoggingConnectionStringName, null);
 
-                ExceptionAssert.ThrowsInvalidOperation(() => new JobHost(), "Windows Azure Jobs Runtime connection string is missing. You can specify it by setting a connection string named 'AzureJobsRuntime' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsRuntime', or by using the constructor for JobHost that accepts connection strings.");
+                ExceptionAssert.ThrowsInvalidOperation(() => new JobHost(), "Windows Azure Jobs runtime connection string is missing. You can specify it by setting a connection string named 'AzureJobsRuntime' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsRuntime', or by using the constructor for JobHost that accepts connection strings.");
             }
             finally
             {

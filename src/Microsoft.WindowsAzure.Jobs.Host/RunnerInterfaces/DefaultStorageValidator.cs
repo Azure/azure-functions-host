@@ -26,8 +26,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 if (RequireLogging)
                 {
                     var msg =
-                        string.Format(
-                            "Windows Azure Jobs Runtime connection string is missing. " +
+                        String.Format(
+                            "Windows Azure Jobs runtime connection string is missing. " +
                             "You can specify it by setting a connection string named '{0}' in the connectionStrings section of the .config file, " +
                             "or with an environment variable named '{0}', or by using the constructor for JobHost that accepts connection strings.",
                             JobHost.LoggingConnectionStringName);
