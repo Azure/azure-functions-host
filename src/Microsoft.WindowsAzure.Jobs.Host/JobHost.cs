@@ -31,7 +31,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// in the connectionStrings section of the configuration file.
         /// </summary>
         public JobHost()
-            : this(dataConnectionString: null, runtimeConnectionString: null)
+            : this(dataConnectionString: null, runtimeConnectionString: null, hooks: DefaultHooks(requireLogging: true))
         {
         }
 
@@ -49,7 +49,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// reading and writing data and another connection string for logging.
         /// </summary>
         public JobHost(string dataConnectionString, string runtimeConnectionString)
-            : this(dataConnectionString, runtimeConnectionString, DefaultHooks())
+            : this(dataConnectionString, runtimeConnectionString, DefaultHooks(requireLogging: false))
         {
         }
 
@@ -67,11 +67,11 @@ namespace Microsoft.WindowsAzure.Jobs
             WriteAntaresManifest();
         }
 
-        static JobHostTestHooks DefaultHooks()
+        static JobHostTestHooks DefaultHooks(bool requireLogging)
         {
             return new JobHostTestHooks
             {
-                StorageValidator = new DefaultStorageValidator(),
+                StorageValidator = new DefaultStorageValidator { RequireLogging = requireLogging },
                 TypeLocator = new DefaultTypeLocator()
             };
         }
