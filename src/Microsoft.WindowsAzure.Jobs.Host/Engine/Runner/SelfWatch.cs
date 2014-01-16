@@ -2,111 +2,30 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
     internal class SelfWatch
     {
-        TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
-        TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
+        private readonly IIntervalSeparationCommand _command;
+        private readonly IntervalSeparationTimer _timer;
 
-        volatile bool _exitThread;
-
-        string _lastContent; // 
-
-        ISelfWatch[] _watches;
-        CloudBlob _blobResults;
-
-        // single Background thread that polls and does logging. 
-        // Whereas timers can fire on many different threads. 
-        Thread _thread;
-
-        void ThreadCallback(object state)
-        {
-            Thread.Sleep(_intialDelay);
-
-            while (!_exitThread)
-            {
-                LogSelfWatchWorker();
-                Thread.Sleep(_refreshRate);
-            }
-        }
-
-        private void LogSelfWatchWorker()
-        {
-            if (_blobResults == null)
-            {
-                return;
-            }
-            StringBuilder sb = new StringBuilder();
-            foreach (var watch in _watches)
-            {
-                if (watch != null)
-                {
-                    string val = watch.GetStatus();
-                    sb.AppendLine(val);
-                }
-                else
-                {
-                    sb.AppendLine(); // blank for a place holder.
-                }
-            }
-            try
-            {
-                string content = sb.ToString();
-
-                if (_lastContent == content)
-                {
-                    // If it hasn't change, then don't re upload stale content.
-                    return;
-                }
-                _lastContent = content;
-                _blobResults.UploadText(content);
-            }
-            catch( Exception e)
-            {   
-                // Not fatal if we can't update selfwatch. 
-                // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
-                Console.WriteLine("---- SelfWatch failed ---");
-                RunnerProgram.WriteExceptionChain(e);
-                Console.WriteLine("-------------------------");
-            }
-        }
-
-        // Called at end to shutdown thread and ensure that we log final results. 
         public void Stop()
         {
-            _exitThread = true;
-            _thread.Abort();
+            _timer.Stop();
 
-            // If join fails, then background thread may be in an unknown state. 
-            // That's ok. We'll still make a best effort to log. 
-            _thread.Join(TimeSpan.FromSeconds(5));
-            
             // Flush remaining. do this after timer has been shutdown to avoid races. 
-            LogSelfWatchWorker();
+            _command.Execute();
         }
 
-        // Begin self-watches. Return a cleanup delegate for stopping the watches. 
+        // Begin self-watches.
         // May update args array with selfwatch wrappers.
         public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlob blobResults)
         {
-            _blobResults = blobResults;
-
-            int len = binds.Length;
-            ISelfWatch[] watches = new ISelfWatch[len];
-            for (int i = 0; i < len; i++)
-            {
-                watches[i] = GetWatcher(binds[i], ps[i]);
-            }
-
-            _watches = watches;
-
-            // Ensure we only have 1 background thread doing the watches.
-            _thread = new Thread(ThreadCallback);
-            _thread.Start();            
+            _command = new SelfWatchCommand(binds, ps, blobResults);
+            _timer = new IntervalSeparationTimer(_command);
+            _timer.Start(executeFirst: false);
         }
 
         // May update the object with a Selfwatch wrapper.
@@ -159,6 +78,88 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
             return null;
-        }        
+        }
+
+        private class SelfWatchCommand : IIntervalSeparationCommand
+        {
+            private readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
+            private readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
+
+            private TimeSpan _currentDelay;
+
+            private string _lastContent;
+
+            private ISelfWatch[] _watches;
+            private CloudBlob _blobResults;
+
+            // May update args array with selfwatch wrappers.
+            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlob blobResults)
+            {
+                _currentDelay = _intialDelay;
+
+                _blobResults = blobResults;
+
+                int len = binds.Length;
+                ISelfWatch[] watches = new ISelfWatch[len];
+                for (int i = 0; i < len; i++)
+                {
+                    watches[i] = GetWatcher(binds[i], ps[i]);
+                }
+
+                _watches = watches;
+            }
+
+            public TimeSpan SeparationInterval
+            {
+                get { return _currentDelay; }
+            }
+
+            public void Execute()
+            {
+                LogSelfWatchWorker();
+                _currentDelay = _refreshRate;
+            }
+
+            private void LogSelfWatchWorker()
+            {
+                if (_blobResults == null)
+                {
+                    return;
+                }
+                StringBuilder sb = new StringBuilder();
+                foreach (var watch in _watches)
+                {
+                    if (watch != null)
+                    {
+                        string val = watch.GetStatus();
+                        sb.AppendLine(val);
+                    }
+                    else
+                    {
+                        sb.AppendLine(); // blank for a place holder.
+                    }
+                }
+                try
+                {
+                    string content = sb.ToString();
+
+                    if (_lastContent == content)
+                    {
+                        // If it hasn't change, then don't re upload stale content.
+                        return;
+                    }
+                    _lastContent = content;
+                    _blobResults.UploadText(content);
+                }
+                catch (Exception e)
+                {
+                    // Not fatal if we can't update selfwatch. 
+                    // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
+                    Console.WriteLine("---- SelfWatch failed ---");
+                    RunnerProgram.WriteExceptionChain(e);
+                    Console.WriteLine("-------------------------");
+                }
+            }
+        }
     }
 }

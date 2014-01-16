@@ -86,6 +86,8 @@
     <Compile Include="Engine\Runner\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Engine\Runner\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
+    <Compile Include="IntervalSeparationTimerTests.cs" />
+    <Compile Include="LinearSpeedupTimerCommandTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="PrereqManagerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -5,10 +5,9 @@ using System.Threading;
 namespace Microsoft.WindowsAzure.Jobs
 {
     /// <summary>Represents a timer that keeps a heartbeat running at a specified interval using a separate thread.</summary>
-    internal sealed class HeartbeatTimer : IDisposable
+    internal sealed class IntervalSeparationTimer : IDisposable
     {
-        private readonly IHeartbeat _heartbeat;
-        private readonly int _frequencyInMilliseconds;
+        private readonly IIntervalSeparationCommand _command;
         private readonly Thread _thread;
         private readonly EventWaitHandle _threadStopEvent;
 
@@ -16,20 +15,14 @@ namespace Microsoft.WindowsAzure.Jobs
         private bool _stopped;
         private bool _disposed;
 
-        public HeartbeatTimer(IHeartbeat heartbeat, int frequencyInMilliseconds)
+        public IntervalSeparationTimer(IIntervalSeparationCommand command)
         {
-            if (heartbeat == null)
+            if (command == null)
             {
-                throw new ArgumentNullException("heartbeat");
+                throw new ArgumentNullException("command");
             }
 
-            if (frequencyInMilliseconds < 0)
-            {
-                throw new ArgumentOutOfRangeException("frequencyInMilliseconds");
-            }
-
-            _heartbeat = heartbeat;
-            _frequencyInMilliseconds = frequencyInMilliseconds;
+            _command = command;
 
             _thread = new Thread(RunThread);
             _threadStopEvent = new ManualResetEvent(initialState: false);
@@ -52,17 +45,20 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public void Start()
+        public void Start(bool executeFirst)
         {
             ThrowIfDisposed();
 
             if (_started)
             {
-                throw new InvalidOperationException("The HeartbeatTimer has already been started; it may not be restarted.");
+                throw new InvalidOperationException("The timer has already been started; it cannot be restarted.");
             }
 
-            // Do an initial heartbeat without waiting for the thread to start.
-            _heartbeat.Beat();
+            if (executeFirst)
+            {
+                // Do an initial execution without waiting for the separation interval.
+                _command.Execute();
+            }
 
             _thread.Start();
             _started = true;
@@ -74,12 +70,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (!_started)
             {
-                throw new InvalidOperationException("The HeartbeatTimer has not yet been started.");
+                throw new InvalidOperationException("The timer has not yet been started.");
             }
 
             if (_stopped)
             {
-                throw new InvalidOperationException("The HeartbeatTimer has already been stopped.");
+                throw new InvalidOperationException("The timer has already been stopped.");
             }
 
             // Signal the thread to complete.
@@ -95,11 +91,24 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private void RunThread()
         {
-            // Keep beating until stopped.
-            while (!_threadStopEvent.WaitOne(_frequencyInMilliseconds))
+            // Keep executing until stopped.
+            while (!_threadStopEvent.WaitOne(GetNextSeparationInterval()))
             {
-                _heartbeat.Beat();
+                _command.Execute();
             }
+        }
+
+        private int GetNextSeparationInterval()
+        {
+            double valueInMillseconds = _command.SeparationInterval.TotalMilliseconds;
+
+            if (valueInMillseconds > int.MaxValue)
+            {
+                throw new InvalidOperationException(
+                    "IIntervalSeparationCommand.SeparationCommand must not be longer than Int32.MaxValue total milliseconds.");
+            }
+
+            return (int)valueInMillseconds;
         }
 
         private void ThrowIfDisposed()

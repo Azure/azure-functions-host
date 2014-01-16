@@ -101,9 +101,9 @@ namespace Microsoft.WindowsAzure.Jobs
                 logItemContext.Flush();
             }
 
-            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(logger, logItem))
+            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(logger, logItem))
             {
-                heartbeat.Start();
+                timer.Start(executeFirst: true);
 
                 try
                 {
@@ -135,21 +135,20 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 finally
                 {
-                    heartbeat.Stop();
+                    timer.Stop();
                     functionOutput.CloseOutput();
                 }
             }
         }
 
-        private static HeartbeatTimer CreateHeartbeatTimer(IFunctionUpdatedLogger logger,
+        private static IntervalSeparationTimer CreateHeartbeatTimer(IFunctionUpdatedLogger logger,
             ExecutionInstanceLogEntity logItem)
         {
-            const int millisecondsInSecond = 1000;
-            const int heartbeatInMilliseconds = 30 * millisecondsInSecond;
-            const int invalidationInMilliseconds = 45 * millisecondsInSecond;
-            RunningFunctionHeartbeat heartbeat =
-                new RunningFunctionHeartbeat(logger, logItem, invalidationInMilliseconds);
-            return new HeartbeatTimer(heartbeat, heartbeatInMilliseconds);
+            TimeSpan normalHeartbeatInterval = TimeSpan.FromSeconds(30);
+            TimeSpan heartbeatInvalidationInterval = TimeSpan.FromSeconds(45);
+            TimeSpan minimumHeartbeatAttemptInterval = TimeSpan.FromSeconds(10);
+            ICanFailCommand command = new UpdateFunctionHeartbeatCommand(logger, logItem, heartbeatInvalidationInterval);
+            return LinearSpeedupTimerCommand.CreateTimer(command, normalHeartbeatInterval, minimumHeartbeatAttemptInterval);
         }
     }
 }

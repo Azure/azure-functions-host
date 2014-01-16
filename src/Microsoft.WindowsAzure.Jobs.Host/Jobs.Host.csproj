@@ -66,7 +66,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="CompositeHeartbeat.cs" />
+    <Compile Include="CompositeCanFailCommand.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
@@ -90,9 +90,13 @@
     <Compile Include="Engine\Orchestrator\Index\IndexerConfig.cs" />
     <Compile Include="Engine\Orchestrator\OrchestratorRoleHeartbeat.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\IErrorBindResult.cs" />
+    <Compile Include="ICanFailCommand.cs" />
+    <Compile Include="LinearSpeedupTimerCommand.cs" />
     <Compile Include="RunnerInterfaces\FailedParameterRuntimeBinding.cs" />
-    <Compile Include="TerminateProcessUponRequestHeartbeat.cs" />
-    <Compile Include="RunningHostHeartbeat.cs" />
+    <Compile Include="UpdateQueueMessageVisibilityCommand.cs" />
+    <Compile Include="StorageClientExceptionExtensions.cs" />
+    <Compile Include="TerminateProcessUponRequestCommand.cs" />
+    <Compile Include="UpdateHostHeartbeatCommand.cs" />
     <Compile Include="Engine\Orchestrator\Worker.cs" />
     <Compile Include="Engine\Runner\Binders\StringBlobBinderProvider.cs" />
     <Compile Include="Engine\Runner\BindingContext.cs" />
@@ -149,8 +153,8 @@
     <Compile Include="Engine\Runner\DelegatingStream.cs" />
     <Compile Include="Engine\Runner\WatchableStream.cs" />
     <Compile Include="Engine\Runner\CallUtil.cs" />
-    <Compile Include="HeartbeatTimer.cs" />
-    <Compile Include="IHeartbeat.cs" />
+    <Compile Include="IntervalSeparationTimer.cs" />
+    <Compile Include="IIntervalSeparationCommand.cs" />
     <Compile Include="JobHost.cs" />
     <Compile Include="JobHostContext.cs" />
     <Compile Include="Engine\Runner\BindResultTransaction.cs" />
@@ -165,7 +169,7 @@
     <Compile Include="RunnerInterfaces\CloudQueueComparer.cs" />
     <Compile Include="RunnerInterfaces\DefaultStorageValidator.cs" />
     <Compile Include="RunnerInterfaces\DefaultTypeLocator.cs" />
-    <Compile Include="RunnerInterfaces\Execution\RunningFunctionHeartbeat.cs" />
+    <Compile Include="RunnerInterfaces\Execution\UpdateFunctionHeartbeatCommand.cs" />
     <Compile Include="RunnerInterfaces\FileFunctionLocation.cs" />
     <Compile Include="RunnerInterfaces\CloudQueueDescriptor.cs" />
     <Compile Include="RunnerInterfaces\CloudTableDescriptor.cs" />

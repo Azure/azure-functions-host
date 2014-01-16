@@ -301,14 +301,19 @@ namespace Microsoft.WindowsAzure.Jobs
                 var msg = queue.GetMessage(visibilityTimeout);
                 if (msg != null)
                 {
-                    foreach (var func in funcs)
+                    using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(queue, msg, visibilityTimeout))
                     {
-                        if (token.IsCancellationRequested)
-                        {
-                            return;
-                        }
+                        timer.Start(executeFirst: false);
 
-                        _invoker.OnNewQueueItem(msg, func, token);
+                        foreach (var func in funcs)
+                        {
+                            if (token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            _invoker.OnNewQueueItem(msg, func, token);
+                        }
                     }
 
                     // Need to call Delete message only if function succeeded. 
@@ -316,6 +321,16 @@ namespace Microsoft.WindowsAzure.Jobs
                     queue.DeleteMessage(msg);
                 }
             }
+        }
+
+        private static IntervalSeparationTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
+            CloudQueueMessage message, TimeSpan visibilityTimeout)
+        {
+            // Update a message's visibility when it is halfway to expiring.
+            TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
+
+            ICanFailCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
+            return LinearSpeedupTimerCommand.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
         }
 
         public void Dispose()

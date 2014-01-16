@@ -156,9 +156,9 @@ namespace Microsoft.WindowsAzure.Jobs
         // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
         internal void RunAndBlock(CancellationToken token, Action pauseAction)
         {
-            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(hostIsRunning: true))
+            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: true))
             {
-                heartbeat.Start();
+                timer.Start(executeFirst: true);
 
                 try
                 {
@@ -188,7 +188,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 finally
                 {
-                    heartbeat.Stop();
+                    timer.Stop();
                 }
             }
         }
@@ -251,9 +251,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
             ExecutionInstanceLogEntity logItem;
 
-            using (HeartbeatTimer heartbeat = CreateHeartbeatTimer(hostIsRunning: false))
+            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: false))
             {
-                heartbeat.Start();
+                timer.Start(executeFirst: true);
 
                 try
                 {
@@ -261,42 +261,42 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 finally
                 {
-                    heartbeat.Stop();
+                    timer.Stop();
                 }
             }
 
             VerifySuccess(logItem);
         }
 
-        private HeartbeatTimer CreateHeartbeatTimer(bool hostIsRunning)
+        private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
         {
-            IHeartbeat heartbeat = CreateHeartbeat(hostIsRunning);
-            return new HeartbeatTimer(heartbeat, (int)RunningHost.HeartbeatSignalInterval.TotalMilliseconds);
+            ICanFailCommand heartbeat = CreateHeartbeat(hostIsRunning);
+            return LinearSpeedupTimerCommand.CreateTimer(heartbeat, RunningHost.HeartbeatSignalInterval, TimeSpan.FromSeconds(10));
         }
 
-        private IHeartbeat CreateHeartbeat(bool hostIsRunning)
+        private ICanFailCommand CreateHeartbeat(bool hostIsRunning)
         {
-            IHeartbeat terminationHeartbeat = CreateTerminateProcessUponRequestHeartbeat();
+            ICanFailCommand terminationCommand = CreateTerminateProcessUponRequestCommand();
 
             if (!hostIsRunning)
             {
-                return terminationHeartbeat;
+                return terminationCommand;
             }
             else
             {
-                IHeartbeat runningHostHeartbeat = CreateRunningHostHeartbeat();
-                return new CompositeHeartbeat(terminationHeartbeat, runningHostHeartbeat);
+                ICanFailCommand runningHostHeartbeat = CreateRunningHostHeartbeat();
+                return new CompositeCanFailCommand(terminationCommand, runningHostHeartbeat);
             }
         }
 
-        private RunningHostHeartbeat CreateRunningHostHeartbeat()
+        private UpdateHostHeartbeatCommand CreateRunningHostHeartbeat()
         {
-            return new RunningHostHeartbeat(_hostContext.RunningHostTableWriter, _hostContext.HostName);
+            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, _hostContext.HostName);
         }
 
-        private TerminateProcessUponRequestHeartbeat CreateTerminateProcessUponRequestHeartbeat()
+        private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()
         {
-            return new TerminateProcessUponRequestHeartbeat(_hostContext.TerminationSignalReader, _hostContext.HostInstanceId);
+            return new TerminateProcessUponRequestCommand(_hostContext.TerminationSignalReader, _hostContext.HostInstanceId);
         }
 
         // Throw if the function failed. 
