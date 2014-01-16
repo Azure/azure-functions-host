@@ -91,7 +91,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Binplace Include="src\Binplace\%(Build.PublishType).proj">
+      <Binplace Include="tools\Binplace\%(Build.PublishType).proj">
         <Properties>ProjectFile=%(FullPath); BinplaceOutputPath=$([System.IO.Path]::GetFullPath('%(PublishPath)')); Properties=$(NestedBuildProperties)</Properties>
       </Binplace>
     </ItemGroup>
