@@ -1,4 +1,1 @@
-
-*.docx
-/Binaries
-/AllExamples/packages
+/packages
