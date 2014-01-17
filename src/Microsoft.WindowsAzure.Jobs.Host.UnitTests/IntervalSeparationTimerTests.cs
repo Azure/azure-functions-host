@@ -57,19 +57,21 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
         public void Start_AfterSeparationInterval_Executes()
         {
             // Arrange
-            bool executed = false;
             TimeSpan interval = TimeSpan.FromMilliseconds(1);
-            IIntervalSeparationCommand command = CreateLambdaCommand(() => executed = true, interval);
 
-            using (IntervalSeparationTimer product = CreateProductUnderTest(command))
+            using (EventWaitHandle executedWaitHandle = new ManualResetEvent(initialState: false))
             {
-                // Act
-                product.Start(executeFirst: false);
-                // Let the other thread run, but keep the test execution time fast.
-                Thread.Sleep((int)interval.TotalMilliseconds * 15);
+                IIntervalSeparationCommand command = CreateLambdaCommand(() => executedWaitHandle.Set(), interval);
 
-                // Assert
-                Assert.IsTrue(executed);
+                using (IntervalSeparationTimer product = CreateProductUnderTest(command))
+                {
+                    // Act
+                    product.Start(executeFirst: false);
+                    bool executed = executedWaitHandle.WaitOne(1000);
+
+                    // Assert
+                    Assert.IsTrue(executed);
+                }
             }
         }
 
