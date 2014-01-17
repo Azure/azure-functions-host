@@ -66,7 +66,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 // Act
                 product.Start(executeFirst: false);
                 // Let the other thread run, but keep the test execution time fast.
-                Thread.Sleep((int)interval.TotalMilliseconds * 5);
+                Thread.Sleep((int)interval.TotalMilliseconds * 15);
 
                 // Assert
                 Assert.IsTrue(executed);
