@@ -1,22 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <package>
-    <metadata>
-        <id>$NuGetPackageId$</id>
-        <title>Microsoft.WindowsAzure.Jobs.Host</title>
-        <version>$NuGetPackageVersion$</version>
-        <authors>Microsoft</authors>
-        <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
-        <description>TODO TODO TODO This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.Host.</description>
-        <summary>TODO TODO TODO This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.Host.</summary>
-        <language>en-US</language>
-        <projectUrl>http://www.microsoft.com/sample/TODO/TODO/TODO</projectUrl>
-        <licenseUrl>$PackageEULA$</licenseUrl>
-        <requireLicenseAcceptance>true</requireLicenseAcceptance>
-        <tags>Microsoft Azure WebJobs Jobs Batch</tags>
-        <dependencies>
-            <dependency id="Microsoft.WindowsAzure.Jobs" version="[$JobsPackageVersion$]" />
-            <dependency id="Newtonsoft.Json" version="5.0.6"/>
-            <dependency id="Microsoft.WindowsAzure.ConfigurationManager" version="1.7.0.0"/>
-        </dependencies>
-    </metadata>
+  <metadata>
+    <id>$NuGetPackageId$</id>
+    <title>Microsoft.WindowsAzure.Jobs.Host</title>
+    <version>$NuGetPackageVersion$</version>
+    <authors>Microsoft</authors>
+    <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
+    <summary>Microsoft.WindowsAzure.Jobs.Host is a library for writing Jobs in Windows Azure. The host is a container where all the functions in your program can execute. This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.Host.</summary>
+    <description>This package contains the runtime assemblies for Microsoft.WindowsAzure.Jobs.Host. It also adds rich diagnostics capabilities which makes it easier to monitor the Jobs in the dashboard. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
+    <language>en-US</language>
+    <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
+    <licenseUrl>$PackageEULA$</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <tags>Microsoft Azure WebJobs Jobs</tags>
+    <dependencies>
+      <dependency id="Microsoft.WindowsAzure.Jobs" version="[$JobsPackageVersion$]" />
+      <dependency id="Newtonsoft.Json" version="5.0.6"/>
+      <dependency id="Microsoft.WindowsAzure.ConfigurationManager" version="1.7.0.0"/>
+    </dependencies>
+  </metadata>
 </package>
