@@ -224,7 +224,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         class LocalQueue : QueueFunctionBase, IActivateFunction
         {
-            LocalExecutionContext _parent;
+            private readonly LocalExecutionContext _parent;
 
             public LocalQueue(QueueInterfaces interfaces, LocalExecutionContext parent)
                 : base(interfaces)
@@ -234,11 +234,13 @@ namespace Microsoft.WindowsAzure.Jobs
 
             protected override void Work(ExecutionInstanceLogEntity logItem)
             {
+                RunnerProgram runner = RunnerProgram.Create(logItem.FunctionInstance);
+
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    RunnerProgram.Invoke(logItem.FunctionInstance, _parent._config);
+                    runner.Invoke(logItem.FunctionInstance, _parent._config);
                 }
                 catch (Exception e)
                 {

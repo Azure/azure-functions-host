@@ -9,49 +9,41 @@ namespace Microsoft.WindowsAzure.Jobs
     // Used for launching an instance
     internal class RunnerProgram
     {
-        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
+        private readonly CloudBlobDescriptor _parameterLogger;
+
+        public RunnerProgram(CloudBlobDescriptor parameterLogger)
         {
-            Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
-            Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
-
-            _parameterLogger = descr.ParameterLogBlob; // optional 
-
-            FunctionExecutionResult result = new FunctionExecutionResult();
-
-            try
-            {
-                Invoke(descr);
-                // Success
-                Console.WriteLine("Success");
-            }
-            catch (Exception e)
-            {
-                // both binding errors and user exceptions from the function will land here. 
-                result.ExceptionType = e.GetType().FullName;
-                result.ExceptionMessage = e.Message;
-
-                // Failure. 
-                Console.WriteLine("Exception while executing:");
-                WriteExceptionChain(e);
-                Console.WriteLine("FAIL");
-            }
-
-            return result;
+            _parameterLogger = parameterLogger;
         }
 
-        // $$$ Merge with above
+        public static RunnerProgram Create(FunctionInvokeRequest descr)
+        {
+            CloudBlobDescriptor parameterLogger = descr.ParameterLogBlob; // optional 
+            return new RunnerProgram(parameterLogger);
+        }
+
+        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
+        {
+            RunnerProgram program = RunnerProgram.Create(descr);
+            return Main(() => program.Invoke(descr));
+        }
+
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config)
+        {
+            RunnerProgram program = RunnerProgram.Create(descr);
+            return Main(() => program.Invoke(descr, config));
+        }
+
+        private static FunctionExecutionResult Main(Action invoke)
         {
             Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
             Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
-
-            _parameterLogger = descr.ParameterLogBlob; // optional 
 
             FunctionExecutionResult result = new FunctionExecutionResult();
 
             try
             {
-                Invoke(descr, config);
+                invoke();
                 // Success
                 Console.WriteLine("Success");
             }
@@ -96,14 +88,14 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public static void Invoke(FunctionInvokeRequest invoke, IConfiguration config)
+        public void Invoke(FunctionInvokeRequest invoke, IConfiguration config)
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
             Invoke(config, method, invoke.Id, inputs, invoke.Args);
         }
 
-        public static void Invoke(FunctionInvokeRequest invoke)
+        private void Invoke(FunctionInvokeRequest invoke)
         {
             MethodInfo method = GetLocalMethod(invoke);
 
@@ -148,9 +140,6 @@ namespace Microsoft.WindowsAzure.Jobs
             throw new InvalidOperationException("Can't get a MethodInfo from function location:" + invoke.Location.ToString());
 
         }
-
-        // $$$ get rid of static fields.
-        static CloudBlobDescriptor _parameterLogger;
 
         public static IConfiguration InitBinders()
         {
@@ -223,7 +212,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private static void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
+        private void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
         {
             int len = argDescriptors.Length;
 
@@ -309,7 +298,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public static SelfWatch InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
+        private SelfWatch InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
         {
             SelfWatch fpStopWatcher = null;
             if (_parameterLogger != null)
