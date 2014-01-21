@@ -1,4 +1,0 @@
-﻿{
- "Name" : "Initial", 
- "Quota" : 1000
-}

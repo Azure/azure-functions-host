@@ -7,7 +7,6 @@ csx
 *.cscfg
 
 /packages
-/samples/Binaries
 /TestResults
 
 /tools/NuGet.exe
