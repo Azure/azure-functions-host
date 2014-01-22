@@ -67,10 +67,8 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="CompositeCanFailCommand.cs" />
-    <Compile Include="Engine\DaasEndpoints\AzureRoleAccountInfo.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
-    <Compile Include="Engine\DaasEndpoints\Helpers.cs" />
     <Compile Include="Engine\DaasEndpoints\EndpointNames.cs" />
     <Compile Include="Engine\DaasEndpoints\HostVersionReader.cs" />
     <Compile Include="Engine\DaasEndpoints\RunningHostTableReader.cs" />
@@ -82,7 +80,6 @@
     <Compile Include="Engine\Executor\IExecutionLogger.cs" />
     <Compile Include="Engine\Executor\ExecutionStatsAggregator.cs" />
     <Compile Include="Engine\Executor\FunctionStatsEntity.cs" />
-    <Compile Include="Engine\Orchestrator\Index\BinderLookup.cs" />
     <Compile Include="Engine\Orchestrator\Index\CalculateTriggers.cs" />
     <Compile Include="Engine\Orchestrator\Index\IndexTypeContent.cs" />
     <Compile Include="Engine\Orchestrator\Index\MethodDescriptor.cs" />
@@ -101,7 +98,6 @@
     <Compile Include="Engine\Runner\Binders\StringBlobBinderProvider.cs" />
     <Compile Include="Engine\Runner\BindingContext.cs" />
     <Compile Include="Engine\Runner\BindCleanupResult.cs" />
-    <Compile Include="Engine\Runner\CollisionDetector.cs" />
     <Compile Include="Engine\Runner\Binders\BinderBinderProvider.cs" />
     <Compile Include="Engine\Runner\Binders\CallWithContextWrapper.cs" />
     <Compile Include="Engine\Runner\Binders\DictionaryTableBinderProvider.cs" />
@@ -125,7 +121,6 @@
     <Compile Include="Engine\Runner\ICloudBinderVerify.cs" />
     <Compile Include="Engine\Runner\IPostActionTransaction.cs" />
     <Compile Include="Engine\Runner\NewQueueMessageRuntimeBindingInputs.cs" />
-    <Compile Include="Engine\Runner\OutputSetter.cs" />
     <Compile Include="Engine\Runner\RunnerProgram.cs" />
     <Compile Include="Engine\Runner\NewBlobRuntimeBindingInputs.cs" />
     <Compile Include="Engine\Runner\RuntimeBindingInputs.cs" />
@@ -157,7 +152,6 @@
     <Compile Include="IIntervalSeparationCommand.cs" />
     <Compile Include="JobHost.cs" />
     <Compile Include="JobHostContext.cs" />
-    <Compile Include="Engine\Runner\BindResultTransaction.cs" />
     <Compile Include="JobHostTestHooks.cs" />
     <Compile Include="LocalExecution\ConsoleFunctionOutputLogDispenser.cs" />
     <Compile Include="LocalExecution\NullRunningHostTableWriter.cs" />
@@ -202,9 +196,7 @@
     <Compile Include="RunnerInterfaces\BlobLeaseHolder.cs" />
     <Compile Include="RunnerInterfaces\BlobIncrementalTextWriter.cs" />
     <Compile Include="RunnerInterfaces\CloudBlobPath.cs" />
-    <Compile Include="RunnerInterfaces\AssemblyNameComparer.cs" />
     <Compile Include="RunnerInterfaces\ConfigurationExtensions.cs" />
-    <Compile Include="RunnerInterfaces\ContainerDownloader.cs" />
     <Compile Include="RunnerInterfaces\Execution\FunctionExecutionContext.cs" />
     <Compile Include="RunnerInterfaces\Execution\ExecuteBase.cs" />
     <Compile Include="RunnerInterfaces\Execution\AccountInfo.cs" />
@@ -212,8 +204,6 @@
     <Compile Include="RunnerInterfaces\Execution\IFunctionOutputLogDispenser.cs" />
     <Compile Include="RunnerInterfaces\Execution\BlobWrittenMessage.cs" />
     <Compile Include="RunnerInterfaces\Execution\IActivateFunction.cs" />
-    <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobViaWebApi.cs" />
-    <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobViaQueueMessage.cs" />
     <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobViaInMemory.cs" />
     <Compile Include="RunnerInterfaces\Execution\INotifyNewBlobListener.cs" />
     <Compile Include="RunnerInterfaces\Execution\NotifyNewBlobExtensions.cs" />
@@ -272,10 +262,8 @@
     <Compile Include="RunnerInterfaces\Logging\ICausalityLogger.cs" />
     <Compile Include="RunnerInterfaces\Logging\IQueueCausalityLogger.cs" />
     <Compile Include="RunnerInterfaces\Logging\FunctionInstanceQueryFilter.cs" />
-    <Compile Include="RunnerInterfaces\ModelBinderManifest.cs" />
     <Compile Include="RunnerInterfaces\ObjectBinderHelpers.cs" />
     <Compile Include="RunnerInterfaces\QueueBinder.cs" />
-    <Compile Include="RunnerInterfaces\ServiceContainer.cs" />
     <Compile Include="RunnerInterfaces\Tables\AzureTableOfTValue.cs" />
     <Compile Include="RunnerInterfaces\Tables\GenericEntity.cs" />
     <Compile Include="RunnerInterfaces\Tables\AzureTableOfTPartRowKeyTValue.cs" />
@@ -287,7 +275,6 @@
     <Compile Include="RunnerInterfaces\Tables\TableCore.cs" />
     <Compile Include="RunnerInterfaces\DictionaryExtensions.cs" />
     <Compile Include="RunnerInterfaces\Utility.cs" />
-    <Compile Include="RunnerInterfaces\ProcessHelper.cs" />
     <Compile Include="RunnerInterfaces\QueueClient.cs" />
     <Compile Include="RunnerInterfaces\PartitionRowEntityKey.cs" />
     <Compile Include="RunnerInterfaces\TableClient.cs" />
@@ -313,7 +300,6 @@
     <Compile Include="Triggering\ITriggerMap.cs" />
     <Compile Include="Triggering\TriggerMapExtensions.cs" />
     <Compile Include="Triggering\TriggerMap.cs" />
-    <Compile Include="Triggering\AddTriggerPayload.cs" />
     <Compile Include="Triggering\Credentials.cs" />
     <Compile Include="Triggering\TimerTrigger.cs" />
     <Compile Include="Triggering\Trigger.cs" />
