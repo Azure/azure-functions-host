@@ -1,8 +1,0 @@
-﻿@using Dashboard.Models.Protocol
-@model FunctionDefinitionModel
-
-@using (Html.BeginForm("DeleteFunction", "Home"))
-{
-    <input type="hidden" name="func" value="@Model.RowKey" />
-    <button class="btn btn-danger" type="submit"><i class="icon-trash"></i> Delete</button>
-}
