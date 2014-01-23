@@ -1,6 +1,13 @@
 ﻿@using Dashboard.ViewModels
 @model IEnumerable<FunctionStatisticsViewModel>
 
+@if (!Model.Any())
+{
+    <tr>
+        <td colspan="2">No functions are present. Run a JobHost to register functions.</td>
+    </tr>
+}
+
 @foreach (var statistics in Model)
 {
     <tr>

@@ -1,6 +1,13 @@
 ﻿@using Dashboard.ViewModels
 @model IEnumerable<InvocationLogViewModel>
 
+@if (!Model.Any())
+{
+    <tr>
+        <td colspan="3">No functions have been executed recently.</td>
+    </tr>
+}
+
 @foreach (var log in Model)
 {
     string labelClass = null;

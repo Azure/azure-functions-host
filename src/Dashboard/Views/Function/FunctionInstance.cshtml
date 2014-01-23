@@ -115,6 +115,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                @if (!Model.Parameters.Any())
+                {
+                    <tr>
+                        <td colspan="3">The function has no parameters.</td>
+                    </tr>
+                }
                 @foreach (var param in Model.Parameters)
                 {
                     <tr>
