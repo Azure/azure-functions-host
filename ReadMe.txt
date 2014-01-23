@@ -1,4 +1,4 @@
-﻿*** Steps for installing Simple Batch ***
+﻿*** Steps for using Azure Jobs source ***
 
 Install Visual Studio 2013
 
@@ -23,14 +23,5 @@ The project site is at codeplex: https://azuresimplebatch.codeplex.com
 Download sources from Codeplex
     git clone https://git01.codeplex.com/azuresimplebatch 
 This will create a directory "azuresimplebatch" in your current directory and download there.
-
-You can't check in passwords. But passwords must be specified in *.cscfg files.
-GIT will ignore those files, but you'll see files like this:
-    CopyMeAndRenameTo_ServiceConfiguration.Local.cscfg
-
-Copy and rename it to:
-    ServiceConfiguration.Local.cscfg
-
-This will make you local build pass, but won't get checked in by Git.
 
 NuGet will pull down depedencies. 

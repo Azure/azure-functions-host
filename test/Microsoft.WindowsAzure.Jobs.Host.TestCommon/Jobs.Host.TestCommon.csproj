@@ -7,8 +7,8 @@
     <ProjectGuid>{4A832C21-66EA-4DE4-8124-F27F8900CBA9}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.WindowsAzure.Jobs.Test</RootNamespace>
-    <AssemblyName>Microsoft.WindowsAzure.Jobs.Host.Test.Common</AssemblyName>
+    <RootNamespace>Microsoft.WindowsAzure.Jobs.Host.TestCommon</RootNamespace>
+    <AssemblyName>Microsoft.WindowsAzure.Jobs.Host.TestCommon</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -33,7 +33,7 @@
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
-    <AssemblyOriginatorKeyFile>..\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
+    <AssemblyOriginatorKeyFile>..\..\src\Common\PublicKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
   <PropertyGroup>
     <DelaySign>true</DelaySign>
@@ -51,7 +51,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+    <Compile Include="..\..\src\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="DictionaryConnectionStringProvider.cs" />
@@ -62,17 +62,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>Jobs</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Common\PublicKey.snk">
+    <None Include="..\..\src\Common\PublicKey.snk">
       <Link>Properties\PublicKey.snk</Link>
     </None>
     <None Include="packages.config" />

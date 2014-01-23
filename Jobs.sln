@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.30110.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
@@ -11,26 +11,27 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host", "src\Microsoft.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard", "src\Dashboard\Dashboard.csproj", "{45974999-9C53-48AD-83B9-519ECC8AB8F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTests", "src\Microsoft.WindowsAzure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk1", "src\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1\Jobs.Host.UnitTestsSdk1.csproj", "{40728169-A18A-49C8-A618-B585DFA0D0D2}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk2", "src\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2\Jobs.Host.UnitTestsSdk2.csproj", "{58DF758F-D7EF-4275-9E25-8A79A5057C69}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "src\Packages\Packages.csproj", "{34AB8F63-18DE-4E0D-B21C-15E33B091634}"
 	ProjectSection(ProjectDependencies) = postProject
 		{0E095CB2-3030-49FF-966C-785F1A55F0C1} = {0E095CB2-3030-49FF-966C-785F1A55F0C1}
 		{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49} = {E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.Test.Common", "src\Jobs.Host.Test.Common\Jobs.Host.Test.Common.csproj", "{4A832C21-66EA-4DE4-8124-F27F8900CBA9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.EndToEndTests", "src\Microsoft.WindowsAzure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{E4BBC8E8-7585-4CB4-8C90-3FCCBEABED26}"
 	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.EndToEndTests", "test\Microsoft.WindowsAzure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.TestCommon", "test\Microsoft.WindowsAzure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj", "{4A832C21-66EA-4DE4-8124-F27F8900CBA9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTests", "test\Microsoft.WindowsAzure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk1", "test\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1\Jobs.Host.UnitTestsSdk1.csproj", "{40728169-A18A-49C8-A618-B585DFA0D0D2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk2", "test\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2\Jobs.Host.UnitTestsSdk2.csproj", "{58DF758F-D7EF-4275-9E25-8A79A5057C69}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,6 +51,18 @@ Global
 		{45974999-9C53-48AD-83B9-519ECC8AB8F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{45974999-9C53-48AD-83B9-519ECC8AB8F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{45974999-9C53-48AD-83B9-519ECC8AB8F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.Build.0 = Release|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -62,27 +75,15 @@ Global
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.Build.0 = Release|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{34AB8F63-18DE-4E0D-B21C-15E33B091634}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4A832C21-66EA-4DE4-8124-F27F8900CBA9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{340AB554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{340AB554-5482-4B3D-B65F-46DFF5AF1684} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{4A832C21-66EA-4DE4-8124-F27F8900CBA9} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{40728169-A18A-49C8-A618-B585DFA0D0D2} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69} = {639967B0-0544-4C52-94AC-9A3D25E33256}
-		{4A832C21-66EA-4DE4-8124-F27F8900CBA9} = {639967B0-0544-4C52-94AC-9A3D25E33256}
-		{340AB554-5482-4B3D-B65F-46DFF5AF1684} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal

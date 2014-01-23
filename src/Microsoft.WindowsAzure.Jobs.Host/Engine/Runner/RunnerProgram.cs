@@ -25,16 +25,16 @@ namespace Microsoft.WindowsAzure.Jobs
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
         {
             RunnerProgram program = RunnerProgram.Create(descr);
-            return Main(() => program.Invoke(descr));
+            return MainWorker(() => program.Invoke(descr));
         }
 
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config)
         {
             RunnerProgram program = RunnerProgram.Create(descr);
-            return Main(() => program.Invoke(descr, config));
+            return MainWorker(() => program.Invoke(descr, config));
         }
 
-        private static FunctionExecutionResult Main(Action invoke)
+        private static FunctionExecutionResult MainWorker(Action invoke)
         {
             Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
             Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());

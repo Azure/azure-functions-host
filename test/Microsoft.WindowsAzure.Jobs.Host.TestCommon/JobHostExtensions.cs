@@ -1,12 +1,6 @@
-﻿using Microsoft.WindowsAzure.Jobs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading;
 
-namespace Microsoft.WindowsAzure.Jobs.Test
+namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
 {
     public static class JobHostExtensions
     {

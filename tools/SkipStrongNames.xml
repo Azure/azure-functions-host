@@ -6,7 +6,7 @@
   <assembly name="Microsoft.WindowsAzure.Jobs.Host"/>
 
   <!-- Unit test assemblies -->
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.Test.Common"/>
+  <assembly name="Microsoft.WindowsAzure.Jobs.Host.TestCommon"/>
   <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTests"/>
   <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1"/>
   <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2"/>

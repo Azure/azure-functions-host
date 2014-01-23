@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
 {
     public class DictionaryConnectionStringProvider : IConnectionStringProvider
     {

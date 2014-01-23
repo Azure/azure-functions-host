@@ -1,11 +1,4 @@
-﻿using Microsoft.WindowsAzure.Jobs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Microsoft.WindowsAzure.Jobs.Test
+﻿namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
 {
     // Helper for calling individual methods. 
     public class TestJobHost<T>

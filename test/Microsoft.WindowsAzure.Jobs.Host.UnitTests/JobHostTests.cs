@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs.Test;
+using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {

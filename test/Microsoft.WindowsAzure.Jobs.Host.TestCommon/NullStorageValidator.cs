@@ -1,4 +1,4 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
 {
     // StorageValidator that skips validation. 
     public class NullStorageValidator : IStorageValidator
