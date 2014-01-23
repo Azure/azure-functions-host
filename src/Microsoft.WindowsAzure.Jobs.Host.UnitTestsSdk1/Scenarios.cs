@@ -36,9 +36,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         public void TestAggressiveBlobChaining()
         {
             var account = TestStorage.GetAccount();
-            var acs = account.ToString(true);
+            var dataConnectionString = account.ToString(true);
 
-            JobHost host = new JobHost(acs, null, new JobHostTestHooks
+            JobHost host = new JobHost(dataConnectionString, runtimeConnectionString: null, hooks: new JobHostTestHooks
             {
                  StorageValidator = new NullStorageValidator(),
                  TypeLocator = new SimpleTypeLocator(typeof(Program))

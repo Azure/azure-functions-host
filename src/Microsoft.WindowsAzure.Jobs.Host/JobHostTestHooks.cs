@@ -1,5 +1,4 @@
-﻿
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
     // Internal test hooks for the host.
     internal class JobHostTestHooks
@@ -11,5 +10,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Provide the set of types to index.         
         public ITypeLocator TypeLocator { get; set; }
+
+        // Provide connection strings, normally from config, environment and such. Tests could read from an in-memory hastable.
+        public IConnectionStringProvider ConnectionStringProvider { get; set; }
     }
 }

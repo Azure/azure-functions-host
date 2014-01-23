@@ -96,7 +96,7 @@
     <Compile Include="TableUnitTests.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostTests.cs" />
-    <Compile Include="UtilityTests.cs" />
+    <Compile Include="DefaultStorageValidatorTests.cs" />
     <Compile Include="ValidateTriggers.cs" />
   </ItemGroup>
   <ItemGroup>

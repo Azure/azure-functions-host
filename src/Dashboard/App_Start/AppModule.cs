@@ -63,10 +63,13 @@ namespace Dashboard
         // $$$ Really should just get rid of this object and use DI all the way through. 
         static Services GetServices()
         {
-            var val = JobHost.ReadConnectionStringWithEnvironmentFallback(JobHost.LoggingConnectionStringName);
+            var val = new DefaultConnectionStringProvider().GetConnectionString(JobHost.LoggingConnectionStringName);
 
-            Utility.ValidateConnectionString(val);
-
+            string validationErrorMessage;
+            if (!new DefaultStorageValidator().TryValidateConnectionString(val, out validationErrorMessage))
+            {
+                throw new InvalidOperationException(validationErrorMessage);
+            }
 
             // Antares mode
             var ai = new AccountInfo

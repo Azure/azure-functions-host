@@ -67,6 +67,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="CompositeCanFailCommand.cs" />
+    <Compile Include="DefaultConnectionStringProvider.cs" />
     <Compile Include="Engine\DaasEndpoints\FunctionTable.cs" />
     <Compile Include="Engine\DaasEndpoints\AzureRuntime.cs" />
     <Compile Include="Engine\DaasEndpoints\EndpointNames.cs" />
@@ -88,6 +89,7 @@
     <Compile Include="Engine\Orchestrator\OrchestratorRoleHeartbeat.cs" />
     <Compile Include="Engine\Runner\RuntimeBindings\IErrorBindResult.cs" />
     <Compile Include="ICanFailCommand.cs" />
+    <Compile Include="IConnectionStringProvider.cs" />
     <Compile Include="LinearSpeedupTimerCommand.cs" />
     <Compile Include="RunnerInterfaces\FailedParameterRuntimeBinding.cs" />
     <Compile Include="UpdateQueueMessageVisibilityCommand.cs" />
@@ -178,7 +180,6 @@
     <Compile Include="RunnerInterfaces\AbnormalTerminationException.cs" />
     <Compile Include="RunnerInterfaces\IStorageValidator.cs" />
     <Compile Include="RunnerInterfaces\ITypeLocator.cs" />
-    <Compile Include="RunnerInterfaces\NullStorageValidator.cs" />
     <Compile Include="RunnerInterfaces\SimpleTypeLocator.cs" />
     <Compile Include="RunnerInterfaces\StringConverter.cs" />
     <Compile Include="RunnerInterfaces\JsonCustom.cs" />

@@ -1,7 +1,7 @@
 ﻿﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
-using System.IO;
+﻿using System.Globalization;
+﻿using System.IO;
 using System.Reflection;
 using System.Threading;
 
@@ -31,8 +31,23 @@ namespace Microsoft.WindowsAzure.Jobs
         /// in the connectionStrings section of the configuration file.
         /// </summary>
         public JobHost()
-            : this(dataConnectionString: null, runtimeConnectionString: null, hooks: DefaultHooks(requireLogging: true))
+            : this(DefaultHooks())
         {
+        }
+
+        internal JobHost(JobHostTestHooks hooks)
+        {
+            _dataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(DataConnectionStringName);
+            _runtimeConnectionString = hooks.ConnectionStringProvider.GetConnectionString(LoggingConnectionStringName);
+
+            if (String.IsNullOrEmpty(_runtimeConnectionString))
+            {
+                var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName,
+                    "Windows Azure Storage account connection string is missing or empty.");
+                throw new InvalidOperationException(msg);
+            }
+
+            Initialize(hooks);
         }
 
         /// <summary>
@@ -49,30 +64,66 @@ namespace Microsoft.WindowsAzure.Jobs
         /// reading and writing data and another connection string for logging.
         /// </summary>
         public JobHost(string dataConnectionString, string runtimeConnectionString)
-            : this(dataConnectionString, runtimeConnectionString, DefaultHooks(requireLogging: false))
+            : this(dataConnectionString, runtimeConnectionString, DefaultHooks())
         {
         }
 
         internal JobHost(string dataConnectionString, string runtimeConnectionString, JobHostTestHooks hooks)
         {
-            _runtimeConnectionString = GetConnectionString(runtimeConnectionString, LoggingConnectionStringName);
-            _dataConnectionString = GetConnectionString(dataConnectionString, DataConnectionStringName);
+            _dataConnectionString = dataConnectionString;
+            _runtimeConnectionString = runtimeConnectionString;
 
-            var storageValidator = hooks.StorageValidator;
-            storageValidator.Validate(_dataConnectionString, _runtimeConnectionString);
+            Initialize(hooks);
+        }
+
+        private void Initialize(JobHostTestHooks hooks)
+        {
+            ValidateConnectionStrings(hooks.StorageValidator);
 
             // This will do heavy operations like indexing. 
-            _hostContext = GetHostContext(hooks);
+            _hostContext = GetHostContext(hooks.TypeLocator);
 
             WriteAntaresManifest();
         }
 
-        static JobHostTestHooks DefaultHooks(bool requireLogging)
+        private void ValidateConnectionStrings(IStorageValidator storageValidator)
+        {
+            string dataConnectionStringValidationError;
+            if (!storageValidator.TryValidateConnectionString(_dataConnectionString, out dataConnectionStringValidationError))
+            {
+                var msg = FormatConnectionStringValidationError("data", DataConnectionStringName, dataConnectionStringValidationError);
+                throw new InvalidOperationException(msg);
+            }
+            if (_runtimeConnectionString != null)
+            {
+                if (_runtimeConnectionString != _dataConnectionString)
+                {
+                    string runtimeConnectionStringValidationError;
+                    if (!storageValidator.TryValidateConnectionString(_runtimeConnectionString, out runtimeConnectionStringValidationError))
+                    {
+                        var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName, runtimeConnectionStringValidationError);
+                        throw new InvalidOperationException(msg);
+                    }
+                }
+            }
+        }
+
+        private static string FormatConnectionStringValidationError(string connectionStringType, string connectionStringName, string validationErrorMessage)
+        {
+            return String.Format(CultureInfo.CurrentCulture,
+                "Failed to validate Windows Azure Jobs {0} connection string: {2}" + Environment.NewLine +
+                "The Windows Azure Jobs connection string is specified by setting a connection string named '{1}' in the connectionStrings section of the .config file, " +
+                "or with an environment variable named '{1}', or by using the constructor for JobHost that accepts connection strings.",
+                connectionStringType, connectionStringName, validationErrorMessage);
+        }
+
+        static JobHostTestHooks DefaultHooks()
         {
             return new JobHostTestHooks
             {
-                StorageValidator = new DefaultStorageValidator { RequireLogging = requireLogging },
-                TypeLocator = new DefaultTypeLocator()
+                StorageValidator = new DefaultStorageValidator(),
+                TypeLocator = new DefaultTypeLocator(),
+                ConnectionStringProvider = new DefaultConnectionStringProvider()
             };
         }
 
@@ -96,14 +147,9 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private static string GetConnectionString(string overrideValue, string connectionStringName)
+        private JobHostContext GetHostContext(ITypeLocator typesLocator)
         {
-            return overrideValue ?? ReadConnectionStringWithEnvironmentFallback(connectionStringName);
-        }
-
-        private JobHostContext GetHostContext(JobHostTestHooks hooks)
-        {
-            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, hooks);
+            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, typesLocator);
             return hostContext;
         }
 
@@ -324,28 +370,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             string msg = String.Format("'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
             throw new InvalidOperationException(msg);
-        }
-
-        /// <summary>
-        /// Reads connection string from the connectionstrings section, or from ENV if it is missing from the config, or is an empty string or a whitespace.
-        /// </summary>
-        /// <param name="connectionStringName">The name of the connection string to look up.</param>
-        /// <returns>The connection string.</returns>
-        internal static string ReadConnectionStringWithEnvironmentFallback(string connectionStringName)
-        {
-            string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
-            if (connectionStringEntry != null)
-            {
-                connectionStringInConfig = connectionStringEntry.ConnectionString;
-            }
-
-            if (!String.IsNullOrEmpty(connectionStringInConfig))
-            {
-                return connectionStringInConfig;
-            }
-
-            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
         }
     }
 }

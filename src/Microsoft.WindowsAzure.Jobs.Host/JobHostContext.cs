@@ -25,14 +25,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public readonly CloudQueue _executionQueue;
 
-        public JobHostContext(string dataConnectionString, string runtimeConnectionString, JobHostTestHooks hooks)
+        public JobHostContext(string dataConnectionString, string runtimeConnectionString, ITypeLocator typeLocator)
         {
             _id = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
 
             IFunctionTableLookup functionTableLookup;
 
-            var types = hooks.TypeLocator.FindTypes();
+            var types = typeLocator.FindTypes().ToArray();
             AddCustomerBinders(config, types);
             functionTableLookup = new FunctionStore(dataConnectionString, config, types);
             

@@ -1,39 +1,62 @@
 ﻿using System;
 using System.Globalization;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    class DefaultStorageValidator : IStorageValidator
+    internal class DefaultStorageValidator : IStorageValidator
     {
-        public bool RequireLogging { get; set; }
-
-        public void Validate(string dataConnectionString, string runtimeConnectionString)
+        /// <summary>
+        /// Validate a Windows Azure Storage connection string, by parsing it, and placing
+        /// a call to Azure to assert the credentials validity as well.
+        /// </summary>
+        public bool TryValidateConnectionString(string connectionString, out string validationErrorMessage)
         {
-            if (dataConnectionString == null)
+            if (String.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "User account connection string is missing. This can be set via the '{0}' connection string or via the constructor.", JobHost.DataConnectionStringName));
+                validationErrorMessage = "Windows Azure Storage account connection string is missing or empty.";
+                return false;
             }
-            Utility.ValidateConnectionString(dataConnectionString);
-            if (runtimeConnectionString != null)
+
+            // Will throw on parser errors. 
+            CloudStorageAccount account;
+            if (!CloudStorageAccount.TryParse(connectionString, out account))
             {
-                if (runtimeConnectionString != dataConnectionString)
-                {
-                    Utility.ValidateConnectionString(runtimeConnectionString);
-                }
+                validationErrorMessage = "Windows Azure Storage account connection string is not formatted correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for details about configuring Windows Azure Storage connection strings.";
+                return false;
             }
-            else
+
+            if (IsDevelopmentStorageAccount(account))
             {
-                if (RequireLogging)
-                {
-                    var msg =
-                        String.Format(
-                            "Windows Azure Jobs runtime connection string is missing. " +
-                            "You can specify it by setting a connection string named '{0}' in the connectionStrings section of the .config file, " +
-                            "or with an environment variable named '{0}', or by using the constructor for JobHost that accepts connection strings.",
-                            JobHost.LoggingConnectionStringName);
-                    throw new InvalidOperationException(msg);
-                }
+                validationErrorMessage = "The Windows Azure Storage Emulator is not supported, please use a Windows Azure Storage account hosted in Windows Azure.";
+                return false;
             }
+
+            // Verify the credentials are correct.
+            // Have to actually ping a storage operation. 
+            var client = account.CreateCloudBlobClient();
+            try
+            {
+                // This can hang for a long time if the account name is wrong. 
+                // If will fail fast if the password is incorrect.
+                client.GetServiceProperties();
+            }
+            catch
+            {
+                validationErrorMessage = String.Format(CultureInfo.CurrentCulture,
+                    "The account credentials for '{0}' are incorrect.",
+                    account.Credentials.AccountName);
+                return false;
+            }
+
+            validationErrorMessage = null;
+            return true;
+        }
+
+        private static bool IsDevelopmentStorageAccount(CloudStorageAccount account)
+        {
+            // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx 
+            return account.BlobEndpoint.PathAndQuery.TrimStart('/') == account.Credentials.AccountName;
         }
     }
 }

@@ -27,9 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                     StorageValidator = new NullStorageValidator(),
                     TypeLocator = new SimpleTypeLocator() // No types
                 };
-                string acs = null;
-                JobHost h = new JobHost(acs, acs, hooks);
-
+                JobHost h = new JobHost(dataConnectionString: null, runtimeConnectionString: null, hooks: hooks);
                 Assert.IsTrue(File.Exists(path), "Manifest file should have been written");
 
                 // Validate contents
