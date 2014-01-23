@@ -68,7 +68,6 @@ namespace Microsoft.WindowsAzure.Jobs
             else
             {
                 // No auxillary logging. Logging interfaces are nops or in-memory.
-                _heartbeatTable = new NullRunningHostTableWriter();
 
                 ctx = new FunctionExecutionContext
                 {

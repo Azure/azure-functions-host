@@ -69,12 +69,6 @@ namespace Microsoft.WindowsAzure.Jobs
             BlobClient.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
         }
 
-        public void QueueIndexRequest(IndexRequestPayload payload)
-        {
-            string json = JsonCustom.SerializeObject(payload);
-            GetOrchestratorControlQueue().AddMessage(new CloudQueueMessage(json));
-        }
-
         public CloudQueue GetOrchestratorControlQueue()
         {
             CloudQueueClient client = _account.CreateCloudQueueClient();

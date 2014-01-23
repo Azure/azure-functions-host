@@ -97,7 +97,6 @@
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
-    <Compile Include="ValidateTriggers.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">
