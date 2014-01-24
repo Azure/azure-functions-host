@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
+using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -13,16 +15,23 @@ namespace Microsoft.WindowsAzure.Jobs
                 CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 string result;
+                string readMessage;
 
                 using (var blobStream = blob.OpenRead())
-                using (var textReader = new StreamReader(blobStream))
+                using (var watchable = new WatchableStream(blobStream, blob.Properties.Length))
+                using (var textReader = new StreamReader(watchable))
                 {
                     result = textReader.ReadToEnd();
+                    readMessage = watchable.GetStatus();
                 }
 
-                return new BindResult
+                var watcher = new SimpleWatcher();
+                watcher.SetStatus(readMessage);
+
+                return new BindCleanupResult
                 {
-                    Result = result
+                    Result = result,
+                    SelfWatch = watcher
                 };
             }
         }
@@ -32,14 +41,23 @@ namespace Microsoft.WindowsAzure.Jobs
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
-
+                
                 var result = new BindCleanupResult();
+                var watcher = new SimpleWatcher();
+                result.SelfWatch = watcher;
                 result.Cleanup = () =>
                     {
                         string content = (string)result.Result;
                         if (content != null)
                         {
-                            blob.UploadText(content);
+                            var bytes = Encoding.UTF8.GetBytes(content);
+                            blob.UploadByteArray(bytes);
+                            var status = bytes.Length == 0
+                                ? "Written empty file."
+                                : string.Format(CultureInfo.CurrentCulture, 
+                                    "Written {0} bytes.",
+                                    bytes.Length);
+                            watcher.SetStatus(status);
                         }
                     };
                 return result;

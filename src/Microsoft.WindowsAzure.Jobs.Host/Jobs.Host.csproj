@@ -66,6 +66,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Indexers\RemoteFunctionLocation.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
