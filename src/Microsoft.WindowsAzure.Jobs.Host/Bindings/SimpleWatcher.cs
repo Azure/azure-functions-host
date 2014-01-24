@@ -19,6 +19,10 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             lock (_statusLock)
             {
+                if (_status == null)
+                {
+                    return null;
+                }
                 return SelfWatch.EncodeSelfWatchStatus(_status);
             }
         }

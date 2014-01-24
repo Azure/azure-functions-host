@@ -27,6 +27,10 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public string GetStatus()
         {
+            if (_message == null)
+            {
+                return null;
+            }
             return SelfWatch.EncodeSelfWatchStatus(_message);
         }
 

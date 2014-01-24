@@ -167,7 +167,11 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public static string EncodeSelfWatchStatus(string status)
         {
-            return status.Trim('\r', '\n').Replace(Environment.NewLine, "; ");
+            if (status == null)
+            {
+                throw new ArgumentNullException("status");
+            }
+            return status.Replace(Environment.NewLine, "; ");
         }
 
         /// <summary>
@@ -175,6 +179,10 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public static string DecodeSelfWatchStatus(string status)
         {
+            if (status == null)
+            {
+                throw new ArgumentNullException("status");
+            }
             return status.Replace("; ", Environment.NewLine);
         }
     }
