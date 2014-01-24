@@ -113,7 +113,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return String.Format(CultureInfo.CurrentCulture,
                 "Failed to validate Windows Azure Jobs {0} connection string: {2}" + Environment.NewLine +
                 "The Windows Azure Jobs connection string is specified by setting a connection string named '{1}' in the connectionStrings section of the .config file, " +
-                "or with an environment variable named '{1}', or by using the constructor for JobHost that accepts connection strings.",
+                "or with an environment variable named '{1}', or by using a constructor for JobHost that accepts connection strings.",
                 connectionStringType, connectionStringName, validationErrorMessage);
         }
 
