@@ -25,10 +25,9 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private static readonly string[] LineDelimiter = { Environment.NewLine };
         public string GetStatus()
         {
-            return string.Join("; ", _message.Split(LineDelimiter, StringSplitOptions.None));
+            return SelfWatch.EncodeSelfWatchStatus(_message);
         }
 
         public bool IsErrorResult { get; set; }

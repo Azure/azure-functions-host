@@ -128,7 +128,7 @@ namespace Dashboard
                         return list.ToArray();
                     }
 
-                    line = line.Replace("; ", "\r\n");
+                    line = SelfWatch.DecodeSelfWatchStatus(line);
 
                     list.Add(line);
                 }

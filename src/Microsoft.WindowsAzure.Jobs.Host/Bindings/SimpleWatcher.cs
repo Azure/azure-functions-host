@@ -14,11 +14,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 _status = status;
             }
         }
+
         public string GetStatus()
         {
             lock (_statusLock)
             {
-                return _status.Replace(Environment.NewLine, "; ");
+                return SelfWatch.EncodeSelfWatchStatus(_status);
             }
         }
     }

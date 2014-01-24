@@ -67,11 +67,11 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 lock (_watches)
                 {
-                    string marker = "; ";
-                    
+                   
                     // Show selfwatch from objects we've handed out. 
                     StringBuilder sb = new StringBuilder();
-                    sb.AppendFormat("Created {0} object(s):" + marker, _watches.Count);
+                    sb.AppendFormat("Created {0} object(s):", _watches.Count);
+                    sb.AppendLine();
 
                     foreach (var result in _watches)
                     {
@@ -81,9 +81,9 @@ namespace Microsoft.WindowsAzure.Jobs
                             sb.Append(" ");
                             sb.Append(result.Watch.GetStatus());
                         }
-                        sb.Append(marker); // Must keep on the same line                        
+                        sb.AppendLine();
                     }
-                    return sb.ToString();
+                    return SelfWatch.EncodeSelfWatchStatus(sb.ToString());
                 }
             }
         }

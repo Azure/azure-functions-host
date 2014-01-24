@@ -161,5 +161,21 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
         }
+
+        /// <summary>
+        /// The protocol between Host and Dashboard for SelfWatch notes demand that newlines are encoded as "; ".
+        /// </summary>
+        public static string EncodeSelfWatchStatus(string status)
+        {
+            return status.Trim('\r', '\n').Replace(Environment.NewLine, "; ");
+        }
+
+        /// <summary>
+        /// The protocol between Host and Dashboard for SelfWatch notes demand that newlines are encoded as "; ".
+        /// </summary>
+        public static string DecodeSelfWatchStatus(string status)
+        {
+            return status.Replace("; ", Environment.NewLine);
+        }
     }
 }
