@@ -67,6 +67,7 @@
     <Compile Include="IContext.cs" />
     <Compile Include="ISelfWatch.cs" />
     <Compile Include="ICall.cs" />
+    <Compile Include="PostActionOrder.cs" />
     <Compile Include="QueueOutputAttribute.cs" />
     <Compile Include="QueueInputAttribute.cs" />
     <Compile Include="DescriptionAttribute.cs" />

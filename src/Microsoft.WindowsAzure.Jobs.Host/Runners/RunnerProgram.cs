@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
@@ -250,13 +251,19 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Process any out parameters, do any cleanup
                 // For update, do any cleanup work. 
 
+                // Ensure queue OnPostAction is called in PostActionOrder. This ordering is particularly important
+                // for ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to
+                // have occurred by the time messages are enqueued.
+                int[] bindResultIndicesInPostActionOrder = SortBindResultIndicesInPostActionOrder(binds);
+
                 try
                 {
                     Console.WriteLine("--------");
 
                     for (int i = 0; i < len; i++)
                     {
-                        var bind = binds[i];
+                        int bindResultIndex = bindResultIndicesInPostActionOrder[i];
+                        var bind = binds[bindResultIndex];
                         try
                         {
                             // This could invoke user code and do complex things that may fail. Catch the exception 
@@ -264,8 +271,7 @@ namespace Microsoft.WindowsAzure.Jobs
                         }
                         catch (Exception e)
                         {
-                            // This 
-                            string msg = string.Format("Error while handling parameter #{0} '{1}' after function returned:", i, ps[i]);
+                            string msg = string.Format("Error while handling parameter #{0} '{1}' after function returned:", bindResultIndex, ps[bindResultIndex]);
                             throw new InvalidOperationException(msg, e);
                         }
                     }
@@ -281,6 +287,19 @@ namespace Microsoft.WindowsAzure.Jobs
                     }
                 }
             }
+        }
+
+        private static int[] SortBindResultIndicesInPostActionOrder(BindResult[] original)
+        {
+            int[] indices = new int[original.Length];
+            for (int index = 0; index < indices.Length; index++)
+            {
+                indices[index] = index;
+            }
+            BindResult[] copy = new BindResult[indices.Length];
+            Array.Copy(original, copy, original.Length);
+            Array.Sort(copy, indices, PostActionOrderComparer.Instance);
+            return indices;
         }
 
         private SelfWatch InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
@@ -325,6 +344,32 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             return fpStopWatcher;
+        }
+
+        private class PostActionOrderComparer : IComparer<BindResult>
+        {
+            private static readonly PostActionOrderComparer _instance = new PostActionOrderComparer();
+
+            private PostActionOrderComparer()
+            {
+            }
+
+            public static PostActionOrderComparer Instance { get { return _instance; } }
+
+            public int Compare(BindResult x, BindResult y)
+            {
+                if (x == null)
+                {
+                    return y == null ? 0 : -1;
+                }
+
+                if (y == null)
+                {
+                    return 1;
+                }
+
+                return ((int)x.PostActionOrder).CompareTo((int)y.PostActionOrder);
+            }
         }
     }
 }

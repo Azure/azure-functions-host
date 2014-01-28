@@ -16,6 +16,11 @@
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating the order in which <see cref="OnPostAction"/> should be executed.
+        /// </summary>
+        public PostActionOrder PostActionOrder { get; set; }
+
         // A cleanup action called for this parameter after the function returns.
         // Called in both regular and exceptional cases. 
         // This can do things like close a stream, or queue a message.

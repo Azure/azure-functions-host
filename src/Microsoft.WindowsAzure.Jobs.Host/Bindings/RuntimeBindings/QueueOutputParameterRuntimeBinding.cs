@@ -211,6 +211,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 _collector = new QueueMessageCollector(queue);
                 _converter = converter;
                 _functionInstance = functionInstance;
+                PostActionOrder = PostActionOrder.QueueOutput;
             }
 
             public override void OnPostAction()
