@@ -237,7 +237,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            bool success = false;
             Console.WriteLine("Parameters bound. Invoking user function.");
             Console.WriteLine("--------");
 
@@ -245,7 +244,6 @@ namespace Microsoft.WindowsAzure.Jobs
             try
             {
                 fpStopWatcher = InvokeWorker(m, binds, ps);
-                success = true;
             }
             finally
             {
@@ -271,19 +269,6 @@ namespace Microsoft.WindowsAzure.Jobs
                             throw new InvalidOperationException(msg, e);
                         }
                     }
-
-                    if (success)
-                    {
-                        foreach (var bind in binds)
-                        {
-                            var a = bind as IPostActionTransaction;
-                            if (a != null)
-                            {
-                                a.OnSuccessAction();
-                            }
-                        }
-                    }
-
                 }
                 finally
                 {

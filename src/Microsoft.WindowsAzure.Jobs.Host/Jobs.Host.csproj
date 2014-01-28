@@ -122,7 +122,6 @@
     <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
     <Compile Include="Bindings\IBinderPrivate.cs" />
     <Compile Include="Bindings\ICloudBinderVerify.cs" />
-    <Compile Include="Bindings\IPostActionTransaction.cs" />
     <Compile Include="Bindings\RuntimeBindings\NewQueueMessageRuntimeBindingInputs.cs" />
     <Compile Include="Runners\RunnerProgram.cs" />
     <Compile Include="Bindings\RuntimeBindings\NewBlobRuntimeBindingInputs.cs" />
