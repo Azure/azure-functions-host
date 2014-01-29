@@ -6,7 +6,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
     // Providers binders for Azure 2.0 types. These are in different assemblies than 1.*
     //  2.0 is in Microsoft.WindowsAzure.Storage.dll
     //  1.7 is in Microsoft.WindowsAzure.StorageClient.dll
-    internal class Azure20SdkBinderProvider : ICloudBinderProvider, ICloudBlobBinderProvider
+    internal class Azure20SdkBinderProvider : ICloudBinderProvider, ICloudBlobBinderProvider, ICloudTableBinderProvider
     {
         const string Namespace = "Microsoft.WindowsAzure.Storage.";
 
@@ -63,6 +63,27 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
             return null;
         }
 
+        ICloudTableBinder ICloudTableBinderProvider.TryGetBinder(Type targetType, bool isReadOnly)
+        {
+            // Convert from CloudBlobClient, tableName --> targetType
+            Func<dynamic, string, object> dynamicBinder = null;
+
+            string fullName = targetType.FullName;
+            switch (fullName)
+            {
+                case Namespace + "Table.CloudTable":
+                    dynamicBinder = (client, tableName) => client.GetTableReference(tableName);
+                    break;
+            }
+
+            if (dynamicBinder != null)
+            {
+                return new Azure20SdkTableBinder(dynamicBinder);
+            }
+
+            return null;
+        }
+
         // Get a CloudStorageAccount from the same assembly as parameter.Type, bound to the storage account in binder. 
         static object GetAccount(IBinderEx binder, ParameterInfo parameter)
         {
@@ -103,6 +124,25 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 
                 var blob = _func(container, blobName);
                 return new BindResult { Result = blob };
+            }
+        }
+
+        class Azure20SdkTableBinder : ICloudTableBinder
+        {
+            private readonly Func<dynamic, string, object> _dynamicBinder;
+
+            public Azure20SdkTableBinder(Func<dynamic, string, object> dynamicBinder)
+            {
+                _dynamicBinder = dynamicBinder;
+            }
+
+            public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
+            {
+                dynamic account = GetAccount(bindingContext, targetType.Assembly);
+                dynamic client = account.CreateCloudTableClient();
+
+                var table = _dynamicBinder.Invoke(client, tableName);
+                return new BindResult { Result = table };
             }
         }
 

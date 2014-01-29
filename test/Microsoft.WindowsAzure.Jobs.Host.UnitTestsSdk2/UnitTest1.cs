@@ -4,6 +4,7 @@ using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 {
@@ -78,6 +79,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             }
         }
 
+        [TestMethod]
+        public void TestTable()
+        {
+            var lc = new TestJobHost<Program>();
+            lc.Call("Table");
+            Assert.IsTrue(Program.TableInvoked);
+        }
 
         class ProgramBadQueueName
         {
@@ -100,6 +108,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             }
 
             public static bool _QueueInvoked;
+
+            public static bool TableInvoked { get; set; }
 
             [Description("test")]
             public static void Queue(CloudQueue mytestqueue)
@@ -148,6 +158,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
                 [BlobInput("daas-test/page")] CloudPageBlob page)
             {
                 Assert.IsNull(page);
+            }
+
+            [Description("test")]
+            public static void Table([Table("DaasTestTable")] CloudTable table)
+            {
+                Assert.IsNotNull(table);
+                TableInvoked = true;
             }
         }
     }

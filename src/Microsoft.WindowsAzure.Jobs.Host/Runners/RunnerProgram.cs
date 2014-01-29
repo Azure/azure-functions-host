@@ -176,6 +176,7 @@ namespace Microsoft.WindowsAzure.Jobs
             var azure20sdkBinderProvider = new Azure20SdkBinderProvider();
             config.Binders.Add(azure20sdkBinderProvider);
             config.BlobBinders.Add(azure20sdkBinderProvider);
+            config.TableBinders.Add(azure20sdkBinderProvider);
         }
 
         private static void ApplyHooks(MethodInfo method, IConfiguration config)
