@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             // Act & Assert
             ExceptionAssert.ThrowsInvalidOperation(() => 
                 new JobHost(hooks), 
-                "Failed to validate Windows Azure Jobs runtime connection string: Windows Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Windows Azure Jobs connection string is specified by setting a connection string named 'AzureJobsRuntime' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsRuntime', or by using the constructor for JobHost that accepts connection strings.");
+                "Failed to validate Windows Azure Jobs runtime connection string: Windows Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Windows Azure Jobs connection string is specified by setting a connection string named 'AzureJobsRuntime' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsRuntime', or by using a constructor for JobHost that accepts connection strings.");
         }
     }
 }
