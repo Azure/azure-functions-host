@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.StorageClient;
 
 namespace Dashboard
 {
@@ -14,10 +15,19 @@ namespace Dashboard
         // human-readably string version of runtime information.
         // Links provide optional runtime information for further linking to explore arg.
         public string ArgInvokeString { get; set; }
-        public CloudBlobDescriptorModel ArgBlobLink { get; set; }
-                
+
+        public BlobBoundParamModel ExtendedBlobModel { get; set; }
+
         // Runtime info. This can be structured to provide rich hyperlinks.
         public string SelfWatch { get; set; }
+    }
+
+    public class BlobBoundParamModel
+    {
+        public bool IsBlobOwnedByCurrentFunctionInstance { get; set; }
+        public bool IsBlobMissing { get; set; }
+        public Guid OwnerId { get; set; }
+        public bool IsOutput { get; set; }
     }
 
     // $$$ Analysis can be expensive. Use a cache?
@@ -45,7 +55,7 @@ namespace Dashboard
             return ps;
         }
 
-        internal static void ApplyRuntimeInfo(ParameterRuntimeBinding[] args, ParamModel[] ps)
+        internal static void ApplyRuntimeInfo(FunctionInvokeRequest functionInstance, ParameterRuntimeBinding[] args, ParamModel[] ps)
         {
             for (int i = 0; i < args.Length; i++)
             {
@@ -55,18 +65,63 @@ namespace Dashboard
                 try
                 {
                     s = arg.ConvertToInvokeString();
-
-                    // If arg is a blob, provide a blob-aware link to explore that further.
-                    var blobArg = arg as BlobParameterRuntimeBinding;
-                    if (blobArg != null)
-                    {
-                        ps[i].ArgBlobLink = new CloudBlobDescriptorModel(blobArg.Blob);
-                    }
                 }
                 catch (NotImplementedException)
                 {
                 }
                 ps[i].ArgInvokeString = s;
+
+                // If arg is a blob, provide a blob-aware link to explore that further.
+                var blobArg = arg as BlobParameterRuntimeBinding;
+                if (blobArg != null)
+                {
+                    ps[i].ExtendedBlobModel = CreateExtendedBlobModel(functionInstance, blobArg);
+                }
+            }
+        }
+
+        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInvokeRequest functionInstance, BlobParameterRuntimeBinding blobArg)
+        {
+            var blobParam = new BlobBoundParamModel();
+            blobParam.IsOutput = !blobArg.IsInput;
+            Guid? blobWriter = GetBlobWriter(blobArg.Blob.GetBlob());
+
+            if (!blobWriter.HasValue)
+            {
+                blobParam.IsBlobMissing = true;
+            }
+            else
+            {
+                blobParam.OwnerId = blobWriter.Value;
+                if (blobWriter.Value == functionInstance.Id)
+                {
+                    blobParam.IsBlobOwnedByCurrentFunctionInstance = true;
+                }
+            }
+            return blobParam;
+        }
+
+        /// <summary>
+        /// Get the id of a function invocation that wrote a given blob.
+        /// </summary>
+        /// <returns>The function invocation's id, or Guid.Empty if no owner is specified, or null if the blob is missing.</returns>
+        private static Guid? GetBlobWriter(CloudBlob blob)
+        {
+            try
+            {
+                return new BlobCausalityLogger().GetWriter(blob);
+            }
+            catch (StorageClientException e)
+            {
+                if (e.ErrorCode == StorageErrorCode.ResourceNotFound)
+                {
+                    // NoBlob
+                    return null;
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 

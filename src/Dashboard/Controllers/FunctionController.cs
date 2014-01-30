@@ -133,7 +133,7 @@ namespace Dashboard.Controllers
                 ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
 
                 model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
-                LogAnalysis.ApplyRuntimeInfo(args, model.Parameters);
+                LogAnalysis.ApplyRuntimeInfo(func.FunctionInstance, args, model.Parameters);
                 LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
             }
 
