@@ -43,7 +43,6 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="BlobListenerUnitTests.cs" />
-    <Compile Include="CallUnitTests.cs" />
     <Compile Include="CloudBlobPathTests.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
