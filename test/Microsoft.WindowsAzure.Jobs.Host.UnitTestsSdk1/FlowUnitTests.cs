@@ -30,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         public static void AutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
                    
         [Fact]
-        public void AutoTrigger1()        
+        public void TestAutoTrigger1()        
         {
             FunctionDefinition func = Get("AutoTrigger1");
             Assert.Equal(true, func.Trigger.ListenOnBlobs);
