@@ -1,6 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
+﻿using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
@@ -21,18 +21,18 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         public void BlockUntilAcquired(CloudBlob blob)
         {
-            Assert.IsFalse(_ownLease, "Don't double-acquire a lease");
+            Assert.False(_ownLease, "Don't double-acquire a lease");
             _ownLease = true;
             _blob = blob;
 
             var blobLock = GetBlobSuffix(_blob, ".lease");
-            Assert.IsFalse(BlobClient.DoesBlobExist(blobLock), "Somebody else has the lease");
+            Assert.False(BlobClient.DoesBlobExist(blobLock), "Somebody else has the lease");
             blobLock.UploadText("held");
         }
 
         public IBlobLeaseHolder TransferOwnership()
         {
-            Assert.IsTrue(_ownLease);
+            Assert.True(_ownLease);
             _ownLease = false;
             // blob.lease still exists, so blob is still leased. 
 
@@ -44,7 +44,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         public void UploadText(string text)
         {
-            Assert.IsTrue(_ownLease);
+            Assert.True(_ownLease);
             _blob.UploadText(text);
 
             // Write to a second blob to prove that we wrote while holding the lease. 
@@ -53,7 +53,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
 
             var blobLock = GetBlobSuffix(_blob, ".lease");            
-            Assert.IsTrue(BlobClient.DoesBlobExist(blobLock), "Writing without a lease");
+            Assert.True(BlobClient.DoesBlobExist(blobLock), "Writing without a lease");
         }
 
         public void Dispose()

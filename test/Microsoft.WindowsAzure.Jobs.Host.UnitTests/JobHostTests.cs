@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class JobHostTests
     {
-        [TestMethod]
+        [Fact]
         public void DefaultConstructor_NoRuntimeConnectionString_Throw()
         {
             var hooks = new JobHostTestHooks

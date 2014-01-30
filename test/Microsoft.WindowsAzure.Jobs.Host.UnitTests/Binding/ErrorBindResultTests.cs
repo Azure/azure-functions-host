@@ -1,11 +1,10 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class ErrorBindResultTests
     {
-        [TestMethod]
+        [Fact]
         public void GetStatus_MessageHasNewLines_EncodedCorrectly()
         {
             // Arrange
@@ -16,7 +15,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             var actual = ((ISelfWatch)new NullBindResult(message) { IsErrorResult = true }).GetStatus();
 
             // Assert
-            Assert.AreEqual(expectedMessage, actual);
+            Assert.Equal(expectedMessage, actual);
         }
     }
 }

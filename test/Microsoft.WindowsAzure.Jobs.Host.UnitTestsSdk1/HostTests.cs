@@ -1,15 +1,14 @@
 ﻿using System;
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     // Unit test the static parameter bindings. This primarily tests the indexer.
-    [TestClass]
     public class HostUnitTests
     {
-        [TestMethod]
+        [Fact]
         public void TestAntaresManifestIsWritten()
         {
             string path = Path.GetTempFileName();
@@ -28,11 +27,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                     TypeLocator = new SimpleTypeLocator() // No types
                 };
                 JobHost h = new JobHost(dataConnectionString: null, runtimeConnectionString: null, hooks: hooks);
-                Assert.IsTrue(File.Exists(path), "Manifest file should have been written");
+                Assert.True(File.Exists(path), "Manifest file should have been written");
 
                 // Validate contents
                 string contents = File.ReadAllText(path);
-                Assert.AreEqual("/azurejobs", contents);
+                Assert.Equal("/azurejobs", contents);
             }
             finally
             {
@@ -41,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void SimpleInvoke()
         {
             var host = new TestJobHost<ProgramSimple>(null);
@@ -50,7 +49,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             ProgramSimple._value = null;
             host.Call("Test", new { value = x });
 
-            Assert.AreEqual(x, ProgramSimple._value, "Test method was not invoked properly.");
+            // Ensure test method was invoked properly.
+            Assert.Equal(x, ProgramSimple._value);
         }
 
         class ProgramSimple

@@ -1,30 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class CloudBlobPathParserTests
     {
-        [TestMethod]
+        [Fact]
         public void TestEquals()
         {
             CloudBlobPath path1 = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
             CloudBlobPath path2 = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
             CloudBlobPath path3 = new CloudBlobPath(@"container/dir/subdir/other.csv");
 
-            Assert.AreEqual(path1, path2);
-            Assert.AreNotEqual(path2, path3);
+            Assert.Equal(path1, path2);
+            Assert.NotEqual(path2, path3);
 
-            Assert.AreEqual(path1.GetHashCode(), path2.GetHashCode());
-            Assert.AreNotEqual(path1.GetHashCode(), path3.GetHashCode()); // statement about hashcode quality. 
+            Assert.Equal(path1.GetHashCode(), path2.GetHashCode());
+            Assert.NotEqual(path1.GetHashCode(), path3.GetHashCode()); // statement about hashcode quality. 
         }
 
-        [TestMethod]
+        [Fact]
         public void TestJsonSerialization()
         {
             CloudBlobPath path = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
@@ -35,9 +33,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             CloudBlobPath d2 = JsonConvert.DeserializeObject<CloudBlobPath>(json);
 
-            Assert.AreEqual(path, d2);
-            Assert.AreEqual(d1, d2.ToString());
-            Assert.AreEqual(path, new CloudBlobPath(d1));
+            Assert.Equal(path, d2);
+            Assert.Equal(d1, d2.ToString());
+            Assert.Equal(path, new CloudBlobPath(d1));
         }
 
         private static IDictionary<string, string> Match(string a, string b)
@@ -47,140 +45,123 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             return pa.Match(pb);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod1()
         {
             var d = Match("container", "container");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(0, d.Count);
+            Assert.NotNull(d);
+            Assert.Equal(0, d.Count);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod2()
         {
             var d = Match(@"container/blob", @"container/blob");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(0, d.Count);
+            Assert.NotNull(d);
+            Assert.Equal(0, d.Count);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod3()
         {
             var d = Match(@"container/{name}.csv", @"container/foo.csv");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(1, d.Count);
-            Assert.AreEqual("foo", d["name"]);
+            Assert.NotNull(d);
+            Assert.Equal(1, d.Count);
+            Assert.Equal("foo", d["name"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod4()
         {
             // Test corner case where matching at end
             var d = Match(@"container/{name}", @"container/foo.csv");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(1, d.Count);
-            Assert.AreEqual("foo.csv", d["name"]);
+            Assert.NotNull(d);
+            Assert.Equal(1, d.Count);
+            Assert.Equal("foo.csv", d["name"]);
         }
 
 
-        [TestMethod]
+        [Fact]
         public void TestMethodExtension()
         {
             // {name} is greedy when matching up to an extension. 
             var d = Match(@"container/{name}.csv", @"container/foo.alpha.csv");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(1, d.Count);
-            Assert.AreEqual("foo.alpha", d["name"]);
+            Assert.NotNull(d);
+            Assert.Equal(1, d.Count);
+            Assert.Equal("foo.alpha", d["name"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestNotGreedy()
         {
             // Test non-greedy matching. May want to change the policy here. 
 
             var d = Match(@"container/{a}.{b}", @"container/foo.alpha.beta.csv");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(2, d.Count);
-            Assert.AreEqual("foo", d["a"]);
-            Assert.AreEqual("alpha.beta.csv", d["b"]);
+            Assert.NotNull(d);
+            Assert.Equal(2, d.Count);
+            Assert.Equal("foo", d["a"]);
+            Assert.Equal("alpha.beta.csv", d["b"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod6()
         {
             // Test corner case where matching on last 
             var d = Match(@"daas-test-input/{name}.txt", @"daas-test-input/bob.txtoutput");
-            Assert.IsNull(d);
+            Assert.Null(d);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMethod5()
         {
             // Test corner case where matching on last 
             var d = Match(@"container/{name}-{date}.csv", @"container/foo-Jan1st.csv");
-            Assert.IsNotNull(d);
-            Assert.AreEqual(2, d.Count);
-            Assert.AreEqual("foo", d["name"]);
-            Assert.AreEqual("Jan1st", d["date"]);
+            Assert.NotNull(d);
+            Assert.Equal(2, d.Count);
+            Assert.Equal("foo", d["name"]);
+            Assert.Equal("Jan1st", d["date"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetNames()
         {
             var path = new CloudBlobPath(@"container/{name}-{date}.csv");
             var d = path.GetParameterNames();
             var names = d.ToArray();
 
-            Assert.AreEqual(2, names.Length);
-            Assert.AreEqual("name", names[0]);
-            Assert.AreEqual("date", names[1]);
+            Assert.Equal(2, names.Length);
+            Assert.Equal("name", names[0]);
+            Assert.Equal("date", names[1]);
         }
 
-        [TestMethod]
+        [Fact]
         public void Apply1()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
             string result = new CloudBlobPath("container").ApplyNames(d).ToString();
-            Assert.AreEqual("container", result);
+            Assert.Equal("container", result);
         }
 
-        [TestMethod]
+        [Fact]
         public void Apply2()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
             string result = new CloudBlobPath(@"container/{name}").ApplyNames(d).ToString();
-            Assert.AreEqual(@"container/value", result);
+            Assert.Equal(@"container/value", result);
         }
 
-        [TestMethod]
+        [Fact]
         public void Apply3()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-
-            try
-            {
-                string result = new CloudBlobPath(@"container/{missing}").ApplyNames(d).ToString();
-                Assert.Fail("Should have thrown");
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            Assert.Throws<InvalidOperationException>(() => new CloudBlobPath(@"container/{missing}").ApplyNames(d).ToString());
         }
 
-        [TestMethod]
+        [Fact]
         public void Apply4()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-
-            try
-            {
-                // Parser error.
-                string result = new CloudBlobPath(@"container/{missing").ApplyNames(d).ToString();
-                Assert.Fail("Should have thrown");
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            Assert.Throws<InvalidOperationException>(() => new CloudBlobPath(@"container/{missing").ApplyNames(d).ToString());
         }
     }
 }

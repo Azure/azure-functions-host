@@ -1,16 +1,15 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     /// <summary>
     /// Summary description for ModelbindingTests
     /// </summary>
-    [TestClass]
     public class ContextBinderTests
     {
-        [TestMethod]
+        [Fact]
         public void TestBindToIBinder()
         {
             var account = TestStorage.GetAccount();
@@ -18,8 +17,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var lc = TestStorage.New<Program>(account);
             Guid gActual = lc.Call("Test");
 
-            Assert.AreNotEqual(gActual, Guid.Empty);            
-            Assert.AreEqual(gActual, Program._executed);
+            Assert.NotEqual(gActual, Guid.Empty);            
+            Assert.Equal(gActual, Program._executed);
         }
 
         class Program

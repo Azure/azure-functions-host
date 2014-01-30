@@ -1,12 +1,11 @@
 ﻿using System;
 using AzureTables;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     // Ensure that various "currency" types can be properly serialized and deserialized to AzureTables.
-    [TestClass]
     public class TableSerializationTests
     {
         internal AzureTable<T> GetTable<T>() where T : new()
@@ -25,7 +24,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
         const string AccountConnectionString = "name=some azure account;password=secret";
 
-        [TestMethod]
+        [Fact]
         public void TestExecutionInstanceLogEntity()
         {
             Guid g = Guid.Parse("508B5DE1-C1B8-431C-81E6-DDC7D7E195DC");
@@ -93,28 +92,28 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var log2 = lookup.Lookup(g);
 
-            Assert.IsNotNull(log2);
-            Assert.IsFalse(Object.ReferenceEquals(log, log2), "looked up object should be new instance");
+            Assert.NotNull(log2);
+            Assert.False(Object.ReferenceEquals(log, log2), "looked up object should be new instance");
 
             AssertEqual(log.FunctionInstance, log2.FunctionInstance);
 
-            Assert.AreEqual(log.StartTime, log2.StartTime);
-            Assert.AreEqual(log.EndTime, log2.EndTime);
+            Assert.Equal(log.StartTime, log2.StartTime);
+            Assert.Equal(log.EndTime, log2.EndTime);
 
-            Assert.AreEqual(log.ToString(), log2.ToString());
+            Assert.Equal(log.ToString(), log2.ToString());
         }
 
         void AssertEqual(FunctionInvokeRequest instance1, FunctionInvokeRequest instance2)
         {
-            Assert.AreEqual(instance1.Id, instance2.Id);
-            Assert.AreEqual(instance1.Args.Length, instance2.Args.Length);
+            Assert.Equal(instance1.Id, instance2.Id);
+            Assert.Equal(instance1.Args.Length, instance2.Args.Length);
 
             for (int i = 0; i < instance1.Args.Length; i++)
             {
                 var arg1 = instance1.Args[i];
                 var arg2 = instance2.Args[i];
 
-                Assert.AreEqual(GetInvokeString(arg1), GetInvokeString(arg2));
+                Assert.Equal(GetInvokeString(arg1), GetInvokeString(arg2));
             }
         }
 
@@ -130,7 +129,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void TestSerializeFunctionIndexEntity()
         {
             // Create an elaborate function object and ensure we can write it to table storage.
@@ -186,23 +185,23 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             FunctionDefinition func2 = table.Lookup(partKey, rowKey);
 
             // Ensure it round tripped.
-            Assert.IsNotNull(func2, "failed to lookup");
-            Assert.AreEqual(func.Description, func2.Description); // should be easy
+            Assert.NotNull(func2);
+            Assert.Equal(func.Description, func2.Description); // should be easy
 
-            Assert.AreEqual(func.Location, func2.Location);
+            Assert.Equal(func.Location, func2.Location);
 
-            Assert.AreEqual(func.Trigger.TimerInterval, func2.Trigger.TimerInterval);
-            Assert.AreEqual(func.Trigger.ListenOnBlobs, func2.Trigger.ListenOnBlobs);
+            Assert.Equal(func.Trigger.TimerInterval, func2.Trigger.TimerInterval);
+            Assert.Equal(func.Trigger.ListenOnBlobs, func2.Trigger.ListenOnBlobs);
 
             // Verify bindings. 
-            Assert.AreEqual(func.Flow.Bindings.Length, func2.Flow.Bindings.Length);
+            Assert.Equal(func.Flow.Bindings.Length, func2.Flow.Bindings.Length);
 
             for (int i = 0; i < func.Flow.Bindings.Length; i++)
             {
                 var f1 = func.Flow.Bindings[i];
                 var f2 = func2.Flow.Bindings[i];
 
-                Assert.AreEqual(f1.ToString(), f2.ToString());
+                Assert.Equal(f1.ToString(), f2.ToString());
             }
         }
     }

@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class IntervalSeparationTimerTests
     {
-        [TestMethod]
+        [Fact]
         public void Constructor_IfCommandIsNull_Throws()
         {
             // Arrange
@@ -19,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.ThrowsArgumentNull(() => CreateProductUnderTest(command), "command");
         }
 
-        [TestMethod]
+        [Fact]
         public void Start_IfExecuteFirstIsTrue_Executes()
         {
             // Arrange
@@ -32,11 +31,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 product.Start(executeFirst: true);
 
                 // Assert
-                Assert.IsTrue(executed);
+                Assert.True(executed);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Start_IfExecuteFirstIsFalse_DoesNotExecute()
         {
             // Arrange
@@ -49,11 +48,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 product.Start(executeFirst: false);
 
                 // Assert
-                Assert.IsFalse(executed);
+                Assert.False(executed);
             }
         }
         
-        [TestMethod]
+        [Fact]
         public void Start_AfterSeparationInterval_Executes()
         {
             // Arrange
@@ -70,12 +69,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                     bool executed = executedWaitHandle.WaitOne(1000);
 
                     // Assert
-                    Assert.IsTrue(executed);
+                    Assert.True(executed);
                 }
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Start_AfterSeparationInternalChanges_WaitsForNewInterval()
         {
             // Arrange
@@ -117,12 +116,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                     // Assert
                     // The measured time between may be slightly less than the interval, so approximate.
                     int minimumElapsedMilliseconds = (int)(subsequentInterval.TotalMilliseconds * 0.75);
-                    Assert.IsTrue(stopwatch.ElapsedMilliseconds > minimumElapsedMilliseconds);
+                    Assert.True(stopwatch.ElapsedMilliseconds > minimumElapsedMilliseconds);
                 }
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Start_IfDisposed_Throws()
         {
             // Arrange
@@ -134,7 +133,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.ThrowsObjectDisposed(() => product.Start(executeFirst: false));
         }
 
-        [TestMethod]
+        [Fact]
         public void Start_IfStarted_Throws()
         {
             // Arrange
@@ -151,7 +150,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Stop_WaitsForExecuteToFinish()
         {
             // Arrange
@@ -174,18 +173,18 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 {
                     product.Start(executeFirst: false);
                     executeStarted.WaitOne();
-                    Assert.IsTrue(stopExecuteInFiveMilliseconds.Set());
+                    Assert.True(stopExecuteInFiveMilliseconds.Set());
 
                     // Act
                     product.Stop();
 
                     // Assert
-                    Assert.IsTrue(executeFinished);
+                    Assert.True(executeFinished);
                 }
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Stop_IfDisposed_Throws()
         {
             // Arrange
@@ -197,7 +196,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.ThrowsObjectDisposed(() => product.Stop());
         }
 
-        [TestMethod]
+        [Fact]
         public void Stop_IfNotStarted_Throws()
         {
             // Arrange
@@ -210,7 +209,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Stop_IfAlreadyStopped_Throws()
         {
             // Arrange
@@ -226,7 +225,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Dispose_IfNotStarted_DoesNotThrow()
         {
             // Arrange
@@ -237,7 +236,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.DoesNotThrow(() => product.Dispose());
         }
 
-        [TestMethod]
+        [Fact]
         public void Dispose_IfAlreadyDisposed_DoesNotThrow()
         {
             // Arrange
@@ -249,7 +248,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.DoesNotThrow(() => product.Dispose());
         }
 
-        [TestMethod]
+        [Fact]
         public void Dispose_IfStopped_DoesNotThrow()
         {
             // Arrange
@@ -262,7 +261,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.DoesNotThrow(() => product.Dispose());
         }
 
-        [TestMethod]
+        [Fact]
         public void Dispose_IfStarted_WaitsForExecuteToFinish()
         {
             // Arrange
@@ -285,13 +284,13 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 {
                     product.Start(executeFirst: false);
                     executeStarted.WaitOne();
-                    Assert.IsTrue(stopExecuteInFiveMilliseconds.Set());
+                    Assert.True(stopExecuteInFiveMilliseconds.Set());
 
                     // Act
                     product.Dispose();
 
                     // Assert
-                    Assert.IsTrue(executeFinished);
+                    Assert.True(executeFinished);
                 }
             }
         }

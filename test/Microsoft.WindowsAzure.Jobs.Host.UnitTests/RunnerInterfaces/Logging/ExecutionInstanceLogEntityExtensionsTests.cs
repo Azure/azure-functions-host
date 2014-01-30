@@ -1,25 +1,23 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
-    [TestClass]
     public class ExecutionInstanceLogEntityExtensionsTests
     {
-        [TestMethod]
+        [Fact]
         public void ExecutionInstanceLogEntity_InitialState_IsAsOtherTestsAssume()
         {
             // Act
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity();
 
             // Assert
-            Assert.IsFalse(entity.HeartbeatExpires.HasValue);
-            Assert.IsFalse(entity.EndTime.HasValue);
-            Assert.IsNull(entity.ExceptionType);
+            Assert.False(entity.HeartbeatExpires.HasValue);
+            Assert.False(entity.EndTime.HasValue);
+            Assert.Null(entity.ExceptionType);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_Initially_ReturnsRunning()
         {
             // Arrange
@@ -29,7 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.Running, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasExpiredHeartbeatOnly_ReturnsNeverFinished()
         {
             // Arrange
@@ -42,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.NeverFinished, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasUnexpiredHeartbeatOnly_ReturnsRunning()
         {
             // Arrange
@@ -55,7 +53,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.Running, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasAllTimesThroughEndTimeWithoutException_ReturnsCompletedSuccess()
         {
             // Arrange
@@ -69,7 +67,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.CompletedSuccess, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasAllTimesThroughEndTimeWithException_ReturnsCompletedFailed()
         {
             // Arrange
@@ -84,7 +82,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.CompletedFailed, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasOnlyEndTimeWithoutException_ReturnsCompletedSuccess()
         {
             // Arrange
@@ -97,7 +95,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             TestStatus(FunctionInstanceStatus.CompletedSuccess, entity);
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_IfEntityHasOnlyEndTimeWithException_ReturnsCompletedFailed()
         {
             // Arrange
@@ -117,7 +115,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             FunctionInstanceStatus status = ExecutionInstanceLogEntityExtensions.GetStatus(entity);
 
             // Assert
-            Assert.AreEqual(expected, status);
+            Assert.Equal(expected, status);
         }
     }
 }

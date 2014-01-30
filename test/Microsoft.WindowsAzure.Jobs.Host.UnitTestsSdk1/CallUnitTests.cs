@@ -4,17 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class CallUnitTests
     {
         // Verify that ICall doesn't invoke if the parent method failed. 
-        [TestMethod]
+        [Fact]
         public void InvokeFail()
         {
             var account = TestStorage.GetAccount();
@@ -26,11 +24,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             // Verify Method1 failed
             var log1 = lookup.LookupOrThrow(guid1);
-            Assert.AreEqual(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
-            Assert.AreEqual("System.InvalidOperationException", log1.ExceptionType);
-            Assert.AreEqual(ProgramFail.Message, log1.ExceptionMessage);
+            Assert.Equal(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
+            Assert.Equal("System.InvalidOperationException", log1.ExceptionType);
+            Assert.Equal(ProgramFail.Message, log1.ExceptionMessage);
 
-            Assert.IsFalse(ProgramFail._isCalled, "Method2 should not be invoked since Method1 failed");
+            Assert.False(ProgramFail._isCalled, "Method2 should not be invoked since Method1 failed");
         }
 
         class ProgramFail
@@ -56,7 +54,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void InvokeChain()
         {            
             var account = TestStorage.GetAccount();
@@ -68,7 +66,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var guid1 = call.QueueCall("Chain1", new { inheritedArg = "xyz" }).Guid;
 
             string log = Program._sb.ToString();
-            Assert.AreEqual("1,2,3,4,5,6,7", log);
+            Assert.Equal("1,2,3,4,5,6,7", log);
 
             // Verify the causality chain
             var causality = lc.CausalityReader;
@@ -76,28 +74,28 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             // Chain1
             var log1 = lookup.LookupOrThrow(guid1);            
-            Assert.AreEqual("Chain1", GetMethodName(log1));
-            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log1.GetStatus());
+            Assert.Equal("Chain1", GetMethodName(log1));
+            Assert.Equal(FunctionInstanceStatus.CompletedSuccess, log1.GetStatus());
             var children = causality.GetChildren(guid1).ToArray();
-            Assert.AreEqual(1, children.Length);
-            Assert.AreEqual(guid1, children[0].ParentGuid); // call to Child2
+            Assert.Equal(1, children.Length);
+            Assert.Equal(guid1, children[0].ParentGuid); // call to Child2
             var guid2 = children[0].ChildGuid;
 
             // Chain2
             var log2 = lookup.LookupOrThrow(guid2);
-            Assert.AreEqual("Chain2", GetMethodName(log2));
-            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log2.GetStatus());
+            Assert.Equal("Chain2", GetMethodName(log2));
+            Assert.Equal(FunctionInstanceStatus.CompletedSuccess, log2.GetStatus());
             children = causality.GetChildren(guid2).ToArray();
-            Assert.AreEqual(1, children.Length);
-            Assert.AreEqual(guid2, children[0].ParentGuid); // Call to Child3
+            Assert.Equal(1, children.Length);
+            Assert.Equal(guid2, children[0].ParentGuid); // Call to Child3
             var guid3 = children[0].ChildGuid;
 
             // Chain3
             var log3 = lookup.LookupOrThrow(guid3);
-            Assert.AreEqual("Chain3", GetMethodName(log3));
-            Assert.AreEqual(FunctionInstanceStatus.CompletedSuccess, log3.GetStatus());
+            Assert.Equal("Chain3", GetMethodName(log3));
+            Assert.Equal(FunctionInstanceStatus.CompletedSuccess, log3.GetStatus());
             children = causality.GetChildren(guid3).ToArray();
-            Assert.AreEqual(0, children.Length);
+            Assert.Equal(0, children.Length);
         }
 
         static string GetMethodName(ExecutionInstanceLogEntity log)
@@ -141,11 +139,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 string arg, 
                 [BlobInput(@"daas-test-input/test.txt")] TextReader tr)
             {
-                Assert.AreEqual("abc", arg);
+                Assert.Equal("abc", arg);
 
                 // Previous func, Chain1, should have flushed writes before we get invoked.
                 string content = tr.ReadLine();
-                Assert.AreEqual(Message, content);
+                Assert.Equal(Message, content);
 
                 _sb.Append(",4");
                 caller.QueueCall("Chain3", new { arg = "def" }); 
@@ -159,13 +157,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 _sb.Append(",6");
                 Console.WriteLine("new arg:{0}", arg);
-                Assert.AreEqual("def", arg);
+                Assert.Equal("def", arg);
                 _sb.Append(",7");
             }
         }
 
 
-        [TestMethod]
+        [Fact]
         public void InvokeDelete()
         {
             // Test invoking a delete operation 
@@ -178,13 +176,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var l = TestStorage.New<Program2>(account);
             l.Call("Chain1", new { name = "foo" }); // blocks
 
-            Assert.IsFalse(BlobClient.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
+            Assert.False(BlobClient.DoesBlobExist(account, "daas-test-input", "foo-input.txt"), "Blob should have been archived");
             
             string content = BlobClient.ReadBlob(account, "daas-test-input", "foo-output.txt");
-            Assert.AreEqual("13", content); // ouput
+            Assert.Equal("13", content); // ouput
 
             string content2 = BlobClient.ReadBlob(account, "daas-test-archive", "foo-input.txt");
-            Assert.AreEqual("12", content2); // archive of input
+            Assert.Equal("12", content2); // archive of input
         }
 
         class Program2

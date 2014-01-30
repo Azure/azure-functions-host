@@ -3,19 +3,18 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
 {
     /// <summary>
     /// Various E2E tests that use only the public surface and the real Azure storage
     /// </summary>
-    [TestClass]
     public class EndToEndTests
     {
         private const string ContainerName = "e2econtainer";
@@ -50,6 +49,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
             {
                 throw new FormatException("The connection string in App.config is invalid", ex);
             }
+
+            CleanupBlob();
+            CleanupQueue();
+            CleanupTable();
         }
 
         /// <summary>
@@ -116,27 +119,16 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
             _functionChainWaitHandle.Set();
         }
 
-        [TestInitialize]
-        public void Initialize()
-        {
-            CleanupBlob();
-            CleanupQueue();
-            CleanupTable();
-        }
-
-        // Slow test with 15 minutes timeout
-        // Remove the Ignore attribute to run
-        [Ignore]
-        [TestMethod]
-        [Timeout(15 * 60 * 1000)]
+        // Switch the Fact attribute to run
+        [Fact(Skip = "Slow test with 15 minutes timeout")]
+        //[Fact(Timeout = 15 * 60 * 1000)]
         public void EndToEndSlowTrigger()
         {
             EndToEndTest(uploadBlobBeforeHostStart: false);
         }
 
         // 1 minute timeout
-        [TestMethod]
-        [Timeout(60 * 1000)]
+        [Fact(Timeout = 60 * 1000)]
         public void EndToEndFastTrigger()
         {
             EndToEndTest(uploadBlobBeforeHostStart: true);
@@ -277,15 +269,16 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
             CloudTableClient tableClient = _storageAccount.CreateCloudTableClient();
             CloudTable table = tableClient.GetTableReference(TableName);
 
-            Assert.IsTrue(table.Exists(), "Result table not found");
+            Assert.True(table.Exists(), "Result table not found");
 
             TableQuery query = new TableQuery().Take(1);
             DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            Assert.IsNotNull(result, "Expected row not found");
+            // Ensure expected row found
+            Assert.NotNull(result);
 
-            Assert.AreEqual("Test testblob QueueToTable", result.Properties["Text"].StringValue);
-            Assert.AreEqual("44", result.Properties["Number"].StringValue);
+            Assert.Equal("Test testblob QueueToTable", result.Properties["Text"].StringValue);
+            Assert.Equal("44", result.Properties["Number"].StringValue);
         }
     }
 }

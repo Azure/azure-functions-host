@@ -1,11 +1,10 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class DefaultStorageValidatorTests
     {
-        [TestMethod]
+        [Fact]
         public void TryValidateConnectionString_WithEmulator_Fails()
         {
             var validator = new DefaultStorageValidator();
@@ -15,11 +14,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             string validationErrorMessage;
             bool result = validator.TryValidateConnectionString(connectionString, out validationErrorMessage);
 
-            Assert.IsFalse(result);
-            Assert.AreEqual(validationErrorMessage, expectedErrorMessage);
+            Assert.False(result);
+            Assert.Equal(validationErrorMessage, expectedErrorMessage);
         }
 
-        [TestMethod]
+        [Fact]
         public void TryValidateConnectionString_WithProxiedEmulator_Fails()
         {
             var validator = new DefaultStorageValidator();
@@ -29,11 +28,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             string validationErrorMessage;
             bool result = validator.TryValidateConnectionString(connectionString, out validationErrorMessage);
 
-            Assert.IsFalse(result);
-            Assert.AreEqual(validationErrorMessage, expectedErrorMessage);
+            Assert.False(result);
+            Assert.Equal(validationErrorMessage, expectedErrorMessage);
         }
 
-        [TestMethod]
+        [Fact]
         public void TryValidateConnectionString_WithEmpty_Fails()
         {
             var validator = new DefaultStorageValidator();
@@ -43,11 +42,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             string validationErrorMessage;
             bool result = validator.TryValidateConnectionString(connectionString, out validationErrorMessage);
 
-            Assert.IsFalse(result);
-            Assert.AreEqual(validationErrorMessage, expectedErrorMessage);
+            Assert.False(result);
+            Assert.Equal(validationErrorMessage, expectedErrorMessage);
         }
 
-        [TestMethod]
+        [Fact]
         public void TryValidateConnectionString_WithNull_Fails()
         {
             var validator = new DefaultStorageValidator();
@@ -57,8 +56,8 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             string validationErrorMessage;
             bool result = validator.TryValidateConnectionString(connectionString, out validationErrorMessage);
 
-            Assert.IsFalse(result);
-            Assert.AreEqual(validationErrorMessage, expectedErrorMessage);
+            Assert.False(result);
+            Assert.Equal(validationErrorMessage, expectedErrorMessage);
         }
     }
 }

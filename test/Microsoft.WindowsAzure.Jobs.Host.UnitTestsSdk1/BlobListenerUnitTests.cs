@@ -1,13 +1,11 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+﻿using Microsoft.WindowsAzure.StorageClient;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class BlobListenerTests
     {
-        [TestMethod]
+        [Fact]
         public void TestBlobListener()
         {
             var account = TestStorage.GetAccount();
@@ -20,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             l.Poll(blob =>
                 {
-                    Assert.Fail("shouldn't be any blobs in the container");
+                    Assert.True(false, "shouldn't be any blobs in the container");
                 });
 
             BlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
@@ -29,14 +27,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             l.Poll(blob =>
             {
                 count++;
-                Assert.AreEqual("foo1.csv", blob.Name);
+                Assert.Equal("foo1.csv", blob.Name);
             });
-            Assert.AreEqual(1, count);
+            Assert.Equal(1, count);
 
             // No poll again, shouldn't show up. 
             l.Poll(blob =>
             {
-                Assert.Fail("shouldn't retrigger the same blob");
+                Assert.True(false, "shouldn't retrigger the same blob");
             });            
         }
 

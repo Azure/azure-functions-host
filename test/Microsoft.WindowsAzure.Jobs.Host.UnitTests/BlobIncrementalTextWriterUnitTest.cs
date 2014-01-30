@@ -1,17 +1,16 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class BlobIncrementalTextWriterUnitTest
     {
-        [TestMethod]
+        [Fact]
         public void TestIncrementalWriter()
         {
             TimeSpan refreshRate = TimeSpan.FromSeconds(1);
@@ -23,20 +22,21 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             var tw = writer.Writer;
             tw.Write("1");
 
-            Assert.AreEqual(null, content, "Not yet written");
+            // Ensure content not yet written
+            Assert.Equal(null, content);
 
             writer.Start(refreshRate);
 
-            Assert.AreEqual("1", content);
+            Assert.Equal("1", content);
 
             tw.Write("2");
             Thread.Sleep(refreshRate + refreshRate); 
 
-            Assert.AreEqual("12", content);
+            Assert.Equal("12", content);
 
             tw.Write("3");
             writer.Close();
-            Assert.AreEqual("123", content);
+            Assert.Equal("123", content);
         }
     }
 }

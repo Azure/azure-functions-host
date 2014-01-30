@@ -2,37 +2,35 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
-    [TestClass]
     public class ObjectBinderHelpersTest
     {
-        [TestMethod]
+        [Fact]
         public void ConvertAnonymousType()
         {
             var d = ObjectBinderHelpers.ConvertObjectToDict(new { A = 'A', One = 1 });
 
-            Assert.AreEqual(2, d.Count);
-            Assert.AreEqual("A", d["A"]);
-            Assert.AreEqual("1", d["One"]);
+            Assert.Equal(2, d.Count);
+            Assert.Equal("A", d["A"]);
+            Assert.Equal("1", d["One"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void RoundTripDateUTc()
         {
             var now = DateTime.UtcNow; // Utc
-            Assert.AreEqual(now.ToString(), now.ToUniversalTime().ToString());
+            Assert.Equal(now.ToString(), now.ToUniversalTime().ToString());
 
             var val = RoundTripDateTime(now);
 
             // Full quality (including Kind)
-            Assert.AreEqual(now, val);
+            Assert.Equal(now, val);
         }
         
-        [TestMethod]
+        [Fact]
         public void RoundTripDateLocal()
         {
             var now = DateTime.Now; // Local
@@ -40,49 +38,51 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             var val = RoundTripDateTime(now);
             
             // Full quality (including Kind)
-            Assert.AreEqual(now.ToUniversalTime(), val);
+            Assert.Equal(now.ToUniversalTime(), val);
         }
         
         private static DateTime RoundTripDateTime(DateTime now)
         {
             var d = ObjectBinderHelpers.ConvertObjectToDict(new DateWrapper { Value = now });
 
-            Assert.AreEqual(1, d.Count);
+            Assert.Equal(1, d.Count);
 
             // Note RawString is in UTC format
             var rawVal = d["Value"];
             var dateRaw = DateTime.Parse(rawVal);
-            Assert.AreEqual(now.ToUniversalTime(), dateRaw.ToUniversalTime());
+            Assert.Equal(now.ToUniversalTime(), dateRaw.ToUniversalTime());
             
             DateTime val = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d).Value;
 
-            Assert.AreEqual(val.Kind, DateTimeKind.Utc, "should have normalized Kind to be UTC");
-            Assert.AreEqual(now.ToUniversalTime(), val.ToUniversalTime());
+            // should have normalized Kind to be UTC
+            Assert.Equal(val.Kind, DateTimeKind.Utc);
+            Assert.Equal(now.ToUniversalTime(), val.ToUniversalTime());
 
             return val;
         }
 
-        [TestMethod]
+        [Fact]
         public void ReadEmptyNullableDate()
         {
             // Empty
             var d = new Dictionary<string, string>();
             var obj = ObjectBinderHelpers.ConvertDictToObject<NullableDateWrapper>(d);
 
-            Assert.IsFalse(obj.Value.HasValue);
+            Assert.False(obj.Value.HasValue);
         }
 
-        [TestMethod]
+        [Fact]
         public void WriteEmptyNullableDate()
         {
             // Empty
             NullableDateWrapper obj = new NullableDateWrapper();
             var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
 
-            Assert.AreEqual(0, d.Count, "Nullable field shouldn't be written");        
+            // Nullable field shouldn't be written
+            Assert.Equal(0, d.Count);
         }
 
-        [TestMethod]
+        [Fact]
         public void RoundTripNullableDate()
         {
             // Empty
@@ -90,14 +90,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             NullableDateWrapper obj = new NullableDateWrapper { Value = now };
             var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
 
-            Assert.AreEqual(1, d.Count);
+            Assert.Equal(1, d.Count);
             var obj2 = ObjectBinderHelpers.ConvertDictToObject<NullableDateWrapper>(d);
 
             // Verify structural type equivalance. 
             var obj3 = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d);
 
-            Assert.AreEqual(obj.Value, obj2.Value);
-            Assert.AreEqual(obj.Value, obj3.Value);
+            Assert.Equal(obj.Value, obj2.Value);
+            Assert.Equal(obj.Value, obj3.Value);
         }
 
         class DateWrapper
@@ -111,7 +111,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         }
 
         // Test reading in a DateTime that we didn't serialize.
-        [TestMethod]
+        [Fact]
         public void ParseShortDate()
         {
             // Missing timezone information and exact tick count
@@ -123,12 +123,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             DateTime val = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d).Value;
 
-            Assert.AreEqual(now.Kind, val.Kind);
-            Assert.AreEqual(raw, val.ToString());
+            Assert.Equal(now.Kind, val.Kind);
+            Assert.Equal(raw, val.ToString());
         }
 
 
-        [TestMethod]
+        [Fact]
         public void ConvertStrongDictionary()
         {
             var source = new Dictionary<string, object>();
@@ -136,12 +136,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             source["One"] = 1;
             var d = ObjectBinderHelpers.ConvertObjectToDict(source);
 
-            Assert.AreEqual(2, d.Count);
-            Assert.AreEqual("A", d["A"]);
-            Assert.AreEqual("1", d["One"]);
+            Assert.Equal(2, d.Count);
+            Assert.Equal("A", d["A"]);
+            Assert.Equal("1", d["One"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMutate()
         {
             var obj = new StringBuilder("A");
@@ -149,23 +149,23 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             source["A"] = obj;
             var d = ObjectBinderHelpers.ConvertObjectToDict(source);
 
-            Assert.IsTrue(!object.ReferenceEquals(source, d)); // different instances
-            Assert.AreEqual("A", d["A"]);
+            Assert.True(!object.ReferenceEquals(source, d)); // different instances
+            Assert.Equal("A", d["A"]);
             
             // Now mutate.
             obj.Append("B");
 
-            Assert.AreEqual("A", d["A"]);
+            Assert.Equal("A", d["A"]);
         }
 
-        [TestMethod]
+        [Fact]
         public void ConvertEnum()
         {
             var obj = new { Purchase = Fruit.Banana };
             var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
 
-            Assert.AreEqual(1, d.Count);
-            Assert.AreEqual("Banana", d["Purchase"]);
+            Assert.Equal(1, d.Count);
+            Assert.Equal("Banana", d["Purchase"]);
         }
 
         // No Type converter
@@ -176,13 +176,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             Pear,
         }
 
-        [TestMethod]
+        [Fact]
         public void ConvertWithTypeDescriptor()
         {
             TestEnum x = (TestEnum)ObjectBinderHelpers.BindFromString("Frown", typeof(TestEnum));
 
             // Converter overrides parse functionality
-            Assert.AreEqual(x, TestEnum.Smile);
+            Assert.Equal(x, TestEnum.Smile);
         }
 
         class TestEnumConverter : TypeConverter

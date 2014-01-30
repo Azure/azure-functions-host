@@ -1,26 +1,26 @@
-﻿using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using System.IO;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 {
     // Test model binding with Azure 2.0 sdk 
-    [TestClass]
     public class UnitTest1
     {
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
-        [TestMethod]
+        [Fact]
         public void TestBindCloudStorageAccount()
         {
             var lc = new TestJobHost<Program>();
             lc.Call("FuncCloudStorageAccount");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestIBlob()
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
@@ -48,7 +48,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             container.DeleteIfExists();
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMissingIBlob()
         {
             var lc = new TestJobHost<Program>();
@@ -57,34 +57,27 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             lc.Call("PageBlobMissing");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestQueue()
         {
             var lc = new TestJobHost<Program>();
             lc.Call("Queue");
-            Assert.IsTrue(Program._QueueInvoked);
+            Assert.True(Program._QueueInvoked);
         }
 
-        [TestMethod]        
+        [Fact]        
         public void TestQueueBadName()
-        {           
-            try
-            {
-                var host = new TestJobHost<ProgramBadQueueName>(null);
-
-                Assert.Fail("indexer should have noticed bad queue name and failed immediately");
-            }
-            catch (IndexException)
-            {
-            }
+        {
+            // indexer should notice bad queue name and fail immediately
+            Assert.Throws<IndexException>(() => new TestJobHost<ProgramBadQueueName>(null));
         }
 
-        [TestMethod]
+        [Fact]
         public void TestTable()
         {
             var lc = new TestJobHost<Program>();
             lc.Call("Table");
-            Assert.IsTrue(Program.TableInvoked);
+            Assert.True(Program.TableInvoked);
         }
 
         class ProgramBadQueueName
@@ -92,7 +85,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             [Description("test")]
             public static void QueueBadName(CloudQueue IllegalName)
             {
-                Assert.Fail("shouldnt get invoked");
+                throw new NotSupportedException("shouldnt get invoked");
             }
         }
 
@@ -104,7 +97,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             {
                 var account2 = CloudStorageAccount.DevelopmentStorageAccount;
 
-                Assert.AreEqual(account.ToString(), account2.ToString());
+                Assert.Equal(account.ToString(), account2.ToString());
             }
 
             public static bool _QueueInvoked;
@@ -115,55 +108,55 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             public static void Queue(CloudQueue mytestqueue)
             {
                 _QueueInvoked = true;
-                Assert.IsNotNull(mytestqueue);
+                Assert.NotNull(mytestqueue);
             }
 
             public static void IBlobMissing(
                 [BlobInput("daas-test/missing")] ICloudBlob missing)
             {
-                Assert.IsNull(missing);
+                Assert.Null(missing);
             }
 
             public static void IBlob(
                 [BlobInput("daas-test/page")] ICloudBlob page,
                 [BlobInput("daas-test/block")] ICloudBlob block)
             {
-                Assert.IsNotNull(page);
-                Assert.IsNotNull(block);
+                Assert.NotNull(page);
+                Assert.NotNull(block);
 
-                Assert.AreEqual(BlobType.PageBlob, page.BlobType);
-                Assert.AreEqual(BlobType.BlockBlob, block.BlobType);
+                Assert.Equal(BlobType.PageBlob, page.BlobType);
+                Assert.Equal(BlobType.BlockBlob, block.BlobType);
             }
 
             public static void BlockBlob(
                [BlobInput("daas-test/block")] CloudBlockBlob block)
             {
-                Assert.AreEqual(BlobType.BlockBlob, block.BlobType);
+                Assert.Equal(BlobType.BlockBlob, block.BlobType);
             }
 
             public static void PageBlob(
                 [BlobInput("daas-test/page")] CloudPageBlob page)
             {
-                Assert.AreEqual(BlobType.PageBlob, page.BlobType);
+                Assert.Equal(BlobType.PageBlob, page.BlobType);
             }
 
 
             public static void BlockBlobMissing(
                [BlobInput("daas-test/missing")] CloudBlockBlob block)
             {
-                Assert.IsNull(block);
+                Assert.Null(block);
             }
 
             public static void PageBlobMissing(
                 [BlobInput("daas-test/page")] CloudPageBlob page)
             {
-                Assert.IsNull(page);
+                Assert.Null(page);
             }
 
             [Description("test")]
             public static void Table([Table("DaasTestTable")] CloudTable table)
             {
-                Assert.IsNotNull(table);
+                Assert.NotNull(table);
                 TableInvoked = true;
             }
         }

@@ -1,17 +1,15 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class QueueCausalityHelperTests
     {
         // Internal and external queuing are important for interoping between simpleBatch (on the cloud)
         // and client code. 
-        [TestMethod]
+        [Fact]
         public void ExternalProducerInternalConsumer()
         {
             // Queue outside of SimpleBatch, consume from within SimpleBatch
@@ -20,13 +18,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var qcm = new QueueCausalityHelper();
             Guid g = qcm.GetOwner(msg);
-            Assert.AreEqual(Guid.Empty, g);
+            Assert.Equal(Guid.Empty, g);
 
             string payload = msg.AsString;
-            Assert.AreEqual(val, payload);
+            Assert.Equal(val, payload);
         }
 
-        [TestMethod]
+        [Fact]
         public void InternalProducerExternalConsumer()
         {
             // Queue from inside of SimpleBatch, consume outside of SimpleBatch
@@ -35,10 +33,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var json = msg.AsString;
             var obj = JsonConvert.DeserializeObject<Payload>(json);
-            Assert.AreEqual(123, obj.Val);
+            Assert.Equal(123, obj.Val);
         }
 
-        [TestMethod]
+        [Fact]
         public void InternalProducerInternalConsumer()
         {
             // Test that we can 
@@ -48,10 +46,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var payload = msg.AsString;
             var result = JsonCustom.DeserializeObject<Payload>(payload);
-            Assert.AreEqual(result.Val, 123);
+            Assert.Equal(result.Val, 123);
 
             var owner = qcm.GetOwner(msg);
-            Assert.AreEqual(g, owner);
+            Assert.Equal(g, owner);
         }
 
         public class Payload

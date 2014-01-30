@@ -2,17 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class LocalOrchestratorTests
     {
-        [TestMethod]
+        [Fact]
         public void InvokeWithParams()
         {
             var account = TestStorage.GetAccount();
@@ -31,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("FuncWithNames", d);
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "out.csv");
-            Assert.AreEqual("done", content);
+            Assert.Equal("done", content);
 
             {
                 // $$$ Put this in its own unit test?
@@ -39,11 +38,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 var blob = BlobClient.GetBlob(account, "daas-test-input", "out.csv");
                 var guid = logger.GetWriter(blob);
 
-                Assert.IsTrue(guid != Guid.Empty, "Blob is missing causality information");
+                Assert.True(guid != Guid.Empty, "Blob is missing causality information");
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void InvokeWithBlob()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
@@ -55,7 +54,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
 
         // Test binding blobs to strings. 
-        [TestMethod]
+        [Fact]
         public void InvokeWithBlobToString()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
@@ -68,10 +67,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("BindBlobToString");
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "blob.out");
-            Assert.AreEqual(value, content);
+            Assert.Equal(value, content);
         }
 
-        [TestMethod]
+        [Fact]
         public void InvokeWithMissingBlob()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
@@ -81,7 +80,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("FuncWithMissingBlob");
         }
 
-        [TestMethod]
+        [Fact]
         public void InvokeWithParamsParser()
         {
             var account = TestStorage.GetAccount();
@@ -95,10 +94,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("ParseArgument", d);
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "out.csv");
-            Assert.AreEqual("16", content);
+            Assert.Equal("16", content);
         }
 
-        [TestMethod]
+        [Fact]
         public void InvokeOnBlob()
         {
             var account = TestStorage.GetAccount();
@@ -110,12 +109,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "input.csv");
 
-            Assert.AreEqual("abc", content);
+            Assert.Equal("abc", content);
         }
 
-        // TODO: enable the test when we support ref (with proper lease)
-        [Ignore]
-        [TestMethod]
+        [Fact(Skip = "enable the test when we support ref (with proper lease)")]
         public void TestBlobLease()
         {
             // Test that we get the blob lease, write while holding the lease. 
@@ -137,21 +134,22 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("BlobLease"); // Invoke once, will create file
                         
             string content = blob.DownloadText();
-            Assert.AreEqual("1", content);
+            Assert.Equal("1", content);
 
             string content2 = BlobClient.ReadBlob(account, Container, BlobName + ".x");
-            Assert.AreEqual(content, content2, "Didn't write while holding the lease");
+            // Ensure wrote while holding the lease
+            Assert.Equal(content, content2);
 
             lc.Call("BlobLease"); // Invoke second time. 
                         
             string content3 = blob.DownloadText();
-            Assert.AreEqual("2", content3);
+            Assert.Equal("2", content3);
 
-            Assert.IsFalse(BlobClient.DoesBlobExist(blobLease), "Blob lease was not released");
+            Assert.False(BlobClient.DoesBlobExist(blobLease), "Blob lease was not released");
         }
 
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
-        [TestMethod]
+        [Fact]
         public void TestBindCloudStorageAccount()
         {
             var account = TestStorage.GetAccount();
@@ -166,10 +164,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("FuncCloudStorageAccount", args);            
 
             string content = BlobClient.ReadBlob(account, args.containerName, args.blobName);
-            Assert.AreEqual(args.value, content);
+            Assert.Equal(args.value, content);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestEnqueueMessage()
         {
             var account = TestStorage.GetAccount();
@@ -181,15 +179,15 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("FuncEnqueue");
 
             var msg = queue.GetMessage();
-            Assert.IsNotNull(msg);
+            Assert.NotNull(msg);
 
             string data = msg.AsString;
             Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
-            Assert.AreEqual(15, payload.Value);
+            Assert.Equal(15, payload.Value);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMultiEnqueueMessage_IEnumerable()
         {
             var account = TestStorage.GetAccount();
@@ -203,7 +201,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             for (int i = 10; i <= 30; i += 10)
             {
                 var msg = queue.GetMessage();
-                Assert.IsNotNull(msg);
+                Assert.NotNull(msg);
 
                 string data = msg.AsString;
                 queue.DeleteMessage(msg);
@@ -211,16 +209,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
                 // Technically, ordering is not gauranteed.
-                Assert.AreEqual(i, payload.Value);
+                Assert.Equal(i, payload.Value);
             }
 
             {
                 var msg = queue.GetMessage();
-                Assert.IsNull(msg); // no more messages
+                Assert.Null(msg); // no more messages
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void TestMultiEnqueueMessage_NestedIEnumerable_Throws()
         {
             var account = TestStorage.GetAccount();
@@ -229,7 +227,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             CallError<InvalidOperationException>(lc, "FuncMultiEnqueueIEnumerableNested");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestQueueOutput_IList_Throws()
         {
             var account = TestStorage.GetAccount();
@@ -238,7 +236,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             CallError<InvalidOperationException>(lc, "FuncQueueOutputIList");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestQueueOutput_Object_Throws()
         {
             var account = TestStorage.GetAccount();
@@ -247,7 +245,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             CallError<InvalidOperationException>(lc, "FuncQueueOutputObject");
         }
 
-        [TestMethod]
+        [Fact]
         public void TestQueueOutput_IEnumerableOfObject_Throws()
         {
             var account = TestStorage.GetAccount();
@@ -263,13 +261,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var lookup = lc.FunctionInstanceLookup;
 
             var log1 = lookup.LookupOrThrow(guid);
-            Assert.AreEqual(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
-            Assert.AreEqual(typeof(T).FullName, log1.ExceptionType);
+            Assert.Equal(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
+            Assert.Equal(typeof(T).FullName, log1.ExceptionType);
         }
 
 
         // Model bind a parameter to a queueing inteface, and then enqueue multiple messages.
-        [TestMethod]
+        [Fact]
         public void TestMultiEnqueueMessage()
         {
             var account = TestStorage.GetAccount();
@@ -283,7 +281,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             for (int i = 10; i <= 30; i += 10)
             {
                 var msg = queue.GetMessage();
-                Assert.IsNotNull(msg);
+                Assert.NotNull(msg);
 
                 string data = msg.AsString;
                 queue.DeleteMessage(msg);
@@ -291,16 +289,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
                 // Technically, ordering is not gauranteed.
-                Assert.AreEqual(i, payload.Value);
+                Assert.Equal(i, payload.Value);
             }
 
             {
                 var msg = queue.GetMessage();
-                Assert.IsNull(msg); // no more messages
+                Assert.Null(msg); // no more messages
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void TestEnqueueMessage_UsingCloudQueue()
         {
             var account = TestStorage.GetAccount();
@@ -314,22 +312,22 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             for (int i = 10; i <= 30; i += 10)
             {
                 var msg = queue.GetMessage();
-                Assert.IsNotNull(msg);
+                Assert.NotNull(msg);
 
                 string data = msg.AsString;
                 queue.DeleteMessage(msg);
 
-                Assert.AreEqual(i.ToString(), data);
+                Assert.Equal(i.ToString(), data);
             }
 
             {
                 var msg = queue.GetMessage();
-                Assert.IsNull(msg); // no more messages
+                Assert.Null(msg); // no more messages
             }
         }
 
         // $$$ Test with directories
-        [TestMethod]
+        [Fact]
         public void Aggregate()
         {
             var account = TestStorage.GetAccount();
@@ -342,10 +340,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("Aggregate1");
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "output.csv");
-            Assert.AreEqual("abcdef", content);
+            Assert.Equal("abcdef", content);
         }
 
-        [TestMethod]
+        [Fact]
         public void Aggregate2()
         {
             var account = TestStorage.GetAccount();
@@ -363,7 +361,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("Aggregate2", d);
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", @"testoutput/output.csv");
-            Assert.AreEqual("abcdef", content);
+            Assert.Equal("abcdef", content);
         }
 
         private class Program
@@ -381,9 +379,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 )
             {
                 int len = 2;
-                Assert.AreEqual(len, inputs.Length);
+                Assert.Equal(len, inputs.Length);
 
-                //Assert.AreEqual(len, names.Length);
+                //Assert.Equal(len, names.Length);
 
                 StringBuilder sb = new StringBuilder();
                 foreach (var input in inputs)
@@ -426,12 +424,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 [BlobOutput(@"daas-test-input/{target}.csv")] TextWriter output
                 )
             {
-                Assert.AreEqual("test", unbound);
-                Assert.AreEqual("note", name);
-                Assert.AreEqual("monday", date);
+                Assert.Equal("test", unbound);
+                Assert.Equal("note", name);
+                Assert.Equal("monday", date);
 
                 string content = values.ReadToEnd();
-                Assert.AreEqual("abc", content);
+                Assert.Equal("abc", content);
 
                 output.Write("done");
             }
@@ -450,34 +448,40 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 [BlobInput(@"daas-test-input/blob.csv")] Stream stream
                 )
             {
-                Assert.IsNotNull(blob, "Unexpectedly null CloudBlob");
-                Assert.IsNotNull(stream, "Unexpectedly null Stream");
+                Assert.NotNull(blob);
+                Assert.NotNull(stream);
 
-                Assert.AreEqual("blob.csv", blob.Name);
+                Assert.Equal("blob.csv", blob.Name);
                 string content = blob.DownloadText();
-                Assert.IsNotNull(content, "Unexpectedly null CloudBlob content");
+                Assert.NotNull(content);
                 string[] strings = content.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                Assert.AreEqual(3, strings.Length, "Unexpected number of entries in CloudBlob");
+                // Verify expected number of entries in CloudBlob
+                Assert.Equal(3, strings.Length);
                 for (int i = 0; i < 3; ++i)
                 {
                     int value;
                     bool parsed = int.TryParse(strings[i], out value);
-                    Assert.IsTrue(parsed, "Unable to parse CloudBlob strings[{0}]: '{1}'", i, strings[i]);
-                    Assert.AreEqual(i, value, "Unexpected value in CloudBlob");
+                    string message = String.Format("Unable to parse CloudBlob strings[{0}]: '{1}'", i, strings[i]);
+                    Assert.True(parsed, message);
+                    // Ensure expected value in CloudBlob
+                    Assert.Equal(i, value);
                 }
 
-                Assert.IsTrue(stream.CanRead, "Unable to read stream");
+                Assert.True(stream.CanRead, "Unable to read stream");
                 StreamReader reader = new StreamReader(stream);
                 content = reader.ReadToEnd();
-                Assert.IsNotNull(content, "Unexpectedly null Stream content");
+                Assert.NotNull(content);
                 strings = content.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                Assert.AreEqual(3, strings.Length, "Unexpected number of entries in Stream");
+                // Verify expected number of entries in Stream
+                Assert.Equal(3, strings.Length);
                 for (int i = 0; i < 3; ++i)
                 {
                     int value;
                     bool parsed = int.TryParse(strings[i], out value);
-                    Assert.IsTrue(parsed, "Unable to parse Stream strings[{0}]: '{1}'", i, strings[i]);
-                    Assert.AreEqual(i, value, "Unexpected value in Stream");
+                    string message = String.Format("Unable to parse Stream strings[{0}]: '{1}'", i, strings[i]);
+                    Assert.True(parsed, message);
+                    // Ensure expected value in Stream
+                    Assert.Equal(i, value);
                 }
             }
 
@@ -488,9 +492,9 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 [BlobInput(@"daas-test-input/blob.csv")] TextReader reader
                 )
             {
-                Assert.IsNull(blob, "Unexpectedly non-null CloudBlob");
-                Assert.IsNull(stream, "Unexpectedly non-null Stream");
-                Assert.IsNull(reader, "Unexpectedly non-null TextReader");
+                Assert.Null(blob);
+                Assert.Null(stream);
+                Assert.Null(reader);
             }
 
             [NoAutomaticTrigger]

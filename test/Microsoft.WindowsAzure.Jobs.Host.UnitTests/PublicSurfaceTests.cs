@@ -1,24 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
-    [TestClass]
     public class PublicSurfaceTests
     {
-        [TestMethod]
+        [Fact]
         public void AssemblyReferences_InJobsAssembly()
         {
             // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
             var names = GetAssemblyReferences(typeof(BlobInputAttribute).Assembly);
 
-            Assert.AreEqual(1, names.Count);
-            Assert.AreEqual("mscorlib", names[0]);
+            Assert.Equal(1, names.Count);
+            Assert.Equal("mscorlib", names[0]);
         }
 
-        [TestMethod]
+        [Fact]
         public void AssemblyReferences_InJobsHostAssembly()
         {
             var names = GetAssemblyReferences(typeof(JobHost).Assembly);
@@ -33,12 +33,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
                 }
                 if (name.StartsWith("Microsoft.WindowsAzure"))
                 {
-                    Assert.AreEqual("Microsoft.WindowsAzure.StorageClient", name, "Only azure dependency is on the 1.7 sdk");
+                    // Only azure dependency is on the 1.7 sdk
+                    Assert.Equal("Microsoft.WindowsAzure.StorageClient", name);
                 }
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void JobsPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(QueueInputAttribute).Assembly;
@@ -58,7 +59,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             AssertPublicTypes(expected, assembly);
         }
 
-        [TestMethod]
+        [Fact]
         public void JobsHostPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(Microsoft.WindowsAzure.Jobs.JobHost).Assembly;
@@ -92,20 +93,22 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             if (newlyIntroducedPublicTypes.Length > 0)
             {
-                Assert.Fail("Found {0} unexpected public type{1}: \r\n{2}",
+                string message = String.Format("Found {0} unexpected public type{1}: \r\n{2}",
                     newlyIntroducedPublicTypes.Length,
                     newlyIntroducedPublicTypes.Length == 1 ? "" : "s",
                     string.Join("\r\n", newlyIntroducedPublicTypes));
+                Assert.True(false, message);
             }
 
             var missingPublicTypes = expected.Except(actual).ToArray();
 
             if (missingPublicTypes.Length > 0)
             {
-                Assert.Fail("missing {0} public type{1}: \r\n{2}",
+                string message = String.Format("missing {0} public type{1}: \r\n{2}",
                     missingPublicTypes.Length,
                     missingPublicTypes.Length == 1 ? "" : "s",
                     string.Join("\r\n", missingPublicTypes));
+                Assert.True(false, message);
             }
         }
     }

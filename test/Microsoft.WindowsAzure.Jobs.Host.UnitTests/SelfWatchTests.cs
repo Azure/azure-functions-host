@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Globalization;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class SelfWatchTests
     {
-        [TestMethod]
+        [Fact]
         public void EncodeSelfWatchStatus_StringWithNewLines_ReplacedWithDelimiters()
         {
             // Arrange
@@ -19,10 +17,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             var output = SelfWatch.EncodeSelfWatchStatus(input);
 
             //Assert
-            Assert.AreEqual(expected, output);
+            Assert.Equal(expected, output);
         }
 
-        [TestMethod]
+        [Fact]
         public void EncodeSelfWatchStatus_NullInput_Throws()
         {
             // Arrange
@@ -32,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             ExceptionAssert.ThrowsArgumentNull(() => SelfWatch.EncodeSelfWatchStatus(input), "status");
         }
 
-        [TestMethod]
+        [Fact]
         public void DecodeSelfWatchStatus_StringWithDelimiters_ReplacedWithNewLines()
         {
             // Arrange
@@ -43,10 +41,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             var output = SelfWatch.DecodeSelfWatchStatus(input);
 
             //Assert
-            Assert.AreEqual(expected, output);
+            Assert.Equal(expected, output);
         }
 
-        [TestMethod]
+        [Fact]
         public void DecodeSelfWatchStatus_NullInput_Throws()
         {
             // Arrange

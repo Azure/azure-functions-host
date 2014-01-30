@@ -1,26 +1,17 @@
 ﻿using System.Reflection;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
     // Test failure cases for indexing
-    [TestClass]
     public class FlowUnitTestErrors
     {
-        [TestMethod]
+        [Fact]
         public void TestFails()
         {
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
-                try
-                {
-                    FunctionDefinition func = Indexer.GetFunctionDefinition(method);
-                    Assert.Fail("Expected error from method: {0}", method.Name);
-                }
-                catch (IndexException)
-                {
-                }
+                Assert.Throws<IndexException>(() => Indexer.GetFunctionDefinition(method));
             }
         }
 

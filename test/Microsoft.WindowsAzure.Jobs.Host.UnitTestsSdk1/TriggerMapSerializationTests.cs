@@ -1,14 +1,13 @@
 ﻿using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs;
 using Newtonsoft.Json;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    [TestClass]
     public class TriggerMapSerializationTests
     {
-        [TestMethod]
+        [Fact]
         public void SerializeCloudBlobPathAsString()
         {
             // CloudPath serializes just like string 
@@ -20,14 +19,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             string json1 = JsonConvert.SerializeObject(path);
             string json2 = JsonConvert.SerializeObject(str);
 
-            Assert.AreEqual(json2, json1);
+            Assert.Equal(json2, json1);
 
             var path2 = JsonConvert.DeserializeObject<CloudBlobPath>(json1);
-            Assert.AreEqual(path.ContainerName, path2.ContainerName);
-            Assert.AreEqual(path.BlobName, path2.BlobName);
+            Assert.Equal(path.ContainerName, path2.ContainerName);
+            Assert.Equal(path.BlobName, path2.BlobName);
         }
 
-        [TestMethod]
+        [Fact]
         public void SerializeTriggerMap()
         {
             var map = new TriggerMap();
@@ -62,14 +61,14 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             // Since this is a serialization format, check it against a baseline to detect changes.
             string expected = Normalize(JsonSaved.Replace('\'', '"'));
             string actual = Normalize(json);
-            AssertStringEqual(expected, actual);
+            Assert.Equal(expected, actual);
 
             var map2 = TriggerMap.LoadJson(json);
                         
             
             // Round-trips.
             var json2 = TriggerMap.SaveJson(map2);
-            Assert.AreEqual(json, json2);
+            Assert.Equal(json, json2);
         }
 
         // Normalize the whitespace. This can vary with different serializers. 
@@ -98,31 +97,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 isLastCharWhitespace = isWhitespace;
             }
             return sb.ToString();
-        }
-
-        // Assert strings are the same. If they're different. Give a more useful error message. Useful for long strings. 
-        static void AssertStringEqual(string a, string b)
-        {
-            if (a == b)
-            {
-                return;
-            }
-            int i = 0;
-
-            while (true)
-            {
-                if (i >= a.Length)
-                {
-                    break;
-                }
-                if (i >= b.Length)
-                {
-                    break;
-                }
-                Assert.AreEqual(a[i], b[i], string.Format("difference at index {0}", i));
-                i++;
-            }
-            Assert.AreEqual(a, b); // catch all                        
         }
 
         const string JsonSaved = @"{

@@ -1,13 +1,12 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Engine.Runner.StaticBindings
 {
-    [TestClass]
     public class BlobParameterStaticBindingTests
     {
-        [TestMethod]
+        [Fact]
         public void Bind_WithoutBlobNameOrTrigger_Throws()
         {
             // Arrange

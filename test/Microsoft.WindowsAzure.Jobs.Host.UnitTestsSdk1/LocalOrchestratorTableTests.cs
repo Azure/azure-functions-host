@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Data.Services.Common;
 using System.Linq;
 using AzureTables;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     // Azure storage emulator is doesn't support Upsert, so we'd need to run against live storage.
     // Instead, use a test hook to mock out the storage and use In-Memory azure tables.
-    [TestClass]
     public class TableTests
     {
         // Mock out Azure Table storage. 
@@ -38,7 +37,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
 
         // Azure storage emulator is doesn't support Upsert, so table won't work. 
-        [TestMethod]
+        [Fact]
         public void TableDict()
         {
             var store = new InMemoryTableProviderTestHook();
@@ -50,7 +49,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
 
         // Azure storage emulator is doesn't support Upsert, so table won't work. 
-        [TestMethod]
+        [Fact]
         public void Table()
         {
             var store = new InMemoryTableProviderTestHook();
@@ -64,16 +63,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             IAzureTable<TableEntry> table = store.Create<TableEntry>(null, TableProgram.TableName);
             var results = table.Enumerate().ToArray();
                         
-            Assert.AreEqual(10, results.Length);
-            Assert.AreEqual("part", results[2].PartitionKey);
-            Assert.AreEqual("2", results[2].RowKey);
-            Assert.AreEqual("20", results[2].myvalue);
+            Assert.Equal(10, results.Length);
+            Assert.Equal("part", results[2].PartitionKey);
+            Assert.Equal("2", results[2].RowKey);
+            Assert.Equal("20", results[2].myvalue);
 
             lc.Call("TableRead");
             lc.Call("TableReadStrong");
         }
 
-        [TestMethod]
+        [Fact]
         public void TableReadWrite()
         {
             var store = new InMemoryTableProviderTestHook();
@@ -108,13 +107,13 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 for (int i = 0; i < 10; i++)
                 {
                     var d = reader.Lookup("part", i.ToString());
-                    Assert.AreEqual(4, d.Count);
-                    Assert.IsTrue(d.ContainsKey("Timestamp")); // beware of casing!
-                    Assert.IsTrue(d.ContainsKey("RowKey")); // beware of casing!
-                    Assert.IsTrue(d.ContainsKey("PartitionKey")); // beware of casing!
+                    Assert.Equal(4, d.Count);
+                    Assert.True(d.ContainsKey("Timestamp")); // beware of casing!
+                    Assert.True(d.ContainsKey("RowKey")); // beware of casing!
+                    Assert.True(d.ContainsKey("PartitionKey")); // beware of casing!
 
                     var val = d["myvalue"];
-                    Assert.AreEqual((i * 10).ToString(), val);
+                    Assert.Equal((i * 10).ToString(), val);
                 }
             }
 
@@ -124,20 +123,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 {
                     Stuff d = reader.Lookup("part", i.ToString());
 
-                    Assert.AreEqual(i.ToString(), d.RowKey);
-                    Assert.AreEqual(i * 10, d.myvalue);
+                    Assert.Equal(i.ToString(), d.RowKey);
+                    Assert.Equal(i * 10, d.myvalue);
                 }
             }
 
             public static void TableReadWrite([Table(TableName)] IAzureTable table)
             {
                 var val = table.Lookup("x", "y");
-                Assert.IsNull(val); // not there yet
+                Assert.Null(val); // not there yet
 
                 table.Write("x", "y", new { myvalue = 50 });
 
                 val = table.Lookup("x", "y");
-                Assert.AreEqual("50", val["myvalue"]);
+                Assert.Equal("50", val["myvalue"]);
             }
 
             public const string TableNameDict = "testtable2";
@@ -147,7 +146,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 var partRowKey = Tuple.Create("x", "y");
                 OtherStuff val;
                 bool found = dict.TryGetValue(partRowKey, out val);
-                Assert.IsFalse(found, "item should not be found");
+                Assert.False(found, "item should not be found");
 
                 dict[partRowKey] = new OtherStuff { Value = "fall", Fruit = Fruit.Apple, Duration = TimeSpan.FromMinutes(5) };
 
@@ -156,16 +155,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 foreach (var kv in dict)
                 {
                     // Only 1 item.
-                    Assert.AreEqual(partRowKey, kv.Key);
-                    Assert.AreEqual(false, object.ReferenceEquals(partRowKey, kv.Key));
+                    Assert.Equal(partRowKey, kv.Key);
+                    Assert.Equal(false, object.ReferenceEquals(partRowKey, kv.Key));
 
-                    Assert.AreEqual(Fruit.Apple, kv.Value.Fruit);
-                    Assert.AreEqual(TimeSpan.FromMinutes(5), kv.Value.Duration);
-                    Assert.AreEqual("fall", kv.Value.Value);
+                    Assert.Equal(Fruit.Apple, kv.Value.Fruit);
+                    Assert.Equal(TimeSpan.FromMinutes(5), kv.Value.Duration);
+                    Assert.Equal("fall", kv.Value.Value);
 
                     count++;
                 }
-                Assert.AreEqual(1, count);
+                Assert.Equal(1, count);
 
                 // Clear
                 dict.Remove(partRowKey);
@@ -175,7 +174,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 {
                     count++;
                 }
-                Assert.AreEqual(0, count);
+                Assert.Equal(0, count);
             }
 
         } // program

@@ -1,18 +1,16 @@
 ﻿using System;
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.StorageClient;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     /// <summary>
     /// Summary description for ModelbindingTests
     /// </summary>
-    [TestClass]
     public class ModelBindingTests
     {
-        [TestMethod]
+        [Fact]
         public void TestBindToIBinder()
         {
             var account = TestStorage.GetAccount();
@@ -23,10 +21,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.Call("TestBinder");                        
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "directout.txt");
-            Assert.AreEqual("output", content);
+            Assert.Equal("output", content);
         }
 
-        [TestMethod]
+        [Fact]
         public void TestModelBinding()
         {
             var account = TestStorage.GetAccount();
@@ -40,7 +38,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             lc.CallOnBlob("Func", @"daas-test-input/input.txt");
 
             string content = BlobClient.ReadBlob(account, "daas-test-input", "output.txt");
-            Assert.AreEqual("*abc*", content);
+            Assert.Equal("*abc*", content);
         }
 
         class ModelBlobBinderProvider : ICloudBlobBinderProvider

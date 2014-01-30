@@ -1,14 +1,11 @@
-﻿using System;
-using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+﻿using System.IO;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class WatchableStreamTests
     {
-        [TestMethod]
+        [Fact]
         public void Complete_NotYetClosedAndNothingWasWritten_ReturnFalse()
         {
             // Arrange
@@ -20,11 +17,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = watchableStream.Complete();
 
                 // Assert
-                Assert.IsFalse(result);
+                Assert.False(result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Complete_ClosedAndNothingWasWritten_ReturnTrue()
         {
             // Arrange
@@ -37,11 +34,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = watchableStream.Complete();
 
                 // Assert
-                Assert.IsTrue(result);
+                Assert.True(result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Complete_NotClosedButWrittenTo_ReturnTrue()
         {
             // Arrange
@@ -54,11 +51,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = watchableStream.Complete();
 
                 // Assert
-                Assert.IsTrue(result);
+                Assert.True(result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Complete_WrittenToAndClosed_ReturnTrue()
         {
             // Arrange
@@ -72,11 +69,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = watchableStream.Complete();
 
                 // Assert
-                Assert.IsTrue(result);
+                Assert.True(result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void Complete_AlreadyComplete_DoesNotReset()
         {
             // Arrange
@@ -91,11 +88,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 // Assert
                 // Should still be false, even though the stream was closed on the call,
                 // as the calculation only happen on first call to .Complete()
-                Assert.IsFalse(result); 
+                Assert.False(result); 
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_NothingWasWrittenThenClosed_WroteZeroBytes()
         {
             using (var s = new MemoryStream())
@@ -108,11 +105,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.AreEqual("Wrote 0 bytes.", result);
+                Assert.Equal("Wrote 0 bytes.", result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_NothingWasWrittenThenNotClosed_NothingWasWritten()
         {
             using (var s = new MemoryStream())
@@ -124,11 +121,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.AreEqual("Nothing was written.", result);
+                Assert.Equal("Nothing was written.", result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_ClosedButNotComplete_NothingWasWritten()
         {
             // Arrange
@@ -141,11 +138,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.AreEqual("Nothing was written.", result);
+                Assert.Equal("Nothing was written.", result);
             }
         }
 
-        [TestMethod]
+        [Fact]
         public void GetStatus_NotClosedAndNotComplete_EmptyStatus()
         {
             // Arrange
@@ -157,7 +154,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.AreEqual(string.Empty, result);
+                Assert.Equal(string.Empty, result);
             }
         }
     }

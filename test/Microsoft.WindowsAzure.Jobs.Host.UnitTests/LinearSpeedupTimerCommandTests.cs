@@ -1,13 +1,12 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 {
-    [TestClass]
     public class LinearSpeedupTimerCommandTests
     {
-        [TestMethod]
+        [Fact]
         public void Constructor_IfInnerCommandIsNull_Throws()
         {
             // Arrange
@@ -22,7 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 "innerCommand");
         }
 
-        [TestMethod]
+        [Fact]
         public void Constructor_IfNormalIntervalIsNegative_Throws()
         {
             // Arrange
@@ -38,7 +37,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 "The TimeSpan must not be negative.");
         }
 
-        [TestMethod]
+        [Fact]
         public void Constructor_IfMinimumIntervalIsNegative_Throws()
         {
             // Arrange
@@ -54,7 +53,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 "The TimeSpan must not be negative.");
         }
 
-        [TestMethod]
+        [Fact]
         public void Constructor_IfMinimumIntervalIsGreaterThanNormalInterval_Throws()
         {
             // Arrange
@@ -70,7 +69,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 "The minimumInterval must not be greater than the normalInterval.");
         }
 
-        [TestMethod]
+        [Fact]
         public void Constructor_IfFailureSpeedupDivisorIsLessThanOne_Throws()
         {
             // Arrange
@@ -86,7 +85,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
                 "The failureSpeedupDivisor must not be less than 1.");
         }
 
-        [TestMethod]
+        [Fact]
         public void Execute_CallsInnerCommandExecute()
         {
             // Arrange
@@ -98,10 +97,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             product.Execute();
 
             // Assert
-            Assert.IsTrue(executed);
+            Assert.True(executed);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_Initially_ReturnsNormalInterval()
         {
             // Arrange
@@ -113,10 +112,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            Assert.AreEqual(normalInterval, separationInterval);
+            Assert.Equal(normalInterval, separationInterval);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_AfterTryExecuteReturnsTrue_ReturnsNormalInterval()
         {
             // Arrange
@@ -129,10 +128,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            Assert.AreEqual(normalInterval, separationInterval);
+            Assert.Equal(normalInterval, separationInterval);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_AfterTryExecuteReturnsFalse_ReturnsNormalIntervalDividedByDivisor()
         {
             // Arrange
@@ -148,10 +147,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
 
             // Assert
             TimeSpan expectedSeparationInterval = new TimeSpan(normalInterval.Ticks / failureDivisor);
-            Assert.AreEqual(expectedSeparationInterval, separationInterval);
+            Assert.Equal(expectedSeparationInterval, separationInterval);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_AfterTryExecuteReturnsTrueAfterReturningFalse_ReturnsNormalInterval()
         {
             // Arrange
@@ -170,10 +169,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            Assert.AreEqual(normalInterval, separationInterval);
+            Assert.Equal(normalInterval, separationInterval);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_AfterTryExecuteReturnsFalseTwice_ReturnsNormalIntervalDividedByDivisorTwice()
         {
             // Arrange
@@ -191,10 +190,10 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             // Assert
             const int executeCalls = 2;
             TimeSpan expectedSeparationInterval = new TimeSpan(normalInterval.Ticks / (failureDivisor * executeCalls));
-            Assert.AreEqual(expectedSeparationInterval, separationInterval);
+            Assert.Equal(expectedSeparationInterval, separationInterval);
         }
 
-        [TestMethod]
+        [Fact]
         public void SeparationInterval_AfterTryExecuteReturnsFalseEnoughTimes_ReturnsMinimumInternal()
         {
             // Arrange
@@ -212,7 +211,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            Assert.AreEqual(minimumInternal, separationInterval);
+            Assert.Equal(minimumInternal, separationInterval);
         }
 
         private static ICanFailCommand CreateDummyCommand()

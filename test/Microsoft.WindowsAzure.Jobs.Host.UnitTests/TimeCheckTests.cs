@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.WindowsAzure.Jobs;
+using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
 {
-    [TestClass]
     public class TimeCheckTests
     {
         // Sequential times.
@@ -13,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         static DateTime TimeMiddle = new DateTime(1900, 1, 2);
         static DateTime TimeNew = new DateTime(1900, 1, 3);
 
-        [TestMethod]
+        [Fact]
         public void NoOutputs()
         {
             var trigger = new BlobTrigger {
@@ -22,10 +20,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             var nvc = new Dictionary<string,string>();
             bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
-            Assert.IsTrue(invoke);
+            Assert.True(invoke);
         }
 
-        [TestMethod]
+        [Fact]
         public void NoOutputsEmptyArray()
         {
             var trigger = new BlobTrigger
@@ -36,10 +34,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             var nvc = new Dictionary<string, string>();
             bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
-            Assert.IsTrue(invoke);
+            Assert.True(invoke);
         }
          
-        [TestMethod]
+        [Fact]
         public void NewerInput()
         {
             var trigger = new BlobTrigger
@@ -52,10 +50,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             bool invoke = ShouldInvokeTrigger(trigger);
 
-            Assert.IsTrue(invoke);
+            Assert.True(invoke);
         }
 
-        [TestMethod]
+        [Fact]
         public void MissingOutput()
         {
             var trigger = new BlobTrigger
@@ -68,10 +66,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             bool invoke = ShouldInvokeTrigger(trigger);
 
-            Assert.IsTrue(invoke);
+            Assert.True(invoke);
         }
 
-        [TestMethod]
+        [Fact]
         public void OlderInput()
         {
             var trigger = new BlobTrigger
@@ -84,10 +82,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             bool invoke = ShouldInvokeTrigger(trigger);
 
-            Assert.IsFalse(invoke);
+            Assert.False(invoke);
         }
 
-        [TestMethod]
+        [Fact]
         public void StrippedInput()
         {
             // Input is new than one of the outputs
@@ -102,7 +100,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
 
             bool invoke = ShouldInvokeTrigger(trigger);
 
-            Assert.IsTrue(invoke);
+            Assert.True(invoke);
         }
 
 
@@ -110,7 +108,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         {
             var nvc = new Dictionary<string, string>();
             var inputTime = LookupTime(trigger.BlobInput);
-            Assert.IsTrue(inputTime.HasValue);
+            Assert.True(inputTime.HasValue);
 
             bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, inputTime.Value, LookupTime);
             return invoke;
@@ -128,8 +126,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
                 case "middle": return TimeMiddle;
                 case "new": return TimeNew;
             }
-            Assert.Fail("Unexpected blob name: " + path.ToString());
-            return null;
+            throw new InvalidOperationException("Unexpected blob name: " + path.ToString());
         }
     }
 }
