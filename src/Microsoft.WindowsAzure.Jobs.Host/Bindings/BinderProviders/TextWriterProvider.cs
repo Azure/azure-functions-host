@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -22,37 +23,23 @@ namespace Microsoft.WindowsAzure.Jobs
                 return new BindCleanupResult
                 {
                     Result = _content,
-                    SelfWatch = watcher, 
+                    SelfWatch = watcher,
                     Cleanup = () =>
+                    {
+                        using (_content)
                         {
                             if (ms.CanWrite)
                             {
                                 _content.Flush();
                             }
 
-                            if (ms.CanRead && ms.Length == 0)
+                            if (watcher.Complete());
                             {
-                                // Don't upload unless the user either wrote at least one byte or explicitly closed the
-                                // text writer.
-                                _content.Dispose();
-                                watcher.Dispose();
-                                ms.Dispose();
-                                return;
+                                var bytes = ms.ToArray();
+                                blob.UploadByteArray(bytes);
                             }
-
-                            // _content was exposed to user, may already be flush/closed/disposed.
-                            // But if it wasn't, we still need to flush so that the memory stream is current.
-                            // flush() will fail if we're already closed, so call close. 
-                            // But then close will close underlying streams, so MemoryStream becomes inaccessible.
-                            _content.Close();
-
-                            // Not accessible after calling close.
-                            //ms.Position = 0; // reset to start
-                            //blob.UploadFromStream(ms);
-
-                            var bytes = ms.ToArray();
-                            blob.UploadByteArray(bytes);                            
                         }
+                    }
                 };
             }
         }

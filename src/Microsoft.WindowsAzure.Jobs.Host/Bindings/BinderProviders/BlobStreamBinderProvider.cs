@@ -14,7 +14,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 BlobStream originalBlobStream = IsInput ? blob.OpenRead() : blob.OpenWrite();
-                Stream watchableBlobStream;
+                WatchableStream watchableBlobStream;
 
                 if (IsInput)
                 {
@@ -32,14 +32,13 @@ namespace Microsoft.WindowsAzure.Jobs
                     Result = watchableBlobStream,
                     Cleanup = () =>
                     {
-                        if (originalBlobStream.CanWrite && originalBlobStream.Length == 0)
+                        using (watchableBlobStream)
                         {
-                            // Don't commit unless the user either wrote at least one byte or explicitly closed the
-                            // stream.
-                            originalBlobStream.Abort();
+                            if (!watchableBlobStream.Complete())
+                            {
+                                originalBlobStream.Abort();
+                            }
                         }
-
-                        watchableBlobStream.Close();
                     }
                 };
             }

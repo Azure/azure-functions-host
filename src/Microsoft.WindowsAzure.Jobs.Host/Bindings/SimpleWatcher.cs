@@ -1,7 +1,8 @@
-﻿using System;
-
-namespace Microsoft.WindowsAzure.Jobs
+﻿namespace Microsoft.WindowsAzure.Jobs
 {
+    /// <summary>
+    /// A watcher with a static, settable status string.
+    /// </summary>
     internal class SimpleWatcher : ISelfWatch
     {
         private readonly object _statusLock = new object();

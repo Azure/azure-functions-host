@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 
@@ -8,10 +9,12 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private volatile int _countRead;
         private volatile int _countWritten;
+        private volatile bool _wasExplicitlyClosed;
 
         private Stopwatch _timeRead = new Stopwatch();
 
         private readonly long _totalLength; // 0 if not known,
+        private bool _completed; // flag to help make .Complete() idempotent;
 
         public WatchableStream(Stream inner)
             : base(inner)
@@ -84,9 +87,36 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             if (_countWritten > 0)
             {
-                sb.AppendFormat("Written {0:n0} bytes", _countWritten);
+                sb.AppendFormat("Wrote {0:n0} bytes.", _countWritten);
+            }
+            else if (InnerWasWriteable && !Inner.CanWrite)  // inner stream has been closed
+            {
+                if (_wasExplicitlyClosed)
+                {
+                    sb.Append("Wrote 0 bytes.");
+                }
+                else
+                {
+                    sb.Append("Nothing was written.");
+                }
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Ensure the stream is closed, and calculate whether it was written to or not.
+        /// </summary>
+        /// <returns>True if the stream was written to, or was already closed at the time
+        /// this method was called. False otherwise.</returns>
+        public bool Complete()
+        {
+            if (!_completed)
+            {
+                _completed = true;
+                _wasExplicitlyClosed = InnerWasWriteable && !Inner.CanWrite;
+                Close();
+            }
+            return _wasExplicitlyClosed || _countWritten > 0;
         }
     }
 }
