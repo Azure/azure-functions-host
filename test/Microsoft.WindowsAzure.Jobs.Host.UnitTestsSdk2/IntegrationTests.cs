@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -10,7 +12,7 @@ using Xunit;
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 {
     // Test model binding with Azure 2.0 sdk 
-    public class UnitTest1
+    public class IntegrationTests
     {
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
         [Fact]
@@ -65,7 +67,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             Assert.True(Program._QueueInvoked);
         }
 
-        [Fact]        
+        [Fact]
         public void TestQueueBadName()
         {
             // indexer should notice bad queue name and fail immediately
@@ -78,6 +80,58 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             var lc = new TestJobHost<Program>();
             lc.Call("Table");
             Assert.True(Program.TableInvoked);
+        }
+
+        [Fact]
+        public void TestIQueryable()
+        {
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+
+            CloudTableClient client = account.CreateCloudTableClient();
+            CloudTable table = client.GetTableReference("QueryableTest");
+            table.CreateIfNotExists();
+
+            try
+            {
+                ITableEntity[] entities = new ITableEntity[]
+                {
+                    CreateEntity(1, "A"),
+                    CreateEntity(2, "B"),
+                    CreateEntity(3, "B"),
+                    CreateEntity(4, "C")
+                };
+
+                TableBatchOperation batch = new TableBatchOperation();
+
+                foreach (ITableEntity entity in entities)
+                {
+                    batch.Add(TableOperation.Insert(entity));
+                }
+
+                table.ExecuteBatch(batch);
+
+                var host = new TestJobHost<Program>();
+                host.Call("CountEntitiesWithStringPropertyB");
+
+                Assert.Equal(2, Program.EntitiesWithStringPropertyB);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
+        }
+
+        private static DynamicTableEntity CreateEntity(int row, string property)
+        {
+            return new DynamicTableEntity("PK", "RK" + row.ToString(), null, CreateProperties("StringProperty", property));
+        }
+
+        private static IDictionary<string, EntityProperty> CreateProperties(string key, string value)
+        {
+            return new Dictionary<string, EntityProperty>
+            {
+                { key, EntityProperty.GeneratePropertyForString(value) }
+            };
         }
 
         class ProgramBadQueueName
@@ -103,6 +157,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             public static bool _QueueInvoked;
 
             public static bool TableInvoked { get; set; }
+
+            public static int EntitiesWithStringPropertyB { get; set; }
 
             [Description("test")]
             public static void Queue(CloudQueue mytestqueue)
@@ -158,6 +214,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             {
                 Assert.NotNull(table);
                 TableInvoked = true;
+            }
+
+            public class QueryableTestEntity : TableEntity
+            {
+                public string StringProperty { get; set; }
+            }
+
+            [Description("test")]
+            public static void CountEntitiesWithStringPropertyB([Table("QueryableTest")] IQueryable<QueryableTestEntity> table)
+            {
+                IQueryable<QueryableTestEntity> query = from QueryableTestEntity entity in table
+                                                        where entity.StringProperty == "B"
+                                                        select entity;
+                EntitiesWithStringPropertyB = query.ToArray().Count();
             }
         }
     }

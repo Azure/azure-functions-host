@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
@@ -67,21 +69,81 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
         {
             // Convert from CloudBlobClient, tableName --> targetType
             Func<dynamic, string, object> dynamicBinder = null;
+            Assembly sdkAssembly = null;
 
             string fullName = targetType.FullName;
             switch (fullName)
             {
                 case Namespace + "Table.CloudTable":
                     dynamicBinder = (client, tableName) => client.GetTableReference(tableName);
+                    sdkAssembly = targetType.Assembly;
                     break;
+            }
+
+            if (dynamicBinder == null)
+            {
+                if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(IQueryable<>))
+                {
+                    Type itemType = GetQueryableItemType(targetType);
+                    Debug.Assert(itemType != null);
+
+                    if (ImplementsITableEntity(itemType, out sdkAssembly))
+                    {
+                        dynamicBinder = CreateQueryableDynamicBinder(itemType);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("IQueryable is only supported on types that implement ITableEntity.");
+                    }
+                }
             }
 
             if (dynamicBinder != null)
             {
-                return new Azure20SdkTableBinder(dynamicBinder);
+                return new Azure20SdkTableBinder(sdkAssembly, dynamicBinder);
             }
 
             return null;
+        }
+
+        private static Type GetQueryableItemType(Type queryableType)
+        {
+            Debug.Assert(queryableType != null);
+            Type[] genericArguments = queryableType.GetGenericArguments();
+            Debug.Assert(genericArguments != null);
+            Debug.Assert(genericArguments.Length == 1);
+            var itemType = genericArguments[0];
+            return itemType;
+        }
+
+        private static bool ImplementsITableEntity(Type type, out Assembly sdkAssembly)
+        {
+            Debug.Assert(type != null);
+            Type iTableEntityType = type.GetInterface(Namespace + "Table.ITableEntity");
+
+            if (iTableEntityType == null)
+            {
+                sdkAssembly =null;
+                return false;
+            }
+
+            sdkAssembly = iTableEntityType.Assembly;
+            return true;
+        }
+
+        private static Func<dynamic, string, object> CreateQueryableDynamicBinder(Type itemType)
+        {
+            MethodInfo genericMethodInfo = typeof(Azure20SdkBinderProvider).GetMethod("CreateQueryableBinder", BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(genericMethodInfo != null);
+            MethodInfo methodInfo = genericMethodInfo.MakeGenericMethod(itemType);
+            Debug.Assert(methodInfo != null);
+            return (Func<dynamic, string, object>)Delegate.CreateDelegate(typeof(Func<dynamic, string, object>), methodInfo);
+        }
+
+        private static object CreateQueryableBinder<T>(dynamic client, string tableName)
+        {
+            dynamic table = client.GetTableReference(tableName);
+            return table.CreateQuery<T>();
         }
 
         // Get a CloudStorageAccount from the same assembly as parameter.Type, bound to the storage account in binder. 
@@ -129,16 +191,18 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 
         class Azure20SdkTableBinder : ICloudTableBinder
         {
+            private readonly Assembly _sdkAssembly;
             private readonly Func<dynamic, string, object> _dynamicBinder;
 
-            public Azure20SdkTableBinder(Func<dynamic, string, object> dynamicBinder)
+            public Azure20SdkTableBinder(Assembly sdkAssembly, Func<dynamic, string, object> dynamicBinder)
             {
+                _sdkAssembly = sdkAssembly;
                 _dynamicBinder = dynamicBinder;
             }
 
             public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
-                dynamic account = GetAccount(bindingContext, targetType.Assembly);
+                dynamic account = GetAccount(bindingContext, _sdkAssembly);
                 dynamic client = account.CreateCloudTableClient();
 
                 var table = _dynamicBinder.Invoke(client, tableName);

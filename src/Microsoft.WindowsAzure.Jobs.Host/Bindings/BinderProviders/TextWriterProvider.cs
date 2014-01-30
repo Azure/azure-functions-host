@@ -33,7 +33,7 @@ namespace Microsoft.WindowsAzure.Jobs
                                 _content.Flush();
                             }
 
-                            if (watcher.Complete());
+                            if (watcher.Complete())
                             {
                                 var bytes = ms.ToArray();
                                 blob.UploadByteArray(bytes);
