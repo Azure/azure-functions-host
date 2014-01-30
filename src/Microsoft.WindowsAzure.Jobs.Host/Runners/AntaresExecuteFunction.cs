@@ -4,7 +4,7 @@ using System.IO;
 namespace Microsoft.WindowsAzure.Jobs.Internals
 {
     // In-memory executor. 
-    class AntaresQueueFunction : QueueFunctionBase
+    class AntaresExecuteFunction : ExecuteFunctionBase
     {
         // Logging hook for each function invoked. 
         private readonly IJobHostLogger _fpLog;
@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
 
         private readonly IConfiguration _config;
 
-        public AntaresQueueFunction(QueueInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
+        public AntaresExecuteFunction(ExecuteFunctionInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
             : base(interfaces)
         {
             _config = config;

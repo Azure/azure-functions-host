@@ -50,7 +50,6 @@
     </Compile>
     <Compile Include="BlobInputAttribute.cs" />
     <Compile Include="BlobOutputAttribute.cs" />
-    <Compile Include="CallExtensions.cs" />
     <Compile Include="BindResult.cs" />
     <Compile Include="BinderExtensions.cs" />
     <Compile Include="BinderExExtensions.cs" />

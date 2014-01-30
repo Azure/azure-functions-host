@@ -84,7 +84,6 @@ namespace Dashboard.Controllers
 
             // Get health
             model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
-            model.QueueDepth = _services.GetExecutionQueueDepth();
             model.AccountName = _services.Account.Credentials.AccountName;
 
             return View(model);

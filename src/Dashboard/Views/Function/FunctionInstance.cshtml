@@ -29,14 +29,6 @@
             alertClass = "alert-info";
             alertHeader = "Running";
             break;
-        case FunctionInstanceStatus.Queued:
-            alertClass = "alert-info";
-            alertHeader = "Queued";
-            break;
-        case FunctionInstanceStatus.AwaitingPrereqs:
-            alertClass = "alert-info";
-            alertHeader = "Awaiting Prerequisites";
-            break;
             // don't colorize others.     
     }
 }
@@ -281,14 +273,6 @@
                                 childLabelClass = "label-primary";
                                 childDescClass = "text-info";
                                 childLabelText = "Running";
-                                break;
-                            case FunctionInstanceStatus.Queued:
-                                childLabelText = "Queued";
-                                childLabelClass = "label-info";
-                                break;
-                            case FunctionInstanceStatus.AwaitingPrereqs:
-                                childLabelText = "Awaiting Prerequisites";
-                                childLabelClass = "label-info";
                                 break;
                                 // don't colorize others.
                         }

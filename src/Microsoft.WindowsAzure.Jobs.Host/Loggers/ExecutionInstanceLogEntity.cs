@@ -12,10 +12,8 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string ToString()
         {
             var name = this.FunctionInstance.Location.GetShortName();
-            string queueTime = this.QueueTime.HasValue ?
-                this.QueueTime.Value.ToUniversalTime().ToString() :
-                "(awaiting prereqs)";
-            return string.Format("{0} @ {1}", name, queueTime);
+            string startTime = this.StartTime.ToUniversalTime().ToString();
+            return string.Format("{0} @ {1}", name, startTime);
         }
 
         // This maps to the builtin property on azure Tables, so it will get set for us. 
@@ -38,14 +36,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
 
-        // Set to once we've been queued. 
-        // This is not set if the function has outstanding prerequisites. 
-        // QueueTime is set on the machine that enqueues the request, which can be a different machine than 
-        // the execution node. So there could be clocksqew between queue time and start time.        
-        public DateTime? QueueTime { get; set; }
-
-        // Set once we start to execute. null if only queued. 
-        public DateTime? StartTime { get; set; }
+        public DateTime StartTime { get; set; }
 
         // If a function is running after this time, its host process has ended; it never finished executing.
         public DateTime? HeartbeatExpires { get; set; }

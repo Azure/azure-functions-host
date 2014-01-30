@@ -210,23 +210,16 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
 
-                    using (Worker worker = new Worker(_hostContext._functionTableLookup, _hostContext._queueFunction, fastpathNotify))
+                    using (Worker worker = new Worker(_hostContext._functionTableLookup, _hostContext._executeFunction, fastpathNotify))
                     {
                         while (!token.IsCancellationRequested)
                         {
-                            bool handled;
-                            do
+                            worker.Poll(token);
+
+                            if (token.IsCancellationRequested)
                             {
-                                worker.Poll(token);
-
-                                if (token.IsCancellationRequested)
-                                {
-                                    return;
-                                }
-
-                                handled = HandleExecutionQueue();
+                                return;
                             }
-                            while (handled);
 
                             pauseAction();
                         }
@@ -237,31 +230,6 @@ namespace Microsoft.WindowsAzure.Jobs
                     timer.Stop();
                 }
             }
-        }
-
-        private bool HandleExecutionQueue()
-        {
-            if (_hostContext._executionQueue != null)
-            {
-                try
-                {
-                    bool handled = QueueClient.ApplyToQueue<FunctionInvokeRequest>(request => HandleFromExecutionQueue(request), _hostContext._executionQueue);
-                    return handled;
-                }
-                catch
-                {
-                    // Poision message. 
-                }
-            }
-            return false;
-        }
-
-        private void HandleFromExecutionQueue(FunctionInvokeRequest request)
-        {
-            // Function was already queued (from the dashboard). So now we just need to activate it.
-            //_ctx._queueFunction.Queue(request);
-            IActivateFunction activate = (IActivateFunction)_hostContext._queueFunction; // ### Make safe. 
-            activate.ActivateFunction(request.Id);
         }
 
         /// <summary>
@@ -288,7 +256,7 @@ namespace Microsoft.WindowsAzure.Jobs
             IDictionary<string, string> args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
 
             FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext._functionTableLookup);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, args2, null);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, args2);
 
             instance.TriggerReason = new InvokeTriggerReason
             {
@@ -303,7 +271,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 try
                 {
-                    logItem = _hostContext._queueFunction.Queue(instance);
+                    logItem = _hostContext._executeFunction.Execute(instance);
                 }
                 finally
                 {

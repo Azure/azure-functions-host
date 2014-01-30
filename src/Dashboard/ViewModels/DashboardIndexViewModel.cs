@@ -20,14 +20,9 @@ namespace Dashboard.ViewModels
             Status = (FunctionInstanceStatus)log.GetStatus();
             switch (Status)
             {
-                case FunctionInstanceStatus.AwaitingPrereqs:
-                    break;
-                case FunctionInstanceStatus.Queued:
-                    WhenUtc = log.QueueTime;
-                    break;
                 case FunctionInstanceStatus.Running:
                     WhenUtc = log.StartTime;
-                    Duration = DateTime.UtcNow - log.StartTime.Value;
+                    Duration = DateTime.UtcNow - log.StartTime;
                     break;
                 case FunctionInstanceStatus.CompletedSuccess:
                     WhenUtc = log.EndTime;

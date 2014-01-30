@@ -21,9 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private readonly IRunningHostTableWriter _heartbeatTable;
 
         public readonly IFunctionTableLookup _functionTableLookup;
-        public readonly IQueueFunction _queueFunction;
-
-        public readonly CloudQueue _executionQueue;
+        public readonly IExecuteFunction _executeFunction;
 
         public JobHostContext(string dataConnectionString, string runtimeConnectionString, ITypeLocator typeLocator)
         {
@@ -40,7 +38,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // Determine the host name from the function list
             _hostName = GetHostName(functionTableLookup.ReadAll());
 
-            QueueInterfaces qi;
+            ExecuteFunctionInterfaces interfaces;
             FunctionExecutionContext ctx;
 
             if (runtimeConnectionString != null)
@@ -51,13 +49,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString);
 
                 var services = GetServices(runtimeConnectionString);
-                _executionQueue = services.GetExecutionQueue();
 
                 // Queue interfaces            
-                qi = services.GetQueueInterfaces(); // All for logging. 
+                interfaces = services.GetExecuteFunctionInterfaces(); // All for logging. 
 
-                string roleName = "local:" + Process.GetCurrentProcess().Id.ToString();
-                var logger = new WebExecutionLogger(_id, services, LogRole, roleName);
+                var logger = new WebExecutionLogger(_id, services, LogRole);
                 ctx = logger.GetExecutionContext();
                 ctx.FunctionTable = functionTableLookup;
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
@@ -74,24 +70,23 @@ namespace Microsoft.WindowsAzure.Jobs
                     OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
                 };
 
-                qi = CreateInMemoryQueueInterfaces();
+                interfaces = CreateInMemoryQueueInterfaces();
                 _terminationSignalReader = new NullProcessTerminationSignalReader();
                 _heartbeatTable = new NullRunningHostTableWriter();
             }
 
             ctx.FunctionTable = functionTableLookup;
-            ctx.Logger = qi.Logger;
+            ctx.Logger = interfaces.Logger;
 
             // This is direct execution, doesn't queue up. 
-            _queueFunction = new AntaresQueueFunction(qi, config, ctx, new ConsoleHostLogger());
+            _executeFunction = new AntaresExecuteFunction(interfaces, config, ctx, new ConsoleHostLogger());
             _functionTableLookup = functionTableLookup;
         }
 
         // Factory for creating interface implementations that are all in-memory and don't need an 
         // azure storage account.
-        private static QueueInterfaces CreateInMemoryQueueInterfaces()
+        private static ExecuteFunctionInterfaces CreateInMemoryQueueInterfaces()
         {
-            IPrereqManager prereqManager;
             IFunctionInstanceLookup lookup;
             IFunctionUpdatedLogger functionUpdate;
             ICausalityLogger causalityLogger;
@@ -103,11 +98,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 lookup = x;
             }
 
-            IAzureTable prereqTable = AzureTable.NewInMemory();
-            IAzureTable successorTable = AzureTable.NewInMemory();
-
-            prereqManager = new PrereqManager(prereqTable, successorTable, lookup);
-
             {
                 IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
                 var x = new CausalityLogger(table, lookup);
@@ -115,15 +105,14 @@ namespace Microsoft.WindowsAzure.Jobs
                 causalityReader = x;
             }
 
-            var qi = new QueueInterfaces
+            var interfaces = new ExecuteFunctionInterfaces
             {
                 AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
                 Logger = functionUpdate,
                 Lookup = lookup,
-                PrereqManager = prereqManager,
                 CausalityLogger = causalityLogger
             };
-            return qi;
+            return interfaces;
         }
 
         public string HostName

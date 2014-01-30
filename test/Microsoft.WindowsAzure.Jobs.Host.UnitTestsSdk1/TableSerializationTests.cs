@@ -79,7 +79,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 ExceptionType = "system.CrazyException",
                 ExceptionMessage = "testing",
                 OutputUrl = "http://output",
-                QueueTime = now.Subtract(TimeSpan.FromMinutes(5)),
                 StartTime = now
             };
 
@@ -99,7 +98,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             AssertEqual(log.FunctionInstance, log2.FunctionInstance);
 
-            Assert.AreEqual(log.QueueTime, log2.QueueTime);
             Assert.AreEqual(log.StartTime, log2.StartTime);
             Assert.AreEqual(log.EndTime, log2.EndTime);
 

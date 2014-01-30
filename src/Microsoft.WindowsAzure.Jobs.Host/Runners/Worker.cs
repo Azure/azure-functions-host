@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
-        private readonly IQueueFunction _execute;
+        private readonly IExecuteFunction _executor;
 
         // General purpose listener for blobs, queues. 
         private Listener _listener;
@@ -20,7 +20,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Fast-path blob listener. 
         private INotifyNewBlobListener _blobListener;
 
-        public Worker(IFunctionTableLookup functionTable, IQueueFunction execute, INotifyNewBlobListener blobListener = null)
+        public Worker(IFunctionTableLookup functionTable, IExecuteFunction execute, INotifyNewBlobListener blobListener = null)
         {
             _blobListener = blobListener;
             if (functionTable == null)
@@ -32,7 +32,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new ArgumentNullException("execute");
             }
             _functionTable = functionTable;
-            _execute = execute;
+            _executor = execute;
 
             CreateInputMap();
 
@@ -116,7 +116,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 _triggerCount++;
                 instance.TriggerReason = new TimerTriggerReason();
-                _execute.Queue(instance);
+                _executor.Execute(instance);
             }
         }
 
@@ -127,7 +127,7 @@ namespace Microsoft.WindowsAzure.Jobs
             if (instance != null)
             {
                 _triggerCount++;
-                _execute.Queue(instance);
+                _executor.Execute(instance);
             }
         }
 
@@ -138,7 +138,7 @@ namespace Microsoft.WindowsAzure.Jobs
             if (instance != null)
             {
                 _triggerCount++;
-                _execute.Queue(instance);
+                _executor.Execute(instance);
             }
         }
 
@@ -156,19 +156,13 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public static FunctionInvokeRequest GetFunctionInvocation(
             FunctionDefinition func,
-            IDictionary<string, string> parameters,
-            IEnumerable<Guid> prereqs = null)
+            IDictionary<string, string> parameters)
         {
             var ctx = new RuntimeBindingInputs(func.Location)
             {
                 NameParameters = parameters
             };
             var instance = BindParameters(ctx, func);
-
-            if (prereqs != null && prereqs.Any())
-            {
-                instance.Prereqs = prereqs.ToArray();
-            }
 
             return instance;
         }

@@ -6,16 +6,6 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     internal class CallUtil
     {
-        public static IEnumerable<Guid> Unwrap(IEnumerable<IFunctionToken> prereqs)
-        {
-            if (prereqs == null)
-            {
-                return null;
-            }
-            var prereqs2 = from prereq in prereqs select prereq.Guid;
-            return prereqs2;
-        }
-
         // Pass parent guid through parameters as special keyname.
         const string FunctionInstanceGuidKeyName = "$this";
 

@@ -67,9 +67,9 @@
     <Compile Include="IContextBinderTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
+    <Compile Include="Mocks\CallUtil.cs" />
     <Compile Include="Mocks\LocalExecutionContext.cs" />
     <Compile Include="Mocks\LocalFunctionTable.cs" />
-    <Compile Include="Mocks\LocalOrchestrator.cs" />
     <Compile Include="Mocks\MockBlobLeaseHolder.cs" />
     <Compile Include="ModelBindingTests.cs" />
     <Compile Include="CloudBlobPathParserTests.cs" />
@@ -89,6 +89,7 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Data.Services.Client" />
     <Reference Include="System.Xml" />

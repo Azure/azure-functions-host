@@ -4,16 +4,14 @@ using System.Reflection;
 using AzureTables;
 using Microsoft.WindowsAzure.StorageClient;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
-    // Support local execution. This does not have a trigger service, but still maintains all of the logging, prereqs, and causality.
+    // Support local execution. This does not have a trigger service, but still maintains all of the logging and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 
     internal class LocalExecutionContext : ICall
     {
         private readonly IConfiguration _config;
-        private readonly IPrereqManager _prereq;
-        private readonly IQueueFunction _queueFunction;
-        private readonly IActivateFunction _activator;
+        private readonly IExecuteFunction _executor;
         private readonly IFunctionInstanceLookup _lookup;
         private readonly IFunctionUpdatedLogger _functionUpdate;
         private readonly ICausalityLogger _causalityLogger;
@@ -39,14 +37,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public IQueueFunction QueueFunction
-        {
-            get
-            {
-                return _queueFunction;
-            }
-        }
-
         // Expose to allow callers to hook in new binders. 
         public IConfiguration Configuration
         {
@@ -60,8 +50,6 @@ namespace Microsoft.WindowsAzure.Jobs
         private static IConfiguration CreateConfig(ICall call, Type scope)
         {
             IConfiguration config = RunnerProgram.InitBinders();
-
-            CallBinderProvider.Insert(config, call);
 
             if (scope != null)
             {
@@ -94,8 +82,6 @@ namespace Microsoft.WindowsAzure.Jobs
             IAzureTable prereqTable = AzureTable.NewInMemory();
             IAzureTable successorTable = AzureTable.NewInMemory();
 
-            _prereq = new PrereqManager(prereqTable, successorTable, _lookup);
-
             {
                 IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
                 var x = new CausalityLogger(table, _lookup);
@@ -103,18 +89,16 @@ namespace Microsoft.WindowsAzure.Jobs
                 _causalityReader = x;
             }
 
-            var qi = new QueueInterfaces
+            var interfaces = new ExecuteFunctionInterfaces
             {
                 AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
                 Logger = _functionUpdate,
                 Lookup = _lookup,
-                PrereqManager = _prereq,
                 CausalityLogger = _causalityLogger
             };
 
-            var y = new LocalQueue(qi, this);
-            _queueFunction = y;
-            _activator = y;
+            var y = new LocalExecute(interfaces, this);
+            _executor = y;
         }
 
         private static MethodInfo Resolve(Type scope, string functionShortName)
@@ -161,35 +145,26 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Direct call from outside of a simple batch function. No current function guid. 
-        IFunctionToken ICall.QueueCall(string functionName, object arguments, IEnumerable<IFunctionToken> prereqs)
+        IFunctionToken ICall.QueueCall(string functionName, object arguments)
         {
-            var prereqs2 = CallUtil.Unwrap(prereqs);
-            var guid = Call(functionName, arguments, prereqs2);
+            var guid = Call(functionName, arguments);
             return new SimpleFunctionToken(guid);
         }
 
-        public Guid Call(MethodInfo method, object arguments = null, IEnumerable<Guid> prereqs = null)
-        {
-            var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
-
-            var guid = Call(method, args2, prereqs);
-            return guid;
-        }
-
-        public Guid Call(string functionName, object arguments = null, IEnumerable<Guid> prereqs = null)
+        public Guid Call(string functionName, object arguments = null)
         {
             var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
             MethodInfo method = _fpResolveMethod(functionName);
 
-            var guid = Call(method, args2, prereqs);
+            var guid = Call(method, args2);
             return guid;
         }
 
         // If no prereqs, can run immediately. 
-        public Guid Call(MethodInfo method, IDictionary<string, string> parameters = null, IEnumerable<Guid> prereqs = null)
+        public Guid Call(MethodInfo method, IDictionary<string, string> parameters = null)
         {
             FunctionDefinition func = ResolveFunctionDefinition(method);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, parameters, prereqs);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, parameters);
 
             Guid guidThis = CallUtil.GetParentGuid(parameters);
             return CallInner(instance, guidThis);
@@ -207,7 +182,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 ParentGuid = parentGuid
             };
 
-            var logItem = _queueFunction.Queue(instance);
+            var logItem = _executor.Execute(instance);
             var guid = logItem.FunctionInstance.Id;
 
             return guid;
@@ -222,11 +197,11 @@ namespace Microsoft.WindowsAzure.Jobs
             return CallInner(instance);
         }
 
-        class LocalQueue : QueueFunctionBase, IActivateFunction
+        class LocalExecute : ExecuteFunctionBase
         {
             private readonly LocalExecutionContext _parent;
 
-            public LocalQueue(QueueInterfaces interfaces, LocalExecutionContext parent)
+            public LocalExecute(ExecuteFunctionInterfaces interfaces, LocalExecutionContext parent)
                 : base(interfaces)
             {
                 _parent = parent;
@@ -251,10 +226,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Mark this function as done executing. $$$ Merge with ExecutionBase?
                 logItem.EndTime = DateTime.UtcNow;
                 _parent._functionUpdate.Log(logItem);
-
-                // Now execute any successors that were queued up. 
-                var guid = logItem.FunctionInstance.Id;
-                _parent._prereq.OnComplete(guid, _parent._activator);
             }
         }
     }

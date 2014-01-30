@@ -89,7 +89,6 @@
     <Compile Include="IntervalSeparationTimerTests.cs" />
     <Compile Include="LinearSpeedupTimerCommandTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
-    <Compile Include="PrereqManagerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />
     <Compile Include="RunnerInterfaces\Logging\ExecutionInstanceLogEntityExtensionsTests.cs" />

@@ -3,13 +3,12 @@
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Bunder of interfaces needed for execution. Grouped together for convenience. 
-    internal class QueueInterfaces
+    internal class ExecuteFunctionInterfaces
     {
         public IAccountInfo AccountInfo;
         public IFunctionInstanceLookup Lookup;
         public IFunctionUpdatedLogger Logger;
         public ICausalityLogger CausalityLogger;
-        public IPrereqManager PrereqManager;
 
         public void VerifyNotNull()
         {
@@ -28,10 +27,6 @@ namespace Microsoft.WindowsAzure.Jobs
             if (CausalityLogger == null)
             {
                 throw new InvalidOperationException("CausalityLogger cannot be null.");
-            }
-            if (PrereqManager == null)
-            {
-                throw new InvalidOperationException("PrereqManager cannot be null.");
             }
         }
     }

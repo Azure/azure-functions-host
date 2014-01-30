@@ -39,59 +39,6 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _accountInfo; }
         }
 
-        public void PostDeleteRequest(FunctionInvokeRequest instance)
-        {
-            BlobClient.WriteBlob(_account, "abort-requests", instance.Id.ToString(), "delete requested");
-        }
-
-        public bool IsDeleteRequested(Guid instanceId)
-        {
-            bool x = BlobClient.DoesBlobExist(_account, "abort-requests", instanceId.ToString());
-            return x;
-        }
-
-        public void LogFatalError(string message, Exception e)
-        {
-            StringWriter sw = new StringWriter();
-            sw.WriteLine(message);
-            sw.WriteLine(DateTime.Now);
-
-            while (e != null)
-            {
-                sw.WriteLine("Exception:{0}", e.GetType().FullName);
-                sw.WriteLine("Message:{0}", e.Message);
-                sw.WriteLine(e.StackTrace);
-                sw.WriteLine();
-                e = e.InnerException;
-            }
-
-            string path = @"service.error/" + Guid.NewGuid().ToString() + ".txt";
-            BlobClient.WriteBlob(_account, EndpointNames.ConsoleOuputLogContainerName, path, sw.ToString());
-        }
-
-        public CloudQueue GetOrchestratorControlQueue()
-        {
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            var queue = client.GetQueueReference(EndpointNames.OrchestratorControlQueue);
-            queue.CreateIfNotExist();
-            return queue;
-        }
-
-        // Important to get a quick, estimate of the depth of the execution queu.
-        public int? GetExecutionQueueDepth()
-        {
-            var q = GetExecutionQueue();
-            return q.RetrieveApproximateMessageCount();
-        }
-
-        public CloudQueue GetExecutionQueue()
-        {
-            CloudQueueClient queueClient = _account.CreateCloudQueueClient();
-            var queue = queueClient.GetQueueReference(EndpointNames.ExecutionQueueName);
-            queue.CreateIfNotExist();
-            return queue;
-        }
-
         // @@@ Remove this, move to be Ninject based. 
         public IFunctionTable GetFunctionTable()
         {
@@ -114,103 +61,19 @@ namespace Microsoft.WindowsAzure.Jobs
             return new RunningHostTableReader(table);
         }
 
-        public AzureTable<BinderEntry> GetBinderTable()
-        {
-            return new AzureTable<BinderEntry>(_account, EndpointNames.BindersTableName);
-        }
-
-        public CloudBlobContainer GetExecutionLogContainer()
-        {
-            CloudBlobClient client = _account.CreateCloudBlobClient();
-            CloudBlobContainer c = client.GetContainerReference(EndpointNames.ConsoleOuputLogContainerName);
-            c.CreateIfNotExist();
-            var permissions = c.GetPermissions();
-
-            // Set private access to avoid leaking data.
-            if (permissions.PublicAccess != BlobContainerPublicAccessType.Off)
-            {
-                permissions.PublicAccess = BlobContainerPublicAccessType.Off;
-                c.SetPermissions(permissions);
-            }
-            return c;
-        }
-
         // $$$ Returning bundles of interfaces... this is really looking like we need IOC.
         // Similar bundle with FunctionExecutionContext
-        public QueueInterfaces GetQueueInterfaces()
+        public ExecuteFunctionInterfaces GetExecuteFunctionInterfaces()
         {
             var x = GetFunctionUpdatedLogger();
 
-            return new QueueInterfaces
+            return new ExecuteFunctionInterfaces
             {
                 AccountInfo = _accountInfo,
                 Logger = x,
                 Lookup = x,
-                CausalityLogger = GetCausalityLogger(),
-                PrereqManager = GetPrereqManager(x)
+                CausalityLogger = GetCausalityLogger()
             };
-        }
-
-        private CloudBlobContainer GetHealthLogContainer()
-        {
-            CloudBlobClient client = _account.CreateCloudBlobClient();
-            CloudBlobContainer c = client.GetContainerReference(EndpointNames.HealthLogContainerName);
-            c.CreateIfNotExist();
-            return c;
-        }
-
-        [DebuggerNonUserCode]
-        public ServiceHealthStatus GetHealthStatus()
-        {
-            var stats = new ServiceHealthStatus();
-
-            stats.Executors = new Dictionary<string, ExecutionRoleHeartbeat>();
-
-            BlobRequestOptions opts = new BlobRequestOptions { UseFlatBlobListing = true };
-            foreach (CloudBlob blob in GetHealthLogContainer().ListBlobs(opts))
-            {
-                try
-                {
-                    string json = blob.DownloadText();
-                    if (blob.Name.StartsWith(@"orch", StringComparison.OrdinalIgnoreCase))
-                    {
-                        stats.Orchestrator = JsonCustom.DeserializeObject<OrchestratorRoleHeartbeat>(json);
-                    }
-                    else
-                    {
-                        stats.Executors[blob.Name] = JsonCustom.DeserializeObject<ExecutionRoleHeartbeat>(json);
-                    }
-                }
-                catch (StorageClientException)
-                {
-                }
-                catch (JsonSerializationException)
-                {
-                    // Ignore serialization errors. This is just health status. 
-                }
-            }
-
-            return stats;
-        }
-
-        public void WriteHealthStatus(string role, ExecutionRoleHeartbeat status)
-        {
-            string content = JsonCustom.SerializeObject(status);
-            GetHealthLogContainer().GetBlobReference(@"exec/" + role + ".txt").UploadText(content);
-        }
-
-        public IPrereqManager GetPrereqManager()
-        {
-            IFunctionInstanceLookup lookup = GetFunctionInstanceLookup();
-            return GetPrereqManager(lookup);
-        }
-
-        public IPrereqManager GetPrereqManager(IFunctionInstanceLookup lookup)
-        {
-            IAzureTable prereqTable = new AzureTable(_account, EndpointNames.PrereqTableName);
-            IAzureTable successorTable = new AzureTable(_account, EndpointNames.PrereqTableName);
-
-            return new PrereqManager(prereqTable, successorTable, lookup);
         }
 
         public ICausalityLogger GetCausalityLogger()

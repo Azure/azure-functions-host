@@ -8,11 +8,6 @@ namespace Microsoft.WindowsAzure.Jobs
         // null if job hasn't finished yet.
         public static TimeSpan? GetDuration(this ExecutionInstanceLogEntity obj)
         {
-            if (!obj.StartTime.HasValue)
-            {
-                return null;
-            }
-
             DateTime? endTime;
 
             if (obj.EndTime.HasValue)
@@ -33,7 +28,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 return null;
             }
 
-            return endTime.Value - obj.StartTime.Value;
+            return endTime.Value - obj.StartTime;
         }
 
         // Get a short summary string describing the queued, in-progress, completed info.
@@ -41,12 +36,8 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             switch (obj.GetStatus())
             {
-                case FunctionInstanceStatus.AwaitingPrereqs:
-                    return string.Format("Awaiting prerequisites");
-                case FunctionInstanceStatus.Queued:
-                    return string.Format("In queued (since {0})", obj.QueueTime);
                 case FunctionInstanceStatus.Running:
-                    TimeSpan span = DateTime.UtcNow - obj.StartTime.Value;
+                    TimeSpan span = DateTime.UtcNow - obj.StartTime;
                     return string.Format("Currently In-progress (for {0})", span);
                 case FunctionInstanceStatus.CompletedSuccess:
                     return string.Format("Completed (at {0}, duration={1})", obj.EndTime, obj.GetDuration());
@@ -84,19 +75,9 @@ namespace Microsoft.WindowsAzure.Jobs
                     return FunctionInstanceStatus.Running;
                 }
             }
-            else if (obj.StartTime.HasValue)
-            {
-                return FunctionInstanceStatus.Running;
-            }
-            else if (obj.QueueTime.HasValue)
-            {
-                // Queued, but not started or completed. 
-                return FunctionInstanceStatus.Queued;
-            }
             else
             {
-                // Not even queued. 
-                return FunctionInstanceStatus.AwaitingPrereqs;
+                return FunctionInstanceStatus.Running;
             }
         }
 

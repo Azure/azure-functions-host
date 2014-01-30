@@ -3,9 +3,7 @@
     public enum FunctionInstanceStatus
     {
         None, // shouldn't be used. Can indicate a serialization error.
-        AwaitingPrereqs, // function is not yet queued. Has outstanding prereqs. 
-        Queued, // waiting in the execution queue.
-        Running, // Now running. An execution node has picked up ownership.
+        Running, // Started running.
         CompletedSuccess, // ran to completion, either via success or a user error (threw exception)
         CompletedFailed, // ran to completion, but function through an exception before finishing
         NeverFinished // Had not finished when host stopped running

@@ -102,7 +102,6 @@
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindResults\BindCleanupResult.cs" />
     <Compile Include="Bindings\BinderProviders\BinderBinderProvider.cs" />
-    <Compile Include="Bindings\BinderProviders\CallWithContextWrapper.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\StrongTableBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TableProviderTestHook.cs" />
@@ -111,7 +110,6 @@
     <Compile Include="Bindings\BinderProviders\JsonByRefBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TextReaderProvider.cs" />
-    <Compile Include="Bindings\BinderProviders\CallBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\CloudStorageAccountBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\ContextBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\QueueOutputBinderProvider.cs" />
@@ -149,7 +147,6 @@
     <Compile Include="Runners\WatchableEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\DelegatingStream.cs" />
     <Compile Include="Bindings\BinderProviders\WatchableStream.cs" />
-    <Compile Include="Bindings\BinderProviders\CallUtil.cs" />
     <Compile Include="Timers\IntervalSeparationTimer.cs" />
     <Compile Include="Timers\IIntervalSeparationCommand.cs" />
     <Compile Include="JobHost.cs" />
@@ -200,7 +197,6 @@
     <Compile Include="Runners\AccountInfo.cs" />
     <Compile Include="Loggers\IFunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\BlobWrittenMessage.cs" />
-    <Compile Include="Runners\IActivateFunction.cs" />
     <Compile Include="Runners\NotifyNewBlobViaInMemory.cs" />
     <Compile Include="Runners\INotifyNewBlobListener.cs" />
     <Compile Include="Runners\NotifyNewBlobExtensions.cs" />
@@ -209,11 +205,9 @@
     <Compile Include="Runners\IAccountInfo.cs" />
     <Compile Include="Loggers\FunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\INotifyNewBlob.cs" />
-    <Compile Include="Runners\IPrereqManager.cs" />
-    <Compile Include="Runners\IQueueFunction.cs" />
-    <Compile Include="Runners\PrereqManager.cs" />
-    <Compile Include="Runners\QueueInterfaces.cs" />
-    <Compile Include="Runners\QueueFunctionBase.cs" />
+    <Compile Include="Runners\IExecuteFunction.cs" />
+    <Compile Include="Runners\ExecuteFunctionInterfaces.cs" />
+    <Compile Include="Runners\ExecuteFunctionBase.cs" />
     <Compile Include="Indexers\FunctionTableLookupExtensions.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
     <Compile Include="Loggers\FunctionInstanceStatus.cs" />
@@ -274,7 +268,7 @@
     <Compile Include="Tables\WrapperEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\SimpleBinderProvider.cs" />
     <Compile Include="Runners\IJobHostLogger.cs" />
-    <Compile Include="Runners\AntaresQueueFunction.cs" />
+    <Compile Include="Runners\AntaresExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />
     <Compile Include="Triggers\BlobListeners\BlobListenerExtensions.cs" />

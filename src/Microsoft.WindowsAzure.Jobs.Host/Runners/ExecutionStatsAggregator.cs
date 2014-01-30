@@ -161,13 +161,9 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 rowKeyTimestamp = log.EndTime.Value;
             }
-            else if (log.StartTime.HasValue)
-            {
-                rowKeyTimestamp = log.StartTime.Value;
-            }
             else
             {
-                rowKeyTimestamp = DateTime.UtcNow;
+                rowKeyTimestamp = log.StartTime;
             }
 
             // Use function's actual end time (so we can reindex)
