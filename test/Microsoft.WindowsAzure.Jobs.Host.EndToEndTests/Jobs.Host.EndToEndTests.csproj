@@ -70,6 +70,7 @@
     <Compile Include="BlobToCustomObjectBinder.cs" />
     <Compile Include="CustomObject.cs" />
     <Compile Include="EndToEndTests.cs" />
+    <Compile Include="LeaseExpirationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
