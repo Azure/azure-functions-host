@@ -252,6 +252,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 Location = func.Location,
                 Args = args
             };
+
+            if (ctx.NameParameters != null && ctx.NameParameters.Count > 0)
+            {
+                instance.ParametersDisplayText = String.Join(", ", ctx.NameParameters.Values);
+            }
+
             return instance;
         }
 

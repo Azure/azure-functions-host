@@ -33,7 +33,7 @@
         <td>
             @*@Html.FunctionInstanceLogLinkVerbose(log)*@
             @*@Html.FunctionInstanceLogLink(Model.Id, Model.FunctionName)*@
-            @Html.ActionLink(Model.FunctionName, "FunctionInstance", "Function", new { Model.Id }, new { })
+            @Html.ActionLink(Model.FunctionDisplayTitle, "FunctionInstance", "Function", new { Model.Id }, new { })
         </td>
 
         <td>

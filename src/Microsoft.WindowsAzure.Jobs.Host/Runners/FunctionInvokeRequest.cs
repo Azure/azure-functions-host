@@ -43,6 +43,10 @@ namespace Microsoft.WindowsAzure.Jobs
         // ServiceURL. This can be used if the function needs to queue other execution requests.
         public string ServiceUrl { get; set; }
 
+        // Optional human readable representation of the parameter values that were 
+        // passed to the invocation.
+        public string ParametersDisplayText { get; set; }
+
         // Do a clone of this object, but update the location.
         // This is useful as we convert between different location types (eg, after downloading)
         public FunctionInvokeRequest CloneUpdateLocation(FunctionLocation newLocation)
