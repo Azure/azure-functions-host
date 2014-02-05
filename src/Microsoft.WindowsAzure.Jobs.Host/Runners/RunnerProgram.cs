@@ -261,9 +261,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     Console.WriteLine("--------");
 
-                    for (int i = 0; i < len; i++)
+                    foreach (int bindResultIndex in bindResultIndicesInPostActionOrder)
                     {
-                        int bindResultIndex = bindResultIndicesInPostActionOrder[i];
                         var bind = binds[bindResultIndex];
                         try
                         {
