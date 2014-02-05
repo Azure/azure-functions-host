@@ -15,8 +15,8 @@ namespace Microsoft.WindowsAzure.Jobs
     // and return a set of services that the host can use for invoking, listening, etc. 
     internal class JobHostContext
     {
-        private readonly Guid _id;
-        private readonly string _hostName;
+        private readonly Guid _hostInstanceId;
+        private readonly Guid _hostId;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
 
@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public JobHostContext(string dataConnectionString, string runtimeConnectionString, ITypeLocator typeLocator)
         {
-            _id = Guid.NewGuid();
+            _hostInstanceId = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
 
             IFunctionTableLookup functionTableLookup;
@@ -33,10 +33,10 @@ namespace Microsoft.WindowsAzure.Jobs
             var types = typeLocator.FindTypes().ToArray();
             AddCustomerBinders(config, types);
             functionTableLookup = new FunctionStore(dataConnectionString, config, types);
-            
+
 
             // Determine the host name from the function list
-            _hostName = GetHostName(functionTableLookup.ReadAll());
+            FunctionDefinition[] functions = functionTableLookup.ReadAll();
 
             ExecuteFunctionInterfaces interfaces;
             FunctionExecutionContext ctx;
@@ -44,6 +44,11 @@ namespace Microsoft.WindowsAzure.Jobs
             if (runtimeConnectionString != null)
             {
                 // Create logging against a live azure account 
+
+                IHostTable hostTable = new HostTable(CloudStorageAccount.Parse(runtimeConnectionString), EndpointNames.HostsTableName);
+                 string hostName = GetHostName(functions);
+                _hostId = hostTable.GetOrCreateHostId(hostName);
+                SetHostId(_hostId, functions);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
                 PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString);
@@ -53,7 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Queue interfaces            
                 interfaces = services.GetExecuteFunctionInterfaces(); // All for logging. 
 
-                var logger = new WebExecutionLogger(_id, services, LogRole);
+                var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
                 ctx.FunctionTable = functionTableLookup;
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
@@ -115,14 +120,14 @@ namespace Microsoft.WindowsAzure.Jobs
             return interfaces;
         }
 
-        public string HostName
+        public Guid HostId
         {
-            get { return _hostName; }
+            get { return _hostId; }
         }
 
         public Guid HostInstanceId
         {
-            get { return _id; }
+            get { return _hostInstanceId; }
         }
 
         public IRunningHostTableWriter RunningHostTableWriter
@@ -243,6 +248,21 @@ namespace Microsoft.WindowsAzure.Jobs
         private static void LogRole(TextWriter output)
         {
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
+        }
+
+        private static void SetHostId(Guid hostId, FunctionDefinition[] functions)
+        {
+            Debug.Assert(functions != null);
+
+            foreach (FunctionDefinition function in functions)
+            {
+                if (function == null)
+                {
+                    continue;
+                }
+
+                function.HostId = hostId;
+            }
         }
 
         private class ConsoleHostLogger : IJobHostLogger

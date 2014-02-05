@@ -18,9 +18,9 @@ namespace Microsoft.WindowsAzure.Jobs
             _table = table;
         }
 
-        public void SignalHeartbeat(string hostName)
+        public void SignalHeartbeat(Guid hostId)
         {
-            _table.Write(PartitionKey, hostName, null);
+            _table.Write(PartitionKey, hostId.ToString(), null);
             _table.Flush();
         }
     }

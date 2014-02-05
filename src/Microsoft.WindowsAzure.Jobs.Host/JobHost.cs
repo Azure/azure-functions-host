@@ -305,7 +305,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private UpdateHostHeartbeatCommand CreateRunningHostHeartbeat()
         {
-            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, _hostContext.HostName);
+            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, _hostContext.HostId);
         }
 
         private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()

@@ -135,8 +135,7 @@ namespace Dashboard.Controllers
 
         private static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
         {
-            string assemblyFullName = func.GetAssemblyFullName();
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.AssemblyFullName == assemblyFullName);
+            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == func.HostId);
             return RunningHost.IsValidHeartbeat(heartbeat);
         }
     }

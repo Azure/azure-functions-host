@@ -9,6 +9,8 @@ namespace Microsoft.WindowsAzure.Jobs
     // But it can't change just be executing the function. Store that invocation information somewhere else.
     internal class FunctionDefinition
     {
+        public Guid HostId { get; set; }
+
         // User description of the function
         public string Description { get; set; }
 

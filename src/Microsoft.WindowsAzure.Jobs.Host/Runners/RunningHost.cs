@@ -12,15 +12,15 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Provide more understandable names that indicate how the built-in properties are being used.
 
-        public string AssemblyFullName
+        public Guid HostId
         {
             get
             {
-                return RowKey;
+                return Guid.Parse(RowKey);
             }
             set
             {
-                RowKey = value;
+                RowKey = value.ToString();
             }
         }
 

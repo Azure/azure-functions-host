@@ -35,6 +35,8 @@
 
         public const string FunctionCausalityLog = tablePrefix + "FunctionCausalityLog";
 
-        public const string RunningHostTableName = tablePrefix + "RunningHost";
+        public const string HostsTableName = tablePrefix + "Hosts";
+
+        public const string RunningHostsTableName = tablePrefix + "RunningHosts";
     }
 }

@@ -49,14 +49,14 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public IRunningHostTableWriter GetRunningHostTableWriter()
         {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostTableName);
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostsTableName);
 
             return new RunningHostTableWriter(table);
         }
 
         public IRunningHostTableReader GetRunningHostTableReader()
         {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostTableName);
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostsTableName);
 
             return new RunningHostTableReader(table);
         }

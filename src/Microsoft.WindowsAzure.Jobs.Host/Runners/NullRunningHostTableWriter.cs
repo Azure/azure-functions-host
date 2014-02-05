@@ -1,9 +1,10 @@
-﻿
+﻿using System;
+
 namespace Microsoft.WindowsAzure.Jobs
 {
     internal class NullRunningHostTableWriter : IRunningHostTableWriter
     {
-        public void SignalHeartbeat(string hostName)
+        public void SignalHeartbeat(Guid hostId)
         {
         }
     }

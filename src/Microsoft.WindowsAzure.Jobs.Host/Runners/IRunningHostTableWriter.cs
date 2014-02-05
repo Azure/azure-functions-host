@@ -1,7 +1,9 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using System;
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     internal interface IRunningHostTableWriter
     {
-        void SignalHeartbeat(string hostName);
+        void SignalHeartbeat(Guid hostId);
     }
 }
