@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Globalization;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -10,7 +11,9 @@ namespace Microsoft.WindowsAzure.Jobs
     /// Represents an attribute that is used to provide details about how a Windows Azure Blob is
     /// bound as a method input parameter.
     /// This attribute also serves as a trigger that will run the Job function when a new blob is uploaded.
-    /// The method parameter type by default can be a Stream, TextReader, string, CloudBlob, ICloudBlob, CloudPageBlob, or CloudBlockBlob.
+    /// The method parameter type can be a <see cref="String" />, <see cref="Stream" />, <see cref="TextReader" />,
+    /// CloudBlob, ICloudBlob, CloudPageBlob, CloudBlockBlob,
+    /// or a custom type implementing <see cref="ICloudBlobStreamBinder{T}" />.
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter)]
     public class BlobInputAttribute : Attribute
