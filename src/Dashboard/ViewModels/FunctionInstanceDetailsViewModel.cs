@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Dashboard.ViewModels
 {
@@ -8,7 +9,7 @@ namespace Dashboard.ViewModels
 
         public ParamModel[] Parameters { get; set; }
 
-        public IEnumerable<InvocationLogViewModel> Children { get; set; }
+        public IEnumerable<Guid> ChildrenIds { get; set; }
 
         public InvocationLogViewModel Ancestor { get; set; }
 

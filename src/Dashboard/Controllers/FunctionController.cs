@@ -140,9 +140,9 @@ namespace Dashboard.Controllers
             ICausalityReader causalityReader = _services.GetCausalityReader();
 
             // fetch direct children
-            model.Children = causalityReader
+            model.ChildrenIds = causalityReader
                 .GetChildren(func.FunctionInstance.Id)
-                .Select(r => new InvocationLogViewModel(_functionInstanceLookup.Lookup(r.ChildGuid))).ToArray();
+                .Select(r => r.ChildGuid).ToArray();
 
             // fetch ancestor
             var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
@@ -248,6 +248,14 @@ namespace Dashboard.Controllers
             _terminationSignalWriter.RequestTermination(func.HostInstanceId);
 
             return RedirectToAction("FunctionInstance", new { id });
+        }
+
+        public ActionResult InvocationsByIds(Guid[] invocationIds)
+        {
+            var invocations = from id in invocationIds
+                let invocation = _functionInstanceLookup.Lookup(id)
+                select new InvocationLogViewModel(invocation);
+            return PartialView("FunctionInvocationChildren", invocations);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿@using Dashboard.ViewModels
+@using Newtonsoft.Json
 @model FunctionInstanceDetailsViewModel
 
 @{
@@ -88,7 +89,7 @@
             <span class="glyphicon glyphicon-flash"></span> @trigger.ToString()
             @if (Model.Ancestor != null)
             {
-                <span> on @Html.ActionLink(Model.Ancestor.FunctionName, "FunctionInstance", "Function", new {id = Model.Ancestor.Id}, new {title = "The parent job which triggered this function" })</span>
+                <span> on @Html.ActionLink(Model.Ancestor.FunctionDisplayTitle, "FunctionInstance", "Function", new {id = Model.Ancestor.Id}, new {title = "The parent job which triggered this function" })</span>
             }
         </p>
         
@@ -247,12 +248,12 @@
     });  
 </script>
 
-@if (Model.Children.Any())
+@if (Model.ChildrenIds.Any())
 {
     <div class="row">
         <div class="col-md-9">
             <h3>Children <small>Functions triggered by this function</small></h3>
-            <table class="table table-striped table-hover">
+            <table id="invocationChildren" class="table table-striped table-hover">
                 <thead>
                     <tr>
                         <th class="col-md-3">Function Name</th>
@@ -261,63 +262,55 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var child in Model.Children)
-                    {
-                        string childLabelClass = null;
-                        string childDescClass = null;
-                        string childLabelText = null;
-                        switch (child.Status)
-                        {
-                            case FunctionInstanceStatus.CompletedFailed:
-                                childLabelClass = "label-danger";
-                                childDescClass = "text-error";
-                                childLabelText = "Failed";
-                                break;
-                            case FunctionInstanceStatus.CompletedSuccess:
-                                childLabelClass = "label-success";
-                                childDescClass = "text-success";
-                                childLabelText = "Success";
-                                break;
-                            case FunctionInstanceStatus.NeverFinished:
-                                childLabelClass = "label-warning";
-                                childDescClass = "text-error";
-                                childLabelText = "Never Finished";
-                                break;
-                            case FunctionInstanceStatus.Running:
-                                childLabelClass = "label-primary";
-                                childDescClass = "text-info";
-                                childLabelText = "Running";
-                                break;
-                                // don't colorize others.
-                        }
-                        <tr class="@childDescClass">
-
-                            <td>
-                                @Html.ActionLink(child.FunctionName, "FunctionInstance", "Function", new { child.Id }, new { })
-                            </td>
-
-                            <td>
-                                @if (!String.IsNullOrEmpty(childLabelText))
-                                {
-                                    <span class="label @childLabelClass">@childLabelText</span>
-                                }
-                            </td>
-                            <td>
-                                @if (child.WhenUtc.HasValue)
-                                {
-                                    @MoreHtmlHelpers.DateTimeRelative(child.WhenUtc.Value)
-                                }
-
-                                @if (child.Duration.HasValue)
-                                {
-                                    <span>(@MoreHtmlHelpers.TimeSpanRelative(child.Duration.Value))</span>
-                                }
-                            </td>
-                        </tr>
-                    }
                 </tbody>
             </table>
+            <button type="button" id="loadMoreChildren" class="btn btn-primary btn-sm" data-toggle="collapse" style="display:none;">
+            </button>
+            <script>
+                $(function () {
+                    var url = '@Url.RouteUrl(new { controller = "Function", action = "InvocationsByIds" })';
+                    var children = @(Html.Raw(JsonConvert.SerializeObject(Model.ChildrenIds, Formatting.Indented)));
+                    var button = $('#loadMoreChildren');
+                    var buttonText = "Load more";
+                    var buttonLoadingText = "Loading ...";
+                    var table = $('#invocationChildren');
+                    var pageSize = 5;
+                    function disableLoadingButton() {
+                        button.disabled = true;
+                        button.text(buttonLoadingText);
+                        button.show();
+                    }
+                    function enableLoadingButton() {
+                        button[0].disabled = false;
+                        button.text(buttonText);
+                        button.show();
+                    }
+                    function nextPage() {
+                        var upcoming = children.splice(0, pageSize);
+                        disableLoadingButton();
+                        $.ajax({
+                            type: 'POST',
+                            url: url,
+                            cache: false,
+                            contentType: "application/json",
+                            data: JSON.stringify({ invocationIds: upcoming }) 
+                        }).done(function(data) {
+                            table.find('tbody').append(data);
+                            $(document).scrollTop($(document).height() - table.height());
+                            if (children.length > 0) {
+                                enableLoadingButton();
+                            } else {
+                                button.hide();
+                            }
+                        }).fail(function(xhr, status, err) {
+                            enableLoadingButton();
+                        });
+                    }
 
+                    button.click(nextPage);
+                    nextPage();
+                });
+            </script>
         </div>
     </div>
 }

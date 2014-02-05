@@ -1,0 +1,58 @@
+﻿@using Dashboard.ViewModels
+@model IEnumerable<InvocationLogViewModel>
+
+@if (Model.Any())
+{
+    foreach (var child in Model)
+    {
+        string childLabelClass = null;
+        string childDescClass = null;
+        string childLabelText = null;
+        switch (child.Status)
+        {
+            case FunctionInstanceStatus.CompletedFailed:
+                childLabelClass = "label-danger";
+                childDescClass = "text-error";
+                childLabelText = "Failed";
+                break;
+            case FunctionInstanceStatus.CompletedSuccess:
+                childLabelClass = "label-success";
+                childDescClass = "text-success";
+                childLabelText = "Success";
+                break;
+            case FunctionInstanceStatus.NeverFinished:
+                childLabelClass = "label-warning";
+                childDescClass = "text-error";
+                childLabelText = "Never Finished";
+                break;
+            case FunctionInstanceStatus.Running:
+                childLabelClass = "label-primary";
+                childDescClass = "text-info";
+                childLabelText = "Running";
+                break;
+                // don't colorize others.
+        }
+<tr class="@childDescClass">
+    <td>
+        @Html.ActionLink(child.FunctionDisplayTitle, "FunctionInstance", "Function", new { child.Id }, new { })
+    </td>
+    <td>
+        @if (!String.IsNullOrEmpty(childLabelText))
+        {
+            <span class="label @childLabelClass">@childLabelText</span>
+        }
+    </td>
+    <td>
+        @if (child.WhenUtc.HasValue)
+        {
+            @MoreHtmlHelpers.DateTimeRelative(child.WhenUtc.Value)
+        }
+
+        @if (child.Duration.HasValue)
+        {
+            <span>(@MoreHtmlHelpers.TimeSpanRelative(child.Duration.Value))</span>
+        }
+    </td>
+</tr>
+    }
+}
