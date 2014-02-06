@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -82,8 +85,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     sb.AppendFormat("Read {0:n0} bytes. ", x);
                 }
-
-                sb.AppendFormat("({0} time)", _timeRead.Elapsed);
+                AppendNetworkTime(sb, _timeRead.Elapsed);
             }
             if (_countWritten > 0)
             {
@@ -101,6 +103,42 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
             return sb.ToString();
+        }
+
+        internal static void AppendNetworkTime(StringBuilder sb, TimeSpan elapsed)
+        {
+            if (elapsed == TimeSpan.Zero)
+            {
+                return;
+            }
+
+            sb.Append("(about ");
+
+            string unitName;
+            int unitCount;
+
+            if (elapsed > TimeSpan.FromMinutes(55)) // it is about an hour, right?
+            {
+                unitName = "hour"; 
+                unitCount = (int)Math.Round(elapsed.TotalHours);
+            }
+            else if (elapsed > TimeSpan.FromSeconds(55)) // it is about a minute, right?
+            {
+                unitName = "minute";
+                unitCount = (int) Math.Round(elapsed.TotalMinutes);
+            }
+            else if (elapsed > TimeSpan.FromMilliseconds(950)) // it is about a second, right?
+            {
+                unitName = "second";
+                unitCount = (int)Math.Round(elapsed.TotalSeconds);
+            }
+            else
+            {
+                unitName = "millisecond";
+                unitCount = Math.Max((int) Math.Round(elapsed.TotalMilliseconds), 1);
+            }
+            sb.AppendFormat(CultureInfo.CurrentCulture, "{0} {1}{2}", unitCount, unitName, unitCount > 1 ? "s" : String.Empty);
+            sb.Append(" spent on I/O)");
         }
 
         /// <summary>
