@@ -267,9 +267,9 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 return staticBinding.Bind(ctx);
             }
-            catch (InvalidOperationException ioe)
+            catch (InvalidOperationException ex)
             {
-                return new FailedParameterRuntimeBinding {BindingErrorMessage = ioe.Message};
+                return new FailedParameterRuntimeBinding {BindingErrorMessage = ex.Message};
             }
         }
 

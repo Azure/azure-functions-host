@@ -16,7 +16,6 @@ namespace Microsoft.WindowsAzure.Jobs
         /// </summary>
         public QueueInputAttribute()
         {
-            
         }
 
         /// <summary>
