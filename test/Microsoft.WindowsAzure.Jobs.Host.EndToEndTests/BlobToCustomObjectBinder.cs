@@ -22,11 +22,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.EndToEndTests
             };
         }
 
-        public void WriteToStream(CustomObject result, Stream output)
+        public void WriteToStream(CustomObject value, Stream output)
         {
             using (StreamWriter writer = new StreamWriter(output))
             {
-                string jsonString = JsonConvert.SerializeObject(result);
+                string jsonString = JsonConvert.SerializeObject(value);
                 writer.Write(jsonString);
             };
         }
