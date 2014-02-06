@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string ToString()
         {
             var name = this.FunctionInstance.Location.GetShortName();
-            string startTime = this.StartTime.ToUniversalTime().ToString();
+            string startTime = this.StartTime.HasValue ? this.StartTime.Value.ToUniversalTime().ToString() : this.QueueTime.ToUniversalTime().ToString();
             return string.Format("{0} @ {1}", name, startTime);
         }
 
@@ -36,7 +36,9 @@ namespace Microsoft.WindowsAzure.Jobs
         // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
 
-        public DateTime StartTime { get; set; }
+        public DateTime QueueTime { get; set; }
+
+        public DateTime? StartTime { get; set; }
 
         // If a function is running after this time, its host process has ended; it never finished executing.
         public DateTime? HeartbeatExpires { get; set; }

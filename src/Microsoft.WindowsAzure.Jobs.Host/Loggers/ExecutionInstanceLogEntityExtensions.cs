@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -28,7 +29,14 @@ namespace Microsoft.WindowsAzure.Jobs
                 return null;
             }
 
-            return endTime.Value - obj.StartTime;
+            DateTime? startTime = obj.StartTime;
+
+            if (!startTime.HasValue)
+            {
+                return null;
+            }
+
+            return endTime.Value - startTime.Value;
         }
 
         // Get a short summary string describing the queued, in-progress, completed info.
@@ -37,7 +45,8 @@ namespace Microsoft.WindowsAzure.Jobs
             switch (obj.GetStatus())
             {
                 case FunctionInstanceStatus.Running:
-                    TimeSpan span = DateTime.UtcNow - obj.StartTime;
+                    Debug.Assert(obj.StartTime.HasValue);
+                    TimeSpan span = DateTime.UtcNow - obj.StartTime.Value;
                     return string.Format("Currently In-progress (for {0})", span);
                 case FunctionInstanceStatus.CompletedSuccess:
                     return string.Format("Completed (at {0}, duration={1})", obj.EndTime, obj.GetDuration());
@@ -75,9 +84,13 @@ namespace Microsoft.WindowsAzure.Jobs
                     return FunctionInstanceStatus.Running;
                 }
             }
-            else
+            else if (obj.StartTime.HasValue)
             {
                 return FunctionInstanceStatus.Running;
+            }
+            else
+            {
+                return FunctionInstanceStatus.Queued;
             }
         }
 

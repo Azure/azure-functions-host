@@ -31,7 +31,11 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance)
         {
-            instance.Id = Guid.NewGuid(); // used for logging. 
+            if (instance.Id == Guid.Empty)
+            {
+                instance.Id = Guid.NewGuid(); // used for logging. 
+            }
+
             instance.SchemaNumber = FunctionInvokeRequest.CurrentSchema;
             instance.ServiceUrl = _account.WebDashboardUri;
 

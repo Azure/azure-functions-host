@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using Dashboard.ViewModels;
@@ -13,8 +14,8 @@ namespace Dashboard.Controllers
         private readonly IRunningHostTableReader _heartbeatTable;
 
         internal DashboardController(
-            Services services, 
-            IFunctionTableLookup functionTableLookup, 
+            Services services,
+            IFunctionTableLookup functionTableLookup,
             IRunningHostTableReader heartbeatTable)
         {
             _services = services;
@@ -48,7 +49,7 @@ namespace Dashboard.Controllers
                 }).ToArray();
 
             var table = _services.GetInvokeStatsTable();
-            
+
             var all = table.Enumerate();
             foreach (var item in all)
             {
@@ -63,7 +64,7 @@ namespace Dashboard.Controllers
 
                 var statsModel = model
                     .FunctionStatisticsViewModels
-                    .FirstOrDefault(x => 
+                    .FirstOrDefault(x =>
                         x.FunctionFullName == func.ToString()
                     );
 
@@ -133,7 +134,7 @@ namespace Dashboard.Controllers
             return PartialView(model);
         }
 
-        private static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
+        internal static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
         {
             RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == func.HostId);
             return RunningHost.IsValidHeartbeat(heartbeat);

@@ -98,3 +98,8 @@ table th span.line{
 .btn-toolbar {
     margin-bottom: 10px;
 }
+
+label
+{
+    font-size: 14px;
+}

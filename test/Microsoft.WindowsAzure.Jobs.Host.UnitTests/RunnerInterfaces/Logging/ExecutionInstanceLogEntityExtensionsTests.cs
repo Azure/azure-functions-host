@@ -14,17 +14,18 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             // Assert
             Assert.False(entity.HeartbeatExpires.HasValue);
             Assert.False(entity.EndTime.HasValue);
+            Assert.False(entity.StartTime.HasValue);
             Assert.Null(entity.ExceptionType);
         }
 
         [Fact]
-        public void GetStatus_Initially_ReturnsRunning()
+        public void GetStatus_Initially_ReturnsQueued()
         {
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity();
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.Running, entity);
+            TestStatus(FunctionInstanceStatus.Queued, entity);
         }
 
         [Fact]
@@ -34,6 +35,21 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
                 HeartbeatExpires = DateTime.MinValue
+            };
+
+            // Act & Assert
+            TestStatus(FunctionInstanceStatus.NeverFinished, entity);
+        }
+
+        [Fact]
+        public void GetStatus_IfEntityHasAllTimesThroughExpiredHeartbeat_ReturnsNeverFinished()
+        {
+            // Arrange
+            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
+            {
+                HeartbeatExpires = DateTime.MinValue,
+                StartTime = DateTime.MinValue,
+                QueueTime = DateTime.MinValue
             };
 
             // Act & Assert
@@ -54,13 +70,30 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
         }
 
         [Fact]
+        public void GetStatus_IfEntityHasAllTimesThroughUnexpiredHeartbeat_ReturnsRunning()
+        {
+            // Arrange
+            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
+            {
+                HeartbeatExpires = DateTime.MaxValue,
+                StartTime = DateTime.MinValue,
+                QueueTime = DateTime.MinValue
+            };
+
+            // Act & Assert
+            TestStatus(FunctionInstanceStatus.Running, entity);
+        }
+
+        [Fact]
         public void GetStatus_IfEntityHasAllTimesThroughEndTimeWithoutException_ReturnsCompletedSuccess()
         {
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
                 HeartbeatExpires = DateTime.MinValue,
-                EndTime = DateTime.MinValue
+                EndTime = DateTime.MinValue,
+                StartTime = DateTime.MinValue,
+                QueueTime = DateTime.MinValue
             };
 
             // Act & Assert
@@ -75,6 +108,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             {
                 HeartbeatExpires = DateTime.MinValue,
                 EndTime = DateTime.MinValue,
+                StartTime = DateTime.MinValue,
+                QueueTime = DateTime.MinValue,
                 ExceptionType = "Bad"
             };
 

@@ -1,19 +1,25 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using System;
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Provides common place to list all Azure endpoints.
     // This does not describe the schemas, payloads, etc for those endpoints. 
     internal static class EndpointNames
     {
         // Containers
-        private const string containerPrefix = "azure-jobs-";
+        private const string ContainerPrefix = "azure-jobs-";
 
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs
-        public const string ConsoleOuputLogContainerName = containerPrefix + "invoke-log";
+        public const string ConsoleOuputLogContainerName = ContainerPrefix + "invoke-log";
 
-        public const string VersionContainerName = containerPrefix + "versions";
+        public const string VersionContainerName = ContainerPrefix + "versions";
 
-        public const string AbortHostInstanceContainerName = containerPrefix + "aborts";
+        public const string AbortHostInstanceContainerName = ContainerPrefix + "aborts";
+
+        // Queues
+        private const string QueuePrefix = ContainerPrefix;
+
+        private const string InvokeQueuePrefix = QueuePrefix + "invoke-";
 
         // Tables
         // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
@@ -38,5 +44,10 @@
         public const string HostsTableName = tablePrefix + "Hosts";
 
         public const string RunningHostsTableName = tablePrefix + "RunningHosts";
+
+        public static string GetInvokeQueueName(Guid hostId)
+        {
+            return InvokeQueuePrefix + hostId.ToString("N");
+        }
     }
 }

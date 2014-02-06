@@ -80,12 +80,7 @@ namespace Microsoft.WindowsAzure.Jobs
             Debug.Assert(context != null);
             IQueryable<HostEntity> queryable = context.CreateQuery<HostEntity>(_tableName);
             Debug.Assert(queryable != null);
-            IQueryable<HostEntity> query = from HostEntity entity in queryable
-                                                    where entity.PartitionKey == hostName
-                                                    && entity.RowKey == String.Empty
-                                                    select entity;
-            Debug.Assert(query != null);
-            HostEntity existingEntity = query.Single();
+            HostEntity existingEntity = TableQueryable.GetEntity(queryable, hostName, String.Empty);
             Debug.Assert(existingEntity != null);
             return existingEntity.Id;
         }

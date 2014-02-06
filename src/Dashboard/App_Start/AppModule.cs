@@ -26,10 +26,11 @@ namespace Dashboard
                 }
             }
 
+            Bind<CloudStorageAccount>().ToConstant(services.Account);
             Bind<Services>().ToConstant(services); // $$$ eventually remove this.
             Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
-            Bind<IProcessTerminationSignalReader>().ToConstant(CreateProcessTerminationSignalReader(services.Account));
-            Bind<IProcessTerminationSignalWriter>().ToConstant(CreateProcessTerminationSignalWriter(services.Account));
+            Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
+            Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
 
             // $$$ This list should eventually just cover all of Services, and then we can remove services.
             // $$$ We don't want Services() floating around. It's jsut a default factory for producing objects that 
@@ -38,6 +39,8 @@ namespace Dashboard
 
             Bind<IFunctionTableLookup>().ToConstant(services.GetFunctionTable());
             Bind<IRunningHostTableReader>().ToConstant(services.GetRunningHostTableReader());
+            Bind<IFunctionUpdatedLogger>().ToMethod((ignore) => services.GetFunctionUpdatedLogger());
+            Bind<IInvoker>().To<Invoker>();
 
             return;
         }
@@ -47,16 +50,6 @@ namespace Dashboard
             CloudBlobClient client = account.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(EndpointNames.VersionContainerName);
             return new HostVersionReader(container);
-        }
-
-        private static IProcessTerminationSignalReader CreateProcessTerminationSignalReader(CloudStorageAccount account)
-        {
-            return new ProcessTerminationSignalReader(account);
-        }
-
-        private static IProcessTerminationSignalWriter CreateProcessTerminationSignalWriter(CloudStorageAccount account)
-        {
-            return new ProcessTerminationSignalWriter(account);
         }
 
         // Get a Services object based on current configuration.

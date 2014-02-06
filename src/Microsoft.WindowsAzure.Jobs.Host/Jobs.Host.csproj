@@ -72,6 +72,12 @@
     <Compile Include="Indexers\RemoteFunctionLocation.cs" />
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
+    <Compile Include="Runners\IInvoker.cs" />
+    <Compile Include="Runners\IInvokerFactory.cs" />
+    <Compile Include="Runners\InvocationMessage.cs" />
+    <Compile Include="Runners\InvocationMessageType.cs" />
+    <Compile Include="Runners\Invoker.cs" />
+    <Compile Include="Runners\TableQueryable.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Indexers\FunctionTable.cs" />

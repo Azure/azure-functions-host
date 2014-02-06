@@ -1,4 +1,5 @@
-﻿@model Dashboard.ViewModels.FunctionInstancesViewModel
+﻿@using Dashboard.ViewModels
+@model FunctionInstancesViewModel
 @{
     ViewBag.Title = "Function Invocation Log";
 }
@@ -10,7 +11,7 @@
 <div class="row">
     <div class="col-md-8">
         <h3>Invocation Log <small>@Model.FunctionName</small></h3>
-        
+        <p>@Html.ActionLink("Run function", "Run", new { functionId = Model.FunctionId }, new { @class = "btn btn-primary" })</p>
     </div>
     <div class="col-md-4">
         <div class="btn-toolbar pull-right" role="toolbar">
@@ -30,7 +31,7 @@
 </div>
 
 <script type="text/javascript">
-    $(function() {
+    $(function () {
         $('input[name="status"]').on('change', function () {
             var value = $(this).attr('value');
             var url = '@Html.Raw(HttpUtility.JavaScriptStringEncode(Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.PageSize })))';
@@ -49,59 +50,59 @@
 </script>
 
 @if (Model.InvocationLogViewModels.Any())
-    {
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Status Detail</th>
-                </tr>
-            </thead>
-            <tbody>
-                @* Take only the specified page size as an extra item is loaded *@
-                @foreach (var log in Model.InvocationLogViewModels.Take(Model.PageSize))
-                {
-                    Html.RenderPartial("_InvocationLogSummary", log);
-                }
-            </tbody>
-        </table>
-        <ul class="pager">
-            @if (Model.Page > 1)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Status Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            @* Take only the specified page size as an extra item is loaded *@
+            @foreach (var log in Model.InvocationLogViewModels.Take(Model.PageSize))
             {
-                <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
+                Html.RenderPartial("_InvocationLogSummary", log);
             }
-            else
-            {
-               @*<li class="previous disabled"><a href="#">&larr; Newer</a></li>*@
-            }
-            
-            @if (Model.PageSize >= Model.InvocationLogViewModels.Count())
-            {
-                @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
-            }
-            else
-            {
-                <li class="next"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page + 1 })">Older &rarr;</a></li>
-            }
-        </ul>
-        }
-    else
-    {
-
-        if (Model.Page > 1)
+        </tbody>
+    </table>
+    <ul class="pager">
+        @if (Model.Page > 1)
         {
-            <p class="alert alert-info">No more elements in the invocation log</p>
-
-            <ul class="pager">
-                <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
-                @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
-            </ul>
+            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
         }
         else
         {
-            <p class="alert alert-info">The invocation log is empty</p>
-
+            @*<li class="previous disabled"><a href="#">&larr; Newer</a></li>*@
         }
 
+        @if (Model.PageSize >= Model.InvocationLogViewModels.Count())
+        {
+            @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
+        }
+        else
+        {
+            <li class="next"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page + 1 })">Older &rarr;</a></li>
+        }
+    </ul>
+}
+else
+{
+
+    if (Model.Page > 1)
+    {
+        <p class="alert alert-info">No more elements in the invocation log</p>
+
+        <ul class="pager">
+            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
+            @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
+        </ul>
     }
+    else
+    {
+        <p class="alert alert-info">The invocation log is empty</p>
+
+    }
+
+}

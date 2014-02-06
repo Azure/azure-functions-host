@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Microsoft.WindowsAzure.StorageClient;
@@ -13,6 +14,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
+        private readonly QueueTrigger _invokeTrigger;
 
         // General purpose listener for blobs, queues. 
         private Listener _listener;
@@ -20,8 +22,14 @@ namespace Microsoft.WindowsAzure.Jobs
         // Fast-path blob listener. 
         private INotifyNewBlobListener _blobListener;
 
-        public Worker(IFunctionTableLookup functionTable, IExecuteFunction execute, INotifyNewBlobListener blobListener = null)
+        public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute, INotifyNewBlobListener blobListener = null)
         {
+            if (invokeTrigger == null)
+            {
+                throw new ArgumentNullException("invokeTrigger");
+            }
+
+            _invokeTrigger = invokeTrigger;
             _blobListener = blobListener;
             if (functionTable == null)
             {
@@ -60,6 +68,8 @@ namespace Microsoft.WindowsAzure.Jobs
                     map.AddTriggers(func.Location.GetId(), ts);
                 }
             }
+
+            map.AddTriggers(String.Empty, _invokeTrigger);
 
             _listener = new Listener(map, new MyInvoker(this));
         }
@@ -129,6 +139,88 @@ namespace Microsoft.WindowsAzure.Jobs
                 _triggerCount++;
                 _executor.Execute(instance);
             }
+        }
+
+        private void InvokeFromDashboard(CloudQueueMessage message)
+        {
+            InvocationMessage model = JsonCustom.DeserializeObject<InvocationMessage>(message.AsString);
+
+            if (model == null)
+            {
+                throw new InvalidOperationException("Invalid invocation message.");
+            }
+
+            switch (model.Type)
+            {
+                case InvocationMessageType.TriggerAndOverride:
+                    FunctionInvokeRequest request = CreateInvokeRequest(model);
+                    _executor.Execute(request);
+                    break;
+
+                default:
+                    string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);
+                    throw new NotSupportedException(error);
+            }
+        }
+
+        private FunctionInvokeRequest CreateInvokeRequest(InvocationMessage message)
+        {
+            return CreateInvokeRequest(message, _functionTable);
+        }
+
+        internal static FunctionInvokeRequest CreateInvokeRequest(InvocationMessage message, IFunctionTableLookup functionTable)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+
+            if (functionTable == null)
+            {
+                throw new ArgumentNullException("functionTable");
+            }
+
+            FunctionDefinition function = functionTable.Lookup(message.FunctionId);
+            RuntimeBindingInputs inputs = new RuntimeBindingInputs(function.Location);
+            ParameterRuntimeBinding[] boundArguments = new ParameterRuntimeBinding[function.Flow.Bindings.Length];
+            IDictionary<string, string> invokeStrings = message.Arguments;
+
+            for (int index = 0; index < boundArguments.Length; index++)
+            {
+                function.Flow.GetInputParameters();
+                ParameterStaticBinding staticBinding = function.Flow.Bindings[index];
+                string parameterName = staticBinding.Name;
+                string value;
+
+                if (!invokeStrings.TryGetValue(parameterName, out value))
+                {
+                    value = null;
+                }
+
+                ParameterRuntimeBinding boundArgument;
+
+
+                try
+                {
+                    boundArgument = staticBinding.BindFromInvokeString(inputs, value);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    boundArgument = new FailedParameterRuntimeBinding
+                    {
+                        BindingErrorMessage = exception.Message
+                    };
+                }
+
+
+                boundArguments[index] = boundArgument;
+            }
+            FunctionInvokeRequest request = new FunctionInvokeRequest();
+            request.Id = message.Id;
+            request.Location = function.Location;
+            request.Args = boundArguments;
+            request.TriggerReason = new InvokeTriggerReason { Message = "Invoked from Dashboard." };
+            return request;
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
@@ -291,7 +383,15 @@ namespace Microsoft.WindowsAzure.Jobs
             void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewQueueItem(msg, func);
+
+                if (func == null)
+                {
+                    _parent.InvokeFromDashboard(msg);
+                }
+                else
+                {
+                    _parent.OnNewQueueItem(msg, func);
+                }
             }
 
             void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)

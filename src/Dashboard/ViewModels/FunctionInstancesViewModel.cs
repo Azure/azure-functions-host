@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Dashboard.ViewModels
 {
@@ -12,6 +11,6 @@ namespace Dashboard.ViewModels
         public int? Count { get; set; }
         public int? Page { get; set; }
         public int PageSize { get; set; }
+        public string FunctionId { get; set; }
     }
-
 }

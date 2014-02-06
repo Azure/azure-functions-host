@@ -38,7 +38,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
             logItem.HostInstanceId = context.HostInstanceId;
             logItem.FunctionInstance = instance;
-            logItem.StartTime = DateTime.UtcNow;
+            DateTime now = DateTime.UtcNow;
+            logItem.QueueTime = now;
+            logItem.StartTime = now;
 
             try
             {

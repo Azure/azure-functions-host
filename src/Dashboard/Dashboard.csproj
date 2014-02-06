@@ -176,8 +176,10 @@
     <Compile Include="ViewModels\FunctionDefinitionViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceDetailsViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceStatus.cs" />
+    <Compile Include="ViewModels\RunFunctionViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstancesViewModel.cs" />
     <Compile Include="ViewModels\FunctionLocationViewModel.cs" />
+    <Compile Include="ViewModels\FunctionParameterViewModel.cs" />
     <Compile Include="ViewModels\FunctionTriggerViewModel.cs" />
     <Compile Include="ViewModels\DashboardAboutViewModel.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
@@ -222,6 +224,7 @@
     <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
     <Content Include="Views\Function\SearchBlob.cshtml" />
     <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />
+    <Content Include="Views\Function\Run.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
