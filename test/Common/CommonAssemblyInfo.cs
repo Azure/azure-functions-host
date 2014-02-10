@@ -1,5 +1,4 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyProduct("Microsoft Windows Azure Jobs")]
@@ -7,4 +6,3 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCopyright("© Microsoft Corporation. All rights reserved.")]
 
 [assembly: ComVisible(false)]
-[assembly: CLSCompliant(true)]

@@ -41,7 +41,7 @@
     <DelaySign>true</DelaySign>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\src\Common\CommonAssemblyInfo.cs">
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="BlobListenerUnitTests.cs" />

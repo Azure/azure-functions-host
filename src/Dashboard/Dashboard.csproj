@@ -145,6 +145,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\Common\CommonAssemblyInfo.cs">
+      <Link>Properties\CommonAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="ApiControllers\LogController.cs" />
     <Compile Include="App_Start\AppModule.cs" />
     <Compile Include="App_Start\AuthConfig.cs" />
