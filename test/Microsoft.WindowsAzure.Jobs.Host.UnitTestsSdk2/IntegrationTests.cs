@@ -121,6 +121,17 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             }
         }
 
+        [Fact]
+        public void TestIQueryableMissingTable()
+        {
+            Program.RowCount = int.MinValue;
+
+            var host = new TestJobHost<Program>();
+            host.Call("IQueryableMissingTable");
+
+            Assert.Equal(0, Program.RowCount);
+        }
+
         private static DynamicTableEntity CreateEntity(int row, string property)
         {
             return new DynamicTableEntity("PK", "RK" + row.ToString(), null, CreateProperties("StringProperty", property));
@@ -159,6 +170,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             public static bool TableInvoked { get; set; }
 
             public static int EntitiesWithStringPropertyB { get; set; }
+
+            public static int RowCount { get; set; }
 
             [Description("test")]
             public static void Queue(CloudQueue mytestqueue)
@@ -228,6 +241,19 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
                                                         where entity.StringProperty == "B"
                                                         select entity;
                 EntitiesWithStringPropertyB = query.ToArray().Count();
+            }
+
+            [Description("test")]
+            public static void IQueryableMissingTable([Table("NonExistingTable")] IQueryable<QueryableTestEntity> table)
+            {
+                int count = 0;
+                
+                foreach(QueryableTestEntity entity in table)
+                {
+                    ++count;
+                }
+
+                RowCount = count;
             }
         }
     }

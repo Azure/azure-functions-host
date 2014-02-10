@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -47,11 +48,11 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
                         func = (container, blobName) => container.GetBlockBlobReference(blobName);
                     }
                     break;
-                
-                case Namespace + "Blob.CloudPageBlob":                    
+
+                case Namespace + "Blob.CloudPageBlob":
                     func = (container, blobName) => container.GetPageBlobReference(blobName);
                     break;
-                
+
                 case Namespace + "Blob.CloudBlockBlob":
                     func = (container, blobName) => container.GetBlockBlobReference(blobName);
                     break;
@@ -59,7 +60,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 
             if (func != null)
             {
-                return new Azure20SdkBlobBinder { _func = func };            
+                return new Azure20SdkBlobBinder { _func = func };
             }
 
             return null;
@@ -123,7 +124,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
 
             if (iTableEntityType == null)
             {
-                sdkAssembly =null;
+                sdkAssembly = null;
                 return false;
             }
 
@@ -143,6 +144,12 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
         private static object CreateQueryableBinder<T>(dynamic client, string tableName)
         {
             dynamic table = client.GetTableReference(tableName);
+
+            if (!table.Exists())
+            {
+                return Enumerable.Empty<T>().AsQueryable();
+            }
+
             return table.CreateQuery<T>();
         }
 
@@ -214,7 +221,7 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
         class CloudStorageAccountBinder : ICloudBinder
         {
             public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
-            {                
+            {
                 var res = GetAccount(bindingContext, parameter);
                 return new BindResult { Result = res };
             }
@@ -229,9 +236,9 @@ namespace Microsoft.WindowsAzure.Jobs.Azure20SdkBinders
                 dynamic account = GetAccount(bindingContext, parameter);
                 var q = account.CreateCloudQueueClient().GetQueueReference(queueName);
                 q.CreateIfNotExists();
-                
+
                 return new BindResult { Result = q };
-            }        
+            }
 
             void ICloudBinderVerify.Validate(ParameterInfo parameter)
             {
