@@ -70,6 +70,7 @@
     </Compile>
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Indexers\RemoteFunctionLocation.cs" />
+    <Compile Include="QueueNames.cs" />
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
     <Compile Include="Runners\IInvoker.cs" />
@@ -78,6 +79,11 @@
     <Compile Include="Runners\InvocationMessageType.cs" />
     <Compile Include="Runners\Invoker.cs" />
     <Compile Include="Runners\TableQueryable.cs" />
+    <Compile Include="Storage\ICloudStorageAccount.cs" />
+    <Compile Include="Storage\Queues\ICloudQueue.cs" />
+    <Compile Include="Storage\Queues\ICloudQueueClient.cs" />
+    <Compile Include="Storage\Queues\ICloudQueueMessage.cs" />
+    <Compile Include="Storage\SdkCloudStorageAccount.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Indexers\FunctionTable.cs" />

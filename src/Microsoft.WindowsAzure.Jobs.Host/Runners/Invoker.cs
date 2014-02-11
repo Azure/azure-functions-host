@@ -1,22 +1,21 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Jobs.Storage.Queues;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
     internal class Invoker : IInvoker
     {
-        private readonly CloudStorageAccount _account;
+        private readonly ICloudQueueClient _client;
 
-        public Invoker(CloudStorageAccount account)
+        public Invoker(ICloudQueueClient client)
         {
-            if (account == null)
+            if (client == null)
             {
-                throw new ArgumentNullException("account");
+                throw new ArgumentNullException("client");
             }
 
-            _account = account;
+            _client = client;
         }
 
         public void Invoke(Guid hostId, InvocationMessage message)
@@ -26,14 +25,13 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new ArgumentNullException("message");
             }
 
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            Debug.Assert(client != null);
-            CloudQueue queue = client.GetQueueReference(EndpointNames.GetInvokeQueueName(hostId));
+            ICloudQueue queue = _client.GetQueueReference(QueueNames.GetInvokeQueueName(hostId));
             Debug.Assert(queue != null);
+            queue.CreateIfNotExists();
             string content = JsonCustom.SerializeObject(message);
             Debug.Assert(content != null);
-            queue.CreateIfNotExist();
-            queue.AddMessage(new CloudQueueMessage(content));
+            ICloudQueueMessage queueMessage = queue.CreateMessage(content);
+            queue.AddMessage(queueMessage);
         }
     }
 }

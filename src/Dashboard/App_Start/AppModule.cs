@@ -1,6 +1,8 @@
 ﻿using System;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Jobs.Storage;
+using Microsoft.WindowsAzure.Jobs.Storage.Queues;
 using Microsoft.WindowsAzure.StorageClient;
 using Ninject.Modules;
 
@@ -40,6 +42,7 @@ namespace Dashboard
             Bind<IFunctionTableLookup>().ToConstant(services.GetFunctionTable());
             Bind<IRunningHostTableReader>().ToConstant(services.GetRunningHostTableReader());
             Bind<IFunctionUpdatedLogger>().ToMethod((ignore) => services.GetFunctionUpdatedLogger());
+            Bind<ICloudQueueClient>().ToMethod((ignore) => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
             Bind<IInvoker>().To<Invoker>();
 
             return;

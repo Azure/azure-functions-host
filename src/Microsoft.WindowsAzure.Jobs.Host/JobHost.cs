@@ -215,7 +215,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     {
                         invokeTrigger = new QueueTrigger
                         {
-                            QueueName = EndpointNames.GetInvokeQueueName(_hostContext.HostId),
+                            QueueName = QueueNames.GetInvokeQueueName(_hostContext.HostId),
                             AccountConnectionString = _runtimeConnectionString
                         };
                     }

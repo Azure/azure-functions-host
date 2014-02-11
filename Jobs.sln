@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk1", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTestsSdk2", "test\Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2\Jobs.Host.UnitTestsSdk2.csproj", "{58DF758F-D7EF-4275-9E25-8A79A5057C69}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.IntegrationTests", "test\Microsoft.WindowsAzure.Jobs.Host.IntegrationTests\Jobs.Host.IntegrationTests.csproj", "{31BAB10E-B319-4F4E-9898-EA7A2740AA19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,10 @@ Global
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31BAB10E-B319-4F4E-9898-EA7A2740AA19}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -85,5 +91,6 @@ Global
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{40728169-A18A-49C8-A618-B585DFA0D0D2} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{58DF758F-D7EF-4275-9E25-8A79A5057C69} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{31BAB10E-B319-4F4E-9898-EA7A2740AA19} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal

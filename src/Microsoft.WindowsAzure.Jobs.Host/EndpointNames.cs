@@ -16,11 +16,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public const string AbortHostInstanceContainerName = ContainerPrefix + "aborts";
 
-        // Queues
-        private const string QueuePrefix = ContainerPrefix;
-
-        private const string InvokeQueuePrefix = QueuePrefix + "invoke-";
-
         // Tables
         // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
         private const string tablePrefix = "AzureJobs";
@@ -44,10 +39,5 @@ namespace Microsoft.WindowsAzure.Jobs
         public const string HostsTableName = tablePrefix + "Hosts";
 
         public const string RunningHostsTableName = tablePrefix + "RunningHosts";
-
-        public static string GetInvokeQueueName(Guid hostId)
-        {
-            return InvokeQueuePrefix + hostId.ToString("N");
-        }
     }
 }
