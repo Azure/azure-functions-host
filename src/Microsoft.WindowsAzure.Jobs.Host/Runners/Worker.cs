@@ -24,11 +24,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute, INotifyNewBlobListener blobListener = null)
         {
-            if (invokeTrigger == null)
-            {
-                throw new ArgumentNullException("invokeTrigger");
-            }
-
             _invokeTrigger = invokeTrigger;
             _blobListener = blobListener;
             if (functionTable == null)
@@ -69,7 +64,10 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            map.AddTriggers(String.Empty, _invokeTrigger);
+            if (_invokeTrigger != null)
+            {
+                map.AddTriggers(String.Empty, _invokeTrigger);
+            }
 
             _listener = new Listener(map, new MyInvoker(this));
         }

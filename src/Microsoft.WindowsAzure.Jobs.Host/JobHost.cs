@@ -209,11 +209,20 @@ namespace Microsoft.WindowsAzure.Jobs
                 try
                 {
                     INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
-                    QueueTrigger invokeTrigger = new QueueTrigger
+                    QueueTrigger invokeTrigger;
+
+                    if (_runtimeConnectionString != null)
                     {
-                        QueueName = EndpointNames.GetInvokeQueueName(_hostContext.HostId),
-                        AccountConnectionString = _runtimeConnectionString
-                    };
+                        invokeTrigger = new QueueTrigger
+                        {
+                            QueueName = EndpointNames.GetInvokeQueueName(_hostContext.HostId),
+                            AccountConnectionString = _runtimeConnectionString
+                        };
+                    }
+                    else
+                    {
+                        invokeTrigger = null;
+                    }
 
                     using (Worker worker = new Worker(invokeTrigger, _hostContext._functionTableLookup, _hostContext._executeFunction, fastpathNotify))
                     {
