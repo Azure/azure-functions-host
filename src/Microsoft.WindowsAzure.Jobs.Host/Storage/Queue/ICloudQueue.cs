@@ -1,4 +1,4 @@
-﻿namespace Microsoft.WindowsAzure.Jobs.Storage.Queues
+﻿namespace Microsoft.WindowsAzure.Jobs.Host.Storage.Queue
 {
     internal interface ICloudQueue
     {

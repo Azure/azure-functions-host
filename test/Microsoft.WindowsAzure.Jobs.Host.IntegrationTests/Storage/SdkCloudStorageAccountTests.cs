@@ -1,6 +1,10 @@
 ﻿using System;
-using Microsoft.WindowsAzure.Jobs.Storage;
-using Microsoft.WindowsAzure.Jobs.Storage.Queues;
+using System.Diagnostics;
+using System.Linq;
+using Microsoft.WindowsAzure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
+using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.StorageClient;
 using Xunit;
 
@@ -9,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.IntegrationTests.Storage.Queues
     public class SdkCloudStorageAccountTests
     {
         [Fact]
-        public void CloudQueueCreateIfNotExist_CreatesQueue()
+        public void CloudQueueCreate_IfNotExist_CreatesQueue()
         {
             // Arrange
             CloudStorageAccount sdkAccount = CreateSdkAccount();
@@ -69,22 +73,188 @@ namespace Microsoft.WindowsAzure.Jobs.Host.IntegrationTests.Storage.Queues
                 // Assert
                 CloudQueueMessage sdkMessage = sdkQueue.GetMessage();
                 Assert.NotNull(sdkMessage);
-
-                try
-                {
-                    Assert.Equal(expectedContent, sdkMessage.AsString);
-                }
-                finally
-                {
-                    sdkQueue.DeleteMessage(sdkMessage);
-                }
-
-                Assert.True(sdkQueue.Exists());
+                Assert.Equal(expectedContent, sdkMessage.AsString);
             }
             finally
             {
                 sdkQueue.Delete();
             }
+        }
+
+        [Fact]
+        public void CloudTableGetOrInsert_IfTableDoesNotExist_CreatesTable()
+        {
+            // Arrange
+            CloudStorageAccount sdkAccount = CreateSdkAccount();
+            string tableName = GetTableName("CreateTable");
+
+            CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
+
+            try
+            {
+                ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
+                ICloudTableClient client = product.CreateCloudTableClient();
+                Assert.NotNull(client); // Guard
+                ICloudTable table = client.GetTableReference(tableName);
+                Assert.NotNull(table); // Guard
+
+                SimpleEntity entity = new SimpleEntity();
+
+                // Act
+                table.GetOrInsert(entity);
+
+                // Assert
+                Assert.True(sdkClient.DoesTableExist(tableName));
+            }
+            finally
+            {
+                if (sdkClient.DoesTableExist(tableName))
+                {
+                    sdkClient.DeleteTable(tableName);
+                }
+            }
+        }
+
+        [Fact]
+        public void CloudTableGetOrInsert_IfEntityDoesNotExist_AddsEntity()
+        {
+            // Arrange
+            CloudStorageAccount sdkAccount = CreateSdkAccount();
+            string tableName = GetTableName("AddEntityDoesNotExist");
+
+            CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
+            TableServiceContext sdkContext = sdkClient.GetDataServiceContext();
+            sdkClient.CreateTableIfNotExist(tableName);
+
+            try
+            {
+                ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
+                ICloudTableClient client = product.CreateCloudTableClient();
+                Assert.NotNull(client); // Guard
+                ICloudTable table = client.GetTableReference(tableName);
+                Assert.NotNull(table); // Guard
+                SimpleEntity insertEntity = new SimpleEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK",
+                    Value = "Foo"
+                };
+
+                // Act
+                SimpleEntity result = table.GetOrInsert(insertEntity);
+
+                // Assert
+                Assert.Same(insertEntity, result);
+            }
+            finally
+            {
+                sdkClient.DeleteTable(tableName);
+            }
+        }
+
+        [Fact]
+        public void CloudTableGetOrInsert_IfEntityExists_ReturnsExistingEntity()
+        {
+            // Arrange
+            CloudStorageAccount sdkAccount = CreateSdkAccount();
+            string tableName = GetTableName("AddEntityExists");
+
+            CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
+            TableServiceContext sdkContext = sdkClient.GetDataServiceContext();
+            sdkClient.CreateTableIfNotExist(tableName);
+            try
+            {
+                SimpleEntity existingEntity = new SimpleEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK",
+                    Value = "ExistingValue"
+                };
+                sdkContext.AddObject(tableName, existingEntity);
+                sdkContext.SaveChanges();
+
+                ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
+                ICloudTableClient client = product.CreateCloudTableClient();
+                Assert.NotNull(client); // Guard
+                ICloudTable table = client.GetTableReference(tableName);
+                Assert.NotNull(table); // Guard
+                SimpleEntity newEntity = new SimpleEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK",
+                    Value = "NewValue"
+                };
+
+                // Act
+                SimpleEntity result = table.GetOrInsert(newEntity);
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal(existingEntity.PartitionKey, result.PartitionKey);
+                Assert.Equal(existingEntity.RowKey, result.RowKey);
+                Assert.Equal(existingEntity.Value, result.Value);
+            }
+            finally
+            {
+                sdkClient.DeleteTable(tableName);
+            }
+        }
+
+        //[Fact]
+        //public void CloudTableGetEntity_ReturnsEntity()
+        //{
+        //    // Arrange
+        //    CloudStorageAccount sdkAccount = CreateSdkAccount();
+        //    string tableName = GetTableName("GetEntity");
+
+        //    CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
+        //    TableServiceContext sdkContext = sdkClient.GetDataServiceContext();
+        //    sdkClient.CreateTableIfNotExist(tableName);
+        //    try
+        //    {
+        //        SimpleEntity existingEntity = new SimpleEntity
+        //        {
+        //            PartitionKey = "PK",
+        //            RowKey = "RK",
+        //            Value = "Foo"
+        //        };
+        //        sdkContext.AddObject(tableName, existingEntity);
+        //        sdkContext.SaveChanges();
+
+        //        ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
+        //        ICloudTableClient client = product.CreateCloudTableClient();
+        //        Assert.NotNull(client); // Guard
+        //        ICloudTable table = client.GetTableReference(tableName);
+        //        Assert.NotNull(table); // Guard
+
+        //        // Act
+        //        SimpleEntity foundEntity = table.GetEntity<SimpleEntity>("PK", "RK");
+
+        //        // Assert
+        //        Assert.NotNull(foundEntity);
+        //        Assert.Equal("Foo", foundEntity.Value);
+        //    }
+        //    finally
+        //    {
+        //        sdkClient.DeleteTable(tableName);
+        //    }
+        //}
+
+        [Fact]
+        public void CloudTableGetOrInsert_IfEntityIsNull_Throws()
+        {
+            // Arrange
+            CloudStorageAccount sdkAccount = CreateSdkAccount();
+            ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
+            ICloudTableClient client = product.CreateCloudTableClient();
+            Assert.NotNull(client); // Guard
+            ICloudTable table = client.GetTableReference("IgnoreTable");
+            Assert.NotNull(table); // Guard
+
+            SimpleEntity entity = null;
+
+            // Act & Assert
+            ExceptionAssert.ThrowsArgumentNull(() => table.GetOrInsert(entity), "entity");
         }
 
         private static ICloudStorageAccount CreateProductUnderTest(CloudStorageAccount account)
@@ -123,6 +293,16 @@ namespace Microsoft.WindowsAzure.Jobs.Host.IntegrationTests.Storage.Queues
         private static string GetQueueName(string infix)
         {
             return String.Format("test-{0}-{1:N}", infix, Guid.NewGuid());
+        }
+
+        private static string GetTableName(string infix)
+        {
+            return String.Format("Test{0}{1:N}", infix, Guid.NewGuid());
+        }
+
+        private class SimpleEntity : TableServiceEntity
+        {
+            public string Value { get; set; }
         }
     }
 }

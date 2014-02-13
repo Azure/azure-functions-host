@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public void RequestTermination(Guid hostInstanceId)
         {
-            BlobClient.WriteBlob(_account, EndpointNames.AbortHostInstanceContainerName, hostInstanceId.ToString("D"), String.Empty);
+            BlobClient.WriteBlob(_account, ContainerNames.AbortHostInstanceContainerName, hostInstanceId.ToString("D"), String.Empty);
         }
     }
 }

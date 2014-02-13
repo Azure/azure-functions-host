@@ -7,7 +7,7 @@
     <ProjectGuid>{0E095CB2-3030-49FF-966C-785F1A55F0C1}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.WindowsAzure.Jobs</RootNamespace>
+    <RootNamespace>Microsoft.WindowsAzure.Jobs.Host</RootNamespace>
     <AssemblyName>Microsoft.WindowsAzure.Jobs.Host</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -69,25 +69,29 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\SimpleWatcher.cs" />
+    <Compile Include="Storage\CloudRequestResult.cs" />
+    <Compile Include="Storage\CloudStorageException.cs" />
+    <Compile Include="TableNames.cs" />
     <Compile Include="Indexers\RemoteFunctionLocation.cs" />
     <Compile Include="QueueNames.cs" />
+    <Compile Include="Runners\HostEntity.cs" />
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
     <Compile Include="Runners\IInvoker.cs" />
-    <Compile Include="Runners\IInvokerFactory.cs" />
     <Compile Include="Runners\InvocationMessage.cs" />
     <Compile Include="Runners\InvocationMessageType.cs" />
     <Compile Include="Runners\Invoker.cs" />
-    <Compile Include="Runners\TableQueryable.cs" />
     <Compile Include="Storage\ICloudStorageAccount.cs" />
-    <Compile Include="Storage\Queues\ICloudQueue.cs" />
-    <Compile Include="Storage\Queues\ICloudQueueClient.cs" />
-    <Compile Include="Storage\Queues\ICloudQueueMessage.cs" />
+    <Compile Include="Storage\Queue\ICloudQueue.cs" />
+    <Compile Include="Storage\Queue\ICloudQueueClient.cs" />
+    <Compile Include="Storage\Queue\ICloudQueueMessage.cs" />
     <Compile Include="Storage\SdkCloudStorageAccount.cs" />
+    <Compile Include="Storage\Table\ICloudTable.cs" />
+    <Compile Include="Storage\Table\ICloudTableClient.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Indexers\FunctionTable.cs" />
-    <Compile Include="EndpointNames.cs" />
+    <Compile Include="ContainerNames.cs" />
     <Compile Include="Runners\HostVersionReader.cs" />
     <Compile Include="Runners\RunningHostTableReader.cs" />
     <Compile Include="Runners\RunningHostTableWriter.cs" />

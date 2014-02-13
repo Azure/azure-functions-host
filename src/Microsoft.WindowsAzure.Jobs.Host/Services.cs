@@ -42,21 +42,21 @@ namespace Microsoft.WindowsAzure.Jobs
         // @@@ Remove this, move to be Ninject based. 
         public IFunctionTable GetFunctionTable()
         {
-            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, EndpointNames.FunctionIndexTableName);
+            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, TableNames.FunctionIndexTableName);
 
             return new FunctionTable(table);
         }
 
         public IRunningHostTableWriter GetRunningHostTableWriter()
         {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostsTableName);
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, TableNames.RunningHostsTableName);
 
             return new RunningHostTableWriter(table);
         }
 
         public IRunningHostTableReader GetRunningHostTableReader()
         {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, EndpointNames.RunningHostsTableName);
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, TableNames.RunningHostsTableName);
 
             return new RunningHostTableReader(table);
         }
@@ -78,21 +78,21 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public ICausalityLogger GetCausalityLogger()
         {
-            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, TableNames.FunctionCausalityLog);
             IFunctionInstanceLookup logger = null; // write-only mode
             return new CausalityLogger(table, logger);
         }
 
         public ICausalityReader GetCausalityReader()
         {
-            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, EndpointNames.FunctionCausalityLog);
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, TableNames.FunctionCausalityLog);
             IFunctionInstanceLookup logger = this.GetFunctionInstanceLookup(); // read-mode
             return new CausalityLogger(table, logger);
         }
 
         public FunctionUpdatedLogger GetFunctionUpdatedLogger()
         {
-            var table = new AzureTable<ExecutionInstanceLogEntity>(_account, EndpointNames.FunctionInvokeLogTableName);
+            var table = new AzureTable<ExecutionInstanceLogEntity>(_account, TableNames.FunctionInvokeLogTableName);
             return new FunctionUpdatedLogger(table);
         }
 
@@ -118,10 +118,10 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
             var tableStatsSummary = GetInvokeStatsTable();
-            var tableMru = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMru);
-            var tableMruByFunction = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunction);
-            var tableMruByFunctionSucceeded = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunctionSucceeded);
-            var tableMruFunctionFailed = GetIndexTable(EndpointNames.FunctionInvokeLogIndexMruFunctionFailed);
+            var tableMru = GetIndexTable(TableNames.FunctionInvokeLogIndexMru);
+            var tableMruByFunction = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunction);
+            var tableMruByFunctionSucceeded = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunctionSucceeded);
+            var tableMruFunctionFailed = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunctionFailed);
 
             return new ExecutionStatsAggregator(
                 tableLookup,
@@ -138,7 +138,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             return new AzureTable<FunctionLocation, FunctionStatsEntity>(
                 _account,
-                EndpointNames.FunctionInvokeStatsTableName,
+                TableNames.FunctionInvokeStatsTableName,
                  row => Tuple.Create("1", row.ToString()));
         }
 
@@ -151,7 +151,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             return new AzureTable<ExecutionInstanceLogEntity>(
                   _account,
-                  EndpointNames.FunctionInvokeLogTableName);
+                  TableNames.FunctionInvokeLogTableName);
         }
     }
 }

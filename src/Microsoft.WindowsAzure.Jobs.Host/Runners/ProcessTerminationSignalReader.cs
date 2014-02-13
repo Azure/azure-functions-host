@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public bool IsTerminationRequested(Guid hostInstanceId)
         {
-            return BlobClient.DoesBlobExist(_account, EndpointNames.AbortHostInstanceContainerName, hostInstanceId.ToString("D"));
+            return BlobClient.DoesBlobExist(_account, ContainerNames.AbortHostInstanceContainerName, hostInstanceId.ToString("D"));
         }
     }
 }

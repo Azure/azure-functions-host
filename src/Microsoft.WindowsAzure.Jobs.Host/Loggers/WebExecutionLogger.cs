@@ -18,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     services.AccountInfo,
                     addHeaderInfo,
-                    EndpointNames.ConsoleOuputLogContainerName
+                    ContainerNames.ConsoleOuputLogContainerName
                 ),
                 Logger = services.GetFunctionUpdatedLogger(),
                 FunctionTable = services.GetFunctionTable(),

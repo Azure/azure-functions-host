@@ -4,9 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.WindowsAzure.Jobs.Internals;
-using Microsoft.WindowsAzure.StorageClient;
 using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Jobs.Internals;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -45,7 +46,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 // Create logging against a live azure account 
 
-                IHostTable hostTable = new HostTable(CloudStorageAccount.Parse(runtimeConnectionString), EndpointNames.HostsTableName);
+                IHostTable hostTable = new HostTable(new SdkCloudStorageAccount(CloudStorageAccount.Parse(runtimeConnectionString)).CreateCloudTableClient());
                  string hostName = GetHostName(functions);
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 SetHostId(_hostId, functions);

@@ -7,6 +7,7 @@ using System.Web.Routing;
 using Dashboard.ViewModels;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.StorageClient;
 using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 

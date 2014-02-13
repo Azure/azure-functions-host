@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
-using Microsoft.WindowsAzure.Jobs.Storage.Queues;
 using Moq;
 using Newtonsoft.Json;
 using Xunit;
@@ -75,7 +77,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
                     {
                         if (!exists)
                         {
-                            throw new InvalidOperationException("Queue does not yet exist.");
+                            throw CreateStorageException(404);
                         }
 
                         messagesAdded.Add(m is FakeMessage ? ((FakeMessage)m).Content : null);
@@ -153,17 +155,22 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
             };
         }
 
-        private static IInvoker CreateProductUnderTest(ICloudQueueClient client)
-        {
-            return new Invoker(client);
-        }
-
         private static ICloudQueueMessage CreateMessage(string content)
         {
             return new FakeMessage
             {
                 Content = content
             };
+        }
+
+        private static IInvoker CreateProductUnderTest(ICloudQueueClient client)
+        {
+            return new Invoker(client);
+        }
+
+        private static CloudStorageException CreateStorageException(int httpStatusCode)
+        {
+            return new CloudStorageException(new CloudRequestResult(httpStatusCode));
         }
 
         private static string ToJson(object value)

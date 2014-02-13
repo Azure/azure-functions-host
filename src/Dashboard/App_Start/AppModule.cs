@@ -1,8 +1,9 @@
 ﻿using System;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Storage;
-using Microsoft.WindowsAzure.Jobs.Storage.Queues;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.StorageClient;
 using Ninject.Modules;
 
@@ -51,7 +52,7 @@ namespace Dashboard
         private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
         {
             CloudBlobClient client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(EndpointNames.VersionContainerName);
+            CloudBlobContainer container = client.GetContainerReference(ContainerNames.VersionContainerName);
             return new HostVersionReader(container);
         }
 

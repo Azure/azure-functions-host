@@ -4,9 +4,9 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     internal static class QueueNames
     {
-        private const string QueuePrefix = "azure-jobs-";
+        private const string Prefix = "azure-jobs-";
 
-        private const string InvokeQueuePrefix = QueuePrefix + "invoke-";
+        private const string InvokeQueuePrefix = Prefix + "invoke-";
 
         public static string GetInvokeQueueName(Guid hostId)
         {

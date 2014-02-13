@@ -44,6 +44,10 @@
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.1.7.0.3\lib\net35-full\Microsoft.WindowsAzure.Configuration.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.WindowsAzure.StorageClient, Version=1.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\WindowsAzure.Storage.1.7.0.0\lib\net35-full\Microsoft.WindowsAzure.StorageClient.dll</HintPath>
+    </Reference>
     <Reference Include="Moq">
       <HintPath>..\..\packages\Moq.4.2.1312.1622\lib\net40\Moq.dll</HintPath>
     </Reference>
@@ -81,8 +85,11 @@
     <Compile Include="PublicSurfaceTests.cs" />
     <Compile Include="QueueNamesTest.cs" />
     <Compile Include="RunnerInterfaces\Logging\ExecutionInstanceLogEntityExtensionsTests.cs" />
+    <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="Runners\InvokerTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
+    <Compile Include="Storage\RequestResultTests.cs" />
+    <Compile Include="Storage\StorageExceptionTests.cs" />
     <Compile Include="TableUnitTests.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostTests.cs" />
