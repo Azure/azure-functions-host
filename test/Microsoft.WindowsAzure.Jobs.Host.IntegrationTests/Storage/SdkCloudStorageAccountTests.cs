@@ -98,7 +98,11 @@ namespace Microsoft.WindowsAzure.Jobs.Host.IntegrationTests.Storage.Queues
                 ICloudTable table = client.GetTableReference(tableName);
                 Assert.NotNull(table); // Guard
 
-                SimpleEntity entity = new SimpleEntity();
+                SimpleEntity entity = new SimpleEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK"
+                };
 
                 // Act
                 table.GetOrInsert(entity);
