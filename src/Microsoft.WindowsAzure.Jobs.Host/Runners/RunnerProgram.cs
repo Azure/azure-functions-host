@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
 using Microsoft.WindowsAzure.StorageClient;
 
@@ -319,7 +320,13 @@ namespace Microsoft.WindowsAzure.Jobs
                 var hasBindErrors = binds.OfType<IMaybeErrorBindResult>().Any(r => r.IsErrorResult);
                 if (!hasBindErrors)
                 {
-                    m.Invoke(null, args);
+                    if (IsAsyncMethod(m))
+                    {
+                        InformNoAsyncSupport();
+                    }
+
+                    object returnValue = m.Invoke(null, args);
+                    HandleFunctionReturnParameter(m, returnValue);
                 }
                 else
                 {
@@ -344,6 +351,54 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             return fpStopWatcher;
+        }
+
+        /// <summary>
+        /// Handles the function return value and logs it, if necessary
+        /// </summary>
+        private void HandleFunctionReturnParameter(MethodInfo m, object returnValue)
+        {
+            Type returnType = m.ReturnType;
+
+            if (returnType == typeof(void))
+            {
+                // No need to do anything
+                return;
+            }
+            else if (returnType.IsSubclassOf(typeof(Task)))
+            {
+                Task t = returnValue as Task;
+                t.Wait();
+
+                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
+                {
+                    dynamic returnTask = returnValue;
+                    object result = returnTask.Result;
+
+                    LogReturnValue(result);
+                }
+            }
+            else
+            {
+                LogReturnValue(returnValue);
+            }
+        }
+
+        private bool IsAsyncMethod(MethodInfo m)
+        {
+            Type returnType = m.ReturnType;
+
+            return returnType.IsSubclassOf(typeof(Task));
+        }
+
+        private void InformNoAsyncSupport()
+        {
+            Console.WriteLine("Async functions are not fully supported. The function will run synchronous.");
+        }
+
+        private void LogReturnValue(object value)
+        {
+            Console.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
         }
 
         private class PostActionOrderComparer : IComparer<BindResult>
