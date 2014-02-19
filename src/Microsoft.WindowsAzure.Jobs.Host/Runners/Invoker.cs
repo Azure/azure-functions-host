@@ -18,7 +18,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Runners
             _client = client;
         }
 
-        public void Invoke(Guid hostId, InvocationMessage message)
+        public void TriggerAndOverride(Guid hostId, TriggerAndOverrideMessage message)
         {
             if (message == null)
             {

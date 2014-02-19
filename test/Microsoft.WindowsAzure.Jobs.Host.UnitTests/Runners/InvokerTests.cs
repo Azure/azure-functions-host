@@ -23,12 +23,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
         }
 
         [Fact]
-        public void Invoke_IfQueueAlreadyExists_AddsExpectedMessage()
+        public void TriggerAndOverride_IfQueueAlreadyExists_AddsExpectedMessage()
         {
             // Arrange
             Guid expectedHostId = CreateGuid();
             string expectedQueueName = QueueNames.GetInvokeQueueName(expectedHostId);
-            InvocationMessage expectedMessage = CreateInvocationMessage();
+            TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
 
@@ -46,7 +46,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
             IInvoker product = CreateProductUnderTest(client);
 
             // Act
-            product.Invoke(expectedHostId, expectedMessage);
+            product.TriggerAndOverride(expectedHostId, expectedMessage);
 
             // Assert
             string expectedContent = ToJson(expectedMessage);
@@ -54,12 +54,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
         }
 
         [Fact]
-        public void Invoke_IfQueueDoesNotAlreadyExist_AddsExpectedMessage()
+        public void TriggerAndOverride_IfQueueDoesNotAlreadyExist_AddsExpectedMessage()
         {
             // Arrange
             Guid expectedHostId = CreateGuid();
             string expectedQueueName = QueueNames.GetInvokeQueueName(expectedHostId);
-            InvocationMessage expectedMessage = CreateInvocationMessage();
+            TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
 
@@ -89,7 +89,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
             IInvoker product = CreateProductUnderTest(client);
 
             // Act
-            product.Invoke(expectedHostId, expectedMessage);
+            product.TriggerAndOverride(expectedHostId, expectedMessage);
 
             // Assert
             string expectedContent = ToJson(expectedMessage);
@@ -97,15 +97,15 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
         }
 
         [Fact]
-        public void Invoke_IfMessageIsNull_Throws()
+        public void TriggerAndOverride_IfMessageIsNull_Throws()
         {
             // Arrange
             Guid hostId = CreateGuid();
-            InvocationMessage message = null;
+            TriggerAndOverrideMessage message = null;
             IInvoker product = CreateProductUnderTest(CreateDummyClient());
 
             // Act & Assert
-            ExceptionAssert.ThrowsArgumentNull(() => product.Invoke(hostId, message), "message");
+            ExceptionAssert.ThrowsArgumentNull(() => product.TriggerAndOverride(hostId, message), "message");
         }
 
         private static IDictionary<string, string> CreateArguments()
@@ -140,15 +140,14 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
             return Guid.NewGuid();
         }
 
-        private static InvocationMessage CreateInvocationMessage()
+        private static TriggerAndOverrideMessage CreateTriggerMessage()
         {
             Guid expectedId = CreateGuid();
             string expectedFunctionId = CreateFunctionId();
             IDictionary<string, string> expectedArguments = CreateArguments();
 
-            return new InvocationMessage
+            return new TriggerAndOverrideMessage
             {
-                Type = InvocationMessageType.TriggerAndOverride,
                 Id = expectedId,
                 FunctionId = expectedFunctionId,
                 Arguments = expectedArguments
@@ -175,7 +174,12 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
 
         private static string ToJson(object value)
         {
-            return JsonConvert.SerializeObject(value, Formatting.Indented);
+            JsonSerializerSettings settings = new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            };
+
+            return JsonConvert.SerializeObject(value, Formatting.Indented, settings);
         }
 
         private class FakeMessage : ICloudQueueMessage

@@ -79,12 +79,15 @@
     <Compile Include="Engine\Runner\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="IntervalSeparationTimerTests.cs" />
+    <Compile Include="JsonTypeNameAttributeTests.cs" />
     <Compile Include="LinearSpeedupTimerCommandTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
+    <Compile Include="PolymorphicJsonConverterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />
     <Compile Include="QueueNamesTest.cs" />
     <Compile Include="RunnerInterfaces\Logging\ExecutionInstanceLogEntityExtensionsTests.cs" />
+    <Compile Include="Runners\HostMessageTests.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="Runners\InvokerTests.cs" />
     <Compile Include="SelfWatchTests.cs" />

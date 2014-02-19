@@ -142,47 +142,58 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private void InvokeFromDashboard(CloudQueueMessage message)
         {
-            InvocationMessage model = JsonCustom.DeserializeObject<InvocationMessage>(message.AsString);
+            HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
 
             if (model == null)
             {
                 throw new InvalidOperationException("Invalid invocation message.");
             }
 
-            switch (model.Type)
-            {
-                case InvocationMessageType.TriggerAndOverride:
-                    FunctionInvokeRequest request = CreateInvokeRequest(model);
-                    _executor.Execute(request);
-                    break;
+            TriggerAndOverrideMessage triggerOverrideModel = model as TriggerAndOverrideMessage;
 
-                default:
-                    string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);
-                    throw new NotSupportedException(error);
+            if (triggerOverrideModel != null)
+            {
+                FunctionInvokeRequest request = CreateInvokeRequest(triggerOverrideModel);
+                _executor.Execute(request);
+            }
+            else
+            {
+                string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);
+                throw new NotSupportedException(error);
             }
         }
 
-        private FunctionInvokeRequest CreateInvokeRequest(InvocationMessage message)
+        private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message)
         {
-            return CreateInvokeRequest(message, _functionTable);
+            FunctionDefinition function = _functionTable.Lookup(message.FunctionId);
+            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments);
+            request.Id = message.Id;
+            request.TriggerReason = message.GetTriggerReason();
+            return request;
         }
 
-        internal static FunctionInvokeRequest CreateInvokeRequest(InvocationMessage message, IFunctionTableLookup functionTable)
+        internal static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, TriggerAndOverrideMessage message)
         {
-            if (message == null)
+            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments);
+            request.Id = message.Id;
+            request.TriggerReason = message.GetTriggerReason();
+            return request;
+        }
+
+        private static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, IDictionary<string, string> arguments)
+        {
+            if (function == null)
             {
-                throw new ArgumentNullException("message");
+                throw new ArgumentNullException("function");
             }
 
-            if (functionTable == null)
+            if (arguments == null)
             {
-                throw new ArgumentNullException("functionTable");
+                throw new ArgumentNullException("arguments");
             }
 
-            FunctionDefinition function = functionTable.Lookup(message.FunctionId);
             RuntimeBindingInputs inputs = new RuntimeBindingInputs(function.Location);
             ParameterRuntimeBinding[] boundArguments = new ParameterRuntimeBinding[function.Flow.Bindings.Length];
-            IDictionary<string, string> invokeStrings = message.Arguments;
 
             for (int index = 0; index < boundArguments.Length; index++)
             {
@@ -191,13 +202,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 string parameterName = staticBinding.Name;
                 string value;
 
-                if (!invokeStrings.TryGetValue(parameterName, out value))
+                if (!arguments.TryGetValue(parameterName, out value))
                 {
                     value = null;
                 }
 
                 ParameterRuntimeBinding boundArgument;
-
 
                 try
                 {
@@ -211,15 +221,14 @@ namespace Microsoft.WindowsAzure.Jobs
                     };
                 }
 
-
                 boundArguments[index] = boundArgument;
             }
-            FunctionInvokeRequest request = new FunctionInvokeRequest();
-            request.Id = message.Id;
-            request.Location = function.Location;
-            request.Args = boundArguments;
-            request.TriggerReason = new InvokeTriggerReason { Message = "Invoked from Dashboard." };
-            return request;
+
+            return new FunctionInvokeRequest
+            {
+                Location = function.Location,
+                Args = boundArguments
+            };
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
@@ -360,7 +369,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             catch (InvalidOperationException ex)
             {
-                return new FailedParameterRuntimeBinding {BindingErrorMessage = ex.Message};
+                return new FailedParameterRuntimeBinding { BindingErrorMessage = ex.Message };
             }
         }
 

@@ -115,21 +115,77 @@ namespace Dashboard.Controllers
 
         public ActionResult Run(string functionId)
         {
-            RunFunctionViewModel model = CreateRunFunctionModel(functionId);
+            FunctionDefinition function = GetFunction(functionId);
 
-            if (model == null)
+            if (function == null)
             {
                 return HttpNotFound();
             }
+
+            var model = CreateRunFunctionViewModel(function, CreateParameters(function), "Run", null);
 
             return View(model);
         }
 
         [HttpPost]
-        public ActionResult Run(string functionId, FormCollection form)
+        public ActionResult Run(string functionId, Guid hostId, FormCollection form)
         {
-            FunctionDefinition function = _functionTableLookup.Lookup(functionId);
+            FunctionDefinition function = GetFunction(functionId);
 
+            return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.RunFromDashboard, null);
+        }
+
+        public ActionResult Replay(string parentId)
+        {
+            Guid parent;
+            ExecutionInstanceLogEntity parentLog;
+            FunctionDefinition function = GetFunctionFromInstance(parentId, out parent, out parentLog);
+
+            if (function == null)
+            {
+                return HttpNotFound();
+            }
+
+            var model = CreateRunFunctionViewModel(function, CreateParameters(function, parentLog), "Replay", parent);
+
+            return View(model);
+        }
+
+        [HttpPost]
+        public ActionResult Replay(string parentId, Guid hostId, FormCollection form)
+        {
+            Guid parent;
+            FunctionDefinition function = GetFunctionFromInstance(parentId, out parent);
+
+            return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
+        }
+
+        private ExecutionInstanceLogEntity CreateLogEntity(FunctionDefinition function, TriggerAndOverrideMessage message)
+        {
+            FunctionInvokeRequest instance = Worker.CreateInvokeRequest(function, message);
+            return new ExecutionInstanceLogEntity
+            {
+                QueueTime = DateTime.UtcNow,
+                FunctionInstance = instance
+            };
+        }
+
+        private RunFunctionViewModel CreateRunFunctionViewModel(FunctionDefinition function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
+        {
+            return new RunFunctionViewModel
+            {
+                HostId = function.HostId,
+                FunctionId = function.Location.GetId(),
+                Parameters = parameters,
+                ParentId = parentId,
+                FunctionName = function.Location.GetShortName(),
+                HostIsNotRunning = !IsHostRunning(function),
+                SubmitText = submitText
+            };
+        }
+
+        private ActionResult Invoke(Guid hostId, FormCollection form, FunctionDefinition function, string reason, Guid? parentId)
+        {
             if (function == null)
             {
                 return HttpNotFound();
@@ -137,50 +193,36 @@ namespace Dashboard.Controllers
 
             IDictionary<string, string> arguments = GetArguments(form);
 
-            InvocationMessage message = new InvocationMessage
+            Guid id = Guid.NewGuid();
+
+            TriggerAndOverrideMessage message = new TriggerAndOverrideMessage
             {
-                 Type = InvocationMessageType.TriggerAndOverride,
-                 Id = Guid.NewGuid(),
-                 FunctionId = functionId,
-                 Arguments = arguments,
+                Id = id,
+                FunctionId = function.Location.GetId(),
+                Arguments = arguments,
+                ParentId = parentId,
+                Reason = reason
             };
 
-            ExecutionInstanceLogEntity logEntity = CreateLogEntity(message);
-
+            ExecutionInstanceLogEntity logEntity = CreateLogEntity(function, message);
             _functionUpdatedLogger.Log(logEntity);
 
-            _invoker.Invoke(function.HostId, message);
+            _invoker.TriggerAndOverride(hostId, message);
 
-            return RedirectToAction("FunctionInstance", new { id = message.Id });
+            return RedirectToAction("FunctionInstance", new { id = id });
         }
 
-        private ExecutionInstanceLogEntity CreateLogEntity(InvocationMessage message)
+        private bool IsHostRunning(FunctionDefinition function)
         {
-            FunctionInvokeRequest instance = Worker.CreateInvokeRequest(message, _functionTableLookup);
-            return new ExecutionInstanceLogEntity {
-                QueueTime = DateTime.UtcNow,
-                FunctionInstance = instance
-            };
-        }
-
-        private RunFunctionViewModel CreateRunFunctionModel(string functionId)
-        {
-            FunctionDefinition func = _functionTableLookup.Lookup(functionId);
-
-            if (func == null)
-            {
-                return null;
-            }
-
-            RouteValueDictionary actionRouteValues = new RouteValueDictionary(RouteData.Values);
-            actionRouteValues.Add("functionId", functionId);
-
             RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-            bool hostIsNotRunning = !DashboardController.HasValidHeartbeat(func, heartbeats);
+            return DashboardController.HasValidHeartbeat(function, heartbeats);
+        }
 
+        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function)
+        {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
 
-            foreach (ParameterStaticBinding binding in func.Flow.Bindings)
+            foreach (ParameterStaticBinding binding in function.Flow.Bindings)
             {
                 FunctionParameterViewModel parameter = new FunctionParameterViewModel
                 {
@@ -190,15 +232,28 @@ namespace Dashboard.Controllers
                 parameters.Add(parameter);
             }
 
-            return new RunFunctionViewModel
+            return parameters;
+        }
+
+        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function, ExecutionInstanceLogEntity log)
+        {
+            List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
+
+            int index = 0;
+
+            foreach (ParameterStaticBinding binding in function.Flow.Bindings)
             {
-                FunctionId = func.Location.GetId(),
-                FunctionName = func.Location.GetShortName(),
-                HostId = func.HostId,
-                HostIsNotRunning = hostIsNotRunning,
-                ActionRouteValues = actionRouteValues,
-                Parameters = parameters
-            };
+                FunctionParameterViewModel parameter = new FunctionParameterViewModel
+                {
+                    Name = binding.Name,
+                    Description = binding.Description,
+                    Value = log.FunctionInstance.Args[index].ConvertToInvokeString()
+                };
+                parameters.Add(parameter);
+                index++;
+            }
+
+            return parameters;
         }
 
         private static IDictionary<string, string> GetArguments(NameValueCollection form)
@@ -217,6 +272,35 @@ namespace Dashboard.Controllers
             }
 
             return arguments;
+        }
+
+        private FunctionDefinition GetFunction(string functionId)
+        {
+            return _functionTableLookup.Lookup(functionId);
+        }
+
+        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed)
+        {
+            ExecutionInstanceLogEntity ignored;
+            return GetFunctionFromInstance(id, out parsed, out ignored);
+        }
+
+        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed, out ExecutionInstanceLogEntity instanceLog)
+        {
+            if (!Guid.TryParse(id, out parsed))
+            {
+                instanceLog = null;
+                return null;
+            }
+
+            instanceLog = _functionInstanceLookup.Lookup(parsed);
+
+            if (instanceLog == null)
+            {
+                return null;
+            }
+
+            return GetFunction(instanceLog.FunctionInstance.Location.GetId());
         }
 
         public ActionResult FunctionInstance(string id)

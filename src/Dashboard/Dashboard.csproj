@@ -225,6 +225,8 @@
     <Content Include="Views\Function\SearchBlob.cshtml" />
     <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />
     <Content Include="Views\Function\Run.cshtml" />
+    <Content Include="Views\Function\Replay.cshtml" />
+    <Content Include="Views\Function\_Invoke.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

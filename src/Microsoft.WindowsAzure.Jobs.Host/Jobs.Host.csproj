@@ -69,6 +69,10 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\SimpleWatcher.cs" />
+    <Compile Include="JsonTypeNameAttribute.cs" />
+    <Compile Include="PolymorphicJsonConverter.cs" />
+    <Compile Include="Runners\TriggerAndOverrideMessage.cs" />
+    <Compile Include="Runners\TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="Storage\CloudRequestResult.cs" />
     <Compile Include="Storage\CloudStorageException.cs" />
     <Compile Include="TableNames.cs" />
@@ -78,8 +82,7 @@
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
     <Compile Include="Runners\IInvoker.cs" />
-    <Compile Include="Runners\InvocationMessage.cs" />
-    <Compile Include="Runners\InvocationMessageType.cs" />
+    <Compile Include="Runners\HostMessage.cs" />
     <Compile Include="Runners\Invoker.cs" />
     <Compile Include="Storage\ICloudStorageAccount.cs" />
     <Compile Include="Storage\Queue\ICloudQueue.cs" />

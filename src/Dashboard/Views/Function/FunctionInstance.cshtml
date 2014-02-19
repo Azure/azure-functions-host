@@ -89,6 +89,8 @@
             }
         </p>
 
+        <p>@Html.ActionLink("Replay function", "Replay", new { parentId = Model.InvocationLogViewModel.Id }, new { @class = "btn btn-primary" })</p>
+
         <p>
             <span class="glyphicon glyphicon-flash"></span> @trigger.ToString()
             @if (Model.Ancestor != null)

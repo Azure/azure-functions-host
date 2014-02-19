@@ -14,28 +14,7 @@
     </div>
 </div>
 
-@using (Html.BeginRouteForm("Default", Model.ActionRouteValues, FormMethod.Post, new Dictionary<string, object> { { "class", "form" }, { "role", "form" } }))
+@using (Html.BeginForm("Run", "Function", new { functionId = Model.FunctionId }, FormMethod.Post, new Dictionary<string, object> { { "class", "form" }, { "role", "form" } }))
 {
-    if (Model.HostIsNotRunning)
-    {
-        <span title="Warning" class="glyphicon glyphicon-exclamation-sign not-running"></span> <span class="not-running">Host is not running; requests will be queued but not execute until the host is started.</span>
-    }
-    <fieldset>
-        @foreach (FunctionParameterViewModel parameter in Model.Parameters)
-        {
-            string parameterName = parameter.Name;
-            <div class="form-group row">
-                <div class="col-md-6">
-                    <label for="argument-@parameterName" class="control-label">@parameterName</label>
-                    <small>@parameter.Description</small>
-                    <input type="text" id="argument-@parameterName" name="argument-@parameterName" class="form-control" />
-                </div>
-            </div>
-        }
-        <input type="hidden" name="hostId" value="@Model.HostId" />
-        <input type="hidden" name="functionId" value="@Model.FunctionId" />
-        <div class="form-group">
-            <button type="submit" class="btn btn-primary">Invoke</button>
-        </div>
-    </fieldset>
+    Html.RenderPartial("_Invoke", Model);
 }
