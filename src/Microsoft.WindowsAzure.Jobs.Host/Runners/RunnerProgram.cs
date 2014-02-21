@@ -356,7 +356,7 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Handles the function return value and logs it, if necessary
         /// </summary>
-        private void HandleFunctionReturnParameter(MethodInfo m, object returnValue)
+        private static void HandleFunctionReturnParameter(MethodInfo m, object returnValue)
         {
             Type returnType = m.ReturnType;
 
@@ -365,15 +365,15 @@ namespace Microsoft.WindowsAzure.Jobs
                 // No need to do anything
                 return;
             }
-            else if (returnType.IsSubclassOf(typeof(Task)))
+            else if (IsAsyncMethod(m))
             {
                 Task t = returnValue as Task;
                 t.Wait();
 
                 if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
                 {
-                    dynamic returnTask = returnValue;
-                    object result = returnTask.Result;
+                    PropertyInfo resultProperty = returnType.GetProperty("Result");
+                    object result = resultProperty.GetValue(returnValue);
 
                     LogReturnValue(result);
                 }
@@ -384,19 +384,19 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private bool IsAsyncMethod(MethodInfo m)
+        private static bool IsAsyncMethod(MethodInfo m)
         {
             Type returnType = m.ReturnType;
 
-            return returnType.IsSubclassOf(typeof(Task));
+            return typeof(Task).IsAssignableFrom(returnType);
         }
 
-        private void InformNoAsyncSupport()
+        private static void InformNoAsyncSupport()
         {
-            Console.WriteLine("Async functions are not fully supported. The function will run synchronous.");
+            Console.WriteLine("Warning: This asynchronous method will be run synchronously.");
         }
 
-        private void LogReturnValue(object value)
+        private static void LogReturnValue(object value)
         {
             Console.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
         }
