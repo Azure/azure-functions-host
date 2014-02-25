@@ -128,6 +128,7 @@ namespace Dashboard.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Run(string functionId, Guid hostId, FormCollection form)
         {
             FunctionDefinition function = GetFunction(functionId);
@@ -152,6 +153,7 @@ namespace Dashboard.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Replay(string parentId, Guid hostId, FormCollection form)
         {
             Guid parent;

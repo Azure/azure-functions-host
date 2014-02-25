@@ -1,5 +1,6 @@
 ﻿@using Dashboard.ViewModels
 @model RunFunctionViewModel
+@Html.AntiForgeryToken()
 @if (Model.HostIsNotRunning)
 {
     <span title="Warning" class="glyphicon glyphicon-exclamation-sign not-running"></span> <span class="not-running">Host is not running; requests will be queued but not execute until the host is started.</span>
