@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.microsoft.com/2011/12/aaptperffun#1">
+  <metadata
+      testName ="FunctionChaining"
+      teamName ="SimpleBatch"
+      description="Queue function chaining">
+
+    <trackingVariation name="HostStart">
+      <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
+        <target value="5000" labConfig="default" priority = "1" />
+      </metric>
+    </trackingVariation>
+    <trackingVariation name="QueueChain">
+      <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
+        <target value="20000" labConfig="default" priority = "1" />
+      </metric>
+    </trackingVariation>
+  </metadata>
+
+  <commands>
+    <command name="RunTest" wait="Exit">
+      Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario.exe /CS={ConnectionString}
+    </command>
+  </commands>
+
+  <plan>
+    <run command="RunTest" role="client" output="true" measure="StartAndStop"  />
+  </plan>
+</config>
