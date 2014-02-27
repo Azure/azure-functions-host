@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
@@ -8,7 +8,7 @@ using Moq;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Protocols
 {
     public class InvokerTests
     {

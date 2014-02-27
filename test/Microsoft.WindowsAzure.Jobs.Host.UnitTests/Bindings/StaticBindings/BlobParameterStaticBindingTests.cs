@@ -2,7 +2,7 @@
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Engine.Runner.StaticBindings
+namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Bindings.StaticBindings
 {
     public class BlobParameterStaticBindingTests
     {

@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {
     internal class Invoker : IInvoker
     {

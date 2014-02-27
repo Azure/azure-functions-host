@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Web.Mvc;
-using System.Web.Routing;
 using Dashboard.ViewModels;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.StorageClient;
 using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 

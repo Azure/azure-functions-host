@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Protocols
 {
     public class HostMessageTests
     {

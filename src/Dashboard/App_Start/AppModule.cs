@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.StorageClient;

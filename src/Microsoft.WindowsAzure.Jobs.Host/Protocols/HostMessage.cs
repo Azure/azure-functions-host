@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {
     [JsonConverter(typeof(HostMessageConverter))]
     internal class HostMessage

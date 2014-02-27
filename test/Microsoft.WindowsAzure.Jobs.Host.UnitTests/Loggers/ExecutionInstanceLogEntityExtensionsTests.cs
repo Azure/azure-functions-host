@@ -1,7 +1,7 @@
 ﻿using System;
 using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.UnitTests
+namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Loggers
 {
     public class ExecutionInstanceLogEntityExtensionsTests
     {

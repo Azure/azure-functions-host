@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {
     internal interface IInvoker
     {

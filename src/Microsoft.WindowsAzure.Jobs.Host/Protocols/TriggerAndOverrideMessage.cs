@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.Runners
+namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {
     [JsonTypeName("TriggerAndOverride")]
     internal class TriggerAndOverrideMessage : HostMessage

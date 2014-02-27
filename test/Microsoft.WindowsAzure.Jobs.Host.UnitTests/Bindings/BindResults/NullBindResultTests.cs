@@ -1,8 +1,8 @@
 ﻿using Xunit;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
+namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Bindings.BindResults
 {
-    public class ErrorBindResultTests
+    public class NullBindResultTests
     {
         [Fact]
         public void GetStatus_MessageHasNewLines_EncodedCorrectly()
