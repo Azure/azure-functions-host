@@ -51,7 +51,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
-            var path = (string.IsNullOrWhiteSpace(invokeString)) ? this.Path : new CloudBlobPath(invokeString);
+            var path = (string.IsNullOrWhiteSpace(invokeString) && !Path.HasParameters()) ? this.Path : new CloudBlobPath(invokeString);
 
             return Bind(inputs, path);
         }

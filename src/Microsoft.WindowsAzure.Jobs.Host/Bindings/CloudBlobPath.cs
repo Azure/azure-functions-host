@@ -128,6 +128,11 @@ namespace Microsoft.WindowsAzure.Jobs
             return Parser.GetParameterNames(this.ToString());
         }
 
+        public bool HasParameters()
+        {
+            return Parser.GetParameterNames(this.ToString()).Any();
+        }
+
 
         public CloudBlob Resolve(CloudStorageAccount account)
         {
