@@ -213,7 +213,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     boundArgument = staticBinding.BindFromInvokeString(inputs, value);
                 }
-                catch (InvalidOperationException exception)
+                catch (Exception exception)
                 {
                     boundArgument = new FailedParameterRuntimeBinding
                     {
