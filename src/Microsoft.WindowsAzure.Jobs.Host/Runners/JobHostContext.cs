@@ -5,8 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Jobs.Internals;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -46,13 +48,15 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 // Create logging against a live azure account 
 
-                IHostTable hostTable = new HostTable(new SdkCloudStorageAccount(CloudStorageAccount.Parse(runtimeConnectionString)).CreateCloudTableClient());
-                 string hostName = GetHostName(functions);
+                CloudStorageAccount account = CloudStorageAccount.Parse(runtimeConnectionString);
+                IHostTable hostTable = new HostTable(new SdkCloudStorageAccount(account).CreateCloudTableClient());
+                string hostName = GetHostName(functions);
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 SetHostId(_hostId, functions);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString);
+                PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString,
+                    new PersistentQueue<HostStartupMessage>(account));
 
                 var services = GetServices(runtimeConnectionString);
 
@@ -223,29 +227,16 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString, string runtimeConnectionString)
+        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString,
+            string runtimeConnectionString, IPersistentQueue<HostStartupMessage> logger)
         {
-            var services = GetServices(runtimeConnectionString);
-            var cloudTable = services.GetFunctionTable();
-
-            FunctionDefinition[] funcs = cloudTable.ReadAll();
-
-            string scopePrefix = FunctionStore.GetPrefix(dataConnectionString);
-
-            foreach (var func in funcs)
+            HostStartupMessage message = new HostStartupMessage
             {
-                // ### This isn't right. 
-                if (func.Location.GetId().StartsWith(scopePrefix, StringComparison.Ordinal))
-                {
-                    cloudTable.Delete(func);
-                }
-            }
-
-            // Publish new
-            foreach (var func in functionTableLookup.ReadAll())
-            {
-                cloudTable.Add(func);
-            }
+                HostInstanceId = _hostInstanceId,
+                HostId = _hostId,
+                Functions = functionTableLookup.ReadAll()
+            };
+            logger.Enqueue(message);
         }
 
         private static void LogRole(TextWriter output)

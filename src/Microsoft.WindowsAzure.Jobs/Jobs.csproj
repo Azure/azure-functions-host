@@ -73,8 +73,6 @@
     <Compile Include="QueueInputAttribute.cs" />
     <Compile Include="DescriptionAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
-    <Compile Include="BlobInputsAttribute.cs" />
-    <Compile Include="ConfigAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="IFunctionToken.cs" />
     <Compile Include="IConfiguration.cs" />

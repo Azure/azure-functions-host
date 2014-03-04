@@ -14,6 +14,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // This is used at runtime bindings. 
         public string AccountConnectionString { get; set; }
 
+        public string FullName { get; set; }
+
         // Uniquely stringize this object. Can be used for equality comparisons. 
         // $$$ Is this unique even for different derived types? 
         // $$$ This vs. ToString?
@@ -51,13 +53,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public override int GetHashCode()
         {
             return GetId().GetHashCode();
-        }
-
-        // Read a file from the function's location. 
-        // $$$ Should this be byte[] instead? It's string because we expect caller will deserialize with JSON.
-        public virtual string ReadFile(string filename)
-        {
-            return null; // not available.
         }
     }
 }

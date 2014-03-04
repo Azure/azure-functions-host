@@ -8,6 +8,5 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         IDictionary<string, string> NameParameters { get; } 
         string AccountConnectionString { get; }
-        string ReadFile(string filename); // $$$ Throw or null on missing file?
     }
 }

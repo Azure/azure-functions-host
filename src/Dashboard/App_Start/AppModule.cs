@@ -1,5 +1,6 @@
 ﻿using System;
 using AzureTables;
+using Dashboard.Indexers;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
@@ -43,6 +44,7 @@ namespace Dashboard
             // bind against azure storage accounts. 
             Bind<IFunctionInstanceLookup>().ToMethod(() => services.GetFunctionInstanceLookup());
             Bind<IFunctionTableLookup>().ToMethod(() => services.GetFunctionTable());
+            Bind<IFunctionTable>().ToMethod(() => services.GetFunctionTable());
             Bind<IRunningHostTableReader>().ToMethod(() => services.GetRunningHostTableReader());
             Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
             Bind<IFunctionInstanceQuery>().ToMethod(() => services.GetFunctionInstanceQuery());
@@ -52,6 +54,8 @@ namespace Dashboard
             Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
             Bind<IFunctionsInJobReader>().To<FunctionsInJobReader>();
             Bind<IInvoker>().To<Invoker>();
+            Bind<IPersistentQueue<HostStartupMessage>>().To<PersistentQueue<HostStartupMessage>>();
+            Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
         }
 
         private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)

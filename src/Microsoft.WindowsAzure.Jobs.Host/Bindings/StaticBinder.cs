@@ -50,18 +50,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private static ParameterStaticBinding Bind(ConfigAttribute attr, ParameterInfo parameter)
-        {
-            string filename = attr.Filename;
-            if (string.IsNullOrEmpty(filename))
-            {
-                // $$$ Settle on convention 
-                // Don't conflict with app.config filenames either. 
-                filename = String.Format(CultureInfo.InvariantCulture, "{0}.config.txt", parameter.Name);
-            }
-            return new ConfigParameterStaticBinding { Filename = filename };
-        }
-
         private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
         {
             var isRefKeyword = Utility.IsRefKeyword(parameter);
@@ -100,16 +88,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return new TableParameterStaticBinding
             {
                 TableName = tableName,
-            };
-        }
-
-        private static ParameterStaticBinding Bind(BlobInputsAttribute attr, ParameterInfo parameter)
-        {
-            var path = new CloudBlobPath(attr.BlobPathPattern);
-
-            return new BlobAggregateParameterStaticBinding
-            {
-                BlobPathPattern = new CloudBlobPath(attr.BlobPathPattern),
             };
         }
 

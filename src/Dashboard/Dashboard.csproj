@@ -162,6 +162,8 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Indexers\IIndexer.cs" />
+    <Compile Include="Indexers\Indexer.cs" />
     <Compile Include="Infrastructure\CloudBlobDescriptorModel.cs" />
     <Compile Include="Infrastructure\CloudStorageAccountTypeConverter.cs" />
     <Compile Include="Infrastructure\HostVersionConfigWrapper.cs" />

@@ -33,6 +33,7 @@ namespace Microsoft.WindowsAzure.Jobs
             MethodInfo = method;
             ShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", MethodInfo.DeclaringType.Name, MethodInfo.Name);
             Id = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", MethodInfo.DeclaringType.FullName, MethodInfo.Name);
+            FullName = Id;
 
             this.AssemblyQualifiedTypeName = MethodInfo.DeclaringType.AssemblyQualifiedName;
             this.MethodName = MethodInfo.Name;
@@ -66,14 +67,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string GetId()
         {
             return Id;
-        }
-
-        public override string ReadFile(string filename)
-        {
-            var root = Path.GetDirectoryName(this.MethodInfo.DeclaringType.Assembly.Location);
-
-            string path = Path.Combine(root, filename);
-            return File.ReadAllText(path);
         }
     }
 }

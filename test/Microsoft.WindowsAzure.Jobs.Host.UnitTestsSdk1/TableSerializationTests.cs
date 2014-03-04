@@ -33,12 +33,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 Id = g,
                 TriggerReason = new BlobTriggerReason { },
-                Location = new RemoteFunctionLocation
+                Location = new MethodInfoFunctionLocation
                 {
                     AccountConnectionString = "some connection string",
-                    DownloadSource = new CloudBlobPath("container", "blob"),
-                    MethodName = "method",
-                    TypeName = "type"
+                    MethodName = "method"
                 },
                 ParameterLogBlob = Blob("logs", "param"),
                 SchemaNumber = 4,
@@ -137,11 +135,10 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             FunctionDefinition func = new FunctionDefinition
             {
                 Description = "description",
-                Location = new LocalFunctionLocation
+                Location = new MethodInfoFunctionLocation
                 {
-                    AssemblyPath = @"unknown:\unknown",
+                    Id = "some Id",
                     MethodName = "method",
-                    TypeName = "type"
                 },
                 Trigger = new FunctionTrigger
                 {

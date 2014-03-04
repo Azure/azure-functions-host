@@ -87,7 +87,7 @@ namespace Dashboard.Controllers
             // Do some analysis to find inputs, outputs, 
             var model = new FunctionInstancesViewModel
             {
-                FunctionName = functionName,
+                FunctionFullName = func.Location.FullName,
                 Success = success,
                 Page = page,
                 PageSize = pageSize.Value

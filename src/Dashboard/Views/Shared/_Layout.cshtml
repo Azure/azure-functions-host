@@ -22,5 +22,9 @@
     {
         <div class="alert alert-@TempData["Message.Level"]">@TempData["Message.Text"]</div>
     }
+    @if (Context.Items.Contains("IndexingException"))
+    {
+        <div class="alert alert-warning">Error updating dashboard data: @Context.Items["IndexingException"]</div>
+    }
     @RenderBody()
 </div>

@@ -121,14 +121,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
         {
-            // For a RemoteFunctionLocation, we could download it and invoke. But assuming caller already did that. 
-            // (Caller can cache the downloads and so do it more efficiently)
-            var localLocation = invoke.Location as LocalFunctionLocation;
-            if (localLocation != null)
-            {
-                return localLocation.GetLocalMethod();
-            }
-
             var methodLocation = invoke.Location as MethodInfoFunctionLocation;
             if (methodLocation != null)
             {

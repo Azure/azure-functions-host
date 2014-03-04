@@ -10,7 +10,7 @@
 
 <div class="row">
     <div class="col-md-8">
-        <h3>Invocation Log <small>@Model.FunctionName</small></h3>
+        <h3>Invocation Log <small>@Model.FunctionFullName</small></h3>
         <p>@Html.ActionLink("Run function", "Run", new { functionId = Model.FunctionId }, new { @class = "btn btn-primary" })</p>
     </div>
     <div class="col-md-4">
@@ -34,7 +34,7 @@
     $(function () {
         $('input[name="status"]').on('change', function () {
             var value = $(this).attr('value');
-            var url = '@Html.Raw(HttpUtility.JavaScriptStringEncode(Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.PageSize })))';
+            var url = '@Html.Raw(HttpUtility.JavaScriptStringEncode(Url.Action("FunctionInstances", "Function", new { Model.FunctionId, Model.PageSize })))';
 
             if (value == "All") {
                 window.location = url;
@@ -70,7 +70,7 @@
     <ul class="pager">
         @if (Model.Page > 1)
         {
-            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
+            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionId, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
         }
         else
         {
@@ -83,7 +83,7 @@
         }
         else
         {
-            <li class="next"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page + 1 })">Older &rarr;</a></li>
+            <li class="next"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionId, Model.Success, Model.PageSize, Page = Model.Page + 1 })">Older &rarr;</a></li>
         }
     </ul>
 }
@@ -95,7 +95,7 @@ else
         <p class="alert alert-info">No more elements in the invocation log</p>
 
         <ul class="pager">
-            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionName, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
+            <li class="previous"><a href="@Url.Action("FunctionInstances", "Function", new { Model.FunctionId, Model.Success, Model.PageSize, Page = Model.Page - 1 })">&larr; Newer</a></li>
             @*<li class="next disabled"><a href="#">Older &rarr;</a></li>*@
         </ul>
     }

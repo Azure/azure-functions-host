@@ -13,5 +13,7 @@
         public const string VersionContainerName = Prefix + "versions";
 
         public const string AbortHostInstanceContainerName = Prefix + "aborts";
+
+        public const string EventQueueContainerName = Prefix + "event-queue";
     }
 }

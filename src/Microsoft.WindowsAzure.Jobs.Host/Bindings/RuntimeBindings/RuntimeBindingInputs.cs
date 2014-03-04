@@ -8,7 +8,6 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private FunctionLocation _location;
 
-        // Beware that this constructor won't support ReadFile. 
         public RuntimeBindingInputs(string accountConnectionString)
         {
             this.AccountConnectionString = accountConnectionString;
@@ -26,17 +25,5 @@ namespace Microsoft.WindowsAzure.Jobs
         public string AccountConnectionString { get; private set; }
 
         public IDictionary<string, string> NameParameters { get; set; }
-
-        // Reads a file, relative to the function being executed. 
-        public virtual string ReadFile(string filename)
-        {
-            if (_location == null)
-            {
-                string msg = string.Format("No context information for reading file: {0}", filename);
-                throw new InvalidOperationException(msg);
-            }
-            string content = _location.ReadFile(filename);
-            return content;
-        }
     }
 }

@@ -371,49 +371,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 x++;
             }
 
-            public static void Aggregate1(
-                [BlobInputs(@"daas-test-input/{names}.csv")] TextReader[] inputs,
-
-                //string[] names, // $$$ How do we get this?
-                [BlobOutput(@"daas-test-input/output.csv")] TextWriter output
-                )
-            {
-                int len = 2;
-                Assert.Equal(len, inputs.Length);
-
-                //Assert.Equal(len, names.Length);
-
-                StringBuilder sb = new StringBuilder();
-                foreach (var input in inputs)
-                {
-                    string content = input.ReadToEnd();
-                    sb.Append(content);
-                }
-                output.Write(sb.ToString());
-            }
-
-            // Test with user-provided parameters
-            public static void Aggregate2(
-                string deployId, // user provided? or from attribute (like names?)
-                [BlobInputsAttribute(@"daas-test-input/{deployId}/{names}.csv")] TextReader[] inputs,
-
-                //string[] names
-                [BlobOutput(@"daas-test-input/{outdir}/output.csv")] TextWriter output
-            )
-            {
-                Aggregate1(inputs, output);
-            }
-
-            // $$$ What does this mean? Multiple inputs. Do they need to match? Is there a precedence?
-            public static void Aggregate3(
-                string deployId, // user provided
-                [BlobInputsAttribute(@"daas-test-input/{deployId}/{names}.csv")] TextReader[] inputs,
-                [BlobInputsAttribute(@"daas-test-input/other/{names}.csv")] TextReader[] inputs2,
-                string[] names // $$$ which populates this? are arrays parallel?
-            )
-            {
-            }
-
             // This can be invoked explicitly (and providing parameters)
             // or it can be invoked implicitly by triggering on input. // (assuming no unbound parameters)
             public static void FuncWithNames(
