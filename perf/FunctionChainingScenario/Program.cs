@@ -107,7 +107,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
             {
                 bool invalidArgument = false;
 
-                if (arg.Key.Equals(arg.Key, StringComparison.InvariantCultureIgnoreCase))
+                if (string.Equals(arg.Key, ConnectionStringArgKey, StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(arg.Value))
                     {
