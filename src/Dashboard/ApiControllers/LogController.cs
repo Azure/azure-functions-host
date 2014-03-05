@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace Dashboard.ApiControllers
 {
-    [Route("api/log/{action}/{id?}")]
+    [Route("api/log/{action}/{id?}", Name="LogControllerRoute")]
     public class LogController : ApiController
     {
         private readonly Services _services;

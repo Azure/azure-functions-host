@@ -89,7 +89,7 @@
             }
         </p>
 
-        <p>@Html.ActionLink("Replay function", "Replay", new { parentId = Model.InvocationLogViewModel.Id }, new { @class = "btn btn-primary" })</p>
+        <p>@Html.ActionLink("Replay function", "Replay", new { parentId = Model.Invocation.Id }, new { @class = "btn btn-primary" })</p>
 
         <p>
             <span class="glyphicon glyphicon-flash"></span> @trigger.ToString()
@@ -191,7 +191,7 @@
     $(function () {
         var paused = true;
         var output = $('#output-body');
-        var url = '@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Output", id = Model.Invocation.Id })';
+        var url = '@Url.HttpRouteUrl("LogControllerRoute", new { action = "Output", id = Model.Invocation.Id })';
         var isRunning = @(isRunning ? "true" : "false")
             
         $('#output').on('shown.bs.collapse', function (e) {

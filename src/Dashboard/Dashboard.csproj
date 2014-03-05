@@ -258,7 +258,6 @@
     <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
     <Content Include="Views\Function\SearchBlob.cshtml" />
     <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />
-    <Content Include="Views\Dashboard\Main.cshtml" />
     <Content Include="Views\Main\Index.cshtml" />
     <Content Include="app\views\TriggeredJob.html" />
     <Content Include="app\views\TriggeredJobRun.html" />
