@@ -58,7 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Not found. Do late time binding. 
                 return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
             }
-            return new LiteralStringParameterRuntimeBinding { Value = invokeString };
+            return new LiteralStringParameterRuntimeBinding { Value = invokeString, AccountConnectionString = inputs.AccountConnectionString };
         }
 
         public override string Description

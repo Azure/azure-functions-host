@@ -171,6 +171,27 @@ namespace Microsoft.WindowsAzure.Jobs
             config.TableBinders.Add(azure20sdkBinderProvider);
         }
 
+        internal static bool ShouldIgnoreInvokeString(Type parameterType)
+        {
+            // Work around problem using IBinder and CloudStorageAccount with Run/Replay from dashboard.
+            if (parameterType == typeof(IBinder))
+            {
+                return true;
+            }
+            else if (parameterType == typeof(CloudStorageAccount))
+            {
+                return true;
+            }
+            else if (parameterType.Namespace == "Microsoft.WindowsAzure.Storage" && parameterType.Name == "CloudStorageAccount")
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         private static void ApplyHooks(MethodInfo method, IConfiguration config)
         {
             // Find a hook based on the MethodInfo, and if found, invoke the config
