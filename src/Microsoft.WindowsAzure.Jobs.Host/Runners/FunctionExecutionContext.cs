@@ -1,4 +1,5 @@
 ﻿using System;
+
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Various objects needed for execution.
@@ -18,5 +19,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Used to confirm function still exists just prior to execution
         public IFunctionTableLookup FunctionTable { get; set; }
+
+        // used for reporting WebJob to Function correlation
+        public IFunctionsInJobIndexer FunctionsInJobIndexer{ get; set; }
     }
 }

@@ -26,5 +26,7 @@
         public const string HostsTableName = Prefix + "Hosts";
 
         public const string RunningHostsTableName = Prefix + "RunningHosts";
+
+        public const string FunctionsInJobIndex = Prefix + "FunctionsInJobIndex";
     }
 }

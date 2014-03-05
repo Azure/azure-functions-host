@@ -5,7 +5,7 @@ namespace Dashboard.ViewModels
 {
     public class FunctionInstanceDetailsViewModel
     {
-        public InvocationLogViewModel InvocationLogViewModel { get; set; }
+        public InvocationLogViewModel Invocation { get; set; }
 
         public ParamModel[] Parameters { get; set; }
 
@@ -14,6 +14,8 @@ namespace Dashboard.ViewModels
         public InvocationLogViewModel Ancestor { get; set; }
 
         public TriggerReasonViewModel TriggerReason { get; set; }
+
+        public string Trigger { get; set; }
 
         public bool IsAborted { get; set; }
     }

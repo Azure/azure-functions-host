@@ -114,10 +114,6 @@
       <Private>True</Private>
       <HintPath>..\..\packages\Microsoft.AspNet.WebPages.3.0.0\lib\net45\System.Web.WebPages.Razor.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <Private>True</Private>
-      <HintPath>..\..\packages\Newtonsoft.Json.5.0.6\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="WebActivatorEx">
       <HintPath>..\..\packages\WebActivatorEx.2.0.4\lib\net40\WebActivatorEx.dll</HintPath>
     </Reference>
@@ -148,6 +144,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\LogController.cs" />
     <Compile Include="App_Start\AppModule.cs" />
     <Compile Include="App_Start\AuthConfig.cs" />
@@ -161,6 +158,7 @@
     <Compile Include="Controllers\FunctionController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\BadConfigController.cs" />
+    <Compile Include="Controllers\MainController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -183,8 +181,27 @@
     <Compile Include="ViewModels\FunctionTriggerViewModel.cs" />
     <Compile Include="ViewModels\DashboardAboutViewModel.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
+    <Compile Include="ViewModels\WebJobTypes.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="app\controllers\ConsoleOutputController.js" />
+    <Content Include="app\controllers\FunctionsHomeController.js" />
+    <Content Include="app\controllers\FunctionController.js" />
+    <Content Include="app\controllers\JobsListController.js" />
+    <Content Include="app\controllers\ContinuousJobController.js" />
+    <Content Include="app\models\FunctionDefinition.js" />
+    <Content Include="app\models\FunctionInvocationModel.js" />
+    <Content Include="app\models\JobDefinition.js" />
+    <Content Include="app\services\consoleOutput.js" />
+    <Content Include="app\services\urls.js" />
+    <Content Include="app\services\api.js" />
+    <Content Include="app\services\invocationUtils.js" />
+    <Content Include="app\views\FunctionsHome.html" />
+    <Content Include="app\views\Function.html" />
+    <Content Include="app\views\JobsList.html" />
+    <Content Include="app\views\shared\Breadcrumb.html" />
+    <Content Include="app\views\shared\ConsoleOutput.html" />
+    <Content Include="app\views\ContinuousJob.html" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.css" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.min.css" />
     <Content Include="Content\bootstrap\css\bootstrap.css" />
@@ -194,11 +211,25 @@
     <Content Include="Content\bootstrap\js\bootstrap.min.js" />
     <Content Include="Content\Site.css" />
     <Content Include="Global.asax" />
+    <Content Include="Scripts\angular-mocks.js" />
+    <Content Include="Scripts\angular-route.js" />
+    <Content Include="Scripts\angular-route.min.js" />
+    <Content Include="Scripts\angular.js" />
+    <Content Include="Scripts\angular.min.js" />
+    <Content Include="app\controllers\TriggeredJobController.js" />
+    <Content Include="app\controllers\FunctionInvocationController.js" />
+    <Content Include="app\controllers\TriggeredJobRunController.js" />
+    <Content Include="app\main.js" />
+    <Content Include="app\models\FunctionInvocationSummary.js" />
+    <Content Include="app\models\JobRun.js" />
+    <Content Include="app\services\stringUtils.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
     <None Include="..\Common\PublicKey.snk">
       <Link>Properties\PublicKey.snk</Link>
     </None>
+    <Content Include="Scripts\angular.min.js.map" />
+    <Content Include="Scripts\angular-route.min.js.map" />
     <None Include="Scripts\jquery-1.9.1.intellisense.js" />
     <Content Include="Scripts\jquery-1.9.1.js" />
     <Content Include="Scripts\jquery-1.9.1.min.js" />
@@ -224,7 +255,12 @@
     <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
     <Content Include="Views\Function\SearchBlob.cshtml" />
     <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />
+    <Content Include="Views\Dashboard\Main.cshtml" />
+    <Content Include="Views\Main\Index.cshtml" />
+    <Content Include="app\views\TriggeredJob.html" />
+    <Content Include="app\views\TriggeredJobRun.html" />
     <Content Include="Views\Function\Run.cshtml" />
+    <Content Include="app\views\FunctionInvocation.html" />
     <Content Include="Views\Function\Replay.cshtml" />
     <Content Include="Views\Function\_Invoke.cshtml" />
   </ItemGroup>

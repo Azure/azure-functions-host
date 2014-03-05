@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Web.Http.Controllers;
+using System.Web.Mvc;
 using Ninject;
 using IHttpDependencyResolver = System.Web.Http.Dependencies.IDependencyResolver;
 using IHttpDependencyScope = System.Web.Http.Dependencies.IDependencyScope;
@@ -18,7 +20,14 @@ namespace Dashboard.Infrastructure
 
         object IMvcDependencyResolver.GetService(Type serviceType)
         {
-            return Kernel.TryGet(serviceType);
+            if (typeof(IController).IsAssignableFrom(serviceType))
+            {
+                return Kernel.Get(serviceType);
+            }
+            else
+            {
+                return null;
+            }
         }
 
         IEnumerable<object> IMvcDependencyResolver.GetServices(Type serviceType)
@@ -33,7 +42,14 @@ namespace Dashboard.Infrastructure
 
         object IHttpDependencyScope.GetService(Type serviceType)
         {
-            return Kernel.TryGet(serviceType);
+            if (typeof (IHttpController).IsAssignableFrom(serviceType))
+            {
+                return Kernel.Get(serviceType);
+            }
+            else
+            {
+                return null;
+            }
         }
 
         IEnumerable<object> IHttpDependencyScope.GetServices(Type serviceType)

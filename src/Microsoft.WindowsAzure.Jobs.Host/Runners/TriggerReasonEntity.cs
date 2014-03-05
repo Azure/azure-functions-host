@@ -11,6 +11,8 @@
             this.Data = new Wrapper { Payload = payload };
         }
 
+        public string RowKey { get; set; }
+
         internal class Wrapper
         {
             public TriggerReason Payload { get; set; }

@@ -1,0 +1,31 @@
+﻿<ng-include src="'app/views/shared/breadcrumb.html'"></ng-include>
+<div class="row">
+    <div class="col-md-6">
+        <h3>Functions <small>Registered functions in the system</small></h3>
+        <section>
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Function Name</th>
+                        <th>Statistics</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-if="!functionDefinitions.length">
+                        <td colspan="2">No functions are present.</td>
+                    </tr>
+                    <tr ng-repeat="functionDefinition in functionDefinitions">
+                        <td>
+                            <span ng-if="!functionDefinition.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
+                            <a title="Invocations" href="{{_urls.functionDefinition(functionDefinition.functionFullName)}}">{{functionDefinition.functionName}}</a>
+                        </td>
+                        <td>
+                            <span class="label label-success">{{functionDefinition.successCount}}</span>
+                            <span class="label label-danger">{{functionDefinition.failedCount}}</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</div>

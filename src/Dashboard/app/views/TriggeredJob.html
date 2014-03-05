@@ -1,0 +1,33 @@
+﻿<ng-include src="'app/views/shared/breadcrumb.html'"></ng-include>
+<div class="row" ng-cloak>
+    <div class="col-md-12">
+        <h3>
+            Job Details <small ng-bind="jobName"></small>
+        </h3>
+        <p ng-if="job" class="alert alert-info">Run command: {{job.runCommand}}</p>
+        <h4>Recent job runs</h4>
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Timing</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="trigerring-history-body">
+                <tr ng-if="runs && (runs.length === 0)">
+                    <td colspan="2">We have no record of recent job runs.</td>
+                </tr>
+                <tr ng-repeat="run in runs">
+                    <td>
+                        <a title="Run details" href="{{_urls.triggeredJobRun(jobName, run.id)}}">
+                            <span>{{run.startTimeString}}</span> <small>({{run.durationString}} running time)</small>
+                        </a>
+                    </td>
+                    <td>
+                        <span ng-class="[run.getStatusClass()]" class="label">{{run.status}}</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

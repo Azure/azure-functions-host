@@ -1,9 +1,12 @@
 ﻿﻿using System;
 using System.Collections.Generic;
+﻿using System.Configuration;
+﻿using System.Diagnostics.Contracts;
 ﻿using System.Globalization;
 ﻿using System.IO;
 using System.Reflection;
 using System.Threading;
+﻿using Microsoft.WindowsAzure.Jobs.Host;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -138,13 +141,17 @@ namespace Microsoft.WindowsAzure.Jobs
         // When running in Antares, write out a manifest file.
         private static void WriteAntaresManifest()
         {
-            string filename = Environment.GetEnvironmentVariable("JOB_EXTRA_INFO_URL_PATH");
-            if (filename != null)
+            string jobDataPath = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath);
+            if (jobDataPath == null)
             {
-                const string manifestContents = "/azurejobs";
-
-                File.WriteAllText(filename, manifestContents);
+                // we're not in antares, bye bye.
+                return;
             }
+            
+            const string filename = "WebJobsSdk.marker";
+            var path = Path.Combine(jobDataPath, filename);
+
+            File.WriteAllText(path, DateTime.UtcNow.ToString("s") + "Z"); // content is not really important, this would help debugging though
         }
 
         private JobHostContext GetHostContext(ITypeLocator typesLocator)

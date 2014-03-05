@@ -62,6 +62,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
                 ctx.FunctionTable = functionTableLookup;
+                ctx.FunctionsInJobIndexer = services.GetFunctionInJobIndexer();
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
 
                 _terminationSignalReader = new ProcessTerminationSignalReader(services.Account);
@@ -73,7 +74,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 ctx = new FunctionExecutionContext
                 {
-                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
+                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser(),
+                    FunctionsInJobIndexer = new NullFunctionsInJobIndexer()
                 };
 
                 interfaces = CreateInMemoryQueueInterfaces();

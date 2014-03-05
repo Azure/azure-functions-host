@@ -3,11 +3,11 @@
 @model FunctionInstanceDetailsViewModel
 
 @{
-    var isRunning = Model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running;
+    var isRunning = Model.Invocation.Status == FunctionInstanceStatus.Running;
     
     ViewBag.Title = "FunctionInstance";
 
-    var log = Model.InvocationLogViewModel;
+    var log = Model.Invocation;
     var trigger = Model.TriggerReason;
 
     string alertClass = null;
@@ -45,12 +45,12 @@
 
 <div class="row">
     <div class="col-md-9">
-        <h3>Invocation Details <small>@Model.InvocationLogViewModel.FunctionName</small></h3>
+        <h3>Invocation Details <small>@Model.Invocation.FunctionName</small></h3>
         
         @if (isRunning)
         {
             <p>
-            @using (Html.BeginForm("Abort", "Function", new { id = Model.InvocationLogViewModel.Id }, FormMethod.Post, new { @class = "form-inline" }))
+            @using (Html.BeginForm("Abort", "Function", new { id = Model.Invocation.Id }, FormMethod.Post, new { @class = "form-inline" }))
             {
                 if (!Model.IsAborted)
                 {
@@ -191,7 +191,7 @@
     $(function () {
         var paused = true;
         var output = $('#output-body');
-        var url = '@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Output", id = Model.InvocationLogViewModel.Id })';
+        var url = '@Url.HttpRouteUrl("DefaultApi", new { controller = "Log", action = "Output", id = Model.Invocation.Id })';
         var isRunning = @(isRunning ? "true" : "false")
             
         $('#output').on('shown.bs.collapse', function (e) {

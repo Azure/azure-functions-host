@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
 
@@ -45,6 +46,18 @@ namespace Microsoft.WindowsAzure.Jobs
             IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, TableNames.FunctionIndexTableName);
 
             return new FunctionTable(table);
+        }
+
+        public IFunctionsInJobIndexer GetFunctionInJobIndexer()
+        {
+            if (WebJobRunIdentifier.Current == null)
+            {
+                return new NullFunctionsInJobIndexer();
+            }
+
+            var account = new SdkCloudStorageAccount(_account);
+            var client = account.CreateCloudTableClient();
+            return new FunctionsInJobIndexer(client, WebJobRunIdentifier.Current);
         }
 
         public IRunningHostTableWriter GetRunningHostTableWriter()

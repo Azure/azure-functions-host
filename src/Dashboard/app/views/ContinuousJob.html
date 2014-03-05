@@ -1,0 +1,49 @@
+﻿<ng-include src="'app/views/shared/breadcrumb.html'"></ng-include>
+<div class="row">
+    <div class="col-md-12">
+        <h3>
+            Continuous Job Details <small ng-bind="jobName"></small>
+        </h3>
+        <p ng-if="job" ng-class="job.getAlertClass()" class="alert">
+            <b ng-bind="job.getAlertHeader()"></b><br />
+            Run command: {{job.runCommand}}
+        </p>
+        <console-output ng-if="job" log-url="job.outUrl" supports-incremental-updates="false"
+                        is-running="job.isRunning()">
+        </console-output>
+
+        <section ng-if="!invocations.length">
+            <p>
+                Use Azure WebJobs SDK to power-up your web job. Read <a href="WHOOHOO">this article</a> to learn more.
+            </p>
+        </section>
+
+        <section ng-if="invocations.length">
+            <h4>Functions invoked during this run</h4>
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Function</th>
+                        <th>Status</th>
+                        <th>Status detail</th>
+                    </tr>
+                </thead>
+                <tbody id="function-invocations-body">
+                    <tr ng-repeat="invocation in invocations">
+                        <td>
+                            <a title="Run details" href="{{_urls.functionInvocation(invocation.id)}}">
+                                <span>{{invocation.functionDisplayTitle}}</span>
+                            </a>
+                        </td>
+                        <td>
+                            <span ng-class="[invocation.getLabelClass()]" class="label">{{invocation.getLabelText()}}</span>
+                        </td>
+                        <td>
+                            <span>{{invocation.statusTimeString}}</span>(<small>{{invocation.durationString}}</small> running time)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+</div>

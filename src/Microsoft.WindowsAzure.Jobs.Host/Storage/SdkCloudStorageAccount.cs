@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Linq;
@@ -170,6 +171,35 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
 
                     throw;
                 }
+            }
+
+            public void InsertEntity<T>(T entity) where T : TableServiceEntity
+            {
+                if (entity == null)
+                {
+                    throw new ArgumentNullException("entity");
+                }
+
+                TableServiceContext context = _sdk.GetDataServiceContext();
+                _sdk.CreateTableIfNotExist(_tableName);
+
+                context.AddObject(_tableName, entity);
+                context.SaveChangesWithRetries();
+            }
+
+            public IEnumerable<T> QueryByRowKeyRange<T>(string partitionKey, string rowKeyExclusiveLowerBound, string rowKeyExclusiveUpperBound, int? limit) where T : TableServiceEntity
+            {
+                TableServiceContext context = _sdk.GetDataServiceContext();
+                var q = context.CreateQuery<T>(_tableName)
+                    .Where(e => e.PartitionKey == partitionKey &&
+                                e.RowKey.CompareTo(rowKeyExclusiveLowerBound) > 0 &&
+                                e.RowKey.CompareTo(rowKeyExclusiveUpperBound) < 0);
+                if (limit.HasValue)
+                {
+                    q = q.Take(limit.Value);
+                }
+
+                return q.AsTableServiceQuery().Execute();
             }
         }
     }

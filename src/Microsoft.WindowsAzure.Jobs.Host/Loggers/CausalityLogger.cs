@@ -45,9 +45,23 @@ namespace Microsoft.WindowsAzure.Jobs
         // ICausalityReader
         public IEnumerable<TriggerReason> GetChildren(Guid parent)
         {
-            var value = from val in _table.Enumerate(parent.ToString()) select val.Data.Payload;
-            var array = value.ToArray();
-            return array;
+            return GetChildren(parent, null, null, 1000).Select(v => v.Data.Payload).ToArray();
+        }
+
+        public IEnumerable<TriggerReasonEntity> GetChildren(Guid parent, string rowKeyExclusiveUpperBound, string rowKeyExclusiveLowerBound, int limit)
+        {
+            var values = _table.Enumerate(parent.ToString());
+            if (rowKeyExclusiveLowerBound != null)
+            {
+                values = values.Where(v => v.RowKey.CompareTo(rowKeyExclusiveLowerBound) > 0);
+            }
+            if (rowKeyExclusiveUpperBound != null)
+            {
+                values = values.Where(v => v.RowKey.CompareTo(rowKeyExclusiveUpperBound) < 0);
+            }
+            values = values.Take(limit);
+
+            return values.ToArray();
         }
 
         public Guid GetParent(Guid child)

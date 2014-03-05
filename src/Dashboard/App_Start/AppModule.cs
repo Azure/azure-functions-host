@@ -1,11 +1,14 @@
 ﻿using System;
+using AzureTables;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
+using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.StorageClient;
 using Ninject.Modules;
+using Ninject.Syntax;
 
 namespace Dashboard
 {
@@ -31,22 +34,24 @@ namespace Dashboard
 
             Bind<CloudStorageAccount>().ToConstant(services.Account);
             Bind<Services>().ToConstant(services); // $$$ eventually remove this.
-            Bind<IHostVersionReader>().ToConstant(CreateHostVersionReader(services.Account));
+            Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(services.Account));
             Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
             Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
 
             // $$$ This list should eventually just cover all of Services, and then we can remove services.
             // $$$ We don't want Services() floating around. It's jsut a default factory for producing objects that 
             // bind against azure storage accounts. 
-            Bind<IFunctionInstanceLookup>().ToConstant(services.GetFunctionInstanceLookup());
-
-            Bind<IFunctionTableLookup>().ToConstant(services.GetFunctionTable());
-            Bind<IRunningHostTableReader>().ToConstant(services.GetRunningHostTableReader());
-            Bind<IFunctionUpdatedLogger>().ToMethod((ignore) => services.GetFunctionUpdatedLogger());
-            Bind<ICloudQueueClient>().ToMethod((ignore) => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
+            Bind<IFunctionInstanceLookup>().ToMethod(() => services.GetFunctionInstanceLookup());
+            Bind<IFunctionTableLookup>().ToMethod(() => services.GetFunctionTable());
+            Bind<IRunningHostTableReader>().ToMethod(() => services.GetRunningHostTableReader());
+            Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
+            Bind<IFunctionInstanceQuery>().ToMethod(() => services.GetFunctionInstanceQuery());
+            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => services.GetInvokeStatsTable());
+            Bind<ICausalityReader>().ToMethod(() => services.GetCausalityReader());
+            Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
+            Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
+            Bind<IFunctionsInJobReader>().To<FunctionsInJobReader>();
             Bind<IInvoker>().To<Invoker>();
-
-            return;
         }
 
         private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
@@ -75,6 +80,14 @@ namespace Dashboard
                 WebDashboardUri = "illegal2"
             };
             return new Services(ai);
+        }
+    }
+
+    internal static class NinjectBindingExtensions
+    {
+        public static IBindingWhenInNamedWithOrOnSyntax<T> ToMethod<T>(this IBindingToSyntax<T> binding, Func<T> factoryMethod)
+        {
+            return binding.ToMethod(_ => factoryMethod());
         }
     }
 }

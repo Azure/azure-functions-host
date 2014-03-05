@@ -325,9 +325,9 @@ namespace Dashboard.Controllers
             }
 
             var model = new FunctionInstanceDetailsViewModel();
-            model.InvocationLogViewModel = new InvocationLogViewModel(func);
+            model.Invocation = new InvocationLogViewModel(func);
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
-            model.IsAborted = model.InvocationLogViewModel.Status == FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
+            model.IsAborted = model.Invocation.Status == FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
 
             // Do some analysis to find inputs, outputs, 
 

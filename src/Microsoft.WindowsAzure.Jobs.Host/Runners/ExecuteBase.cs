@@ -41,6 +41,7 @@ namespace Microsoft.WindowsAzure.Jobs
             DateTime now = DateTime.UtcNow;
             logItem.QueueTime = now;
             logItem.StartTime = now;
+            logItem.ExecutingJobRunId = WebJobRunIdentifier.Current;
 
             try
             {
@@ -54,6 +55,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 if (functionExists)
                 {
+                    context.FunctionsInJobIndexer.RecordFunctionInvocationForJobRun(instance.Id, now);
                     Work(instance, context, fpInvokeFunc, logItem, logItemContext);
                 }
                 else

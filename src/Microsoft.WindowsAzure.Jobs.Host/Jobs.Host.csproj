@@ -69,6 +69,12 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\SimpleWatcher.cs" />
+    <Compile Include="Runners\FunctionInJobEntity.cs" />
+    <Compile Include="Runners\FunctionsInJobReader.cs" />
+    <Compile Include="Runners\IFunctionsInJobReader.cs" />
+    <Compile Include="Runners\NullFunctionsInJobIndexer.cs" />
+    <Compile Include="Runners\WebJobRunIdentifier.cs" />
+    <Compile Include="Runners\WebJobTypes.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="Protocols\TriggerAndOverrideMessage.cs" />
@@ -78,8 +84,10 @@
     <Compile Include="TableNames.cs" />
     <Compile Include="Indexers\RemoteFunctionLocation.cs" />
     <Compile Include="QueueNames.cs" />
+    <Compile Include="Runners\FunctionsInJobIndexer.cs" />
     <Compile Include="Runners\HostEntity.cs" />
     <Compile Include="Runners\HostTable.cs" />
+    <Compile Include="Runners\IFunctionsInJobIndexer.cs" />
     <Compile Include="Runners\IHostTable.cs" />
     <Compile Include="Protocols\IInvoker.cs" />
     <Compile Include="Protocols\HostMessage.cs" />
@@ -315,6 +323,7 @@
     <Compile Include="Triggers\TriggerType.cs" />
     <Compile Include="Triggers\TriggerRaw.cs" />
     <Compile Include="Triggers\QueueTrigger.cs" />
+    <Compile Include="WebSitesKnownKeyNames.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs\Jobs.csproj">

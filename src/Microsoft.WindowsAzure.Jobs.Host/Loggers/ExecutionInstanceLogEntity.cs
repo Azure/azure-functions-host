@@ -22,6 +22,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public Guid HostInstanceId { get; set; }
 
+        public WebJobRunIdentifier ExecutingJobRunId { get; set; }
+
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
         public FunctionInvokeRequest FunctionInstance { get; set; }
