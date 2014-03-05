@@ -63,14 +63,23 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             else
             {
-                // invokeString is ignored. 
-                // Will set on out parameter.
+                string queueName;
+
+                if (string.IsNullOrEmpty(invokeString))
+                {
+                    queueName = _queueName;
+                }
+                else
+                {
+                    queueName = invokeString;
+                }
+
                 return new QueueOutputParameterRuntimeBinding
                 {
                     QueueOutput = new CloudQueueDescriptor
                     {
                         AccountConnectionString = inputs.AccountConnectionString,
-                        QueueName = this.QueueName
+                        QueueName = queueName
                     }
                 };
             }
