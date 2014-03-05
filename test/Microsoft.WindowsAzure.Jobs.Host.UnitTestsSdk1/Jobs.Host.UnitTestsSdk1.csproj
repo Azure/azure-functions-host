@@ -48,7 +48,6 @@
     <Compile Include="CloudBlobPathTests.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
-    <Compile Include="IContextBinderTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="Mocks\CallUtil.cs" />

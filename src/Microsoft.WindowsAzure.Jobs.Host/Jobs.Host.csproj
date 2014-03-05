@@ -148,7 +148,6 @@
     <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TextReaderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\CloudStorageAccountBinderProvider.cs" />
-    <Compile Include="Bindings\BinderProviders\ContextBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\QueueOutputBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TableBinderProvider.cs" />
     <Compile Include="Bindings\BindResults\BindArrayResult.cs" />

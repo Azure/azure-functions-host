@@ -65,7 +65,6 @@
     <Compile Include="ICloudBlobBinder.cs" />
     <Compile Include="IBinderEx.cs" />
     <Compile Include="IBinder.cs" />
-    <Compile Include="IContext.cs" />
     <Compile Include="ISelfWatch.cs" />
     <Compile Include="ICall.cs" />
     <Compile Include="PostActionOrder.cs" />
