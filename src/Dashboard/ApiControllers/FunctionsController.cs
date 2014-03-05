@@ -198,6 +198,7 @@ namespace Dashboard.ApiControllers
                     FunctionFullName = f.ToString(),
                     FunctionName = f.Location.GetShortName(),
                     IsRunning = DashboardController.HasValidHeartbeat(f, hearbeats),
+                    IsOldHost = !f.HostVersion.HasValue,
                     FailedCount = 0,
                     SuccessCount = 0,
                     LastStartTime = f.Timestamp

@@ -10,6 +10,7 @@
         model.successCount = item.successCount;
         model.failedCount = item.failedCount;
         model.isRunning = !!item.isRunning;
+        model.isOldHost = !!item.isOldHost;
         model.lastStartTime = item.lastStartTime ? stringUtils.toDateTime(item.lastStartTime) : null;
         model.lastStartTimeString = model.lastStartTime ?
             stringUtils.formatDateTime(model.lastStartTime) : 'never ran';

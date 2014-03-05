@@ -110,6 +110,7 @@ namespace Dashboard.ViewModels
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
         public bool IsRunning { get; set; }
+        public bool IsOldHost { get; set; }
         public DateTime? LastStartTime { get; set; }
     }
 

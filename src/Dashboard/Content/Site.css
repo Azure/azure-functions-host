@@ -8,6 +8,11 @@
     width: 1em;
 }
 
+.old-version {
+    color: darkred;
+    width: 1em;
+}
+
 .modal .modal-body {
     max-height: 420px;
     overflow-y: auto;
