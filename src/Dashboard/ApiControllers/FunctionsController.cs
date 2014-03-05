@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Web.Http;
 using AzureTables;
@@ -201,13 +203,15 @@ namespace Dashboard.ApiControllers
                     LastStartTime = f.Timestamp
                 }).ToArray();
 
+            var functionNames = new HashSet<string>(model.FunctionStatisticsViewModels.Select(x => x.FunctionFullName));
+
             var all = _invokeStatsTable.Enumerate();
             foreach (var item in all)
             {
                 string rowKey = item["RowKey"];
-                var func = _functionTableLookup.Lookup(rowKey);
+                var funcExists = functionNames.Contains(rowKey);
 
-                if (func == null)
+                if (!funcExists)
                 {
                     // ignore functions in stats but not found
                     continue;
@@ -216,7 +220,7 @@ namespace Dashboard.ApiControllers
                 var statsModel = model
                     .FunctionStatisticsViewModels
                     .FirstOrDefault(x =>
-                        x.FunctionFullName == func.ToString()
+                        x.FunctionFullName == rowKey
                     );
 
                 if (statsModel != null)
@@ -226,7 +230,6 @@ namespace Dashboard.ApiControllers
                     statsModel.SuccessCount = stats.CountCompleted;
                 }
             }
-
             return Ok(model);
         }
     }
