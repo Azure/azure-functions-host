@@ -156,7 +156,7 @@ namespace Dashboard.ApiControllers
             model.Invocation = new InvocationLogViewModel(func);
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
             model.Trigger = model.TriggerReason.ToString();
-            model.IsAborted = true;// model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
+            model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
 
             // Do some analysis to find inputs, outputs, 
 
