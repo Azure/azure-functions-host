@@ -11,16 +11,15 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Protocols
         public void JsonConvert_Roundtrips()
         {
             // Arrange
-            HostMessage expectedMessage = new HostMessage();
-            expectedMessage.Type = "Foo";
+            HostMessage roundtrip = new HostMessage();
 
             // Act
             HostMessage message = JsonConvert.DeserializeObject<HostMessage>(
-                JsonConvert.SerializeObject(expectedMessage));
+                JsonConvert.SerializeObject(roundtrip));
 
             // Assert
             Assert.NotNull(message);
-            Assert.Equal(expectedMessage.Type, message.Type);
+            Assert.Equal(typeof(HostMessage).Name, message.Type);
         }
 
         [Fact]
