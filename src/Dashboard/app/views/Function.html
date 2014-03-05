@@ -5,33 +5,7 @@
             Function invocation log <small ng-bind="functionName"></small>
         </h3>
         <section ng-if="invocations.length">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Function</th>
-                        <th>Status</th>
-                        <th>Status detail</th>
-                    </tr>
-                </thead>
-                <tbody id="function-invocations-body">
-                    <tr ng-if="invocation.length === 0">
-                        <td colspan="3">Nothing yet ...</td>
-                    </tr>
-                    <tr ng-repeat="invocation in invocations">
-                        <td>
-                            <a title="Run details" href="{{_urls.functionInvocation(invocation.id)}}">
-                                <span>{{invocation.functionDisplayTitle}}</span>
-                            </a>
-                        </td>
-                        <td>
-                            <span ng-class="[invocation.getLabelClass()]" class="label">{{invocation.getLabelText()}}</span>
-                        </td>
-                        <td>
-                            <span>{{invocation.statusTimeString}}</span>(<small>{{invocation.durationString}}</small> running time)
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <ng-include src="'app/views/shared/FunctionInvocationsTable.html'"></ng-include>
         </section>
     </div>
 </div>

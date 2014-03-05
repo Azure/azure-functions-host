@@ -204,6 +204,7 @@
     <Content Include="app\views\shared\Breadcrumb.html" />
     <Content Include="app\views\shared\ConsoleOutput.html" />
     <Content Include="app\views\ContinuousJob.html" />
+    <Content Include="app\views\shared\FunctionInvocationsTable.html" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.css" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.min.css" />
     <Content Include="Content\bootstrap\css\bootstrap.css" />

@@ -105,6 +105,18 @@ namespace Dashboard.ApiControllers
             return Ok(invocations);
         }
 
+        [Route("api/functions/invocations/recent")]
+        public IHttpActionResult GetRecentInvocations()
+        {
+            var filter = new FunctionInstanceQueryFilter();
+            var invocations = _functionInstanceQuery
+                .GetRecent(10, filter)
+                .Select(x => new InvocationLogViewModel(x))
+                .ToArray();
+
+            return Ok(invocations);
+        }
+        
         [Route("api/functions/invocationsByIds")]
         public IHttpActionResult PostInvocationsByIds(Guid[] ids)
         {

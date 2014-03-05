@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionsHomeController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, api, urls) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, FunctionInvocationSummary, api, urls) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0;
@@ -23,8 +23,25 @@
             });
         }
 
+        function getFunctionInvocations() {
+            return $http.get(api.sdk.recentInvocations()).then(function (res) {
+                var len = res.data.length,
+                    ix,
+                    item,
+                    invocation;
+                $scope.invocations = [];
+                for (ix = 0; ix !== len; ++ix) {
+                    item = res.data[ix];
+                    invocation = FunctionInvocationSummary.fromJson(item);
+                    invocation.rowKeyForJobRunLookup = item.rowKey;
+                    $scope.invocations.push(invocation);
+                }
+            });
+        }
+
         function getData() {
             getFunctionDefinitions();
+            getFunctionInvocations();
         }
 
         function startPolling() {
