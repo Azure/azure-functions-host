@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Microsoft.WindowsAzure.Jobs.Host;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Xunit;
 
@@ -9,16 +10,19 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     public class HostUnitTests
     {
         [Fact]
-        public void TestAntaresManifestIsWritten()
+        public void TestSdkMarkerIsWrittenWhenInAntares()
         {
-            string path = Path.GetTempFileName();
+            string tempDir = Path.GetTempPath();
+            const string filename = "WebJobsSdk.marker";
+
+            var path = Path.Combine(tempDir, filename);
 
             File.Delete(path);
 
-            const string EnvVar = "JOB_EXTRA_INFO_URL_PATH";
+
             try
             {
-                Environment.SetEnvironmentVariable(EnvVar, path);
+                Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, tempDir);
 
                 // don't use storage account at all, just testing the manifest file. 
                 var hooks = new JobHostTestHooks 
@@ -27,15 +31,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                     TypeLocator = new SimpleTypeLocator() // No types
                 };
                 JobHost h = new JobHost(dataConnectionString: null, runtimeConnectionString: null, hooks: hooks);
-                Assert.True(File.Exists(path), "Manifest file should have been written");
-
-                // Validate contents
-                string contents = File.ReadAllText(path);
-                Assert.Equal("/azurejobs", contents);
+                Assert.True(File.Exists(path), "SDK marker file should have been written");
             }
             finally
             {
-                Environment.SetEnvironmentVariable(EnvVar, null);
+                Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, null);
                 File.Delete(path);
             }
         }
