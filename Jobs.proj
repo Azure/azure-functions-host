@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="UnitTest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
     <NuGetExe>tools\NuGet.exe</NuGetExe>
     <SkipStrongNamesExe>packages\Microsoft.Web.SkipStrongNames.1.0.0\tools\SkipStrongNames.exe</SkipStrongNamesExe>
     <SkipStrongNamesXml>tools\SkipStrongNames.xml</SkipStrongNamesXml>
     <PublishPath Condition=" '$(PublishPath)' == '' ">bin</PublishPath>
+    <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
+    <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
   </PropertyGroup>
 
   <ItemGroup>
@@ -76,17 +78,11 @@
 
   <Target Name="RestorePackages" DependsOnTargets="DownloadNuGet">
     <Message Text="Restoring NuGet packages..." Importance="High" />
-    <ItemGroup>
-      <Restore Include="src\Dashboard\packages.config"/>
-      <Restore Include="src\Microsoft.WindowsAzure.Jobs.Host\packages.config"/>
-    </ItemGroup>
-    <Exec Command='"$(NuGetExe)" restore "%(Restore.Identity)" -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
+    <Exec Command='"$(NuGetExe)" restore Jobs.sln -PackagesDirectory packages -NonInteractive -Verbosity quiet -ConfigFile .nuget\NuGet.Config' />
   </Target>
 
   <Target Name="GetBinplace">
     <PropertyGroup>
-      <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
-      <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
       <NestedBuildProperties Condition=" '$(SetConfiguration)' != '' or '$(SetPlatform)' != ''">$(SetConfiguration); $(SetPlatform)</NestedBuildProperties>
     </PropertyGroup>
 
@@ -100,6 +96,22 @@
   <Target Name="Build" DependsOnTargets="RestorePackages;GetBinplace">
     <MSBuild Projects="@(Binplace)"
              BuildInParallel="$(BuildInParallel)"/>
+  </Target>
+
+  <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.1.9.2\lib\net20\xunit.runner.msbuild.dll"/>
+
+  <Target Name="UnitTest" DependsOnTargets="Build">
+    <ItemGroup>
+        <UnitTestProjects Include="test\Microsoft.WindowsAzure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj"/>
+    </ItemGroup>
+
+    <MSBuild Projects="@(UnitTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
+    </MSBuild>
+
+    <xunit Assembly="@(UnitTestAssemblies)"/>
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">

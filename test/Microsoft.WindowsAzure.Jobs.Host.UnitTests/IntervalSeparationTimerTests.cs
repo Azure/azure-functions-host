@@ -81,7 +81,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests
             bool executedOnce = false;
             bool executedTwice = false;
             TimeSpan initialInterval = TimeSpan.Zero;
-            TimeSpan subsequentInterval = TimeSpan.FromMilliseconds(10);
+            TimeSpan subsequentInterval = TimeSpan.FromMilliseconds(15);
             Stopwatch stopwatch = new Stopwatch();
 
             using (EventWaitHandle waitForSecondExecution = new ManualResetEvent(initialState: false))
