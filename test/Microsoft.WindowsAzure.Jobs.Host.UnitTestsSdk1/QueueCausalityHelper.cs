@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.WindowsAzure.StorageClient;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -50,6 +51,53 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var owner = qcm.GetOwner(msg);
             Assert.Equal(g, owner);
+        }
+
+        [Fact]
+        public void GetOwner_IfMessageIsNotValidJsonObject_ReturnsEmptyGuid()
+        {
+            TestOwner(Guid.Empty, "non-json");
+        }
+
+        [Fact]
+        public void GetOwner_IfMessageDoesNotHaveOwnerProperty_ReturnsEmptyGuid()
+        {
+            TestOwner(Guid.Empty, "{'nonparent':null}");
+        }
+
+        [Fact]
+        public void GetOwner_IfMessageOwnerIsNotString_ReturnsEmptyGuid()
+        {
+            TestOwner(Guid.Empty, "{'$AzureJobsParentId':null}");
+        }
+
+        [Fact]
+        public void GetOwner_IfMessageOwnerIsNotGuid_ReturnsEmptyGuid()
+        {
+            TestOwner(Guid.Empty, "{'$AzureJobsParentId':'abc'}");
+        }
+
+        [Fact]
+        public void GetOwner_IfMessageOwnerIsGuid_ReturnsThatGuid()
+        {
+            Guid expected = Guid.NewGuid();
+            JObject json = new JObject();
+            json.Add("$AzureJobsParentId", new JValue(expected.ToString()));
+
+            TestOwner(expected, json.ToString());
+        }
+
+        private static void TestOwner(Guid expectedOwner, string message)
+        {
+            // Arrange
+            QueueCausalityHelper product = new QueueCausalityHelper();
+            CloudQueueMessage queueMessage = new CloudQueueMessage(message);
+
+            // Act
+            Guid owner = product.GetOwner(queueMessage);
+
+            // Assert
+            Assert.Equal(expectedOwner, owner);
         }
 
         public class Payload

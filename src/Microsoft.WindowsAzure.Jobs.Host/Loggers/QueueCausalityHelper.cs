@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -23,7 +24,7 @@ namespace Microsoft.WindowsAzure.Jobs
             token[parentGuidFieldName] = functionOwner.ToString();
 
             string json = token.ToString();
-            
+
             CloudQueueMessage msg = new CloudQueueMessage(json);
             // Beware, msg.id is not filled out yet. 
             return msg;
@@ -33,21 +34,27 @@ namespace Microsoft.WindowsAzure.Jobs
         public Guid GetOwner(CloudQueueMessage msg)
         {
             string json = msg.AsString;
+            IDictionary<string, JToken> jsonObject;
 
             try
             {
-                JToken token = JToken.Parse(json);
-                string val = (string)token[parentGuidFieldName];
-
-                Guid guid;
-                Guid.TryParse(val, out guid);
-
-                return guid;
+                jsonObject = JObject.Parse(json);
             }
             catch (Exception)
             {
                 return Guid.Empty;
             }
+
+            if (!jsonObject.ContainsKey(parentGuidFieldName) || jsonObject[parentGuidFieldName].Type != JTokenType.String)
+            {
+                return Guid.Empty;
+            }
+
+            string val = (string)jsonObject[parentGuidFieldName];
+
+            Guid guid;
+            Guid.TryParse(val, out guid);
+            return guid;
         }
     }
 }
