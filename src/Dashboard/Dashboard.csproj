@@ -214,11 +214,6 @@
     <Content Include="Content\bootstrap\js\bootstrap.min.js" />
     <Content Include="Content\Site.css" />
     <Content Include="Global.asax" />
-    <Content Include="Scripts\angular-mocks.js" />
-    <Content Include="Scripts\angular-route.js" />
-    <Content Include="Scripts\angular-route.min.js" />
-    <Content Include="Scripts\angular.js" />
-    <Content Include="Scripts\angular.min.js" />
     <Content Include="app\controllers\TriggeredJobController.js" />
     <Content Include="app\controllers\FunctionInvocationController.js" />
     <Content Include="app\controllers\TriggeredJobRunController.js" />
@@ -226,13 +221,17 @@
     <Content Include="app\models\FunctionInvocationSummary.js" />
     <Content Include="app\models\JobRun.js" />
     <Content Include="app\services\stringUtils.js" />
+    <Content Include="Scripts\angular-route.js" />
+    <Content Include="Scripts\angular-route.min.js" />
+    <Content Include="Scripts\angular.js" />
+    <Content Include="Scripts\angular.min.js" />
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
     <None Include="..\Common\PublicKey.snk">
       <Link>Properties\PublicKey.snk</Link>
     </None>
-    <Content Include="Scripts\angular.min.js.map" />
     <Content Include="Scripts\angular-route.min.js.map" />
+    <Content Include="Scripts\angular.min.js.map" />
     <None Include="Scripts\jquery-1.9.1.intellisense.js" />
     <Content Include="Scripts\jquery-1.9.1.js" />
     <Content Include="Scripts\jquery-1.9.1.min.js" />
