@@ -44,11 +44,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 return guid;
             }
-            catch (JsonReaderException)
-            {
-                return Guid.Empty;
-            }
-            catch (InvalidOperationException)
+            catch (Exception)
             {
                 return Guid.Empty;
             }
