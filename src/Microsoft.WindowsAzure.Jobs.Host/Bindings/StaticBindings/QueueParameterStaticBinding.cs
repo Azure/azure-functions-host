@@ -99,5 +99,35 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
         }
+
+        public override string Prompt
+        {
+            get
+            {
+                if (IsInput)
+                {
+                    return "Enter the queue message body";
+                }
+                else
+                {
+                    return "Enter the output queue name";
+                }
+            }
+        }
+
+        public override string DefaultValue
+        {
+            get
+            {
+                if (IsInput)
+                {
+                    return null;
+                }
+                else
+                {
+                    return QueueName;
+                }
+            }
+        }
     }
 }

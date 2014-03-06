@@ -24,12 +24,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 // Verify that a binder exists. 
                 var binder = UnknownParameterRuntimeBinding.GetBinderOrThrow(config, parameter);
-                
+
                 var verify = binder as ICloudBinderVerify;
                 if (verify != null)
                 {
                     verify.Validate(parameter);
-                }                
+                }
             }
         }
 
@@ -48,7 +48,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // Not found. Do late time binding. 
                 return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
             }
-            throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));            
+            throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
@@ -71,6 +71,19 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 return string.Format("mapped from keyname '{0}'", "{" + KeyName + "}");
             }
+        }
+
+        public override string Prompt
+        {
+            get
+            {
+                return "Enter the value (if any)";
+            }
+        }
+
+        public override string DefaultValue
+        {
+            get { return null; }
         }
 
         public override TriggerDirectionType GetTriggerDirectionType()

@@ -228,7 +228,8 @@ namespace Dashboard.Controllers
                 FunctionParameterViewModel parameter = new FunctionParameterViewModel
                 {
                     Name = binding.Name,
-                    Description = binding.Description
+                    Description = binding.Prompt,
+                    Value = binding.DefaultValue
                 };
                 parameters.Add(parameter);
             }
@@ -247,7 +248,7 @@ namespace Dashboard.Controllers
                 FunctionParameterViewModel parameter = new FunctionParameterViewModel
                 {
                     Name = binding.Name,
-                    Description = binding.Description,
+                    Description = binding.Prompt,
                     Value = log.FunctionInstance.Args[index].ConvertToInvokeString()
                 };
                 parameters.Add(parameter);

@@ -48,6 +48,14 @@ namespace Microsoft.WindowsAzure.Jobs
         [JsonIgnore]
         public abstract string Description { get; }
 
+        // The default value to use when running the function from the dashboard.
+        [JsonIgnore]
+        public abstract string DefaultValue { get; }
+
+        // When running the function from the dashboard, the text to display to indicate what kind of value to enter.
+        [JsonIgnore]
+        public abstract string Prompt { get; }
+
         public override string ToString()
         {
             return Description;

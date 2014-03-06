@@ -104,5 +104,35 @@ namespace Microsoft.WindowsAzure.Jobs
                 return TriggerDirectionType.Output;
             }
         }
+
+        public override string Prompt
+        {
+            get
+            {
+                if (IsInput)
+                {
+                    return "Enter the input blob path";
+                }
+                else
+                {
+                    return "Enter the output blob path";
+                }
+            }
+        }
+
+        public override string DefaultValue
+        {
+            get
+            {
+                if (Path.HasParameters())
+                {
+                    return null;
+                }
+                else
+                {
+                    return Path.ToString();
+                }
+            }
+        }
     }
 }
