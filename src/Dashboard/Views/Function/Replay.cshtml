@@ -5,7 +5,16 @@
 }
 
 <ol class="breadcrumb">
-    <li>@Html.ActionLink("Dashboard", "Index", "Dashboard")</li>
+    <li>
+        <a href="@Url.Content("~/#/functions")">
+            functions
+        </a>
+    </li>
+    <li>
+        <a href="@Url.Content("~/#/functions/definitions/" + Url.Encode(Model.FunctionFullName))">
+            @Model.FunctionName
+        </a>
+    </li>
 </ol>
 
 <div class="row">

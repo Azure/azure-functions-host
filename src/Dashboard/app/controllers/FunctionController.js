@@ -3,8 +3,8 @@
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
-            functionName = $routeParams.functionName;
-        $scope.functionName = functionName;
+            functionName = $routeParams.functionFullName;
+        $scope.functionFullName = functionName;
         $scope.nonFinalInvocations = {};
 
         $scope.breadcrumbs = [];

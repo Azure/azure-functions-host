@@ -13,5 +13,6 @@ namespace Dashboard.ViewModels
         public string FunctionName { get; set; }
         public bool HostIsNotRunning { get; set; }
         public string SubmitText { get; set; }
+        public string FunctionFullName { get; set; }
     }
 }

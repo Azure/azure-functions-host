@@ -63,7 +63,7 @@
                     templateUrl: 'app/views/FunctionsHome.html',
                     controller: 'FunctionsHomeController'
                 }).
-                when('/functions/definitions/:functionName', {
+                when('/functions/definitions/:functionFullName', {
                     templateUrl: 'app/views/Function.html',
                     controller: 'FunctionController'
                 }).

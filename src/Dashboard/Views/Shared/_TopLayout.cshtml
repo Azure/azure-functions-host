@@ -9,6 +9,10 @@
     @Scripts.Render("~/bundles/modernizr")
     @Scripts.Render("~/bundles/js")
     @Scripts.Render("~/bundles/app")
+    <script>
+        angular.module('dashboard').value('siteRoot', '@Url.Content("~/")');
+    </script>
+
 </head>
 
 <body>

@@ -9,7 +9,7 @@
         func.functionFullName = item.functionFullName;
         func.functionDisplayTitle = item.functionDisplayTitle;
         func.status = item.status;
-        func.when = stringUtils.toDateTime(item.whenUtc);
+        func.when = item.whenUtc ? stringUtils.toDateTime(item.whenUtc) : null;
         func.duration = item.duration;
         func.exceptionMessage = item.exceptionMessage;
         func.updateTimingStrings();
@@ -17,8 +17,12 @@
     };
 
     FunctionInvocationSummary.prototype.updateTimingStrings = function () {
-        this.statusTimeString = stringUtils.formatDateTime(this.when);
-        this.durationString = stringUtils.formatTimeSpan(this.duration);
+        this.statusTimeString = this.when
+            ? stringUtils.formatDateTime(this.when)
+            : null;
+        this.durationString = this.duration
+            ? stringUtils.formatTimeSpan(this.duration)
+            : null;
     };
 
     FunctionInvocationSummary.prototype.isFinal = function () {

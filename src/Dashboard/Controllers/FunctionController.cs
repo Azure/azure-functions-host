@@ -180,6 +180,7 @@ namespace Dashboard.Controllers
                 Parameters = parameters,
                 ParentId = parentId,
                 FunctionName = function.Location.GetShortName(),
+                FunctionFullName = function.Location.ToString(),
                 HostIsNotRunning = !IsHostRunning(function),
                 SubmitText = submitText
             };
@@ -210,7 +211,7 @@ namespace Dashboard.Controllers
 
             _invoker.TriggerAndOverride(hostId, message);
 
-            return RedirectToAction("FunctionInstance", new { id = id });
+            return Redirect("~/#/functions/invocations/"+id);
         }
 
         private bool IsHostRunning(FunctionDefinition function)

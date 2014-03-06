@@ -5,6 +5,10 @@
             Invocation Details <small ng-if="model" ng-bind="model.invocation.functionDisplayTitle"></small>
         </h3>
 
+        <p>
+            <a class="btn btn-primary" href="{{_urls.replayFunction(invocationId)}}">Replay function</a>
+        </p>
+
         <div ng-if="isRunning(model.invocation)">
             <form action="{{_api.sdk.abortFunctionInstance(invocationId)}}" method="POST" class="form-inline">
                 <button ng-if="!model.invocation.isAborted" class="btn btn-danger btn-sm" type="submit"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>
@@ -13,7 +17,7 @@
         </div>
         <p ng-if="model" ng-class="model.invocation.getAlertClass()" class="alert">
             <b>{{model.invocation.getLabelText()}}</b>
-            <span>{{model.invocation.statusTimeString}}</span> <small>({{model.invocation.durationString}} running time)</small>
+            <span ng-bind="model.invocation.statusTimeString"></span> <small ng-if="model.invocation.durationString">({{model.invocation.durationString}} running time)</small>
             <div ng-if="model.invocation.exceptionMessage">
                 <span>
                     <b>{{model.invocation.exceptionType}}</b>: {{model.invocation.exceptionMessage}}
