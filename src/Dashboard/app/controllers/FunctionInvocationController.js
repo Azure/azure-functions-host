@@ -48,6 +48,10 @@
                                 title: 'Run'
                             });
                         }
+                        $scope.breadcrumbs.push({
+                            url: urls.functionDefinition($scope.model.invocation.functionFullName),
+                            title: $scope.model.invocation.functionName
+                        });
                     } else {
                         $scope.breadcrumbs = [{
                             url: urls.functions(),
