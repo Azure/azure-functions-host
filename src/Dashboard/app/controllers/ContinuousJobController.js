@@ -130,6 +130,9 @@
         }
 
         function updateTiming() {
+            if (!$scope.invocations) {
+                return;
+            }
             var ix, len = $scope.invocations.length;
             for (ix = 0; ix !== len; ++ix) {
                 $scope.invocations[ix].updateTimingStrings();
