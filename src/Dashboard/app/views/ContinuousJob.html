@@ -4,6 +4,7 @@
         <h3>
             Continuous Job Details <small ng-bind="jobName"></small>
         </h3>
+        <p ng-if="!job">Loading...</p>
         <p ng-if="job" ng-class="job.getAlertClass()" class="alert">
             <b ng-bind="job.getAlertHeader()"></b><br />
             Run command: {{job.runCommand}}
@@ -12,13 +13,17 @@
                         is-running="job.isRunning()">
         </console-output>
 
-        <section ng-if="!invocations.length">
+        <section ng-if="!invocations">
+            <p>Loading...</p>
+        </section>
+
+        <section ng-if="invocations.length === 0">
             <p>
                 Use Azure WebJobs SDK to power-up your web job. Read <a href="WHOOHOO">this article</a> to learn more.
             </p>
         </section>
 
-        <section ng-if="invocations.length">
+        <section ng-if="invocations.length > 0">
             <h4>Functions invoked during this run</h4>
             <table class="table table-striped table-hover">
                 <thead>

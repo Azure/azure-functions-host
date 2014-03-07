@@ -13,6 +13,9 @@
                 </tr>
             </thead>
             <tbody>
+                <tr ng-if="!jobs">
+                    <td colspan="3">Loading...</td>
+                </tr>
                 <tr ng-if="jobs.length === 0">
                     <td colspan="3">There are no WebJobs in this website. Checkout Windows Azure Portal to set up WebJobs.</td>
                 </tr>

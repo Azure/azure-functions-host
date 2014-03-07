@@ -11,7 +11,10 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-if="!functionDefinitions.length">
+                    <tr ng-if="!functionDefinitions">
+                        <td colspan="2">Loading...</td>
+                    </tr>
+                    <tr ng-if="functionDefinitions.length === 0">
                         <td colspan="2">No functions are present.</td>
                     </tr>
                     <tr ng-repeat="functionDefinition in functionDefinitions">

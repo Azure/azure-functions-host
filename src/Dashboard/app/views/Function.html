@@ -7,8 +7,6 @@
         <p>
             <a ng-if="functionFullName" class="btn btn-primary" href="{{_urls.runFunction(functionFullName)}}">Run function</a>
         </p>
-        <section ng-if="invocations">
-            <ng-include src="'app/views/shared/FunctionInvocationsTable.html'"></ng-include>
-        </section>
+        <ng-include src="'app/views/shared/FunctionInvocationsTable.html'"></ng-include>
     </div>
 </div>

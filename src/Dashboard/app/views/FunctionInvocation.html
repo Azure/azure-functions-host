@@ -1,8 +1,9 @@
 ﻿<ng-include src="'app/views/shared/breadcrumb.html'"></ng-include>
 <div class="row">
-    <div class="col-md-9">
+    <div ng-if="!model" class="col-md-9">Loading...</div>
+    <div ng-if="model" class="col-md-9">
         <h3>
-            Invocation Details <small ng-if="model" ng-bind="model.invocation.functionDisplayTitle"></small>
+            Invocation Details <small ng-bind="model.invocation.functionDisplayTitle"></small>
         </h3>
 
         <p>
@@ -15,7 +16,7 @@
                 <button ng-if="model.invocation.isAborted" class="btn btn-danger btn-sm" disabled>Host abort requested</button>
             </form>
         </div>
-        <p ng-if="model" ng-class="model.invocation.getAlertClass()" class="alert">
+        <p ng-class="model.invocation.getAlertClass()" class="alert">
             <b>{{model.invocation.getLabelText()}}</b>
             <span ng-bind="model.invocation.statusTimeString"></span> <small ng-if="model.invocation.durationString">({{model.invocation.durationString}} running time)</small>
             <div ng-if="model.invocation.exceptionMessage">
@@ -24,12 +25,12 @@
                 </span>
             </div>
         </p>
-        <p ng-if="model">
+        <p>
             <span class="glyphicon glyphicon-flash"></span><span ng-bind="model.trigger"></span>
             <span ng-if="model.ancestor"> on <a title="The parent job which triggered this function" href="{{_urls.functionInvocation(model.ancestor.id)}}">{{model.ancestor.functionDisplayTitle}} {{ancestor.id}}</a></span>
         </p>
 
-        <table ng-if="model.parameters" class="table table-striped">
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th class="col-md-2">Parameter</th>
@@ -62,7 +63,7 @@
                 </tr>
             </tbody>
         </table>
-        <console-output ng-if="model" log-url="_api.sdk.functionConsoleLog(model.invocation.id)" supports-incremental-updates="true"
+        <console-output log-url="_api.sdk.functionConsoleLog(model.invocation.id)" supports-incremental-updates="true"
                         is-running="isRunning(model.invocation)">
         </console-output>
     </div>
@@ -71,33 +72,36 @@
 <div ng-show="children" class="row">
     <div class="col-md-9">
         <h3>Children <small>Functions triggered by this function</small></h3>
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th class="col-md-3">Function Name</th>
-                    <th class="col-md-1">Status</th>
-                    <th class="col-md-2">Status Detail</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="child in children">
-                    <td>
-                        <a bind-once href="#functions/invocations/{{child.invocation.id}}">
-                            {{child.invocation.functionDisplayTitle}}
-                        </a>
-                    </td>
-                    <td>
-                        <span ng-class="child.invocation.getLabelClass()" class="label">
-                            {{child.invocation.getLabelText()}}
-                        </span>
-                    </td>
-                    <td>
-                        <span>{{child.invocation.statusTimeString}}</span> <small>({{child.invocation.durationString}} running time)</small>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        <button type="button" class="btn btn-primary btn-sm" ng-show="hasMoreChildren && !loadingChildren" ng-click="loadChildren()">Load more</button>
-        <button type="button" class="btn btn-primary btn-sm" ng-show="loadingChildren">Loading ...</button>
+        <p ng-if="!children">Loading...</p>
+        <section ng-if="children">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th class="col-md-3">Function Name</th>
+                        <th class="col-md-1">Status</th>
+                        <th class="col-md-2">Status Detail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="child in children">
+                        <td>
+                            <a bind-once href="#functions/invocations/{{child.invocation.id}}">
+                                {{child.invocation.functionDisplayTitle}}
+                            </a>
+                        </td>
+                        <td>
+                            <span ng-class="child.invocation.getLabelClass()" class="label">
+                                {{child.invocation.getLabelText()}}
+                            </span>
+                        </td>
+                        <td>
+                            <span>{{child.invocation.statusTimeString}}</span> <small>({{child.invocation.durationString}} running time)</small>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-primary btn-sm" ng-show="hasMoreChildren && !loadingChildren" ng-click="loadChildren()">Load more</button>
+            <button type="button" class="btn btn-primary btn-sm" ng-show="loadingChildren">Loading ...</button>
+        </section>
     </div>
 </div>

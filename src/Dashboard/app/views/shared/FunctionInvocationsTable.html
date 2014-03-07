@@ -1,27 +1,32 @@
-﻿<table class="table table-striped table-hover">
-    <thead>
-        <tr>
-            <th>Function</th>
-            <th>Status</th>
-            <th>Status detail</th>
-        </tr>
-    </thead>
-    <tbody id="function-invocations-body">
-        <tr ng-if="invocations.length === 0">
-            <td colspan="3">Nothing yet ...</td>
-        </tr>
-        <tr ng-repeat="invocation in invocations">
-            <td>
-                <a title="Run details" href="{{_urls.functionInvocation(invocation.id)}}">
-                    <span>{{invocation.functionDisplayTitle}}</span>
-                </a>
-            </td>
-            <td>
-                <span ng-class="[invocation.getLabelClass()]" class="label">{{invocation.getLabelText()}}</span>
-            </td>
-            <td>
-                <span>{{invocation.statusTimeString}}</span>(<small>{{invocation.durationString}}</small> running time)
-            </td>
-        </tr>
-    </tbody>
-</table>
+﻿<section>
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Function</th>
+                <th>Status</th>
+                <th>Status detail</th>
+            </tr>
+        </thead>
+        <tbody id="function-invocations-body">
+            <tr ng-if="!invocations">
+                <td colspan="3">Loading...</td>
+            </tr>
+            <tr ng-if="invocations.length === 0">
+                <td colspan="3">No functions have run recently.</td>
+            </tr>
+            <tr ng-repeat="invocation in invocations">
+                <td>
+                    <a title="Run details" href="{{_urls.functionInvocation(invocation.id)}}">
+                        <span>{{invocation.functionDisplayTitle}}</span>
+                    </a>
+                </td>
+                <td>
+                    <span ng-class="[invocation.getLabelClass()]" class="label">{{invocation.getLabelText()}}</span>
+                </td>
+                <td>
+                    <span>{{invocation.statusTimeString}}</span>(<small>{{invocation.durationString}}</small> running time)
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
