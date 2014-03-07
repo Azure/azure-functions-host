@@ -4,6 +4,10 @@
             pollInterval = 10 * 1000,
             lastPoll = 0;
 
+        if ($scope._sdkNotConfigured) {
+            return;
+        }
+
         $scope.breadcrumbs = [];
 
         function getFunctionDefinitions() {

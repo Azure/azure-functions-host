@@ -6,6 +6,10 @@
             invocationId = $routeParams.invocationId,
             functionInvocationDataUrl = api.sdk.functionInvocation(invocationId);
 
+        if ($scope._sdkNotConfigured) {
+            return;
+        }
+
         $scope.invocationId = invocationId;
         $scope.stringUtils = stringUtils;
 

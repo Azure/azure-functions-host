@@ -7,6 +7,7 @@
             functionsInJobUrl = api.sdk.functionsInJob('continuous', jobName),
             functionInvocationsUrl = api.sdk.invocationByIds(),
             jobRunUrl = api.kudu.job('continuous', jobName);
+
         $scope.jobName = jobName;
         $scope.nonFinalInvocations = {};
 
@@ -95,15 +96,21 @@
 
         function getInitialData() {
             var jobRunDone, initialFunctionsDone;
+
+            if ($scope._sdkNotConfigured) {
+                initialFunctionsDone = true;
+            } else {
+                getInitialFunctionInvocations().then(function () {
+                    initialFunctionsDone = true;
+                    if (jobRunDone) {
+                        startPolling();
+                    }
+                });
+            }
+
             getJobRunDetails().then(function () {
                 jobRunDone = true;
                 if (initialFunctionsDone) {
-                    startPolling();
-                }
-            });
-            getInitialFunctionInvocations().then(function () {
-                initialFunctionsDone = true;
-                if (jobRunDone) {
                     startPolling();
                 }
             });
@@ -116,8 +123,10 @@
                 return;
             }
             getJobRunDetails();
-            getNewFunctionInvocations();
-            getUpdatedFunctionInvocations();
+            if (!$scope._sdkNotConfigured) {
+                getNewFunctionInvocations();
+                getUpdatedFunctionInvocations();
+            }
         }
 
         function updateTiming() {

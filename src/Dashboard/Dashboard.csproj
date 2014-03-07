@@ -153,7 +153,7 @@
     <Compile Include="App_Start\HostVersionConfig.cs" />
     <Compile Include="App_Start\NinjectWebCommon.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
-    <Compile Include="App_Start\SimpleBatchStuff.cs" />
+    <Compile Include="App_Start\SdkSetupState.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\FunctionController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
@@ -205,6 +205,7 @@
     <Content Include="app\views\shared\ConsoleOutput.html" />
     <Content Include="app\views\ContinuousJob.html" />
     <Content Include="app\views\shared\FunctionInvocationsTable.html" />
+    <Content Include="app\views\shared\SdkTeaser.html" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.css" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.min.css" />
     <Content Include="Content\bootstrap\css\bootstrap.css" />
@@ -282,7 +283,6 @@
     <Content Include="Views\Function\FunctionInstances.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
     <Content Include="Views\Function\PartialInvocationLog.cshtml" />
-    <Content Include="Views\BadConfig\Index.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Header.cshtml" />
     <Content Include="Views\Shared\_InvocationLogSummary.cshtml" />

@@ -4,6 +4,11 @@
             pollInterval = 10 * 1000,
             lastPoll = 0,
             functionName = $routeParams.functionFullName;
+
+        if ($scope._sdkNotConfigured) {
+            return;
+        }
+
         $scope.functionFullName = functionName;
         $scope.nonFinalInvocations = {};
 

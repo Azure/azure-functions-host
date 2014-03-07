@@ -9,21 +9,6 @@ namespace Dashboard
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
-            if (SimpleBatchStuff.BadInit)
-            {
-                routes.MapRoute(
-                name: "Default",
-                url: "{*path}",
-                defaults: new
-                    {
-                        controller = "BadConfig",
-                        action = "Index"
-                    }
-                );
-
-                return;
-            }
-
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",

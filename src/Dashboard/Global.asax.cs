@@ -26,7 +26,7 @@ namespace Dashboard
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
 
-            if (!SimpleBatchStuff.BadInit)
+            if (!SdkSetupState.BadInit)
             {
                 ModelBinderConfig.Register(kernel);
                 HostVersionConfig.RegisterWarnings(kernel.Get<IHostVersionReader>());

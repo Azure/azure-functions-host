@@ -12,8 +12,10 @@
         <console-output ng-if="job" log-url="job.outUrl" supports-incremental-updates="false"
                         is-running="job.isRunning()">
         </console-output>
+        
+        <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>
 
-        <section ng-if="!invocations">
+        <section ng-if="!invocations && !_sdkNotConfigured">
             <p>Loading...</p>
         </section>
 

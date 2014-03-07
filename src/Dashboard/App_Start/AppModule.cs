@@ -17,20 +17,10 @@ namespace Dashboard
     {
         public override void Load()
         {
-            Services services;
-
-            // Validate services
+            Services services = TryCreateServices();
+            if (services == null)
             {
-                try
-                {
-                    services = GetServices();
-                }
-                catch (Exception e)
-                {
-                    // Invalid
-                    SimpleBatchStuff.BadInitErrorMessage = e.Message; // $$$ don't use a global flag.                    
-                    return;
-                }
+                return;
             }
 
             Bind<CloudStorageAccount>().ToConstant(services.Account);
@@ -58,6 +48,28 @@ namespace Dashboard
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
         }
 
+        private static Services TryCreateServices()
+        {
+            // Validate services
+            try
+            {
+                var val = GetRuntimeConnectionString();
+                if (val != null)
+                {
+                    SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Valid;
+                    return GetServices(val);
+                }
+                SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Missing;
+            }
+            catch (Exception e)
+            {
+                // Invalid
+                SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Invalid;
+                SdkSetupState.BadInitErrorMessage = e.Message; // $$$ don't use a global flag.                    
+            }
+            return null;
+        }
+
         private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
         {
             CloudBlobClient client = account.CreateCloudBlobClient();
@@ -67,23 +79,32 @@ namespace Dashboard
 
         // Get a Services object based on current configuration.
         // $$$ Really should just get rid of this object and use DI all the way through. 
-        static Services GetServices()
+        static Services GetServices(string runtimeConnectionString)
+        {
+            // Antares mode
+            var ai = new AccountInfo
+            {
+                AccountConnectionString = runtimeConnectionString,
+                WebDashboardUri = "illegal2"
+            };
+            return new Services(ai);
+        }
+
+        private static string GetRuntimeConnectionString()
         {
             var val = new DefaultConnectionStringProvider().GetConnectionString(JobHost.LoggingConnectionStringName);
+
+            if (String.IsNullOrEmpty(val))
+            {
+                return null;
+            }
 
             string validationErrorMessage;
             if (!new DefaultStorageValidator().TryValidateConnectionString(val, out validationErrorMessage))
             {
                 throw new InvalidOperationException(validationErrorMessage);
             }
-
-            // Antares mode
-            var ai = new AccountInfo
-            {
-                AccountConnectionString = val,
-                WebDashboardUri = "illegal2"
-            };
-            return new Services(ai);
+            return val;
         }
     }
 

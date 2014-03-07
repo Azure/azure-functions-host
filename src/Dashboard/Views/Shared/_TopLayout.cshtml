@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using Dashboard
+<!DOCTYPE html>
 <html ng-app="dashboardApp">
 <head>
     <meta charset="utf-8" />
@@ -10,9 +11,22 @@
     @Scripts.Render("~/bundles/js")
     @Scripts.Render("~/bundles/app")
     <script>
-        angular.module('dashboard').value('siteRoot', '@Url.Content("~/")');
+        var dashboard = angular.module('dashboard');
+        dashboard.value('siteRoot', '@Url.Content("~/")');
+        @if (SdkSetupState.BadInit)
+        {
+            <text>
+        dashboard.run(function($rootScope) {
+            $rootScope._sdkNotConfigured = {
+                badInit: @SdkSetupState.BadInit.ToString().ToLowerInvariant(),
+                runtimeConnectionStringName: '@SdkSetupState.RuntimeConnectionStringName',
+                badInitErrorMessage: '@SdkSetupState.BadInitErrorMessage',
+                connectionStringState: '@SdkSetupState.ConnectionStringState.ToString().ToLowerInvariant()'
+            };
+        });
+        </text>
+        }
     </script>
-
 </head>
 
 <body>
