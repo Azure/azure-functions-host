@@ -426,12 +426,10 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            IFunctionInstanceLookup lookup = _services.GetFunctionInstanceLookup();
-
             TempData["Message.Text"] = "Job found for: " + path;
             TempData["Message.Level"] = "info";
 
-            return RedirectToAction("FunctionInstance", new { lookup.Lookup(guid).FunctionInstance.Id });
+            return Redirect("~/#/functions/invocations/" + guid);
         }
 
         [HttpPost]
