@@ -49,6 +49,9 @@
             functionConsoleLog: function (invocationId) {
                 return "api/log/output/" + encodeURIComponent(invocationId);
             },
+            blob: function (blobPath) {
+                return "api/log/blob?path=" + encodeURIComponent(blobPath);
+            },
             functionsInJob: function (jobType, jobName, runId) {
                 if (jobType !== 'triggered' && jobType !== 'continuous') {
                     throw "Unsuppoerted job type " + jobType;
