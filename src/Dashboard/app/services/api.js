@@ -49,7 +49,7 @@
             functionConsoleLog: function (invocationId) {
                 return "api/log/output/" + encodeURIComponent(invocationId);
             },
-            blob: function (blobPath) {
+            downloadBlob: function (blobPath) {
                 return "api/log/blob?path=" + encodeURIComponent(blobPath);
             },
             functionsInJob: function (jobType, jobName, runId) {
