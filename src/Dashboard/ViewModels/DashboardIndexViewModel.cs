@@ -12,6 +12,7 @@ namespace Dashboard.ViewModels
     {
         public IEnumerable<InvocationLogViewModel> InvocationLogViewModels { get; set; }
         public IEnumerable<FunctionStatisticsViewModel> FunctionStatisticsViewModels { get; set; }
+        public string StorageAccountName { get; set; }
     }
 
     public class WebJobRunIdentifierViewModel

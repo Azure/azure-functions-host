@@ -181,7 +181,6 @@
     <Compile Include="ViewModels\FunctionLocationViewModel.cs" />
     <Compile Include="ViewModels\FunctionParameterViewModel.cs" />
     <Compile Include="ViewModels\FunctionTriggerViewModel.cs" />
-    <Compile Include="ViewModels\DashboardAboutViewModel.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
     <Compile Include="ViewModels\WebJobTypes.cs" />
   </ItemGroup>
@@ -254,7 +253,6 @@
     <Content Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
-    <Content Include="Views\Dashboard\About.cshtml" />
     <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
     <Content Include="Views\Function\SearchBlob.cshtml" />
     <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />

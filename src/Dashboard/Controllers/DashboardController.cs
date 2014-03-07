@@ -79,17 +79,6 @@ namespace Dashboard.Controllers
             return View(model);
         }
 
-        public ActionResult About()
-        {
-            var model = new DashboardAboutViewModel();
-
-            // Get health
-            model.VersionInformation = FunctionInvokeRequest.CurrentSchema.ToString();
-            model.AccountName = _services.Account.Credentials.AccountName;
-
-            return View(model);
-        }
-
         public ActionResult PartialFunctionStatistics()
         {
             var hearbeats = _heartbeatTable.ReadAll();

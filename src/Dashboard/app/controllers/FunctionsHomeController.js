@@ -17,6 +17,7 @@
                     functionDefinition,
                     result = res.data.functionStatisticsViewModels,
                     len = result.length;
+                $scope.storageAccount = res.data.storageAccountName;
                 $scope.functionDefinitions = [];
                 for (ix = 0; ix !== len; ++ix) {
                     item = result[ix];

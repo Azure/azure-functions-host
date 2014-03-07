@@ -6,6 +6,7 @@ using System.Web.Http;
 using AzureTables;
 using Dashboard.Controllers;
 using Dashboard.ViewModels;
+using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host;
 using InternalWebJobTypes = Microsoft.WindowsAzure.Jobs.WebJobTypes;
@@ -15,16 +16,18 @@ namespace Dashboard.ApiControllers
 {
     public class FunctionsController : ApiController
     {
+        private readonly CloudStorageAccount _account;
         private readonly IFunctionsInJobReader _functionsInJobReader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
-        private AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
+        private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
         private readonly IRunningHostTableReader _heartbeatTable;
         private readonly IFunctionInstanceQuery _functionInstanceQuery;
         private readonly ICausalityReader _causalityReader;
 
         internal FunctionsController(
+            CloudStorageAccount account,
             IFunctionsInJobReader functionsInJobReader, 
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionTableLookup functionTableLookup,
@@ -32,6 +35,7 @@ namespace Dashboard.ApiControllers
             ICausalityReader causalityReader, 
             IFunctionInstanceQuery functionInstanceQuery, IRunningHostTableReader heartbeatTable, AzureTable<FunctionLocation, FunctionStatsEntity> invokeStatsTable)
         {
+            _account = account;
             _functionsInJobReader = functionsInJobReader;
             _functionInstanceLookup = functionInstanceLookup;
             _functionTableLookup = functionTableLookup;
@@ -231,6 +235,9 @@ namespace Dashboard.ApiControllers
                     statsModel.SuccessCount = stats.CountCompleted;
                 }
             }
+
+            model.StorageAccountName = _account.Credentials.AccountName;
+
             return Ok(model);
         }
     }
