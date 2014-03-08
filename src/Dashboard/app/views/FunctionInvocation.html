@@ -85,19 +85,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="child in children">
+                    <tr ng-repeat="invocation in children">
                         <td>
-                            <a bind-once href="#functions/invocations/{{child.invocation.id}}">
-                                {{child.invocation.functionDisplayTitle}}
+                            <a bind-once title="Invocation details" href="{{_urls.functionInvocation(invocation.id)}}">
+                                <span>{{invocation.functionDisplayTitle}}</span>
                             </a>
                         </td>
                         <td>
-                            <span ng-class="child.invocation.getLabelClass()" class="label">
-                                {{child.invocation.getLabelText()}}
-                            </span>
+                            <span ng-class="invocation.getLabelClass()" class="label">{{invocation.getLabelText()}}</span>
                         </td>
                         <td>
-                            <span>{{child.invocation.statusTimeString}}</span> <small>({{child.invocation.durationString}} running time)</small>
+                            <span>{{invocation.statusTimeString}}</span> <small>({{invocation.durationString}} running time)</small>
                         </td>
                     </tr>
                 </tbody>

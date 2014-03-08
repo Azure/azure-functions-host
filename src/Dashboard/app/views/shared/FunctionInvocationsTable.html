@@ -2,9 +2,9 @@
     <table class="table table-striped table-hover">
         <thead>
             <tr>
-                <th>Function</th>
-                <th>Status</th>
-                <th>Status detail</th>
+                <th class="col-md-3">Function</th>
+                <th class="col-md-1">Status</th>
+                <th class="col-md-2">Status Detail</th>
             </tr>
         </thead>
         <tbody id="function-invocations-body">
@@ -16,15 +16,15 @@
             </tr>
             <tr ng-repeat="invocation in invocations">
                 <td>
-                    <a title="Run details" href="{{_urls.functionInvocation(invocation.id)}}">
+                    <a title="Invocation details" href="{{_urls.functionInvocation(invocation.id)}}">
                         <span>{{invocation.functionDisplayTitle}}</span>
                     </a>
                 </td>
                 <td>
-                    <span ng-class="[invocation.getLabelClass()]" class="label">{{invocation.getLabelText()}}</span>
+                    <span ng-class="invocation.getLabelClass()" class="label">{{invocation.getLabelText()}}</span>
                 </td>
                 <td>
-                    <span>{{invocation.statusTimeString}}</span>(<small>{{invocation.durationString}}</small> running time)
+                    <span>{{invocation.statusTimeString}}</span> <small>({{invocation.durationString}} running time)</small>
                 </td>
             </tr>
         </tbody>

@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionInvocationController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, invocationUtils, api, FunctionInvocationModel, urls) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
@@ -83,9 +83,11 @@
                 olderThan: $scope.children[$scope.children.length - 1].rowKeyForJobRunLookup
             };
             loadChildrenInternal(params).success(function (res) {
-                var ix, len = res.length;
+                var ix, len = res.length, item;
                 for (ix = 0; ix !== len; ++ix) {
-                    $scope.children.push(res[ix]);
+                    item = FunctionInvocationSummary.fromJson(res[ix].invocation);
+                    item.rowKeyForJobRunLookup = res[ix].rowKey;
+                    $scope.children.push(item);
                 }
                 console.log("resolving: " + res.length);
                 deferred.resolve(res.length);
@@ -109,7 +111,7 @@
 
         // load initial page, and poll for new children
         function loadChildren() {
-            var params = {}, ix;
+            var params = {}
             if (!$scope.children || $scope.children.length === 0) {
                 params.limit = 20;
             } else {
@@ -120,11 +122,19 @@
                 params.newerThan = $scope.children[0].rowKeyForJobRunLookup;
             }
             loadChildrenInternal(params).success(function (res) {
+                var ix, len = res.length, item;
                 if (!$scope.children) {
-                    $scope.children = res;
+                    $scope.children = [];
+                    for (ix = 0; ix !== len; ++ix) {
+                        item = FunctionInvocationSummary.fromJson(res[ix].invocation);
+                        item.rowKeyForJobRunLookup = res[ix].rowKey;
+                        $scope.children.push(item);
+                    }
                 } else {
-                    for (ix = res.length - 1; ix !== -1; --ix) {
-                        $scope.children.unshift(res[ix]);
+                    for (ix = len - 1; ix !== -1; --ix) {
+                        item = FunctionInvocationSummary.fromJson(res[ix].invocation);
+                        item.rowKeyForJobRunLookup = res[ix].rowKey;
+                        $scope.children.unshift(item);
                     }
                 }
             });
