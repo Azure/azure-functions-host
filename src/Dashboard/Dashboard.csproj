@@ -147,7 +147,6 @@
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\LogController.cs" />
     <Compile Include="App_Start\AppModule.cs" />
-    <Compile Include="App_Start\AuthConfig.cs" />
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\HostVersionConfig.cs" />
@@ -156,8 +155,6 @@
     <Compile Include="App_Start\SdkSetupState.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\FunctionController.cs" />
-    <Compile Include="Controllers\DashboardController.cs" />
-    <Compile Include="Controllers\BadConfigController.cs" />
     <Compile Include="Controllers\MainController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -176,9 +173,8 @@
     <Compile Include="ViewModels\FunctionDefinitionViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceDetailsViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceStatus.cs" />
-    <Compile Include="ViewModels\RunFunctionViewModel.cs" />
-    <Compile Include="ViewModels\FunctionInstancesViewModel.cs" />
     <Compile Include="ViewModels\FunctionLocationViewModel.cs" />
+    <Compile Include="ViewModels\RunFunctionViewModel.cs" />
     <Compile Include="ViewModels\FunctionParameterViewModel.cs" />
     <Compile Include="ViewModels\FunctionTriggerViewModel.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
@@ -253,9 +249,7 @@
     <Content Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
-    <Content Include="Views\Dashboard\PartialFunctionStatistics.cshtml" />
     <Content Include="Views\Function\SearchBlob.cshtml" />
-    <Content Include="Views\Function\FunctionInvocationChildren.cshtml" />
     <Content Include="Views\Main\Index.cshtml" />
     <Content Include="app\views\TriggeredJob.html" />
     <Content Include="app\views\TriggeredJobRun.html" />
@@ -264,9 +258,7 @@
     <Content Include="Views\Function\Replay.cshtml" />
     <Content Include="Views\Function\_Invoke.cshtml" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="App_Data\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Content Include="packages.config">
       <SubType>Designer</SubType>
@@ -277,13 +269,8 @@
     <Content Include="Content\bootstrap\fonts\glyphicons-halflings-regular.ttf" />
     <Content Include="Content\bootstrap\fonts\glyphicons-halflings-regular.woff" />
     <Content Include="Scripts\jquery-1.9.1.min.map" />
-    <Content Include="Views\Function\FunctionInstance.cshtml" />
-    <Content Include="Views\Function\FunctionInstances.cshtml" />
-    <Content Include="Views\Dashboard\Index.cshtml" />
-    <Content Include="Views\Function\PartialInvocationLog.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Header.cshtml" />
-    <Content Include="Views\Shared\_InvocationLogSummary.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Shared\_TopLayout.cshtml" />
     <Content Include="Views\Web.config" />

@@ -8,7 +8,6 @@ using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.StorageClient;
-using FunctionInstanceStatus = Dashboard.ViewModels.FunctionInstanceStatus;
 
 namespace Dashboard.Controllers
 {
@@ -20,11 +19,6 @@ namespace Dashboard.Controllers
         private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
         private readonly IRunningHostTableReader _heartbeatTable;
         private readonly IInvoker _invoker;
-        private readonly IProcessTerminationSignalReader _terminationSignalReader;
-        private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
-
-        private const int MaxPageSize = 50;
-        private const int DefaultPageSize = 10;
 
         internal FunctionController(
             Services services,
@@ -32,9 +26,7 @@ namespace Dashboard.Controllers
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionUpdatedLogger functionUpdatedLogger,
             IRunningHostTableReader heartbeatTable,
-            IInvoker invoker,
-            IProcessTerminationSignalReader terminationSignalReader,
-            IProcessTerminationSignalWriter terminationSignalWriter
+            IInvoker invoker
             )
         {
             _services = services;
@@ -43,73 +35,6 @@ namespace Dashboard.Controllers
             _functionUpdatedLogger = functionUpdatedLogger;
             _heartbeatTable = heartbeatTable;
             _invoker = invoker;
-            _terminationSignalReader = terminationSignalReader;
-            _terminationSignalWriter = terminationSignalWriter;
-        }
-
-        public ActionResult PartialInvocationLog()
-        {
-            var logger = _services.GetFunctionInstanceQuery();
-
-            var query = new FunctionInstanceQueryFilter();
-            var model = logger
-                .GetRecent(10, query)
-                .Select(x => new InvocationLogViewModel(x))
-                .ToArray();
-
-            return PartialView(model);
-        }
-
-        public ActionResult FunctionInstances(string functionName, bool? success, int? page, int? pageSize)
-        {
-            if (String.IsNullOrWhiteSpace(functionName))
-            {
-                return HttpNotFound();
-            }
-
-            FunctionDefinition func = _functionTableLookup.Lookup(functionName);
-
-            if (func == null)
-            {
-                return HttpNotFound();
-            }
-
-            // ensure PageSize is not too big, and define a default value if not provided
-            pageSize = pageSize.HasValue ? Math.Min(MaxPageSize, pageSize.Value) : DefaultPageSize;
-            pageSize = Math.Max(1, pageSize.Value);
-
-            page = page.HasValue ? page : 1;
-
-            var skip = ((page - 1) * pageSize.Value).Value;
-
-            RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-
-            // Do some analysis to find inputs, outputs, 
-            var model = new FunctionInstancesViewModel
-            {
-                FunctionFullName = func.Location.FullName,
-                Success = success,
-                Page = page,
-                PageSize = pageSize.Value
-            };
-
-            var query = new FunctionInstanceQueryFilter
-            {
-                Location = func.Location,
-                Succeeded = success
-            };
-
-            var logger = _services.GetFunctionInstanceQuery();
-
-            // load pageSize + 1 to check if there is another page
-            model.InvocationLogViewModels = logger
-                .GetRecent(pageSize.Value + 1, skip, query)
-                .Select(e => new InvocationLogViewModel(e))
-                .ToArray();
-
-            model.FunctionId = func.Location.GetId();
-
-            return View(model);
         }
 
         public ActionResult Run(string functionId)
@@ -217,9 +142,15 @@ namespace Dashboard.Controllers
         private bool IsHostRunning(FunctionDefinition function)
         {
             RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-            return DashboardController.HasValidHeartbeat(function, heartbeats);
+            return HasValidHeartbeat(function, heartbeats);
         }
 
+        internal static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
+        {
+            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == func.HostId);
+            return RunningHost.IsValidHeartbeat(heartbeat);
+        }
+        
         private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
@@ -306,64 +237,6 @@ namespace Dashboard.Controllers
             return GetFunction(instanceLog.FunctionInstance.Location.GetId());
         }
 
-        public ActionResult FunctionInstance(string id)
-        {
-            if (String.IsNullOrWhiteSpace(id))
-            {
-                return HttpNotFound();
-            }
-
-            Guid guid;
-            if (!Guid.TryParse(id, out guid))
-            {
-                return HttpNotFound();
-            }
-
-            var func = _functionInstanceLookup.Lookup(guid);
-
-            if (func == null)
-            {
-                return HttpNotFound();
-            }
-
-            var model = new FunctionInstanceDetailsViewModel();
-            model.Invocation = new InvocationLogViewModel(func);
-            model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
-            model.IsAborted = model.Invocation.Status == FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
-
-            // Do some analysis to find inputs, outputs, 
-
-            var functionModel = _functionTableLookup.Lookup(func.FunctionInstance.Location.GetId());
-
-            if (functionModel != null)
-            {
-                var descriptor = new FunctionDefinitionViewModel(functionModel);
-
-                // Parallel arrays of static descriptor and actual instance info 
-                ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
-
-                model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
-                LogAnalysis.ApplyRuntimeInfo(func.FunctionInstance, args, model.Parameters);
-                LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
-            }
-
-            ICausalityReader causalityReader = _services.GetCausalityReader();
-
-            // fetch direct children
-            model.ChildrenIds = causalityReader
-                .GetChildren(func.FunctionInstance.Id)
-                .Select(r => r.ChildGuid).ToArray();
-
-            // fetch ancestor
-            var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
-            if (parentGuid != Guid.Empty)
-            {
-                model.Ancestor = new InvocationLogViewModel(_functionInstanceLookup.Lookup(parentGuid));
-            }
-
-            return View("FunctionInstance", model);
-        }
-
         public ActionResult SearchBlob(string path)
         {
             ViewBag.Path = path;
@@ -430,40 +303,6 @@ namespace Dashboard.Controllers
             TempData["Message.Level"] = "info";
 
             return Redirect("~/#/functions/invocations/" + guid);
-        }
-
-        [HttpPost]
-        public ActionResult Abort(string id)
-        {
-            if (String.IsNullOrWhiteSpace(id))
-            {
-                return HttpNotFound();
-            }
-
-            Guid guid;
-            if (!Guid.TryParse(id, out guid))
-            {
-                return HttpNotFound();
-            }
-
-            var func = _functionInstanceLookup.Lookup(guid);
-
-            if (func == null)
-            {
-                return HttpNotFound();
-            }
-
-            _terminationSignalWriter.RequestTermination(func.HostInstanceId);
-
-            return RedirectToAction("FunctionInstance", new { id });
-        }
-
-        public ActionResult InvocationsByIds(Guid[] invocationIds)
-        {
-            var invocations = from id in invocationIds
-                let invocation = _functionInstanceLookup.Lookup(id)
-                select new InvocationLogViewModel(invocation);
-            return PartialView("FunctionInvocationChildren", invocations);
         }
     }
 }
