@@ -40,6 +40,7 @@ namespace Dashboard.ViewModels
             FunctionName = log.FunctionInstance.Location.GetShortName();
             FunctionFullName = log.FunctionInstance.Location.ToString();
             FunctionDisplayTitle = BuildFunctionDisplayTitle(log.FunctionInstance);
+            HostInstanceId = log.HostInstanceId;
             if (log.ExecutingJobRunId != null &&
                 log.ExecutingJobRunId.WebSiteName == Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey))
             {
@@ -102,6 +103,7 @@ namespace Dashboard.ViewModels
         public TimeSpan? Duration { get; set; }
         public string ExceptionMessage { get; set; }
         public string ExceptionType { get; set; }
+        public Guid HostInstanceId { get; set; }
     }
 
     public class FunctionStatisticsViewModel

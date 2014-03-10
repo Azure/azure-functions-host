@@ -12,12 +12,11 @@
             <a class="btn btn-primary" href="{{_urls.replayFunction(invocationId)}}">Replay function</a>
         </p>
 
-        <div ng-if="isRunning(model.invocation)">
-            <form action="{{_api.sdk.abortFunctionInstance(invocationId)}}" method="POST" class="form-inline">
-                <button ng-if="!model.invocation.isAborted" class="btn btn-danger btn-sm" type="submit"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>
-                <button ng-if="model.invocation.isAborted" class="btn btn-danger btn-sm" disabled>Host abort requested</button>
-            </form>
-        </div>
+        <p ng-if="model.invocation.isRunning()">
+            <button ng-if="!model.isAborted && !aborting" class="btn btn-danger btn-sm" ng-click="abort()"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>
+            <button ng-if="aborting" class="btn btn-danger btn-sm disabled"><span class="glyphicon glyphicon-remove"></span> Aborting...</button>
+            <button ng-if="model.isAborted" class="btn btn-danger btn-sm" disabled>Host abort requested</button>
+        </p>
         <p ng-class="model.invocation.getAlertClass()" class="alert">
             <b>{{model.invocation.getLabelText()}}</b>
             <span ng-bind="model.invocation.statusTimeString"></span> <small ng-if="model.invocation.durationString">({{model.invocation.durationString}} running time)</small>

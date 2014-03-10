@@ -21,6 +21,7 @@ namespace Dashboard.ApiControllers
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
+        private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
         private readonly IRunningHostTableReader _heartbeatTable;
         private readonly IFunctionInstanceQuery _functionInstanceQuery;
@@ -32,6 +33,7 @@ namespace Dashboard.ApiControllers
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionTableLookup functionTableLookup,
             IProcessTerminationSignalReader terminationSignalReader,
+            IProcessTerminationSignalWriter terminationSignalWriter,
             ICausalityReader causalityReader, 
             IFunctionInstanceQuery functionInstanceQuery, IRunningHostTableReader heartbeatTable, AzureTable<FunctionLocation, FunctionStatsEntity> invokeStatsTable)
         {
@@ -40,6 +42,7 @@ namespace Dashboard.ApiControllers
             _functionInstanceLookup = functionInstanceLookup;
             _functionTableLookup = functionTableLookup;
             _terminationSignalReader = terminationSignalReader;
+            _terminationSignalWriter = terminationSignalWriter;
             _causalityReader = causalityReader;
             _functionInstanceQuery = functionInstanceQuery;
             _heartbeatTable = heartbeatTable;
@@ -239,6 +242,14 @@ namespace Dashboard.ApiControllers
             model.StorageAccountName = _account.Credentials.AccountName;
 
             return Ok(model);
+        }
+
+        [Route("api/hostInstances/{hostInstanceId}/abort")]
+        public IHttpActionResult Abort(Guid hostInstanceId)
+        {
+            _terminationSignalWriter.RequestTermination(hostInstanceId);
+
+            return Ok();
         }
     }
 }

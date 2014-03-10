@@ -13,6 +13,7 @@
         func.duration = item.duration;
         func.exceptionMessage = item.exceptionMessage;
         func.updateTimingStrings();
+        func.hostInstanceId = item.hostInstanceId;
         return func;
     };
 

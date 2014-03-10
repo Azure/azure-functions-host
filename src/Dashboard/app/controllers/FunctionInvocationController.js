@@ -28,6 +28,19 @@
             });
         };
 
+        $scope.abort = function () {
+            $scope.aborting = true;
+            $http({
+                method: "POST",
+                url: api.sdk.abortHostInstance($scope.model.invocation.hostInstanceId)
+            }).then(function () {
+                $scope.model.isAborted = true;
+                delete $scope.aborting;
+            }, function () {
+                delete $scope.aborting;
+            });
+        }
+
         function loadInvocationDetails() {
             var runId;
             if (!$scope.model || !$scope.model.invocation.isFinal()) {

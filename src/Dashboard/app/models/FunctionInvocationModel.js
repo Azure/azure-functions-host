@@ -11,7 +11,7 @@
             model.ancestor = FunctionInvocationSummary.fromJson(item.ancestor);
         }
         model.trigger = item.trigger;
-        model.isAborted = item.isAborted;
+        model.isAborted = !!item.isAborted;
         model.parameters = [];
         if (item.parameters) {
             for (ix = 0, len = item.parameters.length; ix !== len; ++ix) {
