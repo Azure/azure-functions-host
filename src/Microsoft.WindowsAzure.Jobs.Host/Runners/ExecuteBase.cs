@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
@@ -153,6 +154,28 @@ namespace Microsoft.WindowsAzure.Jobs
             TimeSpan minimumHeartbeatAttemptInterval = TimeSpan.FromSeconds(10);
             ICanFailCommand command = new UpdateFunctionHeartbeatCommand(logger, logItem, heartbeatInvalidationInterval);
             return LinearSpeedupTimerCommand.CreateTimer(command, normalHeartbeatInterval, minimumHeartbeatAttemptInterval);
+        }
+
+        // Marks a function as failed when it cannot be executed. (For example, the function has been deleted.)
+        public static void LogFunctionFailed(IFunctionInstanceLookup functionLookup,
+            IFunctionUpdatedLogger functionUpdated,
+            Guid functionInstanceId,
+            string exceptionType,
+            string exceptionMessage)
+        {
+            Debug.Assert(functionLookup != null);
+            Debug.Assert(functionUpdated != null);
+
+            ExecutionInstanceLogEntity log = functionLookup.Lookup(functionInstanceId);
+
+            if (log != null)
+            {
+                log.StartTime = DateTime.UtcNow;
+                log.EndTime = DateTime.UtcNow;
+                log.ExceptionType = exceptionType;
+                log.ExceptionMessage = exceptionMessage;
+                functionUpdated.Log(log);
+            }
         }
     }
 }

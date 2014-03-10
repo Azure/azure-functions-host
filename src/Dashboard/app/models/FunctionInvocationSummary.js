@@ -11,6 +11,7 @@
         func.status = item.status;
         func.when = item.whenUtc ? stringUtils.toDateTime(item.whenUtc) : null;
         func.duration = item.duration;
+        func.exceptionType = item.exceptionType;
         func.exceptionMessage = item.exceptionMessage;
         func.updateTimingStrings();
         func.hostInstanceId = item.hostInstanceId;

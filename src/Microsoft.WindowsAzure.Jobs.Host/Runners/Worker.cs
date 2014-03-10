@@ -16,6 +16,8 @@ namespace Microsoft.WindowsAzure.Jobs
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
         private readonly QueueTrigger _invokeTrigger;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
 
         // General purpose listener for blobs, queues. 
         private Listener _listener;
@@ -23,7 +25,9 @@ namespace Microsoft.WindowsAzure.Jobs
         // Fast-path blob listener. 
         private INotifyNewBlobListener _blobListener;
 
-        public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute, INotifyNewBlobListener blobListener = null)
+        public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute,
+            IFunctionInstanceLookup functionInstanceLookup, IFunctionUpdatedLogger functionUpdatedLogger,
+            INotifyNewBlobListener blobListener = null)
         {
             _invokeTrigger = invokeTrigger;
             _blobListener = blobListener;
@@ -37,6 +41,8 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             _functionTable = functionTable;
             _executor = execute;
+            _functionInstanceLookup = functionInstanceLookup;
+            _functionUpdatedLogger = functionUpdatedLogger;
 
             CreateInputMap();
 
@@ -154,7 +160,18 @@ namespace Microsoft.WindowsAzure.Jobs
             if (triggerOverrideModel != null)
             {
                 FunctionInvokeRequest request = CreateInvokeRequest(triggerOverrideModel);
-                _executor.Execute(request);
+
+                if (request != null)
+                {
+                    _executor.Execute(request);
+                }
+                else
+                {
+                    string exceptionMessage = String.Format(CultureInfo.CurrentCulture,
+                        "No function '{0}' currently exists.", triggerOverrideModel.FunctionId);
+                    ExecutionBase.LogFunctionFailed(_functionInstanceLookup, _functionUpdatedLogger,
+                        triggerOverrideModel.Id, typeof(InvalidOperationException).FullName, exceptionMessage);
+                }
             }
             else
             {
@@ -166,6 +183,12 @@ namespace Microsoft.WindowsAzure.Jobs
         private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message)
         {
             FunctionDefinition function = _functionTable.Lookup(message.FunctionId);
+
+            if (function == null)
+            {
+                return null;
+            }
+
             FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments);
             request.Id = message.Id;
             request.TriggerReason = message.GetTriggerReason();

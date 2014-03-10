@@ -231,7 +231,8 @@ namespace Microsoft.WindowsAzure.Jobs
                         invokeTrigger = null;
                     }
 
-                    using (Worker worker = new Worker(invokeTrigger, _hostContext._functionTableLookup, _hostContext._executeFunction, fastpathNotify))
+                    using (Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
+                        _hostContext.FunctionInstanceLookup, _hostContext.FunctionUpdatedLogger, fastpathNotify))
                     {
                         while (!token.IsCancellationRequested)
                         {
@@ -276,7 +277,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             IDictionary<string, string> args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
 
-            FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext._functionTableLookup);
+            FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionTableLookup);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, args2);
 
             instance.TriggerReason = new InvokeTriggerReason
@@ -292,7 +293,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 try
                 {
-                    logItem = _hostContext._executeFunction.Execute(instance);
+                    logItem = _hostContext.ExecuteFunction.Execute(instance);
                 }
                 finally
                 {

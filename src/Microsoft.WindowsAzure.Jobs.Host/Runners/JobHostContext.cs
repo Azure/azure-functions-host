@@ -18,13 +18,14 @@ namespace Microsoft.WindowsAzure.Jobs
     // and return a set of services that the host can use for invoking, listening, etc. 
     internal class JobHostContext
     {
+        private readonly IExecuteFunction _executeFunction;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
         private readonly Guid _hostInstanceId;
         private readonly Guid _hostId;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
-
-        public readonly IFunctionTableLookup _functionTableLookup;
-        public readonly IExecuteFunction _executeFunction;
 
         public JobHostContext(string dataConnectionString, string runtimeConnectionString, ITypeLocator typeLocator)
         {
@@ -69,6 +70,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 ctx.FunctionsInJobIndexer = services.GetFunctionInJobIndexer();
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
 
+                _functionInstanceLookup = services.GetFunctionInstanceLookup();
+                _functionUpdatedLogger = services.GetFunctionUpdatedLogger();
                 _terminationSignalReader = new ProcessTerminationSignalReader(services.Account);
                 _heartbeatTable = services.GetRunningHostTableWriter();
             }
@@ -125,6 +128,26 @@ namespace Microsoft.WindowsAzure.Jobs
                 CausalityLogger = causalityLogger
             };
             return interfaces;
+        }
+
+        public IExecuteFunction ExecuteFunction
+        {
+            get { return _executeFunction; }
+        }
+
+        public IFunctionInstanceLookup FunctionInstanceLookup
+        {
+            get { return _functionInstanceLookup; }
+        }
+
+        public IFunctionTableLookup FunctionTableLookup
+        {
+            get { return _functionTableLookup; }
+        }
+
+        public IFunctionUpdatedLogger FunctionUpdatedLogger
+        {
+            get { return _functionUpdatedLogger; }
         }
 
         public Guid HostId
