@@ -44,24 +44,46 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public CloudStorageAccount GetAccount()
+        private CloudStorageAccount GetAccount()
         {
             return Utility.GetAccount(AccountConnectionString);
         }
 
-        public CloudBlobContainer GetContainer()
+        private CloudBlobClient CreateClient()
         {
-            var client = GetAccount().CreateCloudBlobClient();
+            return GetAccount().CreateCloudBlobClient();
+        }
+
+        private CloudBlobContainer GetContainer()
+        {
+            var client = CreateClient();
             var c = BlobClient.GetContainer(client, ContainerName);
             return c;
         }
 
         public CloudBlob GetBlob()
         {
+            if (String.IsNullOrEmpty(blobName))
+            {
+                throw new InvalidOperationException("The blob name must not be null or empty.");
+            }
+
             var c = GetContainer();
             c.CreateIfNotExist();
             var blob = c.GetBlobReference(BlobName);
             return blob;
+        }
+
+        public CloudBlob TryGetBlob()
+        {
+            if (String.IsNullOrEmpty(containerName) || String.IsNullOrEmpty(blobName))
+            {
+                return null;
+            }
+
+            CloudBlobClient client = CreateClient();
+            CloudBlobContainer container = client.GetContainerReference(containerName);
+            return container.GetBlobReference(blobName);
         }
 
         public string GetId()

@@ -84,7 +84,9 @@ namespace Dashboard
         {
             var blobParam = new BlobBoundParamModel();
             blobParam.IsOutput = !blobArg.IsInput;
-            Guid? blobWriter = GetBlobWriter(blobArg.Blob.GetBlob());
+
+            CloudBlob blob = blobArg.Blob.TryGetBlob();
+            Guid? blobWriter = GetBlobWriter(blob);
 
             if (!blobWriter.HasValue)
             {
@@ -107,13 +109,19 @@ namespace Dashboard
         /// <returns>The function invocation's id, or Guid.Empty if no owner is specified, or null if the blob is missing.</returns>
         private static Guid? GetBlobWriter(CloudBlob blob)
         {
+            if (blob == null)
+            {
+                return null;
+            }
+
             try
             {
                 return new BlobCausalityLogger().GetWriter(blob);
             }
             catch (StorageClientException e)
             {
-                if (e.ErrorCode == StorageErrorCode.ResourceNotFound)
+                if (e.ErrorCode == StorageErrorCode.ResourceNotFound
+                    || e.ErrorCode == StorageErrorCode.BadRequest)
                 {
                     // NoBlob
                     return null;
