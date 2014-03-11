@@ -53,12 +53,17 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
-            if (string.IsNullOrWhiteSpace(invokeString) && UserSupplied)
+            if (UserSupplied)
             {
-                // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
+                // We don't know whether to use the invoke string or not until we have the target type. Let the runtime
+                // binding decide which way to bind.
+                return new UnknownInvokeParameterRuntimeBinding
+                {
+                    Value = invokeString,
+                    AccountConnectionString = inputs.AccountConnectionString
+                };
             }
-            return new LiteralStringParameterRuntimeBinding { Value = invokeString, AccountConnectionString = inputs.AccountConnectionString };
+            return new LiteralStringParameterRuntimeBinding { Value = invokeString };
         }
 
         public override string Description

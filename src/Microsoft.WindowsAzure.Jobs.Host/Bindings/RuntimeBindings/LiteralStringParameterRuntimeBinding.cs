@@ -8,20 +8,9 @@ namespace Microsoft.WindowsAzure.Jobs
     internal class LiteralStringParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public string Value { get; set; }
-        public string AccountConnectionString { get; set; }
 
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
-            // Work around problem using IBinder and CloudStorageAccount with Run/Replay from dashboard.
-            if (RunnerProgram.ShouldIgnoreInvokeString(targetParameter.ParameterType))
-            {
-                ParameterRuntimeBinding bindingWithoutInvokeString = new UnknownParameterRuntimeBinding
-                {
-                    AccountConnectionString = AccountConnectionString
-                };
-                return bindingWithoutInvokeString.Bind(config, bindingContext, targetParameter);
-            }
-
             var result = ObjectBinderHelpers.BindFromString(Value, targetParameter.ParameterType);
             return new BindResult { Result = result };
         }

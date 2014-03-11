@@ -15,13 +15,17 @@ namespace Microsoft.WindowsAzure.Jobs
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             ICloudBinder binder = GetBinderOrThrow(config, targetParameter);
+            return Bind(binder, AccountConnectionString, bindingContext, targetParameter);
+        }
 
+        internal static BindResult Bind(ICloudBinder binder, string accountConnectionString, IBinderEx bindingContext, ParameterInfo targetParameter)
+        {
             // We want to preserve the same binding context to maximize consistency between model bound parameters 
             // and explictly calling IBinder. 
             // Sanity check that they're using the same accounts. 
-            if (this.AccountConnectionString != bindingContext.AccountConnectionString)
+            if (accountConnectionString != bindingContext.AccountConnectionString)
             {
-                var name1 = Utility.GetAccountName(AccountConnectionString);
+                var name1 = Utility.GetAccountName(accountConnectionString);
                 var name2 = Utility.GetAccountName(bindingContext.AccountConnectionString);
 
                 string msg = string.Format("Binding has conflicting accounts: {0} and {1}.", name1, name2);
