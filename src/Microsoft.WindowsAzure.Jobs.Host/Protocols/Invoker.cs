@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
                 throw new ArgumentNullException("message");
             }
 
-            ICloudQueue queue = _client.GetQueueReference(QueueNames.GetInvokeQueueName(hostId));
+            ICloudQueue queue = _client.GetQueueReference(QueueNames.GetHostQueueName(hostId));
             Debug.Assert(queue != null);
             queue.CreateIfNotExists();
             string content = JsonCustom.SerializeObject(message);

@@ -6,11 +6,11 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private const string Prefix = "azure-jobs-";
 
-        private const string InvokeQueuePrefix = Prefix + "invoke-";
+        private const string HostQueuePrefix = Prefix + "host-";
 
-        public static string GetInvokeQueueName(Guid hostId)
+        public static string GetHostQueueName(Guid hostId)
         {
-            return InvokeQueuePrefix + hostId.ToString("N");
+            return HostQueuePrefix + hostId.ToString("N");
         }
     }
 }

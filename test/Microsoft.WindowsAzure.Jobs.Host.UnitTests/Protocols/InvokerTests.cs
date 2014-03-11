@@ -27,7 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Protocols
         {
             // Arrange
             Guid expectedHostId = CreateGuid();
-            string expectedQueueName = QueueNames.GetInvokeQueueName(expectedHostId);
+            string expectedQueueName = QueueNames.GetHostQueueName(expectedHostId);
             TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
@@ -58,7 +58,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Protocols
         {
             // Arrange
             Guid expectedHostId = CreateGuid();
-            string expectedQueueName = QueueNames.GetInvokeQueueName(expectedHostId);
+            string expectedQueueName = QueueNames.GetHostQueueName(expectedHostId);
             TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
