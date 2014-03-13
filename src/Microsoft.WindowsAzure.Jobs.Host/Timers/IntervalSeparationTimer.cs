@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Threading;
 
@@ -7,11 +8,13 @@ namespace Microsoft.WindowsAzure.Jobs
     /// <summary>Represents a timer that keeps a heartbeat running at a specified interval using a separate thread.</summary>
     internal sealed class IntervalSeparationTimer : IDisposable
     {
+        private static readonly TimeSpan infiniteTimeout = TimeSpan.FromMilliseconds(-1);
+
         private readonly IIntervalSeparationCommand _command;
-        private readonly Thread _thread;
-        private readonly EventWaitHandle _threadStopEvent;
+        private readonly Timer _timer;
 
         private bool _started;
+        private volatile bool _stopping;
         private bool _stopped;
         private bool _disposed;
 
@@ -23,9 +26,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             _command = command;
-
-            _thread = new Thread(RunThread);
-            _threadStopEvent = new ManualResetEvent(initialState: false);
+            _timer = new Timer(RunTimer);
         }
 
         public void Dispose()
@@ -40,7 +41,6 @@ namespace Microsoft.WindowsAzure.Jobs
                     Stop();
                 }
 
-                _threadStopEvent.Dispose();
                 _disposed = true;
             }
         }
@@ -60,7 +60,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 _command.Execute();
             }
 
-            _thread.Start();
+            bool changed = _timer.Change(_command.SeparationInterval, infiniteTimeout);
+            Debug.Assert(changed);
             _started = true;
         }
 
@@ -78,37 +79,30 @@ namespace Microsoft.WindowsAzure.Jobs
                 throw new InvalidOperationException("The timer has already been stopped.");
             }
 
-            // Signal the thread to complete.
-            bool succeeded = _threadStopEvent.Set();
-            // EventWaitHandle.Set can never return false (see implementation).
-            Contract.Assert(succeeded);
+            _stopping = true;
 
-            // Let the thread complete.
-            _thread.Join();
+            using (WaitHandle wait = new ManualResetEvent(initialState: false))
+            {
+                _timer.Dispose(wait);
+                // Wait for all timer callbacks to complete before returning.
+                bool completed = wait.WaitOne();
+                Debug.Assert(completed);
+            }
 
             _stopped = true;
         }
 
-        private void RunThread()
+        private void RunTimer(object state)
         {
-            // Keep executing until stopped.
-            while (!_threadStopEvent.WaitOne(GetNextSeparationInterval()))
+            _command.Execute();
+
+            // Schedule another execution until stopped.
+            // Don't call _timer.Change on one thread after another thread may have called _timer.Dispose.
+            // Otherwise, this thread can get an ObjectDisposedException.
+            if (!_stopping)
             {
-                _command.Execute();
+                _timer.Change(_command.SeparationInterval, infiniteTimeout);
             }
-        }
-
-        private int GetNextSeparationInterval()
-        {
-            double valueInMillseconds = _command.SeparationInterval.TotalMilliseconds;
-
-            if (valueInMillseconds > int.MaxValue)
-            {
-                throw new InvalidOperationException(
-                    "IIntervalSeparationCommand.SeparationCommand must not be longer than Int32.MaxValue total milliseconds.");
-            }
-
-            return (int)valueInMillseconds;
         }
 
         private void ThrowIfDisposed()
