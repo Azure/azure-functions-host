@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private readonly CloudBlobDescriptor _parameterLogger;
 
-        public RunnerProgram(CloudBlobDescriptor parameterLogger)
+        private RunnerProgram(CloudBlobDescriptor parameterLogger)
         {
             _parameterLogger = parameterLogger;
         }
@@ -22,12 +22,6 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             CloudBlobDescriptor parameterLogger = descr.ParameterLogBlob; // optional 
             return new RunnerProgram(parameterLogger);
-        }
-
-        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr)
-        {
-            RunnerProgram program = RunnerProgram.Create(descr);
-            return MainWorker(() => program.Invoke(descr));
         }
 
         public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config)
@@ -95,28 +89,6 @@ namespace Microsoft.WindowsAzure.Jobs
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
             Invoke(config, method, invoke.Id, inputs, invoke.Args);
-        }
-
-        private void Invoke(FunctionInvokeRequest invoke)
-        {
-            MethodInfo method = GetLocalMethod(invoke);
-
-            // Get standard config. 
-            // Use an ICall that binds against the WebService provided by the local function instance.
-            IConfiguration config = InitBinders();
-
-            ApplyHooks(method, config); // Give user hooks higher priority than any cloud binders
-
-            // Don't bind ICall if we have no WebService URL. 
-            // ### Could bind ICall other ways
-            if (invoke.ServiceUrl != null)
-            {
-                throw new NotImplementedException();
-                //                ICall inner = GetWebInvoker(invoke);
-                //                CallBinderProvider.Insert(config, inner); // binds ICall
-            }
-
-            Invoke(invoke, config);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
@@ -190,15 +162,6 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 return false;
             }
-        }
-
-        private static void ApplyHooks(MethodInfo method, IConfiguration config)
-        {
-            // Find a hook based on the MethodInfo, and if found, invoke the config
-            // Look for Initialize(IConfiguration c) in the same type?
-
-            var t = method.DeclaringType;
-            ApplyHooks(t, config);
         }
 
         public static void ApplyHooks(Type t, IConfiguration config)
