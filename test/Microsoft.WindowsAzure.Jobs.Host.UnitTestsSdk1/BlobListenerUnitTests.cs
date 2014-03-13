@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.StorageClient;
+﻿using System.Threading;
+using Microsoft.WindowsAzure.StorageClient;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -16,26 +17,26 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             var container = client.GetContainerReference(containerName);
             IBlobListener l = new ContainerScannerBlobListener(new CloudBlobContainer[] { container });
 
-            l.Poll(blob =>
+            l.Poll((blob, cancel) =>
                 {
                     Assert.True(false, "shouldn't be any blobs in the container");
-                });
+                }, CancellationToken.None);
 
             BlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
 
             int count = 0;
-            l.Poll(blob =>
+            l.Poll((blob, cancel) =>
             {
                 count++;
                 Assert.Equal("foo1.csv", blob.Name);
-            });
+            }, CancellationToken.None);
             Assert.Equal(1, count);
 
             // No poll again, shouldn't show up. 
-            l.Poll(blob =>
+            l.Poll((blob, cancel) =>
             {
                 Assert.True(false, "shouldn't retrigger the same blob");
-            });            
+            }, CancellationToken.None);            
         }
 
         // Set dev storage. These are well known values.

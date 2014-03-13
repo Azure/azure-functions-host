@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -29,7 +30,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _causalityLogger = interfaces.CausalityLogger;
         }
 
-        public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance)
+        public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
         {
             if (instance.Id == Guid.Empty)
             {
@@ -54,7 +55,7 @@ namespace Microsoft.WindowsAzure.Jobs
             logItem.FunctionInstance = instance;
 
             // Execute immediately.
-            Work(logItem);
+            Work(logItem, cancellationToken);
 
             // Lookup again. In the bowls of execution, we may have made changes 
             // against the log item in the table instead of our reference here. 
@@ -64,6 +65,6 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Does the actual queueing mechanism (submit to an azure queue, submit as an azure task)
-        protected abstract void Work(ExecutionInstanceLogEntity logItem);
+        protected abstract void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken);
     }
 }

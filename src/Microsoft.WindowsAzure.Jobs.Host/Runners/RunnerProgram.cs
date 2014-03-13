@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
 using Microsoft.WindowsAzure.StorageClient;
@@ -24,10 +25,11 @@ namespace Microsoft.WindowsAzure.Jobs
             return new RunnerProgram(parameterLogger);
         }
 
-        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config)
+        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config,
+            CancellationToken cancellationToken)
         {
             RunnerProgram program = RunnerProgram.Create(descr);
-            return MainWorker(() => program.Invoke(descr, config));
+            return MainWorker(() => program.Invoke(descr, config, cancellationToken));
         }
 
         private static FunctionExecutionResult MainWorker(Action invoke)
@@ -84,11 +86,11 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public void Invoke(FunctionInvokeRequest invoke, IConfiguration config)
+        public void Invoke(FunctionInvokeRequest invoke, IConfiguration config, CancellationToken cancellationToken)
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            Invoke(config, method, invoke.Id, inputs, invoke.Args);
+            Invoke(config, method, invoke.Id, inputs, invoke.Args, cancellationToken);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
@@ -133,6 +135,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // Other
             config.Binders.Add(new QueueOutputBinderProvider());
             config.Binders.Add(new CloudStorageAccountBinderProvider());
+            config.Binders.Add(new CancellationTokenBinderProvider());
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
 
@@ -190,14 +193,15 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance, IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors)
+        private void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance,
+            IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors, CancellationToken cancellationToken)
         {
             int len = argDescriptors.Length;
 
             INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
 
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService);
+            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService, cancellationToken);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();

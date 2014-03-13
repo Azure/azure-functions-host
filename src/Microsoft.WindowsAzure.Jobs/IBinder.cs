@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -12,6 +13,9 @@ namespace Microsoft.WindowsAzure.Jobs
         /// Gets the Azure Storage connection string.
         /// </summary>
         string AccountConnectionString { get; }
+
+        /// <summary>Gets the token to monitor for cancellation requests.</summary>
+        CancellationToken CancellationToken { get; }
 
         /// <summary>
         /// Binds the specified attribute.

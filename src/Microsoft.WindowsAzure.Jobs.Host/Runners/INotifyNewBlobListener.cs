@@ -8,6 +8,6 @@ namespace Microsoft.WindowsAzure.Jobs
     // ### Can this be merged with the other general blob listener or IBlobListener?     
     internal interface INotifyNewBlobListener
     {
-        void ProcessMessages(Action<BlobWrittenMessage> fpOnNewBlob, CancellationToken token);
+        void ProcessMessages(Action<BlobWrittenMessage, CancellationToken> fpOnNewBlob, CancellationToken token);
     }
 }

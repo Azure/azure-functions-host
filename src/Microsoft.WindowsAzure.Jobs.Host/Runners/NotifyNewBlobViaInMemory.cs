@@ -20,12 +20,12 @@ namespace Microsoft.WindowsAzure.Jobs
             _queue.Enqueue(msg);
         }
 
-        public void ProcessMessages(Action<BlobWrittenMessage> fpOnNewBlob, CancellationToken token)
+        public void ProcessMessages(Action<BlobWrittenMessage, CancellationToken> fpOnNewBlob, CancellationToken token)
         {
             BlobWrittenMessage msg;
             while (!token.IsCancellationRequested && _queue.TryDequeue(out msg))
             {
-                fpOnNewBlob(msg);
+                fpOnNewBlob(msg, token);
             }
         }
     }

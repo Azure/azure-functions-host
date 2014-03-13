@@ -68,6 +68,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\BinderProviders\CancellationTokenBinderProvider.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
@@ -301,7 +302,6 @@
     <Compile Include="Runners\AntaresExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />
-    <Compile Include="Triggers\BlobListeners\BlobListenerExtensions.cs" />
     <Compile Include="Triggers\BlobListeners\ServiceType.cs" />
     <Compile Include="Triggers\BlobListeners\LogRow.cs" />
     <Compile Include="Triggers\BlobListeners\OperationType.cs" />

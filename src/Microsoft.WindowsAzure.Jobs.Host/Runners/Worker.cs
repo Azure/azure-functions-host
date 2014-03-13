@@ -118,23 +118,23 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Called if the external system thinks we may have a new blob. 
-        public void NewBlob(BlobWrittenMessage msg)
+        public void NewBlob(BlobWrittenMessage msg, CancellationToken cancellationToken)
         {
-            _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName);
+            _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName, cancellationToken);
         }
 
-        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func)
+        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func, CancellationToken cancellationToken)
         {
             var instance = GetFunctionInvocation(func, msg);
 
             if (instance != null)
             {
                 _triggerCount++;
-                _executor.Execute(instance);
+                _executor.Execute(instance, cancellationToken);
             }
         }
 
-        private void InvokeFromDashboard(CloudQueueMessage message)
+        private void InvokeFromDashboard(CloudQueueMessage message, CancellationToken cancellationToken)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
 
@@ -151,7 +151,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 if (request != null)
                 {
-                    _executor.Execute(request);
+                    _executor.Execute(request, cancellationToken);
                 }
                 else
                 {
@@ -243,13 +243,13 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
-        private void OnNewBlob(FunctionDefinition func, CloudBlob blob)
+        private void OnNewBlob(FunctionDefinition func, CloudBlob blob, CancellationToken cancellationToken)
         {
             FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
             if (instance != null)
             {
                 _triggerCount++;
-                _executor.Execute(instance);
+                _executor.Execute(instance, cancellationToken);
             }
         }
 
@@ -394,18 +394,18 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 if (func == null)
                 {
-                    _parent.InvokeFromDashboard(msg);
+                    _parent.InvokeFromDashboard(msg, token);
                 }
                 else
                 {
-                    _parent.OnNewQueueItem(msg, func);
+                    _parent.OnNewQueueItem(msg, func, token);
                 }
             }
 
             void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewBlob(func, blob);
+                _parent.OnNewBlob(func, blob, token);
             }
         }
     }

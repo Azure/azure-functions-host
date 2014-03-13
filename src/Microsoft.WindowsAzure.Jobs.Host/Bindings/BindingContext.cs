@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -9,13 +10,17 @@ namespace Microsoft.WindowsAzure.Jobs
         private readonly IConfiguration _config;
         private readonly FunctionInstanceGuid _FunctionInstanceGuid;
         private readonly INotifyNewBlob _notificationService;
+        private readonly CancellationToken _cancellationToken;
 
-        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs, FunctionInstanceGuid functionInstance, INotifyNewBlob notificationService)
+        public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs,
+            FunctionInstanceGuid functionInstance, INotifyNewBlob notificationService,
+            CancellationToken cancellationToken)
         {
             _config = config;
             _runtimeInputs = runtimeInputs;
             _FunctionInstanceGuid = functionInstance;
             _notificationService = notificationService;
+            _cancellationToken = cancellationToken;
         }
 
         // optionally pass in names, which flow to RuntimeBindingInputs?
@@ -43,6 +48,10 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _runtimeInputs.AccountConnectionString; }
         }
 
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
+        }
 
         public Guid FunctionInstanceGuid
         {

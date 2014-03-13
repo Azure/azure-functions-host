@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -53,6 +54,11 @@ namespace Microsoft.WindowsAzure.Jobs
             public string AccountConnectionString
             {
                 get { return _inner.AccountConnectionString; }
+            }
+
+            public CancellationToken CancellationToken
+            {
+                get { return _inner.CancellationToken; }
             }
 
             public void Cleanup()

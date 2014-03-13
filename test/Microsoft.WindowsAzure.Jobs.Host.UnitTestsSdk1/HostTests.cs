@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using Microsoft.WindowsAzure.Jobs.Host;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Xunit;
@@ -82,6 +83,44 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.Equal(x, ProgramSimple._value);
         }
 
+        [Fact]
+        public void CallWithCancellationToken_PassesCancellationTokenToMethod()
+        {
+            // Arrange
+            ProgramWithCancellationToken.Cleanup();
+            var host = new TestJobHost<ProgramWithCancellationToken>(null);
+
+            using (CancellationTokenSource source = new CancellationTokenSource())
+            {
+                ProgramWithCancellationToken.CancellationTokenSource = source;
+
+                // Act
+                host.Call("BindCancellationToken", null, source.Token);
+
+                // Assert
+                Assert.True(ProgramWithCancellationToken.IsCancellationRequested);
+            }
+        }
+
+        [Fact]
+        public void CallWithCancellationToken_PassesCancellationTokenToMethodViaIBinder()
+        {
+            // Arrange
+            ProgramWithCancellationToken.Cleanup();
+            var host = new TestJobHost<ProgramWithCancellationToken>(null);
+
+            using (CancellationTokenSource source = new CancellationTokenSource())
+            {
+                ProgramWithCancellationToken.CancellationTokenSource = source;
+
+                // Act
+                host.Call("BindCancellationTokenViaIBinder", null, source.Token);
+
+                // Assert
+                Assert.True(ProgramWithCancellationToken.IsCancellationRequested);
+            }
+        }
+
         class ProgramSimple
         {
             public static string _value; // evidence of execution
@@ -90,6 +129,33 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             public static void Test(string value)
             {
                 _value = value;
+            }
+        }
+
+        private class ProgramWithCancellationToken
+        {
+            public static CancellationTokenSource CancellationTokenSource { get; set; }
+
+            public static bool IsCancellationRequested { get; private set; }
+
+            public static void Cleanup()
+            {
+                CancellationTokenSource = null;
+                IsCancellationRequested = false;
+            }
+
+            [Description("test")]
+            public static void BindCancellationToken(CancellationToken cancellationToken)
+            {
+                CancellationTokenSource.Cancel();
+                IsCancellationRequested = cancellationToken.IsCancellationRequested;
+            }
+
+            [Description("test")]
+            public static void BindCancellationTokenViaIBinder(IBinder binder)
+            {
+                CancellationTokenSource.Cancel();
+                IsCancellationRequested = binder.CancellationToken.IsCancellationRequested;
             }
         }
     }

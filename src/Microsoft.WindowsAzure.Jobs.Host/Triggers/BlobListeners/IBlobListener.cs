@@ -8,6 +8,6 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         // Scan the container
         // Callbacks may fire multiple times. Or out of order relative to creation date. 
-        void Poll(Action<CloudBlob> callback, CancellationToken cancel);
+        void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel);
     }
 }

@@ -269,6 +269,17 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
         public void Call(MethodInfo method, object arguments)
         {
+            Call(method, arguments, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Invoke a specific function specified by the method parameter.
+        /// </summary>
+        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        public void Call(MethodInfo method, object arguments, CancellationToken cancellationToken)
+        {
             if (method == null)
             {
                 throw new ArgumentNullException("method");
@@ -292,7 +303,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 try
                 {
-                    logItem = _hostContext.ExecuteFunction.Execute(instance);
+                    logItem = _hostContext.ExecuteFunction.Execute(instance, cancellationToken);
                 }
                 finally
                 {

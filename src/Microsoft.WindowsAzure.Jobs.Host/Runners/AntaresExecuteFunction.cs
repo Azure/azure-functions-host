@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs.Internals
 {
@@ -20,7 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
             _fpLog = hostLogger;
             _ctx = ctx;
         }
-        protected override void Work(ExecutionInstanceLogEntity logItem)
+        protected override void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken)
         {
             var request = logItem.FunctionInstance;
             var loc = request.Location;
@@ -38,7 +39,7 @@ namespace Microsoft.WindowsAzure.Jobs.Internals
                     Console.SetOut(consoleOutput);
 
                     // @@@ May need to override config to set ICall
-                    var result = RunnerProgram.MainWorker(request, _config);
+                    var result = RunnerProgram.MainWorker(request, _config, cancellationToken);
                     Console.SetOut(oldOutput);
 
                     return result;

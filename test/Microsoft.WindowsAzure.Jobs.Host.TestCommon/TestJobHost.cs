@@ -1,4 +1,5 @@
-﻿namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
+﻿using System.Threading;
+namespace Microsoft.WindowsAzure.Jobs.Host.TestCommon
 {
     // Helper for calling individual methods. 
     public class TestJobHost<T>
@@ -34,6 +35,12 @@
         {
             var methodInfo = typeof(T).GetMethod(methodName);
             Host.Call(methodInfo, arguments);
+        }
+
+        public void Call(string methodName, object arguments, CancellationToken cancellationToken)
+        {
+            var methodInfo = typeof(T).GetMethod(methodName);
+            Host.Call(methodInfo, arguments, cancellationToken);
         }
     }  
 }

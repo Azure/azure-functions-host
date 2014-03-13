@@ -32,7 +32,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Does one iteration and then returns.
         // Poll containers, invoke callback for any new ones added.
         // $$$ Switch to queuing instead of just invoking callback
-        public void Poll(Action<CloudBlob> callback, CancellationToken cancel)
+        public void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel)
         {
             for (int i = 0; !cancel.IsCancellationRequested && i < _containers.Length; i++)
             {
@@ -42,7 +42,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 foreach (var blob in newBlobs)
                 {
-                    callback(blob);
+                    callback(blob, cancel);
                 }
             }
         }

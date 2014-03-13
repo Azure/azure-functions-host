@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using AzureTables;
 using Microsoft.WindowsAzure.StorageClient;
 
@@ -182,7 +183,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 ParentGuid = parentGuid
             };
 
-            var logItem = _executor.Execute(instance);
+            var logItem = _executor.Execute(instance, CancellationToken.None);
             var guid = logItem.FunctionInstance.Id;
 
             return guid;
@@ -207,7 +208,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 _parent = parent;
             }
 
-            protected override void Work(ExecutionInstanceLogEntity logItem)
+            protected override void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken)
             {
                 RunnerProgram runner = RunnerProgram.Create(logItem.FunctionInstance);
 
@@ -215,7 +216,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    runner.Invoke(logItem.FunctionInstance, _parent._config);
+                    runner.Invoke(logItem.FunctionInstance, _parent._config, cancellationToken);
                 }
                 catch (Exception e)
                 {

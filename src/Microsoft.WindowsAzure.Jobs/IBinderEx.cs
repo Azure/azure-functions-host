@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -8,6 +9,7 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         BindResult<T> Bind<T>(Attribute attribute);
         string AccountConnectionString { get; }
+        CancellationToken CancellationToken { get; }
         Guid FunctionInstanceGuid { get; }
     }
 }

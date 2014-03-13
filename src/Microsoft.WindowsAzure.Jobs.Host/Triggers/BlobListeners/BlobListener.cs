@@ -101,7 +101,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Blob could have been deleted by the time the callback is invoked. 
         // - race where it was explicitly deleted
         // - if we detected blob via a log, then there's a long window (possibly hours) where it could have easily been deleted. 
-        public void Poll(Action<CloudBlob> callback, CancellationToken cancel)
+        public void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel)
         {
             if (!_completedFullScanOnStartup)
             {
@@ -118,7 +118,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 {
                     break;
                 }
-                callback(b);
+                callback(b, cancel);
             }
 
             // Listen on logs for new events. 
@@ -144,7 +144,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                     var blob = path.Resolve(client.Client);
 
-                    callback(blob);
+                    callback(blob, cancel);
                 }
             }
         }

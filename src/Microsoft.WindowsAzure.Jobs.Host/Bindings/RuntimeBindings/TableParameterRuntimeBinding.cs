@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -10,17 +11,18 @@ namespace Microsoft.WindowsAzure.Jobs
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
-            return Bind(config, t, bindingContext.FunctionInstanceGuid);
+            return Bind(config, t, bindingContext.CancellationToken, bindingContext.FunctionInstanceGuid);
         }
 
-        public BindResult Bind(IConfiguration config, Type type, FunctionInstanceGuid instance)
+        public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, FunctionInstanceGuid instance)
         {            
             bool isReadOnly = false; // ### eventually get this from an attribute?
 
             ICloudTableBinder binder = GetTableBinderOrThrow(config, type, isReadOnly);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
-            IBinderEx ctx = new BindingContext(config, inputs, instance, notificationService : null);
+            IBinderEx ctx = new BindingContext(config, inputs, instance, notificationService : null,
+                cancellationToken: cancellationToken);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

@@ -114,7 +114,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Called as a hint if an external source knows we have a new blob. Will invoke triggers. 
         // This will invoke back any associated triggers
-        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName)
+        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName, CancellationToken cancellationToken)
         {
             foreach (var container in _map.Keys)
             {
@@ -124,13 +124,13 @@ namespace Microsoft.WindowsAzure.Jobs
                     if (sameAccount)
                     {
                         var blob = container.GetBlobReference(blobName);
-                        OnNewBlobWorker(blob);
+                        OnNewBlobWorker(blob, cancellationToken);
                     }
                 }
             }
         }
 
-        private void OnNewBlobWorker(CloudBlob blob)
+        private void OnNewBlobWorker(CloudBlob blob, CancellationToken cancellationToken)
         {
             var client = blob.ServiceClient;
 
@@ -173,7 +173,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
                     if (invoke)
                     {
-                        _invoker.OnNewBlob(blob, func, CancellationToken.None);
+                        _invoker.OnNewBlob(blob, func, cancellationToken);
                     }
                 }
             }
