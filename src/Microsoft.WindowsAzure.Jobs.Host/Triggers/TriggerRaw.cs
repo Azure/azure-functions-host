@@ -41,12 +41,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public string QueueName { get; set; }
 
         /// <summary>
-        /// For timers, the interval between when the time is fired. 
-        /// </summary>
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public TimeSpan? Interval { get; set; }
-
-        /// <summary>
         /// Create a new trigger on blobs. This fires the callback if a new input blob is detected. The http content is the string name of the blob path that was detected. 
         /// For example, if input is 'container/{name}.txt', and output is 'container/outputs/{nane}.txt;
         /// </summary>
@@ -80,22 +74,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 Type = TriggerType.Queue,
                 CallbackPath = callbackPath,
                 QueueName = queueName
-            };
-        }
-
-        /// <summary>
-        /// Create a trigger that fires on a timer interval. 
-        /// </summary>
-        /// <param name="callbackPath">The uri to get invoked when this trigger fires.</param>
-        /// <param name="interval">The frequency at which to invoke the timer</param>
-        /// <returns>A trigger object.</returns>
-        public static TriggerRaw NewTimer(string callbackPath, TimeSpan interval)
-        {
-            return new TriggerRaw
-            {
-                Type = TriggerType.Timer,
-                Interval = interval,
-                CallbackPath = callbackPath
             };
         }
     }

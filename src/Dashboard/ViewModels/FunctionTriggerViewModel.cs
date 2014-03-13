@@ -17,11 +17,6 @@ namespace Dashboard.ViewModels
             get { return UnderlyingObject.ListenOnBlobs; }
         }
 
-        public TimeSpan? TimerInterval
-        {
-            get { return UnderlyingObject.TimerInterval; }
-        }
-
         public override string ToString()
         {
             return UnderlyingObject.ToString();

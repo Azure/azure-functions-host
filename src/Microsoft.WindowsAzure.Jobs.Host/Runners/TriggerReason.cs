@@ -13,7 +13,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Guid of parent function that triggered this one. 
         // Eg, if this func is triggered on [BlobInput], ParentGuid is the guid that wrote the blob. 
-        // This is empty if there is no parent function (eg, a timer, or unknown blob writer).  
+        // This is empty if there is no parent function (eg, an unknown blob writer).  
         public Guid ParentGuid { get; set; }
 
         // $$$ Also include Line number in parent function? Other diag info?

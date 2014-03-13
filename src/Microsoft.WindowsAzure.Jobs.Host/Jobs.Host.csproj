@@ -253,7 +253,6 @@
     <Compile Include="Loggers\IFunctionInstanceLookup.cs" />
     <Compile Include="Loggers\FunctionInstanceLookupExtensions.cs" />
     <Compile Include="Loggers\IFunctionInstanceQuery.cs" />
-    <Compile Include="Runners\TimerTriggerReason.cs" />
     <Compile Include="Runners\QueueMessageTriggerReason.cs" />
     <Compile Include="Runners\InvokeTriggerReason.cs" />
     <Compile Include="Runners\TriggerReason.cs" />
@@ -317,7 +316,6 @@
     <Compile Include="Triggers\ITriggerMap.cs" />
     <Compile Include="Triggers\TriggerMap.cs" />
     <Compile Include="Triggers\Credentials.cs" />
-    <Compile Include="Triggers\TimerTrigger.cs" />
     <Compile Include="Triggers\Trigger.cs" />
     <Compile Include="Triggers\BlobTrigger.cs" />
     <Compile Include="Triggers\TriggerType.cs" />

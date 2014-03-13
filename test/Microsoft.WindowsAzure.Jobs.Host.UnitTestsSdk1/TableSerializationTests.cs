@@ -142,7 +142,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 },
                 Trigger = new FunctionTrigger
                 {
-                    TimerInterval = TimeSpan.FromMinutes(15),
                     ListenOnBlobs = true
                 },
                 Flow = new FunctionFlow
@@ -187,7 +186,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             Assert.Equal(func.Location, func2.Location);
 
-            Assert.Equal(func.Trigger.TimerInterval, func2.Trigger.TimerInterval);
             Assert.Equal(func.Trigger.ListenOnBlobs, func2.Trigger.ListenOnBlobs);
 
             // Verify bindings. 

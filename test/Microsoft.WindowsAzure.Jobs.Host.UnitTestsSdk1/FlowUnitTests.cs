@@ -131,7 +131,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         {
             FunctionDefinition func = Get("DescriptionOnly");
             
-            Assert.Equal(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.Equal(false, func.Trigger.ListenOnBlobs); // no blobs
             
             var flows = func.Flow.Bindings;
@@ -152,7 +151,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         {
             FunctionDefinition func = Get("HasBlobAndUnboundParameter");
 
-            Assert.Equal(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.Equal(true, func.Trigger.ListenOnBlobs); // no blobs
 
             var flows = func.Flow.Bindings;
@@ -175,7 +173,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         {
             FunctionDefinition func = Get("HasBlobAndBoundParameter");
 
-            Assert.Equal(false, func.Trigger.TimerInterval.HasValue); // no timer
             Assert.Equal(true, func.Trigger.ListenOnBlobs); // all parameters are bound
 
             var flows = func.Flow.Bindings;

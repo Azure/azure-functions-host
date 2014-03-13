@@ -8,7 +8,7 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
-    internal class Worker : IDisposable
+    internal class Worker
     {
         private OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
 
@@ -121,18 +121,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public void NewBlob(BlobWrittenMessage msg)
         {
             _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName);
-        }
-
-        private void OnNewTimer(FunctionDefinition func)
-        {
-            var instance = GetFunctionInvocation(func);
-
-            if (instance != null)
-            {
-                _triggerCount++;
-                instance.TriggerReason = new TimerTriggerReason();
-                _executor.Execute(instance);
-            }
         }
 
         private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func)
@@ -357,11 +345,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return instance;
         }
 
-        public void Dispose()
-        {
-            _listener.Dispose();
-        }
-
         // Bind the entire flow to an instance
         public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionDefinition func)
         {
@@ -403,12 +386,6 @@ namespace Microsoft.WindowsAzure.Jobs
             public MyInvoker(Worker parent)
             {
                 _parent = parent;
-            }
-
-            void ITriggerInvoke.OnNewTimer(TimerTrigger trigger, CancellationToken token)
-            {
-                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewTimer(func);
             }
 
             void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)

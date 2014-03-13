@@ -285,7 +285,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             // Get trigger:
             // - (default) listen on blobs. Use this if there are flow attributes present.
-            // - Timer
             // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
 
             FunctionTrigger trigger;
@@ -377,11 +376,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 if (!(index.Flow.Bindings[0] is QueueParameterStaticBinding))
                 {
                     throw new InvalidOperationException("A QueueInput parameter must be the first parameter.");
-                }
-
-                if (index.Trigger.TimerInterval.HasValue)
-                {
-                    throw new InvalidOperationException("Can't have a QueueInput and Timer triggers on the same function.");
                 }
 
                 if (!index.Trigger.ListenOnBlobs)

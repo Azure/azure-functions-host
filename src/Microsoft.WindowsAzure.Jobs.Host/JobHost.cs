@@ -147,7 +147,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 // we're not in antares, bye bye.
                 return;
             }
-            
+
             const string filename = "WebJobsSdk.marker";
             var path = Path.Combine(jobDataPath, filename);
 
@@ -231,20 +231,19 @@ namespace Microsoft.WindowsAzure.Jobs
                         invokeTrigger = null;
                     }
 
-                    using (Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
-                        _hostContext.FunctionInstanceLookup, _hostContext.FunctionUpdatedLogger, fastpathNotify))
+                    Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
+                        _hostContext.FunctionInstanceLookup, _hostContext.FunctionUpdatedLogger, fastpathNotify);
+
+                    while (!token.IsCancellationRequested)
                     {
-                        while (!token.IsCancellationRequested)
+                        worker.Poll(token);
+
+                        if (token.IsCancellationRequested)
                         {
-                            worker.Poll(token);
-
-                            if (token.IsCancellationRequested)
-                            {
-                                return;
-                            }
-
-                            pauseAction();
+                            return;
                         }
+
+                        pauseAction();
                     }
                 }
                 finally

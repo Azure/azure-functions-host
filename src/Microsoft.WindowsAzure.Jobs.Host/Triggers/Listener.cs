@@ -8,7 +8,7 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Listens on the triggers and invokes them when they fire
-    internal class Listener : IDisposable
+    internal class Listener
     {
         private readonly ITriggerInvoke _invoker;
 
@@ -17,21 +17,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private IBlobListener _blobListener;
 
-        // List of functions to execute. 
-        // May have been triggered by a timer on a background thread . 
-        // Process by main foreground thread. 
-        volatile ConcurrentQueue<TimerTrigger> _queueExecuteFuncs;
-
-        List<Timer> _timers;
-
         public Listener(ITriggerMap map, ITriggerInvoke invoker)
         {
             _invoker = invoker;
 
-            _queueExecuteFuncs = new ConcurrentQueue<TimerTrigger>();
             _map = new Dictionary<CloudBlobContainer, List<BlobTrigger>>(new CloudContainerComparer());
             _mapQueues = new Dictionary<CloudQueue, List<QueueTrigger>>(new CloudQueueComparer());
-            _timers = new List<Timer>();
 
             foreach (var scope in map.GetScopes())
             {
@@ -58,15 +49,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private void DisposeTimers()
-        {
-            foreach (var timer in _timers)
-            {
-                timer.Dispose();
-            }
-            _timers.Clear();
-        }
-
         private void AddTriggers(string scope, Trigger[] funcs)
         {
             foreach (Trigger func in funcs)
@@ -83,25 +65,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
                     _map.GetOrCreate(container).Add(blobTrigger);
                 }
-
-                var timerTrigger = func as TimerTrigger;
-                if (timerTrigger != null)
-                {
-                    TimeSpan period = timerTrigger.Interval;
-                    Timer timer = null;
-                    TimerCallback callback = obj =>
-                    {
-                        // Called back on an arbitrary thread.                        
-                        if (_queueExecuteFuncs != null)
-                        {
-                            _queueExecuteFuncs.Enqueue(timerTrigger);
-                        }
-                    };
-
-                    timer = new Timer(callback, null, TimeSpan.FromMinutes(0), period);
-                    _timers.Add(timer);
-                }
-
 
                 var queueTrigger = func as QueueTrigger;
                 if (queueTrigger != null)
@@ -142,27 +105,11 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 // Storage exceptions can happen naturally and intermittently from network connectivity issues. Just ignore. 
             }
-            PollTimers(token);
         }
 
         private void PollBlobs(CancellationToken token)
         {
             _blobListener.Poll(OnNewBlobWorker, token);
-        }
-
-        // Listen on timers
-        private void PollTimers(CancellationToken token)
-        {
-            while (!token.IsCancellationRequested)
-            {
-                TimerTrigger func;
-                if (!_queueExecuteFuncs.TryDequeue(out func))
-                {
-                    break;
-                }
-
-                _invoker.OnNewTimer(func, token);
-            }
         }
 
         // Called as a hint if an external source knows we have a new blob. Will invoke triggers. 
@@ -331,11 +278,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
             ICanFailCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
             return LinearSpeedupTimerCommand.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
-        }
-
-        public void Dispose()
-        {
-            this.DisposeTimers();
         }
     }
 }

@@ -47,12 +47,6 @@ namespace Microsoft.WindowsAzure.Jobs
                         AccountConnectionString = credentials.AccountConnectionString,
                         QueueName = raw.QueueName
                     };
-                case TriggerType.Timer:
-                    return new TimerTrigger
-                    {
-                        CallbackPath = raw.CallbackPath,
-                        Interval = raw.Interval.Value
-                    };
                 default:
                     throw new InvalidOperationException("Unknown Trigger type:" + raw.Type);
             }

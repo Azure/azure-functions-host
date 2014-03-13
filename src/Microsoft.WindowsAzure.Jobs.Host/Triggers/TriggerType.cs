@@ -17,11 +17,6 @@ namespace Microsoft.WindowsAzure.Jobs
         /// <summary>
         /// Queue Trigger, invoked when a new queue mesasge is detected
         /// </summary>
-        Queue = 2,
-
-        /// <summary>
-        /// Timer trigger, invoked when a timer is fired. 
-        /// </summary>
-        Timer = 3,
+        Queue = 2
     }
 }

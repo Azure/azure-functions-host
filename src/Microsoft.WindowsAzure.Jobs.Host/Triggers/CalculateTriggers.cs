@@ -27,11 +27,6 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var trigger = func.Trigger;
 
-            if (trigger.TimerInterval.HasValue)
-            {
-                return TriggerRaw.NewTimer(null, trigger.TimerInterval.Value);
-            }
-
             var flow = func.Flow;
             foreach (var input in flow.Bindings)
             {
