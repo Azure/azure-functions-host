@@ -75,6 +75,7 @@
     <Compile Include="Runners\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Runners\FunctionInvocationIndexReader.cs" />
     <Compile Include="Runners\IFunctionInvocationIndexReader.cs" />
+    <Compile Include="NativeMethods.cs" />
     <Compile Include="Runners\NullFunctionsInJobIndexer.cs" />
     <Compile Include="Runners\WebJobRunIdentifier.cs" />
     <Compile Include="Runners\WebJobTypes.cs" />

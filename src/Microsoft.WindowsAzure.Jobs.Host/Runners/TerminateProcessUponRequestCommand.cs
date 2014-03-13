@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -27,7 +28,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
             if (succeeded && hasTerminationRequest)
             {
-                Environment.Exit(1);
+                bool terminated = NativeMethods.TerminateProcess(NativeMethods.GetCurrentProcess(), 1);
+                Debug.Assert(terminated);
                 return true;
             }
 
