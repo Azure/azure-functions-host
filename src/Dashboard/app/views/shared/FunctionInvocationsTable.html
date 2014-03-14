@@ -1,32 +1,47 @@
-﻿<section>
+﻿<section ng-controller="InvocationsTableController">
     <table class="table table-striped table-hover">
         <thead>
             <tr>
-                <th class="col-md-3">Function</th>
+                <th class="col-md-3">Function
+                    <span href=""
+                       class="label label-default"
+                       style="margin-left: 15px;"
+                       ng-show="invocations.hasNew && invocations.firstPage"
+                       ng-click="invocations.loadFirstPage()"
+                       title="New invocations were detected, click here to reload the table">Show new functions</span>
+                </th>
                 <th class="col-md-1">Status</th>
                 <th class="col-md-2">Status Detail</th>
             </tr>
         </thead>
-        <tbody id="function-invocations-body">
-            <tr ng-if="!invocations">
+        <tbody>
+            <tr ng-if="!invocations.entries">
                 <td colspan="3">Loading...</td>
             </tr>
-            <tr ng-if="invocations.length === 0">
+            <tr ng-if="invocations.entries.length === 0">
                 <td colspan="3">No functions have run recently.</td>
             </tr>
-            <tr ng-repeat="invocation in invocations">
+            <tr ng-repeat="entry in invocations.entries">
                 <td>
-                    <a title="Invocation details" href="{{_urls.functionInvocation(invocation.id)}}">
-                        <span>{{invocation.functionDisplayTitle}}</span>
+                    <a title="Invocation details" href="{{_urls.functionInvocation(entry.invocation.id)}}">
+                        <span>{{entry.invocation.functionDisplayTitle}}</span>
                     </a>
                 </td>
                 <td>
-                    <span ng-class="invocation.getLabelClass()" class="label">{{invocation.getLabelText()}}</span>
+                    <span ng-class="entry.invocation.getLabelClass()" class="label">{{entry.invocation.getLabelText()}}</span>
                 </td>
                 <td>
-                    <span>{{invocation.statusTimeString}}</span> <small>({{invocation.durationString}} running time)</small>
+                    <span>{{entry.invocation.statusTimeString}}</span> <small>({{entry.invocation.durationString}} running time)</small>
                 </td>
             </tr>
         </tbody>
     </table>
+    <ul class="pager" ng-class="invocations.disablePager ? 'disabled' : ''">
+        <li class="previous" ng-if="!invocations.firstPage" ng-click="invocations.loadPreviousPage()">
+            <a href="">← Newer</a>
+        </li>
+        <li class="next" ng-if="invocations.hasMore" ng-click="invocations.loadNextPage()">
+            <a href="">Older →</a>
+        </li>
+    </ul>
 </section>

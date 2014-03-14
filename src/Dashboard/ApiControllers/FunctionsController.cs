@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Web.Http;
 using AzureTables;
@@ -17,72 +16,63 @@ namespace Dashboard.ApiControllers
     public class FunctionsController : ApiController
     {
         private readonly CloudStorageAccount _account;
-        private readonly IFunctionsInJobReader _functionsInJobReader;
+        private readonly IInvocationLogLoader _invocationLogLoader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
         private readonly IRunningHostTableReader _heartbeatTable;
-        private readonly IFunctionInstanceQuery _functionInstanceQuery;
-        private readonly ICausalityReader _causalityReader;
 
         internal FunctionsController(
             CloudStorageAccount account,
-            IFunctionsInJobReader functionsInJobReader, 
+            IInvocationLogLoader invocationLogLoader,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionTableLookup functionTableLookup,
             IProcessTerminationSignalReader terminationSignalReader,
             IProcessTerminationSignalWriter terminationSignalWriter,
-            ICausalityReader causalityReader, 
-            IFunctionInstanceQuery functionInstanceQuery, IRunningHostTableReader heartbeatTable, AzureTable<FunctionLocation, FunctionStatsEntity> invokeStatsTable)
+            IRunningHostTableReader heartbeatTable, 
+            AzureTable<FunctionLocation, FunctionStatsEntity> invokeStatsTable)
         {
+            _invocationLogLoader = invocationLogLoader;
             _account = account;
-            _functionsInJobReader = functionsInJobReader;
             _functionInstanceLookup = functionInstanceLookup;
             _functionTableLookup = functionTableLookup;
             _terminationSignalReader = terminationSignalReader;
             _terminationSignalWriter = terminationSignalWriter;
-            _causalityReader = causalityReader;
-            _functionInstanceQuery = functionInstanceQuery;
             _heartbeatTable = heartbeatTable;
             _invokeStatsTable = invokeStatsTable;
         }
 
         [Route("api/jobs/triggered/{jobName}/runs/{runId}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, string olderThan = null, string newerThan = null, int limit = 20)
+        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, [FromUri]PagingInfo pagingInfo)
         {
-            return GetFunctionsInJob(WebJobTypes.Triggered, jobName, runId, olderThan, newerThan, limit);
+            return GetFunctionsInJob(WebJobTypes.Triggered, jobName, runId, pagingInfo);
         }
 
         [Route("api/jobs/continuous/{jobName}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, string olderThan = null,string newerThan = null, int limit = 20)
+        public IHttpActionResult GetFunctionsInJob(string jobName, [FromUri]PagingInfo pagingInfo)
         {
-            return GetFunctionsInJob(WebJobTypes.Continuous, jobName, null, olderThan, newerThan, limit);
+            return GetFunctionsInJob(WebJobTypes.Continuous, jobName, null, pagingInfo);
         }
 
-        private  IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, string olderThan, string newerThan, int limit)
+        private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] PagingInfo pagingInfo)
         {
-            if (limit <= 0)
+            if (pagingInfo.Limit <= 0)
             {
                 return BadRequest("limit should be an positive, non-zero integer.");
             }
 
             var runIdentifier = new WebJobRunIdentifier(Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey), (InternalWebJobTypes)webJobType, jobName, runId);
 
-
-            var functionsInJob = _functionsInJobReader.GetFunctionInvocationsForJobRun(runIdentifier, olderThan, newerThan, limit);
-
-            var items = from functionInJobEntry in functionsInJob.AsParallel()
-                let invocation = _functionInstanceLookup.Lookup(functionInJobEntry.InvocationId)
-                select new {functionInJobEntry.RowKey, Invocation = new InvocationLogViewModel(invocation)};
-            return Ok(items.ToArray());
+            var invocations = _invocationLogLoader.GetInvocationsInJob(runIdentifier.GetKey(), pagingInfo);
+            return Ok(invocations);
         }
 
         [Route("api/functions/definitions/{functionName}")]
         public IHttpActionResult GetFunctionDefinition(string functionName)
         {
-            var func = _functionTableLookup.Lookup(functionName);
+            var func = _functionTableLookup.Lookup(functionName);   
 
             if (func == null)
             {
@@ -93,7 +83,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions/{functionName}/invocations")]
-        public IHttpActionResult GetInvocationsForFunction(string functionName)
+        public IHttpActionResult GetInvocationsForFunction(string functionName, [FromUri]PagingInfo pagingInfo)
         {
             var func = _functionTableLookup.Lookup(functionName);
 
@@ -102,53 +92,29 @@ namespace Dashboard.ApiControllers
                 return NotFound();
             }
 
-            var filter = new FunctionInstanceQueryFilter
-            {
-                Location = func.Location
-            };
-
-            var invocations = _functionInstanceQuery.GetRecent(20, filter)
-                .Select(e => new {invocation = new InvocationLogViewModel(e)})
-                .ToArray();
-
+            var invocations = _invocationLogLoader.GetInvocationsInFunction(func.Location.GetId(), pagingInfo);
             return Ok(invocations);
         }
 
         [Route("api/functions/invocations/recent")]
-        public IHttpActionResult GetRecentInvocations()
+        public IHttpActionResult GetRecentInvocations([FromUri]PagingInfo pagingInfo)
         {
-            var filter = new FunctionInstanceQueryFilter();
-            var invocations = _functionInstanceQuery
-                .GetRecent(10, filter)
-                .Select(x => new InvocationLogViewModel(x))
-                .ToArray();
-
+            var invocations = _invocationLogLoader.GetRecentInvocations(pagingInfo);
             return Ok(invocations);
         }
         
         [Route("api/functions/invocationsByIds")]
         public IHttpActionResult PostInvocationsByIds(Guid[] ids)
         {
-            var items = from invocationId in ids.AsParallel()
-                        let invocation = _functionInstanceLookup.Lookup(invocationId)
-                        select new InvocationLogViewModel(invocation);
+            var items = _invocationLogLoader.GetInvocationsByIds(ids);
             return Ok(items.ToArray());
         }
 
         [Route("api/functions/invocations/{functionInvocationId}/children")]
-        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, string olderThan = null, string newerThan = null, int limit = 20)
+        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, [FromUri]PagingInfo pagingInfo)
         {
-            if (limit <= 0)
-            {
-                return BadRequest("limit should be an positive, non-zero integer.");
-            }
-
-            var children = _causalityReader.GetChildren(functionInvocationId, newerThan, olderThan, limit);
-
-            var items = from childEntity in children.AsParallel()
-                        let invocation = _functionInstanceLookup.Lookup(childEntity.Data.Payload.ChildGuid)
-                        select new { childEntity.RowKey, Invocation = new InvocationLogViewModel(invocation) };
-            return Ok(items.ToArray());
+            var invocations = _invocationLogLoader.GetInvocationChildren(functionInvocationId, pagingInfo);
+            return Ok(invocations);
         }
 
         [Route("api/functions/invocations/{functionInvocationId}")]

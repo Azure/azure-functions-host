@@ -31,7 +31,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public void RecordFunctionInvocationForJobRun(Guid invocationId, DateTime startTime)
         {
-            var newEntity = new FunctionInJobEntity
+            var newEntity = new FunctionInvocationIndexEntity
             {
                 PartitionKey = _currentWebJobRunId.GetKey(),
                 RowKey = CreateRowKey(startTime),

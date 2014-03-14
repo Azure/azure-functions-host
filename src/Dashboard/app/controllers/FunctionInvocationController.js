@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionInvocationController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls, $q) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
@@ -15,158 +15,86 @@
 
         $scope.breadcrumbs = [];
 
-        $scope.hasMoreChildren = true;
-        $scope.loadChildren = function () {
-            $scope.loadingChildren = true;
-            loadMoreChildren().then(function (moreChildrenCount) {
-                $scope.loadingChildren = false;
-                if (moreChildrenCount === 0) {
-                    $scope.hasMoreChildren = false;
-                }
-            }, function (err) {
-                $scope.loadingChildren = false;
-            });
-        };
-
-        $scope.abort = function () {
+        $scope.abort = function() {
             $scope.aborting = true;
             $http({
                 method: "POST",
                 url: api.sdk.abortHostInstance($scope.model.invocation.hostInstanceId)
-            }).then(function () {
+            }).then(function() {
                 $scope.model.isAborted = true;
                 delete $scope.aborting;
-            }, function () {
+            }, function() {
                 delete $scope.aborting;
             });
-        }
+        };
 
         function loadInvocationDetails() {
             var runId;
             if (!$scope.model || !$scope.model.invocation.isFinal()) {
-                $http.get(functionInvocationDataUrl).success(function (res) {
+                return $http.get(functionInvocationDataUrl).success(function(res) {
+                    var initialLoad = !$scope.model;
                     $scope.model = FunctionInvocationModel.fromJson(res);
-                    if (res.invocation.executingJobRunId) {
-                        runId = res.invocation.executingJobRunId;
-                        $scope.breadcrumbs = [{
-                            url: urls.jobs(),
-                            title: 'WebJobs'
-                        }, {
-                            url: urls.job(runId.jobType.toLowerCase(), runId.jobName),
-                            title: runId.jobName
-                        }];
-                        if (runId.runId) {
+                    if (initialLoad) {
+                        // generate breadcrumb on initial load
+                        if (res.invocation.executingJobRunId) {
+                            runId = res.invocation.executingJobRunId;
+                            $scope.breadcrumbs = [{
+                                    url: urls.jobs(),
+                                    title: 'WebJobs'
+                                }, {
+                                    url: urls.job(runId.jobType.toLowerCase(), runId.jobName),
+                                    title: runId.jobName
+                                }];
+                            if (runId.runId) {
+                                $scope.breadcrumbs.push({
+                                    url: urls.jobRun(runId.jobType.toLowerCase(), runId.jobName, runId.runId),
+                                    title: 'Run'
+                                });
+                            }
                             $scope.breadcrumbs.push({
-                                url: urls.jobRun(runId.jobType.toLowerCase(), runId.jobName, runId.runId),
-                                title: 'Run'
+                                url: urls.functionDefinition($scope.model.invocation.functionFullName),
+                                title: $scope.model.invocation.functionName
                             });
+                        } else {
+                            $scope.breadcrumbs = [{
+                                    url: urls.functions(),
+                                    title: 'Functions'
+                                }, {
+                                    url: urls.functionDefinition($scope.model.invocation.functionFullName),
+                                    title: $scope.model.invocation.functionName
+                                }];
                         }
-                        $scope.breadcrumbs.push({
-                            url: urls.functionDefinition($scope.model.invocation.functionFullName),
-                            title: $scope.model.invocation.functionName
-                        });
-                    } else {
-                        $scope.breadcrumbs = [{
-                            url: urls.functions(),
-                            title: 'Functions'
-                        }, {
-                            url: urls.functionDefinition($scope.model.invocation.functionFullName),
-                            title: $scope.model.invocation.functionName
-                        }];
                     }
                 });
+            } else {
+                var deferred = $q.defer();
+                deferred.resolve();
+                return deferred.promise;
             }
         }
 
         function getData() {
-            loadInvocationDetails();
-            loadChildren();
+            lastPoll = new Date();
+            loadInvocationDetails().then(
+                $scope.$broadcast('invocations:poll')
+            );
         }
 
-        // go back in history
-        function loadMoreChildren() {
-            var deferred = $.Deferred();
-            if (!$scope.children || $scope.children.length === 0) {
-                deferred.resolve();
-                return deferred.promise();
-            }
-
-            var params = {
-                limit: 20,
-                olderThan: $scope.children[$scope.children.length - 1].rowKeyForJobRunLookup
-            };
-            loadChildrenInternal(params).success(function (res) {
-                var ix, len = res.length, item;
-                for (ix = 0; ix !== len; ++ix) {
-                    item = FunctionInvocationSummary.fromJson(res[ix].invocation);
-                    item.rowKeyForJobRunLookup = res[ix].rowKey;
-                    $scope.children.push(item);
-                }
-                console.log("resolving: " + res.length);
-                deferred.resolve(res.length);
-            }).error(function () {
-                deferred.reject();
-            });
-            return deferred.promise();
-        }
-
-        function shouldSkipChildrenPolling() {
-            // don't skip on running functions.
-            if (!$scope.model) {
-                return true;
-            }
-            if ($scope.model.invocation.isRunning()) {
-                return false;
-            }
-            // skip if it has completed 20 minutes ago or more.
-            return ((new Date()) - $scope.model.invocation.when > 1000 * 60 * 20);
-        }
-
-        // load initial page, and poll for new children
-        function loadChildren() {
-            var params = {}
-            if (!$scope.children || $scope.children.length === 0) {
-                params.limit = 20;
-            } else {
-                if (shouldSkipChildrenPolling()) {
-                    return;
-                }
-                params.limit = 1000;
-                params.newerThan = $scope.children[0].rowKeyForJobRunLookup;
-            }
-            loadChildrenInternal(params).success(function (res) {
-                var ix, len = res.length, item;
-                if (!$scope.children) {
-                    $scope.children = [];
-                    for (ix = 0; ix !== len; ++ix) {
-                        item = FunctionInvocationSummary.fromJson(res[ix].invocation);
-                        item.rowKeyForJobRunLookup = res[ix].rowKey;
-                        $scope.children.push(item);
-                    }
-                } else {
-                    for (ix = len - 1; ix !== -1; --ix) {
-                        item = FunctionInvocationSummary.fromJson(res[ix].invocation);
-                        item.rowKeyForJobRunLookup = res[ix].rowKey;
-                        $scope.children.unshift(item);
-                    }
-                }
-            });
-        }
-
-        function loadChildrenInternal(params) {
-            return $http({
-                method: "GET",
-                url: api.sdk.getFunctionInvocationChildren(invocationId),
-                params: params
-            });
-        }
+        $scope.invocations = {
+            endpoint: api.sdk.getFunctionInvocationChildren(invocationId),
+        };
 
         getData();
         poll = $interval(function () {
             if (((new Date()) - lastPoll) > pollInterval) {
-                lastPoll = new Date();
                 getData();
             }
+
+            // skip children hasNew lookup if the invocation had completed 20 minutes ago or more.
+            if ($scope.model && $scope.model.invocation && (new Date() - $scope.model.invocation.when) > 1000 * 60 * 20) {
+                $scope.invocations.skipHasNewPolling = true;
+            }
+            $scope.$broadcast('invocations:updateTiming');
         }, 2000);
 
         $scope.$on('$destroy', function () {

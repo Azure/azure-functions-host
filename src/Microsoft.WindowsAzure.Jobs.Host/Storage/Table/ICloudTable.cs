@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using Microsoft.WindowsAzure.StorageClient;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Storage.Table
@@ -8,6 +7,6 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage.Table
     {
         T GetOrInsert<T>(T entity) where T : TableServiceEntity;
         void InsertEntity<T>(T entity) where T : TableServiceEntity;
-        IEnumerable<T> QueryByRowKeyRange<T>(string partitionKey, string rowKeyExclusiveLowerBound, string rowKeyExclusiveUpperBound, int? limit) where T : TableServiceEntity;
+        IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : TableServiceEntity;
     }
 }

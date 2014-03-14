@@ -72,9 +72,9 @@
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocationExtensions.cs" />
-    <Compile Include="Runners\FunctionInJobEntity.cs" />
-    <Compile Include="Runners\FunctionsInJobReader.cs" />
-    <Compile Include="Runners\IFunctionsInJobReader.cs" />
+    <Compile Include="Runners\FunctionInvocationIndexEntity.cs" />
+    <Compile Include="Runners\FunctionInvocationIndexReader.cs" />
+    <Compile Include="Runners\IFunctionInvocationIndexReader.cs" />
     <Compile Include="Runners\NullFunctionsInJobIndexer.cs" />
     <Compile Include="Runners\WebJobRunIdentifier.cs" />
     <Compile Include="Runners\WebJobTypes.cs" />
@@ -89,6 +89,7 @@
     <Compile Include="Protocols\TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="Storage\CloudRequestResult.cs" />
     <Compile Include="Storage\CloudStorageException.cs" />
+    <Compile Include="Storage\Table\IQueryModifier.cs" />
     <Compile Include="TableNames.cs" />
     <Compile Include="QueueNames.cs" />
     <Compile Include="Runners\FunctionsInJobIndexer.cs" />

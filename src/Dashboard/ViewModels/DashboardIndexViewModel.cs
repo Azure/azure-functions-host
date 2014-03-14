@@ -104,6 +104,10 @@ namespace Dashboard.ViewModels
         public string ExceptionMessage { get; set; }
         public string ExceptionType { get; set; }
         public Guid HostInstanceId { get; set; }
+        public bool IsFinal()
+        {
+            return Status == FunctionInstanceStatus.CompletedFailed || Status == FunctionInstanceStatus.CompletedSuccess;
+        }
     }
 
     public class FunctionStatisticsViewModel

@@ -108,3 +108,8 @@ label
 {
     font-size: 14px;
 }
+
+.pager.disabled a,
+.pager.disabled span {
+    color: #3c454f;
+}

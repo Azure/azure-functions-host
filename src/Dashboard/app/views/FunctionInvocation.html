@@ -71,37 +71,9 @@
     </div>
 </div>
 
-<div ng-show="children" class="row">
+<div ng-show="invocations.entries" class="row">
     <div class="col-md-9">
         <h3>Children <small>Functions triggered by this function</small></h3>
-        <p ng-if="!children">Loading...</p>
-        <section ng-if="children">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th class="col-md-3">Function Name</th>
-                        <th class="col-md-1">Status</th>
-                        <th class="col-md-2">Status Detail</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="invocation in children">
-                        <td>
-                            <a bind-once title="Invocation details" href="{{_urls.functionInvocation(invocation.id)}}">
-                                <span>{{invocation.functionDisplayTitle}}</span>
-                            </a>
-                        </td>
-                        <td>
-                            <span ng-class="invocation.getLabelClass()" class="label">{{invocation.getLabelText()}}</span>
-                        </td>
-                        <td>
-                            <span>{{invocation.statusTimeString}}</span> <small>({{invocation.durationString}} running time)</small>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <button type="button" class="btn btn-primary btn-sm" ng-show="hasMoreChildren && !loadingChildren" ng-click="loadChildren()">Load more</button>
-            <button type="button" class="btn btn-primary btn-sm" ng-show="loadingChildren">Loading ...</button>
-        </section>
+        <ng-include src="'app/views/shared/FunctionInvocationsTable.html'"></ng-include>
     </div>
 </div>

@@ -42,10 +42,21 @@ namespace Dashboard
             Bind<ICausalityReader>().ToMethod(() => services.GetCausalityReader());
             Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
             Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
-            Bind<IFunctionsInJobReader>().To<FunctionsInJobReader>();
             Bind<IInvoker>().To<Invoker>();
+            Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<HostStartupMessage>>().To<PersistentQueue<HostStartupMessage>>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
+            BindFunctionInvocationIndexReader("invocationsInJobReader", TableNames.FunctionsInJobIndex);
+            BindFunctionInvocationIndexReader("invocationsInFunctionReader", TableNames.FunctionInvokeLogIndexMruFunction);
+            BindFunctionInvocationIndexReader("recentInvocationsReader", TableNames.FunctionInvokeLogIndexMru);
+            BindFunctionInvocationIndexReader("invocationChildrenReader", TableNames.FunctionCausalityLog);
+        }
+
+        void BindFunctionInvocationIndexReader(string argName, string tableName)
+        {
+            Bind<IFunctionInvocationIndexReader>().To<FunctionInvocationIndexReader>()
+                .When(r => r.Target.Name == argName)
+                .WithConstructorArgument("tableName", tableName);
         }
 
         private static Services TryCreateServices()

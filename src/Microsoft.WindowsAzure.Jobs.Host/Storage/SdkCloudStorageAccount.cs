@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Data.Services.Client;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.StorageClient;
@@ -187,17 +189,23 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                 context.SaveChangesWithRetries();
             }
 
-            public IEnumerable<T> QueryByRowKeyRange<T>(string partitionKey, string rowKeyExclusiveLowerBound, string rowKeyExclusiveUpperBound, int? limit) where T : TableServiceEntity
+            public IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : TableServiceEntity
             {
-                TableServiceContext context = _sdk.GetDataServiceContext();
-                var q = context.CreateQuery<T>(_tableName)
-                    .Where(e => e.PartitionKey == partitionKey &&
-                                e.RowKey.CompareTo(rowKeyExclusiveLowerBound) > 0 &&
-                                e.RowKey.CompareTo(rowKeyExclusiveUpperBound) < 0);
-                if (limit.HasValue)
+                // avoid utterly inefficient queries
+                const int maxPageSize = 50;
+                if (limit <= 0 || limit >maxPageSize)
                 {
-                    q = q.Take(limit.Value);
+                    throw new ArgumentOutOfRangeException("limit", limit, String.Format(CultureInfo.CurrentCulture,
+                        "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
                 }
+
+                TableServiceContext context = _sdk.GetDataServiceContext();
+                IQueryable<T> q = context.CreateQuery<T>(_tableName);
+                foreach (var queryModifier in queryModifiers)
+                {
+                    q = queryModifier.Apply(q);
+                }
+                    q = q.Take(limit);
 
                 return q.AsTableServiceQuery().Execute();
             }
