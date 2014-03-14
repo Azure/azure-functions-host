@@ -150,7 +150,6 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                             // If the insert failed because the entity already exists, try to get instead.
                             if (firstOperation.StatusCode == 409)
                             {
-
                                 DataServiceContext getContext = _sdk.GetDataServiceContext();
                                 IQueryable queryable = getContext.CreateQuery<T>(_tableName);
                                 Debug.Assert(queryable != null);
@@ -193,7 +192,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
             {
                 // avoid utterly inefficient queries
                 const int maxPageSize = 50;
-                if (limit <= 0 || limit >maxPageSize)
+                if (limit <= 0 || limit > maxPageSize)
                 {
                     throw new ArgumentOutOfRangeException("limit", limit, String.Format(CultureInfo.CurrentCulture,
                         "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
@@ -205,9 +204,33 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                 {
                     q = queryModifier.Apply(q);
                 }
-                    q = q.Take(limit);
+                q = q.Take(limit);
 
-                return q.AsTableServiceQuery().Execute();
+                try
+                {
+                    return q.AsTableServiceQuery().Execute().ToArray();
+                }
+                catch (DataServiceQueryException queryException)
+                {
+                    // unless it is 404, do not recover
+                    if (queryException.Response == null || queryException.Response.StatusCode != 404)
+                    {
+                        throw;
+                    }
+                    try
+                    {
+                        _sdk.CreateTable(_tableName);
+                    }
+                    catch (StorageClientException createException)
+                    {
+                        // a possible race condition on table creation
+                        if (createException.ErrorCode != StorageErrorCode.ResourceAlreadyExists)
+                        {
+                            throw;
+                        }
+                    }
+                    return q.AsTableServiceQuery().Execute().ToArray();
+                }
             }
         }
     }
