@@ -21,7 +21,7 @@
             // this (or other) service already found out.
             return;
         }
-        if ($rootScope._sdkNotConfigured.connectionStringState === 'valid') {
+        if (!$rootScope._sdkNotConfigured) {
             // assume using if connectionString is valid
             setUsing();
             return;
