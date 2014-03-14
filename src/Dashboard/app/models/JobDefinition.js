@@ -3,6 +3,7 @@
         this.name = item.name;
         this.type = item.type;
         this.runCommand = item.run_command;
+        this.usingSdk = !!item.using_sdk;
         switch (item.type) {
             case 'triggered':
                 initializeTriggeredJob(this, item);

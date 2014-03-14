@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('ContinuousJobController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionInvocationSummary, JobDefinition, api, urls) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionInvocationSummary, JobDefinition, api, urls, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
@@ -21,6 +21,13 @@
         function getJobRunDetails() {
             return $http.get(jobRunUrl).then(function (res) {
                 $scope.job = new JobDefinition(res.data);
+                if (!isUsingSdk.isUsing($scope)) {
+                    if ($scope.job.usingSdk) {
+                        isUsingSdk.setUsing();
+                    } else {
+                        isUsingSdk.setNotUsing($scope);
+                    }
+                }
             });
         }
 

@@ -1,19 +1,18 @@
-﻿<section ng-if="_sdkNotConfigured.connectionStringState === 'missing'">
+﻿<section ng-if="_usingSdk === false">
     <p>
         <a href="http://go.microsoft.com/fwlink/?LinkID=320954">Do more with the Windows Azure WebJobs SDK.</a> The SDK integrates Windows Azure Storage, triggering a function in your program when items are added to Queues, Blobs, or Tables.
     </p>
-    <p>
+</section>
+<section ng-if="_usingSdk === true && _sdkNotConfigured.badInit">
+    <p class="alert alert-warning" ng-if="_sdkNotConfigured.connectionStringState === 'missing'">
         Make sure that you are setting a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> in your Windows Azure Website configuration with
         a value similar to <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Windows Azure Storage account where the Windows Azure WebJobs Runtime logs are stored.<br />
         Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Windows Azure Website.
     </p>
-</section>
-<section ng-if="_sdkNotConfigured.connectionStringState === 'invalid'">
-    <p>
+    <p class="alert alert-danger" ng-if="_sdkNotConfigured.connectionStringState === 'invalid'">
         The configuration is not properly set for the Windows Azure WebJobs Dashboard.
         In your Windows Azure Website configuration you must set a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> with
         a value similar to <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Windows Azure Storage account where the Windows Azure WebJobs Runtime logs are stored.<br />
         Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Windows Azure Website.
     </p>
-    <p class="alert alert-danger">{{_sdkNotConfigured.badInitErrorMessage}}</p>
 </section>

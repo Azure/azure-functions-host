@@ -1,19 +1,23 @@
 ﻿angular.module('dashboard').controller('FunctionInvocationController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls, $q) {
+    function ($scope, $routeParams, $interval, $http, $q, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
             invocationId = $routeParams.invocationId,
             functionInvocationDataUrl = api.sdk.functionInvocation(invocationId);
 
-        if ($scope._sdkNotConfigured) {
-            return;
-        }
-
+        isUsingSdk.setUsing($scope);
         $scope.invocationId = invocationId;
         $scope.stringUtils = stringUtils;
 
-        $scope.breadcrumbs = [];
+        $scope.breadcrumbs = [{
+            url: urls.functions(),
+            title: 'Functions'
+        }];
+
+        if ($scope._sdkNotConfigured) {
+            return;
+        }
 
         $scope.abort = function() {
             $scope.aborting = true;

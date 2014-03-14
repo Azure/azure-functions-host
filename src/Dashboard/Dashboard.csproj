@@ -195,6 +195,7 @@
     <Content Include="app\models\FunctionInvocationModel.js" />
     <Content Include="app\models\JobDefinition.js" />
     <Content Include="app\services\consoleOutput.js" />
+    <Content Include="app\services\isUsingSdk.js" />
     <Content Include="app\services\urls.js" />
     <Content Include="app\services\api.js" />
     <Content Include="app\services\invocationUtils.js" />

@@ -1,10 +1,11 @@
 ﻿angular.module('dashboard').controller('TriggeredJobRunController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionInvocationSummary, JobRun, urls, api) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionInvocationSummary, JobRun, JobDefinition, urls, api, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
             jobName = $routeParams.jobName,
             jobType = 'triggered',
+            job,
             runId = $routeParams.runId,
             jobRunUrl = api.kudu.jobRun(jobName, runId);
         $scope.jobName = jobName;
@@ -31,6 +32,25 @@
                 $scope.jobRun = jobRun;
             });
         }
+
+        function checkUsingSdk() {
+            if (job) {
+                return;
+            }
+            if (isUsingSdk.isUsing($scope)) {
+                return;
+            }
+            $http.get(api.kudu.job('triggered', $routeParams.jobName)).then(function (res) {
+                if (res.data.using_sdk) {
+                    isUsingSdk.setUsing();
+                } else {
+                    isUsingSdk.setNotUsing($scope);
+                }
+            });
+        }
+        checkUsingSdk();
+
+
         function getData() {
             lastPoll = new Date();
             $scope.jobRun = $scope.jobRun || {};

@@ -1,14 +1,16 @@
 ﻿angular.module('dashboard').controller('FunctionsHomeController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, FunctionInvocationSummary, api, urls) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, FunctionInvocationSummary, api, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0;
 
+        isUsingSdk.findOut($scope);
+
+        $scope.breadcrumbs = [];
+
         if ($scope._sdkNotConfigured) {
             return;
         }
-
-        $scope.breadcrumbs = [];
 
         $scope.invocations = {
             endpoint: api.sdk.recentInvocations()

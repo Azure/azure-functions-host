@@ -1,7 +1,8 @@
-﻿<button type="button" class="btn btn-primary btn-sm" ng-click="toggleConsole()">
-    Toggle Output
-</button>
-
+﻿<p>
+    <button type="button" class="btn btn-primary btn-sm" ng-click="toggleConsole()">
+        Toggle Output
+    </button>
+</p>
 <form ng-class="shouldShowConsole ? '' : 'collapse'" role="form">
     <div>
         <label ng-if="isRunning()" class="checkbox">
