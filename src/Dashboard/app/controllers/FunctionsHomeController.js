@@ -1,8 +1,10 @@
 ﻿angular.module('dashboard').controller('FunctionsHomeController',
     function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, FunctionInvocationSummary, api, isUsingSdk) {
         var poll,
-            pollInterval = 10 * 1000,
-            lastPoll = 0;
+            functionsPollInterval = 20 * 1000,
+            invocationsPollInterval = 10 * 1000,
+            lastFunctionsPoll = 0,
+            lastInvocationsPoll = 0;
 
         isUsingSdk.findOut($scope);
 
@@ -33,15 +35,14 @@
             });
         }
 
-        function getData() {
-            lastPoll = new Date();
-            getFunctionDefinitions();
-            $scope.$broadcast('invocations:poll');
-        }
-
         poll = $interval(function () {
-            if (((new Date()) - lastPoll) > pollInterval) {
-                getData();
+            if (((new Date()) - lastFunctionsPoll) > functionsPollInterval) {
+                lastFunctionsPoll = new Date();
+                getFunctionDefinitions();
+            }
+            if (((new Date()) - lastInvocationsPoll) > invocationsPollInterval) {
+                lastInvocationsPoll = new Date();
+                $scope.$broadcast('invocations:poll');
             }
             $scope.$broadcast('invocations:updateTiming');
         }, 2000);
