@@ -50,7 +50,7 @@
                         runId = res.invocation.executingJobRunId;
                         $scope.breadcrumbs = [{
                             url: urls.jobs(),
-                            title: 'Jobs'
+                            title: 'WebJobs'
                         }, {
                             url: urls.job(runId.jobType.toLowerCase(), runId.jobName),
                             title: runId.jobName

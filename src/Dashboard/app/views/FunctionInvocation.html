@@ -9,14 +9,15 @@
         </h3>
 
         <p>
-            <a class="btn btn-primary" href="{{_urls.replayFunction(invocationId)}}">Replay function</a>
-        </p>
+            <a class="btn btn-primary" href="{{_urls.replayFunction(invocationId)}}">Replay Function</a>
 
-        <p ng-if="model.invocation.isRunning()">
-            <button ng-if="!model.isAborted && !aborting" class="btn btn-danger btn-sm" ng-click="abort()"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>
-            <button ng-if="aborting" class="btn btn-danger btn-sm disabled"><span class="glyphicon glyphicon-remove"></span> Aborting...</button>
-            <button ng-if="model.isAborted" class="btn btn-danger btn-sm" disabled>Host abort requested</button>
+            <span ng-if="model.invocation.isRunning()">
+                <button ng-if="!model.isAborted && !aborting" class="btn btn-danger" ng-click="abort()"><span class="glyphicon glyphicon-remove"></span> Abort Host</button>
+                <button ng-if="aborting" class="btn btn-danger disabled"><span class="glyphicon glyphicon-remove"></span> Aborting...</button>
+                <button ng-if="model.isAborted" class="btn btn-danger" disabled>Host abort requested</button>
+            </span>
         </p>
+                
         <p ng-class="model.invocation.getAlertClass()" class="alert">
             <b>{{model.invocation.getLabelText()}}</b>
             <span ng-bind="model.invocation.statusTimeString"></span> <small ng-if="model.invocation.durationString">({{model.invocation.durationString}} running time)</small>

@@ -15,7 +15,7 @@
 
         $scope.breadcrumbs = [{
             url: urls.jobs(),
-            title: 'Jobs'
+            title: 'WebJobs'
         }, {
             url: urls.job(jobType, jobName),
             title: jobName

@@ -8,7 +8,7 @@
 
       $scope.breadcrumbs = [{
           url: urls.jobs(),
-          title: 'Jobs'
+          title: 'WebJobs'
       }      ];
 
       function getData() {
