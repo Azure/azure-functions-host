@@ -1,4 +1,5 @@
-﻿using System.Web.Mvc;
+﻿using System;
+using System.Web.Mvc;
 
 namespace Dashboard.Controllers
 {
@@ -6,6 +7,10 @@ namespace Dashboard.Controllers
     {
         public ActionResult Index()
         {
+            if (!Request.Url.GetLeftPart(UriPartial.Path).EndsWith("/"))
+            {
+                return RedirectPermanent(Request.Url.GetLeftPart(UriPartial.Path) + "/");
+            }
             return View();
         }
 	}
