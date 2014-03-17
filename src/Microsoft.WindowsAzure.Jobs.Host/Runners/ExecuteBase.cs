@@ -23,17 +23,7 @@ namespace Microsoft.WindowsAzure.Jobs
             var logItem = new ExecutionInstanceLogEntity();
 
             var logger = context.Logger;
-            var bridge = context.Bridge;
-            IFunctionInstanceLoggerContext logItemContext;
-
-            if (bridge != null)
-            {
-                logItemContext = bridge.CreateContext(logItem);
-            }
-            else
-            {
-                logItemContext = null;
-            }
+            IFunctionInstanceLogger instanceLogger = context.FunctionInstanceLogger;
 
             logItem.HostInstanceId = context.HostInstanceId;
             logItem.FunctionInstance = instance;
@@ -45,7 +35,7 @@ namespace Microsoft.WindowsAzure.Jobs
             try
             {
                 context.FunctionsInJobIndexer.RecordFunctionInvocationForJobRun(instance.Id, now);
-                Work(instance, context, fpInvokeFunc, logItem, logItemContext);
+                Work(instance, context, fpInvokeFunc, logItem, instanceLogger);
             }
             finally
             {
@@ -53,10 +43,9 @@ namespace Microsoft.WindowsAzure.Jobs
                 logItem.EndTime = DateTime.UtcNow;
                 logger.Log(logItem);
 
-                if (logItemContext != null)
+                if (instanceLogger != null)
                 {
-                    logItemContext.IndexCompletedFunction();
-                    logItemContext.Flush();
+                    instanceLogger.LogFunctionCompleted(logItem);
                 }
             }
         }
@@ -72,7 +61,7 @@ namespace Microsoft.WindowsAzure.Jobs
             Func<TextWriter, FunctionExecutionResult> fpInvokeFunc,
 
             ExecutionInstanceLogEntity logItem,   // current request log entity
-            IFunctionInstanceLoggerContext logItemContext
+            IFunctionInstanceLogger instanceLogger
             )
         {
             FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
@@ -82,10 +71,9 @@ namespace Microsoft.WindowsAzure.Jobs
             IFunctionUpdatedLogger logger = context.Logger;
             logger.Log(logItem);
 
-            if (logItemContext != null)
+            if (instanceLogger != null)
             {
-                logItemContext.IndexRunningFunction();
-                logItemContext.Flush();
+                instanceLogger.LogFunctionStarted(logItem);
             }
 
             using (IntervalSeparationTimer timer = CreateHeartbeatTimer(logger, logItem))

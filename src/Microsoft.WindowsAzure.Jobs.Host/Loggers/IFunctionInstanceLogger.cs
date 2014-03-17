@@ -2,8 +2,8 @@
 {
     internal interface IFunctionInstanceLogger
     {
-        IFunctionInstanceLoggerContext CreateContext(ExecutionInstanceLogEntity func);
+        void LogFunctionStarted(ExecutionInstanceLogEntity logEntity);
 
-        void Flush();
+        void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity);
     }
 }

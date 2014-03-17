@@ -117,17 +117,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return new ExecutionStatsAggregator(tableLookup);
         }
 
-        public IFunctionInstanceQuery GetFunctionInstanceQuery()
-        {
-            return GetStatsAggregatorInternal();
-        }
-
         public IFunctionInstanceLogger GetFunctionInstanceLogger()
-        {
-            return GetStatsAggregatorInternal();
-        }
-
-        private ExecutionStatsAggregator GetStatsAggregatorInternal()
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
             var tableStatsSummary = GetInvokeStatsTable();

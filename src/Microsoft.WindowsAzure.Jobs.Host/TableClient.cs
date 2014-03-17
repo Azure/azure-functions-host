@@ -28,9 +28,9 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Helper to get a row key based on time stamp. 
         // Where recent time is sorted first. 
-        public static string GetTickRowKey(DateTime time)
+        public static string GetTickRowKey(DateTime time, Guid id)
         {
-            string rowKey = Ticks(time) + "." + Ticks(DateTime.UtcNow);
+            string rowKey = Ticks(time) + "." + id.ToString("N");
             return rowKey;
         }
 

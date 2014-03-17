@@ -37,14 +37,14 @@ namespace Dashboard
             Bind<IFunctionTable>().ToMethod(() => services.GetFunctionTable());
             Bind<IRunningHostTableReader>().ToMethod(() => services.GetRunningHostTableReader());
             Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
-            Bind<IFunctionInstanceQuery>().ToMethod(() => services.GetFunctionInstanceQuery());
             Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => services.GetInvokeStatsTable());
             Bind<ICausalityReader>().ToMethod(() => services.GetCausalityReader());
             Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
             Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
             Bind<IInvoker>().To<Invoker>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
-            Bind<IPersistentQueue<HostStartupMessage>>().To<PersistentQueue<HostStartupMessage>>();
+            Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
+            Bind<IFunctionInstanceLogger>().ToMethod(() => services.GetFunctionInstanceLogger());
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             BindFunctionInvocationIndexReader("invocationsInJobReader", TableNames.FunctionsInJobIndex);
             BindFunctionInvocationIndexReader("invocationsInFunctionReader", TableNames.FunctionInvokeLogIndexMruFunction);

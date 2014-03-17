@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
@@ -8,18 +9,21 @@ namespace Dashboard.Indexers
 {
     internal class Indexer : IIndexer
     {
-        private readonly IPersistentQueue<HostStartupMessage> _queue;
+        private readonly IPersistentQueue<PersistentQueueMessage> _queue;
         private readonly IFunctionTable _functionTable;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
-        public Indexer(IPersistentQueue<HostStartupMessage> queue, IFunctionTable functionTable)
+        public Indexer(IPersistentQueue<PersistentQueueMessage> queue, IFunctionTable functionTable,
+            IFunctionInstanceLogger functionInstanceLogger)
         {
             _queue = queue;
             _functionTable = functionTable;
+            _functionInstanceLogger = functionInstanceLogger;
         }
 
         public void Update()
         {
-            HostStartupMessage message = _queue.Dequeue();
+            PersistentQueueMessage message = _queue.Dequeue();
 
             while (message != null)
             {
@@ -28,6 +32,37 @@ namespace Dashboard.Indexers
 
                 message = _queue.Dequeue();
             }
+        }
+
+        private void Process(PersistentQueueMessage message)
+        {
+            HostStartupMessage startupMessage = message as HostStartupMessage;
+
+            if (startupMessage != null)
+            {
+                Process(startupMessage);
+                return;
+            }
+
+            FunctionStartedMessage functionStartedMessage = message as FunctionStartedMessage;
+
+            if (functionStartedMessage != null)
+            {
+                Process(functionStartedMessage);
+                return;
+            }
+
+            FunctionCompletedMessage functionCompletedMessage = message as FunctionCompletedMessage;
+
+            if (functionCompletedMessage != null)
+            {
+                Process(functionCompletedMessage);
+                return;
+            }
+
+            string errorMessage =
+                String.Format(CultureInfo.InvariantCulture, "Unknown message type '{0}'.", message.Type);
+            throw new InvalidOperationException(errorMessage);
         }
 
         private void Process(HostStartupMessage message)
@@ -60,6 +95,16 @@ namespace Dashboard.Indexers
                     _functionTable.Add(functionToAdd);
                 }
             }
+        }
+
+        private void Process(FunctionStartedMessage message)
+        {
+            _functionInstanceLogger.LogFunctionStarted(message.LogEntity);
+        }
+
+        private void Process(FunctionCompletedMessage message)
+        {
+            _functionInstanceLogger.LogFunctionCompleted(message.LogEntity);
         }
     }
 }

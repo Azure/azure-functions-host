@@ -73,6 +73,9 @@
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocationExtensions.cs" />
+    <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
+    <Compile Include="Protocols\FunctionCompletedMessage.cs" />
+    <Compile Include="Protocols\FunctionStartedMessage.cs" />
     <Compile Include="Runners\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Runners\FunctionInvocationIndexReader.cs" />
     <Compile Include="Runners\IFunctionInvocationIndexReader.cs" />
@@ -249,7 +252,6 @@
     <Compile Include="Loggers\IBlobCausalityLogger.cs" />
     <Compile Include="Runners\BlobTriggerReason.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
-    <Compile Include="Loggers\IFunctionInstanceLoggerContext.cs" />
     <Compile Include="Loggers\IFunctionUpdatedLogger.cs" />
     <Compile Include="Loggers\IFunctionInstanceLookup.cs" />
     <Compile Include="Loggers\FunctionInstanceLookupExtensions.cs" />

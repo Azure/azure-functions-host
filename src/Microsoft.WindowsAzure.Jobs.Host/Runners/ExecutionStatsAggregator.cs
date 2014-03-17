@@ -6,17 +6,19 @@ using AzureTables;
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Includes both reading and writing the secondary indices together. 
-    internal class ExecutionStatsAggregator : IFunctionInstanceLogger, IFunctionInstanceQuery
+    internal class ExecutionStatsAggregator : IFunctionInstanceLogger, IFunctionInstanceLookup
     {
-        // in-memory cache of function entries. 
-        // This corresponds to the azure table. 
+        private const string PartitionKey = "1";
+
+        // in-memory cache of function entries.
+        // This corresponds to the azure table.
         private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs =
             new Dictionary<FunctionLocation, FunctionStatsEntity>();
 
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _table;
 
         // 2nd index for most-recently used functions.
-        // These are all sorted by time stamp. 
+        // These are all sorted by time stamp.
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRU;
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunction;
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionSucceed;
@@ -34,7 +36,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _tableLookup = tableLookup;
         }
 
-        // Pass in table names for the various indices. 
+        // Pass in table names for the various indices.
         public ExecutionStatsAggregator(
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup,
             AzureTable<FunctionLocation, FunctionStatsEntity> tableStatsSummary,
@@ -65,72 +67,14 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        // Lookup in the primary table.
         ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
         {
-            return FunctionUpdatedLogger.RawLookup(_tableLookup, rowKey.ToString());
+            return LookupInPrimaryTable(rowKey);
         }
 
-        // This is the inverse operation of LogMru.
-        // Lookup using secondary indices.
-        IEnumerable<ExecutionInstanceLogEntity> IFunctionInstanceQuery.GetRecent(int take, FunctionInstanceQueryFilter filter)
+        private ExecutionInstanceLogEntity LookupInPrimaryTable(Guid functionInstanceId)
         {
-            return ((IFunctionInstanceQuery)this).GetRecent(take, 0, filter);
-        }
-
-        // This is the inverse operation of LogMru.
-        // Lookup using secondary indices.
-        IEnumerable<ExecutionInstanceLogEntity> IFunctionInstanceQuery.GetRecent(int take, int skip, FunctionInstanceQueryFilter filter)
-        {
-            if (_tableMRU == null)
-            {
-                // Instantiated this object with the wrong ctor.
-                throw new InvalidOperationException("Secondary indices not set");
-            }
-
-            // FunctionLocation 
-            // Success?
-
-            IEnumerable<FunctionInstanceGuid> ptrs;
-            if (filter.Location != null)
-            {
-                // Filter on a specific type of function 
-                IAzureTableReader<FunctionInstanceGuid> table;
-
-                if (filter.Succeeded.HasValue)
-                {
-                    if (filter.Succeeded.Value)
-                    {
-                        table = _tableMRUByFunctionSucceed;
-                    }
-                    else
-                    {
-                        table = _tableMRUByFunctionFailed;
-                    }
-                }
-                else
-                {
-                    table = _tableMRUByFunction;
-                }
-
-                string funcId = filter.Location.ToString(); // valid row key
-
-                ptrs = table.Enumerate(funcId);
-            }
-            else
-            {
-                IAzureTableReader<FunctionInstanceGuid> table = _tableMRU;
-                // Take all functions, without filter. 
-                ptrs = table.Enumerate();
-            }
-
-            ptrs = ptrs.Skip(skip).Take(take);
-
-            IFunctionInstanceLookup lookup = this;
-            return from ptr in ptrs
-                   let val = lookup.Lookup(ptr)
-                   where val != null
-                   select val;
+            return FunctionUpdatedLogger.RawLookup(_tableLookup, functionInstanceId.ToString());
         }
 
         public void Flush()
@@ -146,10 +90,10 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             _table.Flush();
 
-            _funcs.Clear(); // cause it to be reloaded 
+            _funcs.Clear(); // cause it to be reloaded
         }
 
-        private string LogMru(ExecutionInstanceLogEntity log)
+        private void LogMru(ExecutionInstanceLogEntity log)
         {
             Guid instance = log.FunctionInstance.Id;
 
@@ -171,11 +115,11 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             // Use function's actual end time (so we can reindex)
-            // and append with Now just in case there are ties. 
-            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp);
+            // and append with the function instance ID just in case there are ties. 
+            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, log.FunctionInstance.Id);
 
             var ptr = new FunctionInstanceGuid(log);
-            _tableMRU.Write("1", rowKey, ptr);
+            _tableMRU.Write(PartitionKey, rowKey, ptr);
 
             string funcId = log.FunctionInstance.Location.ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
@@ -189,29 +133,57 @@ namespace Microsoft.WindowsAzure.Jobs
                     _tableMRUByFunctionFailed.Write(funcId, rowKey, ptr);
                     break;
             }
-
-            return rowKey;
         }
 
         private void DeleteIndex(string rowKey, ExecutionInstanceLogEntity log)
         {
-            _tableMRU.Delete("1", rowKey);
+            _tableMRU.Delete(PartitionKey, rowKey);
             _tableMRUByFunction.Delete(log.FunctionInstance.Location.ToString(), rowKey);
         }
 
-        string IndexRunningFunction(ExecutionInstanceLogEntity log)
+        public void LogFunctionStarted(ExecutionInstanceLogEntity log)
         {
-            return LogMru(log);
+            // This method may be called concurrently with LogFunctionCompleted.
+            // Don't log a function running after it has been logged as completed.
+            if (HasLoggedFunctionCompleted(log.FunctionInstance.Id))
+            {
+                return;
+            }
+
+            LogMru(log);
+            Flush();
         }
 
-        void IndexCompletedFunction(ExecutionInstanceLogEntity log)
+        private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
+        {
+            ExecutionInstanceLogEntity primaryLog = LookupInPrimaryTable(functionInstanceId);
+
+            DateTime? completedTime = primaryLog.EndTime;
+
+            if (!completedTime.HasValue)
+            {
+                return false;
+            }
+
+            string completedRowKey = TableClient.GetTickRowKey(completedTime.Value, functionInstanceId);
+            FunctionInstanceGuid completedRow = _tableMRU.Lookup(PartitionKey, completedRowKey);
+
+            return !object.ReferenceEquals(completedRow, null);
+        }
+
+        public void LogFunctionCompleted(ExecutionInstanceLogEntity log)
         {
             LogMru(log);
 
             if (!log.IsCompleted())
             {
+                Flush();
                 return;
             }
+
+            // This method may be called concurrently with LogFunctionStarted.
+            // Remove the function running log after logging as completed.
+            DeleteFunctionStartedIfExists(log);
 
             FunctionLocation kind = log.FunctionInstance.Location;
             FunctionStatsEntity stats;
@@ -239,57 +211,18 @@ namespace Microsoft.WindowsAzure.Jobs
                     stats.CountErrors++;
                     break;
             }
+
+            Flush();
         }
 
-        IFunctionInstanceLoggerContext IFunctionInstanceLogger.CreateContext(ExecutionInstanceLogEntity func)
+        private void DeleteFunctionStartedIfExists(ExecutionInstanceLogEntity logItem)
         {
-            return new InstanceContext(this, func);
-        }
-
-        // Tracks the function instance as it is logged.
-        // For example, logging a completed function deletes old log items from the running state.
-        private class InstanceContext : IFunctionInstanceLoggerContext
-        {
-            private readonly ExecutionStatsAggregator _parent;
-            private readonly ExecutionInstanceLogEntity _logItem;
-
-            private string rowKey;
-
-            public InstanceContext(ExecutionStatsAggregator parent, ExecutionInstanceLogEntity logItem)
+            if (!logItem.StartTime.HasValue)
             {
-                if (parent == null)
-                {
-                    throw new ArgumentNullException("parent");
-                }
-
-                if (logItem == null)
-                {
-                    throw new ArgumentNullException("logItem");
-                }
-
-                _parent = parent;
-                _logItem = logItem;
+                return;
             }
 
-            public void IndexRunningFunction()
-            {
-                rowKey = _parent.IndexRunningFunction(_logItem);
-            }
-
-            public void IndexCompletedFunction()
-            {
-                if (rowKey != null)
-                {
-                    _parent.DeleteIndex(rowKey, _logItem);
-                }
-
-                _parent.IndexCompletedFunction(_logItem);
-            }
-
-            public void Flush()
-            {
-                _parent.Flush();
-            }
+            DeleteIndex(TableClient.GetTickRowKey(logItem.StartTime.Value, logItem.FunctionInstance.Id), logItem);
         }
     }
 }

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Host.Loggers;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
@@ -55,9 +56,11 @@ namespace Microsoft.WindowsAzure.Jobs
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 SetHostId(_hostId, functions);
 
+                IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
+
                 // Publish this to Azure logging account so that a web dashboard can see it. 
                 PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString,
-                    new PersistentQueue<HostStartupMessage>(account));
+                    persistentQueue);
 
                 var services = GetServices(runtimeConnectionString);
 
@@ -67,7 +70,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
                 ctx.FunctionsInJobIndexer = services.GetFunctionInJobIndexer();
-                ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
+                ctx.FunctionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
 
                 _functionInstanceLookup = services.GetFunctionInstanceLookup();
                 _functionUpdatedLogger = services.GetFunctionUpdatedLogger();
@@ -249,7 +252,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Publish functions to the cloud
         // This lets another site go view them. 
         private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString,
-            string runtimeConnectionString, IPersistentQueue<HostStartupMessage> logger)
+            string runtimeConnectionString, IPersistentQueue<PersistentQueueMessage> logger)
         {
             HostStartupMessage message = new HostStartupMessage
             {
