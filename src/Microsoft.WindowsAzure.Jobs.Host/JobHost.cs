@@ -81,12 +81,12 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private void Initialize(JobHostTestHooks hooks)
         {
+            WriteAntaresManifest();
+
             ValidateConnectionStrings(hooks.StorageValidator);
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(hooks.TypeLocator);
-
-            WriteAntaresManifest();
         }
 
         private void ValidateConnectionStrings(IStorageValidator storageValidator)
