@@ -10,8 +10,6 @@ namespace Microsoft.WindowsAzure.Jobs
     // This is coupled to QueueFunctionBase.
     internal static class ExecutionBase
     {
-        static Exception notFoundException = new System.EntryPointNotFoundException("Function not found");
-
         public static void Work(
             FunctionInvokeRequest instance,  // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
@@ -46,24 +44,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
             try
             {
-                // Confirm function exists if provided a function table.  Fake an Exception if not found.
-                bool functionExists = true;
-                if (context.FunctionTable != null)
-                {
-                    FunctionDefinition tableLocation = context.FunctionTable.Lookup(instance.Location);
-                    functionExists = tableLocation != null;
-                }
-
-                if (functionExists)
-                {
-                    context.FunctionsInJobIndexer.RecordFunctionInvocationForJobRun(instance.Id, now);
-                    Work(instance, context, fpInvokeFunc, logItem, logItemContext);
-                }
-                else
-                {
-                    logItem.ExceptionMessage = notFoundException.Message;
-                    logItem.ExceptionType = notFoundException.GetType().FullName;
-                }
+                context.FunctionsInJobIndexer.RecordFunctionInvocationForJobRun(instance.Id, now);
+                Work(instance, context, fpInvokeFunc, logItem, logItemContext);
             }
             finally
             {

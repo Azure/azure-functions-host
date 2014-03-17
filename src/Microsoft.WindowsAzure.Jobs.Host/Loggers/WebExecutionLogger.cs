@@ -20,8 +20,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     addHeaderInfo,
                     ContainerNames.ConsoleOuputLogContainerName
                 ),
-                Logger = services.GetFunctionUpdatedLogger(),
-                FunctionTable = services.GetFunctionTable(),
+                Logger = services.GetFunctionUpdatedLogger()
             };
         }
 

@@ -66,7 +66,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
                 var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
-                ctx.FunctionTable = functionTableLookup;
                 ctx.FunctionsInJobIndexer = services.GetFunctionInJobIndexer();
                 ctx.Bridge = services.GetFunctionInstanceLogger(); // aggregates stats instantly.                                 
 
@@ -90,7 +89,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 _heartbeatTable = new NullRunningHostTableWriter();
             }
 
-            ctx.FunctionTable = functionTableLookup;
             ctx.Logger = interfaces.Logger;
 
             // This is direct execution, doesn't queue up. 
