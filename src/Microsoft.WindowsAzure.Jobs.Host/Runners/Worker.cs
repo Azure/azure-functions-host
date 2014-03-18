@@ -10,8 +10,6 @@ namespace Microsoft.WindowsAzure.Jobs
 {
     internal class Worker
     {
-        private OrchestratorRoleHeartbeat _heartbeat = new OrchestratorRoleHeartbeat();
-
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
@@ -45,13 +43,6 @@ namespace Microsoft.WindowsAzure.Jobs
             _functionUpdatedLogger = functionUpdatedLogger;
 
             CreateInputMap();
-
-            _heartbeat.LastCacheReset = DateTime.UtcNow;
-        }
-
-        public OrchestratorRoleHeartbeat Heartbeat
-        {
-            get { return _heartbeat; }
         }
 
         // Called once at startup to initialize orchestration data structures

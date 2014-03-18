@@ -4,10 +4,13 @@ using System.Linq;
 using System.Web.Http;
 using AzureTables;
 using Dashboard.Controllers;
+using Dashboard.Data;
+using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using InternalWebJobTypes = Microsoft.WindowsAzure.Jobs.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 

@@ -16,7 +16,9 @@
 
         private static string Combine(string containerName, string blobName)
         {
-            return BinderExtensions.Combine(containerName, blobName);
+            // $$$ Validate the names upfront where it's easy to diagnose. This can avoid cryptor 400 errors from Azure later. 
+            // Rules are here: http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
+            return containerName + "/" + blobName;
         }
     }
 }

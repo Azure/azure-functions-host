@@ -40,9 +40,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return Location.GetId() + "," + Id.ToString();
         }
 
-        // ServiceURL. This can be used if the function needs to queue other execution requests.
-        public string ServiceUrl { get; set; }
-
         // Optional human readable representation of the parameter values that were 
         // passed to the invocation.
         public string ParametersDisplayText { get; set; }

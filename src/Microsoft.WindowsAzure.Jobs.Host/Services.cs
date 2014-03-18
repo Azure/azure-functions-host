@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using AzureTables;
+﻿using AzureTables;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -30,22 +26,9 @@ namespace Microsoft.WindowsAzure.Jobs
             get { return _account; }
         }
 
-        public string AccountConnectionString
-        {
-            get { return _accountInfo.AccountConnectionString; }
-        }
-
         public IAccountInfo AccountInfo
         {
             get { return _accountInfo; }
-        }
-
-        // @@@ Remove this, move to be Ninject based. 
-        public IFunctionTable GetFunctionTable()
-        {
-            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(_account, TableNames.FunctionIndexTableName);
-
-            return new FunctionTable(table);
         }
 
         public IFunctionsInJobIndexer GetFunctionInJobIndexer()
@@ -67,13 +50,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return new RunningHostTableWriter(table);
         }
 
-        public IRunningHostTableReader GetRunningHostTableReader()
-        {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, TableNames.RunningHostsTableName);
-
-            return new RunningHostTableReader(table);
-        }
-
         // $$$ Returning bundles of interfaces... this is really looking like we need IOC.
         // Similar bundle with FunctionExecutionContext
         public ExecuteFunctionInterfaces GetExecuteFunctionInterfaces()
@@ -89,17 +65,10 @@ namespace Microsoft.WindowsAzure.Jobs
             };
         }
 
-        public ICausalityLogger GetCausalityLogger()
+        private ICausalityLogger GetCausalityLogger()
         {
             IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, TableNames.FunctionCausalityLog);
             IFunctionInstanceLookup logger = null; // write-only mode
-            return new CausalityLogger(table, logger);
-        }
-
-        public ICausalityReader GetCausalityReader()
-        {
-            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, TableNames.FunctionCausalityLog);
-            IFunctionInstanceLookup logger = this.GetFunctionInstanceLookup(); // read-mode
             return new CausalityLogger(table, logger);
         }
 
@@ -114,43 +83,10 @@ namespace Microsoft.WindowsAzure.Jobs
         public IFunctionInstanceLookup GetFunctionInstanceLookup()
         {
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
-            return new ExecutionStatsAggregator(tableLookup);
+            return new FunctionInstanceLookup(tableLookup);
         }
 
-        public IFunctionInstanceLogger GetFunctionInstanceLogger()
-        {
-            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
-            var tableStatsSummary = GetInvokeStatsTable();
-            var tableMru = GetIndexTable(TableNames.FunctionInvokeLogIndexMru);
-            var tableMruByFunction = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunction);
-            var tableMruByFunctionSucceeded = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunctionSucceeded);
-            var tableMruFunctionFailed = GetIndexTable(TableNames.FunctionInvokeLogIndexMruFunctionFailed);
-
-            return new ExecutionStatsAggregator(
-                tableLookup,
-                tableStatsSummary,
-                tableMru,
-                tableMruByFunction,
-                tableMruByFunctionSucceeded,
-                tableMruFunctionFailed);
-        }
-
-        // Table that maps function types to summary statistics. 
-        // Table is populated by the ExecutionStatsAggregator
-        public AzureTable<FunctionLocation, FunctionStatsEntity> GetInvokeStatsTable()
-        {
-            return new AzureTable<FunctionLocation, FunctionStatsEntity>(
-                _account,
-                TableNames.FunctionInvokeStatsTableName,
-                 row => Tuple.Create("1", row.ToString()));
-        }
-
-        private IAzureTable<FunctionInstanceGuid> GetIndexTable(string tableName)
-        {
-            return new AzureTable<FunctionInstanceGuid>(_account, tableName);
-        }
-
-        private IAzureTableReader<ExecutionInstanceLogEntity> GetFunctionLookupTable()
+        public IAzureTableReader<ExecutionInstanceLogEntity> GetFunctionLookupTable()
         {
             return new AzureTable<ExecutionInstanceLogEntity>(
                   _account,

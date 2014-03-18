@@ -9,7 +9,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Runners
         private readonly ICloudTable _table;
 
         public HostTable(ICloudTableClient client)
-            : this(VerifyNotNull(client).GetTableReference(TableNames.HostsTableName))
+            : this(VerifyNotNull(client).GetTableReference(HostTableNames.HostsTableName))
         {
         }
 

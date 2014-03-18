@@ -44,6 +44,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BinderExtensions.cs" />
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CloudBlobPathTests.cs" />
     <Compile Include="FlowUnitTests.cs" />

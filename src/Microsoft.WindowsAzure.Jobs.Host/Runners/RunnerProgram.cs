@@ -128,12 +128,9 @@ namespace Microsoft.WindowsAzure.Jobs
             config.BlobBinders.Add(new StringBlobBinderProvider());
 
             // Tables
-            config.TableBinders.Add(new TableBinderProvider());
-            config.TableBinders.Add(new StrongTableBinderProvider());
             config.TableBinders.Add(new DictionaryTableBinderProvider());
 
             // Other
-            config.Binders.Add(new QueueOutputBinderProvider());
             config.Binders.Add(new CloudStorageAccountBinderProvider());
             config.Binders.Add(new CancellationTokenBinderProvider());
 

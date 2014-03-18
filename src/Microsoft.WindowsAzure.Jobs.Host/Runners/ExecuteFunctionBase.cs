@@ -38,7 +38,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             instance.SchemaNumber = FunctionInvokeRequest.CurrentSchema;
-            instance.ServiceUrl = _account.WebDashboardUri;
 
             if (instance.TriggerReason == null)
             {

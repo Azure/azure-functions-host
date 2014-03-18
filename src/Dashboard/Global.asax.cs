@@ -6,6 +6,7 @@ using System.Web.Optimization;
 using System.Web.Routing;
 using Dashboard.App_Start;
 using Dashboard.Indexers;
+using Dashboard.Protocols;
 using Microsoft.WindowsAzure.Jobs;
 using Ninject;
 

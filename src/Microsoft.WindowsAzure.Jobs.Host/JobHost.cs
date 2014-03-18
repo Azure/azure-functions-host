@@ -1,12 +1,11 @@
 ﻿﻿using System;
 using System.Collections.Generic;
-﻿using System.Configuration;
-﻿using System.Diagnostics.Contracts;
 ﻿using System.Globalization;
 ﻿using System.IO;
 using System.Reflection;
 using System.Threading;
 ﻿using Microsoft.WindowsAzure.Jobs.Host;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

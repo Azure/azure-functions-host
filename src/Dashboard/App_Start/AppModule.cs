@@ -1,6 +1,8 @@
 ﻿using System;
 using AzureTables;
+using Dashboard.Data;
 using Dashboard.Indexers;
+using Dashboard.Protocols;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
@@ -24,31 +26,27 @@ namespace Dashboard
             }
 
             Bind<CloudStorageAccount>().ToConstant(services.Account);
-            Bind<Services>().ToConstant(services); // $$$ eventually remove this.
             Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(services.Account));
             Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
             Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
-
-            // $$$ This list should eventually just cover all of Services, and then we can remove services.
-            // $$$ We don't want Services() floating around. It's jsut a default factory for producing objects that 
-            // bind against azure storage accounts. 
             Bind<IFunctionInstanceLookup>().ToMethod(() => services.GetFunctionInstanceLookup());
-            Bind<IFunctionTableLookup>().ToMethod(() => services.GetFunctionTable());
-            Bind<IFunctionTable>().ToMethod(() => services.GetFunctionTable());
-            Bind<IRunningHostTableReader>().ToMethod(() => services.GetRunningHostTableReader());
+            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(services.Account));
+            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(services.Account));
+            Bind<IRunningHostTableReader>().ToMethod(() => CreateRunningHostTableReader(services.Account));
             Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
-            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => services.GetInvokeStatsTable());
-            Bind<ICausalityReader>().ToMethod(() => services.GetCausalityReader());
+            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(services.Account));
+            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(services));
             Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
             Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
             Bind<IInvoker>().To<Invoker>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => services.GetFunctionInstanceLogger());
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(services));
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             BindFunctionInvocationIndexReader("invocationsInJobReader", TableNames.FunctionsInJobIndex);
-            BindFunctionInvocationIndexReader("invocationsInFunctionReader", TableNames.FunctionInvokeLogIndexMruFunction);
-            BindFunctionInvocationIndexReader("recentInvocationsReader", TableNames.FunctionInvokeLogIndexMru);
+            BindFunctionInvocationIndexReader("invocationsInFunctionReader",
+                DashboardTableNames.FunctionInvokeLogIndexMruFunction);
+            BindFunctionInvocationIndexReader("recentInvocationsReader", DashboardTableNames.FunctionInvokeLogIndexMru);
             BindFunctionInvocationIndexReader("invocationChildrenReader", TableNames.FunctionCausalityLog);
         }
 
@@ -81,11 +79,69 @@ namespace Dashboard
             return null;
         }
 
+        private static ICausalityReader CreateCausalityReader(Services services)
+        {
+            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(services.Account, TableNames.FunctionCausalityLog);
+            IFunctionInstanceLookup logger = services.GetFunctionInstanceLookup(); // read-mode
+            return new CausalityLogger(table, logger);
+        }
+
+        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(Services services)
+        {
+            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = services.GetFunctionLookupTable();
+            var tableStatsSummary = CreateInvokeStatsTable(services.Account);
+            var tableMru = CreateIndexTable(services.Account, DashboardTableNames.FunctionInvokeLogIndexMru);
+            var tableMruByFunction = CreateIndexTable(services.Account,
+                DashboardTableNames.FunctionInvokeLogIndexMruFunction);
+            var tableMruByFunctionSucceeded = CreateIndexTable(services.Account,
+                DashboardTableNames.FunctionInvokeLogIndexMruFunctionSucceeded);
+            var tableMruFunctionFailed = CreateIndexTable(services.Account,
+                DashboardTableNames.FunctionInvokeLogIndexMruFunctionFailed);
+
+            return new ExecutionStatsAggregator(
+                tableLookup,
+                tableStatsSummary,
+                tableMru,
+                tableMruByFunction,
+                tableMruByFunctionSucceeded,
+                tableMruFunctionFailed);
+        }
+
+        private static IFunctionTable CreateFunctionTable(CloudStorageAccount account)
+        {
+            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(account,
+                DashboardTableNames.FunctionIndexTableName);
+
+            return new FunctionTable(table);
+        }
+
         private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
         {
             CloudBlobClient client = account.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(ContainerNames.VersionContainerName);
             return new HostVersionReader(container);
+        }
+
+        private static IAzureTable<FunctionInstanceGuid> CreateIndexTable(CloudStorageAccount account, string tableName)
+        {
+            return new AzureTable<FunctionInstanceGuid>(account, tableName);
+        }
+
+        // Table that maps function types to summary statistics. 
+        // Table is populated by the ExecutionStatsAggregator
+        private static AzureTable<FunctionLocation, FunctionStatsEntity> CreateInvokeStatsTable(CloudStorageAccount account)
+        {
+            return new AzureTable<FunctionLocation, FunctionStatsEntity>(
+                account,
+                DashboardTableNames.FunctionInvokeStatsTableName,
+                 row => Tuple.Create("1", row.ToString()));
+        }
+
+        private static IRunningHostTableReader CreateRunningHostTableReader(CloudStorageAccount account)
+        {
+            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(account, TableNames.RunningHostsTableName);
+
+            return new RunningHostTableReader(table);
         }
 
         // Get a Services object based on current configuration.
@@ -95,8 +151,7 @@ namespace Dashboard
             // Antares mode
             var ai = new AccountInfo
             {
-                AccountConnectionString = runtimeConnectionString,
-                WebDashboardUri = "illegal2"
+                AccountConnectionString = runtimeConnectionString
             };
             return new Services(ai);
         }

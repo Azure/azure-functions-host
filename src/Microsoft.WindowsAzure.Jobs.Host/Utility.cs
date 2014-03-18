@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
 using System.Reflection;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -18,10 +16,6 @@ namespace Microsoft.WindowsAzure.Jobs
             return (p.ParameterType.IsByRef && !p.IsOut);
         }
 
-        public static string GetConnectionString(CloudStorageAccount account)
-        {
-            return account.ToString(exportSecrets: true);
-        }
         public static CloudStorageAccount GetAccount(string AccountConnectionString)
         {
             CloudStorageAccount account;
@@ -41,22 +35,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public static string GetAccountName(CloudStorageAccount account)
         {
             return account.Credentials.AccountName;
-        }
-
-        [DebuggerNonUserCode]
-        public static void DeleteDirectory(string localPath)
-        {
-            if (localPath != null)
-            {
-                try
-                {
-                    Directory.Delete(localPath, recursive: true);
-                }
-                catch
-                {
-                    // File lock or missing dir. Ignore. 
-                }
-            }
         }
     }
 }

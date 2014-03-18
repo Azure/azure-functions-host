@@ -85,11 +85,10 @@
     <Compile Include="PolymorphicJsonConverterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />
-    <Compile Include="QueueNamesTest.cs" />
+    <Compile Include="Protocols\QueueNamesTest.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntityExtensionsTests.cs" />
     <Compile Include="Protocols\HostMessageTests.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
-    <Compile Include="Protocols\InvokerTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
     <Compile Include="Storage\RequestResultTests.cs" />
     <Compile Include="Storage\StorageExceptionTests.cs" />

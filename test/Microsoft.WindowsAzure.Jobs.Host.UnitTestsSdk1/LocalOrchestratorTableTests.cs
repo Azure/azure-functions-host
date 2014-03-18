@@ -67,20 +67,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.Equal("part", results[2].PartitionKey);
             Assert.Equal("2", results[2].RowKey);
             Assert.Equal("20", results[2].myvalue);
-
-            lc.Call("TableRead");
-            lc.Call("TableReadStrong");
-        }
-
-        [Fact]
-        public void TableReadWrite()
-        {
-            var store = new InMemoryTableProviderTestHook();
-            TableProviderTestHook.Default = store;
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-
-            var lc = TestStorage.New<TableProgram>(account);
-            lc.Call("TableReadWrite");
         }
 
         [DataServiceKey("PartitionKey", "RowKey")]
@@ -102,42 +88,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 }
             }
 
-            public static void TableRead([Table(TableName)] IAzureTableReader reader)
-            {
-                for (int i = 0; i < 10; i++)
-                {
-                    var d = reader.Lookup("part", i.ToString());
-                    Assert.Equal(4, d.Count);
-                    Assert.True(d.ContainsKey("Timestamp")); // beware of casing!
-                    Assert.True(d.ContainsKey("RowKey")); // beware of casing!
-                    Assert.True(d.ContainsKey("PartitionKey")); // beware of casing!
-
-                    var val = d["myvalue"];
-                    Assert.Equal((i * 10).ToString(), val);
-                }
-            }
-
-            public static void TableReadStrong([Table(TableName)] IAzureTableReader<Stuff> reader)
-            {
-                for (int i = 0; i < 10; i++)
-                {
-                    Stuff d = reader.Lookup("part", i.ToString());
-
-                    Assert.Equal(i.ToString(), d.RowKey);
-                    Assert.Equal(i * 10, d.myvalue);
-                }
-            }
-
-            public static void TableReadWrite([Table(TableName)] IAzureTable table)
-            {
-                var val = table.Lookup("x", "y");
-                Assert.Null(val); // not there yet
-
-                table.Write("x", "y", new { myvalue = 50 });
-
-                val = table.Lookup("x", "y");
-                Assert.Equal("50", val["myvalue"]);
-            }
 
             public const string TableNameDict = "testtable2";
             public static void TableDict([Table(TableNameDict)] IDictionary<Tuple<string, string>, OtherStuff> dict)

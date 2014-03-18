@@ -30,53 +30,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        // Apply the callback funciton to each message in the queue. 
-        // Delete message from queue once callback returns.
-        // Return true if any messages are handled
-        //[DebuggerNonUserCode]
-        public static bool ApplyToQueue<T>(Action<T> callback, CloudQueue queue)
-        {
-            IEnumerable<CloudQueueMessage> msgs = null;
-            try
-            {
-                msgs = queue.GetMessages(32); // 32 is max number
-
-            }
-            catch
-            {
-            }
-            if (msgs == null)
-            {
-                return false;
-            }
-
-            int count = 0;
-            foreach (var msg in msgs)
-            {
-                T payload;
-                try
-                {
-                    payload = JsonCustom.DeserializeObject<T>(msg.AsString);
-                }
-                catch
-                {
-                    // Bad JSON serialization. Posionous. Just remove it.                    
-                    queue.DeleteMessage(msg);
-                    continue;
-                }
-
-                callback(payload);
-                count++;
-
-                try
-                {
-                    queue.DeleteMessage(msg);
-                }
-                catch { }
-            }
-            return count > 0;
-        }
-
         // This function from: http://blogs.msdn.com/b/neilkidd/archive/2008/11/11/windows-azure-queues-are-quite-particular.aspx
         // See http://msdn.microsoft.com/library/dd179349.aspx for rules to enforce.
         /// <summary>

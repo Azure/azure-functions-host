@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

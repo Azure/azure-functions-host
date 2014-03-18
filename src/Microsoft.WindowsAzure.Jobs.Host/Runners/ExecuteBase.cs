@@ -92,8 +92,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
                 catch (Exception e)
                 {
-                    if ((e is OperationCanceledException) ||  // Execution was aborted. Common case, not a critical error.
-                        (e is AbnormalTerminationException)) // user app exited (probably stack overflow or call to Exit)
+                    if ((e is OperationCanceledException)) // user app exited (probably stack overflow or call to Exit)
                     {
                         logItem.ExceptionType = e.GetType().FullName;
                         logItem.ExceptionMessage = e.Message;

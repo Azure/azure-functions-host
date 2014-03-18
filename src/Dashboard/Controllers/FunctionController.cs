@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Web.Mvc;
+using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
@@ -16,7 +17,7 @@ namespace Dashboard.Controllers
     {
         internal const string LegacyNonSpaRouteUrl = "function/{action}";
 
-        private readonly Services _services;
+        private readonly CloudStorageAccount _account;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
@@ -24,7 +25,7 @@ namespace Dashboard.Controllers
         private readonly IInvoker _invoker;
 
         internal FunctionController(
-            Services services,
+            CloudStorageAccount account,
             IFunctionTableLookup functionTableLookup,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionUpdatedLogger functionUpdatedLogger,
@@ -32,7 +33,7 @@ namespace Dashboard.Controllers
             IInvoker invoker
             )
         {
-            _services = services;
+            _account = account;
             _functionTableLookup = functionTableLookup;
             _functionInstanceLookup = functionInstanceLookup;
             _functionUpdatedLogger = functionUpdatedLogger;
@@ -259,9 +260,7 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
-
-            if (account == null)
+            if (_account == null)
             {
                 TempData["Message.Text"] = "Account not found";
                 TempData["Message.Level"] = "danger";
@@ -273,7 +272,7 @@ namespace Dashboard.Controllers
             try
             {
                 var p = new CloudBlobPath(path.Trim());
-                blob = p.Resolve(account);
+                blob = p.Resolve(_account);
             }
             catch (FormatException e)
             {

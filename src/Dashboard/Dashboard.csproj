@@ -145,6 +145,21 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
+    <Compile Include="Data\ExecutionStatsAggregator.cs" />
+    <Compile Include="Data\FunctionStatsEntity.cs" />
+    <Compile Include="Data\FunctionTable.cs" />
+    <Compile Include="Data\DashboardTableNames.cs" />
+    <Compile Include="Protocols\FunctionInvocationIndexReader.cs" />
+    <Compile Include="Protocols\HostVersionReader.cs" />
+    <Compile Include="Protocols\IFunctionInvocationIndexReader.cs" />
+    <Compile Include="Protocols\IHostVersionReader.cs" />
+    <Compile Include="Protocols\IInvoker.cs" />
+    <Compile Include="Protocols\Invoker.cs" />
+    <Compile Include="Protocols\IProcessTerminationSignalWriter.cs" />
+    <Compile Include="Protocols\IRunningHostTableReader.cs" />
+    <Compile Include="Protocols\ProcessTerminationSignalWriter.cs" />
+    <Compile Include="Protocols\RunningHostTableReader.cs" />
+    <Compile Include="Protocols\TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="InvocationLog\IInvocationLogLoader.cs" />
     <Compile Include="InvocationLog\InvocationLogLoader.cs" />

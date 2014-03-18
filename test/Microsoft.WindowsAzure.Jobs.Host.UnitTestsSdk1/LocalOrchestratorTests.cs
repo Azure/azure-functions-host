@@ -522,15 +522,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 myoutputqueue.AddMessage(new CloudQueueMessage("30"));
             }
 
-            [Jobs.Description("queue function")] // needed for indexing since we have no other attrs
-            public static void FuncMultiEnqueue(
-               IQueueOutput<Payload> myoutputqueue)
-            {
-                myoutputqueue.Add(new Payload { Value = 10 });
-                myoutputqueue.Add(new Payload { Value = 20 });
-                myoutputqueue.Add(new Payload { Value = 30 });
-            }
-
             // Test binding to CloudStorageAccount 
             [Jobs.Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account, string value, string containerName, string blobName)

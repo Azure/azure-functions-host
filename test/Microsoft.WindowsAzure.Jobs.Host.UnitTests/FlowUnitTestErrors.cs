@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTests
@@ -15,7 +17,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
             }
         }
 
-        private static void BadTableName([Table(@"#")] IAzureTableReader t) { }
+        private static void BadTableName([Table(@"#")] IDictionary<Tuple<string, string>, object> t) { }
 
         private static void MultipleQueueParams([QueueInput] int p123, [QueueInput] int p234) { }
     }

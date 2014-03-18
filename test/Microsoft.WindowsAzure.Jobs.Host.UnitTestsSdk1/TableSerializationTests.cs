@@ -1,6 +1,7 @@
 ﻿using System;
 using AzureTables;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -86,7 +87,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             logger.Log(log);
             // $$$ Get a new instance of the table to ensure everything was flushed. 
 
-            IFunctionInstanceLookup lookup = new ExecutionStatsAggregator(table);
+            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(table);
 
             var log2 = lookup.Lookup(g);
 

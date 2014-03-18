@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Jobs;
+﻿using Dashboard.Protocols;
+using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 
 namespace Dashboard
 {

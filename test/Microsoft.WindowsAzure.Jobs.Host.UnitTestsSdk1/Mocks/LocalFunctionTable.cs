@@ -16,7 +16,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public LocalFunctionTable(CloudStorageAccount account)
         {
             this.Account = account;
-            this.AccountConnectionString = Utility.GetConnectionString(account);
+            this.AccountConnectionString = account.ToString(exportSecrets: true);
         }
 
         public CloudStorageAccount Account { get; private set; }

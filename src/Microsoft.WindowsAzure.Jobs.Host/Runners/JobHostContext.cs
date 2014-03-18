@@ -106,7 +106,6 @@ namespace Microsoft.WindowsAzure.Jobs
             IFunctionInstanceLookup lookup;
             IFunctionUpdatedLogger functionUpdate;
             ICausalityLogger causalityLogger;
-            ICausalityReader causalityReader;
 
             {
                 var x = new LocalFunctionLogger();
@@ -118,7 +117,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
                 var x = new CausalityLogger(table, lookup);
                 causalityLogger = x;
-                causalityReader = x;
             }
 
             var interfaces = new ExecuteFunctionInterfaces
@@ -242,8 +240,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             AccountInfo accountInfo = new AccountInfo
             {
-                AccountConnectionString = runtimeConnectionString,
-                WebDashboardUri = "illegal" // have non-null value.  @@@
+                AccountConnectionString = runtimeConnectionString
             };
 
             return new Services(accountInfo);

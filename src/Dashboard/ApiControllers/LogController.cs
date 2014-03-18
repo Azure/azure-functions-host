@@ -13,11 +13,13 @@ namespace Dashboard.ApiControllers
     [Route("api/log/{action}/{id?}", Name="LogControllerRoute")]
     public class LogController : ApiController
     {
-        private readonly Services _services;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly CloudStorageAccount _account;
 
-        internal LogController(Services services)
+        internal LogController(IFunctionInstanceLookup functionInstanceLookup, CloudStorageAccount account)
         {
-            _services = services;
+            _functionInstanceLookup = functionInstanceLookup;
+            _account = account;
         }
 
         [HttpGet]
@@ -31,7 +33,7 @@ namespace Dashboard.ApiControllers
             }
 
             // Get the invocation log
-            var instance = _services.GetFunctionInstanceLookup().Lookup(funcId);
+            var instance = _functionInstanceLookup.Lookup(funcId);
             if (instance == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
@@ -41,7 +43,7 @@ namespace Dashboard.ApiControllers
             CloudBlob blob;
             try
             {
-                blob = new CloudBlob(instance.OutputUrl, _services.Account.Credentials);
+                blob = new CloudBlob(instance.OutputUrl, _account.Credentials);
             }
             catch (Exception)
             {
@@ -92,14 +94,12 @@ namespace Dashboard.ApiControllers
 
             var p = new CloudBlobPath(path);
 
-            CloudStorageAccount account = Utility.GetAccount(_services.AccountConnectionString);
-
-            if (account == null)
+            if (_account == null)
             {
                 return new HttpResponseMessage(HttpStatusCode.Unauthorized);
             }
 
-            var blob = p.Resolve(account);
+            var blob = p.Resolve(_account);
 
             // Get a SAS for the next 10 mins
             string sas = blob.GetSharedAccessSignature(new SharedAccessPolicy

@@ -12,10 +12,8 @@
         public AccountInfo(IAccountInfo accountInfo)
         {
             this.AccountConnectionString = accountInfo.AccountConnectionString;
-            this.WebDashboardUri = accountInfo.WebDashboardUri;
         }
 
         public string AccountConnectionString { get; set; }
-        public string WebDashboardUri { get; set; }
     }
 }

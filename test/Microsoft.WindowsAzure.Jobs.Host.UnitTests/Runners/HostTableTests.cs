@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
-using Microsoft.WindowsAzure.StorageClient;
 using Moq;
 using Xunit;
 
@@ -55,7 +53,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.UnitTests.Runners
 
             Mock<ICloudTableClient> clientMock = new Mock<ICloudTableClient>();
             clientMock
-                .Setup(c => c.GetTableReference(TableNames.HostsTableName))
+                .Setup(c => c.GetTableReference(HostTableNames.HostsTableName))
                 .Returns(expectedTable);
             ICloudTableClient client = clientMock.Object;
             HostTable product = CreateProductUnderTest(client);

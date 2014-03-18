@@ -9,7 +9,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
     // Support local execution. This does not have a trigger service, but still maintains all of the logging and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 
-    internal class LocalExecutionContext : ICall
+    internal class LocalExecutionContext
     {
         private readonly IConfiguration _config;
         private readonly IExecuteFunction _executor;
@@ -47,8 +47,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             }
         }
 
-        // Need Config that binds ICall back to invoke here. 
-        private static IConfiguration CreateConfig(ICall call, Type scope)
+        private static IConfiguration CreateConfig(Type scope)
         {
             IConfiguration config = RunnerProgram.InitBinders();
 
@@ -66,7 +65,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         {
             var account = CloudStorageAccount.Parse(accountConnectionString);
 
-            _config = CreateConfig(this, scope);
+            _config = CreateConfig(scope);
 
             // These resolution functions are "open". We lazily resolve to any method on the scope type. 
             _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
@@ -143,13 +142,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         private FunctionDefinition ResolveFunctionDefinition(MethodInfo methodInfo)
         {
             return _fpResolveFuncDefinition(methodInfo);
-        }
-
-        // Direct call from outside of a simple batch function. No current function guid. 
-        IFunctionToken ICall.QueueCall(string functionName, object arguments)
-        {
-            var guid = Call(functionName, arguments);
-            return new SimpleFunctionToken(guid);
         }
 
         public Guid Call(string functionName, object arguments = null)
