@@ -34,11 +34,12 @@
              && !this.extendedBlobModel.isBlobMissing
              && this.extendedBlobModel.isOutput && !this.extendedBlobModel.isBlobOwnedByCurrentFunctionInstance;
     };
-    FunctionParameter.prototype.isParamOwnedAnotherFunction = function () {
+    FunctionParameter.prototype.isParamOwnedAnotherFunction = function() {
         return this.extendedBlobModel
-             && !this.extendedBlobModel.isBlobMissing
-             && this.extendedBlobModel.isOutput && !this.extendedBlobModel.isBlobOwnedByCurrentFunctionInstance
-             && this.extendedBlobModel.ownerId !== '00000000-0000-0000-0000-000000000000';
+            && !this.extendedBlobModel.isBlobMissing
+            && this.extendedBlobModel.isOutput && !this.extendedBlobModel.isBlobOwnedByCurrentFunctionInstance
+            && this.extendedBlobModel.ownerId
+            && this.extendedBlobModel.ownerId !== '00000000-0000-0000-0000-000000000000';
     };
 
     return FunctionInvocationModel;
