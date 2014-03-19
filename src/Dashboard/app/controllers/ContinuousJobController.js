@@ -33,9 +33,8 @@
 
         function getData() {
             lastPoll = new Date();
-            $scope.job = $scope.job || {};
             // TODO: look up all antares WebJobs statuses that are "not running"
-            if ($scope.job.status === 'Success') {
+            if ($scope.job && $scope.job.isRunning()) {
                 return;
             }
             getJobRunDetails();

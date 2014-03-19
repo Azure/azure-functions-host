@@ -2,9 +2,10 @@
     return {
         restrict: 'E',
         scope: {
+            collapseByDefault: '&',
+            supportsIncrementalUpdates: '&',
             logUrl: '&',
-            supportsIncrementalUpdates: '@',
-            isRunning: '&'
+            consoleOwner: '&'
         },
         controller: 'ConsoleOutputController',
         templateUrl: 'app/views/shared/ConsoleOutput.html'

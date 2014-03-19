@@ -113,3 +113,7 @@ label
 .pager.disabled span {
     color: #3c454f;
 }
+
+textarea.form-control[name=output-body] {
+    cursor: auto;
+}

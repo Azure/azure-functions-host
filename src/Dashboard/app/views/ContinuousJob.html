@@ -9,8 +9,7 @@
             <b ng-bind="job.getAlertHeader()"></b><br />
             Run command: {{job.runCommand}}
         </p>
-        <console-output ng-if="job" log-url="job.outUrl" supports-incremental-updates="false"
-                        is-running="job.isRunning()">
+        <console-output ng-if="job" log-url="job.outUrl" console-owner="job" collapse-by-default="job.usingSdk">
         </console-output>
         
         <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>

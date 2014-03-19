@@ -3,16 +3,12 @@
         Toggle Output
     </button>
 </p>
-<form ng-class="shouldShowConsole ? '' : 'collapse'" role="form">
-    <div>
-        <label ng-if="isRunning()" class="checkbox">
-            <input type="checkbox" checked="checked"> Auto-scroll
-        </label>
-        <a target="_blank" href="{{logUrl()}}">Download output</a>
-    </div>
-
-    <div class="form-group">
-        <textarea name="output-body" rows="10" class="form-control" ng-bind="consoleText">loading...</textarea>
-        <span class="help-block">This represents the console output. It is automatically refreshed.</span>
-    </div>
-</form>
+<div ng-show="shouldShowConsole" class="form-group">
+    <span ng-if="isRunning() && consoleText">
+        Refreshed <span ng-bind="lastUpdatedText()"></span>, <a href="" ng-click="refresh()">refresh</a> or <a target="_blank" href="{{logUrl()}}">download</a>
+    </span>
+    <span ng-if="!isRunning()">
+        <a target="_blank" href="{{logUrl()}}">download</a>
+    </span>
+    <textarea name="output-body" rows="10" class="form-control" ng-bind="consoleText" readonly="readonly" placeholder="Loading..."></textarea>
+</div>

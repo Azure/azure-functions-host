@@ -65,6 +65,10 @@
         return JobDefinition.getAlertHeader(this);
     };
 
+    JobDefinition.prototype.isRunning = function () {
+        return JobDefinition.isRunning(this);
+    };
+
     JobDefinition.getStatusClass = function (job) {
         switch (job.status) {
             case "Running":
@@ -123,6 +127,9 @@
 
     JobDefinition.getAlertHeader = JobDefinition.getStatusText;
     JobDefinition.isRunning = function (job) {
+        if (job.type === "continuous") {
+            return job.status !== "Stopped";
+        }
         return job.status === "Running";
     };
     return (JobDefinition);

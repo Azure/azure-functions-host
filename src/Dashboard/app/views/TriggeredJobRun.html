@@ -10,8 +10,7 @@
             <span>{{jobRun.startTimeString}}</span> <small>({{jobRun.durationString}} running time)</small><br/>
             Run ID: <span>{{jobRun.id}}</span>
         </p>
-        <console-output ng-if="jobRun" log-url="jobRun.outUrl" supports-incremental-updates="false"
-                        is-running="jobRun.isRunning()">
+        <console-output ng-if="job && jobRun" log-url="jobRun.outUrl" console-owner="jobRun" collapse-by-default="job.usingSdk">
         </console-output>
         
         <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>

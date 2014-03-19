@@ -5,7 +5,6 @@
             lastPoll = 0,
             jobName = $routeParams.jobName,
             jobType = 'triggered',
-            job,
             runId = $routeParams.runId,
             jobRunUrl = api.kudu.jobRun(jobName, runId);
         $scope.jobName = jobName;
@@ -33,29 +32,32 @@
             });
         }
 
-        function checkUsingSdk() {
-            if (job) {
+        function getJobData() {
+            if ($scope.job) {
                 return;
             }
-            if (isUsingSdk.isUsing($scope)) {
-                return;
-            }
+
             $http.get(api.kudu.job('triggered', $routeParams.jobName)).then(function (res) {
-                if (res.data.using_sdk) {
+                $scope.job = new JobDefinition(res.data);
+
+                if (isUsingSdk.isUsing($scope)) {
+                    return;
+                }
+                if ($scope.job.usingSdk) {
                     isUsingSdk.setUsing();
                 } else {
                     isUsingSdk.setNotUsing($scope);
                 }
             });
         }
-        checkUsingSdk();
+
+        getJobData();
 
 
         function getData() {
             lastPoll = new Date();
-            $scope.jobRun = $scope.jobRun || {};
             // TODO: look up all antares WebJobs statuses that are "not running"
-            if ($scope.jobRun.status === 'Success') {
+             if ($scope.jobRun && $scope.jobRun.status === 'Success') {
                 return;
             }
             getJobRunDetails();
