@@ -21,7 +21,7 @@ namespace Dashboard.ApiControllers
         }
 
         [HttpGet]
-        public HttpResponseMessage Output(string id, int start)
+        public HttpResponseMessage Output(string id, int start = 0)
         {
             // Parse the ID
             Guid funcId;
