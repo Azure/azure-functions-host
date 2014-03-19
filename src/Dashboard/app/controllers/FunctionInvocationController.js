@@ -49,9 +49,9 @@
                                     url: urls.job(runId.jobType.toLowerCase(), runId.jobName),
                                     title: runId.jobName
                                 }];
-                            if (runId.runId) {
+                            if (runId.runId && runId.jobType.toLowerCase() === 'triggered') {
                                 $scope.breadcrumbs.push({
-                                    url: urls.jobRun(runId.jobType.toLowerCase(), runId.jobName, runId.runId),
+                                    url: urls.triggeredJobRun(runId.jobName, runId.runId),
                                     title: 'Run'
                                 });
                             }
