@@ -26,7 +26,6 @@
             lastPoll = new Date();
         }
 
-        getData();
         poll = $interval(function () {
             if (((new Date()) - lastPoll) > pollInterval) {
                 getData();

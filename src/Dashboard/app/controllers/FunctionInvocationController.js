@@ -79,9 +79,9 @@
 
         function getData() {
             lastPoll = new Date();
-            loadInvocationDetails().then(
-                $scope.$broadcast('invocations:poll')
-            );
+            loadInvocationDetails().then(function() {
+                $scope.$broadcast('invocations:poll');
+            });
         }
 
         $scope.invocations = {
