@@ -73,7 +73,11 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 lock (_watches)
                 {
-                   
+                   if (_watches.Count == 0)
+                    {
+                        return String.Empty; 
+                    }
+
                     // Show selfwatch from objects we've handed out. 
                     StringBuilder sb = new StringBuilder();
                     sb.AppendFormat("Created {0} object(s):", _watches.Count);
