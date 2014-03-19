@@ -10,7 +10,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private IEnumerable<T> _inner;
 
         public Action OnBefore { get; set; }
-        public Action OnAfter { get; set; }
+        public Action<bool> OnAfter { get; set; }
 
         public WrapperEnumerable(IEnumerable<T> inner)
         {
@@ -53,6 +53,8 @@ namespace Microsoft.WindowsAzure.Jobs
 
             public bool MoveNext()
             {
+                bool succeeded = false;
+
                 try
                 {
                     Action onBeforeAction  = _parent.OnBefore;
@@ -60,16 +62,18 @@ namespace Microsoft.WindowsAzure.Jobs
                     {
                         onBeforeAction();
                     }
-                    return _inner.MoveNext();
+                    succeeded = _inner.MoveNext();
                 }
                 finally
                 {
-                    Action onAfterAction = _parent.OnAfter;
+                    Action<bool> onAfterAction = _parent.OnAfter;
                     if (onAfterAction != null)
                     {
-                        onAfterAction();
+                        onAfterAction(succeeded);
                     }
                 }
+
+                return succeeded;
             }
 
             public void Reset()

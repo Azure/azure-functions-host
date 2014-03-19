@@ -110,7 +110,6 @@ namespace AzureTables
             try
             {
                 _timeRead.Start();
-                _countRowsRead++;
 
                 results = _core.Enumerate(partitionKey);
 
@@ -133,7 +132,15 @@ namespace AzureTables
             list = new WrapperEnumerable<IDictionary<string, string>>(list)
             {
                 OnBefore = () => _timeRead.Start(),
-                OnAfter = () => _timeRead.Stop()
+                OnAfter = (succeeded) =>
+                {
+                    if (succeeded)
+                    {
+                        _countRowsRead++;
+                    }
+
+                    _timeRead.Stop();
+                }
             };
             return list;
         }
