@@ -5,6 +5,7 @@ namespace Dashboard.Controllers
 {
     public class MainController : Controller
     {
+        [Route("")]
         public ActionResult Index()
         {
             if (!Request.Url.GetLeftPart(UriPartial.Path).EndsWith("/"))

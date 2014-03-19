@@ -11,8 +11,11 @@ using Microsoft.WindowsAzure.StorageClient;
 
 namespace Dashboard.Controllers
 {
+    [Route(LegacyNonSpaRouteUrl)]
     public class FunctionController : Controller
     {
+        internal const string LegacyNonSpaRouteUrl = "function/{action}";
+
         private readonly Services _services;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
@@ -39,6 +42,11 @@ namespace Dashboard.Controllers
 
         public ActionResult Run(string functionId)
         {
+            if (functionId == null)
+            {
+                return HttpNotFound();
+            }
+
             FunctionDefinition function = GetFunction(functionId);
 
             if (function == null)
@@ -62,6 +70,11 @@ namespace Dashboard.Controllers
 
         public ActionResult Replay(string parentId)
         {
+            if (parentId == null)
+            {
+                return HttpNotFound();
+            }
+
             Guid parent;
             ExecutionInstanceLogEntity parentLog;
             FunctionDefinition function = GetFunctionFromInstance(parentId, out parent, out parentLog);
@@ -136,7 +149,7 @@ namespace Dashboard.Controllers
 
             _invoker.TriggerAndOverride(hostId, message);
 
-            return Redirect("~/#/functions/invocations/"+id);
+            return Redirect("~/#/functions/invocations/" + id);
         }
 
         private bool IsHostRunning(FunctionDefinition function)
@@ -150,7 +163,7 @@ namespace Dashboard.Controllers
             RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == func.HostId);
             return RunningHost.IsValidHeartbeat(heartbeat);
         }
-        
+
         private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
