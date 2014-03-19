@@ -33,10 +33,6 @@
 
         function getData() {
             lastPoll = new Date();
-            // TODO: look up all antares WebJobs statuses that are "not running"
-            if ($scope.job && $scope.job.isRunning()) {
-                return;
-            }
             getJobRunDetails();
             if (!$scope._sdkNotConfigured) {
                 $scope.$broadcast('invocations:poll');
@@ -47,7 +43,9 @@
             if (((new Date()) - lastPoll) > pollInterval) {
                 getData();
             }
-            $scope.$broadcast('invocations:updateTiming');
+            if (!$scope._sdkNotConfigured) {
+                $scope.$broadcast('invocations:updateTiming');
+            }
         }, 2000);
 
         $scope.$on('$destroy', function () {
