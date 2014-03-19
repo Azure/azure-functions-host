@@ -47,7 +47,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public override string ConvertToInvokeString()
         {
-            return "[set on output]"; // ignored for output parameters anyways.
+            return QueueOutput.QueueName;
         }
 
         public override string ToString()
