@@ -12,7 +12,7 @@
                 initializeContinuousJob(this, item);
                 break;
             default:
-                throw "Unknown job type " + item.type;
+                throw "Unknown WebJob type " + item.type;
         }
 
         this.updateStrings();

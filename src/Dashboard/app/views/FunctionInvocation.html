@@ -28,7 +28,7 @@
         </p>
         <p>
             <span class="glyphicon glyphicon-flash"></span><span ng-bind="model.trigger"></span>
-            <span ng-if="model.ancestor"> on <a title="The parent job which triggered this function" href="{{_urls.functionInvocation(model.ancestor.id)}}">{{model.ancestor.functionDisplayTitle}} {{ancestor.id}}</a></span>
+            <span ng-if="model.ancestor"> on <a title="The parent invocation which triggered this function" href="{{_urls.functionInvocation(model.ancestor.id)}}">{{model.ancestor.functionDisplayTitle}} {{ancestor.id}}</a></span>
         </p>
 
         <table class="table table-striped">

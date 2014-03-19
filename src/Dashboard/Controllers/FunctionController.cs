@@ -288,7 +288,7 @@ namespace Dashboard.Controllers
 
             if (blob == null)
             {
-                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Text"] = "No invocation found for: " + path;
                 TempData["Message.Level"] = "warning";
                 return View();
             }
@@ -307,12 +307,12 @@ namespace Dashboard.Controllers
 
             if (guid == Guid.Empty)
             {
-                TempData["Message.Text"] = "No job found for: " + path;
+                TempData["Message.Text"] = "No invocation found for: " + path;
                 TempData["Message.Level"] = "warning";
                 return View();
             }
 
-            TempData["Message.Text"] = "Job found for: " + path;
+            TempData["Message.Text"] = "Invocation found for: " + path;
             TempData["Message.Level"] = "info";
 
             return Redirect("~/#/functions/invocations/" + guid);
