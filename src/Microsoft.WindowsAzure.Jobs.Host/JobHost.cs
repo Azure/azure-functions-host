@@ -43,14 +43,7 @@ namespace Microsoft.WindowsAzure.Jobs
             _dataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(DataConnectionStringName);
             _runtimeConnectionString = hooks.ConnectionStringProvider.GetConnectionString(LoggingConnectionStringName);
 
-            if (String.IsNullOrEmpty(_runtimeConnectionString))
-            {
-                var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName,
-                    "Windows Azure Storage account connection string is missing or empty.");
-                throw new InvalidOperationException(msg);
-            }
-
-            Initialize(hooks);
+            Initialize(hooks, runtimeConnectionStringCanBeNullOrEmpty: false);
         }
 
         /// <summary>
@@ -76,12 +69,19 @@ namespace Microsoft.WindowsAzure.Jobs
             _dataConnectionString = dataConnectionString;
             _runtimeConnectionString = runtimeConnectionString;
 
-            Initialize(hooks);
+            Initialize(hooks, runtimeConnectionStringCanBeNullOrEmpty: true);
         }
 
-        private void Initialize(JobHostTestHooks hooks)
+        private void Initialize(JobHostTestHooks hooks, bool runtimeConnectionStringCanBeNullOrEmpty)
         {
             WriteAntaresManifest();
+
+            if (!runtimeConnectionStringCanBeNullOrEmpty && String.IsNullOrEmpty(_runtimeConnectionString))
+            {
+                var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName,
+                    "Windows Azure Storage account connection string is missing or empty.");
+                throw new InvalidOperationException(msg);
+            }
 
             ValidateConnectionStrings(hooks.StorageValidator);
 
@@ -120,7 +120,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 connectionStringType, connectionStringName, validationErrorMessage);
         }
 
-        static JobHostTestHooks DefaultHooks()
+        private static JobHostTestHooks DefaultHooks()
         {
             return new JobHostTestHooks
             {
