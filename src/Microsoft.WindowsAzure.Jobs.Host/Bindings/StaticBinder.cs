@@ -84,11 +84,25 @@ namespace Microsoft.WindowsAzure.Jobs
         private static ParameterStaticBinding Bind(TableAttribute attr, ParameterInfo parameter)
         {
             string tableName = attr.TableName ?? parameter.Name;
-            
-            return new TableParameterStaticBinding
+
+            bool bindsToEntity = attr.RowKey != null;
+
+            if (!bindsToEntity)
             {
-                TableName = tableName,
-            };
+                return new TableParameterStaticBinding
+                {
+                    TableName = tableName,
+                };
+            }
+            else
+            {
+                return new TableEntityParameterStaticBinding
+                {
+                    TableName = tableName,
+                    PartitionKey = attr.PartitionKey,
+                    RowKey = attr.RowKey
+                };
+            }
         }
 
         static ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)

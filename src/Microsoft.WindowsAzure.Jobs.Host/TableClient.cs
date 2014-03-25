@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data.Services.Client;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -189,6 +190,41 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
             }
+        }
+
+        // Azure table partition key and row key values are restrictive, so sanity check upfront to give a useful error.
+        public static void ValidateAzureTableKeyValue(string value)
+        {
+            if (!IsValidAzureTableKeyValue(value))
+            {
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture,
+                    "'{0}' is not a valid value for a partition key or row key.", value));
+            }
+        }
+
+        // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
+        private static bool IsValidAzureTableKeyValue(string value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            List<char> invalidCharacters = new List<char>(new char[] { '/', '\\', '#', '?'});
+
+            // U+0000 through U+001F, inclusive
+            for (char invalidCharacter = '\x0000'; invalidCharacter <= '\x001F'; invalidCharacter++)
+            {
+                invalidCharacters.Add(invalidCharacter);
+            }
+
+            // U+007F through U+009F, inclusive
+            for (char invalidCharacter = '\x007F'; invalidCharacter <= '\x009F'; invalidCharacter++)
+            {
+                invalidCharacters.Add(invalidCharacter);
+            }
+
+            return value.IndexOfAny(invalidCharacters.ToArray()) == -1;
         }
     }
 }

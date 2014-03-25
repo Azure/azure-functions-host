@@ -69,8 +69,11 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\BinderProviders\CancellationTokenBinderProvider.cs" />
+    <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
+    <Compile Include="Bindings\RuntimeBindings\TableEntityParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\SimpleWatcher.cs" />
+    <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
     <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocationExtensions.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />

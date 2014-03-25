@@ -69,6 +69,34 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.Equal("20", results[2].myvalue);
         }
 
+        [Fact]
+        public void TableEntity()
+        {
+            var store = new InMemoryTableProviderTestHook();
+            TableProviderTestHook.Default = store;
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+
+            // Write via traditional Azure APIs.
+            IAzureTable<OtherStuff> table = store.Create<OtherStuff>(null, TableProgram.TableEntityName);
+            table.Write(TableProgram.TableEntityPartitionKey, TableProgram.TableEntityRowKey, new OtherStuff
+                {
+                    Fruit = Fruit.Banana,
+                    Duration = TimeSpan.FromSeconds(1),
+                    Value = "Foo"
+                });
+
+            var lc = TestStorage.New<TableProgram>(account);
+            lc.Call("TableEntity");
+
+            // Read via traditional Azure APIs.
+            var results = table.Enumerate().ToArray();
+
+            Assert.Equal(1, results.Length);
+            Assert.Equal(Fruit.Pear, results[0].Fruit);
+            Assert.Equal(TimeSpan.FromMinutes(2), results[0].Duration);
+            Assert.Equal("Bar", results[0].Value);
+        }
+
         [DataServiceKey("PartitionKey", "RowKey")]
         public class TableEntry : TableServiceEntity
         {
@@ -125,6 +153,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                     count++;
                 }
                 Assert.Equal(0, count);
+            }
+
+            public const string TableEntityName = "testtable3";
+            public const string TableEntityPartitionKey = "PK";
+            public const string TableEntityRowKey = "RK";
+            public static void TableEntity([Table(TableEntityName, TableEntityPartitionKey, TableEntityRowKey)] OtherStuff entity)
+            {
+                Assert.Equal(Fruit.Banana, entity.Fruit);
+                Assert.Equal(TimeSpan.FromSeconds(1), entity.Duration);
+                Assert.Equal("Foo", entity.Value);
+
+                entity.Fruit = Fruit.Pear;
+                entity.Duration = TimeSpan.FromMinutes(2);
+                entity.Value = "Bar";
             }
 
         } // program

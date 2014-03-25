@@ -132,6 +132,36 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
             Assert.Equal(0, Program.RowCount);
         }
 
+        [Fact]
+        public void TestITableEntity()
+        {
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+
+            CloudTableClient client = account.CreateCloudTableClient();
+            CloudTable table = client.GetTableReference("ITableEntityTest");
+            table.CreateIfNotExists();
+
+            try
+            {
+                DynamicTableEntity entity = new DynamicTableEntity("PK", "RK");
+                entity.Properties["Value"] = new EntityProperty("Foo");
+                table.Execute(TableOperation.Insert(entity));
+
+                var host = new TestJobHost<Program>();
+                host.Call("TestITableEntity");
+
+                DynamicTableEntity updatedEntity =
+                    (DynamicTableEntity)table.Execute(TableOperation.Retrieve("PK", "RK")).Result;
+
+                Assert.Equal(1, updatedEntity.Properties.Count);
+                Assert.Equal(new EntityProperty("Bar"), updatedEntity.Properties["Value"]);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
+        }
+
         private static DynamicTableEntity CreateEntity(int row, string property)
         {
             return new DynamicTableEntity("PK", "RK" + row.ToString(), null, CreateProperties("StringProperty", property));
@@ -254,6 +284,20 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
                 }
 
                 RowCount = count;
+            }
+
+            public class ValueTableEntity : TableEntity
+            {
+                public string Value { get; set; }
+            }
+
+            [Description("test")]
+            public static void TestITableEntity([Table("ITableEntityTest", "PK", "RK")] ValueTableEntity entity)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+
+                entity.Value = "Bar";
             }
         }
     }
