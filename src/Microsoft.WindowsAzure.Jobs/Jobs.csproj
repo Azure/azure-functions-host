@@ -52,33 +52,14 @@
     </Compile>
     <Compile Include="BlobInputAttribute.cs" />
     <Compile Include="BlobOutputAttribute.cs" />
-    <Compile Include="BindResult.cs" />
-    <Compile Include="BinderExtensions.cs" />
-    <Compile Include="BinderExExtensions.cs" />
-    <Compile Include="BindResultOfT.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />
-    <Compile Include="ICloudBinderProvider.cs" />
-    <Compile Include="ICloudBinder.cs" />
-    <Compile Include="ICloudTableBinderProvider.cs" />
-    <Compile Include="ICloudTableBinder.cs" />
-    <Compile Include="ICloudBlobBinderProvider.cs" />
-    <Compile Include="ICloudBlobBinder.cs" />
-    <Compile Include="IBinderEx.cs" />
     <Compile Include="IBinder.cs" />
-    <Compile Include="ISelfWatch.cs" />
-    <Compile Include="PostActionOrder.cs" />
     <Compile Include="QueueOutputAttribute.cs" />
     <Compile Include="QueueInputAttribute.cs" />
     <Compile Include="DescriptionAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
-    <Compile Include="IConfiguration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="IAzureTableReader.cs" />
-    <Compile Include="IAzureTableReaderOfT.cs" />
-    <Compile Include="IAzureTableWriter.cs" />
-    <Compile Include="IAzureTable.cs" />
-    <Compile Include="IAzureTableOfT.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Common\PublicKey.snk">

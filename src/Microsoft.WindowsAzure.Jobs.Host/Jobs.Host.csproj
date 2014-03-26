@@ -68,16 +68,34 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\BinderProviders\BinderExExtensions.cs" />
     <Compile Include="Bindings\BinderProviders\CancellationTokenBinderProvider.cs" />
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\RuntimeBindings\TableEntityParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
+    <Compile Include="Bindings\BindResults\BindResult.cs" />
+    <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
+    <Compile Include="Tables\IAzureTable.cs" />
+    <Compile Include="Tables\IAzureTableOfT.cs" />
+    <Compile Include="Tables\IAzureTableReader.cs" />
+    <Compile Include="Tables\IAzureTableReaderOfT.cs" />
+    <Compile Include="Tables\IAzureTableWriter.cs" />
+    <Compile Include="Bindings\IBinderEx.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudBlobBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudBlobBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudTableBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\ICloudTableBinderProvider.cs" />
+    <Compile Include="Runners\IConfiguration.cs" />
     <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocationExtensions.cs" />
+    <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
+    <Compile Include="Bindings\BindResults\PostActionOrder.cs" />
     <Compile Include="Protocols\FunctionCompletedMessage.cs" />
     <Compile Include="Protocols\FunctionStartedMessage.cs" />
     <Compile Include="Runners\FunctionInstanceLookup.cs" />
