@@ -201,7 +201,6 @@
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocation.cs" />
     <Compile Include="Bindings\IBlobLeaseHolder.cs" />
-    <Compile Include="Bindings\StaticBindings\TriggerDirectionType.cs" />
     <Compile Include="Bindings\StaticBindings\ParameterStaticBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\ITriggerNewQueueMessage.cs" />
     <Compile Include="Bindings\RuntimeBindings\ITriggerNewBlob.cs" />

@@ -90,10 +90,5 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             get { return null; }
         }
-
-        public override TriggerDirectionType GetTriggerDirectionType()
-        {
-            return TriggerDirectionType.Ignore; // Constants
-        }
     }
 }

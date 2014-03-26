@@ -93,18 +93,6 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public override TriggerDirectionType GetTriggerDirectionType()
-        {
-            if (this.IsInput)
-            {
-                return TriggerDirectionType.Input;
-            }
-            else
-            {
-                return TriggerDirectionType.Output;
-            }
-        }
-
         public override string Prompt
         {
             get

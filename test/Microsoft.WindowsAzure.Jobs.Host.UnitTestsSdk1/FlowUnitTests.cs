@@ -67,7 +67,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             // Even though it's BlobInput, we don't listen on ref parameters (since that would be a cycle).
             var staticBinding = func.Flow.Bindings[0];
-            Assert.NotEqual(TriggerDirectionType.Input, staticBinding.GetTriggerDirectionType());
         }
 
         // Runtime type is irrelevant for table. 

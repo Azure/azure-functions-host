@@ -60,11 +60,5 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             return Description;
         }
-
-        // Function to avoid being serialized. WCF hangs on seing Enums in a serialization payload.  
-        public virtual TriggerDirectionType GetTriggerDirectionType()
-        {
-            return TriggerDirectionType.Ignore;
-        }
     }
 }
