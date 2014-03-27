@@ -1,7 +1,9 @@
 ﻿using System.IO;
+using System.Linq;
 using System.Threading;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
+using Microsoft.WindowsAzure.StorageClient;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -71,6 +73,61 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.NotNull(output);
             Assert.Equal("*foo*", output);
         }
+
+        [Fact]
+        public void TestQueueToTableEntityWithRouteParameter()
+        {
+            var account = TestStorage.GetAccount();
+            var host = new TestJobHost<ProgramQueues>();
+
+            var queueClient = account.CreateCloudQueueClient();
+            var queue = queueClient.GetQueueReference("queuetest2");
+            string tableName = "tabletest";
+            string partitionKey = "PK";
+            string rowKey = "RK";
+            var tableClient = account.CreateCloudTableClient();
+
+            try
+            {
+                if (queue.Exists())
+                {
+                    queue.Delete();
+                }
+                queue.CreateIfNotExist();
+                queue.AddMessage(new CloudQueueMessage(JsonCustom.SerializeObject(new ProgramQueues.TableEntityPayload
+                {
+                    TableName = tableName,
+                    PartitionKey = partitionKey,
+                    RowKey = rowKey
+                })));
+                tableClient.DeleteTableIfExist(tableName);
+                tableClient.CreateTable(tableName);
+                TableServiceContext context = tableClient.GetDataServiceContext();
+                context.AddObject(tableName, new SimpleEntity
+                {
+                    PartitionKey = partitionKey,
+                    RowKey = rowKey,
+                    Value = 123
+                });
+                context.SaveChanges();
+
+                host.Host.RunOneIteration();
+
+                context = tableClient.GetDataServiceContext();
+                SimpleEntity entity = (from item in context.CreateQuery<SimpleEntity>(tableName)
+                                       where item.PartitionKey == partitionKey && item.RowKey == rowKey
+                                       select item).FirstOrDefault();
+                Assert.Equal(456, entity.Value);
+            }
+            finally
+            {
+                if (queue.Exists())
+                {
+                    queue.Delete();
+                }
+                tableClient.DeleteTableIfExist(tableName);
+            }
+        }
     }
 
  // Blob --> queue message --> Blob
@@ -106,6 +163,25 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             Assert.Equal(Value, queueTest.Value);
             output.Write(queueTest.Value);
         }
+
+        public class TableEntityPayload
+        {
+            public string TableName { get; set; }
+            public string PartitionKey { get; set; }
+            public string RowKey { get; set; }
+        }
+
+        public static void BindQueueToTableEntity(
+            [QueueInput] TableEntityPayload queueTest2,
+            [Table("{TableName}", "{PartitionKey}", "{RowKey}")] SimpleEntity entity)
+        {
+            entity.Value = 456;
+        }
+    }
+
+    public class SimpleEntity : TableServiceEntity
+    {
+        public int Value { get; set; }
     }
 
     // Test with blobs. {name.csv} --> Func1 --> Func2 --> {name}.middle.csv

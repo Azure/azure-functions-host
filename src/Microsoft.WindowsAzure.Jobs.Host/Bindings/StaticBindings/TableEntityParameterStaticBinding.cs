@@ -17,7 +17,11 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             set
             {
-                TableClient.ValidateAzureTableName(value);
+                if (!RouteParser.HasParameterNames(value))
+                {
+                    TableClient.ValidateAzureTableName(value);
+                }
+
                 _tableName = value;
             }
         }
@@ -30,7 +34,11 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             set
             {
-                TableClient.ValidateAzureTableKeyValue(value);
+                if (!RouteParser.HasParameterNames(value))
+                {
+                    TableClient.ValidateAzureTableKeyValue(value);
+                }
+
                 _partitionKey = value;
             }
         }
@@ -43,31 +51,33 @@ namespace Microsoft.WindowsAzure.Jobs
             }
             set
             {
-                TableClient.ValidateAzureTableKeyValue(value);
+                if (!RouteParser.HasParameterNames(value))
+                {
+                    TableClient.ValidateAzureTableKeyValue(value);
+                }
+
                 _rowKey = value;
             }
         }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
-            return new TableEntityParameterRuntimeBinding
-            {
-                Entity = new CloudTableEntityDescriptor
-                {
-                    AccountConnectionString = inputs.AccountConnectionString,
-                    TableName = TableName,
-                    PartitionKey = PartitionKey,
-                    RowKey = RowKey
-                }
-            };
+            CloudTableEntityDescriptor entity = CloudTableEntityDescriptor.ApplyNames(TableName, PartitionKey, RowKey, inputs.NameParameters);
+            return BindCore(entity, inputs);
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
-            CloudTableEntityDescriptor entityDescriptor = CloudTableEntityDescriptor.Parse(invokeString);
-            entityDescriptor.AccountConnectionString = inputs.AccountConnectionString;
+            CloudTableEntityDescriptor entity = CloudTableEntityDescriptor.Parse(invokeString);
+            return BindCore(entity, inputs);
+        }
 
-            return new TableEntityParameterRuntimeBinding { Entity = entityDescriptor };
+        private static ParameterRuntimeBinding BindCore(CloudTableEntityDescriptor entity, IRuntimeBindingInputs inputs)
+        {
+            entity.Validate();
+            entity.AccountConnectionString = inputs.AccountConnectionString;
+
+            return new TableEntityParameterRuntimeBinding { Entity = entity };
         }
 
         public override string Description
@@ -91,7 +101,9 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             get
             {
-                if (RowKey == null)
+                if (RouteParser.HasParameterNames(TableName) ||
+                    RouteParser.HasParameterNames(PartitionKey) ||
+                    RouteParser.HasParameterNames(RowKey))
                 {
                     return null;
                 }

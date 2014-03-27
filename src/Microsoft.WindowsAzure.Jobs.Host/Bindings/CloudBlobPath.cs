@@ -105,12 +105,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Throws if any unbound values. 
         public CloudBlobPath ApplyNames(IDictionary<string, string> nameParameters)
         {
-            return new CloudBlobPath(Parser.ApplyNames(this.ToString(), nameParameters));
-        }
-
-        public CloudBlobPath ApplyNamesPartial(IDictionary<string, string> nameParameters)
-        {
-            return new CloudBlobPath(Parser.ApplyNamesPartial(this.ToString(), nameParameters));
+            return new CloudBlobPath(RouteParser.ApplyNames(this.ToString(), nameParameters));
         }
 
         // Check if the actualPath matches against this blob path. 
@@ -125,14 +120,13 @@ namespace Microsoft.WindowsAzure.Jobs
         // Eg "{name},{date}" would return "name" and "date".
         public IEnumerable<string> GetParameterNames()
         {
-            return Parser.GetParameterNames(this.ToString());
+            return RouteParser.GetParameterNames(this.ToString());
         }
 
         public bool HasParameters()
         {
-            return Parser.GetParameterNames(this.ToString()).Any();
+            return RouteParser.HasParameterNames(this.ToString());
         }
-
 
         public CloudBlob Resolve(CloudStorageAccount account)
         {
@@ -231,69 +225,6 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private static class Parser
         {
-            static Dictionary<string, string> EmptyDict = new Dictionary<string, string>();
-
-            // ApplyNames, but don't fail if there are unbound names
-            public static string ApplyNamesPartial(string pattern, IDictionary<string, string> nameParameters)
-            {
-                nameParameters = nameParameters ?? EmptyDict;
-                return ApplyNamesWorker(pattern, nameParameters, allowUnbound: true);
-            }
-
-            // Given "daas-test-input/{name}.csv" and a dict {name:bob}, 
-            // returns: "daas-test-input/bob.csv"
-            public static string ApplyNames(string pattern, IDictionary<string, string> nameParameters)
-            {
-                return ApplyNamesWorker(pattern, nameParameters, allowUnbound: false);
-            }
-
-            private static string ApplyNamesWorker(string pattern, IDictionary<string, string> names, bool allowUnbound)
-            {
-                StringBuilder sb = new StringBuilder();
-                int i = 0;
-                while (i < pattern.Length)
-                {
-                    char ch = pattern[i];
-                    if (ch == '{')
-                    {
-                        // Find closing
-                        int iEnd = pattern.IndexOf('}', i);
-                        if (iEnd == -1)
-                        {
-                            throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket");
-                        }
-                        string name = pattern.Substring(i + 1, iEnd - i - 1);
-                        string value = null;
-                        if (names != null)
-                        {
-                            names.TryGetValue(name, out value);
-                        }
-                        if (value == null)
-                        {
-                            if (!allowUnbound)
-                            {
-                                throw new InvalidOperationException(String.Format("No value for name parameter '{0}'", name));
-                            }
-                            // preserve the unbound {name} pattern.
-                            sb.Append('{');
-                            sb.Append(name);
-                            sb.Append('}');
-                        }
-                        else
-                        {
-                            sb.Append(value);
-                        }
-                        i = iEnd + 1;
-                    }
-                    else
-                    {
-                        sb.Append(ch);
-                        i++;
-                    }
-                }
-                return sb.ToString();
-            }
-
             // If blob names matches actual pattern. 
             // Null if no match 
             public static IDictionary<string, string> Match(string pattern, string actualPath)
@@ -410,36 +341,6 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
 
                 throw new NotImplementedException();
-            }
-
-            // Given a path, return all the keys in the path.
-            // Eg "{name},{date}" would return "name" and "date".
-            public static IEnumerable<string> GetParameterNames(string pattern)
-            {
-                List<string> names = new List<string>();
-
-                int i = 0;
-                while (i < pattern.Length)
-                {
-                    char ch = pattern[i];
-                    if (ch == '{')
-                    {
-                        // Find closing
-                        int iEnd = pattern.IndexOf('}', i);
-                        if (iEnd == -1)
-                        {
-                            throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket");
-                        }
-                        string name = pattern.Substring(i + 1, iEnd - i - 1);
-                        names.Add(name);
-                        i = iEnd + 1;
-                    }
-                    else
-                    {
-                        i++;
-                    }
-                }
-                return names;
             }
 
             public static void SplitBlobPath(string input, out string container, out string blob)

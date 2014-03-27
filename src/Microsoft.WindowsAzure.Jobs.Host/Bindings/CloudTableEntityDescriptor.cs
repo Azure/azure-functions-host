@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -11,6 +13,25 @@ namespace Microsoft.WindowsAzure.Jobs
         public string PartitionKey { get; set; }
 
         public string RowKey { get; set; }
+
+        public void Validate()
+        {
+            TableClient.ValidateAzureTableName(TableName);
+            TableClient.ValidateAzureTableKeyValue(PartitionKey);
+            TableClient.ValidateAzureTableKeyValue(RowKey);
+        }
+
+        // Return new entity descriptor with names filled in. 
+        // Throws if any unbound values. 
+        public static CloudTableEntityDescriptor ApplyNames(string tableName, string partitionKey, string rowKey, IDictionary<string, string> nameParameters)
+        {
+            return new CloudTableEntityDescriptor
+            {
+                TableName = RouteParser.ApplyNames(tableName, nameParameters),
+                PartitionKey = RouteParser.ApplyNames(partitionKey, nameParameters),
+                RowKey = RouteParser.ApplyNames(rowKey, nameParameters)
+            };
+        }
 
         public static CloudTableEntityDescriptor Parse(string value)
         {

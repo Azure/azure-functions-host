@@ -74,6 +74,7 @@
     <Compile Include="Bindings\RuntimeBindings\TableEntityParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\SimpleWatcher.cs" />
+    <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
