@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -12,7 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 string result;
                 string readMessage;
@@ -40,7 +40,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
                 
                 var result = new BindCleanupResult();
                 var watcher = new SimpleWatcher();
@@ -51,7 +51,7 @@ namespace Microsoft.WindowsAzure.Jobs
                         if (content != null)
                         {
                             var bytes = Encoding.UTF8.GetBytes(content);
-                            blob.UploadByteArray(bytes);
+                            blob.UploadFromByteArray(bytes, 0, bytes.Length);
                             var status = bytes.Length == 0
                                 ? "Written empty file."
                                 : string.Format(CultureInfo.CurrentCulture, 

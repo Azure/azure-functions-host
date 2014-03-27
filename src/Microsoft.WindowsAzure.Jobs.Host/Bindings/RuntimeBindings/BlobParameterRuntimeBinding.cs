@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Reflection;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -63,8 +63,8 @@ namespace Microsoft.WindowsAzure.Jobs
                 leaseAwareBinder = new JsonByRefBlobBinder();
                 blobBinder = leaseAwareBinder;
             }
-                        
-            CloudBlob blob = this.Blob.GetBlob();
+
+            ICloudBlob blob = this.Blob.GetBlob();
             IBlobLeaseHolder _holder = BlobLeaseTestHook();
 
             if (useLease)
@@ -75,7 +75,7 @@ namespace Microsoft.WindowsAzure.Jobs
                     if (!BlobClient.DoesBlobExist(blob))
                     {
                         // Ok to have multiple workers contend here. One will win. We all need to go through a singel Acquire() point below.
-                        blob.UploadText("");
+                        blob.UploadFromByteArray(new byte[0], 0, 0);
                     }
                 }
                 catch
@@ -129,7 +129,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             get
             {
-                var blob = Blob.GetBlob();
+                var blob = Blob.GetBlockBlob();
                 var time = BlobClient.GetBlobModifiedUtcTime(blob);
                 return time;
             }

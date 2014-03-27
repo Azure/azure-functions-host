@@ -4,7 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -234,7 +235,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
-        private void OnNewBlob(FunctionDefinition func, CloudBlob blob, CancellationToken cancellationToken)
+        private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, CancellationToken cancellationToken)
         {
             FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
             if (instance != null)
@@ -244,7 +245,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        private static Guid GetBlobWriterGuid(CloudBlob blob)
+        private static Guid GetBlobWriterGuid(ICloudBlob blob)
         {
             IBlobCausalityLogger logger = new BlobCausalityLogger();
             return logger.GetWriter(blob);
@@ -307,7 +308,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.        
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudBlob blobInput)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, ICloudBlob blobInput)
         {
             // blobInput was the one that triggered it.
             // Get the path from the first blob input parameter.
@@ -393,7 +394,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            void ITriggerInvoke.OnNewBlob(CloudBlob blob, BlobTrigger trigger, CancellationToken token)
+            void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, CancellationToken token)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
                 _parent.OnNewBlob(func, blob, token);

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Globalization;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {

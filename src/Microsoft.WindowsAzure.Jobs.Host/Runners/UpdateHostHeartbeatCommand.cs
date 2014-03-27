@@ -1,6 +1,6 @@
 ﻿using System;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -27,7 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 _heartbeatTable.SignalHeartbeat(_hostId);
                 return true;
             }
-            catch (StorageClientException exception)
+            catch (StorageException exception)
             {
                 if (exception.IsServerSideError())
                 {

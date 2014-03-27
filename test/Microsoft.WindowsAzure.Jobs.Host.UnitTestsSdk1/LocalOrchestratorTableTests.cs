@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Data.Services.Common;
 using System.Linq;
 using AzureTables;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1

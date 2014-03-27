@@ -3,13 +3,13 @@ using AzureTables;
 using Dashboard.Data;
 using Dashboard.Indexers;
 using Dashboard.Protocols;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Ninject.Modules;
 using Ninject.Syntax;
 

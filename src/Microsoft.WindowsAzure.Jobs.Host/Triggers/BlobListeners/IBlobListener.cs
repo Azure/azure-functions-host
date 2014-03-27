@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -8,6 +8,6 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         // Scan the container
         // Callbacks may fire multiple times. Or out of order relative to creation date. 
-        void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel);
+        void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel);
     }
 }

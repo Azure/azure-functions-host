@@ -4,10 +4,12 @@ using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Storage
 {
@@ -67,7 +69,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
 
             public void CreateIfNotExists()
             {
-                _sdk.CreateIfNotExist();
+                _sdk.CreateIfNotExists();
             }
 
             public ICloudQueueMessage CreateMessage(string content)
@@ -110,11 +112,13 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
         private class Table : ICloudTable
         {
             private readonly CloudTableClient _sdk;
+            private readonly CloudTable _table;
             private readonly string _tableName;
 
             public Table(CloudTableClient sdk, string tableName)
             {
                 _sdk = sdk;
+                _table = sdk.GetTableReference(tableName);
                 _tableName = tableName;
             }
 
@@ -125,9 +129,9 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                     throw new ArgumentNullException("entity");
                 }
 
-                _sdk.CreateTableIfNotExist(_tableName);
+                _table.CreateIfNotExists();
 
-                DataServiceContext insertContext = _sdk.GetDataServiceContext();
+                DataServiceContext insertContext = _sdk.GetTableServiceContext();
 
                 // First, try to insert.
                 insertContext.AddObject(_tableName, entity);
@@ -150,7 +154,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                             // If the insert failed because the entity already exists, try to get instead.
                             if (firstOperation.StatusCode == 409)
                             {
-                                DataServiceContext getContext = _sdk.GetDataServiceContext();
+                                DataServiceContext getContext = _sdk.GetTableServiceContext();
                                 IQueryable queryable = getContext.CreateQuery<T>(_tableName);
                                 Debug.Assert(queryable != null);
                                 IQueryable<T> query = from T item in queryable
@@ -181,8 +185,8 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                     throw new ArgumentNullException("entity");
                 }
 
-                TableServiceContext context = _sdk.GetDataServiceContext();
-                _sdk.CreateTableIfNotExist(_tableName);
+                TableServiceContext context = _sdk.GetTableServiceContext();
+                _table.CreateIfNotExists();
 
                 context.AddObject(_tableName, entity);
                 context.SaveChangesWithRetries();
@@ -198,7 +202,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                         "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
                 }
 
-                TableServiceContext context = _sdk.GetDataServiceContext();
+                TableServiceContext context = _sdk.GetTableServiceContext();
                 IQueryable<T> q = context.CreateQuery<T>(_tableName);
                 foreach (var queryModifier in queryModifiers)
                 {
@@ -208,7 +212,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
 
                 try
                 {
-                    return q.AsTableServiceQuery().Execute().ToArray();
+                    return q.AsTableServiceQuery(context).Execute().ToArray();
                 }
                 catch (DataServiceQueryException queryException)
                 {
@@ -219,17 +223,17 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Storage
                     }
                     try
                     {
-                        _sdk.CreateTable(_tableName);
+                        _table.Create();
                     }
-                    catch (StorageClientException createException)
+                    catch (StorageException createException)
                     {
                         // a possible race condition on table creation
-                        if (createException.ErrorCode != StorageErrorCode.ResourceAlreadyExists)
+                        if (createException.RequestInformation.HttpStatusCode != 409)
                         {
                             throw;
                         }
                     }
-                    return q.AsTableServiceQuery().Execute().ToArray();
+                    return q.AsTableServiceQuery(context).Execute().ToArray();
                 }
             }
         }

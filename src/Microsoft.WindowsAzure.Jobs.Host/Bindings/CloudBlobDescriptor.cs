@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -61,7 +62,7 @@ namespace Microsoft.WindowsAzure.Jobs
             return c;
         }
 
-        public CloudBlob GetBlob()
+        public ICloudBlob GetBlob()
         {
             if (String.IsNullOrEmpty(blobName))
             {
@@ -69,12 +70,37 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             var c = GetContainer();
-            c.CreateIfNotExist();
-            var blob = c.GetBlobReference(BlobName);
+            c.CreateIfNotExists();
+            ICloudBlob blob;
+            try
+            {
+                blob = c.GetBlobReferenceFromServer(BlobName);
+            }
+            catch (StorageException exception)
+            {
+                if (exception.RequestInformation.HttpStatusCode != 404)
+                {
+                    throw;
+                }
+                blob = c.GetBlockBlobReference(BlobName);
+            }
             return blob;
         }
 
-        public CloudBlob TryGetBlob()
+        public CloudBlockBlob GetBlockBlob()
+        {
+            if (String.IsNullOrEmpty(blobName))
+            {
+                throw new InvalidOperationException("The blob name must not be null or empty.");
+            }
+
+            var c = GetContainer();
+            c.CreateIfNotExists();
+            var blob = c.GetBlockBlobReference(BlobName);
+            return blob;
+        }
+
+        public CloudBlockBlob TryGetBlockBlob()
         {
             if (String.IsNullOrEmpty(containerName) || String.IsNullOrEmpty(blobName))
             {
@@ -83,7 +109,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
             CloudBlobClient client = CreateClient();
             CloudBlobContainer container = client.GetContainerReference(containerName);
-            return container.GetBlobReference(blobName);
+            return container.GetBlockBlobReference(blobName);
         }
 
         public string GetId()
@@ -96,37 +122,6 @@ namespace Microsoft.WindowsAzure.Jobs
         public override string ToString()
         {
             return GetId();
-        }
-
-        // Get an absolute URL that's a Shared Access Signature for the given blob.
-        public string GetContainerSasSig(SharedAccessPermissions permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write)
-        {
-            CloudBlobContainer container = this.GetContainer();
-
-            string sasQueryString = container.GetSharedAccessSignature(
-                new SharedAccessPolicy
-                {
-                    Permissions = permissions,
-                    SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
-                });
-
-            var uri = container.Uri.ToString() + sasQueryString;
-            return uri;
-        }
-
-        public string GetBlobSasSig(SharedAccessPermissions permissions = SharedAccessPermissions.Read | SharedAccessPermissions.Write)
-        {
-            var blob = this.GetBlob();
-
-            string sasQueryString = blob.GetSharedAccessSignature(
-                new SharedAccessPolicy
-                {
-                    Permissions = permissions,
-                    SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(45)
-                });
-
-            var uri = blob.Uri.ToString() + sasQueryString;
-            return uri;
         }
 
         public override int GetHashCode()

@@ -1,5 +1,6 @@
 ﻿using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1

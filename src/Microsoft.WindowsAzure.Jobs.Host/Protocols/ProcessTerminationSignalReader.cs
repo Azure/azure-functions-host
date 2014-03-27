@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {

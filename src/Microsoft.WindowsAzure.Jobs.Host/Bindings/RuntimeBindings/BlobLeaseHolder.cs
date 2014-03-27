@@ -2,15 +2,17 @@
 using System.IO;
 using System.Net;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
-using Microsoft.WindowsAzure.StorageClient.Protocol;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Blob.Protocol;
+using System.Text;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
     // Helper class to manage releasing the blob lease. 
     internal class BlobLeaseHolder : IBlobLeaseHolder, IDisposable
     {
-        CloudBlob _blob;
+        ICloudBlob _blob;
         string _leaseId;
 
         public string LeaseId
@@ -21,7 +23,7 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        public void BlockUntilAcquired(CloudBlob blob)
+        public void BlockUntilAcquired(ICloudBlob blob)
         {
             if (_blob != null)
             {
@@ -73,36 +75,15 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             // Try to acquire a lease on the blob. 
             // Return null if the lease is already held (caller can then throw, retry+poll, etc)
-            public static string TryAquireLease(CloudBlob blob)
+            public static string TryAquireLease(ICloudBlob blob)
             {
-                // See http://msdn.microsoft.com/en-us/library/windowsazure/ee691972.aspx 
-                //for docs on REST APi. 
                 try
                 {
-                    var creds = blob.ServiceClient.Credentials;
-                    var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
-                    var req = BlobRequest.Lease(transformedUri,
-                        90, // timeout (in seconds)                    
-                        LeaseAction.Acquire, // as opposed to "break" "release" or "renew"
-                        null); // name of the existing lease, if any
-
-                    req.Headers.Add("x-ms-lease-duration", "-1");  // Lease duration, infinite. 
-                    req.Headers["x-ms-version"] = "2012-02-12"; // need to overwrite version for infinite leases. 
-
-
-                    blob.ServiceClient.Credentials.SignRequest(req); // Do this after request is fully formed. 
-                    using (var response = req.GetResponse())
-                    {
-                        return response.Headers["x-ms-lease-id"];
-                    }
+                    return blob.AcquireLease(leaseTime: null, proposedLeaseId: null);
                 }
-                catch (WebException e)
+                catch (StorageException e)
                 {
-                    var x = (HttpWebResponse)e.Response;
-
-                    string body = new StreamReader(x.GetResponseStream()).ReadToEnd();
-
-                    if (x.StatusCode == HttpStatusCode.Conflict)
+                    if (e.RequestInformation.HttpStatusCode == 409)
                     {
                         // Lease already held. 
 
@@ -112,55 +93,37 @@ namespace Microsoft.WindowsAzure.Jobs
                 }
             }
 
-            private static void DoLeaseOperation(CloudBlob blob, string leaseId, LeaseAction action)
+            public static void RenewLease(ICloudBlob blob, string leaseId)
             {
-                var creds = blob.ServiceClient.Credentials;
-                var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
-                var req = BlobRequest.Lease(transformedUri, 90, action, leaseId);
-                creds.SignRequest(req);
-                req.GetResponse().Close();
+                blob.RenewLease(new AccessCondition { LeaseId = leaseId });
+
             }
 
-            public static void RenewLease(CloudBlob blob, string leaseId)
-            {
-                DoLeaseOperation(blob, leaseId, LeaseAction.Release);
-            }
-
-            public static void ReleaseLease(CloudBlob blob, string leaseId)
+            public static void ReleaseLease(ICloudBlob blob, string leaseId)
             {
                 try
                 {
-                    DoLeaseOperation(blob, leaseId, LeaseAction.Release);
+                    blob.ReleaseLease(new AccessCondition { LeaseId = leaseId });
                 }
-                catch (WebException)
+                catch (StorageException)
                 {
                     // 
                 }
             }
 
-            public static void BreakLease(CloudBlob blob)
+            public static void BreakLease(ICloudBlob blob)
             {
-                DoLeaseOperation(blob, null, LeaseAction.Break);
+                blob.BreakLease();
             }
 
             // NOTE: This method doesn't do everything that the regular UploadText does.
             // Notably, it doesn't update the BlobProperties of the blob (with the new
             // ETag and LastModifiedTimeUtc). It also, like all the methods in this file,
             // doesn't apply any retry logic. Use this at your own risk!
-            public static void UploadText(CloudBlob blob, string text, string leaseId)
+            public static void UploadText(ICloudBlob blob, string text, string leaseId)
             {
-                string url = blob.Uri.ToString();
-                if (blob.ServiceClient.Credentials.NeedsTransformUri)
-                {
-                    url = blob.ServiceClient.Credentials.TransformUri(url);
-                }
-                var req = BlobRequest.Put(new Uri(url), 90, new BlobProperties(), BlobType.BlockBlob, leaseId, 0);
-                using (var writer = new StreamWriter(req.GetRequestStream()))
-                {
-                    writer.Write(text);
-                }
-                blob.ServiceClient.Credentials.SignRequest(req);
-                req.GetResponse().Close();
+                byte[] bytes = Encoding.UTF8.GetBytes(text);
+                blob.UploadFromByteArray(bytes, 0, bytes.Length, accessCondition: new AccessCondition { LeaseId = leaseId });
             }
         }
     }

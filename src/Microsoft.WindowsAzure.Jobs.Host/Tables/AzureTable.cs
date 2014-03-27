@@ -5,8 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Storage;
 
 namespace AzureTables
 {

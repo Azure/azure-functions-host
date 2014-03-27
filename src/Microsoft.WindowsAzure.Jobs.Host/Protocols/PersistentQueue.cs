@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Data.Services.Client;
 using System.Linq;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 {
@@ -9,6 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
     {
         private readonly CloudBlobContainer _blobContainer;
         private readonly CloudTableClient _tableClient;
+        private readonly CloudTable _table;
         private readonly string _tableName;
 
         public PersistentQueue(CloudStorageAccount account)
@@ -20,19 +24,20 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
         {
             _blobContainer = account.CreateCloudBlobClient().GetContainerReference(containerName);
             _tableClient = account.CreateCloudTableClient();
+            _table = _tableClient.GetTableReference(tableName);
             _tableName = tableName;
         }
 
         public T Dequeue()
         {
-            _tableClient.CreateTableIfNotExist(_tableName);
+            _table.CreateIfNotExists();
 
-            TableServiceContext context = _tableClient.GetDataServiceContext();
+            TableServiceContext context = _tableClient.GetTableServiceContext();
             IQueryable<PersistentQueueEntity> queryable = context.CreateQuery<PersistentQueueEntity>(_tableName);
-            CloudTableQuery<PersistentQueueEntity> query = (from PersistentQueueEntity item in queryable
+            TableServiceQuery<PersistentQueueEntity> query = (from PersistentQueueEntity item in queryable
                                                             where item.PartitionKey == String.Empty
                                                             && item.RowKey.CompareTo(DateTime.UtcNow.ToString("u")) <= 0
-                                                            select item).Take(1).AsTableServiceQuery();
+                                                            select item).Take(1).AsTableServiceQuery(context);
 
 
             while (true)
@@ -94,8 +99,8 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
 
         public void Enqueue(T message)
         {
-            _blobContainer.CreateIfNotExist();
-            _tableClient.CreateTableIfNotExist(_tableName);
+            _blobContainer.CreateIfNotExists();
+            _tableClient.GetTableReference(_tableName).CreateIfNotExists();
 
             Guid messageId = Guid.NewGuid();
             CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId.ToString("N"));
@@ -108,7 +113,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
                 RowKey = PersistentQueueEntity.GetRowKey(DateTime.MinValue, messageId),
                 MessageId = messageId
             };
-            TableServiceContext context = _tableClient.GetDataServiceContext();
+            TableServiceContext context = _tableClient.GetTableServiceContext();
             context.AddObject(_tableName, entity);
             context.SaveChanges();
         }
@@ -120,7 +125,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.Protocols
                 PartitionKey = PersistentQueueEntity.GetPartitionKey(),
                 RowKey = message.PopReceipt
             };
-            TableServiceContext context = _tableClient.GetDataServiceContext();
+            TableServiceContext context = _tableClient.GetTableServiceContext();
             context.AttachTo(_tableName, entity, "*");
             context.DeleteObject(entity);
             context.SaveChanges();

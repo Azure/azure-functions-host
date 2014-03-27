@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.WindowsAzure.Jobs.Internals;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
 using AzureTables;
 
 namespace Microsoft.WindowsAzure.Jobs

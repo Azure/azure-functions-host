@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -11,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs
             public bool IsInput;
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 return new BindCleanupResult
                 {
@@ -22,7 +22,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
         {
-            if (targetType == typeof(CloudBlob))
+            if (targetType == typeof(ICloudBlob))
             {
                 return new BlobBinder { IsInput = isInput };
             }

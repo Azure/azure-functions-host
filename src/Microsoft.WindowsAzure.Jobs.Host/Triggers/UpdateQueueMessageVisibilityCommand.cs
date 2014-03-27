@@ -1,5 +1,6 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -33,7 +34,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 _queue.UpdateMessage(_message, _visibilityTimeout, MessageUpdateFields.Visibility);
                 return true;
             }
-            catch (StorageClientException exception)
+            catch (StorageException exception)
             {
                 if (exception.IsServerSideError())
                 {

@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using AzureTables;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 {
@@ -20,7 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
         private readonly Func<string, MethodInfo> _fpResolveMethod;
-        private readonly Func<string, CloudBlob> _fpResolveBlobs;
+        private readonly Func<string, CloudBlockBlob> _fpResolveBlobs;
 
         public ICausalityReader CausalityReader
         {
@@ -71,7 +72,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
             _fpResolveFuncDefinition = method => Resolve(account, _config, method); // MethodInfo-->FunctionDefinition
 
-            _fpResolveBlobs = blobPath => new CloudBlobPath(blobPath).Resolve(account);
+            _fpResolveBlobs = blobPath => (CloudBlockBlob)new CloudBlobPath(blobPath).Resolve(account);
 
             {
                 var x = new LocalFunctionLogger();
@@ -183,7 +184,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         public Guid CallOnBlob(string functionName, string blobPath)
         {
-            CloudBlob blobInput = _fpResolveBlobs(blobPath);
+            CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, blobInput);
 

@@ -1,9 +1,8 @@
-﻿using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

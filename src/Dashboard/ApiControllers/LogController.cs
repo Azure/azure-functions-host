@@ -4,9 +4,9 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Web.Http;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.ApiControllers
 {
@@ -40,10 +40,10 @@ namespace Dashboard.ApiControllers
             }
 
             // Load the blob
-            CloudBlob blob;
+            ICloudBlob blob;
             try
             {
-                blob = new CloudBlob(instance.OutputUrl, _account.Credentials);
+                blob = _account.CreateCloudBlobClient().GetBlobReferenceFromServer(new Uri(instance.OutputUrl));
             }
             catch (Exception)
             {
@@ -102,9 +102,9 @@ namespace Dashboard.ApiControllers
             var blob = p.Resolve(_account);
 
             // Get a SAS for the next 10 mins
-            string sas = blob.GetSharedAccessSignature(new SharedAccessPolicy
+            string sas = blob.GetSharedAccessSignature(new SharedAccessBlobPolicy
             {
-                Permissions = SharedAccessPermissions.Read,
+                Permissions = SharedAccessBlobPermissions.Read,
                 SharedAccessExpiryTime = DateTime.UtcNow.AddMinutes(10)
             });
 

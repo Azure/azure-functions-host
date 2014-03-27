@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard
 {
@@ -85,7 +86,7 @@ namespace Dashboard
             var blobParam = new BlobBoundParamModel();
             blobParam.IsOutput = !blobArg.IsInput;
 
-            CloudBlob blob = blobArg.Blob.TryGetBlob();
+            CloudBlockBlob blob = blobArg.Blob.TryGetBlockBlob();
             Guid? blobWriter = GetBlobWriter(blob);
 
             if (!blobWriter.HasValue)
@@ -107,7 +108,7 @@ namespace Dashboard
         /// Get the id of a function invocation that wrote a given blob.
         /// </summary>
         /// <returns>The function invocation's id, or Guid.Empty if no owner is specified, or null if the blob is missing.</returns>
-        private static Guid? GetBlobWriter(CloudBlob blob)
+        private static Guid? GetBlobWriter(ICloudBlob blob)
         {
             if (blob == null)
             {
@@ -118,10 +119,9 @@ namespace Dashboard
             {
                 return new BlobCausalityLogger().GetWriter(blob);
             }
-            catch (StorageClientException e)
+            catch (StorageException e)
             {
-                if (e.ErrorCode == StorageErrorCode.ResourceNotFound
-                    || e.ErrorCode == StorageErrorCode.BadRequest)
+                if (e.RequestInformation.HttpStatusCode == 404 || e.RequestInformation.HttpStatusCode == 400)
                 {
                     // NoBlob
                     return null;
@@ -160,7 +160,7 @@ namespace Dashboard
             try
             {
 
-                var blob = instance.ParameterLogBlob.GetBlob();
+                var blob = instance.ParameterLogBlob.GetBlockBlob();
 
                 if (!BlobClient.DoesBlobExist(blob))
                 {

@@ -1,5 +1,6 @@
 ﻿using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -8,6 +9,6 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         void OnNewQueueItem(CloudQueueMessage msg, QueueTrigger func, CancellationToken token);
 
-        void OnNewBlob(CloudBlob blob, BlobTrigger func, CancellationToken token);
+        void OnNewBlob(ICloudBlob blob, BlobTrigger func, CancellationToken token);
     }
 }

@@ -9,7 +9,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml.Linq;
 using AzureTables;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -87,7 +89,7 @@ namespace Microsoft.WindowsAzure.Jobs
             CloudTableClient tableClient = account.CreateCloudTableClient();
 
             // Get the data service context
-            TableServiceContext serviceContext = tableClient.GetDataServiceContext();
+            TableServiceContext serviceContext = tableClient.GetTableServiceContext();
 
             PartitionRowKeyEntity specificEntity = null;
 
@@ -122,7 +124,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // http://www.windowsazure.com/en-us/develop/net/how-to-guides/table-services/#delete-entity
 
             CloudTableClient tableClient = account.CreateCloudTableClient();
-            TableServiceContext serviceContext = tableClient.GetDataServiceContext();
+            TableServiceContext serviceContext = tableClient.GetTableServiceContext();
 
             // Loop and delete in batches
             while (true)
@@ -164,7 +166,8 @@ namespace Microsoft.WindowsAzure.Jobs
         public static void DeleteTable(CloudStorageAccount account, string tableName)
         {
             CloudTableClient tableClient = account.CreateCloudTableClient();
-            tableClient.DeleteTableIfExist(tableName);
+            CloudTable table = tableClient.GetTableReference(tableName);
+            table.DeleteIfExists();
 
             // Delete returns synchronously even though table is not yet deleted. Losers!!
             // So poll here until we're in a known good state.
@@ -172,10 +175,10 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 try
                 {
-                    tableClient.CreateTableIfNotExist(tableName);
+                    table.CreateIfNotExists();
                     break;
                 }
-                catch (StorageClientException)
+                catch (StorageException)
                 {
                     Thread.Sleep(1 * 1000);
                 }

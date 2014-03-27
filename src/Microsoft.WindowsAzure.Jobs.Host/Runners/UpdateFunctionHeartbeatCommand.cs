@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -41,7 +41,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 _logger.Log(_logItem);
                 return true;
             }
-            catch (StorageClientException exception)
+            catch (StorageException exception)
             {
                 if (exception.IsServerSideError())
                 {

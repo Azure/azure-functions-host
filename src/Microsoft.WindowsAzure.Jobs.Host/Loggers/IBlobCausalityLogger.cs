@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -11,8 +11,8 @@ namespace Microsoft.WindowsAzure.Jobs
         // Records which function wrote to this blob
         // blob - the blob that was written
         // function - instance guid for that last wrote this blob's contents. 
-        void SetWriter(CloudBlob blob, Guid function);
+        void SetWriter(ICloudBlob blob, Guid function);
 
-        Guid GetWriter(CloudBlob blob);
+        Guid GetWriter(ICloudBlob blob);
     }
 }

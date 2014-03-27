@@ -1,9 +1,9 @@
 ﻿using System.IO;
 using System.Linq;
-using System.Threading;
-using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -86,6 +86,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             string partitionKey = "PK";
             string rowKey = "RK";
             var tableClient = account.CreateCloudTableClient();
+            var table = tableClient.GetTableReference(tableName);
 
             try
             {
@@ -93,16 +94,16 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 {
                     queue.Delete();
                 }
-                queue.CreateIfNotExist();
+                queue.CreateIfNotExists();
                 queue.AddMessage(new CloudQueueMessage(JsonCustom.SerializeObject(new ProgramQueues.TableEntityPayload
                 {
                     TableName = tableName,
                     PartitionKey = partitionKey,
                     RowKey = rowKey
                 })));
-                tableClient.DeleteTableIfExist(tableName);
-                tableClient.CreateTable(tableName);
-                TableServiceContext context = tableClient.GetDataServiceContext();
+                table.DeleteIfExists();
+                table.Create();
+                TableServiceContext context = tableClient.GetTableServiceContext();
                 context.AddObject(tableName, new SimpleEntity
                 {
                     PartitionKey = partitionKey,
@@ -113,7 +114,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
                 host.Host.RunOneIteration();
 
-                context = tableClient.GetDataServiceContext();
+                context = tableClient.GetTableServiceContext();
                 SimpleEntity entity = (from item in context.CreateQuery<SimpleEntity>(tableName)
                                        where item.PartitionKey == partitionKey && item.RowKey == rowKey
                                        select item).FirstOrDefault();
@@ -125,7 +126,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 {
                     queue.Delete();
                 }
-                tableClient.DeleteTableIfExist(tableName);
+                table.DeleteIfExists();
             }
         }
     }

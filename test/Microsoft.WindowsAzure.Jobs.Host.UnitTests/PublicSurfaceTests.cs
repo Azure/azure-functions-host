@@ -33,8 +33,8 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTests
                 }
                 if (name.StartsWith("Microsoft.WindowsAzure"))
                 {
-                    // Only azure dependency is on the 1.7 sdk
-                    Assert.Equal("Microsoft.WindowsAzure.StorageClient", name);
+                    // Only azure dependency is on the storage sdk
+                    Assert.Equal("Microsoft.WindowsAzure.Storage", name);
                 }
             }
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -11,34 +12,47 @@ namespace Microsoft.WindowsAzure.Jobs
             public bool IsInput;
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                CloudBlockBlob blob = BlobClient.GetBlockBlob(binder.AccountConnectionString, containerName, blobName);
 
-                BlobStream originalBlobStream = IsInput ? blob.OpenRead() : blob.OpenWrite();
+                CloudBlobStream writeableBlobStream;
                 WatchableStream watchableBlobStream;
 
                 if (IsInput)
                 {
+                    Stream blobStream = blob.OpenRead();
+                    writeableBlobStream = null;
                     blob.FetchAttributes();
                     long length = blob.Properties.Length;
-                    watchableBlobStream = new WatchableStream(originalBlobStream, length);
+                    watchableBlobStream = new WatchableStream(blobStream, length);
                 }
                 else
                 {
-                    watchableBlobStream = new WatchableStream(originalBlobStream);
+                    writeableBlobStream = blob.OpenWrite();
+                    watchableBlobStream = new WatchableStream(writeableBlobStream);
                 }
+
 
                 return new BindCleanupResult
                 {
                     Result = watchableBlobStream,
                     Cleanup = () =>
                     {
-                        using (watchableBlobStream)
+                        if (writeableBlobStream != null)
                         {
-                            if (!watchableBlobStream.Complete())
+                            using (watchableBlobStream)
                             {
-                                originalBlobStream.Abort();
                             }
                         }
+                        else if (watchableBlobStream.Complete())
+                        {
+                            using (watchableBlobStream)
+                            {
+                                writeableBlobStream.Commit();
+                            }
+                        }
+                        // Don't dispose a writeableBlobStream that hasn't completed, or it will auto-commit.
+                        // Unfortunately, there's no way to dispose of its resources deterministically without
+                        // committing.
                     }
                 };
             }

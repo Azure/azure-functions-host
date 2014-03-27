@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -44,7 +44,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 hasTerminationRequest = _terminationSignalReader.IsTerminationRequested(_hostInstanceId);
                 return true;
             }
-            catch (StorageClientException exception)
+            catch (StorageException exception)
             {
                 if (exception.IsServerSideError())
                 {

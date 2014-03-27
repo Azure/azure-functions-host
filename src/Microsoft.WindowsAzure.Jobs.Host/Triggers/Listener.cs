@@ -1,9 +1,10 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -123,14 +124,14 @@ namespace Microsoft.WindowsAzure.Jobs
                     bool sameAccount = String.Equals(container.ServiceClient.Credentials.AccountName, accountName, StringComparison.OrdinalIgnoreCase);
                     if (sameAccount)
                     {
-                        var blob = container.GetBlobReference(blobName);
+                        var blob = container.GetBlockBlobReference(blobName);
                         OnNewBlobWorker(blob, cancellationToken);
                     }
                 }
             }
         }
 
-        private void OnNewBlobWorker(CloudBlob blob, CancellationToken cancellationToken)
+        private void OnNewBlobWorker(ICloudBlob blob, CancellationToken cancellationToken)
         {
             var client = blob.ServiceClient;
 
@@ -183,7 +184,7 @@ namespace Microsoft.WindowsAzure.Jobs
         private static DateTime? GetModifiedTime(CloudBlobClient client, CloudBlobPath path)
         {
             var container = client.GetContainerReference(path.ContainerName);
-            var blob = container.GetBlobReference(path.BlobName);
+            var blob = container.GetBlockBlobReference(path.BlobName);
 
             var time = BlobClient.GetBlobModifiedUtcTime(blob);
             return time;

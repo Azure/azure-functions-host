@@ -1,4 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using Microsoft.WindowsAzure.Storage;
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     class StorageConverter : StringConverter<CloudStorageAccount>
     {

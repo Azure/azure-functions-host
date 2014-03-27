@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -31,12 +31,12 @@ namespace Microsoft.WindowsAzure.Jobs
             string name = f.ToString() + ".txt";
 
             var c = BlobClient.GetContainer(accountConnectionString, containerName);
-            if (c.CreateIfNotExist())
+            if (c.CreateIfNotExists())
             {
                 c.SetPermissions(new BlobContainerPermissions() { PublicAccess = BlobContainerPublicAccessType.Off });
             }
 
-            CloudBlob blob = c.GetBlobReference(name);            
+            CloudBlockBlob blob = c.GetBlockBlobReference(name);            
             
             var period = TimeSpan.FromMinutes(1); // frequency to refresh
             var x = new BlobIncrementalTextWriter(blob, period);

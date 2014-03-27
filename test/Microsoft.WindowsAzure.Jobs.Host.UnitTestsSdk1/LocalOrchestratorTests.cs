@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Xunit;
 
@@ -124,7 +124,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             string Container = "daas-test-input";
             string BlobName = "counter.txt";
 
-            var blob = BlobClient.GetBlob(account, Container, BlobName);
+            var blob = BlobClient.GetBlockBlob(account, Container, BlobName);
             blob.DeleteIfExists();
 
             var blobLease = MockBlobLeaseHolder.GetBlobSuffix(blob, ".lease");
@@ -266,38 +266,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         }
 
 
-        // Model bind a parameter to a queueing inteface, and then enqueue multiple messages.
-        [Fact]
-        public void TestMultiEnqueueMessage()
-        {
-            var account = TestStorage.GetAccount();
-
-            CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
-            QueueClient.DeleteQueue(queue);
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncMultiEnqueue");
-
-            for (int i = 10; i <= 30; i += 10)
-            {
-                var msg = queue.GetMessage();
-                Assert.NotNull(msg);
-
-                string data = msg.AsString;
-                queue.DeleteMessage(msg);
-
-                Payload payload = JsonConvert.DeserializeObject<Payload>(data);
-
-                // Technically, ordering is not gauranteed.
-                Assert.Equal(i, payload.Value);
-            }
-
-            {
-                var msg = queue.GetMessage();
-                Assert.Null(msg); // no more messages
-            }
-        }
-
         [Fact]
         public void TestEnqueueMessage_UsingCloudQueue()
         {
@@ -324,44 +292,6 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 var msg = queue.GetMessage();
                 Assert.Null(msg); // no more messages
             }
-        }
-
-        // $$$ Test with directories
-        [Fact]
-        public void Aggregate()
-        {
-            var account = TestStorage.GetAccount();
-
-            BlobClient.DeleteContainer(account, "daas-test-input");
-            BlobClient.WriteBlob(account, "daas-test-input", "1.csv", "abc");
-            BlobClient.WriteBlob(account, "daas-test-input", "2.csv", "def");
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("Aggregate1");
-
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "output.csv");
-            Assert.Equal("abcdef", content);
-        }
-
-        [Fact]
-        public void Aggregate2()
-        {
-            var account = TestStorage.GetAccount();
-
-            BlobClient.DeleteContainer(account, "daas-test-input");
-            BlobClient.WriteBlob(account, "daas-test-input", @"test/1.csv", "abc");
-            BlobClient.WriteBlob(account, "daas-test-input", @"test/2.csv", "def");
-
-            var d = new Dictionary<string, string>() {
-                { "deployId", "test" },
-                { "outdir", "testoutput" }
-            };
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("Aggregate2", d);
-
-            string content = BlobClient.ReadBlob(account, "daas-test-input", @"testoutput/output.csv");
-            Assert.Equal("abcdef", content);
         }
 
         private class Program
@@ -401,7 +331,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             [NoAutomaticTrigger]
             public static void FuncWithBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
                 [BlobInput(@"daas-test-input/blob.csv")] Stream stream
                 )
             {
@@ -444,7 +374,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             [NoAutomaticTrigger]
             public static void FuncWithMissingBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlob blob,
+                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
                 [BlobInput(@"daas-test-input/blob.csv")] Stream stream,
                 [BlobInput(@"daas-test-input/blob.csv")] TextReader reader
                 )

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -61,7 +61,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
-                    CloudBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
+                    CloudBlockBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
 
                     var content = blob.DownloadText();
                     return new BindResult { Result = new Model { Value = content }  };
@@ -72,7 +72,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
             {
                 public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
-                    CloudBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
+                    CloudBlockBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
 
                     // On input
                     return new BindCleanupResult
@@ -103,12 +103,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 return null;
             }
 
-            private static CloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)
+            private static CloudBlockBlob GetBlob(string accountConnectionString, string containerName, string blobName)
             {
                 var account = Utility.GetAccount(accountConnectionString);
                 var client = account.CreateCloudBlobClient();
                 var c = client.GetContainerReference(containerName);
-                var blob = c.GetBlobReference(blobName);
+                var blob = c.GetBlockBlobReference(blobName);
                 return blob;
             }
         }

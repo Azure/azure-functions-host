@@ -20,9 +20,6 @@
     <NuGetContent Include="$(JobsRootPath)\src\Microsoft.WindowsAzure.Jobs.Host\bin\$(Configuration)\Microsoft.WindowsAzure.Jobs.Host.xml">
       <Destination>lib\net45\Microsoft.WindowsAzure.Jobs.Host.xml</Destination>
     </NuGetContent>
-    <NuGetContent Include="$(JobsRootPath)\packages\WindowsAzure.Storage.1.7.0.0\lib\net35-full\Microsoft.WindowsAzure.StorageClient.dll">
-      <Destination>lib\net45\Microsoft.WindowsAzure.StorageClient.dll</Destination>
-    </NuGetContent>
   </ItemGroup>
   <Import Project="$(JobsToolsPath)NuGetProj.targets"/>
   <Target Name="BeforeBuild">

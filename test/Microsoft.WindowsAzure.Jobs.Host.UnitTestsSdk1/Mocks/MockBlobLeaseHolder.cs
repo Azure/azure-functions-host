@@ -1,5 +1,5 @@
-﻿using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+﻿using Microsoft.WindowsAzure.Storage.Blob;
+using System.Text;
 using Xunit;
 
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
@@ -9,17 +9,17 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
     class MockBlobLeaseHolder : IBlobLeaseHolder
     {
         bool _ownLease;
-        CloudBlob _blob;
+        ICloudBlob _blob;
 
-        public static CloudBlob GetBlobSuffix(CloudBlob blob, string suffix)
+        public static ICloudBlob GetBlobSuffix(ICloudBlob blob, string suffix)
         {
             var container = blob.Container;
             string name = blob.Name + suffix;
-            CloudBlob blob2 = container.GetBlobReference(name);
+            ICloudBlob blob2 = container.GetBlobReferenceFromServer(name);
             return blob2;
         }
 
-        public void BlockUntilAcquired(CloudBlob blob)
+        public void BlockUntilAcquired(ICloudBlob blob)
         {
             Assert.False(_ownLease, "Don't double-acquire a lease");
             _ownLease = true;
@@ -27,7 +27,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
             var blobLock = GetBlobSuffix(_blob, ".lease");
             Assert.False(BlobClient.DoesBlobExist(blobLock), "Somebody else has the lease");
-            blobLock.UploadText("held");
+            UploadText(blobLock, "held");
         }
 
         public IBlobLeaseHolder TransferOwnership()
@@ -45,11 +45,11 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
         public void UploadText(string text)
         {
             Assert.True(_ownLease);
-            _blob.UploadText(text);
+            UploadText(_blob, text);
 
             // Write to a second blob to prove that we wrote while holding the lease. 
             var blob2 = GetBlobSuffix(_blob, ".x");
-            blob2.UploadText(text);
+            UploadText(blob2, text);
 
 
             var blobLock = GetBlobSuffix(_blob, ".lease");            
@@ -64,6 +64,12 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
                 blobLock.Delete();
             }
             _ownLease = false;
+        }
+
+        private static void UploadText(ICloudBlob blob, string text)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            blob.UploadFromByteArray(bytes, 0, bytes.Length);
         }
     }
 }

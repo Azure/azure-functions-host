@@ -3,7 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -67,13 +68,13 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        ConcurrentQueue<CloudBlob> _queueExistingBlobs = new ConcurrentQueue<CloudBlob>();
+        ConcurrentQueue<ICloudBlob> _queueExistingBlobs = new ConcurrentQueue<ICloudBlob>();
 
         private void FullScanContainer(CloudBlobContainer container)
         {
             try
             {
-                container.CreateIfNotExist();
+                container.CreateIfNotExists();
             }
             catch (StorageException)
             {
@@ -82,16 +83,14 @@ namespace Microsoft.WindowsAzure.Jobs
                 return;
             }
 
-            var opt = new BlobRequestOptions();
-            opt.UseFlatBlobListing = true;
-            foreach (var blobItem in container.ListBlobs(opt))
+            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 if (_backgroundCancel.IsCancellationRequested)
                 {
                     return;
                 }
 
-                CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
+                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
 
                 _queueExistingBlobs.Enqueue(b);
             }
@@ -101,7 +100,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Blob could have been deleted by the time the callback is invoked. 
         // - race where it was explicitly deleted
         // - if we detected blob via a log, then there's a long window (possibly hours) where it could have easily been deleted. 
-        public void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel)
+        public void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel)
         {
             if (!_completedFullScanOnStartup)
             {
@@ -113,7 +112,7 @@ namespace Microsoft.WindowsAzure.Jobs
             // Drain the background queues. 
             while (true)
             {
-                CloudBlob b;
+                ICloudBlob b;
                 if (!_queueExistingBlobs.TryDequeue(out b))
                 {
                     break;

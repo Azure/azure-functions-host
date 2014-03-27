@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
+using Microsoft.WindowsAzure.Storage;
 
 namespace AzureTables
 {

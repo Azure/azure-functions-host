@@ -5,7 +5,8 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -69,12 +70,12 @@ namespace Microsoft.WindowsAzure.Jobs
                 Console.WriteLine("{0}, {1}", e2.GetType().FullName, e2.Message);
 
                 // Write bonus information for extra diagnostics
-                var se = e2 as StorageClientException;
+                var se = e2 as StorageException;
                 if (se != null)
                 {
-                    var nvc = se.ExtendedErrorInformation.AdditionalDetails;
+                    var nvc = se.RequestInformation.ExtendedErrorInformation.AdditionalDetails;
 
-                    foreach (var key in nvc.AllKeys)
+                    foreach (var key in nvc.Keys)
                     {
                         Console.WriteLine("  >{0}: {1}", key, nvc[key]);
                     }
@@ -136,11 +137,11 @@ namespace Microsoft.WindowsAzure.Jobs
 
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
 
-            // Hook in optional binders for Azure 2.0 data types. 
             var azure20sdkBinderProvider = new Azure20SdkBinderProvider();
             config.Binders.Add(azure20sdkBinderProvider);
             config.BlobBinders.Add(azure20sdkBinderProvider);
             config.TableBinders.Add(azure20sdkBinderProvider);
+            config.Binders.Add(new Azure20SdkBinderProvider());
         }
 
         internal static bool ShouldIgnoreInvokeString(Type parameterType)
@@ -284,7 +285,7 @@ namespace Microsoft.WindowsAzure.Jobs
             SelfWatch fpStopWatcher = null;
             if (_parameterLogger != null)
             {
-                CloudBlob blobResults = _parameterLogger.GetBlob();
+                CloudBlockBlob blobResults = _parameterLogger.GetBlockBlob();
                 fpStopWatcher = new SelfWatch(binds, ps, blobResults);
             }
 

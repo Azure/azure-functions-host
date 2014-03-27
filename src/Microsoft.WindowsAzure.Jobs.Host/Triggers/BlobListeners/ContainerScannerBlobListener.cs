@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -32,7 +33,7 @@ namespace Microsoft.WindowsAzure.Jobs
         // Does one iteration and then returns.
         // Poll containers, invoke callback for any new ones added.
         // $$$ Switch to queuing instead of just invoking callback
-        public void Poll(Action<CloudBlob, CancellationToken> callback, CancellationToken cancel)
+        public void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel)
         {
             for (int i = 0; !cancel.IsCancellationRequested && i < _containers.Length; i++)
             {
@@ -48,13 +49,13 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // lastScanTime - updated to the latest time in the container. Never call DateTime.Now because we need to avoid clock schewing problems. 
-        public static IEnumerable<CloudBlob> PollNewBlobs(CloudBlobContainer container, DateTime timestamp, CancellationToken cancel, ref DateTime lastScanTime)
+        public static IEnumerable<ICloudBlob> PollNewBlobs(CloudBlobContainer container, DateTime timestamp, CancellationToken cancel, ref DateTime lastScanTime)
         {
-            List<CloudBlob> blobs = new List<CloudBlob>();
+            List<ICloudBlob> blobs = new List<ICloudBlob>();
 
             try
             {
-                container.CreateIfNotExist();
+                container.CreateIfNotExists();
             }
             catch (StorageException)
             {
@@ -63,16 +64,14 @@ namespace Microsoft.WindowsAzure.Jobs
                 return blobs;
             }
 
-            var opt = new BlobRequestOptions();
-            opt.UseFlatBlobListing = true;
-            foreach (var blobItem in container.ListBlobs(opt))
+            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 if (cancel.IsCancellationRequested)
                 {
-                    return new CloudBlob[0];
+                    return new ICloudBlob[0];
                 }
 
-                CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
+                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
 
                 try
                 {
@@ -84,10 +83,8 @@ namespace Microsoft.WindowsAzure.Jobs
                     continue;
                 }
 
-                var attrs = b.Attributes;
-
                 var props = b.Properties;
-                var time = props.LastModifiedUtc.ToLocalTime();
+                var time = props.LastModified.Value.UtcDateTime;
 
                 if (time > lastScanTime)
                 {

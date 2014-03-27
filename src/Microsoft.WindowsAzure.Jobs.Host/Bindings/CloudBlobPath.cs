@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 namespace Microsoft.WindowsAzure.Jobs
@@ -59,7 +59,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Create arround actual blob. Loses the account information. 
-        public CloudBlobPath(CloudBlob blobInput)
+        public CloudBlobPath(ICloudBlob blobInput)
         {
             _containerName = blobInput.Container.Name;
             _blobName = blobInput.Name;
@@ -128,30 +128,28 @@ namespace Microsoft.WindowsAzure.Jobs
             return RouteParser.HasParameterNames(this.ToString());
         }
 
-        public CloudBlob Resolve(CloudStorageAccount account)
+        public ICloudBlob Resolve(CloudStorageAccount account)
         {
             var client = account.CreateCloudBlobClient();
             return this.Resolve(client);
         }
 
-        public CloudBlob Resolve(CloudBlobClient client)
+        public ICloudBlob Resolve(CloudBlobClient client)
         {
             var container = client.GetContainerReference(this.ContainerName);
-            var blob = container.GetBlobReference(this.BlobName);
+            var blob = container.GetBlockBlobReference(this.BlobName);
             return blob;
         }
 
         // List all blobs that match the pattern. 
-        public IEnumerable<CloudBlob> ListBlobs(CloudStorageAccount account)
+        public IEnumerable<ICloudBlob> ListBlobs(CloudStorageAccount account)
         {
             CloudBlobContainer container = this.GetContainer(account);
 
-            var opt = new BlobRequestOptions();
-            opt.UseFlatBlobListing = true;
-            foreach (var blobItem in container.ListBlobs(opt))
+            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 var path = blobItem.Uri.ToString();
-                CloudBlob b = container.GetBlobReference(blobItem.Uri.ToString());
+                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
 
                 var subPath = new CloudBlobPath(b);
                 var p = this.Match(subPath);
@@ -171,19 +169,16 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Interpret this as a CloudBlobDirectory and list blobs in that directory and subdir.
         // ### RAtionalize with ListBlobs. 
-        public IEnumerable<CloudBlob> ListBlobsInDir(CloudStorageAccount account)
+        public IEnumerable<ICloudBlob> ListBlobsInDir(CloudStorageAccount account)
         {
-            var opt = new BlobRequestOptions();
-            opt.UseFlatBlobListing = true; // flat
-
             var container = this.GetContainer(account);
             var dir = this.GetBlobDir(container);
 
-            IEnumerable<IListBlobItem> source = (dir == null) ? container.ListBlobs(opt) : dir.ListBlobs(opt);
+            IEnumerable<IListBlobItem> source = (dir == null) ? container.ListBlobs(useFlatBlobListing: true) : dir.ListBlobs(useFlatBlobListing: true);
 
             var count = source.Count();
 
-            var blobs = source.OfType<CloudBlob>();
+            var blobs = source.OfType<ICloudBlob>();
 
             var c2 = blobs.Count();
 
@@ -211,7 +206,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 var dir = container.GetDirectoryReference(parts[0]);
                 for (int i = 1; i < parts.Length; i++)
                 {
-                    dir = dir.GetSubdirectory(parts[i]);
+                    dir = dir.GetSubdirectoryReference(parts[i]);
                 }
                 return dir;
             }

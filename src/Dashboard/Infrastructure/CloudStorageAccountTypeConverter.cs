@@ -1,6 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
-using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Dashboard.Infrastructure
 {

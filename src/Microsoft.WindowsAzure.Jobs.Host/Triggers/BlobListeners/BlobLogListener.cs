@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
-using Microsoft.WindowsAzure.StorageClient.Protocol;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -149,11 +149,11 @@ namespace Microsoft.WindowsAzure.Jobs
         // This lets us use prefix scans. $logs/Blob/YYYY/MM/DD/HH00/nnnnnn.log
         // Logs are about 6 an hour, so we're only scanning about 12 logs total. 
         // $$$ If logs are large, we can even have a cache of "already scanned" logs that we skip. 
-        public static List<CloudBlob> ListRecentLogFiles(CloudBlobClient blobClient, DateTime startTimeForSearch, int hoursWindow = 2)
+        public static List<ICloudBlob> ListRecentLogFiles(CloudBlobClient blobClient, DateTime startTimeForSearch, int hoursWindow = 2)
         {
             string serviceName = "blob";
 
-            List<CloudBlob> selectedLogs = new List<CloudBlob>();
+            List<ICloudBlob> selectedLogs = new List<ICloudBlob>();
 
             var lastHour = startTimeForSearch;
             for (int i = 0; i < hoursWindow; i++)
@@ -168,22 +168,17 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Populate the List<> with blob logs for the given prefix. 
         // http://blogs.msdn.com/b/windowsazurestorage/archive/2011/08/03/windows-azure-storage-logging-using-logs-to-track-storage-requests.aspx
-        private static void GetLogsWithPrefix(List<CloudBlob> selectedLogs, CloudBlobClient blobClient, string prefix)
+        private static void GetLogsWithPrefix(List<ICloudBlob> selectedLogs, CloudBlobClient blobClient, string prefix)
         {
             // List the blobs using the prefix
-            IEnumerable<IListBlobItem> blobs = blobClient.ListBlobsWithPrefix(
-                prefix,
-                new BlobRequestOptions()
-                {
-                    UseFlatBlobListing = true,
-                    BlobListingDetails = BlobListingDetails.Metadata
-                });
+            IEnumerable<IListBlobItem> blobs = blobClient.ListBlobs(prefix,
+                useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata);
 
 
             // iterate through each blob and figure the start and end times in the metadata
             foreach (IListBlobItem item in blobs)
             {
-                CloudBlob log = item as CloudBlob;
+                ICloudBlob log = item as ICloudBlob;
                 if (log != null)
                 {
                     // we will exclude the file if the file does not have log entries in the interested time range.
@@ -199,7 +194,7 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Given a log file (as a blob), parse it and return a series of LogRows. 
-        public static IEnumerable<LogRow> ParseLog(CloudBlob blob)
+        public static IEnumerable<LogRow> ParseLog(ICloudBlob blob)
         {
             using (TextReader tr = new StreamReader(blob.OpenRead()))
             {
@@ -216,27 +211,22 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // http://blogs.msdn.com/b/windowsazurestorage/archive/2011/08/03/windows-azure-storage-logging-using-logs-to-track-storage-requests.aspx
-        public static List<CloudBlob> ListLogFiles(CloudBlobClient blobClient, string serviceName, DateTime startTimeForSearch, DateTime endTimeForSearch)
+        public static List<ICloudBlob> ListLogFiles(CloudBlobClient blobClient, string serviceName, DateTime startTimeForSearch, DateTime endTimeForSearch)
         {
-            List<CloudBlob> selectedLogs = new List<CloudBlob>();
+            List<ICloudBlob> selectedLogs = new List<ICloudBlob>();
 
             // form the prefix to search. Based on the common parts in start and end time, this prefix is formed
             string prefix = GetSearchPrefix(serviceName, startTimeForSearch, endTimeForSearch);
 
             // List the blobs using the prefix
-            IEnumerable<IListBlobItem> blobs = blobClient.ListBlobsWithPrefix(
-                prefix,
-                new BlobRequestOptions()
-                {
-                    UseFlatBlobListing = true,
-                    BlobListingDetails = BlobListingDetails.Metadata
-                });
+            IEnumerable<IListBlobItem> blobs = blobClient.ListBlobs(prefix,
+                useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata);
 
 
             // iterate through each blob and figure the start and end times in the metadata
             foreach (IListBlobItem item in blobs)
             {
-                CloudBlob log = item as CloudBlob;
+                ICloudBlob log = item as ICloudBlob;
                 if (log != null)
                 {
                     // we will exclude the file if the file does not have log entries in the interested time range.

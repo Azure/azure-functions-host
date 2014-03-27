@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -21,7 +21,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         // Begin self-watches.
         // May update args array with selfwatch wrappers.
-        public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlob blobResults)
+        public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults)
         {
             _command = new SelfWatchCommand(binds, ps, blobResults);
             _timer = new IntervalSeparationTimer(_command);
@@ -90,10 +90,10 @@ namespace Microsoft.WindowsAzure.Jobs
             private string _lastContent;
 
             private ISelfWatch[] _watches;
-            private CloudBlob _blobResults;
+            private CloudBlockBlob _blobResults;
 
             // May update args array with selfwatch wrappers.
-            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlob blobResults)
+            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults)
             {
                 _currentDelay = _intialDelay;
 

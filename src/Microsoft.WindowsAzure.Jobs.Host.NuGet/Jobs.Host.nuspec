@@ -16,6 +16,7 @@
     <dependencies>
       <dependency id="Microsoft.WindowsAzure.Jobs" version="[$JobsPackageVersion$]" />
       <dependency id="Newtonsoft.Json" version="5.0.6"/>
+      <dependency id="WindowsAzure.Storage" version="2.1.0.4"/>
       <dependency id="Microsoft.WindowsAzure.ConfigurationManager" version="1.7.0.0"/>
     </dependencies>
   </metadata>

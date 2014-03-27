@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -15,9 +13,9 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var client = account.CreateCloudBlobClient();
             var c = GetContainer(client, containerName);
-            c.CreateIfNotExist();
+            c.CreateIfNotExists();
 
-            var b = c.GetBlobReference(blobName);
+            var b = c.GetBlockBlobReference(blobName);
 
             b.UploadText(contents);
         }
@@ -31,12 +29,12 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 c.Delete();
             }
-            catch (StorageClientException)
+            catch (StorageException)
             {
             }
         }
 
-        public static DateTime? GetBlobModifiedUtcTime(CloudBlob blob)
+        public static DateTime? GetBlobModifiedUtcTime(ICloudBlob blob)
         {
             if (!DoesBlobExist(blob))
             {
@@ -44,30 +42,22 @@ namespace Microsoft.WindowsAzure.Jobs
             }
 
             var props = blob.Properties;
-            var time = props.LastModifiedUtc;
-            return time;
-        }
-
-        public static void DeleteBlob(CloudStorageAccount account, string containerName, string blobName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            CloudBlob blob = c.GetBlobReference(blobName);
-            blob.DeleteIfExists();
+            var time = props.LastModified;
+            return time.HasValue ? (DateTime?)time.Value.UtcDateTime : null;
         }
 
         [DebuggerNonUserCode]
-        public static bool DoesBlobExist(CloudBlob blob)
+        public static bool DoesBlobExist(ICloudBlob blob)
         {
             try
             {
                 // force network call to test whether it exists
-                blob.FetchAttributes(); 
+                blob.FetchAttributes();
                 return true;
             }
-            catch (StorageClientException e)
+            catch (StorageException e)
             {
-                if (e.ErrorCode == StorageErrorCode.ResourceNotFound)
+                if (e.RequestInformation.HttpStatusCode == 404)
                 {
                     return false;
                 }
@@ -80,14 +70,14 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var client = account.CreateCloudBlobClient();
             var c = GetContainer(client, containerName);
-            var blob = c.GetBlobReference(blobName);
+            var blob = c.GetBlockBlobReference(blobName);
 
             return DoesBlobExist(blob);
         }
 
         // Return Null if doesn't exist
         [DebuggerNonUserCode]
-        public static string ReadBlob(CloudBlob blob)
+        public static string ReadBlob(ICloudBlob blob)
         {
             // Beware! Blob.DownloadText does not strip the BOM! 
             try
@@ -110,21 +100,55 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             var client = account.CreateCloudBlobClient();
             var c = GetContainer(client, containerName);
-            var blob = c.GetBlobReference(blobName);
+            ICloudBlob blob;
+            try
+            {
+                blob = c.GetBlobReferenceFromServer(blobName);
+            }
+            catch (StorageException)
+            {
+                return null;
+            }
             return ReadBlob(blob);
         }
 
-        public static CloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)
+        public static ICloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)
         {
             var account = Utility.GetAccount(accountConnectionString);
             return GetBlob(account, containerName, blobName);
         }
 
-        public static CloudBlob GetBlob(CloudStorageAccount account, string containerName, string blobName)
+        public static CloudBlockBlob GetBlockBlob(string accountConnectionString, string containerName, string blobName)
+        {
+            var account = Utility.GetAccount(accountConnectionString);
+            return GetBlockBlob(account, containerName, blobName);
+        }
+
+        public static ICloudBlob GetBlob(CloudStorageAccount account, string containerName, string blobName)
         {
             var client = account.CreateCloudBlobClient();
             var c = GetContainer(client, containerName);
-            var blob = c.GetBlobReference(blobName);
+            ICloudBlob blob;
+            try
+            {
+                blob = c.GetBlobReferenceFromServer(blobName);
+            }
+            catch (StorageException exception)
+            {
+                if (exception.RequestInformation.HttpStatusCode != 404)
+                {
+                    throw;
+                }
+                blob = c.GetBlockBlobReference(blobName);
+            }
+            return blob;
+        }
+
+        public static CloudBlockBlob GetBlockBlob(CloudStorageAccount account, string containerName, string blobName)
+        {
+            var client = account.CreateCloudBlobClient();
+            var c = GetContainer(client, containerName);
+            var blob = c.GetBlockBlobReference(blobName);
             return blob;
         }
 

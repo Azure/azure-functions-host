@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -18,7 +19,7 @@ namespace Microsoft.WindowsAzure.Jobs
                 WatchableStream watcher = new WatchableStream(ms);
                 TextWriter _content = new StreamWriter(watcher);
 
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 return new BindCleanupResult
                 {
@@ -36,7 +37,7 @@ namespace Microsoft.WindowsAzure.Jobs
                             if (watcher.Complete())
                             {
                                 var bytes = ms.ToArray();
-                                blob.UploadByteArray(bytes);
+                                blob.UploadFromByteArray(bytes, 0, bytes.Length);
                             }
                         }
                     }

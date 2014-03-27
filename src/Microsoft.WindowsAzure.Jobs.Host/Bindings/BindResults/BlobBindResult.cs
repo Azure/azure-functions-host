@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -9,11 +9,11 @@ namespace Microsoft.WindowsAzure.Jobs
     {
         private readonly BindResult _inner;
         private readonly Guid _functionWriter;
-        private readonly CloudBlob _blob;
+        private readonly ICloudBlob _blob;
         private readonly IBlobCausalityLogger _logger;
         private readonly INotifyNewBlob _notify;
 
-        private BlobBindResult(BindResult inner, Guid functionWriter, CloudBlob blob, IBlobCausalityLogger logger, INotifyNewBlob notify)
+        private BlobBindResult(BindResult inner, Guid functionWriter, ICloudBlob blob, IBlobCausalityLogger logger, INotifyNewBlob notify)
         {
             _functionWriter = functionWriter;
             _blob = blob;
@@ -54,8 +54,13 @@ namespace Microsoft.WindowsAzure.Jobs
         }
 
         // Get a BindResult for a blob that will stamp the blob with the GUID of the function instance that wrote it. 
-        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, Type targetType, CloudBlob blob, IBlobCausalityLogger logger)
+        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, Type targetType, ICloudBlob blob, IBlobCausalityLogger logger)
         {
+            if (blob == null)
+            {
+                return new NullBindResult("Input blob was not found");
+            }
+
             string containerName = blob.Container.Name;
             string blobName = blob.Name;
 

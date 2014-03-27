@@ -9,8 +9,8 @@ using Microsoft.WindowsAzure.Jobs.Host.Loggers;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Jobs.Host.Storage;
-using Microsoft.WindowsAzure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Jobs.Internals;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

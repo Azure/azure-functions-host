@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 // Resolve with dups in RunnerInterfaces
 namespace Microsoft.WindowsAzure.Jobs

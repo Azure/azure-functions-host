@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -16,7 +17,7 @@ namespace Microsoft.WindowsAzure.Jobs
         const string MetadataKeyName = "SimpleBatch_WriterFunc";
 
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
-        public void SetWriter(CloudBlob blob, Guid function)
+        public void SetWriter(ICloudBlob blob, Guid function)
         {
             // Beware, SetMetadata() is like a POST, not a PUT, so must
             // fetch existing attributes to preserve them. 
@@ -24,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 blob.FetchAttributes();
             }
-            catch (StorageClientException)
+            catch (StorageException)
             {
                 // blob has been deleted. 
                 return;
@@ -34,15 +35,15 @@ namespace Microsoft.WindowsAzure.Jobs
             blob.SetMetadata();
         }
 
-        public Guid GetWriter(CloudBlob blob)
+        public Guid GetWriter(ICloudBlob blob)
         {
 
             blob.FetchAttributes();
-            string val = blob.Metadata[MetadataKeyName];
-            if (val == null)
+            if (!blob.Metadata.ContainsKey(MetadataKeyName))
             {
                 return Guid.Empty;
             }
+            string val = blob.Metadata[MetadataKeyName];
             Guid result;
             bool success = Guid.TryParse(val, out result);
             // $$$, What should we do on parse failure? Ignore?

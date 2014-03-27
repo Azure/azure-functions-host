@@ -1,4 +1,4 @@
-﻿using Microsoft.WindowsAzure.StorageClient;
+﻿using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -6,6 +6,6 @@ namespace Microsoft.WindowsAzure.Jobs
     internal interface ITriggerNewBlob : IRuntimeBindingInputs
     {
         // If null, then ignore.
-        CloudBlob BlobInput { get; }
+        ICloudBlob BlobInput { get; }
     }
 }

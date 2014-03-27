@@ -5,7 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -28,26 +29,20 @@ namespace Dashboard.Protocols
         [DebuggerNonUserCode]
         public HostVersion[] ReadAll()
         {
-            BlobRequestOptions options = new BlobRequestOptions
-            {
-                UseFlatBlobListing = true,
-                // Include metadata to minimize network requests for the content type check.
-                BlobListingDetails = BlobListingDetails.Metadata
-            };
-
             List<HostVersion> versions = new List<HostVersion>();
                         
-            IEnumerable<IListBlobItem> lazyItems = _container.ListBlobs(options);
+            IEnumerable<IListBlobItem> lazyItems = _container.ListBlobs(
+                useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata);
             IListBlobItem[] items;
 
             try
             {
                 items = lazyItems.ToArray();
             }
-            catch (StorageClientException ex)
+            catch (StorageException ex)
             {
                 // A non-existent container should be treated just like an empty container.
-                if (ex.ErrorCode == StorageErrorCode.ContainerNotFound)
+                if (ex.RequestInformation.HttpStatusCode == 404)
                 {
                     return new HostVersion[0];
                 }
@@ -57,7 +52,7 @@ namespace Dashboard.Protocols
                 }
             }
 
-            foreach (CloudBlob blob in items)
+            foreach (ICloudBlob blob in items)
             {
                 HostVersion version = GetHostVersion(blob);
                 versions.Add(version);
@@ -66,7 +61,7 @@ namespace Dashboard.Protocols
             return versions.ToArray();
         }
 
-        private static HostVersion GetHostVersion(CloudBlob blob)
+        private static HostVersion GetHostVersion(ICloudBlob blob)
         {
             // Use the blob name as the HostVersion.Name; any HostVersion will have this property set.
             HostVersion version = new HostVersion

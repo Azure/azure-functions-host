@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -19,7 +20,7 @@ namespace Microsoft.WindowsAzure.Jobs
         public CloudQueue GetQueue()
         {
             var q = GetAccount().CreateCloudQueueClient().GetQueueReference(QueueName);
-            q.CreateIfNotExist();
+            q.CreateIfNotExists();
             return q;
         }
 

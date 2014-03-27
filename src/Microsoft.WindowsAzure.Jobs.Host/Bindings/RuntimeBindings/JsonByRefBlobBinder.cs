@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -11,7 +11,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
         {
-            CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+            CloudBlockBlob blob = BlobClient.GetBlockBlob(binder.AccountConnectionString, containerName, blobName);
 
             object result;
             string json = string.Empty;

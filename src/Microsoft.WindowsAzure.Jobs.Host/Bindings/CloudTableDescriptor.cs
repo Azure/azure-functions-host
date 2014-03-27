@@ -1,4 +1,6 @@
-﻿namespace Microsoft.WindowsAzure.Jobs
+﻿using Microsoft.WindowsAzure.Storage;
+
+namespace Microsoft.WindowsAzure.Jobs
 {
     // Full permission to a Table
     // This can be serialized.

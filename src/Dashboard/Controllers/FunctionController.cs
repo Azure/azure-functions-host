@@ -5,10 +5,10 @@ using System.Linq;
 using System.Web.Mvc;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
-using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Controllers
 {
@@ -267,7 +267,7 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            CloudBlob blob;
+            ICloudBlob blob;
 
             try
             {

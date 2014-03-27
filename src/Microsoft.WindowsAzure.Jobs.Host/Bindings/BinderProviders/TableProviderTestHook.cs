@@ -1,4 +1,5 @@
 ﻿using AzureTables;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

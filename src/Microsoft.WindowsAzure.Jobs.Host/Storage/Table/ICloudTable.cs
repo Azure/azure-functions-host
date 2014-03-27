@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.WindowsAzure.Jobs.Host.Storage.Table
 {

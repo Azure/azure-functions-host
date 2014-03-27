@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -25,7 +25,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 queue.Delete();
             }
-            catch (StorageClientException)
+            catch (StorageException)
             {
             }
         }

@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Reflection;
-using Microsoft.WindowsAzure.StorageClient;
-using Newtonsoft.Json;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using System.Linq;
+using System.Reflection;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.WindowsAzure.Jobs
 {

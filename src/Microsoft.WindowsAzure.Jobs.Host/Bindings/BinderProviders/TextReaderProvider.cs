@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -10,7 +10,7 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
 
                 long length = blob.Properties.Length;
                 var blobStream = blob.OpenRead();

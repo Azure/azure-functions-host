@@ -6,7 +6,9 @@ using System.Linq;
 using System.Xml.Linq;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace AzureTables
 {
@@ -16,7 +18,8 @@ namespace AzureTables
         private readonly CloudStorageAccount _account;
         private readonly string _tableName;
 
-        private CloudTableClient _client;
+        private readonly CloudTableClient _client;
+        private CloudTable _table;
 
         public LiveTableCore(CloudStorageAccount account, string tableName)
         {
@@ -24,9 +27,10 @@ namespace AzureTables
             _tableName = tableName;
 
             _client = _account.CreateCloudTableClient();
+            _table = _client.GetTableReference(tableName);
 
             // This can fail if the table was recently deleted and is still in the process of being deleted.
-            _client.CreateTableIfNotExist(tableName);
+            _table.CreateIfNotExists();
         }
 
         public override ITableCorePartitionWriter NewPartitionWriter(string partitionKey)
@@ -44,7 +48,7 @@ namespace AzureTables
             {
                 _outer = outer;
                 _partitionKey = partitionKey;
-                _ctx = _outer._client.GetDataServiceContext();
+                _ctx = _outer._client.GetTableServiceContext();
                 _ctx.WritingEntity += new EventHandler<ReadingWritingEntityEventArgs>(ctx_WritingEntity);
             }
 
@@ -102,8 +106,7 @@ namespace AzureTables
         public override void DeleteTableAsync()
         {
             // This could take a while for delete to be finished            
-            CloudTableClient tableClient = _account.CreateCloudTableClient();
-            tableClient.DeleteTableIfExist(_tableName);
+            _table.DeleteIfExists();
         }
 
         public override void DeleteTablePartition(string partitionKey)
@@ -122,7 +125,7 @@ namespace AzureTables
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try
             {
-                TableServiceContext ctx = _client.GetDataServiceContext();
+                TableServiceContext ctx = _client.GetTableServiceContext();
                 ctx.IgnoreMissingProperties = true;
                 ctx.ReadingEntity += OnReadingEntity;
 
@@ -142,7 +145,7 @@ namespace AzureTables
                 // Careful, must call AsTableServiceQuery() to get more than 1000 rows. 
                 // http://blogs.msdn.com/b/rihamselim/archive/2011/01/06/retrieving-more-the-1000-row-from-windows-azure-storage.aspx
                 // Query will create an IQueryable and try to retrieve all rows at once. 
-                CloudTableQuery<GenericEntity> query2 = query1.AsTableServiceQuery();
+                TableServiceQuery<GenericEntity> query2 = query1.AsTableServiceQuery(ctx);
 
                 // But then must call Execute to get an deferred execution. 
                 // http://convective.wordpress.com/2010/02/06/queries-in-azure-tables/
@@ -164,7 +167,7 @@ namespace AzureTables
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try
             {
-                TableServiceContext ctx = _client.GetDataServiceContext();
+                TableServiceContext ctx = _client.GetTableServiceContext();
                 ctx.IgnoreMissingProperties = true;
                 ctx.ReadingEntity += OnReadingEntity;
 

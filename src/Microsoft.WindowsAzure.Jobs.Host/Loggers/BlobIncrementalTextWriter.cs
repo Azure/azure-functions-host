@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -23,7 +23,7 @@ namespace Microsoft.WindowsAzure.Jobs
 
         private Timer _timer;
 
-        public BlobIncrementalTextWriter(CloudBlob blob, TimeSpan refreshRate)
+        public BlobIncrementalTextWriter(CloudBlockBlob blob, TimeSpan refreshRate)
             : this(content => blob.UploadText(content))
         {
             // Prepend existing 
