@@ -4,7 +4,6 @@ using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml.Linq;
@@ -23,6 +22,33 @@ namespace Microsoft.WindowsAzure.Jobs
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
     internal static class TableClient
     {
+        private static readonly char[] _invalidKeyValueCharacters;
+
+        static TableClient()
+        {
+            _invalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
+        }
+
+        // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
+        private static char[] GetInvalidTableKeyValueCharacters()
+        {
+            List<char> invalidCharacters = new List<char>(new char[] { '/', '\\', '#', '?' });
+
+            // U+0000 through U+001F, inclusive
+            for (char invalidCharacter = '\x0000'; invalidCharacter <= '\x001F'; invalidCharacter++)
+            {
+                invalidCharacters.Add(invalidCharacter);
+            }
+
+            // U+007F through U+009F, inclusive
+            for (char invalidCharacter = '\x007F'; invalidCharacter <= '\x009F'; invalidCharacter++)
+            {
+                invalidCharacters.Add(invalidCharacter);
+            }
+
+            return invalidCharacters.ToArray();
+        }
+
         // Convert key into something that can be used as a row or partition key. Removes invalid chars.
         public static string GetAsTableKey(string key)
         {
@@ -205,29 +231,15 @@ namespace Microsoft.WindowsAzure.Jobs
             }
         }
 
-        // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
         private static bool IsValidAzureTableKeyValue(string value)
         {
+            // Empty strings and whitespace are valid partition keys and row keys, but null is invalid.
             if (value == null)
             {
                 return false;
             }
 
-            List<char> invalidCharacters = new List<char>(new char[] { '/', '\\', '#', '?'});
-
-            // U+0000 through U+001F, inclusive
-            for (char invalidCharacter = '\x0000'; invalidCharacter <= '\x001F'; invalidCharacter++)
-            {
-                invalidCharacters.Add(invalidCharacter);
-            }
-
-            // U+007F through U+009F, inclusive
-            for (char invalidCharacter = '\x007F'; invalidCharacter <= '\x009F'; invalidCharacter++)
-            {
-                invalidCharacters.Add(invalidCharacter);
-            }
-
-            return value.IndexOfAny(invalidCharacters.ToArray()) == -1;
+            return value.IndexOfAny(_invalidKeyValueCharacters) == -1;
         }
     }
 }
