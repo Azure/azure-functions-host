@@ -74,6 +74,20 @@ namespace Microsoft.WindowsAzure.Jobs
             return string.Format("{0:D19}", DateTime.MaxValue.Ticks - time.Ticks);
         }
 
+        public static bool ImplementsITableEntity(Type entityType)
+        {
+            Debug.Assert(entityType != null);
+            return entityType.GetInterfaces().Any(t => t == typeof(ITableEntity));
+        }
+
+        public static void VerifyDefaultConstructor(Type entityType)
+        {
+            if (entityType.GetConstructor(Type.EmptyTypes) == null)
+            {
+                throw new InvalidOperationException("Table entity types must provide a default constructor.");
+            }
+        }
+
         // Is this a type that is already serialized by default?
         // See list of types here: http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
         public static bool IsDefaultTableType(Type t)

@@ -1,32 +1,36 @@
 ﻿using System;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
-    // Bind directly to a CloudBlob. 
-    class CloudBlobBinderProvider : ICloudBlobBinderProvider
+    // Binder provider for the ICloudBlob SDK type
+    internal class CloudBlobBinderProvider : ICloudBlobBinderProvider
     {
-        private class BlobBinder : ICloudBlobBinder
-        {
-            public bool IsInput;
-            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
-            {
-                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
-
-                return new BindCleanupResult
-                {
-                    Result = blob                    
-                };
-            }
-        }
-
         public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
         {
             if (targetType == typeof(ICloudBlob))
             {
-                return new BlobBinder { IsInput = isInput };
+                return isInput ? (ICloudBlobBinder)new InputICloudBlobBinder() : new OutputICloudBlobBinder();
             }
+
             return null;
+        }
+
+        private class InputICloudBlobBinder : CloudBlobBinder
+        {
+            protected override object BindCore(CloudBlobContainer container, string blobName)
+            {
+                return container.GetBlobReferenceFromServer(blobName);
+            }
+        }
+
+        private class OutputICloudBlobBinder : CloudBlobBinder
+        {
+            protected override object BindCore(CloudBlobContainer container, string blobName)
+            {
+                // Writer. Default to Block blobs.
+                return container.GetBlockBlobReference(blobName);
+            }
         }
     }
 }

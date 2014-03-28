@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     // Bind to IBinder
     // All return results get tracked on a cleanup list. 

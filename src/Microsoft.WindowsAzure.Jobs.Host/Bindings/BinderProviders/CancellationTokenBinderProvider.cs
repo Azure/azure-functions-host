@@ -2,7 +2,7 @@
 using System.Reflection;
 using System.Threading;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     internal class CancellationTokenBinderProvider : ICloudBinderProvider
     {

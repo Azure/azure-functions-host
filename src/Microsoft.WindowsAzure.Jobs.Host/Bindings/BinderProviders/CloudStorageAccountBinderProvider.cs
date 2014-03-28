@@ -2,10 +2,9 @@
 using System.Reflection;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
-    // Provides a binding to CloudStorageAccount
-    internal class CloudStorageAccountBinderProvider: ICloudBinderProvider
+    internal class CloudStorageAccountBinderProvider : ICloudBinderProvider
     {
         public ICloudBinder TryGetBinder(Type targetType)
         {
@@ -13,6 +12,7 @@ namespace Microsoft.WindowsAzure.Jobs
             {
                 return new CloudStorageAccountBinder();
             }
+
             return null;
         }
 
@@ -20,12 +20,8 @@ namespace Microsoft.WindowsAzure.Jobs
         {
             public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
             {
-                var acs = bindingContext.AccountConnectionString;
-                CloudStorageAccount account = Utility.GetAccount(acs);
-                return new BindResult
-                {
-                    Result = account
-                };
+                CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
+                return new BindResult { Result = account };
             }
         }
     }

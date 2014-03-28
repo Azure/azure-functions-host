@@ -1,9 +1,8 @@
 ﻿using System;
 using System.IO;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     class BlobStreamBinderProvider : ICloudBlobBinderProvider
     {

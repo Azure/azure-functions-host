@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
+using Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -122,6 +122,8 @@ namespace Microsoft.WindowsAzure.Jobs
         public static void AddDefaultBinders(IConfiguration config)
         {
             // Blobs
+            config.BlobBinders.Add(new CloudBlockBlobBinderProvider());
+            config.BlobBinders.Add(new CloudPageBlobBinderProvider());
             config.BlobBinders.Add(new CloudBlobBinderProvider());
             config.BlobBinders.Add(new BlobStreamBinderProvider());
             config.BlobBinders.Add(new TextReaderProvider());
@@ -129,19 +131,16 @@ namespace Microsoft.WindowsAzure.Jobs
             config.BlobBinders.Add(new StringBlobBinderProvider());
 
             // Tables
+            config.TableBinders.Add(new CloudTableBinderProvider());
+            config.TableBinders.Add(new QueryableCloudTableBinderProvider());
             config.TableBinders.Add(new DictionaryTableBinderProvider());
 
             // Other
             config.Binders.Add(new CloudStorageAccountBinderProvider());
+            config.Binders.Add(new CloudQueueBinderProvider());
             config.Binders.Add(new CancellationTokenBinderProvider());
-
             config.Binders.Add(new BinderBinderProvider()); // for IBinder
-
-            var azure20sdkBinderProvider = new Azure20SdkBinderProvider();
-            config.Binders.Add(azure20sdkBinderProvider);
-            config.BlobBinders.Add(azure20sdkBinderProvider);
-            config.TableBinders.Add(azure20sdkBinderProvider);
-            config.Binders.Add(new Azure20SdkBinderProvider());
+            config.Binders.Add(new Sdk1CloudStorageAccountBinderProvider());
         }
 
         internal static bool ShouldIgnoreInvokeString(Type parameterType)

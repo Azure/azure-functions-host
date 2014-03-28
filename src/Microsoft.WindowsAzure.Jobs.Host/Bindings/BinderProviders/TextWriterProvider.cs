@@ -1,10 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     // For writing back to the blob
     // Blobs are connectionless and don't support incremental writes, so buffer the write locally

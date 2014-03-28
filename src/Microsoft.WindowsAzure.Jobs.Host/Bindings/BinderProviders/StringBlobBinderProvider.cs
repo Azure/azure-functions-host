@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     class StringBlobBinderProvider : ICloudBlobBinderProvider
     {

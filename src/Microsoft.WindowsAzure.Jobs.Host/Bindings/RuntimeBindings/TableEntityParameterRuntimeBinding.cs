@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Reflection;
-using AzureTables;
-using Microsoft.WindowsAzure.Jobs.Azure20SdkBinders;
+using Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.WindowsAzure.Jobs
 {
@@ -15,117 +13,56 @@ namespace Microsoft.WindowsAzure.Jobs
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             Type targetType = targetParameter.ParameterType;
+            TableClient.VerifyDefaultConstructor(targetType);
 
-            BindResult sdk20BindResult = Azure20SdkBinderProvider.TryBindTableEntity(Entity, targetType);
-
-            if (sdk20BindResult != null)
+            if (TableClient.ImplementsITableEntity(targetType))
             {
-                return sdk20BindResult;
-            }
-
-            if (targetType.GetConstructor(Type.EmptyTypes) == null)
-            {
-                throw new InvalidOperationException("Table entity types must implement ITableEntity or provide a default constructor.");
-            }
-
-            MethodInfo genericMethodInfo = typeof(TableEntityParameterRuntimeBinding).GetMethod("Bind",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            MethodInfo methodInfo = genericMethodInfo.MakeGenericMethod(new Type[] { targetType });
-            Func<CloudTableEntityDescriptor, BindResult> invoker = (Func<CloudTableEntityDescriptor, BindResult>)
-                Delegate.CreateDelegate(typeof(Func<CloudTableEntityDescriptor, BindResult>), methodInfo);
-            return invoker.Invoke(Entity);
-        }
-
-        private static BindResult Bind<T>(CloudTableEntityDescriptor entity) where T : new()
-        {
-            AzureTable<T> table = TableProviderTestHook.Default.Create<T>(entity.AccountConnectionString, entity.TableName);
-            IAzureTableReader<T> reader = (IAzureTableReader<T>)table;
-            T result = reader.Lookup(entity.PartitionKey, entity.RowKey);
-
-            if (result == null)
-            {
-                return new BindResult { Result = null };
+                return BindITableEntityGeneric(targetType, config, bindingContext);
             }
             else
             {
-                return new TableEntityBindResult<T>(result, entity.PartitionKey, entity.RowKey, table);
+                return BindPocoGeneric(targetType, config, bindingContext);
             }
+        }
+
+        private BindResult BindITableEntityGeneric(Type type, IConfiguration config, IBinderEx bindingContext)
+        {
+            // Call BindITableEntity<T>(config, bindingContext);
+            MethodInfo genericMethod = typeof(TableEntityParameterRuntimeBinding).GetMethod("BindITableEntity", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo methodInfo = genericMethod.MakeGenericMethod(type);
+            Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult> invoker =
+                (Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult>)
+                Delegate.CreateDelegate(
+                typeof(Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult>), methodInfo);
+            return invoker.Invoke(this, config, bindingContext);
+        }
+
+        private BindResult BindPocoGeneric(Type type, IConfiguration config, IBinderEx bindingContext)
+        {
+            // Call BindPoco<T>(config, bindingContext);
+            MethodInfo genericMethod = typeof(TableEntityParameterRuntimeBinding).GetMethod("BindPoco", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo methodInfo = genericMethod.MakeGenericMethod(type);
+            Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult> invoker =
+                (Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult>)
+                Delegate.CreateDelegate(
+                typeof(Func<TableEntityParameterRuntimeBinding, IConfiguration, IBinderEx, BindResult>), methodInfo);
+            return invoker.Invoke(this, config, bindingContext);
+        }
+
+        private BindResult BindITableEntity<T>(IConfiguration config, IBinderEx bindingContext) where T : ITableEntity, new()
+        {
+            return new TableEntityBinder<T>().Bind(bindingContext, Entity.TableName, Entity.PartitionKey, Entity.RowKey);
+        }
+
+        private BindResult BindPoco<T>(IConfiguration config, IBinderEx bindingContext) where T : new()
+        {
+            return new PocoTableEntityBinder<T>().Bind(bindingContext, Entity.TableName, Entity.PartitionKey, Entity.RowKey);
         }
 
         public override string ConvertToInvokeString()
         {
             return String.Format(CultureInfo.InvariantCulture,
                 "{0}/{1}/{2}", Entity.TableName, Entity.PartitionKey, Entity.RowKey);
-        }
-
-        private class TableEntityBindResult<T> : BindResult, ISelfWatch where T : new()
-        {
-            private readonly string _partitionKey;
-            private readonly string _rowKey;
-            private readonly AzureTable<T> _table;
-            private readonly IDictionary<string, string> _originalProperties;
-
-            private string _status;
-
-            public TableEntityBindResult(T result, string partitionKey, string rowKey, AzureTable<T> table)
-            {
-                Result = result;
-                _partitionKey = partitionKey;
-                _rowKey = rowKey;
-                _table = table;
-                _originalProperties = ObjectBinderHelpers.ConvertObjectToDict(result);
-            }
-
-            public override ISelfWatch Watcher
-            {
-                get
-                {
-                    return this;
-                }
-            }
-
-            public string GetStatus()
-            {
-                return _status;
-            }
-
-            public override void OnPostAction()
-            {
-                if (EntityHasChanged())
-                {
-                    _status = "1 entity updated.";
-                    _table.Write(_partitionKey, _rowKey, Result);
-                    _table.Flush();
-                }
-            }
-
-            private bool EntityHasChanged()
-            {
-                IDictionary<string, string> newProperties = ObjectBinderHelpers.ConvertObjectToDict(Result);
-
-                if (_originalProperties.Keys.Count != newProperties.Keys.Count)
-                {
-                    return true;
-                }
-
-                if (!Enumerable.SequenceEqual(_originalProperties.Keys, newProperties.Keys))
-                {
-                    return true;
-                }
-
-                foreach (string key in newProperties.Keys)
-                {
-                    string originalValue = _originalProperties[key];
-                    string newValue = newProperties[key];
-
-                    if (!String.Equals(originalValue, newValue, StringComparison.Ordinal))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
         }
     }
 }

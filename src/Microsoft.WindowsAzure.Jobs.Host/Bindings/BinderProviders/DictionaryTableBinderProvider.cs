@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using AzureTables;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.WindowsAzure.Jobs.Host.Bindings.BinderProviders
 {
     // Bind IDictionary<Tuple<string,string>, T> to an azure table.
     class DictionaryTableBinderProvider : ICloudTableBinderProvider

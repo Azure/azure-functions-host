@@ -80,9 +80,18 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Bindings\BinderProviders\Azure1SdkBinders.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudBlobBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudTableBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\TableEntityBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\PocoTableEntityBinder.cs" />
+    <Compile Include="Bindings\BinderProviders\QueryableCloudTableBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudPageBlobBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\Sdk1CloudStorageAccountBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\BinderExExtensions.cs" />
     <Compile Include="Bindings\BinderProviders\CancellationTokenBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudBlockBlobBinderProvider.cs" />
+    <Compile Include="Bindings\BinderProviders\CloudQueueBinderProvider.cs" />
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\RuntimeBindings\TableEntityParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
@@ -176,10 +185,8 @@
     <Compile Include="Bindings\BinderProviders\TextWriterProvider.cs" />
     <Compile Include="Bindings\BinderProviders\BlobStreamBinderProvider.cs" />
     <Compile Include="Bindings\RuntimeBindings\JsonByRefBlobBinder.cs" />
-    <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TextReaderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\CloudStorageAccountBinderProvider.cs" />
-    <Compile Include="Bindings\BinderProviders\Azure20SdkBinders.cs" />
     <Compile Include="Runners\Configuration.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
     <Compile Include="Bindings\IBinderPrivate.cs" />
