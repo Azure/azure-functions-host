@@ -86,11 +86,15 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\BindResults\NullBindResultTests.cs" />
+    <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
+    <Compile Include="Bindings\CloudBlobPathTests.cs" />
     <Compile Include="Bindings\RuntimeBindings\QueueInputParameterRuntimeBindingsTest.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
     <Compile Include="Bindings\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Bindings\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
+    <Compile Include="FlowUnitTests.cs" />
+    <Compile Include="HostTests.cs" />
     <Compile Include="IntervalSeparationTimerTests.cs" />
     <Compile Include="JsonTypeNameAttributeTests.cs" />
     <Compile Include="LinearSpeedupTimerCommandTests.cs" />
@@ -101,14 +105,17 @@
     <Compile Include="Protocols\QueueNamesTest.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntityExtensionsTests.cs" />
     <Compile Include="Protocols\HostMessageTests.cs" />
+    <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
     <Compile Include="Storage\RequestResultTests.cs" />
     <Compile Include="Storage\StorageExceptionTests.cs" />
+    <Compile Include="TableSerializationTests.cs" />
     <Compile Include="TableUnitTests.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
+    <Compile Include="TriggerMapSerializationTests.cs" />
     <Compile Include="WatchableStreamTests.cs" />
   </ItemGroup>
   <ItemGroup>

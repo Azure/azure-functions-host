@@ -58,6 +58,9 @@
     <Reference Include="Microsoft.WindowsAzure.Storage">
       <HintPath>..\..\packages\WindowsAzure.Storage.2.1.0.4\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
@@ -77,6 +80,10 @@
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
+      <Name>Jobs</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj">
       <Project>{4a832c21-66ea-4de4-8124-f27f8900cba9}</Project>
       <Name>Jobs.Host.TestCommon</Name>
@@ -86,7 +93,18 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BinderExtensions.cs" />
+    <Compile Include="BlobListenerUnitTests.cs" />
+    <Compile Include="CallUtil.cs" />
+    <Compile Include="LocalExecutionContext.cs" />
+    <Compile Include="LocalFunctionTable.cs" />
+    <Compile Include="MockBlobLeaseHolder.cs" />
+    <Compile Include="Sdk2IntegrationTests.cs" />
+    <Compile Include="LocalOrchestratorTableTests.cs" />
+    <Compile Include="LocalOrchestratorTests.cs" />
+    <Compile Include="ModelBindingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Scenarios.cs" />
     <Compile Include="Storage\SdkCloudStorageAccountTests.cs" />
   </ItemGroup>
   <ItemGroup>

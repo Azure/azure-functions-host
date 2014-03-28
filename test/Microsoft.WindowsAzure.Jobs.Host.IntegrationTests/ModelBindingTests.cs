@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
@@ -115,7 +116,7 @@ namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk1
 
         class Program
         {
-            [Jobs.Description("Invoke with an IBinder")]
+            [Description("Invoke with an IBinder")]
             public static void TestBinder(IBinder binder)
             {
                 TextWriter tw = binder.BindWriteStream<TextWriter>("daas-test-input", "directout.txt");

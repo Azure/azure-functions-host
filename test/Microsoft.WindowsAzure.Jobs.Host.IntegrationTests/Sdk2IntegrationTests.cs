@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.WindowsAzure.Jobs;
 using Microsoft.WindowsAzure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -12,7 +13,7 @@ using Xunit;
 namespace Microsoft.WindowsAzure.Jobs.UnitTestsSdk2
 {
     // Test model binding with Azure 2.0 sdk 
-    public class IntegrationTests
+    public class Sdk2IntegrationTests
     {
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
         [Fact]
