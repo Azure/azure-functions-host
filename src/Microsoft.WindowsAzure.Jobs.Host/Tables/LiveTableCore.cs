@@ -49,6 +49,8 @@ namespace AzureTables
                 _outer = outer;
                 _partitionKey = partitionKey;
                 _ctx = _outer._client.GetTableServiceContext();
+                // Atom format is require to use the WritingEntity event.
+                _ctx.Format.UseAtom();
                 _ctx.WritingEntity += new EventHandler<ReadingWritingEntityEventArgs>(ctx_WritingEntity);
             }
 
@@ -126,6 +128,8 @@ namespace AzureTables
             try
             {
                 TableServiceContext ctx = _client.GetTableServiceContext();
+                // Atom format is require to use the ReadingEntity event.
+                ctx.Format.UseAtom();
                 ctx.IgnoreMissingProperties = true;
                 ctx.ReadingEntity += OnReadingEntity;
 
@@ -168,6 +172,8 @@ namespace AzureTables
             try
             {
                 TableServiceContext ctx = _client.GetTableServiceContext();
+                // Atom format is require to use the ReadingEntity event.
+                ctx.Format.UseAtom();
                 ctx.IgnoreMissingProperties = true;
                 ctx.ReadingEntity += OnReadingEntity;
 
