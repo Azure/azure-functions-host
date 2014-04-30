@@ -6,7 +6,7 @@ using System.Web.Caching;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.Azure.Jobs
 {
     /// <summary>
     /// A facade for loading invocations using seconday-index tables

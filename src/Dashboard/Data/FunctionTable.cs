@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.WindowsAzure.Jobs;
+using Microsoft.Azure.Jobs;
 
 namespace Dashboard.Data
 {

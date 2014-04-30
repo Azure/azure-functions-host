@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.Jobs.Host.Storage.Queue;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Storage.Queue;
 
 namespace Dashboard.Protocols
 {

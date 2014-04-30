@@ -68,14 +68,17 @@
       <Project>{45974999-9c53-48ad-83b9-519ecc8ab8f4}</Project>
       <Name>Dashboard</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+    <ProjectReference Include="..\..\src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj">
       <Project>{4a832c21-66ea-4de4-8124-f27f8900cba9}</Project>
       <Name>Jobs.Host.TestCommon</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{82A7F48D-3B50-4B1E-B82E-3ADA8210C358}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -2,13 +2,12 @@
 <assemblies defaultPublicKeyToken="31bf3856ad364e35">
   <!-- Production assemblies -->
   <assembly name="Dashboard"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host"/>
+  <assembly name="Microsoft.Azure.Jobs"/>
+  <assembly name="Microsoft.Azure.Jobs.Host"/>
 
   <!-- Unit test assemblies -->
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.TestCommon"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.IntegrationTests"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTests"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk1"/>
-  <assembly name="Microsoft.WindowsAzure.Jobs.Host.UnitTestsSdk2"/>
+  <assembly name="Dashboard.UnitTests"/>
+  <assembly name="Microsoft.Azure.Jobs.Host.TestCommon"/>
+  <assembly name="Microsoft.Azure.Jobs.Host.IntegrationTests"/>
+  <assembly name="Microsoft.Azure.Jobs.Host.UnitTests"/>
 </assemblies>

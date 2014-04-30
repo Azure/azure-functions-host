@@ -5,9 +5,9 @@ VisualStudioVersion = 12.0.30110.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs", "src\Microsoft.WindowsAzure.Jobs\Jobs.csproj", "{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs", "src\Microsoft.Azure.Jobs\Jobs.csproj", "{E3F2B2C8-6B8D-4D6A-A3AE-98366C9F3B49}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host", "src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj", "{0E095CB2-3030-49FF-966C-785F1A55F0C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host", "src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj", "{0E095CB2-3030-49FF-966C-785F1A55F0C1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard", "src\Dashboard\Dashboard.csproj", "{45974999-9C53-48AD-83B9-519ECC8AB8F4}"
 EndProject
@@ -23,13 +23,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{E4BBC8
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.EndToEndTests", "test\Microsoft.WindowsAzure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.EndToEndTests", "test\Microsoft.Azure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj", "{340AB554-5482-4B3D-B65F-46DFF5AF1684}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.TestCommon", "test\Microsoft.WindowsAzure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj", "{4A832C21-66EA-4DE4-8124-F27F8900CBA9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.TestCommon", "test\Microsoft.Azure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj", "{4A832C21-66EA-4DE4-8124-F27F8900CBA9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTests", "test\Microsoft.WindowsAzure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.UnitTests", "test\Microsoft.Azure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj", "{CA75D667-A785-4394-AA5C-3A6C658C23A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.IntegrationTests", "test\Microsoft.WindowsAzure.Jobs.Host.IntegrationTests\Jobs.Host.IntegrationTests.csproj", "{31BAB10E-B319-4F4E-9898-EA7A2740AA19}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.IntegrationTests", "test\Microsoft.Azure.Jobs.Host.IntegrationTests\Jobs.Host.IntegrationTests.csproj", "{31BAB10E-B319-4F4E-9898-EA7A2740AA19}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dashboard.UnitTests", "test\Dashboard.UnitTests\Dashboard.UnitTests.csproj", "{7EF78F7B-C9C9-4311-B87D-50ED5932CC93}"
 EndProject

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using AzureTables;
-using Microsoft.WindowsAzure.Jobs;
+using Microsoft.Azure.Jobs;
 
 namespace Dashboard.Data
 {

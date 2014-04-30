@@ -7,7 +7,7 @@ using System.Web.Routing;
 using Dashboard.App_Start;
 using Dashboard.Indexers;
 using Dashboard.Protocols;
-using Microsoft.WindowsAzure.Jobs;
+using Microsoft.Azure.Jobs;
 using Ninject;
 
 namespace Dashboard

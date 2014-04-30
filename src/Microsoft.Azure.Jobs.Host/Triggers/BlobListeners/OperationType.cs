@@ -1,0 +1,41 @@
+﻿namespace Microsoft.Azure.Jobs
+{
+    // See list at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx
+    internal enum OperationType
+    {
+        AcquireLease,
+        BreakLease,
+        ClearPage,
+        CopyBlob,
+        CopyBlobSource,
+        CopyBlobDestination,
+        CreateContainer,
+        DeleteBlob,
+        DeleteContainer,
+        GetBlob,
+        GetBlobMetadata,
+        GetBlobProperties,
+        GetBlockList,
+        GetContainerACL,
+        GetContainerMetadata,
+        GetContainerProperties,
+        GetLeaseInfo,
+        GetPageRegions,
+        LeaseBlob,
+        ListBlobs,
+        ListContainers,
+        PutBlob,
+        PutBlockList,
+        PutBlock,
+        PutPage,
+        ReleaseLease,
+        RenewLease,
+        SetBlobMetadata,
+        SetBlobProperties,
+        SetContainerACL,
+        SetContainerMetadata,
+        SnapshotBlob,
+        SetBlobServiceProperties,
+        GetBlobServiceProperties,
+    }
+}

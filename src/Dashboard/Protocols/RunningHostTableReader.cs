@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Dashboard.Protocols
 {

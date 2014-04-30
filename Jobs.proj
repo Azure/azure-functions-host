@@ -12,11 +12,11 @@
 
   <ItemGroup>
     <!-- The Assembly items below MUST be kept in dependency order. -->
-    <Build Include="src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+    <Build Include="src\Microsoft.Azure.Jobs\Jobs.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+    <Build Include="src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
@@ -33,11 +33,11 @@
       <PublishType>Directory</PublishType>
       <PublishPath>$(PublishPath)\SiteExtensionsUnzipped\AzureJobs</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj">
+    <Build Include="src\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj">
+    <Build Include="src\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
@@ -102,7 +102,7 @@
 
   <Target Name="UnitTest" DependsOnTargets="Build">
     <ItemGroup>
-        <UnitTestProjects Include="test\Microsoft.WindowsAzure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj"/>
+        <UnitTestProjects Include="test\Microsoft.Azure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"

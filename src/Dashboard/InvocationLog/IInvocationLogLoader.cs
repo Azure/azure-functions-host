@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Dashboard.ViewModels;
 
-namespace Microsoft.WindowsAzure.Jobs
+namespace Microsoft.Azure.Jobs
 {
     internal interface IInvocationLogLoader
     {

@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 

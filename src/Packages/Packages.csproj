@@ -14,18 +14,18 @@
     <OutputPath>bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <NuGetProject Include="..\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuproj">
+    <NuGetProject Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
       <Link>Jobs\Jobs.nuproj</Link>
     </NuGetProject>
-    <NuGetProject Include="..\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuproj">
+    <NuGetProject Include="..\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuproj">
       <Link>Jobs.Host\Jobs.Host.nuproj</Link>
     </NuGetProject>
   </ItemGroup>
   <ItemGroup>
-    <NuGetSpec Include="..\Microsoft.WindowsAzure.Jobs.NuGet\Jobs.nuspec">
+    <NuGetSpec Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuspec">
       <Link>Jobs\Jobs.nuspec</Link>
     </NuGetSpec>
-    <NuGetSpec Include="..\Microsoft.WindowsAzure.Jobs.Host.NuGet\Jobs.Host.nuspec">
+    <NuGetSpec Include="..\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuspec">
       <Link>Jobs.Host\Jobs.Host.nuspec</Link>
     </NuGetSpec>
   </ItemGroup>

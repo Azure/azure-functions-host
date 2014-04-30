@@ -1,4 +1,4 @@
-﻿using Microsoft.WindowsAzure.Jobs;
+﻿using Microsoft.Azure.Jobs;
 
 namespace Dashboard.Protocols
 {

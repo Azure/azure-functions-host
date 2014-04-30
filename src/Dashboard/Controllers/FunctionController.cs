@@ -5,8 +5,8 @@ using System.Linq;
 using System.Web.Mvc;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 

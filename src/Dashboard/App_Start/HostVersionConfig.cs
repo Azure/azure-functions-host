@@ -1,5 +1,5 @@
 ﻿using Dashboard.Protocols;
-using Microsoft.WindowsAzure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Dashboard
 {

@@ -81,11 +81,11 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+    <ProjectReference Include="..\..\src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\src\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+    <ProjectReference Include="..\..\src\Microsoft.Azure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>Jobs</Name>
     </ProjectReference>

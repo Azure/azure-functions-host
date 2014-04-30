@@ -310,11 +310,11 @@
     <Content Include="Views\_ViewStart.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs.Host\Jobs.Host.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.WindowsAzure.Jobs\Jobs.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>Jobs</Name>
     </ProjectReference>

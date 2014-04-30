@@ -7,11 +7,11 @@ using Dashboard.Controllers;
 using Dashboard.Data;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
-using Microsoft.WindowsAzure.Jobs;
-using Microsoft.WindowsAzure.Jobs.Host;
-using Microsoft.WindowsAzure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
-using InternalWebJobTypes = Microsoft.WindowsAzure.Jobs.WebJobTypes;
+using InternalWebJobTypes = Microsoft.Azure.Jobs.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
 namespace Dashboard.ApiControllers
