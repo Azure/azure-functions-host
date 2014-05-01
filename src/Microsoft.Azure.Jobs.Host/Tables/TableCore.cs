@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AzureTables
 {
@@ -29,10 +30,10 @@ namespace AzureTables
         // Return null on exception ($$$ empty?)
         // if partitionKey == null, then read the entire table.
         // Else return the partition, sorted by row-key.
-        public abstract IEnumerable<GenericEntity> Enumerate(string partitionKey);
+        public abstract IEnumerable<DynamicTableEntity> Enumerate(string partitionKey);
 
         // Return null if not found. 
-        public abstract GenericEntity Lookup(string partitionKey, string rowKey);
+        public abstract DynamicTableEntity Lookup(string partitionKey, string rowKey);
 
         public abstract ITableCorePartitionWriter NewPartitionWriter(string partitionKey);
     }

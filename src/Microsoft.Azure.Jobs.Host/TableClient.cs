@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Xml.Linq;
-using AzureTables;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -127,31 +123,23 @@ namespace Microsoft.Azure.Jobs
 
             // Create the table client
             CloudTableClient tableClient = account.CreateCloudTableClient();
+            CloudTable table = tableClient.GetTableReference(tableName);
 
-            // Get the data service context
-            TableServiceContext serviceContext = tableClient.GetTableServiceContext();
-
-            PartitionRowKeyEntity specificEntity = null;
+            TableEntity specificEntity = new TableEntity(partitionKey, rowKey);
 
             try
             {
-                specificEntity =
-                    (from e in serviceContext.CreateQuery<PartitionRowKeyEntity>(tableName)
-                     where e.PartitionKey == partitionKey && e.RowKey == rowKey
-                     select e).FirstOrDefault();
+                table.Execute(TableOperation.Delete(specificEntity));
             }
-            catch (DataServiceQueryException)
+            catch (StorageException exception)
             {
-                // Throws if entry doesn't exist. 
-            }
+                RequestResult result = exception.RequestInformation;
 
-            if (specificEntity != null)
-            {
-                // Delete the entity
-                serviceContext.DeleteObject(specificEntity);
-
-                // Submit the operation to the table service
-                serviceContext.SaveChangesWithRetries();
+                // Ignore if entry doesn't exist.
+                if (result == null || result.HttpStatusCode != 404)
+                {
+                    throw;
+                }
             }
         }
 
@@ -164,18 +152,20 @@ namespace Microsoft.Azure.Jobs
             // http://www.windowsazure.com/en-us/develop/net/how-to-guides/table-services/#delete-entity
 
             CloudTableClient tableClient = account.CreateCloudTableClient();
-            TableServiceContext serviceContext = tableClient.GetTableServiceContext();
+            CloudTable table = tableClient.GetTableReference(tableName);
 
             // Loop and delete in batches
             while (true)
             {
-                IQueryable<PartitionRowKeyEntity> list;
+                IQueryable<DynamicTableEntity> list;
+
+                const int batchLimit = 100;
 
                 try
                 {
-                    list = from e in serviceContext.CreateQuery<PartitionRowKeyEntity>(tableName)
+                    list = (from e in table.CreateQuery<DynamicTableEntity>()
                            where e.PartitionKey == partitionKey
-                           select e;
+                           select e).Take(batchLimit);
                 }
                 catch
                 {
@@ -183,21 +173,19 @@ namespace Microsoft.Azure.Jobs
                     return;
                 }
 
-                int count = 0;
-
+                TableBatchOperation batch = new TableBatchOperation();
                 foreach (var item in list)
                 {
-                    count++;
                     // Delete the entity
-                    serviceContext.DeleteObject(item);
+                    batch.Delete(item);
                 }
-                if (count == 0)
+                if (batch.Count == 0)
                 {
                     return;
                 }
 
                 // Submit the operation to the table service
-                serviceContext.SaveChangesWithRetries();
+                table.ExecuteBatch(batch);
             }
         }
 

@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Client;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml;
 using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AzureTables
 {
@@ -106,7 +108,7 @@ namespace AzureTables
         {
             Flush();
 
-            IEnumerable<GenericEntity> results;
+            IEnumerable<DynamicTableEntity> results;
             try
             {
                 _timeRead.Start();
@@ -145,11 +147,49 @@ namespace AzureTables
             return list;
         }
 
-        private static IDictionary<string, string> Normalize(GenericEntity item)
+        private static IDictionary<string, string> Normalize(DynamicTableEntity item)
         {
-            item.properties["PartitionKey"] = item.PartitionKey;
-            item.properties["RowKey"] = item.RowKey;
-            return item.properties;
+            IDictionary<string, string> properties = new Dictionary<string, string>();
+
+            properties["PartitionKey"] = item.PartitionKey;
+            properties["RowKey"] = item.RowKey;
+            properties["Timestamp"] = item.Timestamp.DateTime.ToString();
+            properties["ETag"] = item.ETag;
+
+            foreach (KeyValuePair<string, EntityProperty> property in item.Properties)
+            {
+                if (!properties.ContainsKey(property.Key))
+                {
+                    properties.Add(property.Key, Normalize(property.Value));
+                }
+            }
+
+            return properties;
+        }
+
+        private static string Normalize(EntityProperty property)
+        {
+            switch (property.PropertyType)
+            {
+                case EdmType.String:
+                    return property.StringValue;
+                case EdmType.Binary:
+                    return property.BinaryValue != null ? Convert.ToBase64String(property.BinaryValue) : null;
+                case EdmType.Boolean:
+                    return property.BooleanValue.HasValue ? property.BooleanValue.Value.ToString().ToLowerInvariant() : null;
+                case EdmType.DateTime:
+                    return property.DateTimeOffsetValue.HasValue ? property.DateTimeOffsetValue.Value.UtcDateTime.ToString("O") : null;
+                case EdmType.Double:
+                    return property.DoubleValue.HasValue ? property.DoubleValue.ToString() : null;
+                case EdmType.Guid:
+                    return property.GuidValue.HasValue ? property.GuidValue.ToString() : null;
+                case EdmType.Int32:
+                    return property.Int32Value.HasValue ? property.Int32Value.ToString() : null;
+                case EdmType.Int64:
+                    return property.Int64Value.HasValue ? property.Int64Value.ToString() : null;
+                default:
+                    throw new InvalidOperationException(String.Format(CultureInfo.InvariantCulture, "Unsupported EDM property type {0}", property.PropertyType));
+            }
         }
 
         public IDictionary<string, string> Lookup(string partitionKey, string rowKey)
@@ -161,7 +201,7 @@ namespace AzureTables
                 _timeRead.Start();
                 _countRowsRead++;
 
-                GenericEntity all = _core.Lookup(partitionKey, rowKey);
+                DynamicTableEntity all = _core.Lookup(partitionKey, rowKey);
 
                 if (all == null)
                 {
@@ -286,12 +326,45 @@ namespace AzureTables
                 }
             }
 
+            private static bool IsSystemProperty(string name)
+            {
+                if (String.Equals("PartitionKey", name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                else if (String.Equals("RowKey", name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                else if (String.Equals("Timestamp", name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                else if (String.Equals("ETag", name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             public void WriteAsync(IDictionary<string, string> values, string partitionKey, string rowKey)
             {
                 ValidateSystemProperty(partitionKey);
                 ValidateSystemProperty(rowKey);
 
-                var entity = new GenericEntity { RowKey = rowKey, PartitionKey = partitionKey, properties = values };
+                DynamicTableEntity entity = new DynamicTableEntity(partitionKey, rowKey);
+                foreach (KeyValuePair<string, string> property in values)
+                {
+                    string propertyName = property.Key;
+
+                    if (!IsSystemProperty(propertyName))
+                    {
+                        entity.Properties.Add(propertyName, new EntityProperty(property.Value));
+                    }
+                }
                 _rowCounter++;
 
                 // All rows in the batch must have the same partition key.
@@ -330,20 +403,20 @@ namespace AzureTables
                     {
                         FlushAsync();
                     }
-                    catch (DataServiceRequestException de)
+                    catch (StorageException exception)
                     {
-                        var e = de.InnerException as DataServiceClientException;
-                        if (e != null)
+                        RequestResult result = exception.RequestInformation;
+                        if (result != null)
                         {
-                            if (e.StatusCode == 409)
+                            if (result.HttpStatusCode == 409)
                             {
                                 // Conflict. Duplicate keys. We don't get the specific duplicate key.
                                 // Server shouldn't do this if we support upsert.
                                 // (although an old emulator that doesn't yet support upsert may throw it).
-                                throw new InvalidOperationException(string.Format("Table has duplicate keys. {0}", e.Message));
+                                throw new InvalidOperationException(string.Format("Table has duplicate keys. {0}", exception.Message));
                             }
                         }
-                        throw de; // rethrow
+                        throw; // rethrow
                     }
                 }
             }

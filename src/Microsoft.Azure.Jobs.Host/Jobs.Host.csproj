@@ -302,7 +302,6 @@
     <Compile Include="Loggers\QueueCausalityHelper.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
     <Compile Include="Tables\AzureTableOfTValue.cs" />
-    <Compile Include="Tables\GenericEntity.cs" />
     <Compile Include="Tables\AzureTableOfTPartRowKeyTValue.cs" />
     <Compile Include="Tables\AzureTable.cs" />
     <Compile Include="Tables\AzureTableConstants.cs" />
@@ -313,7 +312,6 @@
     <Compile Include="Triggers\DictionaryExtensions.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="QueueClient.cs" />
-    <Compile Include="PartitionRowEntityKey.cs" />
     <Compile Include="TableClient.cs" />
     <Compile Include="Tables\WrapperEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\SimpleBinderProvider.cs" />

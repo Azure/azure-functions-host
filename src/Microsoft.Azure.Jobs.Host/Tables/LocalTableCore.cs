@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Azure.Jobs;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AzureTables
 {
@@ -10,7 +11,7 @@ namespace AzureTables
         class FakePartition : ITableCorePartitionWriter
         {
             private readonly string _partitionKey;
-            Dictionary<string, IDictionary<string, string>> _rows = new Dictionary<string, IDictionary<string, string>>();
+            Dictionary<string, DynamicTableEntity> _rows = new Dictionary<string, DynamicTableEntity>();
 
             public FakePartition(string partitionKey)
             {
@@ -22,40 +23,29 @@ namespace AzureTables
                 _rows.Remove(rowKey);
             }
 
-            public IEnumerable<GenericEntity> Enumerate()
+            public IEnumerable<DynamicTableEntity> Enumerate()
             {
                 foreach (var kv in _rows)
                 {
-                    yield return new GenericEntity
-                    {
-                        PartitionKey = _partitionKey,
-                        RowKey = kv.Key,
-                        properties = kv.Value
-                    };
+                    yield return kv.Value;
                 }
             }
 
-            public GenericEntity Lookup(string rowKey)
+            public DynamicTableEntity Lookup(string rowKey)
             {
-                IDictionary<string, string> values;
-                if (_rows.TryGetValue(rowKey, out values))
+                DynamicTableEntity value;
+                if (_rows.TryGetValue(rowKey, out value))
                 {
-                    return new GenericEntity
-                    {
-                        PartitionKey = _partitionKey,
-                        RowKey = rowKey,
-                        properties = values
-                    };
+                    return value;
                 }
                 return null;
             }
 
-            void ITableCorePartitionWriter.AddObject(GenericEntity entity)
+            void ITableCorePartitionWriter.AddObject(DynamicTableEntity entity)
             {
                 // Azure always adds an automatic property for the timestamp.
-                string timeStamp = ObjectBinderHelpers.SerializeDateTime(DateTime.UtcNow);
-                entity.properties["Timestamp"] = timeStamp;
-                _rows[entity.RowKey] = entity.properties;
+                entity.Timestamp = DateTimeOffset.UtcNow;
+                _rows[entity.RowKey] = entity;
             }
 
             void ITableCorePartitionWriter.Flush()
@@ -90,7 +80,7 @@ namespace AzureTables
             }
         }
 
-        public override IEnumerable<GenericEntity> Enumerate(string partitionKey)
+        public override IEnumerable<DynamicTableEntity> Enumerate(string partitionKey)
         {
             if (partitionKey == null)
             {
@@ -116,7 +106,7 @@ namespace AzureTables
             }
         }
 
-        public override GenericEntity Lookup(string partitionKey, string rowKey)
+        public override DynamicTableEntity Lookup(string partitionKey, string rowKey)
         {
             FakePartition part;
             if (_table.TryGetValue(partitionKey, out part))

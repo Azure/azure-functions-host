@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Linq;
-using System.Xml.Linq;
 using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table.Queryable;
 
 namespace AzureTables
 {
@@ -18,7 +16,7 @@ namespace AzureTables
         private readonly string _tableName;
 
         private readonly CloudTableClient _client;
-        private CloudTable _table;
+        private readonly CloudTable _table;
 
         public LiveTableCore(CloudStorageAccount account, string tableName)
         {
@@ -34,58 +32,29 @@ namespace AzureTables
 
         public override ITableCorePartitionWriter NewPartitionWriter(string partitionKey)
         {
-            return new AzureTableWriteCorePartition(this, partitionKey);
+            return new AzureTableWriteCorePartition(_table, partitionKey);
         }
 
         class AzureTableWriteCorePartition : ITableCorePartitionWriter
         {
-            private readonly LiveTableCore _outer;
-            private TableServiceContext _ctx = null;
+            private readonly CloudTable _table;
             private readonly string _partitionKey;
+            private readonly TableBatchOperation _batch;
 
-            public AzureTableWriteCorePartition(LiveTableCore outer, string partitionKey)
+            public AzureTableWriteCorePartition(CloudTable table, string partitionKey)
             {
-                _outer = outer;
+                _table = table;
                 _partitionKey = partitionKey;
-                _ctx = _outer._client.GetTableServiceContext();
-                // Atom format is require to use the WritingEntity event.
-                _ctx.Format.UseAtom();
-                _ctx.WritingEntity += new EventHandler<ReadingWritingEntityEventArgs>(ctx_WritingEntity);
-            }
-
-            private void ctx_WritingEntity(object sender, ReadingWritingEntityEventArgs args)
-            {
-                GenericEntity entity = args.Entity as GenericEntity;
-                if (entity == null)
-                {
-                    return;
-                }
-
-                XElement properties = args.Data.Descendants(AzureTableConstants.MetadataNamespace + "properties").First();
-
-                foreach (var kv in entity.properties)
-                {
-                    // framework will handle row + partition keys. 
-                    string columnName = kv.Key;
-                    string edmTypeName = "Edm.String";
-                    string value = kv.Value;
-                    XElement e = new XElement(AzureTableConstants.DataNamespace + columnName, value);
-                    e.Add(new XAttribute(AzureTableConstants.MetadataNamespace + "type", edmTypeName));
-
-                    properties.Add(e);
-                }
+                _batch = new TableBatchOperation();
             }
 
             void ITableCorePartitionWriter.Flush()
             {
-                var ctx = _ctx;
-                _ctx = null;
-
-                var opts = SaveChangesOptions.Batch | SaveChangesOptions.ReplaceOnUpdate;
-                var result = ctx.SaveChangesWithRetries(opts);
+                _table.ExecuteBatch(_batch);
+                _batch.Clear();
             }
 
-            void ITableCorePartitionWriter.AddObject(GenericEntity entity)
+            void ITableCorePartitionWriter.AddObject(DynamicTableEntity entity)
             {
                 if (entity.PartitionKey != _partitionKey)
                 {
@@ -93,8 +62,7 @@ namespace AzureTables
                     throw new InvalidOperationException("Partition key mismatch");
                 }
 
-                _ctx.AttachTo(_outer._tableName, entity);
-                _ctx.UpdateObject(entity);
+                _batch.InsertOrReplace(entity);
             }
         }
 
@@ -120,43 +88,28 @@ namespace AzureTables
             TableClient.DeleteTableRow(_account, _tableName, partitionKey, rowKey);
         }
 
-        public override IEnumerable<GenericEntity> Enumerate(string partitionKey)
+        public override IEnumerable<DynamicTableEntity> Enumerate(string partitionKey)
         {
             // Azure will special case this lookup pattern for a single entity. 
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try
             {
-                TableServiceContext ctx = _client.GetTableServiceContext();
-                // Atom format is require to use the ReadingEntity event.
-                ctx.Format.UseAtom();
-                ctx.IgnoreMissingProperties = true;
-                ctx.ReadingEntity += OnReadingEntity;
 
-                IQueryable<GenericEntity> query1;
+                IQueryable<DynamicTableEntity> query;
                 if (partitionKey == null)
                 {
-                    query1 = from o in ctx.CreateQuery<GenericEntity>(_tableName)
-                             select o;
+                    query = from o in _table.CreateQuery<DynamicTableEntity>()
+                            select o;
                 }
                 else
                 {
-                    query1 = from o in ctx.CreateQuery<GenericEntity>(_tableName)
-                             where o.PartitionKey == partitionKey
-                             select o;
+                    query = from o in _table.CreateQuery<DynamicTableEntity>()
+                            where o.PartitionKey == partitionKey
+                            select o;
                 }
-
-                // Careful, must call AsTableServiceQuery() to get more than 1000 rows. 
-                // http://blogs.msdn.com/b/rihamselim/archive/2011/01/06/retrieving-more-the-1000-row-from-windows-azure-storage.aspx
-                // Query will create an IQueryable and try to retrieve all rows at once. 
-                TableServiceQuery<GenericEntity> query2 = query1.AsTableServiceQuery(ctx);
-
-                // But then must call Execute to get an deferred execution. 
-                // http://convective.wordpress.com/2010/02/06/queries-in-azure-tables/
-                IEnumerable<GenericEntity> results = query2.Execute(); // maintain deferred
-
-                return results;
+                return query.AsTableQuery().Execute();
             }
-            catch (DataServiceQueryException)
+            catch (StorageException)
             {
                 // Not found. 
                 return null;
@@ -164,65 +117,21 @@ namespace AzureTables
         }
 
         [DebuggerNonUserCode]
-        public override GenericEntity Lookup(string partitionKey, string rowKey)
+        public override DynamicTableEntity Lookup(string partitionKey, string rowKey)
         {
             // Azure will special case this lookup pattern for a single entity. 
             // See http://blogs.msdn.com/b/windowsazurestorage/archive/2010/11/06/how-to-get-most-out-of-windows-azure-tables.aspx 
             try
             {
-                TableServiceContext ctx = _client.GetTableServiceContext();
-                // Atom format is require to use the ReadingEntity event.
-                ctx.Format.UseAtom();
-                ctx.IgnoreMissingProperties = true;
-                ctx.ReadingEntity += OnReadingEntity;
-
-                var x = from o in ctx.CreateQuery<GenericEntity>(_tableName)
+                var x = from o in _table.CreateQuery<DynamicTableEntity>()
                         where o.PartitionKey == partitionKey && o.RowKey == rowKey
                         select o;
-                GenericEntity all = x.First();
-                return all;
+                return x.FirstOrDefault();
             }
-            catch (DataServiceQueryException)
+            catch (StorageException)
             {
                 // Not found. 
                 return null;
-            }
-        }
-
-        // This manually parses the XML that comes back.
-        // This function uses code from this blog entry:
-        // http://blogs.msdn.com/b/avkashchauhan/archive/2011/03/28/reading-and-saving-table-storage-entities-without-knowing-the-schema-or-updating-tablestorageentity-schema-at-runtime.aspx
-        public static void OnReadingEntity(object sender, ReadingWritingEntityEventArgs args)
-        {
-            GenericEntity entity = args.Entity as GenericEntity;
-            if (entity == null)
-            {
-                return;
-            }
-
-            // read each property, type and value in the payload   
-            var properties = args.Entity.GetType().GetProperties();
-            var q = from p in args.Data.Element(AzureTableConstants.AtomNamespace + "content")
-                                    .Element(AzureTableConstants.MetadataNamespace + "properties")
-                                    .Elements()
-                    where properties.All(pp => pp.Name != p.Name.LocalName)
-                    select new
-                    {
-                        Name = p.Name.LocalName,
-                        IsNull = string.Equals("true", p.Attribute(AzureTableConstants.MetadataNamespace + "null") == null ? null : p.Attribute(AzureTableConstants.MetadataNamespace + "null").Value, StringComparison.OrdinalIgnoreCase),
-                        TypeName = p.Attribute(AzureTableConstants.MetadataNamespace + "type") == null ? null : p.Attribute(AzureTableConstants.MetadataNamespace + "type").Value,
-                        p.Value
-                    };
-
-            foreach (var dp in q)
-            {
-                // $$$ Could do type marshaling here. 
-                string value = dp.Value;
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    value = string.Empty;
-                }
-                entity.properties[dp.Name] = dp.Value;
             }
         }
     }

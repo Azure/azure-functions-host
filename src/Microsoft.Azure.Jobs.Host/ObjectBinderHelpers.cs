@@ -150,6 +150,11 @@ namespace Microsoft.Azure.Jobs
         public static string SerializeObject(object value, Type type)
         {
             string result;
+            if (type == typeof(DateTimeOffset?) ||
+                type == typeof(DateTimeOffset))
+            {
+                result = SerializeDateTimeOffset((DateTimeOffset)value);
+            }
             if (type == typeof(DateTime?) ||
                 type == typeof(DateTime))
             {
@@ -193,7 +198,16 @@ namespace Microsoft.Azure.Jobs
         public static object DeserializeObject(string str, Type type)
         {
             object value;
-            if (type == typeof(DateTime))
+            if (type == typeof(DateTimeOffset))
+            {
+                value = DeserializeDateTimeOffset(str);
+            }
+            else if (type == typeof(DateTimeOffset?))
+            {
+                DateTimeOffset? v2 = DeserializeDateTimeOffset(str);
+                value = v2;
+            }
+            else if (type == typeof(DateTime))
             {
                 value = DeserializeDateTime(str);
             }
@@ -232,6 +246,11 @@ namespace Microsoft.Azure.Jobs
             return date.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
         }
 
+        public static string SerializeDateTimeOffset(DateTimeOffset date)
+        {
+            return date.UtcDateTime.ToString("o", CultureInfo.InvariantCulture);
+        }
+
         public static DateTime DeserializeDateTime(string s)
         {
             // Parse will read in a variety of formats (even ones not written without timezone info)
@@ -243,6 +262,11 @@ namespace Microsoft.Azure.Jobs
                 return DateTime.SpecifyKind(x, DateTimeKind.Utc);
             }
             return x.ToUniversalTime();
+        }
+
+        public static DateTimeOffset DeserializeDateTimeOffset(string s)
+        {
+            return DateTimeOffset.Parse(s, CultureInfo.InvariantCulture);
         }
 
         // We have 3 parsing formats:
