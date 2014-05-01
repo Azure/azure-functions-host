@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Services.Client;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -9,7 +8,6 @@ using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
 
 namespace Microsoft.Azure.Jobs.Host.Storage
 {
@@ -105,72 +103,56 @@ namespace Microsoft.Azure.Jobs.Host.Storage
 
             public ICloudTable GetTableReference(string tableName)
             {
-                return new Table(_sdk, tableName);
+                CloudTable sdkTable = _sdk.GetTableReference(tableName);
+                return new Table(sdkTable);
             }
         }
 
         private class Table : ICloudTable
         {
-            private readonly CloudTableClient _sdk;
-            private readonly CloudTable _table;
-            private readonly string _tableName;
+            private readonly CloudTable _sdk;
 
-            public Table(CloudTableClient sdk, string tableName)
+            public Table(CloudTable sdk)
             {
                 _sdk = sdk;
-                _table = sdk.GetTableReference(tableName);
-                _tableName = tableName;
             }
 
-            public T GetOrInsert<T>(T entity) where T : TableServiceEntity
+            public T GetOrInsert<T>(T entity) where T : ITableEntity, new()
             {
                 if (entity == null)
                 {
                     throw new ArgumentNullException("entity");
                 }
 
-                _table.CreateIfNotExists();
-
-                DataServiceContext insertContext = _sdk.GetTableServiceContext();
-
-                // First, try to insert.
-                insertContext.AddObject(_tableName, entity);
+                _sdk.CreateIfNotExists();
 
                 try
                 {
-                    insertContext.SaveChanges();
+                    // First, try to insert.
+                    _sdk.Execute(TableOperation.Insert(entity));
                     return entity;
                 }
-                catch (DataServiceRequestException exception)
+                catch (StorageException exception)
                 {
-                    DataServiceResponse response = exception.Response;
+                    RequestResult result = exception.RequestInformation;
 
-                    if (response != null)
+                    // If the insert failed because the entity already exists, try to get instead.
+                    if (result != null && result.HttpStatusCode == 409)
                     {
-                        OperationResponse firstOperation = response.FirstOrDefault();
+                        IQueryable queryable = _sdk.CreateQuery<T>();
+                        Debug.Assert(queryable != null);
+                        IQueryable<T> query = from T item in queryable
+                                              where item.PartitionKey == entity.PartitionKey
+                                              && item.RowKey == entity.RowKey
+                                              select item;
+                        T existingItem = query.FirstOrDefault();
 
-                        if (firstOperation != null)
+                        // The get can fail if the object existed at the time of insert but was deleted before
+                        // the get executed. At this point, give up. We already tried to insert once, and that
+                        // already failed, so just propogate the original exception.
+                        if (existingItem != null)
                         {
-                            // If the insert failed because the entity already exists, try to get instead.
-                            if (firstOperation.StatusCode == 409)
-                            {
-                                DataServiceContext getContext = _sdk.GetTableServiceContext();
-                                IQueryable queryable = getContext.CreateQuery<T>(_tableName);
-                                Debug.Assert(queryable != null);
-                                IQueryable<T> query = from T item in queryable
-                                                      where item.PartitionKey == entity.PartitionKey
-                                                      && item.RowKey == entity.RowKey
-                                                      select item;
-                                T existingItem = query.FirstOrDefault();
-
-                                // The get can fail if the object existed at the time of insert but was deleted before
-                                // the get executed. At this point, give up. We already tried to insert once, and that
-                                // already failed, so just propogate the original exception.
-                                if (existingItem != null)
-                                {
-                                    return existingItem;
-                                }
-                            }
+                            return existingItem;
                         }
                     }
 
@@ -178,21 +160,17 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 }
             }
 
-            public void InsertEntity<T>(T entity) where T : TableServiceEntity
+            public void InsertEntity<T>(T entity) where T : ITableEntity
             {
                 if (entity == null)
                 {
                     throw new ArgumentNullException("entity");
                 }
 
-                TableServiceContext context = _sdk.GetTableServiceContext();
-                _table.CreateIfNotExists();
-
-                context.AddObject(_tableName, entity);
-                context.SaveChangesWithRetries();
+                _sdk.Execute(TableOperation.Insert(entity));
             }
 
-            public IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : TableServiceEntity
+            public IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : ITableEntity, new()
             {
                 // avoid utterly inefficient queries
                 const int maxPageSize = 50;
@@ -202,8 +180,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                         "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
                 }
 
-                TableServiceContext context = _sdk.GetTableServiceContext();
-                IQueryable<T> q = context.CreateQuery<T>(_tableName);
+                IQueryable<T> q = _sdk.CreateQuery<T>();
                 foreach (var queryModifier in queryModifiers)
                 {
                     q = queryModifier.Apply(q);
@@ -212,18 +189,20 @@ namespace Microsoft.Azure.Jobs.Host.Storage
 
                 try
                 {
-                    return q.AsTableServiceQuery(context).Execute().ToArray();
+                    return q.ToArray();
                 }
-                catch (DataServiceQueryException queryException)
+                catch (StorageException queryException)
                 {
+                    RequestResult result = queryException.RequestInformation;
+
                     // unless it is 404, do not recover
-                    if (queryException.Response == null || queryException.Response.StatusCode != 404)
+                    if (result == null || result.HttpStatusCode != 404)
                     {
                         throw;
                     }
                     try
                     {
-                        _table.Create();
+                        _sdk.Create();
                     }
                     catch (StorageException createException)
                     {
@@ -233,7 +212,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                             throw;
                         }
                     }
-                    return q.AsTableServiceQuery(context).Execute().ToArray();
+                    return q.ToArray();
                 }
             }
         }

@@ -15,7 +15,7 @@ namespace Microsoft.Azure.Jobs
         // User description of the function
         public string Description { get; set; }
 
-        public DateTime? HostVersion { get; set; }
+        public DateTimeOffset? HostVersion { get; set; }
 
         // This maps to the builtin property on azure Tables, so it will get set for us.
         public DateTime Timestamp { get; set; }

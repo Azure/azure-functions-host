@@ -3,7 +3,7 @@ using System.Linq;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -103,19 +103,16 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 })));
                 table.DeleteIfExists();
                 table.Create();
-                TableServiceContext context = tableClient.GetTableServiceContext();
-                context.AddObject(tableName, new SimpleEntity
+                table.Execute(TableOperation.Insert(new SimpleEntity
                 {
                     PartitionKey = partitionKey,
                     RowKey = rowKey,
                     Value = 123
-                });
-                context.SaveChanges();
+                }));
 
                 host.Host.RunOneIteration();
 
-                context = tableClient.GetTableServiceContext();
-                SimpleEntity entity = (from item in context.CreateQuery<SimpleEntity>(tableName)
+                SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()
                                        where item.PartitionKey == partitionKey && item.RowKey == rowKey
                                        select item).FirstOrDefault();
                 Assert.Equal(456, entity.Value);
@@ -180,7 +177,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
     }
 
-    public class SimpleEntity : TableServiceEntity
+    public class SimpleEntity : TableEntity
     {
         public int Value { get; set; }
     }

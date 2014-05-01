@@ -1,11 +1,11 @@
 ﻿using System.Linq;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Storage.Table
 {
     internal interface IQueryModifier
     {
-        IQueryable<T> Apply<T>(IQueryable<T> q) where T : TableServiceEntity;
+        IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity;
     }
 
     internal class PartitionKeyEquals : IQueryModifier
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
             _partitionKey = patitionKey;
         }
 
-        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : TableServiceEntity
+        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
         {
             return q.Where(e => e.PartitionKey == _partitionKey);
         }
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
             _rowKeyExclusiveUpperBound = rowKeyExclusiveUpperBound;
         }
 
-        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : TableServiceEntity
+        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
         {
             return q.Where(e => e.RowKey.CompareTo(_rowKeyExclusiveUpperBound) < 0);
         }
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
             _rowKeyExclusiveLowerBound = rowKeyExclusiveLowerBound;
         }
 
-        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : TableServiceEntity
+        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
         {
             return q.Where(e => e.RowKey.CompareTo(_rowKeyExclusiveLowerBound) > 0);
         }
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
             _rowKeyInclusiveLowerBound = rowKeyInclusiveLowerBound;
         }
 
-        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : TableServiceEntity
+        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
         {
             return q.Where(e => e.RowKey.CompareTo(_rowKeyInclusiveLowerBound) >= 0);
         }

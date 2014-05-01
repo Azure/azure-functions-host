@@ -4,7 +4,7 @@ using System.Data.Services.Common;
 using System.Linq;
 using AzureTables;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -96,8 +96,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal("Bar", results[0].Value);
         }
 
-        [DataServiceKey("PartitionKey", "RowKey")]
-        public class TableEntry : TableServiceEntity
+        public class TableEntry : TableEntity
         {
             public string myvalue { get; set; }
         }

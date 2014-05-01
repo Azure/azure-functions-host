@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Protocols
 {
@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// in Future releases we will have the dashboard percolate and clean the raw data sent from the host, in and then we will converge all
     /// invocation indexes to a common shape, and normalize this class.
     /// </remarks>
-    internal class FunctionInvocationIndexEntity : TableServiceEntity
+    internal class FunctionInvocationIndexEntity : TableEntity
     {
         public Guid InvocationId { get; set; }
 

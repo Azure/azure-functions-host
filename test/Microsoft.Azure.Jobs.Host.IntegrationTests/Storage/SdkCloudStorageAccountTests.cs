@@ -6,10 +6,9 @@ using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage.Queues
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
 {
     public class SdkCloudStorageAccountTests
     {
@@ -130,7 +129,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage.Queues
 
             CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
             CloudTable sdkTable = sdkClient.GetTableReference(tableName);
-            TableServiceContext sdkContext = sdkClient.GetTableServiceContext();
             sdkTable.CreateIfNotExists();
 
             try
@@ -168,7 +166,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage.Queues
 
             CloudTableClient sdkClient = sdkAccount.CreateCloudTableClient();
             CloudTable sdkTable = sdkClient.GetTableReference(tableName);
-            TableServiceContext sdkContext = sdkClient.GetTableServiceContext();
             sdkTable.CreateIfNotExists();
             try
             {
@@ -178,8 +175,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage.Queues
                     RowKey = "RK",
                     Value = "ExistingValue"
                 };
-                sdkContext.AddObject(tableName, existingEntity);
-                sdkContext.SaveChanges();
+                sdkTable.Execute(TableOperation.Insert(existingEntity));
 
                 ICloudStorageAccount product = CreateProductUnderTest(sdkAccount);
                 ICloudTableClient client = product.CreateCloudTableClient();
@@ -268,7 +264,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage.Queues
             return String.Format("Test{0}{1:N}", infix, Guid.NewGuid());
         }
 
-        private class SimpleEntity : TableServiceEntity
+        private class SimpleEntity : TableEntity
         {
             public string Value { get; set; }
         }

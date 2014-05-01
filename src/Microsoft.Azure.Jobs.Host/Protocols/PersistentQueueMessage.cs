@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         public string Type { get; set; }
 
         [JsonIgnore]
-        public DateTime EnqueuedOn { get; set; }
+        public DateTimeOffset EnqueuedOn { get; set; }
 
         [JsonIgnore]
         public string PopReceipt { get; set; }

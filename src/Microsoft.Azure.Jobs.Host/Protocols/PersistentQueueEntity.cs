@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Globalization;
-using Microsoft.WindowsAzure.Storage.Table.DataServices;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Protocols
 {
-    internal class PersistentQueueEntity : TableServiceEntity
+    internal class PersistentQueueEntity : TableEntity
     {
         public Guid MessageId { get; set; }
 
-        public DateTime? OriginalTimestamp { get; set; }
+        public DateTimeOffset? OriginalTimestamp { get; set; }
 
         public static string GetPartitionKey()
         {

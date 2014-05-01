@@ -111,6 +111,7 @@
     <None Include="..\..\src\Common\PublicKey.snk">
       <Link>Properties\PublicKey.snk</Link>
     </None>
+    <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

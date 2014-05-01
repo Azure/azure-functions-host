@@ -75,7 +75,7 @@ namespace Dashboard.Indexers
 
             IEnumerable<FunctionDefinition> existingFunctions = _functionTable.ReadAll().Where(f => f.HostId == hostId);
 
-            DateTime hostInstanceCreatedOn = message.EnqueuedOn;
+            DateTimeOffset hostInstanceCreatedOn = message.EnqueuedOn;
 
             IEnumerable<FunctionDefinition> functionsToDelete = existingFunctions.Where(f => !f.HostVersion.HasValue || f.HostVersion.Value < hostInstanceCreatedOn);
 
@@ -84,7 +84,7 @@ namespace Dashboard.Indexers
                 _functionTable.Delete(deleteFunction);
             }
 
-            DateTime mostRecentHostInstanceDate = existingFunctions.Where(f => f.HostVersion.HasValue).Select(f => f.HostVersion.Value).OrderByDescending(d => d).FirstOrDefault();
+            DateTimeOffset mostRecentHostInstanceDate = existingFunctions.Where(f => f.HostVersion.HasValue).Select(f => f.HostVersion.Value).OrderByDescending(d => d).FirstOrDefault();
 
             if (hostInstanceCreatedOn > mostRecentHostInstanceDate)
             {
