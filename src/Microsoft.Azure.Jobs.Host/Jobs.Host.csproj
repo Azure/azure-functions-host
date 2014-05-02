@@ -240,7 +240,7 @@
     <Compile Include="Protocols\NullProcessTerminationSignalReader.cs" />
     <Compile Include="Protocols\ProcessTerminationSignalReader.cs" />
     <Compile Include="Runners\IStorageValidator.cs" />
-    <Compile Include="Indexers\ITypeLocator.cs" />
+    <Compile Include="ITypeLocator.cs" />
     <Compile Include="StringConverter.cs" />
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocation.cs" />

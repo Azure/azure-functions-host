@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs
 
             IFunctionTableLookup functionTableLookup;
 
-            var types = typeLocator.FindTypes().ToArray();
+            var types = typeLocator.GetTypes().ToArray();
             AddCustomerBinders(config, types);
             functionTableLookup = new FunctionStore(dataConnectionString, serviceBusDataConnectionString, config, types);
 

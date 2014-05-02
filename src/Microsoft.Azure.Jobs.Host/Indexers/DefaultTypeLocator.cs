@@ -26,20 +26,22 @@ namespace Microsoft.Azure.Jobs
             return false;
         }
 
-        public IEnumerable<Type> FindTypes()
+        public IReadOnlyCollection<Type> GetTypes()
         {
+            List<Type> allTypes = new List<Type>();
+
             var assemblies = GetUserAssemblies();
             foreach (var assembly in assemblies)
             {
-                var types = FindTypes(assembly);
-                if (types != null)
+                var assemblyTypes = FindTypes(assembly);
+
+                if (assemblyTypes != null)
                 {
-                    foreach (var type in types)
-                    {
-                        yield return type;
-                    }
+                    allTypes.AddRange(assemblyTypes);
                 }
             }
+
+            return allTypes;
         }
 
         private static IEnumerable<Assembly> GetUserAssemblies()

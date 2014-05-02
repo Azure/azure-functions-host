@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
             _types = types;
         }
 
-        public IEnumerable<Type> FindTypes()
+        public IReadOnlyCollection<Type> GetTypes()
         {
             return _types;
         }

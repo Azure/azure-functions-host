@@ -10,11 +10,11 @@ namespace Microsoft.Azure.Jobs
         private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new DefaultConnectionStringProvider();
 
         private readonly IStorageValidator _storageValidator = new DefaultStorageValidator();
-        private readonly ITypeLocator _typeLocator = new DefaultTypeLocator();
 
         private string _dataConnectionString;
         private string _runtimeConnectionString;
         private bool _runtimeConnectionStringMayBeNullOrEmpty;
+        private ITypeLocator _typeLocator = new DefaultTypeLocator();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -78,14 +78,16 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
+        /// <summary>Gets or sets the type locator.</summary>
+        public ITypeLocator TypeLocator
+        {
+            get { return _typeLocator; }
+            set { _typeLocator = value; }
+        }
+
         IStorageValidator IJobHostConfiguration.StorageValidator
         {
             get { return _storageValidator; }
-        }
-
-        ITypeLocator IJobHostConfiguration.TypeLocator
-        {
-            get { return _typeLocator; }
         }
 
         IConnectionStringProvider IJobHostConfiguration.ConnectionStringProvider
