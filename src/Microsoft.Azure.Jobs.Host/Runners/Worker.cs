@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -68,7 +69,7 @@ namespace Microsoft.Azure.Jobs
                 map.AddTriggers(String.Empty, _invokeTrigger);
             }
 
-            _listener = new Listener(map, new MyInvoker(this));
+            _listener = new Listener(map, new MyInvoker(this), this);
         }
 
         private int _triggerCount = 0;
@@ -119,13 +120,18 @@ namespace Microsoft.Azure.Jobs
         {
             var instance = GetFunctionInvocation(func, msg);
 
+            OnNewInvokeableItem(instance, cancellationToken);
+        }
+
+        public void OnNewInvokeableItem(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+        {
             if (instance != null)
             {
                 _triggerCount++;
                 _executor.Execute(instance, cancellationToken);
             }
         }
-
+        
         private void InvokeFromDashboard(CloudQueueMessage message, CancellationToken cancellationToken)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);

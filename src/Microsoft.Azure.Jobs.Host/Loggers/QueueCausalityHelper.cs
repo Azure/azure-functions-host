@@ -34,7 +34,6 @@ namespace Microsoft.Azure.Jobs
         {
             string json = msg.AsString;
             IDictionary<string, JToken> jsonObject;
-
             try
             {
                 jsonObject = JObject.Parse(json);

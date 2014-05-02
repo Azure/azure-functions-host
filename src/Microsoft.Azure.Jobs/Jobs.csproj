@@ -57,6 +57,7 @@
     <Compile Include="QueueOutputAttribute.cs" />
     <Compile Include="QueueInputAttribute.cs" />
     <Compile Include="DescriptionAttribute.cs" />
+    <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

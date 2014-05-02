@@ -39,6 +39,7 @@ namespace Microsoft.Azure.Jobs.UnitTests
             var assembly = typeof(QueueInputAttribute).Assembly;
 
             var expected = new[] {
+                "ServiceBusAttribute",
                 "BlobInputAttribute",
                 "BlobOutputAttribute",
                 "DescriptionAttribute",

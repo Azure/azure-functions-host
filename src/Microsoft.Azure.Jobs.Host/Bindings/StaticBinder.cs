@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Globalization;
+using System.Linq;
 using System.Reflection;
 
 namespace Microsoft.Azure.Jobs
@@ -24,12 +24,15 @@ namespace Microsoft.Azure.Jobs
                 }
             }
 
-            var t = typeof(StaticBinder);
-            MethodInfo method = t.GetMethod("Bind",
-                BindingFlags.NonPublic | BindingFlags.Static, null,
-                new Type[] { 
-                attr.GetType(), typeof(ParameterInfo)
-            }, null);
+            var types = new[] { typeof(StaticBinder), ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBusStaticBinder") };
+            MethodInfo method = (from t in types
+                where t != null
+                select t.GetMethod("Bind",
+                    BindingFlags.NonPublic | BindingFlags.Static, null,
+                    new Type[]
+                    {
+                        attr.GetType(), typeof (ParameterInfo)
+                    }, null)).FirstOrDefault(m => m!=null);
 
             if (method == null)
             {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -18,8 +19,12 @@ namespace Microsoft.Azure.Jobs
 
         private IBlobListener _blobListener;
 
-        public Listener(ITriggerMap map, ITriggerInvoke invoker)
+        private Action<CancellationToken> pollServiceBus = _ => { };
+        private Action<ServiceBusTrigger> mapServiceBusTrigger = _ => { };
+
+        public Listener(ITriggerMap map, ITriggerInvoke invoker, Worker worker)
         {
+            InitServiceBusListener(worker);
             _invoker = invoker;
 
             _map = new Dictionary<CloudBlobContainer, List<BlobTrigger>>(new CloudContainerComparer());
@@ -48,6 +53,23 @@ namespace Microsoft.Azure.Jobs
                 // highly scalable, non-deterministic, less responsive.
                 _blobListener = new BlobListener(keys);
             }
+        }
+
+        private void InitServiceBusListener(Worker worker)
+        {
+            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBusListener");
+            if (type == null)
+            {
+                return;
+            }
+
+            var serviceBusListener = Activator.CreateInstance(type, new object[] {worker});
+
+            var serviceBusPollMethod = type.GetMethod("PollServiceBus");
+            pollServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] {token});
+
+            var serviceBusMapMethod = type.GetMethod("Map");
+            mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] {trigger});
         }
 
         private void AddTriggers(string scope, Trigger[] funcs)
@@ -80,6 +102,9 @@ namespace Microsoft.Azure.Jobs
 
                     _mapQueues.GetOrCreate(queue).Add(queueTrigger);
                 }
+
+                var serviceBusTrigger = func as ServiceBusTrigger;
+                mapServiceBusTrigger(serviceBusTrigger);
             }
         }
 
@@ -101,6 +126,7 @@ namespace Microsoft.Azure.Jobs
             {
                 PollBlobs(token);
                 PollQueues(token);
+                pollServiceBus(token);
             }
             catch (StorageException)
             {

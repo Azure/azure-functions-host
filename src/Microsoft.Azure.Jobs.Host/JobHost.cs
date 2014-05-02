@@ -22,11 +22,13 @@ namespace Microsoft.Azure.Jobs
         // The user account that we listen on.
         // This is the account that the bindings resolve against.
         private readonly string _dataConnectionString;
+        private readonly string _serviceBusDataConnectionString;
 
         private JobHostContext _hostContext;
 
         internal const string LoggingConnectionStringName = "AzureJobsRuntime";
         internal const string DataConnectionStringName = "AzureJobsData";
+        internal const string ServiceBusConnectionStringName = "AzureJobsServiceBusData";
 
         /// <summary>
         /// Initializes a new instance of the JobHost class, using a Microsoft Azure Storage connection string located
@@ -40,6 +42,7 @@ namespace Microsoft.Azure.Jobs
         internal JobHost(JobHostTestHooks hooks)
         {
             _dataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(DataConnectionStringName);
+            _serviceBusDataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
             _runtimeConnectionString = hooks.ConnectionStringProvider.GetConnectionString(LoggingConnectionStringName);
 
             Initialize(hooks, runtimeConnectionStringCanBeNullOrEmpty: false);
@@ -155,7 +158,7 @@ namespace Microsoft.Azure.Jobs
 
         private JobHostContext GetHostContext(ITypeLocator typesLocator)
         {
-            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, typesLocator);
+            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, _serviceBusDataConnectionString, typesLocator);
             return hostContext;
         }
 

@@ -6,7 +6,8 @@ namespace Microsoft.Azure.Jobs
     // There are auxillary interfaces (ITrigger*) which provide additional information specific to certain binding triggers.
     internal interface IRuntimeBindingInputs
     {
-        IDictionary<string, string> NameParameters { get; } 
+        IDictionary<string, string> NameParameters { get; }
         string AccountConnectionString { get; }
+        string ServiceBusConnectionString { get; }
     }
 }

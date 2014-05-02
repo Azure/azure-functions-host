@@ -12,12 +12,12 @@ namespace Microsoft.Azure.Jobs.Internals
 
         // dataConnectionString - the account that the functions will bind against. 
         // Index all methods in the types provided by the locator
-        public FunctionStore(string dataConnectionString, IConfiguration config, IEnumerable<Type> types)
+        public FunctionStore(string dataConnectionString, string serviceBusDataConnectionString, IConfiguration config, IEnumerable<Type> types)
         {
             var indexer = Init(dataConnectionString, config);
             foreach (Type t in types)
             {
-                indexer.IndexType(m => OnApplyLocationInfo(dataConnectionString, m), t);
+                indexer.IndexType(m => OnApplyLocationInfo(dataConnectionString, serviceBusDataConnectionString, m), t);
             }
         }
         
@@ -57,11 +57,12 @@ namespace Microsoft.Azure.Jobs.Internals
             return accountName + "." + appName;
         }
 
-        private FunctionLocation OnApplyLocationInfo(string accountConnectionString, MethodInfo method)
+        private FunctionLocation OnApplyLocationInfo(string accountConnectionString, string serviceBusDataConnectionString, MethodInfo method)
         {
             var loc = new MethodInfoFunctionLocation(method)
             {
                 AccountConnectionString = accountConnectionString,
+                ServiceBusConnectionString = serviceBusDataConnectionString
             };
 
             loc.Id = _prefix + "." + loc.Id;

@@ -54,9 +54,8 @@
     <Reference Include="Microsoft.Data.Services.Client, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.6.0\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Configuration, Version=1.8.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0\lib\net35-full\Microsoft.WindowsAzure.Configuration.dll</HintPath>
+    <Reference Include="Microsoft.WindowsAzure.Configuration, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.2.0.2.0\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.WindowsAzure.Storage, Version=3.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -68,6 +67,8 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Spatial, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Spatial.5.6.0\lib\net40\System.Spatial.dll</HintPath>
     </Reference>
@@ -95,6 +96,7 @@
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\RuntimeBindings\TableEntityParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\UnknownInvokeParameterRuntimeBinding.cs" />
+    <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
     <Compile Include="Bindings\SimpleWatcher.cs" />
     <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
@@ -171,6 +173,7 @@
     <Compile Include="Runners\IConnectionStringProvider.cs" />
     <Compile Include="Timers\LinearSpeedupTimerCommand.cs" />
     <Compile Include="Bindings\RuntimeBindings\FailedParameterRuntimeBinding.cs" />
+    <Compile Include="Triggers\ServiceBusTrigger.cs" />
     <Compile Include="Triggers\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Runners\TerminateProcessUponRequestCommand.cs" />

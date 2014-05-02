@@ -28,7 +28,7 @@ namespace Microsoft.Azure.Jobs
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
 
-        public JobHostContext(string dataConnectionString, string runtimeConnectionString, ITypeLocator typeLocator)
+        public JobHostContext(string dataConnectionString, string runtimeConnectionString, string serviceBusDataConnectionString, ITypeLocator typeLocator)
         {
             _hostInstanceId = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs
 
             var types = typeLocator.FindTypes().ToArray();
             AddCustomerBinders(config, types);
-            functionTableLookup = new FunctionStore(dataConnectionString, config, types);
+            functionTableLookup = new FunctionStore(dataConnectionString, serviceBusDataConnectionString, config, types);
 
 
             // Determine the host name from the function list

@@ -47,6 +47,13 @@ namespace Microsoft.Azure.Jobs
                         AccountConnectionString = credentials.AccountConnectionString,
                         QueueName = raw.QueueName
                     };
+                case TriggerType.ServiceBus:
+                    return new ServiceBusTrigger
+                    {
+                        CallbackPath = raw.CallbackPath,
+                        AccountConnectionString = credentials.ServiceBusConnectionString,
+                        SourcePath = raw.EntityName
+                    };
                 default:
                     throw new InvalidOperationException("Unknown Trigger type:" + raw.Type);
             }

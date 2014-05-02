@@ -17,6 +17,11 @@ namespace Microsoft.Azure.Jobs
         /// <summary>
         /// Queue Trigger, invoked when a new queue mesasge is detected
         /// </summary>
-        Queue = 2
+        Queue = 2,
+
+        /// <summary>
+        /// Service Bus trigger, on a message in a subscription or queue.
+        /// </summary>
+        ServiceBus = 3
     }
 }

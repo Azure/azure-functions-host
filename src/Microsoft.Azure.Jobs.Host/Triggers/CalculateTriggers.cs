@@ -1,15 +1,32 @@
-﻿using System.Text;
+﻿using System;
+using System.Reflection;
+using System.Text;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
     internal class CalculateTriggers
     {
+        private static readonly Func<ParameterStaticBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
+
+        static CalculateTriggers()
+        {
+            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.CalculateServiceBusTriggers");
+            if (type == null)
+            {
+                return;
+            }
+
+            var getTriggerMethod = type.GetMethod("GetTriggerRaw");
+            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] {binding}) as TriggerRaw;
+        }
+
         public static Trigger GetTrigger(FunctionDefinition func)
         {
             var credentials = new Credentials
             {
-                 AccountConnectionString = func.Location.AccountConnectionString
+                 AccountConnectionString = func.Location.AccountConnectionString,
+                 ServiceBusConnectionString = func.Location.ServiceBusConnectionString
             };
 
             var raw = GetTriggerRaw(func);
@@ -62,6 +79,12 @@ namespace Microsoft.Azure.Jobs
 
                         return TriggerRaw.NewQueue(null, queueName);
                     }
+                }
+
+                var serviceBusTrigger = _tryGetServiceBusTriggerRaw(input);
+                if (serviceBusTrigger != null)
+                {
+                    return serviceBusTrigger;
                 }
             }
             return null; // No triggers

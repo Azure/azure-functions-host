@@ -14,6 +14,8 @@ namespace Microsoft.Azure.Jobs
         // This is used at runtime bindings. 
         public string AccountConnectionString { get; set; }
 
+        public string ServiceBusConnectionString { get; set; }
+
         public string FullName { get; set; }
 
         // Uniquely stringize this object. Can be used for equality comparisons. 
