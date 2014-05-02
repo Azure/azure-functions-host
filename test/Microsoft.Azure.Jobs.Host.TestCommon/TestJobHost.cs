@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+
 namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
     // Helper for calling individual methods. 
@@ -15,15 +16,20 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
         // accountConnectionString can be null if the test is really sure that it's not using any storage operations. 
         public TestJobHost(string accountConnectionString)
         {
-            var hooks = new JobHostTestHooks
+            TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 StorageValidator = new NullStorageValidator(),
-                TypeLocator = new SimpleTypeLocator(typeof(T))
+                TypeLocator = new SimpleTypeLocator(typeof(T)),
+                ConnectionStringProvider = new SimpleConnectionStringProvider
+                {
+                    DataConnectionString = accountConnectionString,
+                    // use null logging string since unit tests don't need logs. 
+                    RuntimeConnectionString = null
+                }
             };
 
             // If there is an indexing error, we'll throw here. 
-            // use null logging string since unit tests don't need logs. 
-            Host = new JobHost(accountConnectionString, null, hooks);
+            Host = new JobHost(configuration);
         }
 
         public void Call(string methodName)

@@ -83,7 +83,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         {
             _messageFoundAgain = false;
 
-            JobHost host = new JobHost(_connectionString);
+            JobHost host = new JobHost(new JobHostConfiguration(_connectionString));
 
             CancellationTokenSource tokenSource = new CancellationTokenSource();
 

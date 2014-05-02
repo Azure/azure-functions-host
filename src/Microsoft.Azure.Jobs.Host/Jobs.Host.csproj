@@ -102,6 +102,8 @@
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
+    <Compile Include="IJobHostConfiguration.cs" />
+    <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Tables\IAzureTable.cs" />
     <Compile Include="Tables\IAzureTableOfT.cs" />
     <Compile Include="Tables\IAzureTableReader.cs" />
@@ -156,6 +158,7 @@
     <Compile Include="Storage\SdkCloudStorageAccount.cs" />
     <Compile Include="Storage\Table\ICloudTable.cs" />
     <Compile Include="Storage\Table\ICloudTableClient.cs" />
+    <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Protocols\ContainerNames.cs" />
@@ -220,7 +223,6 @@
     <Compile Include="Timers\IIntervalSeparationCommand.cs" />
     <Compile Include="JobHost.cs" />
     <Compile Include="Runners\JobHostContext.cs" />
-    <Compile Include="Runners\JobHostTestHooks.cs" />
     <Compile Include="Loggers\ConsoleFunctionOutputLogDispenser.cs" />
     <Compile Include="Protocols\NullRunningHostTableWriter.cs" />
     <Compile Include="Loggers\LocalFunctionLogger.cs" />

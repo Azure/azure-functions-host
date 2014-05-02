@@ -143,7 +143,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             }
 
             // The jobs host is started
-            JobHost host = new JobHost(_connectionString);
+            JobHost host = new JobHost(new JobHostConfiguration(_connectionString));
 
             CancellationTokenSource tokenSource = new CancellationTokenSource();
 

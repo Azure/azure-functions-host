@@ -110,7 +110,7 @@
     <Compile Include="TableSerializationTests.cs" />
     <Compile Include="TableUnitTests.cs" />
     <Compile Include="TimeCheckTests.cs" />
-    <Compile Include="JobHostTests.cs" />
+    <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
     <Compile Include="TriggerMapSerializationTests.cs" />
     <Compile Include="WatchableStreamTests.cs" />

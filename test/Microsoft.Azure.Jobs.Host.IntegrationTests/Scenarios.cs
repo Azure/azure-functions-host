@@ -40,11 +40,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var account = TestStorage.GetAccount();
             var dataConnectionString = account.ToString(true);
 
-            JobHost host = new JobHost(dataConnectionString, runtimeConnectionString: null, hooks: new JobHostTestHooks
+            TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
-                 StorageValidator = new NullStorageValidator(),
-                 TypeLocator = new SimpleTypeLocator(typeof(Program))
-            });
+                StorageValidator = new NullStorageValidator(),
+                TypeLocator = new SimpleTypeLocator(typeof(Program)),
+                ConnectionStringProvider = new SimpleConnectionStringProvider
+                {
+                    DataConnectionString = dataConnectionString,
+                    RuntimeConnectionString = null
+                }
+            };
+
+            JobHost host = new JobHost(configuration);
             
             string container = @"daas-test-input";
             BlobClient.DeleteContainer(account, container);                       

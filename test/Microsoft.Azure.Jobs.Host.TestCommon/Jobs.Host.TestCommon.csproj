@@ -61,6 +61,7 @@
     <Compile Include="JobHostExtensions.cs" />
     <Compile Include="NullStorageValidator.cs" />
     <Compile Include="SimpleTypeLocator.cs" />
+    <Compile Include="SimpleConnectionStringProvider.cs" />
     <Compile Include="TestJobHost.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

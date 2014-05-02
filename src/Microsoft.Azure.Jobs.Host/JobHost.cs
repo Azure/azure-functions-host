@@ -1,8 +1,7 @@
 ﻿﻿using System;
 using System.Collections.Generic;
 ﻿using System.Globalization;
-﻿using System.IO;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Threading;
 ﻿using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -24,71 +23,46 @@ namespace Microsoft.Azure.Jobs
         private readonly string _dataConnectionString;
         private readonly string _serviceBusDataConnectionString;
 
-        private JobHostContext _hostContext;
+        private readonly JobHostContext _hostContext;
 
         internal const string LoggingConnectionStringName = "AzureJobsRuntime";
         internal const string DataConnectionStringName = "AzureJobsData";
         internal const string ServiceBusConnectionStringName = "AzureJobsServiceBusData";
 
         /// <summary>
-        /// Initializes a new instance of the JobHost class, using a Microsoft Azure Storage connection string located
-        /// in the connectionStrings section of the configuration file.
+        /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
+        /// string located in the connectionStrings section of the configuration file or in environment variables.
         /// </summary>
         public JobHost()
-            : this(DefaultHooks())
-        {
-        }
-
-        internal JobHost(JobHostTestHooks hooks)
-        {
-            _dataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(DataConnectionStringName);
-            _serviceBusDataConnectionString = hooks.ConnectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
-            _runtimeConnectionString = hooks.ConnectionStringProvider.GetConnectionString(LoggingConnectionStringName);
-
-            Initialize(hooks, runtimeConnectionStringCanBeNullOrEmpty: false);
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the JobHost class, using a single Microsoft Azure Storage connection string for
-        /// both reading and writing data as well as logging.
-        /// </summary>
-        public JobHost(string dataAndRuntimeConnectionString)
-            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString)
+            : this(new JobHostConfiguration())
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the JobHost class, using one Microsoft Azure Storage connection string for
-        /// reading and writing data and another connection string for logging.
+        /// Initializes a new instance of the <see cref="JobHost"/> class using the configuration provided.
         /// </summary>
-        public JobHost(string dataConnectionString, string runtimeConnectionString)
-            : this(dataConnectionString, runtimeConnectionString, DefaultHooks())
+        /// <param name="configuration">The job host configuration.</param>
+        public JobHost(JobHostConfiguration configuration)
+            : this((IJobHostConfiguration)configuration)
         {
         }
 
-        internal JobHost(string dataConnectionString, string runtimeConnectionString, JobHostTestHooks hooks)
+        internal JobHost(IJobHostConfiguration configuration)
         {
-            _dataConnectionString = dataConnectionString;
-            _runtimeConnectionString = runtimeConnectionString;
-
-            Initialize(hooks, runtimeConnectionStringCanBeNullOrEmpty: true);
-        }
-
-        private void Initialize(JobHostTestHooks hooks, bool runtimeConnectionStringCanBeNullOrEmpty)
-        {
-            WriteAntaresManifest();
-
-            if (!runtimeConnectionStringCanBeNullOrEmpty && String.IsNullOrEmpty(_runtimeConnectionString))
+            if (configuration == null)
             {
-                var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName,
-                    "Microsoft Azure Storage account connection string is missing or empty.");
-                throw new InvalidOperationException(msg);
+                throw new ArgumentNullException("configuration");
             }
 
-            ValidateConnectionStrings(hooks.StorageValidator);
+            IConnectionStringProvider connectionStringProvider = configuration.ConnectionStringProvider;
+            _dataConnectionString = connectionStringProvider.GetConnectionString(DataConnectionStringName);
+            _serviceBusDataConnectionString = connectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
+            _runtimeConnectionString = connectionStringProvider.GetConnectionString(LoggingConnectionStringName);
+
+            ValidateConnectionStrings(configuration.StorageValidator);
 
             // This will do heavy operations like indexing. 
-            _hostContext = GetHostContext(hooks.TypeLocator);
+            _hostContext = GetHostContext(configuration.TypeLocator);
         }
 
         private void ValidateConnectionStrings(IStorageValidator storageValidator)
@@ -113,23 +87,13 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static string FormatConnectionStringValidationError(string connectionStringType, string connectionStringName, string validationErrorMessage)
+        internal static string FormatConnectionStringValidationError(string connectionStringType, string connectionStringName, string validationErrorMessage)
         {
             return String.Format(CultureInfo.CurrentCulture,
                 "Failed to validate Microsoft Azure Jobs {0} connection string: {2}" + Environment.NewLine +
                 "The Microsoft Azure Jobs connection string is specified by setting a connection string named '{1}' in the connectionStrings section of the .config file, " +
-                "or with an environment variable named '{1}', or by using a constructor for JobHost that accepts connection strings.",
+                "or with an environment variable named '{1}', or by using a constructor for JobHostConfiguration that accepts connection strings.",
                 connectionStringType, connectionStringName, validationErrorMessage);
-        }
-
-        private static JobHostTestHooks DefaultHooks()
-        {
-            return new JobHostTestHooks
-            {
-                StorageValidator = new DefaultStorageValidator(),
-                TypeLocator = new DefaultTypeLocator(),
-                ConnectionStringProvider = new DefaultConnectionStringProvider()
-            };
         }
 
         /// <summary>
@@ -138,22 +102,6 @@ namespace Microsoft.Azure.Jobs
         public string UserAccountName
         {
             get { return Utility.GetAccountName(_dataConnectionString); }
-        }
-
-        // When running in Antares, write out a manifest file.
-        private static void WriteAntaresManifest()
-        {
-            string jobDataPath = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath);
-            if (jobDataPath == null)
-            {
-                // we're not in antares, bye bye.
-                return;
-            }
-
-            const string filename = "WebJobsSdk.marker";
-            var path = Path.Combine(jobDataPath, filename);
-
-            File.WriteAllText(path, DateTime.UtcNow.ToString("s") + "Z"); // content is not really important, this would help debugging though
         }
 
         private JobHostContext GetHostContext(ITypeLocator typesLocator)
