@@ -3,9 +3,8 @@
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".generated.cs" #>
-
 <# const int NumberOfMethodsToGenerate = 20; #>
-namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
+namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
 	public static partial class PerfTest
 	{

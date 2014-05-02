@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
+namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
     public partial class PerfTest
     {

@@ -1,5 +1,4 @@
-﻿
-namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
+﻿namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
 	public static partial class PerfTest
 	{

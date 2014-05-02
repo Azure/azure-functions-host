@@ -4,10 +4,10 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.VisualStudio.Diagnostics.Measurement;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
+namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
     public class Program
     {
@@ -84,7 +84,7 @@ namespace Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario
         {
             CloudQueue queue = queueClient.GetQueueReference(queueName);
 
-            bool wasCreatedNow = queue.CreateIfNotExist();
+            bool wasCreatedNow = queue.CreateIfNotExists();
             if (!wasCreatedNow)
             {
                 queue.Clear();
