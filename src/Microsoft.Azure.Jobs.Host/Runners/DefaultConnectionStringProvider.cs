@@ -4,7 +4,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 {
     internal class DefaultConnectionStringProvider : IConnectionStringProvider
     {
-        private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new DefaultConnectionStringProvider();
+        private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new AmbientConnectionStringProvider();
 
         private string _dataConnectionString;
         private string _runtimeConnectionString;

@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs.UnitTests
         {
             var assembly = typeof(Microsoft.Azure.Jobs.JobHost).Assembly;
 
-            var expected = new[] { "JobHost" };
+            var expected = new[] { "JobHost", "JobHostConfiguration", "ITypeLocator" };
 
             AssertPublicTypes(expected, assembly);
         }
