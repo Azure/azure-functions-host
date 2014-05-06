@@ -15,8 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 DataConnectionString = "SOME_DATA_CONNECTION_STRING",
             };
             Assert.Null(configuration.RuntimeConnectionString); // Guard
-            IJobHostConfiguration internalConfiguration = configuration;
-            IConnectionStringProvider connectionStringProvider = internalConfiguration.ConnectionStringProvider;
+            IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
 
             // Act & Assert
             ExceptionAssert.ThrowsInvalidOperation(() => 

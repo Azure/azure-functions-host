@@ -43,26 +43,30 @@ namespace Microsoft.Azure.Jobs
         /// </summary>
         /// <param name="configuration">The job host configuration.</param>
         public JobHost(JobHostConfiguration configuration)
-            : this((IJobHostConfiguration)configuration)
+            : this((IServiceProvider)ThrowIfNull(configuration))
         {
         }
 
-        internal JobHost(IJobHostConfiguration configuration)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHost"/> class using the service provider provided.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider.</param>
+        public JobHost(IServiceProvider serviceProvider)
         {
-            if (configuration == null)
+            if (serviceProvider == null)
             {
-                throw new ArgumentNullException("configuration");
+                throw new ArgumentNullException("serviceProvider");
             }
 
-            IConnectionStringProvider connectionStringProvider = configuration.ConnectionStringProvider;
+            IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
             _dataConnectionString = connectionStringProvider.GetConnectionString(DataConnectionStringName);
             _serviceBusDataConnectionString = connectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
             _runtimeConnectionString = connectionStringProvider.GetConnectionString(LoggingConnectionStringName);
 
-            ValidateConnectionStrings(configuration.StorageValidator);
+            ValidateConnectionStrings(serviceProvider.GetStorageValidator());
 
             // This will do heavy operations like indexing. 
-            _hostContext = GetHostContext(configuration.TypeLocator);
+            _hostContext = GetHostContext(serviceProvider.GetTypeLocator());
         }
 
         private void ValidateConnectionStrings(IStorageValidator storageValidator)
@@ -302,6 +306,16 @@ namespace Microsoft.Azure.Jobs
             {
                 throw new Exception("Function failed: " + logItem.ExceptionMessage);
             }
+        }
+
+        private static JobHostConfiguration ThrowIfNull(JobHostConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException("configuration");
+            }
+
+            return configuration;
         }
 
         private FunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionTableLookup functionTableLookup)

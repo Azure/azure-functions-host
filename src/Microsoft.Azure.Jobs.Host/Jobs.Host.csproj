@@ -102,9 +102,9 @@
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
-    <Compile Include="IJobHostConfiguration.cs" />
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
+    <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Tables\IAzureTable.cs" />
     <Compile Include="Tables\IAzureTableOfT.cs" />
     <Compile Include="Tables\IAzureTableReader.cs" />

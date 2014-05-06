@@ -6,7 +6,7 @@ using Microsoft.Azure.Jobs.Host.Runners;
 namespace Microsoft.Azure.Jobs
 {
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
-    public class JobHostConfiguration : IJobHostConfiguration
+    public class JobHostConfiguration : IServiceProvider
     {
         private readonly DefaultConnectionStringProvider _connectionStringProvider;
         private readonly IStorageValidator _storageValidator = new DefaultStorageValidator();
@@ -73,14 +73,29 @@ namespace Microsoft.Azure.Jobs
             set { _typeLocator = value; }
         }
 
-        IStorageValidator IJobHostConfiguration.StorageValidator
+        /// <summary>Gets the service object of the specified type.</summary>
+        /// <param name="serviceType">The type of service object to get.</param>
+        /// <returns>
+        /// A service object of the specified type, if one is available; otherwise, <see langword="null"/>.
+        /// </returns>
+        public object GetService(Type serviceType)
         {
-            get { return _storageValidator; }
-        }
-
-        IConnectionStringProvider IJobHostConfiguration.ConnectionStringProvider
-        {
-            get { return _connectionStringProvider; }
+            if (serviceType == typeof(IConnectionStringProvider))
+            {
+                return _connectionStringProvider;
+            }
+            else if (serviceType == typeof(IStorageValidator))
+            {
+                return _storageValidator;
+            }
+            else if (serviceType == typeof(ITypeLocator))
+            {
+                return _typeLocator;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         // When running in Antares, write out a manifest file.
