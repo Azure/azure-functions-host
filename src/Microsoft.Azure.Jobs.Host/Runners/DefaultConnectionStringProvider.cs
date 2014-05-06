@@ -1,30 +1,96 @@
 ﻿using System;
-using System.Configuration;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Runners
 {
     internal class DefaultConnectionStringProvider : IConnectionStringProvider
     {
+        private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new DefaultConnectionStringProvider();
+
+        private string _dataConnectionString;
+        private string _runtimeConnectionString;
+        private bool _runtimeConnectionStringMayBeNullOrEmpty;
+
         /// <summary>
-        /// Reads a connection string from the connectionStrings configuration section, or from an environment variable if it is missing from the configuration file, or is an empty string.
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
+        /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
-        /// <param name="connectionStringName">The name of the connection string to look up.</param>
-        /// <returns>The connection string, or <see langword="null"/> if no connection string was found.</returns>
+        public DefaultConnectionStringProvider()
+            : this(_ambientConnectionStringProvider.GetConnectionString(JobHost.DataConnectionStringName),
+            _ambientConnectionStringProvider.GetConnectionString(JobHost.LoggingConnectionStringName),
+            false)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
+        /// Storage connection string for both reading and writing data as well as logging.
+        /// </summary>
+        /// <param name="dataAndRuntimeConnectionString">
+        /// The Azure Storage connection string for accessing data and logging.
+        /// </param>
+        public DefaultConnectionStringProvider(string dataAndRuntimeConnectionString)
+            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString, true)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using one Microsoft Azure
+        /// Storage connection strings for reading and writing data and another connection string for logging.
+        /// </summary>
+        /// <param name="dataConnectionString">The Azure Storage connection string for accessing data.</param>
+        /// <param name="runtimeConnectionString">The Azure Storage connection string for accessing logging.</param>
+        public DefaultConnectionStringProvider(string dataConnectionString, string runtimeConnectionString)
+            : this(dataConnectionString, runtimeConnectionString, true)
+        {
+        }
+
+        private DefaultConnectionStringProvider(string dataConnectionString, string runtimeConnectionString,
+            bool runtimeConnectionStringMayBeNullOrEmpty)
+        {
+            _dataConnectionString = dataConnectionString;
+            _runtimeConnectionString = runtimeConnectionString;
+            _runtimeConnectionStringMayBeNullOrEmpty = runtimeConnectionStringMayBeNullOrEmpty;
+        }
+
+        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
+        public string DataConnectionString
+        {
+            get { return _dataConnectionString; }
+            set { _dataConnectionString = value; }
+        }
+
+        /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
+        public string RuntimeConnectionString
+        {
+            get { return _runtimeConnectionString; }
+            set
+            {
+                _runtimeConnectionString = value;
+                _runtimeConnectionStringMayBeNullOrEmpty = true;
+            }
+        }
+
         public string GetConnectionString(string connectionStringName)
         {
-            string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
-            if (connectionStringEntry != null)
+            if (connectionStringName == JobHost.DataConnectionStringName)
             {
-                connectionStringInConfig = connectionStringEntry.ConnectionString;
+                return _dataConnectionString;
             }
-
-            if (!String.IsNullOrEmpty(connectionStringInConfig))
+            else if (connectionStringName == JobHost.LoggingConnectionStringName)
             {
-                return connectionStringInConfig;
-            }
+                if (!_runtimeConnectionStringMayBeNullOrEmpty && String.IsNullOrEmpty(_runtimeConnectionString))
+                {
+                    var msg = JobHost.FormatConnectionStringValidationError("runtime", JobHost.LoggingConnectionStringName,
+                        "Microsoft Azure Storage account connection string is missing or empty.");
+                    throw new InvalidOperationException(msg);
+                }
 
-            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
+                return _runtimeConnectionString;
+            }
+            else
+            {
+                return _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
+            }
         }
-    }
+   }
 }

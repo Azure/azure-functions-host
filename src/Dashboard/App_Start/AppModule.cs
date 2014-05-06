@@ -5,6 +5,7 @@ using Dashboard.Indexers;
 using Dashboard.Protocols;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
@@ -158,7 +159,7 @@ namespace Dashboard
 
         private static string GetRuntimeConnectionString()
         {
-            var val = new DefaultConnectionStringProvider().GetConnectionString(JobHost.LoggingConnectionStringName);
+            var val = new AmbientConnectionStringProvider().GetConnectionString(JobHost.LoggingConnectionStringName);
 
             if (String.IsNullOrEmpty(val))
             {
