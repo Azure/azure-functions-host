@@ -105,6 +105,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 PartitionKey = PersistentQueueEntity.GetPartitionKey(),
                 RowKey = message.PopReceipt
             };
+            entity.ETag = "*";
             _table.Execute(TableOperation.Delete(entity));
 
             _blobContainer.GetBlockBlobReference(GetMessageId(message.PopReceipt).ToString("N")).Delete();

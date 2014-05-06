@@ -155,7 +155,7 @@ namespace Microsoft.Azure.Jobs
             {
                 result = SerializeDateTimeOffset((DateTimeOffset)value);
             }
-            if (type == typeof(DateTime?) ||
+            else if (type == typeof(DateTime?) ||
                 type == typeof(DateTime))
             {
                 result = SerializeDateTime((DateTime)value);
@@ -266,7 +266,7 @@ namespace Microsoft.Azure.Jobs
 
         public static DateTimeOffset DeserializeDateTimeOffset(string s)
         {
-            return DateTimeOffset.Parse(s, CultureInfo.InvariantCulture);
+            return DateTimeOffset.ParseExact(s, "o", CultureInfo.InvariantCulture);
         }
 
         // We have 3 parsing formats:

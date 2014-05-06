@@ -126,6 +126,7 @@ namespace Microsoft.Azure.Jobs
             CloudTable table = tableClient.GetTableReference(tableName);
 
             TableEntity specificEntity = new TableEntity(partitionKey, rowKey);
+            specificEntity.ETag = "*";
 
             try
             {
