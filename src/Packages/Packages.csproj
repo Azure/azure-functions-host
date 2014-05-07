@@ -33,6 +33,12 @@
     <None Include="..\..\tools\Jobs.settings.targets">
       <Link>Jobs.settings.targets</Link>
     </None>
+    <NuGetProject Include="..\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuproj">
+      <Link>Jobs.ServiceBus\Jobs.ServiceBus.nuproj</Link>
+    </NuGetProject>
+    <NuGetSpec Include="..\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuspec">
+      <Link>Jobs.ServiceBus\Jobs.ServiceBus.nuspec</Link>
+    </NuGetSpec>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="Build">

@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), Jobs.sln))\tools\Jobs.settings.targets"/>
+  <PropertyGroup>
+    <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
+    <NuGetPackageId>Microsoft.Azure.Jobs.ServiceBus</NuGetPackageId>
+    <NuGetPackageVersion>$(JobsPackageVersion)</NuGetPackageVersion>
+    <NuGetPackSymbols>false</NuGetPackSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.ServiceBus\Jobs.ServiceBus.csproj">
+      <Project>{7B396753-F2D9-4655-929B-BE7E665A4C7E}</Project>
+      <Name>Jobs.ServiceBus</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.ServiceBus\bin\$(Configuration)\Microsoft.Azure.Jobs.ServiceBus.dll">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.ServiceBus.dll</Destination>
+    </NuGetContent>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.ServiceBus\bin\$(Configuration)\Microsoft.Azure.Jobs.ServiceBus.xml">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.ServiceBus.xml</Destination>
+    </NuGetContent>
+  </ItemGroup>
+  <Import Project="$(JobsToolsPath)NuGetProj.targets"/>
+  <Target Name="BeforeBuild">
+    <PropertyGroup>
+      <!-- Define properties you want to use inside your nuspec file. -->
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(JobsPackageEULA);JobsPackageVersion=$(JobsPackageVersion)</NuSpecProperties>
+    </PropertyGroup>
+  </Target>
+</Project>

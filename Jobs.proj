@@ -41,6 +41,10 @@
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
+    <Build Include="src\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuproj">
+      <PublishType>File</PublishType>
+      <PublishPath>$(PublishPath)\Packages</PublishPath>
+    </Build>
   </ItemGroup>
 
   <UsingTask TaskName="SkipStrongNames.CheckSkipStrongNamesStatus" AssemblyFile="$(SkipStrongNamesExe)" />
