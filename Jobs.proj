@@ -33,11 +33,11 @@
       <PublishType>Directory</PublishType>
       <PublishPath>$(PublishPath)\SiteExtensionsUnzipped\AzureJobs</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
+    <Build Include="src\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuproj">
+    <Build Include="src\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>

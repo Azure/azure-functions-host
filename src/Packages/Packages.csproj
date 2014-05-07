@@ -17,16 +17,16 @@
     <NuGetProject Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
       <Link>Jobs\Jobs.nuproj</Link>
     </NuGetProject>
-    <NuGetProject Include="..\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuproj">
-      <Link>Jobs.Host\Jobs.Host.nuproj</Link>
+    <NuGetProject Include="..\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuproj">
+      <Link>Jobs.Core\Jobs.Core.nuproj</Link>
     </NuGetProject>
   </ItemGroup>
   <ItemGroup>
     <NuGetSpec Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuspec">
       <Link>Jobs\Jobs.nuspec</Link>
     </NuGetSpec>
-    <NuGetSpec Include="..\Microsoft.Azure.Jobs.Host.NuGet\Jobs.Host.nuspec">
-      <Link>Jobs.Host\Jobs.Host.nuspec</Link>
+    <NuGetSpec Include="..\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuspec">
+      <Link>Jobs.Core\Jobs.Core.nuspec</Link>
     </NuGetSpec>
   </ItemGroup>
   <ItemGroup>

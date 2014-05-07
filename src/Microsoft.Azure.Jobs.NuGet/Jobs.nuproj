@@ -8,24 +8,24 @@
     <NuGetPackSymbols>false</NuGetPackSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
-      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
-      <Name>Jobs</Name>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
+      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
+      <Name>Jobs.Host</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs\bin\$(Configuration)\Microsoft.Azure.Jobs.dll">
-      <Destination>lib\net45\Microsoft.Azure.Jobs.dll</Destination>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.Host\bin\$(Configuration)\Microsoft.Azure.Jobs.Host.dll">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.Host.dll</Destination>
     </NuGetContent>
-    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs\bin\$(Configuration)\Microsoft.Azure.Jobs.xml">
-      <Destination>lib\net45\Microsoft.Azure.Jobs.xml</Destination>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.Host\bin\$(Configuration)\Microsoft.Azure.Jobs.Host.xml">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.Host.xml</Destination>
     </NuGetContent>
   </ItemGroup>
   <Import Project="$(JobsToolsPath)NuGetProj.targets"/>
   <Target Name="BeforeBuild">
     <PropertyGroup>
       <!-- Define properties you want to use inside your nuspec file. -->
-      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(JobsPackageEULA)</NuSpecProperties>
-    </PropertyGroup>    
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(JobsPackageEULA);JobsPackageVersion=$(JobsPackageVersion)</NuSpecProperties>
+    </PropertyGroup>
   </Target>
 </Project>

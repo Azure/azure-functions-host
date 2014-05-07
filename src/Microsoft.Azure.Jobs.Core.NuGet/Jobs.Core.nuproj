@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), Jobs.sln))\tools\Jobs.settings.targets"/>
+  <PropertyGroup>
+    <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
+    <NuGetPackageId>Microsoft.Azure.Jobs.Core</NuGetPackageId>
+    <NuGetPackageVersion>$(JobsPackageVersion)</NuGetPackageVersion>
+    <NuGetPackSymbols>false</NuGetPackSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
+      <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
+      <Name>Jobs</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs\bin\$(Configuration)\Microsoft.Azure.Jobs.dll">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.dll</Destination>
+    </NuGetContent>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs\bin\$(Configuration)\Microsoft.Azure.Jobs.xml">
+      <Destination>lib\net45\Microsoft.Azure.Jobs.xml</Destination>
+    </NuGetContent>
+  </ItemGroup>
+  <Import Project="$(JobsToolsPath)NuGetProj.targets"/>
+  <Target Name="BeforeBuild">
+    <PropertyGroup>
+      <!-- Define properties you want to use inside your nuspec file. -->
+      <NuSpecProperties>NuGetPackageId=$(NuGetPackageId);NuGetPackageVersion=$(NuGetPackageVersion);PackageEULA=$(JobsPackageEULA)</NuSpecProperties>
+    </PropertyGroup>    
+  </Target>
+</Project>
