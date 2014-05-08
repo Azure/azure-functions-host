@@ -11,7 +11,6 @@ namespace Microsoft.Azure.Jobs
         protected readonly IFunctionUpdatedLogger _logger;
         protected readonly IFunctionInstanceLookup _lookup;
         protected readonly IAccountInfo _account;
-        protected readonly ICausalityLogger _causalityLogger;
 
         // account - this is the internal storage account for using the service. 
         // logger - used for updating the status of the function that gets executed. This must be serializable with JSon since
@@ -27,7 +26,6 @@ namespace Microsoft.Azure.Jobs
             _lookup = interfaces.Lookup;
             _account = interfaces.AccountInfo;
             _logger = interfaces.Logger;
-            _causalityLogger = interfaces.CausalityLogger;
         }
 
         public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
@@ -46,7 +44,6 @@ namespace Microsoft.Azure.Jobs
                 throw new InvalidOperationException("Function instance must have a trigger reason set.");
             }
             instance.TriggerReason.ChildGuid = instance.Id;
-            _causalityLogger.LogTriggerReason(instance.TriggerReason);
 
             // Log that the function is now queued.
             // Do this before queueing to avoid racing with execution 

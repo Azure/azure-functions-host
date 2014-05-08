@@ -16,10 +16,6 @@ namespace Microsoft.Azure.Jobs
             return string.Format("{0} @ {1}", name, startTime);
         }
 
-        // This maps to the builtin property on azure Tables, so it will get set for us. 
-        // This is the last time the object was updated. 
-        public DateTime Timestamp { get; set; }
-
         public Guid HostInstanceId { get; set; }
 
         public WebJobRunIdentifier ExecutingJobRunId { get; set; }
@@ -50,10 +46,6 @@ namespace Microsoft.Azure.Jobs
         // To avoid clocksqew,  start and end time should be set by the same execution node. 
         // Set StartTime before the user code (including bindings) starts to run, set EndTime after it finishes. 
         public DateTime? EndTime { get; set; }
-
-        // String that serves as a backpointer to the execution substrate.
-        // Eg, if this was runas an azure task, this string can retrieve an azure task.
-        public string Backpointer { get; set; }
 
         // Get a row key for azure tables
         // $$$ Should FunctionDefinition have this too? That one uses ToString(), and it's inconsistent.

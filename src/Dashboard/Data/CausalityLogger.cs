@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.Jobs;
 
-namespace Microsoft.Azure.Jobs
+namespace Dashboard.Data
 {
     // Implements the causality logger interfaces
     internal class CausalityLogger : ICausalityLogger, ICausalityReader

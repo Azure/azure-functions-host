@@ -5,6 +5,8 @@ namespace Dashboard.Data
     // Names of tables used only by the dashboard (not part of the protocol with the host).
     internal static class DashboardTableNames
     {
+        public const string FunctionCausalityLog = TableNames.Prefix + "FunctionCausalityLog";
+
         public const string FunctionIndexTableName = TableNames.Prefix + "FunctionIndex5";
 
         public const string FunctionInvokeLogIndexMru = TableNames.Prefix + "FunctionlogsIndexMRU";

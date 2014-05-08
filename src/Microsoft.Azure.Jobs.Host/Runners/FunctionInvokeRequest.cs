@@ -43,17 +43,5 @@ namespace Microsoft.Azure.Jobs
         // Optional human readable representation of the parameter values that were 
         // passed to the invocation.
         public string ParametersDisplayText { get; set; }
-
-        // Do a clone of this object, but update the location.
-        // This is useful as we convert between different location types (eg, after downloading)
-        public FunctionInvokeRequest CloneUpdateLocation(FunctionLocation newLocation)
-        {
-            // Easiest to do a deep copy; but we could do a shallow since we're just changing the location.
-            string json = JsonCustom.SerializeObject(this);
-            var copy = JsonCustom.DeserializeObject<FunctionInvokeRequest>(json);
-
-            copy.Location = newLocation;
-            return copy;
-        }
     }
 }

@@ -12,13 +12,15 @@ namespace Dashboard.Indexers
         private readonly IPersistentQueue<PersistentQueueMessage> _queue;
         private readonly IFunctionTable _functionTable;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
+        private readonly ICausalityLogger _causalityLogger;
 
         public Indexer(IPersistentQueue<PersistentQueueMessage> queue, IFunctionTable functionTable,
-            IFunctionInstanceLogger functionInstanceLogger)
+            IFunctionInstanceLogger functionInstanceLogger, ICausalityLogger causalityLogger)
         {
             _queue = queue;
             _functionTable = functionTable;
             _functionInstanceLogger = functionInstanceLogger;
+            _causalityLogger = causalityLogger;
         }
 
         public void Update()
@@ -100,6 +102,7 @@ namespace Dashboard.Indexers
         private void Process(FunctionStartedMessage message)
         {
             _functionInstanceLogger.LogFunctionStarted(message.LogEntity);
+            _causalityLogger.LogTriggerReason(message.LogEntity.FunctionInstance.TriggerReason);
         }
 
         private void Process(FunctionCompletedMessage message)

@@ -105,7 +105,6 @@ namespace Microsoft.Azure.Jobs
         {
             IFunctionInstanceLookup lookup;
             IFunctionUpdatedLogger functionUpdate;
-            ICausalityLogger causalityLogger;
 
             {
                 var x = new LocalFunctionLogger();
@@ -113,18 +112,11 @@ namespace Microsoft.Azure.Jobs
                 lookup = x;
             }
 
-            {
-                IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
-                var x = new CausalityLogger(table, lookup);
-                causalityLogger = x;
-            }
-
             var interfaces = new ExecuteFunctionInterfaces
             {
                 AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
                 Logger = functionUpdate,
                 Lookup = lookup,
-                CausalityLogger = causalityLogger
             };
             return interfaces;
         }

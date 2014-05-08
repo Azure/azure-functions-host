@@ -61,16 +61,8 @@ namespace Microsoft.Azure.Jobs
             {
                 AccountInfo = _accountInfo,
                 Logger = x,
-                Lookup = x,
-                CausalityLogger = GetCausalityLogger()
+                Lookup = x
             };
-        }
-
-        private ICausalityLogger GetCausalityLogger()
-        {
-            IAzureTable<TriggerReasonEntity> table = new AzureTable<TriggerReasonEntity>(_account, TableNames.FunctionCausalityLog);
-            IFunctionInstanceLookup logger = null; // write-only mode
-            return new CausalityLogger(table, logger);
         }
 
         public FunctionUpdatedLogger GetFunctionUpdatedLogger()

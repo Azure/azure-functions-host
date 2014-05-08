@@ -296,7 +296,6 @@
     <Compile Include="Runners\RunningHost.cs" />
     <Compile Include="Indexers\IndexException.cs" />
     <Compile Include="StorageConverter.cs" />
-    <Compile Include="Loggers\CausalityLogger.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntity.cs" />
     <Compile Include="Runners\FunctionInstanceGuid.cs" />
     <Compile Include="Loggers\FunctionUpdatedLogger.cs" />

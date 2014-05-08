@@ -8,7 +8,6 @@ namespace Microsoft.Azure.Jobs
         public IAccountInfo AccountInfo;
         public IFunctionInstanceLookup Lookup;
         public IFunctionUpdatedLogger Logger;
-        public ICausalityLogger CausalityLogger;
 
         public void VerifyNotNull()
         {
@@ -23,10 +22,6 @@ namespace Microsoft.Azure.Jobs
             if (AccountInfo == null)
             {
                 throw new InvalidOperationException("AccountInfo cannot be null.");
-            }
-            if (CausalityLogger == null)
-            {
-                throw new InvalidOperationException("CausalityLogger cannot be null.");
             }
         }
     }

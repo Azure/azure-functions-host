@@ -16,20 +16,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         private readonly IExecuteFunction _executor;
         private readonly IFunctionInstanceLookup _lookup;
         private readonly IFunctionUpdatedLogger _functionUpdate;
-        private readonly ICausalityLogger _causalityLogger;
-        private readonly ICausalityReader _causalityReader;
 
         private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
         private readonly Func<string, MethodInfo> _fpResolveMethod;
         private readonly Func<string, CloudBlockBlob> _fpResolveBlobs;
-
-        public ICausalityReader CausalityReader
-        {
-            get
-            {
-                return _causalityReader;
-            }
-        }
 
         public IFunctionInstanceLookup FunctionInstanceLookup
         {
@@ -83,19 +73,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             IAzureTable prereqTable = AzureTable.NewInMemory();
             IAzureTable successorTable = AzureTable.NewInMemory();
 
-            {
-                IAzureTable<TriggerReasonEntity> table = AzureTable<TriggerReasonEntity>.NewInMemory();
-                var x = new CausalityLogger(table, _lookup);
-                _causalityLogger = x;
-                _causalityReader = x;
-            }
-
             var interfaces = new ExecuteFunctionInterfaces
             {
                 AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
                 Logger = _functionUpdate,
-                Lookup = _lookup,
-                CausalityLogger = _causalityLogger
+                Lookup = _lookup
             };
 
             var y = new LocalExecute(interfaces, this);
