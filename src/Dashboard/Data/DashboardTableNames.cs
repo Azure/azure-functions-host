@@ -9,6 +9,8 @@ namespace Dashboard.Data
 
         public const string FunctionIndexTableName = TableNames.Prefix + "FunctionIndex5";
 
+        public const string FunctionsInJobIndex = TableNames.Prefix + "FunctionsInJobIndex";
+
         public const string FunctionInvokeLogIndexMru = TableNames.Prefix + "FunctionlogsIndexMRU";
         public const string FunctionInvokeLogIndexMruFunction = TableNames.Prefix + "FunctionlogsIndexMRUByFunction";
         public const string FunctionInvokeLogIndexMruFunctionSucceeded = TableNames.Prefix + "FunctionlogsIndexMRUByFunctionSucceeded";

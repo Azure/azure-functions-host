@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Dashboard.Data;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
@@ -13,14 +14,17 @@ namespace Dashboard.Indexers
         private readonly IFunctionTable _functionTable;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly ICausalityLogger _causalityLogger;
+        private readonly IFunctionsInJobIndexer _functionsInJobIndexer;
 
         public Indexer(IPersistentQueue<PersistentQueueMessage> queue, IFunctionTable functionTable,
-            IFunctionInstanceLogger functionInstanceLogger, ICausalityLogger causalityLogger)
+            IFunctionInstanceLogger functionInstanceLogger, ICausalityLogger causalityLogger,
+            IFunctionsInJobIndexer functionsInJobIndexer)
         {
             _queue = queue;
             _functionTable = functionTable;
             _functionInstanceLogger = functionInstanceLogger;
             _causalityLogger = causalityLogger;
+            _functionsInJobIndexer = functionsInJobIndexer;
         }
 
         public void Update()
@@ -103,6 +107,11 @@ namespace Dashboard.Indexers
         {
             _functionInstanceLogger.LogFunctionStarted(message.LogEntity);
             _causalityLogger.LogTriggerReason(message.LogEntity.FunctionInstance.TriggerReason);
+
+            if (message.LogEntity.ExecutingJobRunId != null)
+            {
+                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.LogEntity.FunctionInstance.Id, message.LogEntity.StartTime.Value, message.LogEntity.ExecutingJobRunId);
+            }
         }
 
         private void Process(FunctionCompletedMessage message)

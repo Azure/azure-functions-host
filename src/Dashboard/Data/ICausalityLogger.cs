@@ -1,4 +1,6 @@
-﻿namespace Microsoft.Azure.Jobs
+﻿using Microsoft.Azure.Jobs;
+
+namespace Dashboard.Data
 {
     // Log function causality (eg, parent-child relationships). 
     // This is used to create a graph of parent-child causal relationships. 

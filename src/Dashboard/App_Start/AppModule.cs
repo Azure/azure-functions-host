@@ -37,7 +37,7 @@ namespace Dashboard
             Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
             Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(services.Account));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(services));
-            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(services));
+            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(services.Account));
             Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
             Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
             Bind<IInvoker>().To<Invoker>();
@@ -45,7 +45,8 @@ namespace Dashboard
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
             Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(services));
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
-            BindFunctionInvocationIndexReader("invocationsInJobReader", TableNames.FunctionsInJobIndex);
+            Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
+            BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
             BindFunctionInvocationIndexReader("invocationsInFunctionReader",
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
             BindFunctionInvocationIndexReader("recentInvocationsReader", DashboardTableNames.FunctionInvokeLogIndexMru);
@@ -81,21 +82,21 @@ namespace Dashboard
             return null;
         }
 
-        private static IAzureTable<TriggerReasonEntity> CreateCausalityTable(Services services)
+        private static IAzureTable<TriggerReasonEntity> CreateCausalityTable(CloudStorageAccount account)
         {
-            return new AzureTable<TriggerReasonEntity>(services.Account, DashboardTableNames.FunctionCausalityLog);
+            return new AzureTable<TriggerReasonEntity>(account, DashboardTableNames.FunctionCausalityLog);
         }
 
         private static ICausalityReader CreateCausalityReader(Services services)
         {
-            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(services);
+            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(services.Account);
             IFunctionInstanceLookup logger = services.GetFunctionInstanceLookup(); // read-mode
             return new CausalityLogger(table, logger);
         }
 
-        private static ICausalityLogger CreateCausalityLogger(Services services)
+        private static ICausalityLogger CreateCausalityLogger(CloudStorageAccount account)
         {
-            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(services);
+            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
             IFunctionInstanceLookup logger = null; // write-only mode
             return new CausalityLogger(table, logger);
         }

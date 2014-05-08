@@ -32,18 +32,6 @@ namespace Microsoft.Azure.Jobs
             get { return _accountInfo; }
         }
 
-        public IFunctionsInJobIndexer GetFunctionInJobIndexer()
-        {
-            if (WebJobRunIdentifier.Current == null)
-            {
-                return new NullFunctionsInJobIndexer();
-            }
-
-            var account = new SdkCloudStorageAccount(_account);
-            var client = account.CreateCloudTableClient();
-            return new FunctionsInJobIndexer(client, WebJobRunIdentifier.Current);
-        }
-
         public IRunningHostTableWriter GetRunningHostTableWriter()
         {
             IAzureTable<RunningHost> table = new AzureTable<RunningHost>(_account, TableNames.RunningHostsTableName);

@@ -69,7 +69,6 @@ namespace Microsoft.Azure.Jobs
 
                 var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
-                ctx.FunctionsInJobIndexer = services.GetFunctionInJobIndexer();
                 ctx.FunctionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
 
                 _functionInstanceLookup = services.GetFunctionInstanceLookup();
@@ -83,8 +82,7 @@ namespace Microsoft.Azure.Jobs
 
                 ctx = new FunctionExecutionContext
                 {
-                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser(),
-                    FunctionsInJobIndexer = new NullFunctionsInJobIndexer()
+                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
                 };
 
                 interfaces = CreateInMemoryQueueInterfaces();

@@ -15,8 +15,5 @@ namespace Microsoft.Azure.Jobs
         public IFunctionUpdatedLogger Logger { get; set; }
 
         public IFunctionInstanceLogger FunctionInstanceLogger { get; set; }
-
-        // used for reporting WebJob to Function correlation
-        public IFunctionsInJobIndexer FunctionsInJobIndexer{ get; set; }
     }
 }

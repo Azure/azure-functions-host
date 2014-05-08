@@ -156,9 +156,13 @@
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\CausalityLogger.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
+    <Compile Include="Data\FunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionStatsEntity.cs" />
     <Compile Include="Data\FunctionTable.cs" />
     <Compile Include="Data\DashboardTableNames.cs" />
+    <Compile Include="Data\ICausalityLogger.cs" />
+    <Compile Include="Data\ICausalityReader.cs" />
+    <Compile Include="Data\IFunctionsInJobIndexer.cs" />
     <Compile Include="Protocols\FunctionInvocationIndexReader.cs" />
     <Compile Include="Protocols\HostVersionReader.cs" />
     <Compile Include="Protocols\IFunctionInvocationIndexReader.cs" />

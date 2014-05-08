@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.IO;
-using System.Threading;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -34,7 +32,6 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                context.FunctionsInJobIndexer.RecordFunctionInvocationForJobRun(instance.Id, now);
                 Work(instance, context, fpInvokeFunc, logItem, instanceLogger);
             }
             finally

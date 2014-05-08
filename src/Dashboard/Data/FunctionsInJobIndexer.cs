@@ -1,7 +1,9 @@
 ﻿using System;
+using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Dashboard.Data
 {
     /// <summary>
     /// Mapping WebJob runs to the functions that it ran.
@@ -9,31 +11,29 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class FunctionsInJobIndexer : IFunctionsInJobIndexer
     {
         private readonly ICloudTable _table;
-        private readonly WebJobRunIdentifier _currentWebJobRunId;
 
         private static readonly DateTime _nextCentury = DateTime.Parse("2100-01-01T00:00:00Z").ToUniversalTime();
 
-        public FunctionsInJobIndexer(ICloudTableClient client, WebJobRunIdentifier currentWebJobRunId)
+        public FunctionsInJobIndexer(ICloudTableClient client)
         {
             if (client == null)
             {
                 throw new ArgumentNullException("client");
             }
 
-            if (currentWebJobRunId == null)
-            {
-                throw new ArgumentNullException("currentWebJobRunId");
-            }
-
-            _table = client.GetTableReference(TableNames.FunctionsInJobIndex);
-            _currentWebJobRunId = currentWebJobRunId;
+            _table = client.GetTableReference(DashboardTableNames.FunctionsInJobIndex);
         }
 
-        public void RecordFunctionInvocationForJobRun(Guid invocationId, DateTime startTime)
+        public void RecordFunctionInvocationForJobRun(Guid invocationId, DateTime startTime, WebJobRunIdentifier webJobRunId)
         {
+            if (webJobRunId == null)
+            {
+                throw new ArgumentNullException("webJobRunId");
+            }
+
             var newEntity = new FunctionInvocationIndexEntity
             {
-                PartitionKey = _currentWebJobRunId.GetKey(),
+                PartitionKey = webJobRunId.GetKey(),
                 RowKey = CreateRowKey(startTime),
                 InvocationId = invocationId
             };

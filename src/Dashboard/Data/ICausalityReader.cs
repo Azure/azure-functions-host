@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs;
 
-namespace Microsoft.Azure.Jobs
+namespace Dashboard.Data
 {
     internal interface ICausalityReader
     {

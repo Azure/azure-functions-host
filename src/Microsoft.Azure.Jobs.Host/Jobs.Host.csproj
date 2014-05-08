@@ -129,7 +129,6 @@
     <Compile Include="Runners\FunctionInstanceLookup.cs" />
     <Compile Include="Protocols\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Protocols\IProcessTerminationSignalReader.cs" />
-    <Compile Include="Protocols\NullFunctionsInJobIndexer.cs" />
     <Compile Include="Runners\HostTableNames.cs" />
     <Compile Include="Runners\WebJobRunIdentifier.cs" />
     <Compile Include="Runners\WebJobTypes.cs" />
@@ -146,10 +145,8 @@
     <Compile Include="Storage\Table\IQueryModifier.cs" />
     <Compile Include="Protocols\TableNames.cs" />
     <Compile Include="Protocols\QueueNames.cs" />
-    <Compile Include="Protocols\FunctionsInJobIndexer.cs" />
     <Compile Include="Runners\HostEntity.cs" />
     <Compile Include="Runners\HostTable.cs" />
-    <Compile Include="Protocols\IFunctionsInJobIndexer.cs" />
     <Compile Include="Runners\IHostTable.cs" />
     <Compile Include="Protocols\HostMessage.cs" />
     <Compile Include="Storage\ICloudStorageAccount.cs" />
@@ -283,7 +280,6 @@
     <Compile Include="Runners\QueueMessageTriggerReason.cs" />
     <Compile Include="Runners\InvokeTriggerReason.cs" />
     <Compile Include="Runners\TriggerReason.cs" />
-    <Compile Include="Loggers\ICausalityReader.cs" />
     <Compile Include="Runners\TriggerReasonEntity.cs" />
     <Compile Include="Runners\FunctionInvokeRequest.cs" />
     <Compile Include="Indexers\FunctionLocation.cs" />
@@ -300,7 +296,6 @@
     <Compile Include="Runners\FunctionInstanceGuid.cs" />
     <Compile Include="Loggers\FunctionUpdatedLogger.cs" />
     <Compile Include="Loggers\BlobCausalityLogger.cs" />
-    <Compile Include="Loggers\ICausalityLogger.cs" />
     <Compile Include="Loggers\QueueCausalityHelper.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
     <Compile Include="Tables\AzureTableOfTValue.cs" />
