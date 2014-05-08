@@ -70,7 +70,15 @@ namespace Microsoft.Azure.Jobs
         public ITypeLocator TypeLocator
         {
             get { return _typeLocator; }
-            set { _typeLocator = value; }
+            set
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException("value");
+                }
+
+                _typeLocator = value;
+            }
         }
 
         /// <summary>Gets the service object of the specified type.</summary>

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs
             return false;
         }
 
-        public IReadOnlyCollection<Type> GetTypes()
+        public IReadOnlyList<Type> GetTypes()
         {
             List<Type> allTypes = new List<Type>();
 

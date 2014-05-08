@@ -8,6 +8,6 @@ namespace Microsoft.Azure.Jobs
     {        
         /// <summary>Retrieves types that may contain functions for <see cref="JobHost"/> to execute.</summary>
         /// <returns>Types that may contain functions for <see cref="JobHost"/> to execute.</returns>
-        IReadOnlyCollection<Type> GetTypes();
+        IReadOnlyList<Type> GetTypes();
     }
 }
