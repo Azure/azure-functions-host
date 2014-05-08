@@ -131,7 +131,7 @@ namespace Dashboard.ApiControllers
             }
 
             var model = new FunctionInstanceDetailsViewModel();
-            model.Invocation = new InvocationLogViewModel(func);
+            model.Invocation = new InvocationLogViewModel(func, _invocationLogLoader.GetHeartbeat(func.HostInstanceId));
             model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
@@ -156,7 +156,19 @@ namespace Dashboard.ApiControllers
             var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
             if (parentGuid != Guid.Empty)
             {
-                model.Ancestor = new InvocationLogViewModel(_functionInstanceLookup.Lookup(parentGuid));
+                ExecutionInstanceLogEntity ancestor = _functionInstanceLookup.Lookup(parentGuid);
+                DateTime? heartbeat;
+
+                if (ancestor != null)
+                {
+                    heartbeat = _invocationLogLoader.GetHeartbeat(ancestor.HostInstanceId);
+                }
+                else
+                {
+                    heartbeat = null;
+                }
+
+                model.Ancestor = new InvocationLogViewModel(ancestor, heartbeat);
             }
 
             return Ok(model);

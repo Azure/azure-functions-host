@@ -118,7 +118,7 @@ namespace Dashboard.Data
             string funcId = log.FunctionInstance.Location.ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
 
-            switch (log.GetStatus())
+            switch (log.GetStatusWithoutHeartbeat())
             {
                 case FunctionInstanceStatus.CompletedSuccess:
                     _tableMRUByFunctionSucceed.Write(funcId, rowKey, ptr);
@@ -191,13 +191,14 @@ namespace Dashboard.Data
                 _funcs[kind] = stats;
             }
 
-            switch (log.GetStatus())
+            switch (log.GetStatusWithoutHeartbeat())
             {
                 case FunctionInstanceStatus.CompletedSuccess:
                     stats.CountCompleted++;
-                    if (log.GetDuration().HasValue)
+                    TimeSpan? duration = log.GetFinalDuration();
+                    if (duration.HasValue)
                     {
-                        stats.Runtime += log.GetDuration().Value;
+                        stats.Runtime += duration.Value;
                     }
                     stats.LastWriteTime = DateTime.UtcNow;
                     break;

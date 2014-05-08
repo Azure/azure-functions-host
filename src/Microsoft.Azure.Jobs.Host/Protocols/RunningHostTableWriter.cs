@@ -18,9 +18,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             _table = table;
         }
 
-        public void SignalHeartbeat(Guid hostId)
+        public void SignalHeartbeat(Guid hostOrInstanceId)
         {
-            _table.Write(PartitionKey, hostId.ToString(), null);
+            _table.Write(PartitionKey, hostOrInstanceId.ToString(), null);
             _table.Flush();
         }
     }

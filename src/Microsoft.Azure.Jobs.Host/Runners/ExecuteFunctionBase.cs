@@ -25,7 +25,6 @@ namespace Microsoft.Azure.Jobs
 
             _lookup = interfaces.Lookup;
             _account = interfaces.AccountInfo;
-            _logger = interfaces.Logger;
         }
 
         public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)

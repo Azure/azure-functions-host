@@ -231,7 +231,6 @@
     <Compile Include="Triggers\CloudQueueComparer.cs" />
     <Compile Include="Runners\DefaultStorageValidator.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
-    <Compile Include="Runners\UpdateFunctionHeartbeatCommand.cs" />
     <Compile Include="Bindings\CloudQueueDescriptor.cs" />
     <Compile Include="Bindings\CloudTableDescriptor.cs" />
     <Compile Include="Bindings\CloudBlobDescriptor.cs" />

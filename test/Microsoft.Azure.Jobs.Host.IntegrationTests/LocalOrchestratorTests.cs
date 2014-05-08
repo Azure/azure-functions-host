@@ -261,7 +261,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var lookup = lc.FunctionInstanceLookup;
 
             var log1 = lookup.LookupOrThrow(guid);
-            Assert.Equal(FunctionInstanceStatus.CompletedFailed, log1.GetStatus());
+            Assert.Equal(FunctionInstanceStatus.CompletedFailed, log1.GetStatusWithoutHeartbeat());
             Assert.Equal(typeof(T).FullName, log1.ExceptionType);
         }
 

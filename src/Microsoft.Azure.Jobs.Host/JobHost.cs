@@ -285,13 +285,24 @@ namespace Microsoft.Azure.Jobs
             else
             {
                 ICanFailCommand runningHostHeartbeat = CreateRunningHostHeartbeat();
-                return new CompositeCanFailCommand(terminationCommand, runningHostHeartbeat);
+                ICanFailCommand runningHostInstanceHeartbeat = CreateRunningHostInstanceHeartbeat();
+                return new CompositeCanFailCommand(terminationCommand, runningHostHeartbeat, runningHostInstanceHeartbeat);
             }
         }
 
         private UpdateHostHeartbeatCommand CreateRunningHostHeartbeat()
         {
-            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, _hostContext.HostId);
+            return CreateUpdateHostHeartbeatCommand(_hostContext.HostId);
+        }
+
+        private UpdateHostHeartbeatCommand CreateRunningHostInstanceHeartbeat()
+        {
+            return CreateUpdateHostHeartbeatCommand(_hostContext.HostInstanceId);
+        }
+
+        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand(Guid hostOrInstanceId)
+        {
+            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, hostOrInstanceId);
         }
 
         private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()
@@ -302,7 +313,7 @@ namespace Microsoft.Azure.Jobs
         // Throw if the function failed. 
         private static void VerifySuccess(ExecutionInstanceLogEntity logItem)
         {
-            if (logItem.GetStatus() == FunctionInstanceStatus.CompletedFailed)
+            if (logItem.GetStatusWithoutHeartbeat() == FunctionInstanceStatus.CompletedFailed)
             {
                 throw new Exception("Function failed: " + logItem.ExceptionMessage);
             }

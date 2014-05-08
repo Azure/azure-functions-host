@@ -73,53 +73,37 @@ namespace Microsoft.Azure.Jobs
                 instanceLogger.LogFunctionStarted(logItem);
             }
 
-            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(logger, logItem))
+            try
             {
-                timer.Start(executeFirst: true);
+                // Invoke the function. Redirect all console output to the given stream.
+                // (Function may be invoked in a different process, so we can't just set Console.Out here)
+                FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
 
-                try
-                {
-                    // Invoke the function. Redirect all console output to the given stream.
-                    // (Function may be invoked in a different process, so we can't just set Console.Out here)
-                    FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
-
-                    // User errors should be caught and returned in result message.
-                    logItem.ExceptionType = result.ExceptionType;
-                    logItem.ExceptionMessage = result.ExceptionMessage;
-                }
-                catch (Exception e)
-                {
-                    if ((e is OperationCanceledException)) // user app exited (probably stack overflow or call to Exit)
-                    {
-                        logItem.ExceptionType = e.GetType().FullName;
-                        logItem.ExceptionMessage = e.Message;
-
-                        return;
-                    }
-
-                    // Non-user error. Something really bad happened! This shouldn't be happening.
-                    // Suggests something critically wrong with the execution infrastructure that wasn't properly
-                    // handled elsewhere. 
-                    functionOutput.Output.WriteLine("Error: {0}", e.Message);
-                    functionOutput.Output.WriteLine("stack: {0}", e.StackTrace);
-                    throw;
-                }
-                finally
-                {
-                    timer.Stop();
-                    functionOutput.CloseOutput();
-                }
+                // User errors should be caught and returned in result message.
+                logItem.ExceptionType = result.ExceptionType;
+                logItem.ExceptionMessage = result.ExceptionMessage;
             }
-        }
+            catch (Exception e)
+            {
+                if ((e is OperationCanceledException)) // user app exited (probably stack overflow or call to Exit)
+                {
+                    logItem.ExceptionType = e.GetType().FullName;
+                    logItem.ExceptionMessage = e.Message;
 
-        private static IntervalSeparationTimer CreateHeartbeatTimer(IFunctionUpdatedLogger logger,
-            ExecutionInstanceLogEntity logItem)
-        {
-            TimeSpan normalHeartbeatInterval = TimeSpan.FromSeconds(30);
-            TimeSpan heartbeatInvalidationInterval = TimeSpan.FromSeconds(45);
-            TimeSpan minimumHeartbeatAttemptInterval = TimeSpan.FromSeconds(10);
-            ICanFailCommand command = new UpdateFunctionHeartbeatCommand(logger, logItem, heartbeatInvalidationInterval);
-            return LinearSpeedupTimerCommand.CreateTimer(command, normalHeartbeatInterval, minimumHeartbeatAttemptInterval);
+                    return;
+                }
+
+                // Non-user error. Something really bad happened! This shouldn't be happening.
+                // Suggests something critically wrong with the execution infrastructure that wasn't properly
+                // handled elsewhere. 
+                functionOutput.Output.WriteLine("Error: {0}", e.Message);
+                functionOutput.Output.WriteLine("stack: {0}", e.StackTrace);
+                throw;
+            }
+            finally
+            {
+                functionOutput.CloseOutput();
+            }
         }
 
         // Marks a function as failed when it cannot be executed. (For example, the function has been deleted.)

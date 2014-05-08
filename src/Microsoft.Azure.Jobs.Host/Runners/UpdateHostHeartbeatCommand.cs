@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs
         private readonly IRunningHostTableWriter _heartbeatTable;
         private readonly Guid _hostId;
 
-        public UpdateHostHeartbeatCommand(IRunningHostTableWriter heartbeatTable, Guid hostId)
+        public UpdateHostHeartbeatCommand(IRunningHostTableWriter heartbeatTable, Guid hostOrInstanceId)
         {
             if (heartbeatTable == null)
             {
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Jobs
             }
 
             _heartbeatTable = heartbeatTable;
-            _hostId = hostId;
+            _hostId = hostOrInstanceId;
         }
 
         public bool TryExecute()

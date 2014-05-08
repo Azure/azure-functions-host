@@ -15,5 +15,7 @@ namespace Microsoft.Azure.Jobs
         InvocationLogPage GetInvocationsInJob(string jobKey, PagingInfo pagingInfo);
 
         InvocationLogViewModel[] GetInvocationsByIds(IEnumerable<Guid> invocationIds);
+
+        DateTime? GetHeartbeat(Guid hostInstanceId);
     }
 }

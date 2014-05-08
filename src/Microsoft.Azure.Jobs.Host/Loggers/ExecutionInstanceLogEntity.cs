@@ -38,9 +38,6 @@ namespace Microsoft.Azure.Jobs
 
         public DateTime? StartTime { get; set; }
 
-        // If a function is running after this time, its host process has ended; it never finished executing.
-        public DateTime? HeartbeatExpires { get; set; }
-
         // Time that the job was completed (approximately when the user's code has finished running). 
         // Null if job is not yet complete.
         // To avoid clocksqew,  start and end time should be set by the same execution node. 

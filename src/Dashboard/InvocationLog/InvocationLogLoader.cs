@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Web;
 using System.Web.Caching;
@@ -19,19 +20,22 @@ namespace Microsoft.Azure.Jobs
         private readonly IFunctionInvocationIndexReader _recentInvocationsReader;
         private readonly IFunctionInvocationIndexReader _invocationChildrenReader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IRunningHostTableReader _runningHostTableReader;
 
         public InvocationLogLoader(
             IFunctionInvocationIndexReader invocationsInJobReader,
             IFunctionInvocationIndexReader invocationsInFunctionReader,
             IFunctionInvocationIndexReader recentInvocationsReader,
             IFunctionInvocationIndexReader invocationChildrenReader, 
-            IFunctionInstanceLookup functionInstanceLookup)
+            IFunctionInstanceLookup functionInstanceLookup,
+            IRunningHostTableReader runningHostTableReader)
         {
             _invocationsInJobReader = invocationsInJobReader;
             _invocationsInFunctionReader = invocationsInFunctionReader;
             _recentInvocationsReader = recentInvocationsReader;
             _invocationChildrenReader = invocationChildrenReader;
             _functionInstanceLookup = functionInstanceLookup;
+            _runningHostTableReader = runningHostTableReader;
         }
 
         public InvocationLogPage GetInvocationChildren(Guid invocationId, PagingInfo pagingInfo)
@@ -95,7 +99,7 @@ namespace Microsoft.Azure.Jobs
                     var invocation = _functionInstanceLookup.Lookup(invocationId);
                     if (invocation != null)
                     {
-                        invocationModel = new InvocationLogViewModel(invocation);
+                        invocationModel = new InvocationLogViewModel(invocation, GetHeartbeat(invocation.HostInstanceId));
                         if (invocationModel.IsFinal())
                         {
                             HttpRuntime.Cache.Insert(cacheKey, invocationModel, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(30));
@@ -108,11 +112,16 @@ namespace Microsoft.Azure.Jobs
                 var invocation = _functionInstanceLookup.Lookup(invocationId);
                 if (invocation != null)
                 {
-                    invocationModel = new InvocationLogViewModel(invocation);
+                    invocationModel = new InvocationLogViewModel(invocation, GetHeartbeat(invocation.HostInstanceId));
                 }
             }
 
             return invocationModel;
+        }
+
+        public DateTime? GetHeartbeat(Guid hostInstanceId)
+        {
+            return _runningHostTableReader.Read(hostInstanceId);
         }
     }
 }

@@ -23,5 +23,17 @@ namespace Dashboard.Protocols
         {
             return _table.Enumerate(RunningHostTableWriter.PartitionKey).ToArray();
         }
+
+        public DateTime? Read(Guid hostOrInstanceId)
+        {
+            RunningHost entity = _table.Lookup(RunningHostTableWriter.PartitionKey, hostOrInstanceId.ToString());
+
+            if (entity == null)
+            {
+                return null;
+            }
+
+            return entity.Timestamp;
+        }
     }
 }

@@ -34,7 +34,7 @@ namespace Dashboard.ViewModels
 
     public class InvocationLogViewModel
     {
-        internal InvocationLogViewModel(ExecutionInstanceLogEntity log)
+        internal InvocationLogViewModel(ExecutionInstanceLogEntity log, DateTime? heartbeat)
         {
             Id = log.FunctionInstance.Id;
             FunctionName = log.FunctionInstance.Location.GetShortName();
@@ -46,7 +46,17 @@ namespace Dashboard.ViewModels
             {
                 ExecutingJobRunId = new WebJobRunIdentifierViewModel(log.ExecutingJobRunId);
             }
-            Status = (FunctionInstanceStatus)log.GetStatus();
+            DateTime? heartbeatExpires;
+            if (heartbeat.HasValue)
+            {
+                heartbeatExpires = heartbeat.Value.Add(RunningHost.HeartbeatPollInterval);
+                Status = (FunctionInstanceStatus)log.GetStatusWithHeartbeat(heartbeatExpires);
+            }
+            else
+            {
+                heartbeatExpires = null;
+                Status = (FunctionInstanceStatus)log.GetStatusWithoutHeartbeat();
+            }
             switch (Status)
             {
                 case FunctionInstanceStatus.Running:
@@ -55,17 +65,17 @@ namespace Dashboard.ViewModels
                     break;
                 case FunctionInstanceStatus.CompletedSuccess:
                     WhenUtc = log.EndTime;
-                    Duration = log.GetDuration();
+                    Duration = log.GetFinalDuration();
                     break;
                 case FunctionInstanceStatus.CompletedFailed:
                     WhenUtc = log.EndTime;
-                    Duration = log.GetDuration();
+                    Duration = log.GetFinalDuration();
                     ExceptionType = log.ExceptionType;
                     ExceptionMessage = log.ExceptionMessage;
                     break;
                 case FunctionInstanceStatus.NeverFinished:
                     WhenUtc = log.StartTime;
-                    Duration = log.GetDuration();
+                    Duration = heartbeatExpires - log.StartTime;
                     break;
             }
         }

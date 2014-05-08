@@ -12,7 +12,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity();
 
             // Assert
-            Assert.False(entity.HeartbeatExpires.HasValue);
             Assert.False(entity.EndTime.HasValue);
             Assert.False(entity.StartTime.HasValue);
             Assert.Null(entity.ExceptionType);
@@ -32,13 +31,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
         public void GetStatus_IfEntityHasExpiredHeartbeatOnly_ReturnsNeverFinished()
         {
             // Arrange
-            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
-            {
-                HeartbeatExpires = DateTime.MinValue
-            };
+            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity();
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.NeverFinished, entity);
+            TestStatus(FunctionInstanceStatus.NeverFinished, entity, heartbeatExpires: DateTime.MinValue);
         }
 
         [Fact]
@@ -47,26 +43,22 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
-                HeartbeatExpires = DateTime.MinValue,
                 StartTime = DateTime.MinValue,
                 QueueTime = DateTime.MinValue
             };
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.NeverFinished, entity);
+            TestStatus(FunctionInstanceStatus.NeverFinished, entity, heartbeatExpires: DateTime.MinValue);
         }
 
         [Fact]
         public void GetStatus_IfEntityHasUnexpiredHeartbeatOnly_ReturnsRunning()
         {
             // Arrange
-            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
-            {
-                HeartbeatExpires = DateTime.MaxValue
-            };
+            ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity();
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.Running, entity);
+            TestStatus(FunctionInstanceStatus.Running, entity, heartbeatExpires: DateTime.MaxValue);
         }
 
         [Fact]
@@ -75,13 +67,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
-                HeartbeatExpires = DateTime.MaxValue,
                 StartTime = DateTime.MinValue,
                 QueueTime = DateTime.MinValue
             };
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.Running, entity);
+            TestStatus(FunctionInstanceStatus.Running, entity, heartbeatExpires: DateTime.MaxValue);
         }
 
         [Fact]
@@ -90,14 +81,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
-                HeartbeatExpires = DateTime.MinValue,
                 EndTime = DateTime.MinValue,
                 StartTime = DateTime.MinValue,
                 QueueTime = DateTime.MinValue
             };
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.CompletedSuccess, entity);
+            TestStatus(FunctionInstanceStatus.CompletedSuccess, entity, heartbeatExpires: DateTime.MinValue);
         }
 
         [Fact]
@@ -106,7 +96,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             // Arrange
             ExecutionInstanceLogEntity entity = new ExecutionInstanceLogEntity
             {
-                HeartbeatExpires = DateTime.MinValue,
                 EndTime = DateTime.MinValue,
                 StartTime = DateTime.MinValue,
                 QueueTime = DateTime.MinValue,
@@ -114,7 +103,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             };
 
             // Act & Assert
-            TestStatus(FunctionInstanceStatus.CompletedFailed, entity);
+            TestStatus(FunctionInstanceStatus.CompletedFailed, entity, heartbeatExpires: DateTime.MinValue);
         }
 
         [Fact]
@@ -146,8 +135,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
 
         private static void TestStatus(FunctionInstanceStatus expected, ExecutionInstanceLogEntity entity)
         {
+            TestStatus(expected, entity, null);
+        }
+
+        private static void TestStatus(FunctionInstanceStatus expected, ExecutionInstanceLogEntity entity, DateTime? heartbeatExpires)
+        {
             // Act
-            FunctionInstanceStatus status = ExecutionInstanceLogEntityExtensions.GetStatus(entity);
+            FunctionInstanceStatus status = ExecutionInstanceLogEntityExtensions.GetStatusWithHeartbeat(entity, heartbeatExpires);
 
             // Assert
             Assert.Equal(expected, status);

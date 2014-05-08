@@ -279,7 +279,7 @@ namespace Microsoft.Azure.Jobs
 
             public void LogFunctionEnd(ExecutionInstanceLogEntity logItem)
             {
-                if (logItem.GetStatus() == FunctionInstanceStatus.CompletedFailed)
+                if (logItem.GetStatusWithoutHeartbeat() == FunctionInstanceStatus.CompletedFailed)
                 {
                     var oldColor = Console.ForegroundColor;
                     Console.ForegroundColor = ConsoleColor.Red;
