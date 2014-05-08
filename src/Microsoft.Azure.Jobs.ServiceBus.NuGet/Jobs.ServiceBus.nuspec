@@ -6,7 +6,7 @@
     <version>$NuGetPackageVersion$</version>
     <authors>Microsoft</authors>
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
-    <summary>Microsoft.Azure.Jobs.ServiceBus is a library for writing Microsoft Azure Service Bus Jobs. This package contains the runtime assemblies for Microsoft.Azure.Jobs.ServiceBus.</summary>
+    <summary>Microsoft.Azure.Jobs.ServiceBus is a library for writing Microsoft Azure Jobs using Service Bus. This package contains the runtime assemblies for Microsoft.Azure.Jobs.ServiceBus.</summary>
     <description>This package contains the runtime assemblies for Microsoft.Azure.Jobs.ServiceBus. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
     <language>en-US</language>
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
