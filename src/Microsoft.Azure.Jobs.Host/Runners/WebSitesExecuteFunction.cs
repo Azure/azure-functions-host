@@ -5,7 +5,7 @@ using System.Threading;
 namespace Microsoft.Azure.Jobs.Internals
 {
     // In-memory executor. 
-    class AntaresExecuteFunction : ExecuteFunctionBase
+    class WebSitesExecuteFunction : ExecuteFunctionBase
     {
         // Logging hook for each function invoked. 
         private readonly IJobHostLogger _fpLog;
@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Internals
 
         private readonly IConfiguration _config;
 
-        public AntaresExecuteFunction(ExecuteFunctionInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
+        public WebSitesExecuteFunction(ExecuteFunctionInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
             : base(interfaces)
         {
             _config = config;

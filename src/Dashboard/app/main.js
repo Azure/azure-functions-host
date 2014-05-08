@@ -38,7 +38,7 @@
 
     app.config(['$routeProvider',
         function ($routeProvider) {
-            var defaultHomePage = '/jobs'; //or /functions if not in antares
+            var defaultHomePage = '/jobs'; //or /functions if not in Azure Web Sites
             $routeProvider.
                 when('/', {
                     redirectTo: defaultHomePage

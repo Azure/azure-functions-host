@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         /// Checks that we write the marker file when we call the constructor with arguments
         /// </summary>
         [Fact]
-        public void TestSdkMarkerIsWrittenWhenInAntares()
+        public void TestSdkMarkerIsWrittenWhenInAzureWebSites()
         {
             // Arrange
             string tempDir = Path.GetTempPath();

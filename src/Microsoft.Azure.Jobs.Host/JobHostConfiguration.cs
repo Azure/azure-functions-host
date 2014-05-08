@@ -49,7 +49,7 @@ namespace Microsoft.Azure.Jobs
         {
             _connectionStringProvider = connectionStringProvider;
 
-            WriteAntaresManifest();
+            WriteSiteExtensionManifest();
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
@@ -98,13 +98,13 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // When running in Antares, write out a manifest file.
-        private static void WriteAntaresManifest()
+        // When running in Azure Web Sites, write out a manifest file.
+        private static void WriteSiteExtensionManifest()
         {
             string jobDataPath = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath);
             if (jobDataPath == null)
             {
-                // we're not in antares, bye bye.
+                // we're not in Azure Web Sites, bye bye.
                 return;
             }
 

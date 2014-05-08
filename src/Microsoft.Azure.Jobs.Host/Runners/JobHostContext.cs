@@ -95,7 +95,7 @@ namespace Microsoft.Azure.Jobs
             ctx.Logger = interfaces.Logger;
 
             // This is direct execution, doesn't queue up. 
-            _executeFunction = new AntaresExecuteFunction(interfaces, config, ctx, new ConsoleHostLogger());
+            _executeFunction = new WebSitesExecuteFunction(interfaces, config, ctx, new ConsoleHostLogger());
             _functionTableLookup = functionTableLookup;
         }
 

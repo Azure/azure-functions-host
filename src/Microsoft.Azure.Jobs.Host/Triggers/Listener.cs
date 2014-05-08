@@ -108,7 +108,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // $$$ Should get account via Antares internal api.  Abstract this out. 
+        // $$$ Should get account via Azure Web Sites internal api.  Abstract this out. 
         private CloudStorageAccount GetAccount(string scope, Trigger func)
         {
             CloudStorageAccount account = CloudStorageAccount.Parse(func.AccountConnectionString);

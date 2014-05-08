@@ -56,7 +56,7 @@
 
         function getData() {
             lastPoll = new Date();
-            // TODO: look up all antares WebJobs statuses that are "not running"
+            // TODO: look up all Azure WebJobs statuses that are "not running"
              if ($scope.jobRun && $scope.jobRun.status === 'Success') {
                 return;
             }

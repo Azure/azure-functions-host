@@ -319,7 +319,7 @@
     <Compile Include="Tables\WrapperEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\SimpleBinderProvider.cs" />
     <Compile Include="Runners\IJobHostLogger.cs" />
-    <Compile Include="Runners\AntaresExecuteFunction.cs" />
+    <Compile Include="Runners\WebSitesExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />
     <Compile Include="Triggers\BlobListeners\ServiceType.cs" />

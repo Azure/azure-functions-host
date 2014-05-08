@@ -149,7 +149,7 @@ namespace Dashboard
         // $$$ Really should just get rid of this object and use DI all the way through. 
         static Services GetServices(string runtimeConnectionString)
         {
-            // Antares mode
+            // Azure Web Sites mode
             var ai = new AccountInfo
             {
                 AccountConnectionString = runtimeConnectionString

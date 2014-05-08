@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs
         // Not serialized. For in-memory cases.(This is kind of exclusive with CallbackPath)
         public object Tag { get; set; }
 
-        // $$$ Need abstraction here, may get via antares instead. 
+        // $$$ Need abstraction here, may get via Azure Web Sites instead. 
         public string AccountConnectionString { get; set; }
 
         public TriggerType Type { get; set; }
