@@ -6,8 +6,6 @@
 
         public const string EventQueueTableName = Prefix + "EventQueue";
 
-        public const string FunctionInvokeLogTableName = Prefix + "FunctionLogs";
-
         public const string RunningHostsTableName = Prefix + "RunningHosts";
     }
 }

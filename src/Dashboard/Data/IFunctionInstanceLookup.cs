@@ -1,6 +1,7 @@
 ﻿using System;
+using Microsoft.Azure.Jobs;
 
-namespace Microsoft.Azure.Jobs
+namespace Dashboard.Data
 {
     // Looking up a function instance given the key. 
     // Guid is the FunctionInstance identifier

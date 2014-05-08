@@ -7,7 +7,7 @@ using Microsoft.Azure.Jobs;
 namespace Dashboard.Data
 {
     // Includes both reading and writing the secondary indices together. 
-    internal class ExecutionStatsAggregator : IFunctionInstanceLogger, IFunctionInstanceLookup
+    internal class ExecutionStatsAggregator : IFunctionInstanceLogger
     {
         private const string PartitionKey = "1";
 
@@ -61,14 +61,9 @@ namespace Dashboard.Data
             }
         }
 
-        ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
-        {
-            return LookupInPrimaryTable(rowKey);
-        }
-
         private ExecutionInstanceLogEntity LookupInPrimaryTable(Guid functionInstanceId)
         {
-            return FunctionUpdatedLogger.RawLookup(_tableLookup, functionInstanceId.ToString());
+            return FunctionInstanceLookup.RawLookup(_tableLookup, functionInstanceId.ToString());
         }
 
         public void Flush()
@@ -212,7 +207,10 @@ namespace Dashboard.Data
 
         private void DeleteFunctionStartedIfExists(ExecutionInstanceLogEntity logItem)
         {
-            if (!logItem.StartTime.HasValue)
+            if (!logItem.StartTime.HasValue ||
+                (logItem.StartTime.HasValue &&
+                logItem.EndTime.HasValue &&
+                logItem.StartTime.Value.Ticks == logItem.EndTime.Value.Ticks))
             {
                 return;
             }

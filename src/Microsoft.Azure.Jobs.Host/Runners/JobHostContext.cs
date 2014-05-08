@@ -20,9 +20,8 @@ namespace Microsoft.Azure.Jobs
     internal class JobHostContext
     {
         private readonly IExecuteFunction _executeFunction;
-        private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionTableLookup _functionTableLookup;
-        private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
         private readonly Guid _hostInstanceId;
         private readonly Guid _hostId;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
@@ -69,10 +68,9 @@ namespace Microsoft.Azure.Jobs
 
                 var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
                 ctx = logger.GetExecutionContext();
-                ctx.FunctionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
+                _functionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
+                ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
-                _functionInstanceLookup = services.GetFunctionInstanceLookup();
-                _functionUpdatedLogger = services.GetFunctionUpdatedLogger();
                 _terminationSignalReader = new ProcessTerminationSignalReader(services.Account);
                 _heartbeatTable = services.GetRunningHostTableWriter();
             }
@@ -90,8 +88,6 @@ namespace Microsoft.Azure.Jobs
                 _heartbeatTable = new NullRunningHostTableWriter();
             }
 
-            ctx.Logger = interfaces.Logger;
-
             // This is direct execution, doesn't queue up. 
             _executeFunction = new WebSitesExecuteFunction(interfaces, config, ctx, new ConsoleHostLogger());
             _functionTableLookup = functionTableLookup;
@@ -101,20 +97,9 @@ namespace Microsoft.Azure.Jobs
         // azure storage account.
         private static ExecuteFunctionInterfaces CreateInMemoryQueueInterfaces()
         {
-            IFunctionInstanceLookup lookup;
-            IFunctionUpdatedLogger functionUpdate;
-
-            {
-                var x = new LocalFunctionLogger();
-                functionUpdate = x;
-                lookup = x;
-            }
-
             var interfaces = new ExecuteFunctionInterfaces
             {
-                AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
-                Logger = functionUpdate,
-                Lookup = lookup,
+                AccountInfo = new AccountInfo() // For webdashboard. NA in local case
             };
             return interfaces;
         }
@@ -124,19 +109,14 @@ namespace Microsoft.Azure.Jobs
             get { return _executeFunction; }
         }
 
-        public IFunctionInstanceLookup FunctionInstanceLookup
+        public IFunctionInstanceLogger FunctionInstanceLogger
         {
-            get { return _functionInstanceLookup; }
+            get { return _functionInstanceLogger; }
         }
 
         public IFunctionTableLookup FunctionTableLookup
         {
             get { return _functionTableLookup; }
-        }
-
-        public IFunctionUpdatedLogger FunctionUpdatedLogger
-        {
-            get { return _functionUpdatedLogger; }
         }
 
         public Guid HostId

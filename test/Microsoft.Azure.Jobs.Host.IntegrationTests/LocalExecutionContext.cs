@@ -75,9 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             var interfaces = new ExecuteFunctionInterfaces
             {
-                AccountInfo = new AccountInfo(), // For webdashboard. NA in local case
-                Logger = _functionUpdate,
-                Lookup = _lookup
+                AccountInfo = new AccountInfo() // For webdashboard. NA in local case
             };
 
             var y = new LocalExecute(interfaces, this);
@@ -183,15 +181,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 _parent = parent;
             }
 
-            protected override void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken)
+            protected override ExecutionInstanceLogEntity Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
             {
-                RunnerProgram runner = RunnerProgram.Create(logItem.FunctionInstance);
+                RunnerProgram runner = RunnerProgram.Create(instance);
+
+                var logItem = new ExecutionInstanceLogEntity();
+                logItem.FunctionInstance = instance;
 
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    runner.Invoke(logItem.FunctionInstance, _parent._config, cancellationToken);
+                    runner.Invoke(instance, _parent._config, cancellationToken);
                 }
                 catch (Exception e)
                 {
@@ -202,6 +203,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 // Mark this function as done executing. $$$ Merge with ExecutionBase?
                 logItem.EndTime = DateTime.UtcNow;
                 _parent._functionUpdate.Log(logItem);
+
+                return logItem;
             }
         }
     }

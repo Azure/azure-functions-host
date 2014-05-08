@@ -11,9 +11,6 @@ namespace Microsoft.Azure.Jobs
 
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
 
-        // Used to update function as its being executed
-        public IFunctionUpdatedLogger Logger { get; set; }
-
         public IFunctionInstanceLogger FunctionInstanceLogger { get; set; }
     }
 }

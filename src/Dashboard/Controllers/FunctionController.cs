@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Web.Mvc;
+using Dashboard.Data;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
@@ -20,7 +21,7 @@ namespace Dashboard.Controllers
         private readonly CloudStorageAccount _account;
         private readonly IFunctionTableLookup _functionTableLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
-        private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
+        private readonly IFunctionQueuedLogger _functionQueuedLogger;
         private readonly IRunningHostTableReader _heartbeatTable;
         private readonly IInvoker _invoker;
 
@@ -28,7 +29,7 @@ namespace Dashboard.Controllers
             CloudStorageAccount account,
             IFunctionTableLookup functionTableLookup,
             IFunctionInstanceLookup functionInstanceLookup,
-            IFunctionUpdatedLogger functionUpdatedLogger,
+            IFunctionQueuedLogger functionQueuedLogger,
             IRunningHostTableReader heartbeatTable,
             IInvoker invoker
             )
@@ -36,7 +37,7 @@ namespace Dashboard.Controllers
             _account = account;
             _functionTableLookup = functionTableLookup;
             _functionInstanceLookup = functionInstanceLookup;
-            _functionUpdatedLogger = functionUpdatedLogger;
+            _functionQueuedLogger = functionQueuedLogger;
             _heartbeatTable = heartbeatTable;
             _invoker = invoker;
         }
@@ -146,7 +147,7 @@ namespace Dashboard.Controllers
             };
 
             ExecutionInstanceLogEntity logEntity = CreateLogEntity(function, message);
-            _functionUpdatedLogger.Log(logEntity);
+            _functionQueuedLogger.LogFunctionQueued(logEntity);
 
             _invoker.TriggerAndOverride(hostId, message);
 

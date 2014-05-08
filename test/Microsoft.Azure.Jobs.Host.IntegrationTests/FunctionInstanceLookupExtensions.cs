@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     internal static class FunctionInstanceLookupExtensions
     {

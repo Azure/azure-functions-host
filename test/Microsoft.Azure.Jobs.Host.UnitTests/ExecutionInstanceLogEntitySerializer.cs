@@ -1,17 +1,17 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
+using Newtonsoft.Json;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Primary access to the azure table storing function invoke requests.  
-    internal class FunctionUpdatedLogger : IFunctionUpdatedLogger, IFunctionInstanceLookup
+    internal class ExecutionInstanceLogEntitySerializer
     {
         // Partition key is a constant. Row key is ExecutionInstanceLogEntity.GetKey(), which is the function instance Guid. 
         private readonly IAzureTable<ExecutionInstanceLogEntity> _table;
 
         const string PartKey = "1";
 
-        public FunctionUpdatedLogger(IAzureTable<ExecutionInstanceLogEntity> table)
+        public ExecutionInstanceLogEntitySerializer(IAzureTable<ExecutionInstanceLogEntity> table)
         {
             if (table == null)
             {
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs
         public void Log(ExecutionInstanceLogEntity log)
         {
             string rowKey = log.GetKey();
-            var l2 = RawLookup(_table, rowKey);
+            var l2 = Read(rowKey);
             if (l2 == null)
             {
                 l2 = log;
@@ -39,11 +39,16 @@ namespace Microsoft.Azure.Jobs
             _table.Flush();
         }
 
-        public static ExecutionInstanceLogEntity RawLookup(IAzureTableReader<ExecutionInstanceLogEntity> table, string rowKey)
+        public ExecutionInstanceLogEntity Read(Guid id)
+        {
+            return Read(id.ToString());
+        }
+
+        public ExecutionInstanceLogEntity Read(string rowKey)
         {
             try
             {
-                ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
+                ExecutionInstanceLogEntity func = _table.Lookup(PartKey, rowKey);
                 return func;
             }
             catch (JsonSerializationException)
@@ -64,11 +69,6 @@ namespace Microsoft.Azure.Jobs
                     property.SetValue(mutate, deltaVal, null);
                 }
             }
-        }
-
-        ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
-        {
-            return RawLookup(_table, rowKey.ToString());
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs
+﻿namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Log as an individual function is getting updated. 
     // This may be called multiple times as a function execution is processed (queued, exectuing, completed, etc)

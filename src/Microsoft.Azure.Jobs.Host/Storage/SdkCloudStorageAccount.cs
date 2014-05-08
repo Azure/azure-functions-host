@@ -117,50 +117,19 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk = sdk;
             }
 
-            public T GetOrInsert<T>(T entity) where T : ITableEntity, new()
+            public TElement Retrieve<TElement>(string partitionKey, string rowKey) where TElement : class, ITableEntity
             {
-                if (entity == null)
+                TableResult outerResult = _sdk.Execute(TableOperation.Retrieve<TElement>(partitionKey, rowKey));
+
+                if (outerResult == null)
                 {
-                    throw new ArgumentNullException("entity");
+                    return null;
                 }
 
-                _sdk.CreateIfNotExists();
-
-                try
-                {
-                    // First, try to insert.
-                    _sdk.Execute(TableOperation.Insert(entity));
-                    return entity;
-                }
-                catch (StorageException exception)
-                {
-                    RequestResult result = exception.RequestInformation;
-
-                    // If the insert failed because the entity already exists, try to get instead.
-                    if (result != null && result.HttpStatusCode == 409)
-                    {
-                        IQueryable queryable = _sdk.CreateQuery<T>();
-                        Debug.Assert(queryable != null);
-                        IQueryable<T> query = from T item in queryable
-                                              where item.PartitionKey == entity.PartitionKey
-                                              && item.RowKey == entity.RowKey
-                                              select item;
-                        T existingItem = query.FirstOrDefault();
-
-                        // The get can fail if the object existed at the time of insert but was deleted before
-                        // the get executed. At this point, give up. We already tried to insert once, and that
-                        // already failed, so just propogate the original exception.
-                        if (existingItem != null)
-                        {
-                            return existingItem;
-                        }
-                    }
-
-                    throw;
-                }
+                return outerResult.Result as TElement;
             }
 
-            public void InsertEntity<T>(T entity) where T : ITableEntity
+            public void Insert(ITableEntity entity)
             {
                 if (entity == null)
                 {
@@ -170,7 +139,27 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk.Execute(TableOperation.Insert(entity));
             }
 
-            public IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : ITableEntity, new()
+            public void InsertOrReplace(ITableEntity entity)
+            {
+                if (entity == null)
+                {
+                    throw new ArgumentNullException("entity");
+                }
+
+                _sdk.Execute(TableOperation.InsertOrReplace(entity));
+            }
+
+            public void Replace(ITableEntity entity)
+            {
+                if (entity == null)
+                {
+                    throw new ArgumentNullException("entity");
+                }
+
+                _sdk.Execute(TableOperation.Replace(entity));
+            }
+
+            public IEnumerable<TElement> Query<TElement>(int limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new()
             {
                 // avoid utterly inefficient queries
                 const int maxPageSize = 50;
@@ -180,7 +169,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                         "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
                 }
 
-                IQueryable<T> q = _sdk.CreateQuery<T>();
+                IQueryable<TElement> q = _sdk.CreateQuery<TElement>();
                 foreach (var queryModifier in queryModifiers)
                 {
                     q = queryModifier.Apply(q);
@@ -213,6 +202,49 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                         }
                     }
                     return q.ToArray();
+                }
+            }
+
+            public TElement GetOrInsert<TElement>(TElement entity) where TElement : ITableEntity, new()
+            {
+                if (entity == null)
+                {
+                    throw new ArgumentNullException("entity");
+                }
+
+                _sdk.CreateIfNotExists();
+
+                try
+                {
+                    // First, try to insert.
+                    _sdk.Execute(TableOperation.Insert(entity));
+                    return entity;
+                }
+                catch (StorageException exception)
+                {
+                    RequestResult result = exception.RequestInformation;
+
+                    // If the insert failed because the entity already exists, try to get instead.
+                    if (result != null && result.HttpStatusCode == 409)
+                    {
+                        IQueryable queryable = _sdk.CreateQuery<TElement>();
+                        Debug.Assert(queryable != null);
+                        IQueryable<TElement> query = from TElement item in queryable
+                                                     where item.PartitionKey == entity.PartitionKey
+                                                     && item.RowKey == entity.RowKey
+                                                     select item;
+                        TElement existingItem = query.FirstOrDefault();
+
+                        // The get can fail if the object existed at the time of insert but was deleted before
+                        // the get executed. At this point, give up. We already tried to insert once, and that
+                        // already failed, so just propogate the original exception.
+                        if (existingItem != null)
+                        {
+                            return existingItem;
+                        }
+                    }
+
+                    throw;
                 }
             }
         }

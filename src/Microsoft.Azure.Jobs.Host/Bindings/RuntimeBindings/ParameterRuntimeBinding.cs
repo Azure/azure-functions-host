@@ -15,16 +15,6 @@ namespace Microsoft.Azure.Jobs
         // This can be part of the UI. 
         public abstract string ConvertToInvokeString();
 
-        // When was this parameter last modified? 
-        // This applies to both inputs and outputs. (eg, think blobs).
-        // Can be used in optimizations. 
-        // Null if not avaiable. (eg, if we have no way to scan, such as a table input; blob output may not yet be written)
-        [JsonIgnore]
-        public virtual DateTime? LastModifiedTime
-        {
-            get { return null; } // no time information known 
-        }
-
         // Get a runtime object. 
         // Include ParameterInfo because those don't serialize. 
         // Also, the parameterInfo provides a loader-approved System.Type for the target parameter, so

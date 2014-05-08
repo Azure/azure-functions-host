@@ -8,8 +8,6 @@ namespace Microsoft.Azure.Jobs
     // but abstracts away the actual raw queuing mechanism.
     internal abstract class ExecuteFunctionBase : IExecuteFunction
     {
-        protected readonly IFunctionUpdatedLogger _logger;
-        protected readonly IFunctionInstanceLookup _lookup;
         protected readonly IAccountInfo _account;
 
         // account - this is the internal storage account for using the service. 
@@ -23,7 +21,6 @@ namespace Microsoft.Azure.Jobs
             }
             interfaces.VerifyNotNull();
 
-            _lookup = interfaces.Lookup;
             _account = interfaces.AccountInfo;
         }
 
@@ -44,22 +41,11 @@ namespace Microsoft.Azure.Jobs
             }
             instance.TriggerReason.ChildGuid = instance.Id;
 
-            // Log that the function is now queued.
-            // Do this before queueing to avoid racing with execution 
-            var logItem = new ExecutionInstanceLogEntity();
-            logItem.FunctionInstance = instance;
-
             // Execute immediately.
-            Work(logItem, cancellationToken);
-
-            // Lookup again. In the bowls of execution, we may have made changes 
-            // against the log item in the table instead of our reference here. 
-            logItem = _lookup.Lookup(instance.Id);
-
-            return logItem;
+            return Work(instance, cancellationToken);
         }
 
         // Does the actual queueing mechanism (submit to an azure queue, submit as an azure task)
-        protected abstract void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken);
+        protected abstract ExecutionInstanceLogEntity Work(FunctionInvokeRequest instance, CancellationToken cancellationToken);
     }
 }

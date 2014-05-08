@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,8 +17,7 @@ namespace Microsoft.Azure.Jobs
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
         private readonly QueueTrigger _invokeTrigger;
-        private readonly IFunctionInstanceLookup _functionInstanceLookup;
-        private readonly IFunctionUpdatedLogger _functionUpdatedLogger;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
         // General purpose listener for blobs, queues. 
         private Listener _listener;
@@ -26,8 +26,7 @@ namespace Microsoft.Azure.Jobs
         private INotifyNewBlobListener _blobListener;
 
         public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute,
-            IFunctionInstanceLookup functionInstanceLookup, IFunctionUpdatedLogger functionUpdatedLogger,
-            INotifyNewBlobListener blobListener = null)
+            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlobListener blobListener = null)
         {
             _invokeTrigger = invokeTrigger;
             _blobListener = blobListener;
@@ -41,8 +40,7 @@ namespace Microsoft.Azure.Jobs
             }
             _functionTable = functionTable;
             _executor = execute;
-            _functionInstanceLookup = functionInstanceLookup;
-            _functionUpdatedLogger = functionUpdatedLogger;
+            _functionInstanceLogger = functionInstanceLogger;
 
             CreateInputMap();
         }
@@ -153,10 +151,20 @@ namespace Microsoft.Azure.Jobs
                 }
                 else
                 {
-                    string exceptionMessage = String.Format(CultureInfo.CurrentCulture,
+                    // Log that the function failed.
+                    request = CreateFailedInvokeRequest(triggerOverrideModel);
+                    // In theory, we could also set HostInstanceId and ExecutingJobRunId; we'd just have to expose that data
+                    // directly to this Worker class.
+                    ExecutionInstanceLogEntity logEntity = new ExecutionInstanceLogEntity();
+                    logEntity.FunctionInstance = request;
+                    logEntity.QueueTime = message.InsertionTime.Value.UtcDateTime;
+                    DateTime startAndEndTime = DateTime.UtcNow;
+                    logEntity.StartTime = startAndEndTime;
+                    logEntity.EndTime = startAndEndTime;
+                    logEntity.ExceptionType = typeof(InvalidOperationException).FullName;
+                    logEntity.ExceptionMessage = String.Format(CultureInfo.CurrentCulture,
                         "No function '{0}' currently exists.", triggerOverrideModel.FunctionId);
-                    ExecutionBase.LogFunctionFailed(_functionInstanceLookup, _functionUpdatedLogger,
-                        triggerOverrideModel.Id, typeof(InvalidOperationException).FullName, exceptionMessage);
+                    _functionInstanceLogger.LogFunctionCompleted(logEntity);
                 }
             }
             else
@@ -164,6 +172,29 @@ namespace Microsoft.Azure.Jobs
                 string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);
                 throw new NotSupportedException(error);
             }
+        }
+
+        // This function invoke request won't contain full normal data for FunctionLocation and Args/RuntimeBindings.
+        // (All we know is an unavailable function ID; which function locatino method info and static bindings to use
+        // for each parameter are a mystery).
+        private static FunctionInvokeRequest CreateFailedInvokeRequest(TriggerAndOverrideMessage message)
+        {
+            ExecutionInstanceLogEntity logEntity = new ExecutionInstanceLogEntity();
+            FunctionInvokeRequest request = new FunctionInvokeRequest();
+            logEntity.FunctionInstance = request;
+
+            request.Id = message.Id;
+            request.TriggerReason = message.GetTriggerReason();
+            request.Location = new PartialFunctionLocation(message.FunctionId);
+            List<ParameterRuntimeBinding> arguments = new List<ParameterRuntimeBinding>();
+
+            foreach (KeyValuePair<string, string> argument in message.Arguments)
+            {
+                arguments.Add(new PartialParameterRuntimeBinding(argument.Key, argument.Value));
+            }
+
+            request.Args = arguments.ToArray();
+            return request;
         }
 
         private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message)
@@ -404,6 +435,49 @@ namespace Microsoft.Azure.Jobs
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
                 _parent.OnNewBlob(func, blob, token);
+            }
+        }
+
+        private class PartialFunctionLocation : FunctionLocation
+        {
+            public string Id { get; set; }
+
+            public PartialFunctionLocation(string id)
+            {
+                Id = id;
+                FullName = id;
+            }
+
+            public override string GetId()
+            {
+                return Id;
+            }
+
+            public override string GetShortName()
+            {
+                return Id;
+            }
+        }
+
+        private class PartialParameterRuntimeBinding : ParameterRuntimeBinding
+        {
+            private readonly string _name;
+            private readonly string _value;
+
+            public PartialParameterRuntimeBinding(string name, string value)
+            {
+                _name = name;
+                _value = value;
+            }
+
+            public override string ConvertToInvokeString()
+            {
+                return _value;
+            }
+
+            public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
+            {
+                throw new InvalidOperationException("A PartialParameterRuntimeBinding cannot be bound.");
             }
         }
     }

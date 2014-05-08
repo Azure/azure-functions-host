@@ -8,7 +8,7 @@ using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 using AzureTables;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Ideally use FunctionUpdatedLogger with in-memory azure tables (this would minimize code deltas).
     // For local execution, we may have function objects that don't serialize. So we can't run through azure tables.
@@ -28,8 +28,7 @@ namespace Microsoft.Azure.Jobs
             }
             else
             {
-                // Merge
-                FunctionUpdatedLogger.Merge(l2, log);
+                Merge(l2, log);
             }
 
             _dict[rowKey] = l2;
@@ -45,6 +44,19 @@ namespace Microsoft.Azure.Jobs
             ExecutionInstanceLogEntity log;
             _dict.TryGetValue(rowKey, out log);
             return log;
+        }
+
+        // $$$ Should be a merge. Move this merge operation in IAzureTable?
+        private static void Merge<T>(T mutate, T delta)
+        {
+            foreach (var property in typeof(T).GetProperties())
+            {
+                var deltaVal = property.GetValue(delta, null);
+                if (deltaVal != null)
+                {
+                    property.SetValue(mutate, deltaVal, null);
+                }
+            }
         }
     }
 }

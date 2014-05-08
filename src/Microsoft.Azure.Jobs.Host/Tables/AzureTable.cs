@@ -281,6 +281,53 @@ namespace AzureTables
             return sb.ToString();
         }
 
+        public static DynamicTableEntity ToTableEntity(string partitionKey, string rowKey, object values)
+        {
+            IDictionary<string, string> valuesDictionary = ObjectBinderHelpers.ConvertObjectToDict(values);
+            return ToTableEntity(partitionKey, rowKey, valuesDictionary);
+        }
+
+        private static DynamicTableEntity ToTableEntity(string partitionKey, string rowKey, IDictionary<string, string> values)
+        {
+            DynamicTableEntity entity = new DynamicTableEntity(partitionKey, rowKey);
+
+            foreach (KeyValuePair<string, string> property in values)
+            {
+                string propertyName = property.Key;
+
+                if (!IsSystemProperty(propertyName))
+                {
+                    entity.Properties.Add(propertyName, new EntityProperty(property.Value));
+                }
+            }
+
+            return entity;
+        }
+
+        private static bool IsSystemProperty(string name)
+        {
+            if (String.Equals("PartitionKey", name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            else if (String.Equals("RowKey", name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            else if (String.Equals("Timestamp", name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            else if (String.Equals("ETag", name, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         // Does batching of writes on a single TableServiceContext.
         // The biggest performance issue for writing tables is batching. Batches must all have the same partition key.
         // Batching can make a 100x perf difference.
@@ -326,45 +373,12 @@ namespace AzureTables
                 }
             }
 
-            private static bool IsSystemProperty(string name)
-            {
-                if (String.Equals("PartitionKey", name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-                else if (String.Equals("RowKey", name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-                else if (String.Equals("Timestamp", name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-                else if (String.Equals("ETag", name, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
             public void WriteAsync(IDictionary<string, string> values, string partitionKey, string rowKey)
             {
                 ValidateSystemProperty(partitionKey);
                 ValidateSystemProperty(rowKey);
 
-                DynamicTableEntity entity = new DynamicTableEntity(partitionKey, rowKey);
-                foreach (KeyValuePair<string, string> property in values)
-                {
-                    string propertyName = property.Key;
-
-                    if (!IsSystemProperty(propertyName))
-                    {
-                        entity.Properties.Add(propertyName, new EntityProperty(property.Value));
-                    }
-                }
+                DynamicTableEntity entity = ToTableEntity(partitionKey, rowKey, values);
                 _rowCounter++;
 
                 // All rows in the batch must have the same partition key.

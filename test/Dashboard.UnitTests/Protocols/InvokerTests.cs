@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using Dashboard.Protocols;
-using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Newtonsoft.Json;
 using Xunit;
@@ -169,9 +168,9 @@ namespace Dashboard.UnitTests.Protocols
             return new Invoker(client);
         }
 
-        private static CloudStorageException CreateStorageException(int httpStatusCode)
+        private static StorageException CreateStorageException(int httpStatusCode)
         {
-            return new CloudStorageException(new CloudRequestResult(httpStatusCode));
+            return new StorageException(new RequestResult { HttpStatusCode = httpStatusCode }, null ,null);
         }
 
         private static string ToJson(object value)

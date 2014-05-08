@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Xunit;
 
@@ -110,14 +110,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Runners
             return new HostTable(client);
         }
 
-        private static CloudStorageException CreateStorageException(int httpStatusCode)
+        private static StorageException CreateStorageException(int httpStatusCode)
         {
-            return CreateStorageException(new CloudRequestResult(httpStatusCode));
+            return CreateStorageException(new RequestResult { HttpStatusCode = httpStatusCode });
         }
 
-        private static CloudStorageException CreateStorageException(CloudRequestResult requestInformation)
+        private static StorageException CreateStorageException(RequestResult requestInformation)
         {
-            return new CloudStorageException(requestInformation);
+            return new StorageException(requestInformation, null, null);
         }
     }
 }

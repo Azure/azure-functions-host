@@ -26,24 +26,26 @@ namespace Dashboard
                 return;
             }
 
-            Bind<CloudStorageAccount>().ToConstant(services.Account);
-            Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(services.Account));
+            CloudStorageAccount account = services.Account;
+
+            Bind<CloudStorageAccount>().ToConstant(account);
+            Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(account));
             Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
             Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
-            Bind<IFunctionInstanceLookup>().ToMethod(() => services.GetFunctionInstanceLookup());
-            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(services.Account));
-            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(services.Account));
-            Bind<IRunningHostTableReader>().ToMethod(() => CreateRunningHostTableReader(services.Account));
-            Bind<IFunctionUpdatedLogger>().ToMethod(() => services.GetFunctionUpdatedLogger());
-            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(services.Account));
-            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(services));
-            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(services.Account));
-            Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudQueueClient());
-            Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(services.Account).CreateCloudTableClient());
+            Bind<IFunctionInstanceLookup>().ToMethod(() => CreateFunctionInstanceLookup(account));
+            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(account));
+            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(account));
+            Bind<IRunningHostTableReader>().ToMethod(() => CreateRunningHostTableReader(account));
+            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(account));
+            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(account));
+            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(account));
+            Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(account).CreateCloudQueueClient());
+            Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(account).CreateCloudTableClient());
             Bind<IInvoker>().To<Invoker>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(services));
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(account));
+            Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
             BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
@@ -87,10 +89,10 @@ namespace Dashboard
             return new AzureTable<TriggerReasonEntity>(account, DashboardTableNames.FunctionCausalityLog);
         }
 
-        private static ICausalityReader CreateCausalityReader(Services services)
+        private static ICausalityReader CreateCausalityReader(CloudStorageAccount account)
         {
-            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(services.Account);
-            IFunctionInstanceLookup logger = services.GetFunctionInstanceLookup(); // read-mode
+            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
+            IFunctionInstanceLookup logger = CreateFunctionInstanceLookup(account); // read-mode
             return new CausalityLogger(table, logger);
         }
 
@@ -101,26 +103,45 @@ namespace Dashboard
             return new CausalityLogger(table, logger);
         }
 
-        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(Services services)
+        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudStorageAccount account)
         {
-            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = services.GetFunctionLookupTable();
-            var tableStatsSummary = CreateInvokeStatsTable(services.Account);
-            var tableMru = CreateIndexTable(services.Account, DashboardTableNames.FunctionInvokeLogIndexMru);
-            var tableMruByFunction = CreateIndexTable(services.Account,
+            IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(new SdkCloudStorageAccount(account).CreateCloudTableClient());
+
+            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = CreateFunctionLookupTable(account);
+            var tableStatsSummary = CreateInvokeStatsTable(account);
+            var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
+            var tableMruByFunction = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
-            var tableMruByFunctionSucceeded = CreateIndexTable(services.Account,
+            var tableMruByFunctionSucceeded = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunctionSucceeded);
-            var tableMruFunctionFailed = CreateIndexTable(services.Account,
+            var tableMruFunctionFailed = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunctionFailed);
 
-            return new ExecutionStatsAggregator(
+            IFunctionInstanceLogger statsAggregator = new ExecutionStatsAggregator(
                 tableLookup,
                 tableStatsSummary,
                 tableMru,
                 tableMruByFunction,
                 tableMruByFunctionSucceeded,
                 tableMruFunctionFailed);
+
+            return new CompositeFunctionInstanceLogger(instanceLogger, statsAggregator);
         }
+
+
+        // Streamlined case if we just need to lookup specific function instances.
+        // In this case, we don't need all the secondary indices.
+        private static IFunctionInstanceLookup CreateFunctionInstanceLookup(CloudStorageAccount account)
+        {
+            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = CreateFunctionLookupTable(account);
+            return new FunctionInstanceLookup(tableLookup);
+        }
+
+        private static IAzureTableReader<ExecutionInstanceLogEntity> CreateFunctionLookupTable(CloudStorageAccount account)
+        {
+            return new AzureTable<ExecutionInstanceLogEntity>(account, DashboardTableNames.FunctionInvokeLogTableName);
+        }
+
 
         private static IFunctionTable CreateFunctionTable(CloudStorageAccount account)
         {

@@ -8,8 +8,8 @@ namespace Microsoft.Azure.Jobs
     // This is coupled to QueueFunctionBase.
     internal static class ExecutionBase
     {
-        public static void Work(
-            FunctionInvokeRequest instance,  // specific request to execute.
+        public static ExecutionInstanceLogEntity Work(
+            FunctionInvokeRequest instance, // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
 
             // Do the actual invocation. Throw an OperationCancelException is the function is cancelled mid-execution. 
@@ -19,12 +19,11 @@ namespace Microsoft.Azure.Jobs
             )
         {
             var logItem = new ExecutionInstanceLogEntity();
+            logItem.FunctionInstance = instance;
 
-            var logger = context.Logger;
             IFunctionInstanceLogger instanceLogger = context.FunctionInstanceLogger;
 
             logItem.HostInstanceId = context.HostInstanceId;
-            logItem.FunctionInstance = instance;
             DateTime now = DateTime.UtcNow;
             logItem.QueueTime = now;
             logItem.StartTime = now;
@@ -38,13 +37,14 @@ namespace Microsoft.Azure.Jobs
             {
                 // User errors returned via results in inner Work()
                 logItem.EndTime = DateTime.UtcNow;
-                logger.Log(logItem);
 
                 if (instanceLogger != null)
                 {
                     instanceLogger.LogFunctionCompleted(logItem);
                 }
             }
+
+            return logItem;
         }
 
         // Have confirmed the function exists.  Do real work.
@@ -64,9 +64,6 @@ namespace Microsoft.Azure.Jobs
             FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
             instance.ParameterLogBlob = functionOutput.ParameterLogBlob;
             logItem.OutputUrl = functionOutput.Uri;
-
-            IFunctionUpdatedLogger logger = context.Logger;
-            logger.Log(logItem);
 
             if (instanceLogger != null)
             {
@@ -103,28 +100,6 @@ namespace Microsoft.Azure.Jobs
             finally
             {
                 functionOutput.CloseOutput();
-            }
-        }
-
-        // Marks a function as failed when it cannot be executed. (For example, the function has been deleted.)
-        public static void LogFunctionFailed(IFunctionInstanceLookup functionLookup,
-            IFunctionUpdatedLogger functionUpdated,
-            Guid functionInstanceId,
-            string exceptionType,
-            string exceptionMessage)
-        {
-            Debug.Assert(functionLookup != null);
-            Debug.Assert(functionUpdated != null);
-
-            ExecutionInstanceLogEntity log = functionLookup.Lookup(functionInstanceId);
-
-            if (log != null)
-            {
-                log.StartTime = DateTime.UtcNow;
-                log.EndTime = DateTime.UtcNow;
-                log.ExceptionType = exceptionType;
-                log.ExceptionMessage = exceptionMessage;
-                functionUpdated.Log(log);
             }
         }
     }

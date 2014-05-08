@@ -155,13 +155,18 @@
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\CausalityLogger.cs" />
+    <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
+    <Compile Include="Data\FunctionInstanceLookup.cs" />
     <Compile Include="Data\FunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionStatsEntity.cs" />
     <Compile Include="Data\FunctionTable.cs" />
     <Compile Include="Data\DashboardTableNames.cs" />
+    <Compile Include="Data\FunctionInstanceLogger.cs" />
     <Compile Include="Data\ICausalityLogger.cs" />
     <Compile Include="Data\ICausalityReader.cs" />
+    <Compile Include="Data\IFunctionQueuedLogger.cs" />
+    <Compile Include="Data\IFunctionInstanceLookup.cs" />
     <Compile Include="Data\IFunctionsInJobIndexer.cs" />
     <Compile Include="Protocols\FunctionInvocationIndexReader.cs" />
     <Compile Include="Protocols\HostVersionReader.cs" />

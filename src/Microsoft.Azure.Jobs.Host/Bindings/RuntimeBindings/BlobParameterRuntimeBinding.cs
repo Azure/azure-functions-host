@@ -124,15 +124,5 @@ namespace Microsoft.Azure.Jobs
             CloudBlobPath path = new CloudBlobPath(this.Blob); // stip account
             return path.ToString();
         }
-
-        public override DateTime? LastModifiedTime
-        {
-            get
-            {
-                var blob = Blob.GetBlockBlob();
-                var time = BlobClient.GetBlobModifiedUtcTime(blob);
-                return time;
-            }
-        }
     }
 }

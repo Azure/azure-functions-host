@@ -43,35 +43,10 @@ namespace Microsoft.Azure.Jobs
         // Similar bundle with FunctionExecutionContext
         public ExecuteFunctionInterfaces GetExecuteFunctionInterfaces()
         {
-            var x = GetFunctionUpdatedLogger();
-
             return new ExecuteFunctionInterfaces
             {
-                AccountInfo = _accountInfo,
-                Logger = x,
-                Lookup = x
+                AccountInfo = _accountInfo
             };
-        }
-
-        public FunctionUpdatedLogger GetFunctionUpdatedLogger()
-        {
-            var table = new AzureTable<ExecutionInstanceLogEntity>(_account, TableNames.FunctionInvokeLogTableName);
-            return new FunctionUpdatedLogger(table);
-        }
-
-        // Streamlined case if we just need to lookup specific function instances.
-        // In this case, we don't need all the secondary indices.
-        public IFunctionInstanceLookup GetFunctionInstanceLookup()
-        {
-            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = GetFunctionLookupTable();
-            return new FunctionInstanceLookup(tableLookup);
-        }
-
-        public IAzureTableReader<ExecutionInstanceLogEntity> GetFunctionLookupTable()
-        {
-            return new AzureTable<ExecutionInstanceLogEntity>(
-                  _account,
-                  TableNames.FunctionInvokeLogTableName);
         }
     }
 }

@@ -21,9 +21,8 @@ namespace Microsoft.Azure.Jobs.Internals
             _fpLog = hostLogger;
             _ctx = ctx;
         }
-        protected override void Work(ExecutionInstanceLogEntity logItem, CancellationToken cancellationToken)
+        protected override ExecutionInstanceLogEntity Work(FunctionInvokeRequest request, CancellationToken cancellationToken)
         {
-            var request = logItem.FunctionInstance;
             var loc = request.Location;
 
             Func<TextWriter, FunctionExecutionResult> fpInvokeFunc =
@@ -46,16 +45,17 @@ namespace Microsoft.Azure.Jobs.Internals
                 };
 
             // @@@ somewhere this should be async, handle long-running functions. 
-            ExecutionBase.Work(
+            ExecutionInstanceLogEntity logItem = ExecutionBase.Work(
                 request,
                 _ctx,
                 fpInvokeFunc);
 
             if (_fpLog != null)
             {
-                var logFinal = _lookup.Lookup(request);
-                _fpLog.LogFunctionEnd(logFinal);
+                _fpLog.LogFunctionEnd(logItem);
             }
+
+            return logItem;
         }
     }
 }

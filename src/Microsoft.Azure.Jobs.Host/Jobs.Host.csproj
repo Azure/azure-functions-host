@@ -103,6 +103,7 @@
     <Compile Include="Bindings\BindResults\BindResult.cs" />
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
     <Compile Include="JobHostConfiguration.cs" />
+    <Compile Include="Loggers\ExecutionInstanceLogEntityExtensions.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Tables\IAzureTable.cs" />
@@ -126,7 +127,6 @@
     <Compile Include="Bindings\BindResults\PostActionOrder.cs" />
     <Compile Include="Protocols\FunctionCompletedMessage.cs" />
     <Compile Include="Protocols\FunctionStartedMessage.cs" />
-    <Compile Include="Runners\FunctionInstanceLookup.cs" />
     <Compile Include="Protocols\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Protocols\IProcessTerminationSignalReader.cs" />
     <Compile Include="Runners\HostTableNames.cs" />
@@ -140,8 +140,6 @@
     <Compile Include="Protocols\PersistentQueueEntity.cs" />
     <Compile Include="Protocols\PersistentQueueMessage.cs" />
     <Compile Include="Protocols\TriggerAndOverrideMessage.cs" />
-    <Compile Include="Storage\CloudRequestResult.cs" />
-    <Compile Include="Storage\CloudStorageException.cs" />
     <Compile Include="Storage\Table\IQueryModifier.cs" />
     <Compile Include="Protocols\TableNames.cs" />
     <Compile Include="Protocols\QueueNames.cs" />
@@ -223,7 +221,6 @@
     <Compile Include="Runners\JobHostContext.cs" />
     <Compile Include="Loggers\ConsoleFunctionOutputLogDispenser.cs" />
     <Compile Include="Protocols\NullRunningHostTableWriter.cs" />
-    <Compile Include="Loggers\LocalFunctionLogger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BlobClient.cs" />
     <Compile Include="Bindings\CloudBlobPathConverter.cs" />
@@ -269,13 +266,9 @@
     <Compile Include="Runners\ExecuteFunctionBase.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
     <Compile Include="Loggers\FunctionInstanceStatus.cs" />
-    <Compile Include="Loggers\ExecutionInstanceLogEntityExtensions.cs" />
     <Compile Include="Loggers\IBlobCausalityLogger.cs" />
     <Compile Include="Runners\BlobTriggerReason.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
-    <Compile Include="Loggers\IFunctionUpdatedLogger.cs" />
-    <Compile Include="Loggers\IFunctionInstanceLookup.cs" />
-    <Compile Include="Loggers\FunctionInstanceLookupExtensions.cs" />
     <Compile Include="Runners\QueueMessageTriggerReason.cs" />
     <Compile Include="Runners\InvokeTriggerReason.cs" />
     <Compile Include="Runners\TriggerReason.cs" />
@@ -293,7 +286,6 @@
     <Compile Include="StorageConverter.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntity.cs" />
     <Compile Include="Runners\FunctionInstanceGuid.cs" />
-    <Compile Include="Loggers\FunctionUpdatedLogger.cs" />
     <Compile Include="Loggers\BlobCausalityLogger.cs" />
     <Compile Include="Loggers\QueueCausalityHelper.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />

@@ -82,14 +82,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
 
             var table =  GetTable<ExecutionInstanceLogEntity>();
-            IFunctionUpdatedLogger logger = new FunctionUpdatedLogger(table);
+            ExecutionInstanceLogEntitySerializer serializer = new ExecutionInstanceLogEntitySerializer(table);
 
-            logger.Log(log);
+            serializer.Log(log);
             // $$$ Get a new instance of the table to ensure everything was flushed. 
 
-            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(table);
-
-            var log2 = lookup.Lookup(g);
+            var log2 = serializer.Read(g);
 
             Assert.NotNull(log2);
             Assert.False(Object.ReferenceEquals(log, log2), "looked up object should be new instance");

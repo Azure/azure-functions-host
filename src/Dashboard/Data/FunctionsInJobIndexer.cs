@@ -37,7 +37,7 @@ namespace Dashboard.Data
                 RowKey = CreateRowKey(startTime),
                 InvocationId = invocationId
             };
-            _table.InsertEntity(newEntity);
+            _table.Insert(newEntity);
         }
 
         // Provides a lexicographically sortable in descending order view of a given time

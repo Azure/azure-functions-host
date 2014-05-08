@@ -5,8 +5,16 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
 {
     internal interface ICloudTable
     {
-        T GetOrInsert<T>(T entity) where T : ITableEntity, new();
-        void InsertEntity<T>(T entity) where T : ITableEntity;
-        IEnumerable<T> Query<T>(int limit, params IQueryModifier[] queryModifiers) where T : ITableEntity, new();
+        TElement Retrieve<TElement>(string partitionKey, string rowKey) where TElement : class, ITableEntity;
+
+        void Insert(ITableEntity entity);
+
+        void InsertOrReplace(ITableEntity entity);
+
+        void Replace(ITableEntity entity);
+
+        IEnumerable<TElement> Query<TElement>(int limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new();
+
+        TElement GetOrInsert<TElement>(TElement entity) where TElement : ITableEntity, new();
     }
 }

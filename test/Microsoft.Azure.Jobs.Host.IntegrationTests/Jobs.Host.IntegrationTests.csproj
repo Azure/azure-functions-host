@@ -93,7 +93,11 @@
     <Compile Include="BinderExtensions.cs" />
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUtil.cs" />
+    <Compile Include="FunctionInstanceLookupExtensions.cs" />
+    <Compile Include="IFunctionInstanceLookup.cs" />
+    <Compile Include="IFunctionUpdatedLogger.cs" />
     <Compile Include="LocalExecutionContext.cs" />
+    <Compile Include="LocalFunctionLogger.cs" />
     <Compile Include="LocalFunctionTable.cs" />
     <Compile Include="MockBlobLeaseHolder.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
