@@ -14,8 +14,7 @@ namespace Microsoft.Azure.Jobs.Internals
 
         private readonly IConfiguration _config;
 
-        public WebSitesExecuteFunction(ExecuteFunctionInterfaces interfaces, IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
-            : base(interfaces)
+        public WebSitesExecuteFunction(IConfiguration config, FunctionExecutionContext ctx, IJobHostLogger hostLogger = null)
         {
             _config = config;
             _fpLog = hostLogger;

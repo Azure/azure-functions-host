@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -11,13 +12,13 @@ namespace Microsoft.Azure.Jobs
     {
         private readonly FunctionExecutionContext _ctx;
 
-        public WebExecutionLogger(Guid hostInstanceId, Services services, Action<TextWriter> addHeaderInfo)
+        public WebExecutionLogger(Guid hostInstanceId, CloudStorageAccount account, Action<TextWriter> addHeaderInfo)
         {
             _ctx = new FunctionExecutionContext
             {
                 HostInstanceId = hostInstanceId,
                 OutputLogDispenser = new FunctionOutputLogDispenser(
-                    services.AccountInfo,
+                    account,
                     addHeaderInfo,
                     ContainerNames.ConsoleOuputLogContainerName
                 )

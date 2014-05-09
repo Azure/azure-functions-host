@@ -157,7 +157,7 @@ namespace Dashboard.ApiControllers
             if (parentGuid != Guid.Empty)
             {
                 ExecutionInstanceLogEntity ancestor = _functionInstanceLookup.Lookup(parentGuid);
-                DateTime? heartbeat;
+                DateTimeOffset? heartbeat;
 
                 if (ancestor != null)
                 {

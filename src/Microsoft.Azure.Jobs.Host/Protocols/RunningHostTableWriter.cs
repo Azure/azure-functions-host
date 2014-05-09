@@ -1,4 +1,6 @@
 ﻿using System;
+using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Protocols
 {
@@ -6,9 +8,14 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         internal const string PartitionKey = "1";
 
-        private readonly IAzureTable<RunningHost> _table;
+        private readonly ICloudTable _table;
 
-        public RunningHostTableWriter(IAzureTable<RunningHost> table)
+        public RunningHostTableWriter(ICloudTableClient tableClient)
+            : this(tableClient.GetTableReference(TableNames.RunningHostsTableName))
+        {
+        }
+
+        public RunningHostTableWriter(ICloudTable table)
         {
             if (table == null)
             {
@@ -20,8 +27,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         public void SignalHeartbeat(Guid hostOrInstanceId)
         {
-            _table.Write(PartitionKey, hostOrInstanceId.ToString(), null);
-            _table.Flush();
+            DynamicTableEntity entity = new DynamicTableEntity(PartitionKey, hostOrInstanceId.ToString());
+            _table.InsertOrReplace(entity);
         }
     }
 }

@@ -159,7 +159,6 @@
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Protocols\ContainerNames.cs" />
     <Compile Include="Protocols\RunningHostTableWriter.cs" />
-    <Compile Include="Services.cs" />
     <Compile Include="Loggers\WebExecutionLogger.cs" />
     <Compile Include="Loggers\IExecutionLogger.cs" />
     <Compile Include="Triggers\CalculateTriggers.cs" />
@@ -250,7 +249,6 @@
     <Compile Include="Bindings\ConfigurationExtensions.cs" />
     <Compile Include="Runners\FunctionExecutionContext.cs" />
     <Compile Include="Runners\ExecuteBase.cs" />
-    <Compile Include="Runners\AccountInfo.cs" />
     <Compile Include="Loggers\IFunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\BlobWrittenMessage.cs" />
     <Compile Include="Runners\NotifyNewBlobViaInMemory.cs" />
@@ -258,11 +256,9 @@
     <Compile Include="Runners\NotifyNewBlobExtensions.cs" />
     <Compile Include="Runners\FunctionExecutionResult.cs" />
     <Compile Include="Loggers\FunctionOutputLog.cs" />
-    <Compile Include="Runners\IAccountInfo.cs" />
     <Compile Include="Loggers\FunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\INotifyNewBlob.cs" />
     <Compile Include="Runners\IExecuteFunction.cs" />
-    <Compile Include="Runners\ExecuteFunctionInterfaces.cs" />
     <Compile Include="Runners\ExecuteFunctionBase.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
     <Compile Include="Loggers\FunctionInstanceStatus.cs" />

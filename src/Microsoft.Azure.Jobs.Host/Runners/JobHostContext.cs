@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using AzureTables;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 
@@ -42,7 +42,6 @@ namespace Microsoft.Azure.Jobs
             // Determine the host name from the function list
             FunctionDefinition[] functions = functionTableLookup.ReadAll();
 
-            ExecuteFunctionInterfaces interfaces;
             FunctionExecutionContext ctx;
 
             if (runtimeConnectionString != null)
@@ -50,7 +49,8 @@ namespace Microsoft.Azure.Jobs
                 // Create logging against a live azure account 
 
                 CloudStorageAccount account = CloudStorageAccount.Parse(runtimeConnectionString);
-                IHostTable hostTable = new HostTable(new SdkCloudStorageAccount(account).CreateCloudTableClient());
+                ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
+                IHostTable hostTable = new HostTable(tableClient);
                 string hostName = GetHostName(functions);
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 SetHostId(_hostId, functions);
@@ -61,18 +61,13 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString,
                     persistentQueue);
 
-                var services = GetServices(runtimeConnectionString);
-
-                // Queue interfaces            
-                interfaces = services.GetExecuteFunctionInterfaces(); // All for logging. 
-
-                var logger = new WebExecutionLogger(_hostInstanceId, services, LogRole);
+                var logger = new WebExecutionLogger(_hostInstanceId, account, LogRole);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
-                _terminationSignalReader = new ProcessTerminationSignalReader(services.Account);
-                _heartbeatTable = services.GetRunningHostTableWriter();
+                _terminationSignalReader = new ProcessTerminationSignalReader(account);
+                _heartbeatTable = new RunningHostTableWriter(tableClient);
             }
             else
             {
@@ -83,25 +78,13 @@ namespace Microsoft.Azure.Jobs
                     OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
                 };
 
-                interfaces = CreateInMemoryQueueInterfaces();
                 _terminationSignalReader = new NullProcessTerminationSignalReader();
                 _heartbeatTable = new NullRunningHostTableWriter();
             }
 
             // This is direct execution, doesn't queue up. 
-            _executeFunction = new WebSitesExecuteFunction(interfaces, config, ctx, new ConsoleHostLogger());
+            _executeFunction = new WebSitesExecuteFunction(config, ctx, new ConsoleHostLogger());
             _functionTableLookup = functionTableLookup;
-        }
-
-        // Factory for creating interface implementations that are all in-memory and don't need an 
-        // azure storage account.
-        private static ExecuteFunctionInterfaces CreateInMemoryQueueInterfaces()
-        {
-            var interfaces = new ExecuteFunctionInterfaces
-            {
-                AccountInfo = new AccountInfo() // For webdashboard. NA in local case
-            };
-            return interfaces;
         }
 
         public IExecuteFunction ExecuteFunction
@@ -198,22 +181,6 @@ namespace Microsoft.Azure.Jobs
 
             // 3. If there's no entry assembly either, we don't have anything to use.
             return "Unknown";
-        }
-
-        // This is a factory for getting interfaces that are bound against azure storage.
-        private static Services GetServices(string runtimeConnectionString)
-        {
-            if (runtimeConnectionString == null)
-            {
-                throw new InvalidOperationException("Logging account string must be set");
-            }
-
-            AccountInfo accountInfo = new AccountInfo
-            {
-                AccountConnectionString = runtimeConnectionString
-            };
-
-            return new Services(accountInfo);
         }
 
         // Publish functions to the cloud

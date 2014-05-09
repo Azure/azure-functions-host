@@ -73,12 +73,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             IAzureTable prereqTable = AzureTable.NewInMemory();
             IAzureTable successorTable = AzureTable.NewInMemory();
 
-            var interfaces = new ExecuteFunctionInterfaces
-            {
-                AccountInfo = new AccountInfo() // For webdashboard. NA in local case
-            };
-
-            var y = new LocalExecute(interfaces, this);
+            var y = new LocalExecute(this);
             _executor = y;
         }
 
@@ -175,8 +170,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             private readonly LocalExecutionContext _parent;
 
-            public LocalExecute(ExecuteFunctionInterfaces interfaces, LocalExecutionContext parent)
-                : base(interfaces)
+            public LocalExecute(LocalExecutionContext parent)
             {
                 _parent = parent;
             }

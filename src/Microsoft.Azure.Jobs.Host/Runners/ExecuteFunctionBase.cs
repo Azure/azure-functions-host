@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -8,22 +9,6 @@ namespace Microsoft.Azure.Jobs
     // but abstracts away the actual raw queuing mechanism.
     internal abstract class ExecuteFunctionBase : IExecuteFunction
     {
-        protected readonly IAccountInfo _account;
-
-        // account - this is the internal storage account for using the service. 
-        // logger - used for updating the status of the function that gets executed. This must be serializable with JSon since
-        //          it will get passed to the host process in an azure task.
-        protected ExecuteFunctionBase(ExecuteFunctionInterfaces interfaces)
-        {
-            if (interfaces == null)
-            {
-                throw new ArgumentNullException("interfaces");
-            }
-            interfaces.VerifyNotNull();
-
-            _account = interfaces.AccountInfo;
-        }
-
         public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
         {
             if (instance.Id == Guid.Empty)

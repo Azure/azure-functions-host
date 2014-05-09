@@ -34,7 +34,7 @@ namespace Dashboard.ViewModels
 
     public class InvocationLogViewModel
     {
-        internal InvocationLogViewModel(ExecutionInstanceLogEntity log, DateTime? heartbeat)
+        internal InvocationLogViewModel(ExecutionInstanceLogEntity log, DateTimeOffset? heartbeat)
         {
             Id = log.FunctionInstance.Id;
             FunctionName = log.FunctionInstance.Location.GetShortName();
@@ -49,7 +49,7 @@ namespace Dashboard.ViewModels
             DateTime? heartbeatExpires;
             if (heartbeat.HasValue)
             {
-                heartbeatExpires = heartbeat.Value.Add(RunningHost.HeartbeatPollInterval);
+                heartbeatExpires = heartbeat.Value.UtcDateTime.Add(RunningHost.HeartbeatPollInterval);
                 Status = (FunctionInstanceStatus)log.GetStatusWithHeartbeat(heartbeatExpires);
             }
             else

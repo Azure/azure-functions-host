@@ -16,6 +16,6 @@ namespace Microsoft.Azure.Jobs
 
         InvocationLogViewModel[] GetInvocationsByIds(IEnumerable<Guid> invocationIds);
 
-        DateTime? GetHeartbeat(Guid hostInstanceId);
+        DateTimeOffset? GetHeartbeat(Guid hostInstanceId);
     }
 }

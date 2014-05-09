@@ -7,6 +7,6 @@ namespace Dashboard.Protocols
     {
         RunningHost[] ReadAll();
 
-        DateTime? Read(Guid hostOrInstanceId);
+        DateTimeOffset? Read(Guid hostOrInstanceId);
     }
 }

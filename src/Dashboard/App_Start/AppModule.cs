@@ -20,13 +20,11 @@ namespace Dashboard
     {
         public override void Load()
         {
-            Services services = TryCreateServices();
-            if (services == null)
+            CloudStorageAccount account = TryCreateAccount();
+            if (account == null)
             {
                 return;
             }
-
-            CloudStorageAccount account = services.Account;
 
             Bind<CloudStorageAccount>().ToConstant(account);
             Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(account));
@@ -62,7 +60,7 @@ namespace Dashboard
                 .WithConstructorArgument("tableName", tableName);
         }
 
-        private static Services TryCreateServices()
+        private static CloudStorageAccount TryCreateAccount()
         {
             // Validate services
             try
@@ -71,7 +69,7 @@ namespace Dashboard
                 if (val != null)
                 {
                     SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Valid;
-                    return GetServices(val);
+                    return CloudStorageAccount.Parse(val);
                 }
                 SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Missing;
             }
@@ -178,18 +176,6 @@ namespace Dashboard
             IAzureTable<RunningHost> table = new AzureTable<RunningHost>(account, TableNames.RunningHostsTableName);
 
             return new RunningHostTableReader(table);
-        }
-
-        // Get a Services object based on current configuration.
-        // $$$ Really should just get rid of this object and use DI all the way through. 
-        static Services GetServices(string runtimeConnectionString)
-        {
-            // Azure Web Sites mode
-            var ai = new AccountInfo
-            {
-                AccountConnectionString = runtimeConnectionString
-            };
-            return new Services(ai);
         }
 
         private static string GetRuntimeConnectionString()

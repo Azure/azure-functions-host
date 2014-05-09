@@ -120,7 +120,7 @@ namespace Microsoft.Azure.Jobs
             return invocationModel;
         }
 
-        public DateTime? GetHeartbeat(Guid hostInstanceId)
+        public DateTimeOffset? GetHeartbeat(Guid hostInstanceId)
         {
             return _runningHostTableReader.Read(hostInstanceId);
         }
