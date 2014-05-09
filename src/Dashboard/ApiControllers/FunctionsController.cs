@@ -5,6 +5,7 @@ using System.Web.Http;
 using AzureTables;
 using Dashboard.Controllers;
 using Dashboard.Data;
+using Dashboard.InvocationLog;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;

@@ -1,7 +1,7 @@
 ﻿using AzureTables;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Ensure that various "currency" types can be properly serialized and deserialized to AzureTables.
     public class TableUnitTests

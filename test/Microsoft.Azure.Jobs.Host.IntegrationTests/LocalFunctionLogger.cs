@@ -8,7 +8,7 @@ using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 using AzureTables;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     // Ideally use FunctionUpdatedLogger with in-memory azure tables (this would minimize code deltas).
     // For local execution, we may have function objects that don't serialize. So we can't run through azure tables.

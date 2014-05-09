@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     // Looking up a function instance given the key. 
     // Guid is the FunctionInstance identifier

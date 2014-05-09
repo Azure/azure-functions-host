@@ -6,7 +6,7 @@ using AzureTables;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     // Support local execution. This does not have a trigger service, but still maintains all of the logging and causality.
     // Exposes some of the logging objects so that callers can monitor what happened. 

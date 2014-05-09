@@ -2,6 +2,7 @@
 using AzureTables;
 using Dashboard.Data;
 using Dashboard.Indexers;
+using Dashboard.InvocationLog;
 using Dashboard.Protocols;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;

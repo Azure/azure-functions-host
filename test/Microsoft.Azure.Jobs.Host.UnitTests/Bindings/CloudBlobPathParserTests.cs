@@ -4,7 +4,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
 {
     public class CloudBlobPathParserTests
     {

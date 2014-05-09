@@ -4,7 +4,7 @@ using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     /// <summary>
     /// Summary description for ModelbindingTests

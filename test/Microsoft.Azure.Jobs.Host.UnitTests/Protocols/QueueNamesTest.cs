@@ -2,7 +2,7 @@
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.Protocols.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
 {
     public class QueueNamesTest
     {

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     public class TimeCheckTests
     {

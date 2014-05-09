@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     public class PublicSurfaceTests
     {

@@ -2,7 +2,7 @@
 using System.Text;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     // $$$ Get more aggressive testing here. 
     // We can Read a blob without a lease. 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Test failure cases for indexing
     public class FlowUnitTestErrors

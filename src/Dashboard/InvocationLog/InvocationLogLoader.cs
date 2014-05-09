@@ -8,7 +8,7 @@ using Dashboard.Data;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
 
-namespace Microsoft.Azure.Jobs
+namespace Dashboard.InvocationLog
 {
     /// <summary>
     /// A facade for loading invocations using seconday-index tables

@@ -7,7 +7,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     // Azure storage emulator is doesn't support Upsert, so we'd need to run against live storage.
     // Instead, use a test hook to mock out the storage and use In-Memory azure tables.
