@@ -20,6 +20,10 @@
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
+    <Build Include="src\Microsoft.Azure.Jobs.ServiceBus\Jobs.ServiceBus.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
     <Build Include="src\Dashboard\Dashboard.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
