@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using AzureTables;
+using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
@@ -35,8 +37,9 @@ namespace Dashboard.Data
             _table.Insert(entity);
         }
 
-        public void LogFunctionStarted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
         {
+            ExecutionInstanceLogEntity logEntity = CreateLogEntity(snapshot);
             ITableEntity entity = CreateTableEntity(logEntity);
 
             // Which operation to run depends on whether or not the entity currently exists in the "queued" status.
@@ -62,6 +65,54 @@ namespace Dashboard.Data
             {
                 LogFunctionStartedWhenPreviouslyQueued(entity, existingEntity.ETag);
             }
+        }
+
+        private static ExecutionInstanceLogEntity CreateLogEntity(FunctionStartedSnapshot snapshot)
+        {
+            return new ExecutionInstanceLogEntity
+            {
+                HostInstanceId = snapshot.HostInstanceId,
+                ExecutingJobRunId = snapshot.WebJobRunIdentifier,
+                FunctionInstance = CreateFunctionInstance(snapshot),
+                StartTime = snapshot.StartTime.UtcDateTime,
+                OutputUrl = snapshot.OutputBlobUrl,
+                ParameterLogUrl = snapshot.ParameterLogBlobUrl
+            };
+        }
+
+        private static FunctionInvokeRequest CreateFunctionInstance(FunctionStartedSnapshot snapshot)
+        {
+            FunctionInvokeRequest request = new FunctionInvokeRequest
+            {
+                Id = snapshot.FunctionInstanceId,
+                TriggerReason = Dashboard.Indexers.Indexer.CreateTriggerReason(snapshot),
+                Location = CreateLocation(snapshot),
+                Args = CreateArgs(snapshot.Arguments)
+            };
+            request.ParametersDisplayText = InvocationLogViewModel.BuildFunctionDisplayTitle(request);
+            return request;
+        }
+
+        private static FunctionLocation CreateLocation(FunctionStartedSnapshot snapshot)
+        {
+            return new DataOnlyFunctionLocation(snapshot.FunctionId, snapshot.FunctionShortName,
+                snapshot.FunctionFullName, snapshot.StorageConnectionString, snapshot.ServiceBusConnectionString);
+        }
+
+        private static ParameterRuntimeBinding[] CreateArgs(IDictionary<string, FunctionArgument> arguments)
+        {
+            ParameterRuntimeBinding[] args = new ParameterRuntimeBinding[arguments.Count];
+            int index = 0;
+
+            foreach (KeyValuePair<string, FunctionArgument> argument in arguments)
+            {
+                FunctionArgument argumentValue = argument.Value;
+                args[index] = new DataOnlyParameterRuntimeBinding(argument.Key, argumentValue.Value,
+                    argumentValue.IsBlob, argumentValue.IsBlobInput);
+                index++;
+            }
+
+            return args;
         }
 
         private void LogFunctionStartedWhenNotPreviouslyQueued(ITableEntity entity)
@@ -124,6 +175,32 @@ namespace Dashboard.Data
         private static ITableEntity CreateTableEntity(ExecutionInstanceLogEntity logEntity)
         {
             return AzureTable.ToTableEntity(PartionKey, logEntity.GetKey(), logEntity);
+        }
+
+        private class DataOnlyFunctionLocation : FunctionLocation
+        {
+            public string Id { get; set; }
+            public string ShortName { get; set; }
+
+            public DataOnlyFunctionLocation(string id, string shortName, string fullName,
+                string storageConnectionString, string serviceBusConnectionString)
+            {
+                Id = id;
+                ShortName = shortName;
+                FullName = fullName;
+                AccountConnectionString = storageConnectionString;
+                ServiceBusConnectionString = serviceBusConnectionString;
+            }
+
+            public override string GetId()
+            {
+                return Id;
+            }
+
+            public override string GetShortName()
+            {
+                return ShortName;
+            }
         }
     }
 }

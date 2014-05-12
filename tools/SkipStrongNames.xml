@@ -4,6 +4,7 @@
   <assembly name="Dashboard"/>
   <assembly name="Microsoft.Azure.Jobs"/>
   <assembly name="Microsoft.Azure.Jobs.Host"/>
+  <assembly name="Microsoft.Azure.Jobs.Protocols"/>
 
   <!-- Unit test assemblies -->
   <assembly name="Dashboard.UnitTests"/>

@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
-using Microsoft.Azure.Jobs.Host;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
-namespace Microsoft.Azure.Jobs
+#if PUBLICPROTOCOL
+namespace Microsoft.Azure.Jobs.Protocols
+#else
+namespace Microsoft.Azure.Jobs.Host.Protocols
+#endif
 {
+    /// <summary>Represents an identifier for a WebJob.</summary>
     [DebuggerDisplay("{GetKey(),nq}")]
+#if PUBLICPROTOCOL
+    public class WebJobRunIdentifier
+#else
     internal class WebJobRunIdentifier
+#endif
     {
         static WebJobRunIdentifier()
         {
@@ -30,17 +36,30 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // don't use it - this is only for json.net
+        /// <summary>Initializes a new instance of the <see cref="WebJobRunIdentifier"/> class.</summary>
+        /// <remarks>This constructor is only intended for serialization support.</remarks>
         public WebJobRunIdentifier()
         {
-            
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WebJobRunIdentifier"/> class with the values provided.
+        /// </summary>
+        /// <param name="jobType">The job type.</param>
+        /// <param name="jobName">The job name.</param>
+        /// <param name="runId">The job run ID.</param>
         public WebJobRunIdentifier(WebJobTypes jobType, string jobName, string runId)
             : this(Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey), jobType, jobName, runId)
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WebJobRunIdentifier"/> class with the values provided.
+        /// </summary>
+        /// <param name="websiteName">The website name.</param>
+        /// <param name="jobType">The job type.</param>
+        /// <param name="jobName">The job name.</param>
+        /// <param name="runId">The job run ID.</param>
         public WebJobRunIdentifier(string websiteName, WebJobTypes jobType, string jobName, string runId)
         {
             if (jobType == WebJobTypes.Triggered && runId == null)
@@ -54,22 +73,31 @@ namespace Microsoft.Azure.Jobs
             RunId = runId;
         }
 
+        /// <summary>Gets or sets the website name.</summary>
         public string WebSiteName { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
+
+        /// <summary>Gets or sets the WebJob type.</summary>
         public WebJobTypes JobType { get; set; }
+
+        /// <summary>Gets or sets the job name.</summary>
         public string JobName { get; set; }
+
+        /// <summary>Gets or sets the job run ID.</summary>
         public string RunId { get; set; }
 
         private static readonly WebJobRunIdentifier _current;
 
+        /// <summary>Gets an identifier for the current web job run, if any.</summary>
         public static WebJobRunIdentifier Current
         {
             get { return _current; }
         }
 
+        /// <summary>Gets a key containing the full web job identifier.</summary>
+        /// <returns>A key containing the full web job identifier.</returns>
         public string GetKey()
         {
-            return String.Format(CultureInfo.CurrentCulture, "{0}${1}${2}${3}",
+            return String.Format(CultureInfo.InvariantCulture, "{0}${1}${2}${3}",
                 WebSiteName, JobType, JobName, RunId).ToLowerInvariant();
         }
     }

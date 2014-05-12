@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -14,8 +15,9 @@ namespace Microsoft.Azure.Jobs
 
             // Do the actual invocation. Throw an OperationCancelException is the function is cancelled mid-execution. 
             // The incoming TextWriter is where console output should be redirected too. 
+            // The incoming CloudBlobDescriptor is for parameter logging.
             // Returns a FunctionExecutionResult that describes the execution results of the function. 
-            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc
+            Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc
             )
         {
             var logItem = new ExecutionInstanceLogEntity();
@@ -54,27 +56,28 @@ namespace Microsoft.Azure.Jobs
 
             // Do the actual invocation. Throw an OperationCancelException is the function is cancelled mid-execution. 
             // The incoming TextWriter is where console output should be redirected too. 
+            // The incoming CloudBlobDescriptor is for parameter logging.
             // Returns a FunctionExecutionResult that describes the execution results of the function. 
-            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc,
+            Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc,
 
             ExecutionInstanceLogEntity logItem,   // current request log entity
             IFunctionInstanceLogger instanceLogger
             )
         {
             FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
-            instance.ParameterLogBlob = functionOutput.ParameterLogBlob;
             logItem.OutputUrl = functionOutput.Uri;
+            logItem.ParameterLogUrl = functionOutput.ParameterLogBlob == null ? null : functionOutput.ParameterLogBlob.GetBlockBlob().Uri.AbsoluteUri;
 
             if (instanceLogger != null)
             {
-                instanceLogger.LogFunctionStarted(logItem);
+                instanceLogger.LogFunctionStarted(CreateSnapshot(logItem));
             }
 
             try
             {
                 // Invoke the function. Redirect all console output to the given stream.
                 // (Function may be invoked in a different process, so we can't just set Console.Out here)
-                FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output);
+                FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output, functionOutput.ParameterLogBlob);
 
                 // User errors should be caught and returned in result message.
                 logItem.ExceptionType = result.ExceptionType;
@@ -101,6 +104,49 @@ namespace Microsoft.Azure.Jobs
             {
                 functionOutput.CloseOutput();
             }
+        }
+
+        private static FunctionStartedSnapshot CreateSnapshot(ExecutionInstanceLogEntity logEntity)
+        {
+            return new FunctionStartedSnapshot
+            {
+                FunctionInstanceId = logEntity.FunctionInstance.Id,
+                HostInstanceId = logEntity.HostInstanceId,
+                FunctionId = logEntity.FunctionInstance.Location.GetId(),
+                FunctionFullName = logEntity.FunctionInstance.Location.FullName,
+                FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
+                Arguments = CreateArguments(logEntity.FunctionInstance.Args),
+                ParentId = logEntity.FunctionInstance.TriggerReason != null ? (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null,
+                Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
+                StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
+                StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
+                ServiceBusConnectionString = logEntity.FunctionInstance.Location.ServiceBusConnectionString,
+                OutputBlobUrl = logEntity.OutputUrl,
+                ParameterLogBlobUrl = logEntity.ParameterLogUrl,
+                WebJobRunIdentifier = logEntity.ExecutingJobRunId
+            };
+        }
+
+        private static IDictionary<string, FunctionArgument> CreateArguments(ParameterRuntimeBinding[] runtimeBindings)
+        {
+            IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
+
+            foreach (ParameterRuntimeBinding runtimeBinding in runtimeBindings)
+            {
+                BlobParameterRuntimeBinding blobRuntimeBinding = runtimeBinding as BlobParameterRuntimeBinding;
+                string value = runtimeBinding.ConvertToInvokeString();
+                FunctionArgument argument = new FunctionArgument { Value = value };
+
+                if (blobRuntimeBinding != null)
+                {
+                    argument.IsBlob = true;
+                    argument.IsBlobInput = blobRuntimeBinding.IsInput;
+                }
+
+                arguments.Add(runtimeBinding.Name, argument);
+            }
+
+            return arguments;
         }
     }
 }

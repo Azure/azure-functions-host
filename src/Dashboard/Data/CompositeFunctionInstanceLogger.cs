@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Dashboard.Data
 {
@@ -12,11 +13,11 @@ namespace Dashboard.Data
             _loggers = loggers;
         }
 
-        public void LogFunctionStarted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.LogFunctionStarted(logEntity);
+                logger.LogFunctionStarted(snapshot);
             }
         }
 

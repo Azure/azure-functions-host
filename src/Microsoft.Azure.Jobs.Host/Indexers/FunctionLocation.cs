@@ -26,15 +26,6 @@ namespace Microsoft.Azure.Jobs
         // Useful name for human display. This has no uniqueness properties and can't be used as a rowkey. 
         public abstract string GetShortName();
 
-        // This is used for ICall. Convert from a short name to another FunctionLocation.
-        // $$$ Reconcile methodName with GetShortName (which includes a type name)
-        // Should x.ResolveFunctionLocation(x.GetShortName()).Equals(x) == true?
-        // Any other invariants here?
-        public virtual FunctionLocation ResolveFunctionLocation(string methodName)
-        {
-            throw new InvalidOperationException("Can't resolve function location for: " + methodName);
-        }
-
         // ToString can be used as an azure row key.
         public override string ToString()
         {

@@ -11,8 +11,9 @@ using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
-using InternalWebJobTypes = Microsoft.Azure.Jobs.WebJobTypes;
+using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
 namespace Dashboard.ApiControllers
@@ -67,7 +68,7 @@ namespace Dashboard.ApiControllers
                 return BadRequest("limit should be an positive, non-zero integer.");
             }
 
-            var runIdentifier = new WebJobRunIdentifier(Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey), (InternalWebJobTypes)webJobType, jobName, runId);
+            var runIdentifier = new Microsoft.Azure.Jobs.Protocols.WebJobRunIdentifier(Environment.GetEnvironmentVariable(Microsoft.Azure.Jobs.Host.WebSitesKnownKeyNames.WebSiteNameKey), (InternalWebJobTypes)webJobType, jobName, runId);
 
             var invocations = _invocationLogLoader.GetInvocationsInJob(runIdentifier.GetKey(), pagingInfo);
             return Ok(invocations);
@@ -150,7 +151,7 @@ namespace Dashboard.ApiControllers
 
                 model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
                 LogAnalysis.ApplyRuntimeInfo(func.FunctionInstance, args, model.Parameters);
-                LogAnalysis.ApplySelfWatchInfo(func.FunctionInstance, model.Parameters);
+                LogAnalysis.ApplySelfWatchInfo(_account, func, model.Parameters);
             }
 
             // fetch ancestor

@@ -39,8 +39,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                     AccountConnectionString = "some connection string",
                     MethodName = "method"
                 },
-                ParameterLogBlob = Blob("logs", "param"),
-                SchemaNumber = 4,
                 Args = new ParameterRuntimeBinding[]
                 {
                     new BlobParameterRuntimeBinding
@@ -77,6 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 ExceptionType = "system.CrazyException",
                 ExceptionMessage = "testing",
                 OutputUrl = "http://output",
+                ParameterLogUrl = "http://output2",
                 StartTime = now
             };
 
@@ -133,7 +132,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             FunctionDefinition func = new FunctionDefinition
             {
-                Description = "description",
                 Location = new MethodInfoFunctionLocation
                 {
                     Id = "some Id",
@@ -181,7 +179,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             // Ensure it round tripped.
             Assert.NotNull(func2);
-            Assert.Equal(func.Description, func2.Description); // should be easy
 
             Assert.Equal(func.Location, func2.Location);
 

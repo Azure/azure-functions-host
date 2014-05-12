@@ -67,7 +67,7 @@ namespace Microsoft.Azure.Jobs
 
             BlobClient.ValidateContainerName(arg.ContainerName);
 
-            return new BlobParameterRuntimeBinding { Blob = arg, IsInput = IsInput };
+            return new BlobParameterRuntimeBinding { Name = Name, Blob = arg, IsInput = IsInput };
         }
 
         public override string Description

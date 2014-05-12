@@ -24,8 +24,8 @@ namespace Microsoft.Azure.Jobs.Internals
         {
             var loc = request.Location;
 
-            Func<TextWriter, FunctionExecutionResult> fpInvokeFunc =
-                (consoleOutput) =>
+            Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc =
+                (consoleOutput, parameterLog) =>
                 {
                     if (_fpLog != null)
                     {
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Internals
                     Console.SetOut(consoleOutput);
 
                     // @@@ May need to override config to set ICall
-                    var result = RunnerProgram.MainWorker(request, _config, cancellationToken);
+                    var result = RunnerProgram.MainWorker(parameterLog, request, _config, cancellationToken);
                     Console.SetOut(oldOutput);
 
                     return result;

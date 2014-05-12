@@ -320,7 +320,6 @@ namespace Microsoft.Azure.Jobs
 
             FunctionDefinition index = new FunctionDefinition
             {
-                Description = description,
                 Trigger = trigger,
                 Flow = new FunctionFlow
                 {

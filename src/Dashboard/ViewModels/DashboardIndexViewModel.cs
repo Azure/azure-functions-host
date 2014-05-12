@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -82,7 +82,7 @@ namespace Dashboard.ViewModels
 
         public WebJobRunIdentifierViewModel ExecutingJobRunId { get; set; }
 
-        private string BuildFunctionDisplayTitle(FunctionInvokeRequest functionInstance)
+        internal static string BuildFunctionDisplayTitle(FunctionInvokeRequest functionInstance)
         {
             var name = new StringBuilder(functionInstance.Location.GetShortName());
             if (functionInstance.ParametersDisplayText != null)

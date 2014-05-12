@@ -1,8 +1,10 @@
-﻿namespace Microsoft.Azure.Jobs
+﻿using Microsoft.Azure.Jobs.Host.Protocols;
+
+namespace Microsoft.Azure.Jobs
 {
     internal interface IFunctionInstanceLogger
     {
-        void LogFunctionStarted(ExecutionInstanceLogEntity logEntity);
+        void LogFunctionStarted(FunctionStartedSnapshot snapshot);
 
         void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity);
     }

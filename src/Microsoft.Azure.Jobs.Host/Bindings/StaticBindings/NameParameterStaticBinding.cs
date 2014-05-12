@@ -40,13 +40,13 @@ namespace Microsoft.Azure.Jobs
             {
                 if (inputs.NameParameters.TryGetValue(KeyName, out value))
                 {
-                    return new LiteralStringParameterRuntimeBinding { Value = value };
+                    return new LiteralStringParameterRuntimeBinding { Name = Name, Value = value };
                 }
             }
             if (UserSupplied)
             {
                 // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { AccountConnectionString = inputs.AccountConnectionString };
+                return new UnknownParameterRuntimeBinding { Name = Name, AccountConnectionString = inputs.AccountConnectionString };
             }
             throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));
         }
@@ -59,11 +59,12 @@ namespace Microsoft.Azure.Jobs
                 // binding decide which way to bind.
                 return new UnknownInvokeParameterRuntimeBinding
                 {
+                    Name = Name,
                     Value = invokeString,
                     AccountConnectionString = inputs.AccountConnectionString
                 };
             }
-            return new LiteralStringParameterRuntimeBinding { Value = invokeString };
+            return new LiteralStringParameterRuntimeBinding { Name = Name, Value = invokeString };
         }
 
         public override string Description

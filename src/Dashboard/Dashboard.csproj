@@ -156,6 +156,7 @@
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\CausalityLogger.cs" />
     <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
+    <Compile Include="Data\DataOnlyParameterRuntimeBinding.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
     <Compile Include="Data\FunctionInstanceLookup.cs" />
     <Compile Include="Data\FunctionsInJobIndexer.cs" />
@@ -320,6 +321,10 @@
     <ProjectReference Include="..\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
+      <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
+      <Name>Jobs.Protocols</Name>
     </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>

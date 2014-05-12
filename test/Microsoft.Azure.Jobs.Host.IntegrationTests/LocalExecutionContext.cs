@@ -177,7 +177,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             protected override ExecutionInstanceLogEntity Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
             {
-                RunnerProgram runner = RunnerProgram.Create(instance);
+                RunnerProgram runner = RunnerProgram.Create(null);
 
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;

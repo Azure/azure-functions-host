@@ -8,13 +8,6 @@ namespace Microsoft.Azure.Jobs
     // This has private information (account keys via Args) 
     internal class FunctionInvokeRequest
     {
-        // Versioning, to help detect against stale queue entries
-        public int SchemaNumber { get; set; }
-
-        // 3: Switched arguments to use polymorphism
-        // 4: uses structured types in declarations.
-        public const int CurrentSchema = 8;
-
         // Guid provides unique id to recognize function invocation instance.
         // This should get set once the function is queued. 
         public Guid Id { get; set; }
@@ -27,12 +20,6 @@ namespace Microsoft.Azure.Jobs
         public FunctionLocation Location { get; set; }
 
         public ParameterRuntimeBinding[] Args { get; set; }
-
-        // $$$ Merge with other logging info, and with ExecutionInstanceLogEntity 
-        // Output logging info
-        // Blob to write live parameter logging too. 
-        // Resolveed against default storage account
-        public CloudBlobDescriptor ParameterLogBlob { get; set; }
 
         // This is a valid azure table row/partition key. 
         public override string ToString()

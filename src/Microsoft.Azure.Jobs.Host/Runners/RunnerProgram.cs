@@ -20,16 +20,15 @@ namespace Microsoft.Azure.Jobs
             _parameterLogger = parameterLogger;
         }
 
-        public static RunnerProgram Create(FunctionInvokeRequest descr)
+        public static RunnerProgram Create(CloudBlobDescriptor parameterLogger)
         {
-            CloudBlobDescriptor parameterLogger = descr.ParameterLogBlob; // optional 
             return new RunnerProgram(parameterLogger);
         }
 
-        public static FunctionExecutionResult MainWorker(FunctionInvokeRequest descr, IConfiguration config,
+        public static FunctionExecutionResult MainWorker(CloudBlobDescriptor parameterLogger, FunctionInvokeRequest descr, IConfiguration config,
             CancellationToken cancellationToken)
         {
-            RunnerProgram program = RunnerProgram.Create(descr);
+            RunnerProgram program = RunnerProgram.Create(parameterLogger);
             return MainWorker(() => program.Invoke(descr, config, cancellationToken));
         }
 

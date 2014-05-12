@@ -105,13 +105,28 @@ namespace Dashboard.Indexers
 
         private void Process(FunctionStartedMessage message)
         {
-            _functionInstanceLogger.LogFunctionStarted(message.LogEntity);
-            _causalityLogger.LogTriggerReason(message.LogEntity.FunctionInstance.TriggerReason);
+            _functionInstanceLogger.LogFunctionStarted(message.Snapshot);
+            _causalityLogger.LogTriggerReason(CreateTriggerReason(message.Snapshot));
 
-            if (message.LogEntity.ExecutingJobRunId != null)
+            if (message.Snapshot.WebJobRunIdentifier != null)
             {
-                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.LogEntity.FunctionInstance.Id, message.LogEntity.StartTime.Value, message.LogEntity.ExecutingJobRunId);
+                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.Snapshot.FunctionInstanceId, message.Snapshot.StartTime.UtcDateTime, message.Snapshot.WebJobRunIdentifier);
             }
+        }
+
+        internal static TriggerReason CreateTriggerReason(FunctionStartedSnapshot snapshot)
+        {
+            if (!snapshot.ParentId.HasValue && String.IsNullOrEmpty(snapshot.Reason))
+            {
+                return null;
+            }
+
+            return new InvokeTriggerReason
+            {
+                ChildGuid = snapshot.FunctionInstanceId,
+                ParentGuid = snapshot.ParentId.GetValueOrDefault(),
+                Message = snapshot.Reason
+            };
         }
 
         private void Process(FunctionCompletedMessage message)

@@ -34,7 +34,7 @@ namespace Dashboard
             Bind<IFunctionInstanceLookup>().ToMethod(() => CreateFunctionInstanceLookup(account));
             Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(account));
             Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(account));
-            Bind<IRunningHostTableReader>().ToMethod(() => CreateRunningHostTableReader(account));
+            Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
             Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(account));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(account));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(account));
@@ -170,13 +170,6 @@ namespace Dashboard
                 account,
                 DashboardTableNames.FunctionInvokeStatsTableName,
                  row => Tuple.Create("1", row.ToString()));
-        }
-
-        private static IRunningHostTableReader CreateRunningHostTableReader(CloudStorageAccount account)
-        {
-            IAzureTable<RunningHost> table = new AzureTable<RunningHost>(account, TableNames.RunningHostsTableName);
-
-            return new RunningHostTableReader(table);
         }
 
         private static string GetRuntimeConnectionString()

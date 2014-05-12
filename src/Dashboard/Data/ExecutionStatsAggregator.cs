@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using AzureTables;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Dashboard.Data
 {
@@ -82,11 +83,26 @@ namespace Dashboard.Data
             _funcs.Clear(); // cause it to be reloaded
         }
 
+        private void LogMru(FunctionStartedSnapshot snapshot)
+        {
+            Guid instance = snapshot.FunctionInstanceId;
+
+            DateTime rowKeyTimestamp = snapshot.StartTime.UtcDateTime;
+
+            // Use function's actual end time (so we can reindex)
+            // and append with the function instance ID just in case there are ties. 
+            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instance);
+
+            var ptr = new FunctionInstanceGuid(instance);
+            _tableMRU.Write(PartitionKey, rowKey, ptr);
+
+            string funcId = snapshot.FunctionId; // valid row key
+            _tableMRUByFunction.Write(funcId, rowKey, ptr);
+        }
+
         private void LogMru(ExecutionInstanceLogEntity log)
         {
             Guid instance = log.FunctionInstance.Id;
-
-            Dictionary<string, string> d = new Dictionary<string, string>();
 
             DateTime rowKeyTimestamp;
 
@@ -130,16 +146,16 @@ namespace Dashboard.Data
             _tableMRUByFunction.Delete(log.FunctionInstance.Location.ToString(), rowKey);
         }
 
-        public void LogFunctionStarted(ExecutionInstanceLogEntity log)
+        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
         {
             // This method may be called concurrently with LogFunctionCompleted.
             // Don't log a function running after it has been logged as completed.
-            if (HasLoggedFunctionCompleted(log.FunctionInstance.Id))
+            if (HasLoggedFunctionCompleted(snapshot.FunctionInstanceId))
             {
                 return;
             }
 
-            LogMru(log);
+            LogMru(snapshot);
             Flush();
         }
 

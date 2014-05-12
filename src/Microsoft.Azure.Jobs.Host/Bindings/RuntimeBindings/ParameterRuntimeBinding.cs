@@ -11,6 +11,8 @@ namespace Microsoft.Azure.Jobs
     // This Serializes to JSON. 
     internal abstract class ParameterRuntimeBinding
     {
+        public string Name { get; set; }
+
         // Get a "human readable" string that can be displayed and passed to BindFromString
         // This can be part of the UI. 
         public abstract string ConvertToInvokeString();

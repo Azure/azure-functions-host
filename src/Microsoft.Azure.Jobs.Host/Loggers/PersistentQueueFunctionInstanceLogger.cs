@@ -17,9 +17,9 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _queue = queue;
         }
 
-        public void LogFunctionStarted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
         {
-            _queue.Enqueue(new FunctionStartedMessage { LogEntity = logEntity });
+            _queue.Enqueue(new FunctionStartedMessage { Snapshot = snapshot });
         }
 
         public void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity)

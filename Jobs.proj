@@ -16,6 +16,10 @@
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
     </Build>
+    <Build Include="src\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
+      <PublishType>Assembly</PublishType>
+      <PublishPath>$(PublishPath)\Binaries</PublishPath>
+    </Build>
     <Build Include="src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>

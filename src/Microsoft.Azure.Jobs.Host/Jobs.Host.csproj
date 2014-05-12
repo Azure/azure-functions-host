@@ -81,6 +81,21 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionArgument.cs">
+      <Link>Protocols\FunctionArgument.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedSnapshot.cs">
+      <Link>Protocols\FunctionStartedSnapshot.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebJobRunIdentifier.cs">
+      <Link>Protocols\WebJobRunIdentifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebJobTypes.cs">
+      <Link>Protocols\WebJobTypes.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
+      <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
+    </Compile>
     <Compile Include="Bindings\BinderProviders\CloudBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\CloudTableBinderProvider.cs" />
@@ -130,8 +145,6 @@
     <Compile Include="Protocols\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Protocols\IProcessTerminationSignalReader.cs" />
     <Compile Include="Runners\HostTableNames.cs" />
-    <Compile Include="Runners\WebJobRunIdentifier.cs" />
-    <Compile Include="Runners\WebJobTypes.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="Protocols\HostStartupMessage.cs" />

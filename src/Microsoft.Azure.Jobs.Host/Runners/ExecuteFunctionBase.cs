@@ -16,8 +16,6 @@ namespace Microsoft.Azure.Jobs
                 instance.Id = Guid.NewGuid(); // used for logging. 
             }
 
-            instance.SchemaNumber = FunctionInvokeRequest.CurrentSchema;
-
             if (instance.TriggerReason == null)
             {
                 // Having a trigger reason is important for diagnostics. 

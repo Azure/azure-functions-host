@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -33,6 +34,9 @@ namespace Microsoft.Azure.Jobs
         // For retrieving the console output.
         // Likely URL to a blob that the Console output was written to.
         public string OutputUrl { get; set; }
+
+        // URL of BLOB with parameter logging data.
+        public string ParameterLogUrl { get; set; }
 
         public DateTime QueueTime { get; set; }
 

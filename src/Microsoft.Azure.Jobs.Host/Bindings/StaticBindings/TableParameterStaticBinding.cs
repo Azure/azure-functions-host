@@ -19,11 +19,6 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // $$$ don't think we use this anymore. 
-        // True iff we know we have read-only access to the table. 
-        // This is used for optimizations. 
-        public bool IsReadOnly { get; set; }
-
         public override void Validate(IConfiguration config, ParameterInfo parameter)
         {
             // Table name was already validated in property-setter
@@ -36,6 +31,7 @@ namespace Microsoft.Azure.Jobs
         {
             return new TableParameterRuntimeBinding
             {
+                Name = Name,
                 Table = new CloudTableDescriptor
                 {
                     AccountConnectionString = inputs.AccountConnectionString,
@@ -54,6 +50,7 @@ namespace Microsoft.Azure.Jobs
 
             return new TableParameterRuntimeBinding
             {
+                Name = Name,
                 Table = new CloudTableDescriptor
                 {
                     AccountConnectionString = inputs.AccountConnectionString,

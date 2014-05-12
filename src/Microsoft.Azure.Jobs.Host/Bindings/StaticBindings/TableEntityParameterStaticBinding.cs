@@ -63,21 +63,21 @@ namespace Microsoft.Azure.Jobs
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             CloudTableEntityDescriptor entity = CloudTableEntityDescriptor.ApplyNames(TableName, PartitionKey, RowKey, inputs.NameParameters);
-            return BindCore(entity, inputs);
+            return BindCore(Name, entity, inputs);
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
             CloudTableEntityDescriptor entity = CloudTableEntityDescriptor.Parse(invokeString);
-            return BindCore(entity, inputs);
+            return BindCore(Name, entity, inputs);
         }
 
-        private static ParameterRuntimeBinding BindCore(CloudTableEntityDescriptor entity, IRuntimeBindingInputs inputs)
+        private static ParameterRuntimeBinding BindCore(string name, CloudTableEntityDescriptor entity, IRuntimeBindingInputs inputs)
         {
             entity.Validate();
             entity.AccountConnectionString = inputs.AccountConnectionString;
 
-            return new TableEntityParameterRuntimeBinding { Entity = entity };
+            return new TableEntityParameterRuntimeBinding { Name = name, Entity = entity };
         }
 
         public override string Description

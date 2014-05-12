@@ -12,16 +12,6 @@ namespace Dashboard.ViewModels
             UnderlyingObject = underlyingObject;
         }
 
-        public string Description
-        {
-            get { return UnderlyingObject.Description; }
-        }
-
-        public DateTime Timestamp
-        {
-            get { return UnderlyingObject.Timestamp; }
-        }
-
         public FunctionLocationViewModel Location
         {
             get { return new FunctionLocationViewModel(UnderlyingObject.Location); }
@@ -30,11 +20,6 @@ namespace Dashboard.ViewModels
         internal FunctionFlow Flow
         {
             get { return UnderlyingObject.Flow; }
-        }
-
-        public FunctionTriggerViewModel Trigger
-        {
-            get { return new FunctionTriggerViewModel(UnderlyingObject.Trigger); }
         }
 
         public string RowKey

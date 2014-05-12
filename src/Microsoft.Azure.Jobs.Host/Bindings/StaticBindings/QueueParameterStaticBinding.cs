@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs
         {
             if (this.IsInput)
             {
-                return new QueueInputParameterRuntimeBinding { Content = invokeString };
+                return new QueueInputParameterRuntimeBinding { Name = Name, Content = invokeString };
             }
             else
             {
@@ -76,6 +76,7 @@ namespace Microsoft.Azure.Jobs
 
                 return new QueueOutputParameterRuntimeBinding
                 {
+                    Name = Name,
                     QueueOutput = new CloudQueueDescriptor
                     {
                         AccountConnectionString = inputs.AccountConnectionString,

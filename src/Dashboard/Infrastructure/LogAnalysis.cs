@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Dashboard.Data;
 using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -73,7 +74,7 @@ namespace Dashboard
                 ps[i].ArgInvokeString = s;
 
                 // If arg is a blob, provide a blob-aware link to explore that further.
-                var blobArg = arg as BlobParameterRuntimeBinding;
+                var blobArg = GetBlobParameterData(functionInstance, arg);
                 if (blobArg != null)
                 {
                     ps[i].ExtendedBlobModel = CreateExtendedBlobModel(functionInstance, blobArg);
@@ -81,12 +82,44 @@ namespace Dashboard
             }
         }
 
-        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInvokeRequest functionInstance, BlobParameterRuntimeBinding blobArg)
+        private static BlobParameterData GetBlobParameterData(FunctionInvokeRequest functionInstance, ParameterRuntimeBinding binding)
+        {
+            DataOnlyParameterRuntimeBinding dataBinding = binding as DataOnlyParameterRuntimeBinding;
+
+            if (dataBinding != null && dataBinding.IsBlob.HasValue && dataBinding.IsBlobInput.Value)
+            {
+                string[] components = dataBinding.ConvertToInvokeString().Split(new char[] { '/' });
+
+                if (components.Length != 2)
+                {
+                    return null;
+                }
+
+                CloudBlockBlob blob = CloudStorageAccount.Parse(
+                    functionInstance.Location.AccountConnectionString).CreateCloudBlobClient().GetContainerReference(
+                    components[0]).GetBlockBlobReference(components[1]);
+                return new BlobParameterData { IsInput = dataBinding.IsBlobInput.HasValue && dataBinding.IsBlobInput.Value, Blob = blob };
+            }
+
+            BlobParameterRuntimeBinding blobBinding = binding as BlobParameterRuntimeBinding;
+
+            if (blobBinding == null)
+            {
+                return null;
+            }
+
+            return new BlobParameterData
+            {
+                IsInput = blobBinding.IsInput,
+                Blob = blobBinding.Blob.GetBlockBlob()
+            };
+        }
+
+        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInvokeRequest functionInstance, BlobParameterData blobArg)
         {
             var blobParam = new BlobBoundParamModel();
-            blobParam.IsOutput = !blobArg.IsInput;
 
-            CloudBlockBlob blob = blobArg.Blob.TryGetBlockBlob();
+            CloudBlockBlob blob = blobArg.Blob;
             Guid? blobWriter = GetBlobWriter(blob);
 
             if (!blobWriter.HasValue)
@@ -133,10 +166,10 @@ namespace Dashboard
             }
         }
 
-        internal static void ApplySelfWatchInfo(FunctionInvokeRequest instance, ParamModel[] ps)
+        internal static void ApplySelfWatchInfo(CloudStorageAccount account, ExecutionInstanceLogEntity logEntity, ParamModel[] ps)
         {
             // Get selfwatch information
-            string[] selfwatch = GetParameterSelfWatch(instance);
+            string[] selfwatch = GetParameterSelfWatch(account, logEntity);
 
             if (selfwatch == null)
             {
@@ -150,17 +183,16 @@ namespace Dashboard
         }
 
         // Get Live information from current self-watch values. 
-        internal static string[] GetParameterSelfWatch(FunctionInvokeRequest instance)
+        internal static string[] GetParameterSelfWatch(CloudStorageAccount account, ExecutionInstanceLogEntity logEntity)
         {
-            if (instance.ParameterLogBlob == null)
+            if (logEntity.ParameterLogUrl == null)
             {
                 return null;
             }
 
             try
             {
-
-                var blob = instance.ParameterLogBlob.GetBlockBlob();
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(logEntity.ParameterLogUrl), account.Credentials);
 
                 if (!BlobClient.DoesBlobExist(blob))
                 {
@@ -176,6 +208,7 @@ namespace Dashboard
                     var line = tr.ReadLine();
                     if (line == null)
                     {
+                        FunctionInvokeRequest instance = logEntity.FunctionInstance;
                         if (list.Count != instance.Args.Length)
                         {
                             // Corrupted selfwatch information. 
@@ -204,6 +237,11 @@ namespace Dashboard
             }
         }
 
-    }
+        private class BlobParameterData
+        {
+            public bool IsInput { get; set; }
 
+            public CloudBlockBlob Blob { get; set; }
+        }
+    }
 }
