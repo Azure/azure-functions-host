@@ -6,6 +6,6 @@ namespace Microsoft.Azure.Jobs
     {
         void LogFunctionStarted(FunctionStartedSnapshot snapshot);
 
-        void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity);
+        void LogFunctionCompleted(FunctionCompletedSnapshot snapshot);
     }
 }

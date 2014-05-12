@@ -84,6 +84,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionArgument.cs">
       <Link>Protocols\FunctionArgument.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedSnapshot.cs">
+      <Link>Protocols\FunctionCompletedSnapshot.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedSnapshot.cs">
       <Link>Protocols\FunctionStartedSnapshot.cs</Link>
     </Compile>

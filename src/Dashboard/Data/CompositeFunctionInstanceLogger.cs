@@ -21,11 +21,11 @@ namespace Dashboard.Data
             }
         }
 
-        public void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.LogFunctionCompleted(logEntity);
+                logger.LogFunctionCompleted(snapshot);
             }
         }
     }

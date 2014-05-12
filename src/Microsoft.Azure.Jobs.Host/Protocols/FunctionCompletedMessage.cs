@@ -2,6 +2,6 @@
 {
     internal class FunctionCompletedMessage : PersistentQueueMessage
     {
-        public ExecutionInstanceLogEntity LogEntity { get; set; }
+        public FunctionCompletedSnapshot Snapshot { get; set; }
     }
 }

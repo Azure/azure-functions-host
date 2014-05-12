@@ -107,7 +107,7 @@ namespace Dashboard
             IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(new SdkCloudStorageAccount(account).CreateCloudTableClient());
 
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup = CreateFunctionLookupTable(account);
-            var tableStatsSummary = CreateInvokeStatsTable(account);
+            var tableStatsSummary = new AzureTable<FunctionStatsEntity>(account, DashboardTableNames.FunctionInvokeStatsTableName);
             var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
             var tableMruByFunction = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);

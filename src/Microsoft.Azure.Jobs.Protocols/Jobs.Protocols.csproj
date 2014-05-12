@@ -52,6 +52,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="FunctionArgument.cs" />
+    <Compile Include="FunctionCompletedSnapshot.cs" />
     <Compile Include="FunctionStartedSnapshot.cs" />
     <Compile Include="WebJobRunIdentifier.cs" />
     <Compile Include="WebJobTypes.cs" />

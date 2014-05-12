@@ -22,9 +22,9 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _queue.Enqueue(new FunctionStartedMessage { Snapshot = snapshot });
         }
 
-        public void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
         {
-            _queue.Enqueue(new FunctionCompletedMessage { LogEntity = logEntity });
+            _queue.Enqueue(new FunctionCompletedMessage { Snapshot = snapshot });
         }
     }
 }

@@ -14,10 +14,10 @@ namespace Dashboard.Data
 
         // in-memory cache of function entries.
         // This corresponds to the azure table.
-        private Dictionary<FunctionLocation, FunctionStatsEntity> _funcs =
-            new Dictionary<FunctionLocation, FunctionStatsEntity>();
+        private Dictionary<string, FunctionStatsEntity> _funcs =
+            new Dictionary<string, FunctionStatsEntity>();
 
-        private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _table;
+        private readonly IAzureTable<FunctionStatsEntity> _table;
 
         // 2nd index for most-recently used functions.
         // These are all sorted by time stamp.
@@ -33,7 +33,7 @@ namespace Dashboard.Data
         // Pass in table names for the various indices.
         public ExecutionStatsAggregator(
             IAzureTableReader<ExecutionInstanceLogEntity> tableLookup,
-            AzureTable<FunctionLocation, FunctionStatsEntity> tableStatsSummary,
+            IAzureTable<FunctionStatsEntity> tableStatsSummary,
             IAzureTable<FunctionInstanceGuid> tableMru,
             IAzureTable<FunctionInstanceGuid> tableMruByFunction,
             IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded,
@@ -76,7 +76,7 @@ namespace Dashboard.Data
 
             foreach (var kv in _funcs)
             {
-                _table.Add(kv.Key, kv.Value);
+                _table.Write("1", kv.Key, kv.Value);
             }
             _table.Flush();
 
@@ -100,50 +100,36 @@ namespace Dashboard.Data
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
         }
 
-        private void LogMru(ExecutionInstanceLogEntity log)
+        private void LogMru(FunctionCompletedSnapshot snapshot)
         {
-            Guid instance = log.FunctionInstance.Id;
+            Guid instance = snapshot.FunctionInstanceId;
 
-            DateTime rowKeyTimestamp;
-
-            if (log.EndTime.HasValue)
-            {
-                rowKeyTimestamp = log.EndTime.Value;
-            }
-            else if (log.StartTime.HasValue)
-            {
-                rowKeyTimestamp = log.StartTime.Value;
-            }
-            else
-            {
-                rowKeyTimestamp = log.QueueTime;
-            }
+            DateTime rowKeyTimestamp = snapshot.EndTime.UtcDateTime;
 
             // Use function's actual end time (so we can reindex)
             // and append with the function instance ID just in case there are ties. 
-            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, log.FunctionInstance.Id);
+            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instance);
 
-            var ptr = new FunctionInstanceGuid(log);
+            var ptr = new FunctionInstanceGuid(instance);
             _tableMRU.Write(PartitionKey, rowKey, ptr);
 
-            string funcId = log.FunctionInstance.Location.ToString(); // valid row key
+            string funcId = snapshot.FunctionId; // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
 
-            switch (log.GetStatusWithoutHeartbeat())
+            if (snapshot.Succeeded)
             {
-                case FunctionInstanceStatus.CompletedSuccess:
-                    _tableMRUByFunctionSucceed.Write(funcId, rowKey, ptr);
-                    break;
-                case FunctionInstanceStatus.CompletedFailed:
-                    _tableMRUByFunctionFailed.Write(funcId, rowKey, ptr);
-                    break;
+                _tableMRUByFunctionSucceed.Write(funcId, rowKey, ptr);
+            }
+            else
+            {
+                _tableMRUByFunctionFailed.Write(funcId, rowKey, ptr);
             }
         }
 
-        private void DeleteIndex(string rowKey, ExecutionInstanceLogEntity log)
+        private void DeleteIndex(string rowKey, string functionId)
         {
             _tableMRU.Delete(PartitionKey, rowKey);
-            _tableMRUByFunction.Delete(log.FunctionInstance.Location.ToString(), rowKey);
+            _tableMRUByFunction.Delete(TableClient.GetAsTableKey(functionId), rowKey);
         }
 
         public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
@@ -176,62 +162,49 @@ namespace Dashboard.Data
             return !object.ReferenceEquals(completedRow, null);
         }
 
-        public void LogFunctionCompleted(ExecutionInstanceLogEntity log)
+        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
         {
-            LogMru(log);
-
-            if (!log.IsCompleted())
-            {
-                Flush();
-                return;
-            }
+            LogMru(snapshot);
 
             // This method may be called concurrently with LogFunctionStarted.
             // Remove the function running log after logging as completed.
-            DeleteFunctionStartedIfExists(log);
+            DeleteFunctionStartedIfExists(snapshot);
 
-            FunctionLocation kind = log.FunctionInstance.Location;
+            string functionId = snapshot.FunctionId;
             FunctionStatsEntity stats;
-            if (!_funcs.TryGetValue(kind, out stats))
+            if (!_funcs.TryGetValue(functionId, out stats))
             {
-                stats = _table.Lookup(log.FunctionInstance.Location);
+                stats = _table.Lookup("1", functionId);
                 if (stats == null)
                 {
                     stats = new FunctionStatsEntity();
                 }
-                _funcs[kind] = stats;
+                _funcs[functionId] = stats;
             }
 
-            switch (log.GetStatusWithoutHeartbeat())
+            if (snapshot.Succeeded)
             {
-                case FunctionInstanceStatus.CompletedSuccess:
-                    stats.CountCompleted++;
-                    TimeSpan? duration = log.GetFinalDuration();
-                    if (duration.HasValue)
-                    {
-                        stats.Runtime += duration.Value;
-                    }
-                    stats.LastWriteTime = DateTime.UtcNow;
-                    break;
-                case FunctionInstanceStatus.CompletedFailed:
-                    stats.CountErrors++;
-                    break;
+                stats.CountCompleted++;
+                TimeSpan duration = snapshot.EndTime - snapshot.StartTime;
+                stats.Runtime += duration;
+                stats.LastWriteTime = DateTime.UtcNow;
+            }
+            else
+            {
+                stats.CountErrors++;
             }
 
             Flush();
         }
 
-        private void DeleteFunctionStartedIfExists(ExecutionInstanceLogEntity logItem)
+        private void DeleteFunctionStartedIfExists(FunctionCompletedSnapshot snapshot)
         {
-            if (!logItem.StartTime.HasValue ||
-                (logItem.StartTime.HasValue &&
-                logItem.EndTime.HasValue &&
-                logItem.StartTime.Value.Ticks == logItem.EndTime.Value.Ticks))
+            if (snapshot.StartTime.Ticks == snapshot.EndTime.Ticks)
             {
                 return;
             }
 
-            DeleteIndex(TableClient.GetTickRowKey(logItem.StartTime.Value, logItem.FunctionInstance.Id), logItem);
+            DeleteIndex(TableClient.GetTickRowKey(snapshot.StartTime.UtcDateTime, snapshot.FunctionInstanceId), snapshot.FunctionId);
         }
     }
 }

@@ -42,7 +42,7 @@ namespace Microsoft.Azure.Jobs
 
                 if (instanceLogger != null)
                 {
-                    instanceLogger.LogFunctionCompleted(logItem);
+                    instanceLogger.LogFunctionCompleted(CreateCompletedSnapshot(logItem));
                 }
             }
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs
 
             if (instanceLogger != null)
             {
-                instanceLogger.LogFunctionStarted(CreateSnapshot(logItem));
+                instanceLogger.LogFunctionStarted(CreateStartedSnapshot(logItem));
             }
 
             try
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static FunctionStartedSnapshot CreateSnapshot(ExecutionInstanceLogEntity logEntity)
+        private static FunctionStartedSnapshot CreateStartedSnapshot(ExecutionInstanceLogEntity logEntity)
         {
             return new FunctionStartedSnapshot
             {
@@ -121,6 +121,31 @@ namespace Microsoft.Azure.Jobs
                 StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
                 StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
                 ServiceBusConnectionString = logEntity.FunctionInstance.Location.ServiceBusConnectionString,
+                OutputBlobUrl = logEntity.OutputUrl,
+                ParameterLogBlobUrl = logEntity.ParameterLogUrl,
+                WebJobRunIdentifier = logEntity.ExecutingJobRunId
+            };
+        }
+
+        private static FunctionCompletedSnapshot CreateCompletedSnapshot(ExecutionInstanceLogEntity logEntity)
+        {
+            return new FunctionCompletedSnapshot
+            {
+                FunctionInstanceId = logEntity.FunctionInstance.Id,
+                HostInstanceId = logEntity.HostInstanceId,
+                FunctionId = logEntity.FunctionInstance.Location.GetId(),
+                FunctionFullName = logEntity.FunctionInstance.Location.FullName,
+                FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
+                Arguments = CreateArguments(logEntity.FunctionInstance.Args),
+                ParentId = logEntity.FunctionInstance.TriggerReason != null ? (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null,
+                Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
+                StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
+                EndTime = new DateTimeOffset(logEntity.EndTime.Value.ToUniversalTime(), TimeSpan.Zero),
+                StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
+                ServiceBusConnectionString = logEntity.FunctionInstance.Location.ServiceBusConnectionString,
+                Succeeded = String.IsNullOrEmpty(logEntity.ExceptionType),
+                ExceptionType = logEntity.ExceptionType,
+                ExceptionMessage = logEntity.ExceptionMessage,
                 OutputBlobUrl = logEntity.OutputUrl,
                 ParameterLogBlobUrl = logEntity.ParameterLogUrl,
                 WebJobRunIdentifier = logEntity.ExecutingJobRunId

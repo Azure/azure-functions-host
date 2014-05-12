@@ -129,7 +129,7 @@ namespace Microsoft.Azure.Jobs
                 _executor.Execute(instance, cancellationToken);
             }
         }
-        
+
         private void InvokeFromDashboard(CloudQueueMessage message, CancellationToken cancellationToken)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
@@ -152,19 +152,8 @@ namespace Microsoft.Azure.Jobs
                 else
                 {
                     // Log that the function failed.
-                    request = CreateFailedInvokeRequest(triggerOverrideModel);
-                    // In theory, we could also set HostInstanceId and ExecutingJobRunId; we'd just have to expose that data
-                    // directly to this Worker class.
-                    ExecutionInstanceLogEntity logEntity = new ExecutionInstanceLogEntity();
-                    logEntity.FunctionInstance = request;
-                    logEntity.QueueTime = message.InsertionTime.Value.UtcDateTime;
-                    DateTime startAndEndTime = DateTime.UtcNow;
-                    logEntity.StartTime = startAndEndTime;
-                    logEntity.EndTime = startAndEndTime;
-                    logEntity.ExceptionType = typeof(InvalidOperationException).FullName;
-                    logEntity.ExceptionMessage = String.Format(CultureInfo.CurrentCulture,
-                        "No function '{0}' currently exists.", triggerOverrideModel.FunctionId);
-                    _functionInstanceLogger.LogFunctionCompleted(logEntity);
+                    FunctionCompletedSnapshot snapshot = CreateFailedSnapshot(triggerOverrideModel, message.InsertionTime.Value);
+                    _functionInstanceLogger.LogFunctionCompleted(snapshot);
                 }
             }
             else
@@ -174,27 +163,40 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // This function invoke request won't contain full normal data for FunctionLocation and Args/RuntimeBindings.
-        // (All we know is an unavailable function ID; which function locatino method info and static bindings to use
-        // for each parameter are a mystery).
-        private static FunctionInvokeRequest CreateFailedInvokeRequest(TriggerAndOverrideMessage message)
+        // This snapshot won't contain full normal data for FunctionLongName and FunctionShortName.
+        // (All we know is an unavailable function ID; which function location method info to use is a mystery.)
+        private static FunctionCompletedSnapshot CreateFailedSnapshot(TriggerAndOverrideMessage message, DateTimeOffset insertionType)
         {
-            ExecutionInstanceLogEntity logEntity = new ExecutionInstanceLogEntity();
-            FunctionInvokeRequest request = new FunctionInvokeRequest();
-            logEntity.FunctionInstance = request;
+            DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
 
-            request.Id = message.Id;
-            request.TriggerReason = message.GetTriggerReason();
-            request.Location = new PartialFunctionLocation(message.FunctionId);
-            List<ParameterRuntimeBinding> arguments = new List<ParameterRuntimeBinding>();
-
-            foreach (KeyValuePair<string, string> argument in message.Arguments)
+            // In theory, we could also set HostInstanceId and WebJobRunId; we'd just have to expose that data directly
+            // to this Worker class.
+            return new FunctionCompletedSnapshot
             {
-                arguments.Add(new PartialParameterRuntimeBinding(argument.Key, argument.Value));
+                FunctionInstanceId = message.Id,
+                FunctionId = message.FunctionId,
+                Arguments = CreateArguments(message.Arguments),
+                ParentId = message.ParentId,
+                Reason = message.Reason,
+                StartTime = startAndEndTime,
+                EndTime = startAndEndTime,
+                Succeeded = false,
+                ExceptionType = typeof(InvalidOperationException).FullName,
+                ExceptionMessage = String.Format(CultureInfo.CurrentCulture,
+                        "No function '{0}' currently exists.", message.FunctionId)
+            };
+        }
+
+        private static IDictionary<string, FunctionArgument> CreateArguments(IDictionary<string, string> arguments)
+        {
+            IDictionary<string, FunctionArgument> returnValue = new Dictionary<string, FunctionArgument>();
+
+            foreach (KeyValuePair<string, string> argument in arguments)
+            {
+                returnValue.Add(argument.Key, new FunctionArgument { Value = argument.Value });
             }
 
-            request.Args = arguments.ToArray();
-            return request;
+            return returnValue;
         }
 
         private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message)

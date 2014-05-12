@@ -163,13 +163,30 @@ namespace Dashboard.Data
             }
         }
 
-        public void LogFunctionCompleted(ExecutionInstanceLogEntity logEntity)
+        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
         {
+            ExecutionInstanceLogEntity logEntity = CreateLogEntity(snapshot);
             ITableEntity entity = CreateTableEntity(logEntity);
 
             // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionCompleted wins by
             // having it replace the LogFunctionStarted record, if any.
             _table.InsertOrReplace(entity);
+        }
+
+        private static ExecutionInstanceLogEntity CreateLogEntity(FunctionCompletedSnapshot snapshot)
+        {
+            return new ExecutionInstanceLogEntity
+            {
+                HostInstanceId = snapshot.HostInstanceId,
+                ExecutingJobRunId = snapshot.WebJobRunIdentifier,
+                FunctionInstance = CreateFunctionInstance(snapshot),
+                StartTime = snapshot.StartTime.UtcDateTime,
+                EndTime = snapshot.EndTime.UtcDateTime,
+                OutputUrl = snapshot.OutputBlobUrl,
+                ParameterLogUrl = snapshot.ParameterLogBlobUrl,
+                ExceptionType = snapshot.ExceptionType,
+                ExceptionMessage = snapshot.ExceptionMessage
+            };
         }
 
         private static ITableEntity CreateTableEntity(ExecutionInstanceLogEntity logEntity)

@@ -131,7 +131,7 @@ namespace Dashboard.Indexers
 
         private void Process(FunctionCompletedMessage message)
         {
-            _functionInstanceLogger.LogFunctionCompleted(message.LogEntity);
+            _functionInstanceLogger.LogFunctionCompleted(message.Snapshot);
         }
     }
 }
