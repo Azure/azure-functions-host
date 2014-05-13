@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table.Queryable;
 
 namespace Microsoft.Azure.Jobs.Host.Storage.Table
 {
@@ -12,9 +13,9 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
     {
         private readonly string _partitionKey;
 
-        public PartitionKeyEquals(string patitionKey)
+        public PartitionKeyEquals(string partitionKey)
         {
-            _partitionKey = patitionKey;
+            _partitionKey = partitionKey;
         }
 
         public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
@@ -65,6 +66,21 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
         public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
         {
             return q.Where(e => e.RowKey.CompareTo(_rowKeyInclusiveLowerBound) >= 0);
+        }
+    }
+
+    internal class Resolver<TResult> : IQueryModifier
+    {
+        private readonly EntityResolver<TResult> _entityResolver;
+
+        public Resolver(EntityResolver<TResult> entityResolver)
+        {
+            _entityResolver = entityResolver;
+        }
+
+        public IQueryable<T> Apply<T>(IQueryable<T> q) where T : ITableEntity
+        {
+            return (IQueryable<T>)(IQueryable<TResult>)q.Resolve(_entityResolver);
         }
     }
 }

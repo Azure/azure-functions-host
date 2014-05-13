@@ -44,7 +44,7 @@ namespace Dashboard.ApiControllers
             ICloudBlob blob;
             try
             {
-                blob = _account.CreateCloudBlobClient().GetBlobReferenceFromServer(new Uri(instance.OutputUrl));
+                blob = _account.CreateCloudBlobClient().GetBlobReferenceFromServer(new Uri(instance.OutputBlobUrl));
             }
             catch (Exception)
             {

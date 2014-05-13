@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using AzureTables;
-using Dashboard.ViewModels;
+using System.Linq;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
@@ -13,7 +12,7 @@ namespace Dashboard.Data
     // Primary access to the azure table storing function invoke requests.
     internal class FunctionInstanceLogger : IFunctionInstanceLogger, IFunctionQueuedLogger
     {
-        private const string PartionKey = "1";
+        private const string PartitionKey = "1";
 
         private readonly ICloudTable _table;
 
@@ -31,98 +30,78 @@ namespace Dashboard.Data
             _table = table;
         }
 
-        public void LogFunctionQueued(ExecutionInstanceLogEntity logEntity)
+        // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
+        public void LogFunctionQueued(FunctionStartedSnapshot snapshot)
         {
-            ITableEntity entity = CreateTableEntity(logEntity);
-            _table.Insert(entity);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
+            // Fix the abuse of FunctionStartedSnapshot.
+            group.InstanceEntity.StartTime = null;
+            _table.Insert(group.GetEntities());
         }
 
         public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
         {
-            ExecutionInstanceLogEntity logEntity = CreateLogEntity(snapshot);
-            ITableEntity entity = CreateTableEntity(logEntity);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
 
             // Which operation to run depends on whether or not the entity currently exists in the "queued" status.
-            DynamicTableEntity existingEntity = _table.Retrieve<DynamicTableEntity>(PartionKey, logEntity.GetKey());
+            FunctionInstanceEntityGroup existingGroup = FunctionInstanceEntityGroup.Lookup(_table, snapshot.FunctionInstanceId);
 
-            DynamicTableEntity queuedEntity;
+            bool previouslyQueued;
 
             // If the existing entity doesn't contain a StartTime, it must be in the "queued" status.
-            if (existingEntity != null && !existingEntity.Properties.ContainsKey("StartTime"))
+            if (existingGroup != null && !existingGroup.InstanceEntity.StartTime.HasValue)
             {
-                queuedEntity = existingEntity;
+                previouslyQueued = true;
             }
             else
             {
-                existingEntity = null;
+                previouslyQueued = false;
             }
 
-            if (existingEntity == null)
+            IEnumerable<ITableEntity> entities = group.GetEntities();
+
+            if (!previouslyQueued)
             {
-                LogFunctionStartedWhenNotPreviouslyQueued(entity);
+                LogFunctionStartedWhenNotPreviouslyQueued(entities);
             }
             else
             {
-                LogFunctionStartedWhenPreviouslyQueued(entity, existingEntity.ETag);
+                CopyETags(existingGroup, group);
+                LogFunctionStartedWhenPreviouslyQueued(entities);
             }
         }
 
-        private static ExecutionInstanceLogEntity CreateLogEntity(FunctionStartedSnapshot snapshot)
+        private static void CopyETags(FunctionInstanceEntityGroup source, FunctionInstanceEntityGroup destination)
         {
-            return new ExecutionInstanceLogEntity
+            if (source == null)
             {
-                HostInstanceId = snapshot.HostInstanceId,
-                ExecutingJobRunId = snapshot.WebJobRunIdentifier,
-                FunctionInstance = CreateFunctionInstance(snapshot),
-                StartTime = snapshot.StartTime.UtcDateTime,
-                OutputUrl = snapshot.OutputBlobUrl,
-                ParameterLogUrl = snapshot.ParameterLogBlobUrl
-            };
-        }
-
-        private static FunctionInvokeRequest CreateFunctionInstance(FunctionStartedSnapshot snapshot)
-        {
-            FunctionInvokeRequest request = new FunctionInvokeRequest
+                throw new ArgumentNullException("source");
+            }
+            else if (destination == null)
             {
-                Id = snapshot.FunctionInstanceId,
-                TriggerReason = Dashboard.Indexers.Indexer.CreateTriggerReason(snapshot),
-                Location = CreateLocation(snapshot),
-                Args = CreateArgs(snapshot.Arguments)
-            };
-            request.ParametersDisplayText = InvocationLogViewModel.BuildFunctionDisplayTitle(request);
-            return request;
-        }
-
-        private static FunctionLocation CreateLocation(FunctionStartedSnapshot snapshot)
-        {
-            return new DataOnlyFunctionLocation(snapshot.FunctionId, snapshot.FunctionShortName,
-                snapshot.FunctionFullName, snapshot.StorageConnectionString, snapshot.ServiceBusConnectionString);
-        }
-
-        private static ParameterRuntimeBinding[] CreateArgs(IDictionary<string, FunctionArgument> arguments)
-        {
-            ParameterRuntimeBinding[] args = new ParameterRuntimeBinding[arguments.Count];
-            int index = 0;
-
-            foreach (KeyValuePair<string, FunctionArgument> argument in arguments)
+                throw new ArgumentNullException("destination");
+            }
+            else if (source.ArgumentEntities.Count != destination.ArgumentEntities.Count)
             {
-                FunctionArgument argumentValue = argument.Value;
-                args[index] = new DataOnlyParameterRuntimeBinding(argument.Key, argumentValue.Value,
-                    argumentValue.IsBlob, argumentValue.IsBlobInput);
-                index++;
+                throw new InvalidOperationException("Count of arguments has changed.");
             }
 
-            return args;
+            destination.InstanceEntity.ETag = source.InstanceEntity.ETag;
+
+            for (int index = 0; index < source.ArgumentEntities.Count; index++)
+            {
+                destination.ArgumentEntities[index].ETag = source.ArgumentEntities[index].ETag;
+            }
         }
 
-        private void LogFunctionStartedWhenNotPreviouslyQueued(ITableEntity entity)
+        private void LogFunctionStartedWhenNotPreviouslyQueued(IEnumerable<ITableEntity> entities)
         {
             try
             {
                 // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionStarted loses by
                 // just doing a simple Insert that will fail if the entity already exists. LogFunctionCompleted wins by
                 // having it replace the LogFunctionStarted record, if any.
-                _table.Insert(entity);
+                _table.Insert(entities);
             }
             catch (StorageException exception)
             {
@@ -137,10 +116,8 @@ namespace Dashboard.Data
             }
         }
 
-        private void LogFunctionStartedWhenPreviouslyQueued(ITableEntity entity, string etag)
+        private void LogFunctionStartedWhenPreviouslyQueued(IEnumerable<ITableEntity> entities)
         {
-            entity.ETag = etag;
-
             try
             {
                 // LogFunctionStarted and LogFunctionCompleted may run concurrently. LogFunctionQueued does not run
@@ -148,7 +125,7 @@ namespace Dashboard.Data
                 // by doing a Replace with ETag check that will fail if the entity has been changed.
                 // LogFunctionCompleted wins by doing a Replace without an ETag check, so it will replace the
                 // LogFunctionStarted (or Queued) record, if any.
-                _table.Replace(entity);
+                _table.Replace(entities);
             }
             catch (StorageException exception)
             {
@@ -165,59 +142,94 @@ namespace Dashboard.Data
 
         public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
         {
-            ExecutionInstanceLogEntity logEntity = CreateLogEntity(snapshot);
-            ITableEntity entity = CreateTableEntity(logEntity);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
 
             // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionCompleted wins by
             // having it replace the LogFunctionStarted record, if any.
-            _table.InsertOrReplace(entity);
+            _table.InsertOrReplace(group.GetEntities());
         }
 
-        private static ExecutionInstanceLogEntity CreateLogEntity(FunctionCompletedSnapshot snapshot)
+        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionStartedSnapshot snapshot)
         {
-            return new ExecutionInstanceLogEntity
+            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(snapshot);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(snapshot.FunctionInstanceId, snapshot.Arguments);
+
+            return new FunctionInstanceEntityGroup
             {
-                HostInstanceId = snapshot.HostInstanceId,
-                ExecutingJobRunId = snapshot.WebJobRunIdentifier,
-                FunctionInstance = CreateFunctionInstance(snapshot),
-                StartTime = snapshot.StartTime.UtcDateTime,
-                EndTime = snapshot.EndTime.UtcDateTime,
-                OutputUrl = snapshot.OutputBlobUrl,
-                ParameterLogUrl = snapshot.ParameterLogBlobUrl,
-                ExceptionType = snapshot.ExceptionType,
-                ExceptionMessage = snapshot.ExceptionMessage
+                InstanceEntity = instanceEntity,
+                ArgumentEntities = argumentEntities
             };
         }
 
-        private static ITableEntity CreateTableEntity(ExecutionInstanceLogEntity logEntity)
+        private static FunctionInstanceEntity CreateInstanceEntity(FunctionStartedSnapshot snapshot)
         {
-            return AzureTable.ToTableEntity(PartionKey, logEntity.GetKey(), logEntity);
+            return new FunctionInstanceEntity
+            {
+                PartitionKey = PartitionKey,
+                RowKey = FunctionInstanceEntity.GetRowKey(snapshot.FunctionInstanceId),
+                Id = snapshot.FunctionInstanceId,
+                HostInstanceId = snapshot.HostInstanceId,
+                FunctionId = snapshot.FunctionId,
+                FunctionFullName = snapshot.FunctionFullName,
+                FunctionShortName = snapshot.FunctionShortName,
+                ParentId = snapshot.ParentId,
+                Reason = snapshot.Reason,
+                QueueTime = snapshot.StartTime,
+                StartTime = snapshot.StartTime,
+                StorageConnectionString = snapshot.StorageConnectionString,
+                OutputBlobUrl = snapshot.OutputBlobUrl,
+                ParameterLogBlobUrl = snapshot.ParameterLogBlobUrl,
+                WebSiteName = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.WebSiteName : null,
+                WebJobType = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.JobType.ToString() : null,
+                WebJobName = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.JobName : null,
+                WebJobRunId = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.RunId : null
+            };
         }
 
-        private class DataOnlyFunctionLocation : FunctionLocation
+        private static IReadOnlyList<FunctionArgumentEntity> CreateArgumentEntities(Guid functionInstanceId,
+            IDictionary<string, FunctionArgument> arguments)
         {
-            public string Id { get; set; }
-            public string ShortName { get; set; }
+            List<FunctionArgumentEntity> entities = new List<FunctionArgumentEntity>();
+            int index = 0;
 
-            public DataOnlyFunctionLocation(string id, string shortName, string fullName,
-                string storageConnectionString, string serviceBusConnectionString)
+            foreach (KeyValuePair<string, FunctionArgument> argument in arguments)
             {
-                Id = id;
-                ShortName = shortName;
-                FullName = fullName;
-                AccountConnectionString = storageConnectionString;
-                ServiceBusConnectionString = serviceBusConnectionString;
+                entities.Add(new FunctionArgumentEntity
+                {
+                    PartitionKey = PartitionKey,
+                    RowKey = FunctionArgumentEntity.GetRowKey(functionInstanceId, index),
+                    Name = argument.Key,
+                    Value = argument.Value.Value,
+                    IsBlob = argument.Value.IsBlob,
+                    IsBlobInput = argument.Value.IsBlobInput
+                });
+
+                index++;
             }
 
-            public override string GetId()
-            {
-                return Id;
-            }
+            return entities;
+        }
 
-            public override string GetShortName()
+        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionCompletedSnapshot snapshot)
+        {
+            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(snapshot);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(snapshot.FunctionInstanceId, snapshot.Arguments);
+
+            return new FunctionInstanceEntityGroup
             {
-                return ShortName;
-            }
+                InstanceEntity = instanceEntity,
+                ArgumentEntities = argumentEntities
+            };
+        }
+
+        private static FunctionInstanceEntity CreateInstanceEntity(FunctionCompletedSnapshot snapshot)
+        {
+            FunctionInstanceEntity entity = CreateInstanceEntity((FunctionStartedSnapshot)snapshot);
+            entity.EndTime = snapshot.EndTime;
+            entity.Succeeded = snapshot.Succeeded;
+            entity.ExceptionType = snapshot.ExceptionType;
+            entity.ExceptionMessage = snapshot.ExceptionMessage;
+            return entity;
         }
     }
 }

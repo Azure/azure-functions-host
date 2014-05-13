@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Dashboard.Data;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -57,69 +59,36 @@ namespace Dashboard
             return ps;
         }
 
-        internal static void ApplyRuntimeInfo(FunctionInvokeRequest functionInstance, ParameterRuntimeBinding[] args, ParamModel[] ps)
+        internal static void ApplyRuntimeInfo(FunctionInstanceSnapshot snapshot, ParamModel[] ps)
         {
-            for (int i = 0; i < args.Length; i++)
+            for (int i = 0; i < snapshot.Arguments.Count; i++)
             {
-                var arg = args[i];
-                string s = "???";
-
-                try
-                {
-                    s = arg.ConvertToInvokeString();
-                }
-                catch (NotImplementedException)
-                {
-                }
-                ps[i].ArgInvokeString = s;
+                FunctionInstanceArgument argument = snapshot.Arguments.Values.ElementAt(i);
+                ps[i].ArgInvokeString = argument.Value;
 
                 // If arg is a blob, provide a blob-aware link to explore that further.
-                var blobArg = GetBlobParameterData(functionInstance, arg);
-                if (blobArg != null)
+                if (argument.IsBlob)
                 {
-                    ps[i].ExtendedBlobModel = CreateExtendedBlobModel(functionInstance, blobArg);
+                    ps[i].ExtendedBlobModel = CreateExtendedBlobModel(snapshot, argument);
                 }
             }
         }
 
-        private static BlobParameterData GetBlobParameterData(FunctionInvokeRequest functionInstance, ParameterRuntimeBinding binding)
+        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
         {
-            DataOnlyParameterRuntimeBinding dataBinding = binding as DataOnlyParameterRuntimeBinding;
+            string[] components = argument.Value.Split(new char[] { '/' });
 
-            if (dataBinding != null && dataBinding.IsBlob.HasValue && dataBinding.IsBlobInput.Value)
-            {
-                string[] components = dataBinding.ConvertToInvokeString().Split(new char[] { '/' });
-
-                if (components.Length != 2)
-                {
-                    return null;
-                }
-
-                CloudBlockBlob blob = CloudStorageAccount.Parse(
-                    functionInstance.Location.AccountConnectionString).CreateCloudBlobClient().GetContainerReference(
-                    components[0]).GetBlockBlobReference(components[1]);
-                return new BlobParameterData { IsInput = dataBinding.IsBlobInput.HasValue && dataBinding.IsBlobInput.Value, Blob = blob };
-            }
-
-            BlobParameterRuntimeBinding blobBinding = binding as BlobParameterRuntimeBinding;
-
-            if (blobBinding == null)
+            if (components.Length != 2)
             {
                 return null;
             }
 
-            return new BlobParameterData
-            {
-                IsInput = blobBinding.IsInput,
-                Blob = blobBinding.Blob.GetBlockBlob()
-            };
-        }
+            CloudBlockBlob blob = CloudStorageAccount.Parse(
+                snapshot.StorageConnectionString).CreateCloudBlobClient().GetContainerReference(
+                components[0]).GetBlockBlobReference(components[1]);
 
-        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInvokeRequest functionInstance, BlobParameterData blobArg)
-        {
             var blobParam = new BlobBoundParamModel();
 
-            CloudBlockBlob blob = blobArg.Blob;
             Guid? blobWriter = GetBlobWriter(blob);
 
             if (!blobWriter.HasValue)
@@ -129,7 +98,7 @@ namespace Dashboard
             else
             {
                 blobParam.OwnerId = blobWriter.Value;
-                if (blobWriter.Value == functionInstance.Id)
+                if (blobWriter.Value == snapshot.Id)
                 {
                     blobParam.IsBlobOwnedByCurrentFunctionInstance = true;
                 }
@@ -166,10 +135,10 @@ namespace Dashboard
             }
         }
 
-        internal static void ApplySelfWatchInfo(CloudStorageAccount account, ExecutionInstanceLogEntity logEntity, ParamModel[] ps)
+        internal static void ApplySelfWatchInfo(CloudStorageAccount account, FunctionInstanceSnapshot snapshot, ParamModel[] ps)
         {
             // Get selfwatch information
-            string[] selfwatch = GetParameterSelfWatch(account, logEntity);
+            string[] selfwatch = GetParameterSelfWatch(account, snapshot);
 
             if (selfwatch == null)
             {
@@ -183,16 +152,16 @@ namespace Dashboard
         }
 
         // Get Live information from current self-watch values. 
-        internal static string[] GetParameterSelfWatch(CloudStorageAccount account, ExecutionInstanceLogEntity logEntity)
+        internal static string[] GetParameterSelfWatch(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
-            if (logEntity.ParameterLogUrl == null)
+            if (snapshot.ParameterLogBlobUrl == null)
             {
                 return null;
             }
 
             try
             {
-                CloudBlockBlob blob = new CloudBlockBlob(new Uri(logEntity.ParameterLogUrl), account.Credentials);
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(snapshot.ParameterLogBlobUrl), account.Credentials);
 
                 if (!BlobClient.DoesBlobExist(blob))
                 {
@@ -208,13 +177,12 @@ namespace Dashboard
                     var line = tr.ReadLine();
                     if (line == null)
                     {
-                        FunctionInvokeRequest instance = logEntity.FunctionInstance;
-                        if (list.Count != instance.Args.Length)
+                        if (list.Count != snapshot.Arguments.Count)
                         {
                             // Corrupted selfwatch information. 
                             // Return an error message so that we know something went wrong. 
-                            var x = new string[instance.Args.Length];
-                            for (int i = 0; i < instance.Args.Length; i++)
+                            var x = new string[snapshot.Arguments.Count];
+                            for (int i = 0; i < snapshot.Arguments.Count; i++)
                             {
                                 x[i] = "???";
                             }

@@ -158,7 +158,11 @@
     <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Data\DataOnlyParameterRuntimeBinding.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
+    <Compile Include="Data\FunctionArgumentEntity.cs" />
+    <Compile Include="Data\FunctionInstanceEntityGroup.cs" />
     <Compile Include="Data\FunctionInstanceLookup.cs" />
+    <Compile Include="Data\FunctionInstanceEntity.cs" />
+    <Compile Include="Data\FunctionInstanceSnapshot.cs" />
     <Compile Include="Data\FunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionStatsEntity.cs" />
     <Compile Include="Data\FunctionTable.cs" />
@@ -166,6 +170,7 @@
     <Compile Include="Data\FunctionInstanceLogger.cs" />
     <Compile Include="Data\ICausalityLogger.cs" />
     <Compile Include="Data\ICausalityReader.cs" />
+    <Compile Include="Data\FunctionInstanceArgument.cs" />
     <Compile Include="Data\IFunctionQueuedLogger.cs" />
     <Compile Include="Data\IFunctionInstanceLookup.cs" />
     <Compile Include="Data\IFunctionsInJobIndexer.cs" />
@@ -180,6 +185,7 @@
     <Compile Include="Protocols\ProcessTerminationSignalWriter.cs" />
     <Compile Include="Protocols\RunningHostTableReader.cs" />
     <Compile Include="Protocols\TriggerAndOverrideMessageReasons.cs" />
+    <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="InvocationLog\IInvocationLogLoader.cs" />
     <Compile Include="InvocationLog\InvocationLogLoader.cs" />

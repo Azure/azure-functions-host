@@ -134,31 +134,28 @@ namespace Dashboard.ApiControllers
 
             var model = new FunctionInstanceDetailsViewModel();
             model.Invocation = new InvocationLogViewModel(func, _invocationLogLoader.GetHeartbeat(func.HostInstanceId));
-            model.TriggerReason = new TriggerReasonViewModel(func.FunctionInstance.TriggerReason);
+            model.TriggerReason = new TriggerReasonViewModel(func);
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
 
             // Do some analysis to find inputs, outputs, 
 
-            var functionModel = _functionTableLookup.Lookup(func.FunctionInstance.Location.GetId());
+            var functionModel = _functionTableLookup.Lookup(func.FunctionId);
 
             if (functionModel != null)
             {
                 var descriptor = new FunctionDefinitionViewModel(functionModel);
 
-                // Parallel arrays of static descriptor and actual instance info 
-                ParameterRuntimeBinding[] args = func.FunctionInstance.Args;
-
                 model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
-                LogAnalysis.ApplyRuntimeInfo(func.FunctionInstance, args, model.Parameters);
+                LogAnalysis.ApplyRuntimeInfo(func, model.Parameters);
                 LogAnalysis.ApplySelfWatchInfo(_account, func, model.Parameters);
             }
 
             // fetch ancestor
-            var parentGuid = func.FunctionInstance.TriggerReason.ParentGuid;
-            if (parentGuid != Guid.Empty)
+            var parentGuid = func.ParentId;
+            if (parentGuid.HasValue)
             {
-                ExecutionInstanceLogEntity ancestor = _functionInstanceLookup.Lookup(parentGuid);
+                FunctionInstanceSnapshot ancestor = _functionInstanceLookup.Lookup(parentGuid.Value);
                 DateTimeOffset? heartbeat;
 
                 if (ancestor != null)

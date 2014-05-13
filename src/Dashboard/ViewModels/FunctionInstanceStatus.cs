@@ -1,5 +1,9 @@
-﻿namespace Dashboard.ViewModels
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
+namespace Dashboard.ViewModels
 {
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum FunctionInstanceStatus
     {
         None, // shouldn't be used. Can indicate a serialization error.

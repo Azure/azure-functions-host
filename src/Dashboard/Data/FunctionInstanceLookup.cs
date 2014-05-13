@@ -1,44 +1,42 @@
 ﻿using System;
-using Microsoft.Azure.Jobs;
-using Newtonsoft.Json;
+using System.Collections;
+using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Dashboard.Data
 {
     internal class FunctionInstanceLookup : IFunctionInstanceLookup
     {
-        private const string PartKey = "1";
+        private const string PartitionKey = "1";
 
-        // Lookup in primary index
-        // $$$ Should this be IFunctionInstanceLookup instead?
-        private readonly IAzureTableReader<ExecutionInstanceLogEntity> _tableLookup;
+        private readonly ICloudTable _table;
 
-        public FunctionInstanceLookup(IAzureTableReader<ExecutionInstanceLogEntity> tableLookup)
+        public FunctionInstanceLookup(ICloudTableClient tableClient)
+            : this(tableClient.GetTableReference(DashboardTableNames.FunctionInvokeLogTableName))
         {
-            if (tableLookup == null)
-            {
-                throw new ArgumentNullException("tableLookup");
-            }
-
-            _tableLookup = tableLookup;
         }
 
-        ExecutionInstanceLogEntity IFunctionInstanceLookup.Lookup(Guid rowKey)
+        public FunctionInstanceLookup(ICloudTable table)
         {
-            return RawLookup(_tableLookup, rowKey.ToString());
+            if (table == null)
+            {
+                throw new ArgumentNullException("table");
+            }
+
+            _table = table;
         }
 
-        internal static ExecutionInstanceLogEntity RawLookup(IAzureTableReader<ExecutionInstanceLogEntity> table, string rowKey)
+        FunctionInstanceSnapshot IFunctionInstanceLookup.Lookup(Guid id)
         {
-            try
+            FunctionInstanceEntityGroup group = FunctionInstanceEntityGroup.Lookup(_table, id);
+
+            if (group == null)
             {
-                ExecutionInstanceLogEntity func = table.Lookup(PartKey, rowKey);
-                return func;
-            }
-            catch (JsonSerializationException)
-            {
-                // Likely failed to deserialize, which means stale data. Just ignore it. 
                 return null;
             }
+
+            return new FunctionInstanceSnapshot(group.InstanceEntity, group.ArgumentEntities);
         }
    }
 }

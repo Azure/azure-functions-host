@@ -27,26 +27,25 @@ namespace Dashboard.Data
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionFailed;
 
         // Lookup in primary index
-        // $$$ Should this be IFunctionInstanceLookup instead?
-        private readonly IAzureTableReader<ExecutionInstanceLogEntity> _tableLookup;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
 
         // Pass in table names for the various indices.
         public ExecutionStatsAggregator(
-            IAzureTableReader<ExecutionInstanceLogEntity> tableLookup,
+            IFunctionInstanceLookup functionInstanceLookup,
             IAzureTable<FunctionStatsEntity> tableStatsSummary,
             IAzureTable<FunctionInstanceGuid> tableMru,
             IAzureTable<FunctionInstanceGuid> tableMruByFunction,
             IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded,
             IAzureTable<FunctionInstanceGuid> tableMruFunctionFailed)
         {
-            NotNull(tableLookup, "tableLookup");
+            NotNull(functionInstanceLookup, "functionInstanceLookup");
             NotNull(tableStatsSummary, "tableStatsSummary");
             NotNull(tableMru, "tableMru");
             NotNull(tableMruByFunction, "tableMruByFunction");
             NotNull(tableMruByFunctionSucceeded, "tableMruByFunctionSucceeded");
             NotNull(tableMruFunctionFailed, "tableMruFunctionFailed");
 
-            _tableLookup = tableLookup;
+            _functionInstanceLookup = functionInstanceLookup;
             _table = tableStatsSummary;
             _tableMRU = tableMru;
             _tableMRUByFunction = tableMruByFunction;
@@ -60,11 +59,6 @@ namespace Dashboard.Data
             {
                 throw new ArgumentNullException(paramName);
             }
-        }
-
-        private ExecutionInstanceLogEntity LookupInPrimaryTable(Guid functionInstanceId)
-        {
-            return FunctionInstanceLookup.RawLookup(_tableLookup, functionInstanceId.ToString());
         }
 
         public void Flush()
@@ -147,16 +141,16 @@ namespace Dashboard.Data
 
         private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
         {
-            ExecutionInstanceLogEntity primaryLog = LookupInPrimaryTable(functionInstanceId);
+            FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
 
-            DateTime? completedTime = primaryLog.EndTime;
+            DateTimeOffset? completedTime = primaryLog != null ? primaryLog.EndTime : null;
 
             if (!completedTime.HasValue)
             {
                 return false;
             }
 
-            string completedRowKey = TableClient.GetTickRowKey(completedTime.Value, functionInstanceId);
+            string completedRowKey = TableClient.GetTickRowKey(completedTime.Value.UtcDateTime, functionInstanceId);
             FunctionInstanceGuid completedRow = _tableMRU.Lookup(PartitionKey, completedRowKey);
 
             return !object.ReferenceEquals(completedRow, null);

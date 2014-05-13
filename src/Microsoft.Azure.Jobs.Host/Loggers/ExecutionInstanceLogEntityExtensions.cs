@@ -6,26 +6,6 @@ namespace Microsoft.Azure.Jobs
     // Move to extension methods so that serializers don't pick them up. 
     internal static class ExecutionInstanceLogEntityExtensions
     {
-        // null if job hasn't finished yet.
-        public static TimeSpan? GetFinalDuration(this ExecutionInstanceLogEntity obj)
-        {
-            DateTime? endTime = obj.EndTime;
-
-            if (!endTime.HasValue)
-            {
-                return null;
-            }
-
-            DateTime? startTime = obj.StartTime;
-
-            if (!startTime.HasValue)
-            {
-                return null;
-            }
-
-            return endTime.Value - startTime.Value;
-        }
-
         public static FunctionInstanceStatus GetStatusWithoutHeartbeat(this ExecutionInstanceLogEntity obj)
         {
             return GetStatusWithHeartbeat(obj, null);

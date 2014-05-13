@@ -27,7 +27,7 @@ namespace Dashboard.Protocols
 
         public RunningHost[] ReadAll()
         {
-            return _table.Query<RunningHost>(50).ToArray();
+            return _table.Query<RunningHost>(limit: null).ToArray();
         }
 
         public DateTimeOffset? Read(Guid hostOrInstanceId)

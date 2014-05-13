@@ -78,7 +78,7 @@ namespace Dashboard.Controllers
             }
 
             Guid parent;
-            ExecutionInstanceLogEntity parentLog;
+            FunctionInstanceSnapshot parentLog;
             FunctionDefinition function = GetFunctionFromInstance(parentId, out parent, out parentLog);
 
             if (function == null)
@@ -101,14 +101,31 @@ namespace Dashboard.Controllers
             return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
         }
 
-        private ExecutionInstanceLogEntity CreateLogEntity(FunctionDefinition function, TriggerAndOverrideMessage message)
+        private FunctionStartedSnapshot CreateFunctionStartedSnapshot(FunctionDefinition function, TriggerAndOverrideMessage message)
         {
-            FunctionInvokeRequest instance = Worker.CreateInvokeRequest(function, message);
-            return new ExecutionInstanceLogEntity
+            return new FunctionStartedSnapshot
             {
-                QueueTime = DateTime.UtcNow,
-                FunctionInstance = instance
+                FunctionInstanceId = message.Id,
+                FunctionId = message.FunctionId,
+                FunctionFullName = function.Location.FullName,
+                FunctionShortName = function.Location.GetShortName(),
+                Arguments = CreateArguments(message.Arguments),
+                ParentId = message.ParentId,
+                Reason = message.Reason,
+                StartTime = DateTimeOffset.UtcNow
             };
+        }
+
+        private static IDictionary<string, FunctionArgument> CreateArguments(IDictionary<string, string> arguments)
+        {
+            IDictionary<string, FunctionArgument> returnValue = new Dictionary<string, FunctionArgument>();
+
+            foreach (KeyValuePair<string, string> argument in arguments)
+            {
+                returnValue.Add(argument.Key, new FunctionArgument { Value = argument.Value });
+            }
+
+            return returnValue;
         }
 
         private RunFunctionViewModel CreateRunFunctionViewModel(FunctionDefinition function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
@@ -146,8 +163,8 @@ namespace Dashboard.Controllers
                 Reason = reason
             };
 
-            ExecutionInstanceLogEntity logEntity = CreateLogEntity(function, message);
-            _functionQueuedLogger.LogFunctionQueued(logEntity);
+            FunctionStartedSnapshot snapshot = CreateFunctionStartedSnapshot(function, message);
+            _functionQueuedLogger.LogFunctionQueued(snapshot);
 
             _invoker.TriggerAndOverride(hostId, message);
 
@@ -184,11 +201,9 @@ namespace Dashboard.Controllers
             return parameters;
         }
 
-        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function, ExecutionInstanceLogEntity log)
+        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function, FunctionInstanceSnapshot snapshot)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
-
-            int index = 0;
 
             foreach (ParameterStaticBinding binding in function.Flow.Bindings)
             {
@@ -196,10 +211,9 @@ namespace Dashboard.Controllers
                 {
                     Name = binding.Name,
                     Description = binding.Prompt,
-                    Value = log.FunctionInstance.Args[index].ConvertToInvokeString()
+                    Value = snapshot.Arguments[binding.Name].Value
                 };
                 parameters.Add(parameter);
-                index++;
             }
 
             return parameters;
@@ -230,26 +244,26 @@ namespace Dashboard.Controllers
 
         private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed)
         {
-            ExecutionInstanceLogEntity ignored;
+            FunctionInstanceSnapshot ignored;
             return GetFunctionFromInstance(id, out parsed, out ignored);
         }
 
-        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed, out ExecutionInstanceLogEntity instanceLog)
+        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed, out FunctionInstanceSnapshot snapshot)
         {
             if (!Guid.TryParse(id, out parsed))
             {
-                instanceLog = null;
+                snapshot = null;
                 return null;
             }
 
-            instanceLog = _functionInstanceLookup.Lookup(parsed);
+            snapshot = _functionInstanceLookup.Lookup(parsed);
 
-            if (instanceLog == null)
+            if (snapshot == null)
             {
                 return null;
             }
 
-            return GetFunction(instanceLog.FunctionInstance.Location.GetId());
+            return GetFunction(snapshot.FunctionId);
         }
 
         public ActionResult SearchBlob(string path)

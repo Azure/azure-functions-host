@@ -116,7 +116,7 @@ namespace Microsoft.Azure.Jobs
                 FunctionFullName = logEntity.FunctionInstance.Location.FullName,
                 FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
                 Arguments = CreateArguments(logEntity.FunctionInstance.Args),
-                ParentId = logEntity.FunctionInstance.TriggerReason != null ? (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null,
+                ParentId = GetParentId(logEntity),
                 Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
                 StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
                 StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.Jobs
                 FunctionFullName = logEntity.FunctionInstance.Location.FullName,
                 FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
                 Arguments = CreateArguments(logEntity.FunctionInstance.Args),
-                ParentId = logEntity.FunctionInstance.TriggerReason != null ? (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null,
+                ParentId = GetParentId(logEntity),
                 Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
                 StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
                 EndTime = new DateTimeOffset(logEntity.EndTime.Value.ToUniversalTime(), TimeSpan.Zero),
@@ -150,6 +150,13 @@ namespace Microsoft.Azure.Jobs
                 ParameterLogBlobUrl = logEntity.ParameterLogUrl,
                 WebJobRunIdentifier = logEntity.ExecutingJobRunId
             };
+        }
+
+        private static Guid? GetParentId(ExecutionInstanceLogEntity logEntity)
+        {
+            return logEntity.FunctionInstance.TriggerReason != null
+                && logEntity.FunctionInstance.TriggerReason.ParentGuid != Guid.Empty ?
+                (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null;
         }
 
         private static IDictionary<string, FunctionArgument> CreateArguments(ParameterRuntimeBinding[] runtimeBindings)

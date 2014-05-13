@@ -9,11 +9,17 @@ namespace Microsoft.Azure.Jobs.Host.Storage.Table
 
         void Insert(ITableEntity entity);
 
+        void Insert(IEnumerable<ITableEntity> entities);
+
         void InsertOrReplace(ITableEntity entity);
+
+        void InsertOrReplace(IEnumerable<ITableEntity> entities);
 
         void Replace(ITableEntity entity);
 
-        IEnumerable<TElement> Query<TElement>(int limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new();
+        void Replace(IEnumerable<ITableEntity> entities);
+
+        IEnumerable<TElement> Query<TElement>(int? limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new();
 
         TElement GetOrInsert<TElement>(TElement entity) where TElement : ITableEntity, new();
     }

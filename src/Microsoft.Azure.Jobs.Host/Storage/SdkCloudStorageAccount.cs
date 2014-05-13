@@ -139,6 +139,23 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk.Execute(TableOperation.Insert(entity));
             }
 
+            public void Insert(IEnumerable<ITableEntity> entities)
+            {
+                if (entities == null)
+                {
+                    throw new ArgumentNullException("entities");
+                }
+
+                TableBatchOperation batch = new TableBatchOperation();
+
+                foreach (ITableEntity entity in entities)
+                {
+                    batch.Insert(entity);
+                }
+
+                _sdk.ExecuteBatch(batch);
+            }
+
             public void InsertOrReplace(ITableEntity entity)
             {
                 if (entity == null)
@@ -147,6 +164,23 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 }
 
                 _sdk.Execute(TableOperation.InsertOrReplace(entity));
+            }
+
+            public void InsertOrReplace(IEnumerable<ITableEntity> entities)
+            {
+                if (entities == null)
+                {
+                    throw new ArgumentNullException("entities");
+                }
+
+                TableBatchOperation batch = new TableBatchOperation();
+
+                foreach (ITableEntity entity in entities)
+                {
+                    batch.InsertOrReplace(entity);
+                }
+
+                _sdk.ExecuteBatch(batch);
             }
 
             public void Replace(ITableEntity entity)
@@ -159,22 +193,35 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk.Execute(TableOperation.Replace(entity));
             }
 
-            public IEnumerable<TElement> Query<TElement>(int limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new()
+            public void Replace(IEnumerable<ITableEntity> entities)
             {
-                // avoid utterly inefficient queries
-                const int maxPageSize = 50;
-                if (limit <= 0 || limit > maxPageSize)
+                if (entities == null)
                 {
-                    throw new ArgumentOutOfRangeException("limit", limit, String.Format(CultureInfo.CurrentCulture,
-                        "limit should be a non-zero positive integer no larger than {0} ", maxPageSize));
+                    throw new ArgumentNullException("entities");
                 }
 
+                TableBatchOperation batch = new TableBatchOperation();
+
+                foreach (ITableEntity entity in entities)
+                {
+                    batch.Replace(entity);
+                }
+
+                _sdk.ExecuteBatch(batch);
+            }
+
+            public IEnumerable<TElement> Query<TElement>(int? limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new()
+            {
                 IQueryable<TElement> q = _sdk.CreateQuery<TElement>();
                 foreach (var queryModifier in queryModifiers)
                 {
                     q = queryModifier.Apply(q);
                 }
-                q = q.Take(limit);
+
+                if (limit.HasValue)
+                {
+                    q = q.Take(limit.Value);
+                }
 
                 try
                 {

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using Dashboard.Data;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
@@ -17,11 +19,11 @@ namespace Dashboard.ViewModels
 
     public class WebJobRunIdentifierViewModel
     {
-        internal WebJobRunIdentifierViewModel(WebJobRunIdentifier id)
+        internal WebJobRunIdentifierViewModel(WebJobTypes jobType, string jobName, string jobRunId)
         {
-            JobType = (WebJobTypes)id.JobType;
-            JobName = id.JobName;
-            RunId = id.RunId;
+            JobType = jobType;
+            JobName = jobName;
+            RunId = jobRunId;
         }
 
         [JsonConverter(typeof(StringEnumConverter))]
@@ -34,68 +36,71 @@ namespace Dashboard.ViewModels
 
     public class InvocationLogViewModel
     {
-        internal InvocationLogViewModel(ExecutionInstanceLogEntity log, DateTimeOffset? heartbeat)
+        internal InvocationLogViewModel(FunctionInstanceSnapshot snapshot, DateTimeOffset? heartbeat)
         {
-            Id = log.FunctionInstance.Id;
-            FunctionName = log.FunctionInstance.Location.GetShortName();
-            FunctionFullName = log.FunctionInstance.Location.ToString();
-            FunctionDisplayTitle = BuildFunctionDisplayTitle(log.FunctionInstance);
-            HostInstanceId = log.HostInstanceId;
-            if (log.ExecutingJobRunId != null &&
-                log.ExecutingJobRunId.WebSiteName == Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey))
+            Id = snapshot.Id;
+            FunctionName = snapshot.FunctionShortName;
+            FunctionFullName = snapshot.FunctionFullName;
+            FunctionDisplayTitle = BuildFunctionDisplayTitle(snapshot);
+            HostInstanceId = snapshot.HostInstanceId;
+            if (snapshot.WebSiteName != null
+                && snapshot.WebSiteName == Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey))
             {
-                ExecutingJobRunId = new WebJobRunIdentifierViewModel(log.ExecutingJobRunId);
+                ExecutingJobRunId = new WebJobRunIdentifierViewModel((WebJobTypes)Enum.Parse(typeof(WebJobTypes),
+                    snapshot.WebJobType), snapshot.WebJobName, snapshot.WebJobRunId);
             }
             DateTime? heartbeatExpires;
             if (heartbeat.HasValue)
             {
                 heartbeatExpires = heartbeat.Value.UtcDateTime.Add(RunningHost.HeartbeatPollInterval);
-                Status = (FunctionInstanceStatus)log.GetStatusWithHeartbeat(heartbeatExpires);
+                Status = snapshot.GetStatusWithHeartbeat(heartbeatExpires);
             }
             else
             {
                 heartbeatExpires = null;
-                Status = (FunctionInstanceStatus)log.GetStatusWithoutHeartbeat();
+                Status = snapshot.GetStatusWithoutHeartbeat();
             }
             switch (Status)
             {
                 case FunctionInstanceStatus.Running:
-                    WhenUtc = log.StartTime;
-                    Duration = DateTime.UtcNow - log.StartTime;
+                    WhenUtc = snapshot.StartTime.Value.UtcDateTime;
+                    Duration = DateTimeOffset.UtcNow - snapshot.StartTime;
                     break;
                 case FunctionInstanceStatus.CompletedSuccess:
-                    WhenUtc = log.EndTime;
-                    Duration = log.GetFinalDuration();
+                    WhenUtc = snapshot.EndTime.Value.UtcDateTime;
+                    Duration = snapshot.GetFinalDuration();
                     break;
                 case FunctionInstanceStatus.CompletedFailed:
-                    WhenUtc = log.EndTime;
-                    Duration = log.GetFinalDuration();
-                    ExceptionType = log.ExceptionType;
-                    ExceptionMessage = log.ExceptionMessage;
+                    WhenUtc = snapshot.EndTime.Value.UtcDateTime;
+                    Duration = snapshot.GetFinalDuration();
+                    ExceptionType = snapshot.ExceptionType;
+                    ExceptionMessage = snapshot.ExceptionMessage;
                     break;
                 case FunctionInstanceStatus.NeverFinished:
-                    WhenUtc = log.StartTime;
-                    Duration = heartbeatExpires - log.StartTime;
+                    WhenUtc = snapshot.StartTime.Value.UtcDateTime;
+                    Duration = heartbeatExpires - snapshot.StartTime;
                     break;
             }
         }
 
         public WebJobRunIdentifierViewModel ExecutingJobRunId { get; set; }
 
-        internal static string BuildFunctionDisplayTitle(FunctionInvokeRequest functionInstance)
+        internal static string BuildFunctionDisplayTitle(FunctionInstanceSnapshot snapshot)
         {
-            var name = new StringBuilder(functionInstance.Location.GetShortName());
-            if (functionInstance.ParametersDisplayText != null)
+            var name = new StringBuilder(snapshot.FunctionShortName);
+            IEnumerable<string> argumentValues = snapshot.Arguments.Values.Select(v => v.Value);
+            string parametersDisplayText = String.Join(", ", argumentValues);
+            if (parametersDisplayText != null)
             {
                 name.Append(" (");
-                if (functionInstance.ParametersDisplayText.Length > 20)
+                if (parametersDisplayText.Length > 20)
                 {
-                    name.Append(functionInstance.ParametersDisplayText.Substring(0, 18))
+                    name.Append(parametersDisplayText.Substring(0, 18))
                         .Append(" ...");
                 }
                 else
                 {
-                    name.Append(functionInstance.ParametersDisplayText);
+                    name.Append(parametersDisplayText);
                 }
                 name.Append(")");
             }
@@ -106,7 +111,6 @@ namespace Dashboard.ViewModels
         public string FunctionName { get; set; }
         public string FunctionFullName { get; set; }
         public string FunctionDisplayTitle { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
         public FunctionInstanceStatus Status { get; set; }
         public DateTime? WhenUtc { get; set; }
         [JsonConverter(typeof(DurationAsMillisecondsJsonConverter))]

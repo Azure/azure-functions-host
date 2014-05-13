@@ -72,9 +72,7 @@ namespace Dashboard.Data
                 throw new InvalidOperationException("In Write-only mode.");
             }
             var entry = _logger.Lookup(child);
-            TriggerReason reason = entry.FunctionInstance.TriggerReason;
-
-            return reason.ParentGuid;
+            return entry.ParentId.HasValue ? entry.ParentId.Value : Guid.Empty;
         }
     }
 }
