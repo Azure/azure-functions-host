@@ -8,30 +8,6 @@ namespace Microsoft.Azure.Jobs
     internal class NameParameterStaticBinding : ParameterStaticBinding
     {
         public string KeyName { get; set; }
-        public bool UserSupplied { get; set; }
-
-        public override void Validate(IConfiguration config, ParameterInfo parameter)
-        {
-            if (UserSupplied)
-            {
-                // $$$ This is a little ambiguous. This could be a runtime-supplied value, or it could be a type we model bind. 
-                if (ObjectBinderHelpers.UseToStringParser(parameter.ParameterType))
-                {
-                    // If bindable from a string (ie, basically simple types like int and string), 
-                    // then assume it's supplied at runtime by the user.  
-                    return;
-                }
-
-                // Verify that a binder exists. 
-                var binder = UnknownParameterRuntimeBinding.GetBinderOrThrow(config, parameter);
-
-                var verify = binder as ICloudBinderVerify;
-                if (verify != null)
-                {
-                    verify.Validate(parameter);
-                }
-            }
-        }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
@@ -43,27 +19,11 @@ namespace Microsoft.Azure.Jobs
                     return new LiteralStringParameterRuntimeBinding { Name = Name, Value = value };
                 }
             }
-            if (UserSupplied)
-            {
-                // Not found. Do late time binding. 
-                return new UnknownParameterRuntimeBinding { Name = Name, AccountConnectionString = inputs.AccountConnectionString };
-            }
             throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
         {
-            if (UserSupplied)
-            {
-                // We don't know whether to use the invoke string or not until we have the target type. Let the runtime
-                // binding decide which way to bind.
-                return new UnknownInvokeParameterRuntimeBinding
-                {
-                    Name = Name,
-                    Value = invokeString,
-                    AccountConnectionString = inputs.AccountConnectionString
-                };
-            }
             return new LiteralStringParameterRuntimeBinding { Name = Name, Value = invokeString };
         }
 
@@ -71,10 +31,6 @@ namespace Microsoft.Azure.Jobs
         {
             get
             {
-                if (UserSupplied)
-                {
-                    return "model bound.";
-                }
                 return string.Format("mapped from keyname '{0}'", "{" + KeyName + "}");
             }
         }
@@ -83,7 +39,7 @@ namespace Microsoft.Azure.Jobs
         {
             get
             {
-                return "Enter the value (if any)";
+                return "Enter the value";
             }
         }
 

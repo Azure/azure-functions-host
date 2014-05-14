@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -11,6 +12,16 @@ namespace Microsoft.Azure.Jobs
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
+
+        private static readonly IEnumerable<IStaticBindingProvider> _staticBindingProviders =
+            new IStaticBindingProvider[]
+            {
+                new AttributeStaticBindingProvider(),
+                new CancellationTokenStaticBindingProvider(),
+                new CloudStorageAccountStaticBindingProvider(),
+                new BinderStaticBindingProvider(),
+                new Sdk1CloudStorageAccountStaticBindingProvider()
+            };
 
         private readonly IFunctionTable _functionTable;
 
@@ -31,7 +42,7 @@ namespace Microsoft.Azure.Jobs
 
         // If this config is set, use it. 
         public IConfiguration ConfigOverride { get; set; }
-         
+
         private static MethodInfo ResolveMethod(Type type, string name)
         {
             var method = type.GetMethod(name, _publicStaticMethodFlags);
@@ -137,7 +148,7 @@ namespace Microsoft.Azure.Jobs
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
-        public static ParameterStaticBinding[] GetExplicitBindings(MethodDescriptor descr)
+        public static ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr)
         {
             ParameterInfo[] ps = descr.Parameters;
 
@@ -173,44 +184,31 @@ namespace Microsoft.Azure.Jobs
 
         private static ParameterStaticBinding BindParameter(ParameterInfo parameter)
         {
-
-            foreach (Attribute attr in parameter.GetCustomAttributes(true))
+            foreach (IStaticBindingProvider provider in _staticBindingProviders)
             {
-                ParameterStaticBinding staticBinding;
-                try
+                ParameterStaticBinding binding = provider.TryBind(parameter);
+
+                if (binding != null)
                 {
-                    staticBinding = StaticBinder.DoStaticBind(attr, parameter);
-                }
-                catch (Exception e)
-                {
-                    throw IndexException.NewParameter(parameter, e);
-                }
-                if (staticBinding != null)
-                {
-                    return staticBinding;
+                    return binding;
                 }
             }
-            return null;
 
+            return null;
         }
 
-        // Note any remaining unbound parameters must be provided by the user.
-        // Return true if any parameters were unbound. Else false.
-        public static bool MarkUnboundParameters(MethodDescriptor descr, ParameterStaticBinding[] flows)
+        public static void AddInvokeBindings(MethodDescriptor descr, ParameterStaticBinding[] flows)
         {
             ParameterInfo[] ps = descr.Parameters;
 
-            bool hasUnboundParams = false;
             for (int i = 0; i < flows.Length; i++)
             {
                 if (flows[i] == null)
                 {
                     string name = ps[i].Name;
-                    flows[i] = new NameParameterStaticBinding { KeyName = name, Name = name, UserSupplied = true };
-                    hasUnboundParams = true;
+                    flows[i] = new InvokeParameterStaticBinding { Name = name };
                 }
             }
-            return hasUnboundParams;
         }
 
         private static MethodDescriptor GetMethodDescriptor(MethodInfo method)
@@ -250,7 +248,6 @@ namespace Microsoft.Azure.Jobs
         private static FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
         {
             string description = null;
-            TimeSpan? interval = null;
 
             NoAutomaticTriggerAttribute triggerAttr = null;
 
@@ -266,18 +263,12 @@ namespace Microsoft.Azure.Jobs
             }
 
             // $$$ Lots of other static checks to add.
-            if ((triggerAttr != null) && (interval.HasValue))
-            {
-                throw new InvalidOperationException("Illegal trigger binding. Can't have both timer and notrigger attributes");
-            }
 
             // Look at parameters.
-            bool required = interval.HasValue;
-
-            ParameterStaticBinding[] parameterBindings = GetExplicitBindings(descr);
+            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr);
 
             bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
-            bool hasUnboundParams = MarkUnboundParameters(descr, parameterBindings);
+            AddInvokeBindings(descr, parameterBindings);
 
             //
             // We now have all the explicitly provided information. Put it together.

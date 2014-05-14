@@ -133,13 +133,6 @@ namespace Microsoft.Azure.Jobs
             config.TableBinders.Add(new CloudTableBinderProvider());
             config.TableBinders.Add(new QueryableCloudTableBinderProvider());
             config.TableBinders.Add(new DictionaryTableBinderProvider());
-
-            // Other
-            config.Binders.Add(new CloudStorageAccountBinderProvider());
-            config.Binders.Add(new CloudQueueBinderProvider());
-            config.Binders.Add(new CancellationTokenBinderProvider());
-            config.Binders.Add(new BinderBinderProvider()); // for IBinder
-            config.Binders.Add(new Sdk1CloudStorageAccountBinderProvider());
         }
 
         internal static bool ShouldIgnoreInvokeString(Type parameterType)

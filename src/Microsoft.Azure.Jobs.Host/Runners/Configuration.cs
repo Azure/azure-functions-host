@@ -8,16 +8,9 @@ namespace Microsoft.Azure.Jobs
 
         private IList<ICloudTableBinderProvider> _tableBinders = new List<ICloudTableBinderProvider>();
 
-        private IList<ICloudBinderProvider> _Binders = new List<ICloudBinderProvider>();
-
         public IList<ICloudBlobBinderProvider> BlobBinders
         {
             get { return _blobBinders; }
-        }
-
-        public IList<ICloudBinderProvider> Binders
-        {
-            get { return _Binders; }
         }
 
         public IList<ICloudTableBinderProvider> TableBinders

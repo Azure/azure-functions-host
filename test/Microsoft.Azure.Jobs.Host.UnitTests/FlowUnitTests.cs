@@ -136,9 +136,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal(1, flows.Length);
 
             // Assumes any unrecognized parameters are supplied by the user
-            var t = (NameParameterStaticBinding)flows[0];
-            Assert.Equal("stuff", t.KeyName);
-            Assert.Equal(true, t.UserSupplied);            
+            var t = (InvokeParameterStaticBinding)flows[0];
+            Assert.Equal("stuff", t.Name);
         }
 
         // Has an unbound parameter, so this will require an explicit invoke.  
@@ -158,9 +157,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var t0 = (BlobParameterStaticBinding)flows[0];
             Assert.Equal("container", t0.Path.ContainerName);
                         
-            var t1 = (NameParameterStaticBinding)flows[1];
-            Assert.Equal("unbound", t1.KeyName);
-            Assert.Equal(true, t1.UserSupplied);
+            var t1 = (InvokeParameterStaticBinding)flows[1];
+            Assert.Equal("unbound", t1.Name);
         }
 
         // Both parameters are bound. 
@@ -182,7 +180,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             var t1 = (NameParameterStaticBinding)flows[1];
             Assert.Equal("bound", t1.KeyName);
-            Assert.Equal(false, t1.UserSupplied); // inferred from t0
         }        
     }
 }

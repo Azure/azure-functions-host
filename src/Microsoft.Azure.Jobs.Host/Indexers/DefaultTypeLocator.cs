@@ -14,6 +14,16 @@ namespace Microsoft.Azure.Jobs
         // Helper to filter out assemblies that don't even reference SimpleBatch.
         private static bool DoesAssemblyReferenceAzureJobs(Assembly a)
         {
+            // Don't index methods in our Host or ServiceBus assemblies.
+            if (typeof(DefaultTypeLocator).Assembly == a)
+            {
+                return false;
+            }
+            else if (a.GetName().Name == "Microsoft.Azure.Jobs.ServiceBus")
+            {
+                return false;
+            }
+
             AssemblyName[] referencedAssemblyNames = a.GetReferencedAssemblies();
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {

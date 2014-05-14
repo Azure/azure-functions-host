@@ -4,16 +4,56 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
+namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
 {
-    // Bind to IBinder
-    // All return results get tracked on a cleanup list. 
-    internal class BinderBinderProvider : ICloudBinderProvider
+    internal class BinderParameterStaticBinding : ParameterStaticBinding
     {
+        public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
+        {
+            return new BinderParameterRuntimeBinding { Name = Name };
+        }
+
+        public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
+        {
+            return null;
+        }
+
+        public override string Description
+        {
+            get { return null; }
+        }
+
+        public override string DefaultValue
+        {
+            get { return null; }
+        }
+
+        public override string Prompt
+        {
+            get { return null; }
+        }
+
+        private class BinderParameterRuntimeBinding : ParameterRuntimeBinding
+        {
+            public override string ConvertToInvokeString()
+            {
+                return null;
+            }
+
+            public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
+            {
+                var wrapper = new BinderWrapper(bindingContext);
+                return new BindResult<IBinder>(wrapper)
+                {
+                    Cleanup = _ => wrapper.Cleanup()
+                };
+            }
+        }
+
         // Wrap an IBinder to:
         // - ensure we cleanup all BindResults we hand out
         // - impl ISelfWatch so we can see all results we've handed out. 
-        class BinderWrapper : IBinder, ISelfWatch
+        private class BinderWrapper : IBinder, ISelfWatch
         {
             // Track for cleanup
             private readonly List<BindResult> _results = new List<BindResult>();
@@ -73,9 +113,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             {
                 lock (_watches)
                 {
-                   if (_watches.Count == 0)
+                    if (_watches.Count == 0)
                     {
-                        return String.Empty; 
+                        return String.Empty;
                     }
 
                     // Show selfwatch from objects we've handed out. 
@@ -96,27 +136,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
                     return SelfWatch.EncodeSelfWatchStatus(sb.ToString());
                 }
             }
-        }
-
-        class BinderBinder : ICloudBinder
-        {
-            public BindResult Bind(IBinderEx bindingContext, ParameterInfo parameter)
-            {
-                var wrapper = new BinderWrapper(bindingContext);
-                return new BindResult<IBinder>(wrapper)
-                {
-                    Cleanup = _ => wrapper.Cleanup()
-                };
-            }
-        }
-
-        public ICloudBinder TryGetBinder(Type targetType)
-        {
-            if (targetType == typeof(IBinder))
-            {
-                return new BinderBinder();
-            }
-            return null;
         }
     }
 }
