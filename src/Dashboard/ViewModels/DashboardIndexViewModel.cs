@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Dashboard.Data;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Protocols;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 

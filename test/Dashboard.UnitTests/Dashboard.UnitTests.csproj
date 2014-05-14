@@ -91,6 +91,10 @@
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>Jobs.Host</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
+      <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
+      <Name>Jobs.Protocols</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj">
       <Project>{4a832c21-66ea-4de4-8124-f27f8900cba9}</Project>
       <Name>Jobs.Host.TestCommon</Name>

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Dashboard.Protocols;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Newtonsoft.Json;

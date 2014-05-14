@@ -1,6 +1,6 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
@@ -30,7 +30,7 @@ namespace Dashboard.Data
                 throw new ArgumentNullException("webJobRunId");
             }
 
-            var newEntity = new Microsoft.Azure.Jobs.Host.Protocols.FunctionInvocationIndexEntity
+            var newEntity = new FunctionInvocationIndexEntity
             {
                 PartitionKey = webJobRunId.GetKey(),
                 RowKey = CreateRowKey(startTime),

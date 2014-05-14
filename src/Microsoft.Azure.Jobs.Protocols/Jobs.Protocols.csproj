@@ -51,9 +51,49 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="HostVersionReader.cs" />
+    <Compile Include="InvokeParameterDescriptor.cs" />
+    <Compile Include="ProcessTerminationSignalReader.cs" />
+    <Compile Include="ProcessTerminationSignalWriter.cs" />
+    <Compile Include="RouteParameterDescriptor.cs" />
+    <Compile Include="BinderParameterDescriptor.cs" />
+    <Compile Include="BlobParameterDescriptor.cs" />
+    <Compile Include="CancellationTokenParameterDescriptor.cs" />
+    <Compile Include="CloudStorageAccountParameterDescriptor.cs" />
+    <Compile Include="ContainerNames.cs" />
     <Compile Include="FunctionArgument.cs" />
+    <Compile Include="FunctionCompletedMessage.cs" />
     <Compile Include="FunctionCompletedSnapshot.cs" />
+    <Compile Include="FunctionDescriptor.cs" />
+    <Compile Include="FunctionStartedMessage.cs" />
     <Compile Include="FunctionStartedSnapshot.cs" />
+    <Compile Include="HostMessage.cs" />
+    <Compile Include="HostStartedMessage.cs" />
+    <Compile Include="HostVersion.cs" />
+    <Compile Include="IHostVersionReader.cs" />
+    <Compile Include="IInvoker.cs" />
+    <Compile Include="IPersistentQueue.cs" />
+    <Compile Include="IProcessTerminationSignalReader.cs" />
+    <Compile Include="IProcessTerminationSignalWriter.cs" />
+    <Compile Include="IRunningHostTableReader.cs" />
+    <Compile Include="IRunningHostTableWriter.cs" />
+    <Compile Include="JsonTypeNameAttribute.cs" />
+    <Compile Include="NullProcessTerminationSignalReader.cs" />
+    <Compile Include="NullRunningHostTableWriter.cs" />
+    <Compile Include="ParameterDescriptor.cs" />
+    <Compile Include="PersistentQueue.cs" />
+    <Compile Include="PersistentQueueEntity.cs" />
+    <Compile Include="PersistentQueueMessage.cs" />
+    <Compile Include="PolymorphicJsonConverter.cs" />
+    <Compile Include="QueueNames.cs" />
+    <Compile Include="QueueParameterDescriptor.cs" />
+    <Compile Include="RunningHost.cs" />
+    <Compile Include="ServiceBusParameterDescriptor.cs" />
+    <Compile Include="TableEntityParameterDescriptor.cs" />
+    <Compile Include="TableNames.cs" />
+    <Compile Include="TableParameterDescriptor.cs" />
+    <Compile Include="TriggerAndOverrideMessage.cs" />
+    <Compile Include="TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="WebJobRunIdentifier.cs" />
     <Compile Include="WebJobTypes.cs" />
     <Compile Include="WebSitesKnownKeyNames.cs" />
@@ -65,9 +105,32 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.Data.Edm, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Data.Edm.5.6.0\lib\net40\Microsoft.Data.Edm.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Data.OData, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Data.OData.5.6.0\lib\net40\Microsoft.Data.OData.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Data.Services.Client, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Microsoft.Data.Services.Client.5.6.0\lib\net40\Microsoft.Data.Services.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAzure.Configuration">
+      <HintPath>..\..\packages\Microsoft.WindowsAzure.ConfigurationManager.1.8.0.0\lib\net35-full\Microsoft.WindowsAzure.Configuration.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAzure.Storage">
+      <HintPath>..\..\packages\WindowsAzure.Storage.3.1.0.0\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\packages\Newtonsoft.Json.5.0.6\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Services.Client" />
+    <Reference Include="System.Spatial, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.Spatial.5.6.0\lib\net40\System.Spatial.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

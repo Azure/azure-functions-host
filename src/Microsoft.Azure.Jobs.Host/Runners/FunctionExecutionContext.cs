@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Loggers;
 
 namespace Microsoft.Azure.Jobs
 {

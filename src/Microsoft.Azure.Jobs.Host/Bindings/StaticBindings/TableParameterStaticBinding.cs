@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -81,6 +82,14 @@ namespace Microsoft.Azure.Jobs
             {
                 return TableName;
             }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new TableParameterDescriptor
+            {
+                TableName = TableName
+            };
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     account,
                     addHeaderInfo,
-                    ContainerNames.ConsoleOuputLogContainerName
+                    HostContainerNames.ConsoleOuputLogContainerName
                 )
             };
         }

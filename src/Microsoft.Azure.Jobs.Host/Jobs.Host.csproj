@@ -81,14 +81,113 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterDescriptor.cs">
+      <Link>Protocols\BinderParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobParameterDescriptor.cs">
+      <Link>Protocols\BlobParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CancellationTokenParameterDescriptor.cs">
+      <Link>Protocols\CancellationTokenParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CloudStorageAccountParameterDescriptor.cs">
+      <Link>Protocols\CloudStorageAccountParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ContainerNames.cs">
+      <Link>Protocols\ContainerNames.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionArgument.cs">
       <Link>Protocols\FunctionArgument.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedMessage.cs">
+      <Link>Protocols\FunctionCompletedMessage.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedSnapshot.cs">
       <Link>Protocols\FunctionCompletedSnapshot.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionDescriptor.cs">
+      <Link>Protocols\FunctionDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessage.cs">
+      <Link>Protocols\FunctionStartedMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedSnapshot.cs">
       <Link>Protocols\FunctionStartedSnapshot.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostMessage.cs">
+      <Link>Protocols\HostMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostStartedMessage.cs">
+      <Link>Protocols\HostStartedMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\InvokeParameterDescriptor.cs">
+      <Link>Protocols\InvokeParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IPersistentQueue.cs">
+      <Link>Protocols\IPersistentQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IProcessTerminationSignalReader.cs">
+      <Link>Protocols\IProcessTerminationSignalReader.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IProcessTerminationSignalWriter.cs">
+      <Link>Protocols\IProcessTerminationSignalWriter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IRunningHostTableWriter.cs">
+      <Link>Protocols\IRunningHostTableWriter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonTypeNameAttribute.cs">
+      <Link>Protocols\JsonTypeNameAttribute.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullProcessTerminationSignalReader.cs">
+      <Link>Protocols\NullProcessTerminationSignalReader.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullRunningHostTableWriter.cs">
+      <Link>Protocols\NullRunningHostTableWriter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterDescriptor.cs">
+      <Link>Protocols\ParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueue.cs">
+      <Link>Protocols\PersistentQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueEntity.cs">
+      <Link>Protocols\PersistentQueueEntity.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueMessage.cs">
+      <Link>Protocols\PersistentQueueMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PolymorphicJsonConverter.cs">
+      <Link>Protocols\PolymorphicJsonConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ProcessTerminationSignalReader.cs">
+      <Link>Protocols\ProcessTerminationSignalReader.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueNames.cs">
+      <Link>Protocols\QueueNames.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueParameterDescriptor.cs">
+      <Link>Protocols\QueueParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RouteParameterDescriptor.cs">
+      <Link>Protocols\RouteParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RunningHost.cs">
+      <Link>Protocols\RunningHost.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusParameterDescriptor.cs">
+      <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
+      <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableNames.cs">
+      <Link>Protocols\TableNames.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableParameterDescriptor.cs">
+      <Link>Protocols\TableParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TriggerAndOverrideMessage.cs">
+      <Link>Protocols\TriggerAndOverrideMessage.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebJobRunIdentifier.cs">
       <Link>Protocols\WebJobRunIdentifier.cs</Link>
@@ -127,9 +226,12 @@
     <Compile Include="Bindings\StaticBindings\TableEntityParameterStaticBinding.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
+    <Compile Include="HostContainerNames.cs" />
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntityExtensions.cs" />
+    <Compile Include="Protocols\RunningHostTableWriter.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
+    <Compile Include="Runners\TriggerAndOverrideMessageExtensions.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Storage\Table\CloudTableExtensions.cs" />
     <Compile Include="Tables\IAzureTable.cs" />
@@ -149,26 +251,11 @@
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Bindings\BindResults\PostActionOrder.cs" />
-    <Compile Include="Protocols\FunctionCompletedMessage.cs" />
-    <Compile Include="Protocols\FunctionStartedMessage.cs" />
-    <Compile Include="Protocols\FunctionInvocationIndexEntity.cs" />
-    <Compile Include="Protocols\IProcessTerminationSignalReader.cs" />
-    <Compile Include="Runners\HostTableNames.cs" />
-    <Compile Include="JsonTypeNameAttribute.cs" />
-    <Compile Include="PolymorphicJsonConverter.cs" />
-    <Compile Include="Protocols\HostStartupMessage.cs" />
-    <Compile Include="Protocols\IPersistentQueue.cs" />
-    <Compile Include="Protocols\PersistentQueue.cs" />
-    <Compile Include="Protocols\PersistentQueueEntity.cs" />
-    <Compile Include="Protocols\PersistentQueueMessage.cs" />
-    <Compile Include="Protocols\TriggerAndOverrideMessage.cs" />
+    <Compile Include="HostTableNames.cs" />
     <Compile Include="Storage\Table\IQueryModifier.cs" />
-    <Compile Include="Protocols\TableNames.cs" />
-    <Compile Include="Protocols\QueueNames.cs" />
     <Compile Include="Runners\HostEntity.cs" />
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
-    <Compile Include="Protocols\HostMessage.cs" />
     <Compile Include="Storage\ICloudStorageAccount.cs" />
     <Compile Include="Storage\Queue\ICloudQueue.cs" />
     <Compile Include="Storage\Queue\ICloudQueueClient.cs" />
@@ -179,8 +266,6 @@
     <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
-    <Compile Include="Protocols\ContainerNames.cs" />
-    <Compile Include="Protocols\RunningHostTableWriter.cs" />
     <Compile Include="Loggers\WebExecutionLogger.cs" />
     <Compile Include="Loggers\IExecutionLogger.cs" />
     <Compile Include="Triggers\CalculateTriggers.cs" />
@@ -238,7 +323,6 @@
     <Compile Include="JobHost.cs" />
     <Compile Include="Runners\JobHostContext.cs" />
     <Compile Include="Loggers\ConsoleFunctionOutputLogDispenser.cs" />
-    <Compile Include="Protocols\NullRunningHostTableWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BlobClient.cs" />
     <Compile Include="Bindings\CloudBlobPathConverter.cs" />
@@ -249,8 +333,6 @@
     <Compile Include="Bindings\CloudQueueDescriptor.cs" />
     <Compile Include="Bindings\CloudTableDescriptor.cs" />
     <Compile Include="Bindings\CloudBlobDescriptor.cs" />
-    <Compile Include="Protocols\NullProcessTerminationSignalReader.cs" />
-    <Compile Include="Protocols\ProcessTerminationSignalReader.cs" />
     <Compile Include="Runners\IStorageValidator.cs" />
     <Compile Include="ITypeLocator.cs" />
     <Compile Include="StringConverter.cs" />
@@ -294,9 +376,6 @@
     <Compile Include="Indexers\FunctionFlow.cs" />
     <Compile Include="Indexers\FunctionTrigger.cs" />
     <Compile Include="Indexers\IFunctionTable.cs" />
-    <Compile Include="Protocols\HostVersion.cs" />
-    <Compile Include="Protocols\IRunningHostTableWriter.cs" />
-    <Compile Include="Runners\RunningHost.cs" />
     <Compile Include="Indexers\IndexException.cs" />
     <Compile Include="StorageConverter.cs" />
     <Compile Include="Loggers\ExecutionInstanceLogEntity.cs" />

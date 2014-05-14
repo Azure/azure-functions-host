@@ -2,11 +2,19 @@
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
+#if PUBLICPROTOCOL
+namespace Microsoft.Azure.Jobs.Protocols
+#else
 namespace Microsoft.Azure.Jobs.Host.Protocols
+#endif
 {
+#if PUBLICPROTOCOL
+    public class RunningHostTableWriter : IRunningHostTableWriter
+#else
     internal class RunningHostTableWriter : IRunningHostTableWriter
+#endif
     {
-        internal const string PartitionKey = "1";
+        private const string PartitionKey = "1";
 
         private readonly ICloudTable _table;
 

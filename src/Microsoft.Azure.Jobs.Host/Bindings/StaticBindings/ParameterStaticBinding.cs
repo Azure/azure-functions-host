@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs
@@ -60,5 +61,7 @@ namespace Microsoft.Azure.Jobs
         {
             return Description;
         }
+
+        public abstract ParameterDescriptor ToParameterDescriptor();
     }
 }

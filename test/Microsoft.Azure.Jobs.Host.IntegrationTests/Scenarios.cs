@@ -18,14 +18,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
-            BlobClient.DeleteContainer(account, container);
+            TestBlobClient.DeleteContainer(account, container);
             QueueClient.DeleteQueue(account, "queuetest");
                         
-            BlobClient.WriteBlob(account, container, "foo.csv", "15");
+            TestBlobClient.WriteBlob(account, container, "foo.csv", "15");
 
             host.Host.RunOneIteration();
 
-            string output = BlobClient.ReadBlob(account, container, "foo.output");
+            string output = TestBlobClient.ReadBlob(account, container, "foo.output");
             // Ensure blob output has been written
             Assert.NotNull(output);
             Assert.Equal("16", output);
@@ -54,28 +54,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             JobHost host = new JobHost(configuration);
             
             string container = @"daas-test-input";
-            BlobClient.DeleteContainer(account, container);                       
+            TestBlobClient.DeleteContainer(account, container);                       
 
             // Nothing written yet, so polling shouldn't execute anything
             host.RunOneIteration();
 
-            Assert.False(BlobClient.DoesBlobExist(account, container, "foo.2"));
-            Assert.False(BlobClient.DoesBlobExist(account, container, "foo.3"));
+            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.2"));
+            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.3"));
 
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
-            BlobClient.WriteBlob(account, container, "foo.1", "abc");
+            TestBlobClient.WriteBlob(account, container, "foo.1", "abc");
 
             host.RunOneIteration();
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
-            string middle = BlobClient.ReadBlob(account, container, "foo.2");
+            string middle = TestBlobClient.ReadBlob(account, container, "foo.2");
             // blob should be written
             Assert.NotNull(middle);
             Assert.Equal("foo", middle);
 
             // The *single* poll a few lines up will cause *both* actions to run as they are chained.
             // this makes sure that our chaining optimization works correctly!
-            string output = BlobClient.ReadBlob(account, container, "foo.3");
+            string output = TestBlobClient.ReadBlob(account, container, "foo.3");
             // blob should be written
             Assert.NotNull(output);
             Assert.Equal("*foo*", output);

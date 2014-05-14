@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
@@ -29,6 +30,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
         public override string Prompt
         {
             get { return null; }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new CloudStorageAccountParameterDescriptor();
         }
 
         private class Sdk1CloudStorageAccountParameterRuntimeBinding : ParameterRuntimeBinding

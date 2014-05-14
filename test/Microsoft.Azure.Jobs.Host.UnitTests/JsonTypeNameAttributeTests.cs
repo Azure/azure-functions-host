@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Jobs.Host.TestCommon;
+﻿using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests

@@ -8,6 +8,7 @@ using Dashboard.App_Start;
 using Dashboard.Indexers;
 using Dashboard.Protocols;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Protocols;
 using Ninject;
 
 namespace Dashboard

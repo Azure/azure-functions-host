@@ -174,7 +174,7 @@ namespace Microsoft.Azure.Jobs
                     var parameterName = ps[pos].Name;
                     if (paramNames.Contains(parameterName))
                     {
-                        flows[pos] = new NameParameterStaticBinding { KeyName = parameterName, Name = parameterName };
+                        flows[pos] = new NameParameterStaticBinding { Name = parameterName };
                     }
                 }
             }

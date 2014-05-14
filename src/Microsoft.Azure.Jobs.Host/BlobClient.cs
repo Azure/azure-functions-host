@@ -9,31 +9,6 @@ namespace Microsoft.Azure.Jobs
 {
     internal static class BlobClient
     {
-        public static void WriteBlob(CloudStorageAccount account, string containerName, string blobName, string contents)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            c.CreateIfNotExists();
-
-            var b = c.GetBlockBlobReference(blobName);
-
-            b.UploadText(contents);
-        }
-
-        [DebuggerNonUserCode]
-        public static void DeleteContainer(CloudStorageAccount account, string containerName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            try
-            {
-                c.Delete();
-            }
-            catch (StorageException)
-            {
-            }
-        }
-
         public static DateTime? GetBlobModifiedUtcTime(ICloudBlob blob)
         {
             if (!DoesBlobExist(blob))
@@ -66,15 +41,6 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        public static bool DoesBlobExist(CloudStorageAccount account, string containerName, string blobName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            var blob = c.GetBlockBlobReference(blobName);
-
-            return DoesBlobExist(blob);
-        }
-
         // Return Null if doesn't exist
         [DebuggerNonUserCode]
         public static string ReadBlob(ICloudBlob blob)
@@ -93,23 +59,6 @@ namespace Microsoft.Azure.Jobs
             {
                 return null;
             }
-        }
-
-        // Return Null if doesn't exist
-        public static string ReadBlob(CloudStorageAccount account, string containerName, string blobName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            ICloudBlob blob;
-            try
-            {
-                blob = c.GetBlobReferenceFromServer(blobName);
-            }
-            catch (StorageException)
-            {
-                return null;
-            }
-            return ReadBlob(blob);
         }
 
         public static ICloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)

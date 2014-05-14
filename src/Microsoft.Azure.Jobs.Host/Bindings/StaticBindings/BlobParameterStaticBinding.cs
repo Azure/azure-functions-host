@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -121,6 +122,16 @@ namespace Microsoft.Azure.Jobs
                     return Path.ToString();
                 }
             }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new BlobParameterDescriptor
+            {
+                ContainerName = Path.ContainerName,
+                BlobName = Path.BlobName,
+                IsInput = IsInput
+            };
         }
     }
 }

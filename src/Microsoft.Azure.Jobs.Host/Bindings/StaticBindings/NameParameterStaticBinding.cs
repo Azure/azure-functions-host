@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -7,19 +8,17 @@ namespace Microsoft.Azure.Jobs
     // Dictionary could be populated via route parameters in a Blob pattern match, explicitly by user, or somewhere else.
     internal class NameParameterStaticBinding : ParameterStaticBinding
     {
-        public string KeyName { get; set; }
-
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
             string value;
             if (inputs.NameParameters != null)
             {
-                if (inputs.NameParameters.TryGetValue(KeyName, out value))
+                if (inputs.NameParameters.TryGetValue(Name, out value))
                 {
                     return new LiteralStringParameterRuntimeBinding { Name = Name, Value = value };
                 }
             }
-            throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", KeyName));
+            throw new InvalidOperationException(string.Format("Can't bind keyname '{0}'", Name));
         }
 
         public override ParameterRuntimeBinding BindFromInvokeString(IRuntimeBindingInputs inputs, string invokeString)
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.Jobs
         {
             get
             {
-                return string.Format("mapped from keyname '{0}'", "{" + KeyName + "}");
+                return string.Format("mapped from keyname '{0}'", "{" + Name + "}");
             }
         }
 
@@ -46,6 +45,11 @@ namespace Microsoft.Azure.Jobs
         public override string DefaultValue
         {
             get { return null; }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new RouteParameterDescriptor();
         }
     }
 }

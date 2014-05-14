@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -43,6 +44,11 @@ namespace Microsoft.Azure.Jobs
         public override string DefaultValue
         {
             get { return null; }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new InvokeParameterDescriptor();
         }
 
         private class BindingErrorParameterRuntimeBinding : ParameterRuntimeBinding

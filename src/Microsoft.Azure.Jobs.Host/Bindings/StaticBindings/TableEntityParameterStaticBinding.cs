@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -112,6 +113,16 @@ namespace Microsoft.Azure.Jobs
                     return String.Format(CultureInfo.CurrentCulture, "{0}/{1}/{2}", TableName, PartitionKey, RowKey);
                 }
             }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new TableEntityParameterDescriptor
+            {
+                TableName = TableName,
+                PartitionKey = PartitionKey,
+                RowKey = RowKey
+            };
         }
     }
 }

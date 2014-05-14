@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -36,6 +38,24 @@ namespace Microsoft.Azure.Jobs
         public override string ToString()
         {
             return Location.ToString();
+        }
+
+        public FunctionDescriptor ToFunctionDescriptor()
+        {
+            IDictionary<string, ParameterDescriptor> parameters = new Dictionary<string, ParameterDescriptor>();
+
+            foreach (ParameterStaticBinding binding in Flow.Bindings)
+            {
+                parameters.Add(binding.Name, binding.ToParameterDescriptor());
+            }
+
+            return new FunctionDescriptor
+            {
+                Id = Location.GetId(),
+                FullName = Location.FullName,
+                ShortName = Location.GetShortName(),
+                Parameters = parameters
+            };
         }
     }
 }

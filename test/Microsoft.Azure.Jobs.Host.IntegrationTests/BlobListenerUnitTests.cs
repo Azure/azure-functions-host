@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
             string containerName = @"daas-test-input";
-            BlobClient.DeleteContainer(account, containerName);
+            TestBlobClient.DeleteContainer(account, containerName);
 
             CloudBlobClient client = account.CreateCloudBlobClient();
             var container = client.GetContainerReference(containerName);
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     Assert.True(false, "shouldn't be any blobs in the container");
                 }, CancellationToken.None);
 
-            BlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
+            TestBlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
 
             int count = 0;
             l.Poll((blob, cancel) =>

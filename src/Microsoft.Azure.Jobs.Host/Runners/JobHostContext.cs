@@ -58,7 +58,7 @@ namespace Microsoft.Azure.Jobs
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(functionTableLookup, dataConnectionString, runtimeConnectionString,
+                PublishFunctionTable(functionTableLookup, dataConnectionString, serviceBusDataConnectionString,
                     persistentQueue);
 
                 var logger = new WebExecutionLogger(_hostInstanceId, account, LogRole);
@@ -186,13 +186,24 @@ namespace Microsoft.Azure.Jobs
         // Publish functions to the cloud
         // This lets another site go view them. 
         private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString,
-            string runtimeConnectionString, IPersistentQueue<PersistentQueueMessage> logger)
+            string serviceBusConnectionString, IPersistentQueue<PersistentQueueMessage> logger)
         {
-            HostStartupMessage message = new HostStartupMessage
+            FunctionDefinition[] functions = functionTableLookup.ReadAll();
+
+            FunctionDescriptor[] functionDescriptors = new FunctionDescriptor[functions.Length];
+
+            for (int index = 0; index < functions.Length; index++)
+            {
+                functionDescriptors[index] = functions[index].ToFunctionDescriptor();
+            }
+
+            HostStartedMessage message = new HostStartedMessage
             {
                 HostInstanceId = _hostInstanceId,
                 HostId = _hostId,
-                Functions = functionTableLookup.ReadAll()
+                StorageConnectionString = dataConnectionString,
+                ServiceBusConnectionString = serviceBusConnectionString,
+                Functions = functionDescriptors
             };
             logger.Enqueue(message);
         }

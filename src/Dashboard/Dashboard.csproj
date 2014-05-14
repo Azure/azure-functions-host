@@ -156,13 +156,13 @@
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\CausalityLogger.cs" />
     <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
-    <Compile Include="Data\DataOnlyParameterRuntimeBinding.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
     <Compile Include="Data\FunctionArgumentEntity.cs" />
     <Compile Include="Data\FunctionInstanceEntityGroup.cs" />
     <Compile Include="Data\FunctionInstanceLookup.cs" />
     <Compile Include="Data\FunctionInstanceEntity.cs" />
     <Compile Include="Data\FunctionInstanceSnapshot.cs" />
+    <Compile Include="Data\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Data\FunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionStatsEntity.cs" />
     <Compile Include="Data\FunctionTable.cs" />
@@ -171,20 +171,14 @@
     <Compile Include="Data\ICausalityLogger.cs" />
     <Compile Include="Data\ICausalityReader.cs" />
     <Compile Include="Data\FunctionInstanceArgument.cs" />
+    <Compile Include="Data\IFunctionInstanceLogger.cs" />
     <Compile Include="Data\IFunctionQueuedLogger.cs" />
     <Compile Include="Data\IFunctionInstanceLookup.cs" />
     <Compile Include="Data\IFunctionsInJobIndexer.cs" />
-    <Compile Include="Protocols\FunctionInvocationIndexReader.cs" />
-    <Compile Include="Protocols\HostVersionReader.cs" />
-    <Compile Include="Protocols\IFunctionInvocationIndexReader.cs" />
-    <Compile Include="Protocols\IHostVersionReader.cs" />
-    <Compile Include="Protocols\IInvoker.cs" />
+    <Compile Include="Data\FunctionInvocationIndexReader.cs" />
+    <Compile Include="Data\IFunctionInvocationIndexReader.cs" />
     <Compile Include="Protocols\Invoker.cs" />
-    <Compile Include="Protocols\IProcessTerminationSignalWriter.cs" />
-    <Compile Include="Protocols\IRunningHostTableReader.cs" />
-    <Compile Include="Protocols\ProcessTerminationSignalWriter.cs" />
     <Compile Include="Protocols\RunningHostTableReader.cs" />
-    <Compile Include="Protocols\TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="InvocationLog\IInvocationLogLoader.cs" />
@@ -331,6 +325,10 @@
     <ProjectReference Include="..\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
       <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
       <Name>Jobs.Protocols</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.ServiceBus\Jobs.ServiceBus.csproj">
+      <Project>{7b396753-f2d9-4655-929b-be7e665a4c7e}</Project>
+      <Name>Jobs.ServiceBus</Name>
     </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>

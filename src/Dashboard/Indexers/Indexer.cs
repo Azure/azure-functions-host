@@ -4,7 +4,8 @@ using System.Globalization;
 using System.Linq;
 using Dashboard.Data;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Indexers
 {
@@ -42,11 +43,11 @@ namespace Dashboard.Indexers
 
         private void Process(PersistentQueueMessage message)
         {
-            HostStartupMessage startupMessage = message as HostStartupMessage;
+            HostStartedMessage hostStartedMessage = message as HostStartedMessage;
 
-            if (startupMessage != null)
+            if (hostStartedMessage != null)
             {
-                Process(startupMessage);
+                Process(hostStartedMessage);
                 return;
             }
 
@@ -71,11 +72,9 @@ namespace Dashboard.Indexers
             throw new InvalidOperationException(errorMessage);
         }
 
-        private void Process(HostStartupMessage message)
+        private void Process(HostStartedMessage message)
         {
             Guid hostInstanceId = message.HostInstanceId;
-
-            IEnumerable<FunctionDefinition> newFunctions = message.Functions;
 
             Guid hostId = message.HostId;
 
@@ -94,12 +93,113 @@ namespace Dashboard.Indexers
 
             if (hostInstanceCreatedOn > mostRecentHostInstanceDate)
             {
+                List<FunctionDefinition> newFunctions = new List<FunctionDefinition>();
+
+                foreach (FunctionDescriptor function in message.Functions)
+                {
+                    newFunctions.Add(ToFunctionDefinition(message, hostInstanceCreatedOn, function));
+                }
+
                 foreach (FunctionDefinition functionToAdd in newFunctions)
                 {
                     functionToAdd.HostId = hostId;
                     functionToAdd.HostVersion = hostInstanceCreatedOn;
                     _functionTable.Add(functionToAdd);
                 }
+            }
+        }
+
+        private static FunctionDefinition ToFunctionDefinition(HostStartedMessage hostStartedMessage,
+            DateTimeOffset hostInstanceCreatedOn, FunctionDescriptor functionDescriptor)
+        {
+            return new FunctionDefinition
+            {
+                HostId = hostStartedMessage.HostId,
+                HostVersion = hostInstanceCreatedOn,
+                Location = new DataOnlyFunctionLocation
+                {
+                    Id = functionDescriptor.Id,
+                    ShortName = functionDescriptor.ShortName,
+                    FullName = functionDescriptor.FullName,
+                    AccountConnectionString = hostStartedMessage.StorageConnectionString,
+                    ServiceBusConnectionString = hostStartedMessage.ServiceBusConnectionString
+                },
+                Flow = new FunctionFlow
+                {
+                    Bindings = ToStaticBindings(functionDescriptor.Parameters)
+                }
+            };
+        }
+
+        private static ParameterStaticBinding[] ToStaticBindings(IDictionary<string, ParameterDescriptor> parameters)
+        {
+            List<ParameterStaticBinding> bindings = new List<ParameterStaticBinding>();
+
+            foreach (KeyValuePair<string, ParameterDescriptor> parameter in parameters)
+            {
+                bindings.Add(ToStaticBinding(parameter.Key, parameter.Value));
+            }
+
+            return bindings.ToArray();
+        }
+
+        private static ParameterStaticBinding ToStaticBinding(string name, ParameterDescriptor parameterDescriptor)
+        {
+            switch (parameterDescriptor.Type)
+            {
+                case "IBinder":
+                    return new BinderParameterStaticBinding { Name = name };
+                case "Blob":
+                    BlobParameterDescriptor blobDescriptor = (BlobParameterDescriptor)parameterDescriptor;
+                    return new BlobParameterStaticBinding
+                    {
+                        Name = name,
+                        Path = new CloudBlobPath(blobDescriptor.ContainerName, blobDescriptor.BlobName),
+                        IsInput = blobDescriptor.IsInput,
+                    };
+                case "CancellationToken":
+                    return new CancellationTokenParameterStaticBinding { Name = name };
+                case "CloudStorageAccount":
+                    return new CloudStorageAccountParameterStaticBinding { Name = name };
+                case "Invoke":
+                    return new InvokeParameterStaticBinding { Name = name };
+                case "Queue":
+                    QueueParameterDescriptor queueDescriptor = (QueueParameterDescriptor)parameterDescriptor;
+                    return new QueueParameterStaticBinding
+                    {
+                        Name = name,
+                        QueueName = queueDescriptor.QueueName,
+                        IsInput = queueDescriptor.IsInput,
+                    };
+                case "Route":
+                    return new NameParameterStaticBinding { Name = name };
+                case "ServiceBus":
+                    ServiceBusParameterDescriptor serviceBusDescriptor = (ServiceBusParameterDescriptor)parameterDescriptor;
+                    return new ServiceBusParameterStaticBinding
+                    {
+                        Name = name,
+                        EntityPath = serviceBusDescriptor.EntityPath,
+                        IsInput = serviceBusDescriptor.IsInput
+                    };
+                case "TableEntity":
+                    TableParameterDescriptor tableDescriptor = (TableParameterDescriptor)parameterDescriptor;
+                    return new TableParameterStaticBinding
+                    {
+                        Name = name,
+                        TableName = tableDescriptor.TableName
+                    };
+                case "Table":
+                    TableEntityParameterDescriptor tableEntityDescriptor = (TableEntityParameterDescriptor)parameterDescriptor;
+                    return new TableEntityParameterStaticBinding
+                    {
+                        Name = name,
+                        TableName = tableEntityDescriptor.TableName,
+                        PartitionKey = tableEntityDescriptor.PartitionKey,
+                        RowKey = tableEntityDescriptor.RowKey
+                    };
+                default:
+                    throw new InvalidOperationException(String.Format(CultureInfo.InvariantCulture,
+                        "Unknown parameter type '{0}'.", parameterDescriptor.Type));
             }
         }
 
@@ -132,6 +232,23 @@ namespace Dashboard.Indexers
         private void Process(FunctionCompletedMessage message)
         {
             _functionInstanceLogger.LogFunctionCompleted(message.Snapshot);
+        }
+
+        private class DataOnlyFunctionLocation : FunctionLocation
+        {
+            public string Id { get; set; }
+
+            public string ShortName { get; set; }
+
+            public override string GetId()
+            {
+                return Id;
+            }
+
+            public override string GetShortName()
+            {
+                return ShortName;
+            }
         }
     }
 }

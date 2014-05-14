@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {

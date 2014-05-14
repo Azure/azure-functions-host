@@ -1,6 +1,4 @@
-﻿using Microsoft.Azure.Jobs.Host.Protocols;
-
-namespace Dashboard.Data
+﻿namespace Dashboard.Data
 {
     // Names of tables used only by the dashboard (not part of the protocol with the host).
     internal static class DashboardTableNames

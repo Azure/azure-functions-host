@@ -16,8 +16,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
 
-            BlobClient.DeleteContainer(account, "daas-test-input");
-            BlobClient.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
                         
             var d = new Dictionary<string, string>() {
                 { "name", "note" },
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncWithNames", d);
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "out.csv");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.Equal("done", content);
 
             {
@@ -46,8 +46,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void InvokeWithBlob()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
-            BlobClient.DeleteContainer(account, "daas-test-input");
-            BlobClient.WriteBlob(account, "daas-test-input", "blob.csv", "0,1,2");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.WriteBlob(account, "daas-test-input", "blob.csv", "0,1,2");
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncWithBlob");
@@ -58,15 +58,15 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void InvokeWithBlobToString()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
-            BlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             string value = "abc";
-            BlobClient.WriteBlob(account, "daas-test-input", "blob.txt", value);
+            TestBlobClient.WriteBlob(account, "daas-test-input", "blob.txt", value);
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("BindBlobToString");
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "blob.out");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "blob.out");
             Assert.Equal(value, content);
         }
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void InvokeWithMissingBlob()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
-            BlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncWithMissingBlob");
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void InvokeWithParamsParser()
         {
             var account = TestStorage.GetAccount();
-            BlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             var d = new Dictionary<string, string>() {
                 { "x", "15" },
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var lc = TestStorage.New<Program>(account);
             lc.Call("ParseArgument", d);
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "out.csv");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "out.csv");
             Assert.Equal("16", content);
         }
 
@@ -102,12 +102,12 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
 
-            BlobClient.WriteBlob(account, "daas-test-input", "input.csv", "abc");
+            TestBlobClient.WriteBlob(account, "daas-test-input", "input.csv", "abc");
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("Func1");
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "input.csv");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "input.csv");
 
             Assert.Equal("abc", content);
         }
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             string content = blob.DownloadText();
             Assert.Equal("1", content);
 
-            string content2 = BlobClient.ReadBlob(account, Container, BlobName + ".x");
+            string content2 = TestBlobClient.ReadBlob(account, Container, BlobName + ".x");
             // Ensure wrote while holding the lease
             Assert.Equal(content, content2);
 
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncCloudStorageAccount", args);            
 
-            string content = BlobClient.ReadBlob(account, args.containerName, args.blobName);
+            string content = TestBlobClient.ReadBlob(account, args.containerName, args.blobName);
             Assert.Equal(args.value, content);
         }
 
@@ -456,7 +456,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             [Jobs.Description("test")]
             public static void FuncCloudStorageAccount(CloudStorageAccount account, string value, string containerName, string blobName)
             {
-                BlobClient.WriteBlob(account, containerName, blobName, value);
+                TestBlobClient.WriteBlob(account, containerName, blobName, value);
             }
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -129,6 +130,15 @@ namespace Microsoft.Azure.Jobs
                     return QueueName;
                 }
             }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new QueueParameterDescriptor
+            {
+                QueueName = QueueName,
+                IsInput = IsInput
+            };
         }
     }
 }

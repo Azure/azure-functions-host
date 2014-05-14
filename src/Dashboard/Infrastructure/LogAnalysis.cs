@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Dashboard.Data;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 

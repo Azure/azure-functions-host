@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 ﻿using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Runners;
 
 namespace Microsoft.Azure.Jobs
 {

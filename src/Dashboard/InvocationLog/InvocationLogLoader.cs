@@ -7,6 +7,7 @@ using System.Web.Caching;
 using Dashboard.Data;
 using Dashboard.Protocols;
 using Dashboard.ViewModels;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.InvocationLog
 {

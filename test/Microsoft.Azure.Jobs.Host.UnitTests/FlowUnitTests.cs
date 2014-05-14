@@ -179,7 +179,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal("container", t0.Path.ContainerName);
 
             var t1 = (NameParameterStaticBinding)flows[1];
-            Assert.Equal("bound", t1.KeyName);
+            Assert.Equal("bound", t1.Name);
         }        
     }
 }

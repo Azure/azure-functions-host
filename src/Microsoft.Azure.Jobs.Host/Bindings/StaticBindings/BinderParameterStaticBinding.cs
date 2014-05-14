@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
 {
@@ -31,6 +32,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
         public override string Prompt
         {
             get { return null; }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new BinderParameterDescriptor();
         }
 
         private class BinderParameterRuntimeBinding : ParameterRuntimeBinding

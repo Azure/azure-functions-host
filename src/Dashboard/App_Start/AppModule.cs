@@ -5,11 +5,11 @@ using Dashboard.Indexers;
 using Dashboard.InvocationLog;
 using Dashboard.Protocols;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Ninject.Modules;
@@ -21,29 +21,33 @@ namespace Dashboard
     {
         public override void Load()
         {
-            CloudStorageAccount account = TryCreateAccount();
-            if (account == null)
+            CloudStorageAccount sdkAccount = TryCreateAccount();
+            if (sdkAccount == null)
             {
                 return;
             }
 
-            Bind<CloudStorageAccount>().ToConstant(account);
-            Bind<IHostVersionReader>().ToMethod(() => CreateHostVersionReader(account));
+            ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
+            ICloudQueueClient queueClient = account.CreateCloudQueueClient();
+            ICloudTableClient tableClient = account.CreateCloudTableClient();
+
+            Bind<CloudStorageAccount>().ToConstant(sdkAccount);
+            Bind<ICloudQueueClient>().ToConstant(queueClient);
+            Bind<ICloudTableClient>().ToConstant(tableClient);
+            Bind<IHostVersionReader>().To<HostVersionReader>();
             Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
             Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
-            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(account));
-            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(account));
+            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(sdkAccount));
+            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(sdkAccount));
             Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
-            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(account));
-            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(account));
-            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(account));
-            Bind<ICloudQueueClient>().ToMethod(() => new SdkCloudStorageAccount(account).CreateCloudQueueClient());
-            Bind<ICloudTableClient>().ToMethod(() => new SdkCloudStorageAccount(account).CreateCloudTableClient());
+            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
+            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(tableClient, sdkAccount));
+            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IInvoker>().To<Invoker>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(account));
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(tableClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
@@ -54,7 +58,7 @@ namespace Dashboard
             BindFunctionInvocationIndexReader("invocationChildrenReader", DashboardTableNames.FunctionCausalityLog);
         }
 
-        void BindFunctionInvocationIndexReader(string argName, string tableName)
+        private void BindFunctionInvocationIndexReader(string argName, string tableName)
         {
             Bind<IFunctionInvocationIndexReader>().To<FunctionInvocationIndexReader>()
                 .When(r => r.Target.Name == argName)
@@ -88,10 +92,10 @@ namespace Dashboard
             return new AzureTable<TriggerReasonEntity>(account, DashboardTableNames.FunctionCausalityLog);
         }
 
-        private static ICausalityReader CreateCausalityReader(CloudStorageAccount account)
+        private static ICausalityReader CreateCausalityReader(ICloudTableClient tableClient, CloudStorageAccount account)
         {
             IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
-            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(new SdkCloudStorageAccount(account).CreateCloudTableClient());
+            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(tableClient);
             return new CausalityLogger(table, lookup);
         }
 
@@ -102,9 +106,8 @@ namespace Dashboard
             return new CausalityLogger(table, logger);
         }
 
-        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudStorageAccount account)
+        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(ICloudTableClient tableClient, CloudStorageAccount account)
         {
-            ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
             IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(tableClient);
             IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(tableClient);
 
@@ -134,13 +137,6 @@ namespace Dashboard
                 DashboardTableNames.FunctionIndexTableName);
 
             return new FunctionTable(table);
-        }
-
-        private static IHostVersionReader CreateHostVersionReader(CloudStorageAccount account)
-        {
-            CloudBlobClient client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(ContainerNames.VersionContainerName);
-            return new HostVersionReader(container);
         }
 
         private static IAzureTable<FunctionInstanceGuid> CreateIndexTable(CloudStorageAccount account, string tableName)

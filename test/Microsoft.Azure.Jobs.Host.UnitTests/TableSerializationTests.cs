@@ -162,7 +162,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                         },
                         new NameParameterStaticBinding
                         {
-                            KeyName = "key"
+                            Name = "key"
                         }
                     }
                 }

@@ -1,6 +1,6 @@
 ﻿using Microsoft.Azure.Jobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal interface IFunctionInstanceLogger
     {

@@ -10,7 +10,6 @@ using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;

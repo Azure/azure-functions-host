@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
 {
@@ -27,6 +28,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
         public override string Prompt
         {
             get { return null; }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new CancellationTokenParameterDescriptor();
         }
 
         private class CancellationTokenParameterRuntimeBinding : ParameterRuntimeBinding

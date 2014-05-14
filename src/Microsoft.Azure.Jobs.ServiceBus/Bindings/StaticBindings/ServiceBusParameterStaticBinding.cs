@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs
@@ -92,6 +93,15 @@ namespace Microsoft.Azure.Jobs
                     return EntityPath;
                 }
             }
+        }
+
+        public override ParameterDescriptor ToParameterDescriptor()
+        {
+            return new ServiceBusParameterDescriptor
+            {
+                EntityPath = EntityPath,
+                IsInput = IsInput
+            };
         }
     }
 }

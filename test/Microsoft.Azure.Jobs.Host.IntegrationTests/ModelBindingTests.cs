@@ -16,12 +16,12 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
 
-            BlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("TestBinder");                        
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "directout.txt");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "directout.txt");
             Assert.Equal("output", content);
         }
 
@@ -30,15 +30,15 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
 
-            BlobClient.DeleteContainer(account, "daas-test-input");
-            BlobClient.WriteBlob(account, "daas-test-input", "input.txt", "abc");
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
+            TestBlobClient.WriteBlob(account, "daas-test-input", "input.txt", "abc");
 
             var lc = TestStorage.New<Program>(account);
             IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
             lc.CallOnBlob("Func", @"daas-test-input/input.txt");
 
-            string content = BlobClient.ReadBlob(account, "daas-test-input", "output.txt");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "output.txt");
             Assert.Equal("*abc*", content);
         }
 
