@@ -66,7 +66,7 @@ namespace Microsoft.Azure.Jobs
             ValidateConnectionStrings(serviceProvider.GetStorageValidator());
 
             // This will do heavy operations like indexing. 
-            _hostContext = GetHostContext(serviceProvider.GetTypeLocator());
+            _hostContext = GetHostContext(serviceProvider.GetTypeLocator(), serviceProvider.GetNameResolver());
         }
 
         private void ValidateConnectionStrings(IStorageValidator storageValidator)
@@ -100,9 +100,9 @@ namespace Microsoft.Azure.Jobs
                 connectionStringType, AmbientConnectionStringProvider.Prefix + connectionStringName, validationErrorMessage);
         }
 
-        private JobHostContext GetHostContext(ITypeLocator typesLocator)
+        private JobHostContext GetHostContext(ITypeLocator typesLocator, INameResolver nameResolver)
         {
-            var hostContext = new JobHostContext(_dashboardConnectionString, _storageConnectionString, _serviceBusConnectionString, typesLocator);
+            var hostContext = new JobHostContext(_dashboardConnectionString, _storageConnectionString, _serviceBusConnectionString, typesLocator, nameResolver);
             return hostContext;
         }
 

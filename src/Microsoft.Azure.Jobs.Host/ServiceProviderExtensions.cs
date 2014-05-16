@@ -21,6 +21,11 @@ namespace Microsoft.Azure.Jobs.Host
             return GetService<ITypeLocator>(serviceProvider);
         }
 
+        public static INameResolver GetNameResolver(this IServiceProvider serviceProvider)
+        {
+            return GetService<INameResolver>(serviceProvider);
+        }
+
         private static T GetService<T>(this IServiceProvider serviceProvider) where T : class
         {
             if (serviceProvider == null)

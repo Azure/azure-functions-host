@@ -17,5 +17,7 @@ namespace Microsoft.Azure.Jobs
         {
             get { return _tableBinders; }
         }
+
+        public INameResolver NameResolver { get; set; }
     }
 }

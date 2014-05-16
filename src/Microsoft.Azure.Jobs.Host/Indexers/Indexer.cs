@@ -29,14 +29,13 @@ namespace Microsoft.Azure.Jobs
 
         private readonly IFunctionTable _functionTable;
 
+        private readonly INameResolver _nameResolver;
+
         // Account for where index lives
-        public Indexer(IFunctionTable functionTable)
+        public Indexer(IFunctionTable functionTable, INameResolver nameResolver)
         {
-            if (functionTable == null)
-            {
-                throw new ArgumentNullException("functionTable");
-            }
             _functionTable = functionTable;
+            _nameResolver = nameResolver;
         }
 
         public static string AzureJobsFileName
@@ -97,7 +96,7 @@ namespace Microsoft.Azure.Jobs
                 return new IndexTypeContext { Config = ConfigOverride };
             }
 
-            IndexerConfig config = new IndexerConfig();
+            var config = new Configuration();
 
             RunnerProgram.AddDefaultBinders(config);
             RunnerProgram.ApplyHooks(type, config);
@@ -152,7 +151,7 @@ namespace Microsoft.Azure.Jobs
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
-        public static ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr)
+        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr)
         {
             ParameterInfo[] ps = descr.Parameters;
 
@@ -186,11 +185,11 @@ namespace Microsoft.Azure.Jobs
             return flows;
         }
 
-        private static ParameterStaticBinding BindParameter(ParameterInfo parameter)
+        private ParameterStaticBinding BindParameter(ParameterInfo parameter)
         {
             foreach (IStaticBindingProvider provider in _staticBindingProviders)
             {
-                ParameterStaticBinding binding = provider.TryBind(parameter);
+                ParameterStaticBinding binding = provider.TryBind(parameter, _nameResolver);
 
                 if (binding != null)
                 {
@@ -225,7 +224,14 @@ namespace Microsoft.Azure.Jobs
             return descr;
         }
 
-        public static FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context = null)
+        // Test hook. 
+        static public FunctionDefinition GetFunctionDefinition(MethodInfo method)
+        {
+            Indexer idx = new Indexer(null, null);
+            return idx.GetFunctionDefinition(method, (IndexTypeContext) null);
+        }
+
+        public FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context = null)
         {
             MethodDescriptor descr = GetMethodDescriptor(method);
             return GetFunctionDefinition(descr, context);
@@ -233,7 +239,7 @@ namespace Microsoft.Azure.Jobs
 
         // Returns a partially instantiated FunctionIndexEntity.
         // Caller must add Location information.
-        public static FunctionDefinition GetFunctionDefinition(MethodDescriptor descr, IndexTypeContext context)
+        public FunctionDefinition GetFunctionDefinition(MethodDescriptor descr, IndexTypeContext context)
         {
             try
             {
@@ -249,7 +255,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
+        private FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
         {
             string description = null;
 

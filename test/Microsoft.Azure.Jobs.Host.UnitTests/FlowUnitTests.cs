@@ -8,12 +8,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     public class FlowUnitTests
     {
         // Helper to do the indexing.
-        private static FunctionDefinition Get(string methodName)
+        private static FunctionDefinition Get(string methodName, INameResolver nameResolver = null)
         {
             MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(m);
 
-            FunctionDefinition func = Indexer.GetFunctionDefinition(m);
+            Indexer idx = new Indexer(null, nameResolver);
+            FunctionDefinition func = idx.GetFunctionDefinition(m, (IndexTypeContext)null);
             return func;
         }
 
@@ -25,6 +26,20 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             FunctionDefinition func = Get("NoAutoTrigger1");
             Assert.Equal(false, func.Trigger.ListenOnBlobs);
+        }
+
+        [NoAutomaticTrigger]
+        private static void NameResolver([BlobInput(@"input/%name%")] TextReader inputs) { }
+
+        [Fact]
+        public void TestNameResolver()
+        {
+            DictNameResolver nameResolver = new DictNameResolver();
+            nameResolver.Add("name", "VALUE");
+            FunctionDefinition func = Get("NameResolver", nameResolver);
+            var bindings = func.Flow.Bindings;
+
+            Assert.Equal(@"input/VALUE", ((BlobParameterStaticBinding)bindings[0]).Path.ToString());
         }
 
         public static void AutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }

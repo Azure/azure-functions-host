@@ -5,7 +5,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders
 {
     internal class Sdk1CloudStorageAccountStaticBindingProvider : IStaticBindingProvider
     {
-        public ParameterStaticBinding TryBind(ParameterInfo parameter)
+        public ParameterStaticBinding TryBind(ParameterInfo parameter, INameResolver nameResolver)
         {
             if (parameter.ParameterType.FullName == "Microsoft.WindowsAzure.CloudStorageAccount")
             {

@@ -27,10 +27,11 @@ namespace Microsoft.Azure.Jobs
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
 
-        public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator)
+        public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
             _hostInstanceId = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
+            config.NameResolver = nameResolver;
 
             IFunctionTableLookup functionTableLookup;
 

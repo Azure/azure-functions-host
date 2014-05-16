@@ -12,6 +12,7 @@ namespace Microsoft.Azure.Jobs
         private readonly IStorageValidator _storageValidator = new DefaultStorageValidator();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
+        private INameResolver _nameResolver = new DefaultNameResolver();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -74,6 +75,23 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 _typeLocator = value;
+            }
+        }
+                
+        /// <summary>
+        /// Gets or sets the name resolver used during indexing. 
+        /// </summary>
+        public INameResolver NameResolver
+        {
+            get { return _nameResolver; }
+            set
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException("value");
+                }
+
+                _nameResolver = value;
             }
         }
 

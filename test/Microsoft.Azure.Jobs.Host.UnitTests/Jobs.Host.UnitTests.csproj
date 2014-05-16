@@ -97,6 +97,7 @@
     <Compile Include="IntervalSeparationTimerTests.cs" />
     <Compile Include="JsonTypeNameAttributeTests.cs" />
     <Compile Include="LinearSpeedupTimerCommandTests.cs" />
+    <Compile Include="NameResolverUnitTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="PolymorphicJsonConverterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -7,7 +7,19 @@ namespace Microsoft.Azure.Jobs
     // Bind from Attributes to ParameterStaticBinding.
     internal class StaticBinder
     {
-        public static ParameterStaticBinding DoStaticBind(Attribute attr, ParameterInfo parameter)
+        private readonly INameResolver _resolver;
+
+        public StaticBinder(INameResolver resolver)
+        {
+            _resolver = resolver;
+        }
+
+        private string Resolve(string input)
+        {
+            return _resolver.ResolveWholeString(input);
+        }
+
+        public ParameterStaticBinding DoStaticBind(Attribute attr, ParameterInfo parameter)
         {
             // This assumes that we have a single instance of Microsoft.Azure.Jobs.dll between the user's assembly and this host process.
             Assembly attrAssembly = attr.GetType().Assembly;
@@ -28,7 +40,7 @@ namespace Microsoft.Azure.Jobs
             MethodInfo method = (from t in types
                 where t != null
                 select t.GetMethod("Bind",
-                    BindingFlags.NonPublic | BindingFlags.Static, null,
+                    BindingFlags.NonPublic | BindingFlags.Instance, null,
                     new Type[]
                     {
                         attr.GetType(), typeof (ParameterInfo)
@@ -42,7 +54,7 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                var result = (ParameterStaticBinding)method.Invoke(null, new object[] { attr, parameter });
+                var result = (ParameterStaticBinding)method.Invoke(this, new object[] { attr, parameter });
                 result.Name = parameter.Name;
                 return result;
             }
@@ -53,7 +65,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
+        private ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
         {
             var isRefKeyword = Utility.IsRefKeyword(parameter);
             if (isRefKeyword)
@@ -66,7 +78,7 @@ namespace Microsoft.Azure.Jobs
             // - it's output since we're writing to it. So we do need to stamp it with a function guid.
             bool isInput = !isRefKeyword;
 
-            var path = new CloudBlobPath(attr.BlobPath);
+            var path = new CloudBlobPath(Resolve(attr.BlobPath));
             return new BlobParameterStaticBinding
             {
                 Path = path,
@@ -74,9 +86,9 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        private static ParameterStaticBinding Bind(BlobOutputAttribute attr, ParameterInfo parameter)
+        private ParameterStaticBinding Bind(BlobOutputAttribute attr, ParameterInfo parameter)
         {
-            var path = new CloudBlobPath(attr.BlobPath);
+            var path = new CloudBlobPath(Resolve(attr.BlobPath));
             return new BlobParameterStaticBinding
             {
                 Path = path,
@@ -84,9 +96,10 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        private static ParameterStaticBinding Bind(TableAttribute attr, ParameterInfo parameter)
+        private ParameterStaticBinding Bind(TableAttribute attr, ParameterInfo parameter)
         {
             string tableName = attr.TableName ?? parameter.Name;
+            tableName = Resolve(tableName);
 
             bool bindsToEntity = attr.RowKey != null;
 
@@ -108,9 +121,9 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        static ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)
+        ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)
         {
-            string queueName = attr.QueueName;
+            string queueName = Resolve(attr.QueueName);
             if (queueName == null)
             {
                 queueName = parameter.Name;
@@ -123,9 +136,9 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        static ParameterStaticBinding Bind(QueueInputAttribute attr, ParameterInfo parameter)
+        ParameterStaticBinding Bind(QueueInputAttribute attr, ParameterInfo parameter)
         {
-            string queueName = attr.QueueName;
+            string queueName = Resolve(attr.QueueName);
             if (queueName == null)
             {
                 queueName = parameter.Name;

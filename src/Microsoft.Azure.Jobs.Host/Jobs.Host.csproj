@@ -232,6 +232,7 @@
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
     <Compile Include="Bindings\StaticBindings\ConsoleOutputParameterStaticBinding.cs" />
     <Compile Include="HostContainerNames.cs" />
+    <Compile Include="INameResolver.cs" />
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
@@ -279,7 +280,6 @@
     <Compile Include="Indexers\IndexTypeContent.cs" />
     <Compile Include="Indexers\MethodDescriptor.cs" />
     <Compile Include="Indexers\Indexer.cs" />
-    <Compile Include="Indexers\IndexerConfig.cs" />
     <Compile Include="Bindings\BindResults\IMaybeErrorBindResult.cs" />
     <Compile Include="Timers\ICanFailCommand.cs" />
     <Compile Include="Runners\IConnectionStringProvider.cs" />
