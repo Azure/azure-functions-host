@@ -154,9 +154,11 @@ namespace Microsoft.Azure.Jobs
         // Run the jobs on the current thread. 
         // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
         internal void RunAndBlock(CancellationToken token, Action pauseAction)
-        {
+        {   
+            using (WebjobsShutdownWatcher watcher = new WebjobsShutdownWatcher())
             using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: true))
             {
+                token = CancellationTokenSource.CreateLinkedTokenSource(token, watcher.Token).Token;
                 timer.Start(executeFirst: true);
 
                 try
@@ -250,8 +252,10 @@ namespace Microsoft.Azure.Jobs
 
             FunctionInvocationResult result;
 
+            using (WebjobsShutdownWatcher watcher = new WebjobsShutdownWatcher())
             using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: false))
             {
+                cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token).Token;
                 timer.Start(executeFirst: true);
 
                 try
