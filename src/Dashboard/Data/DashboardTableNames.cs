@@ -7,8 +7,6 @@
 
         public const string FunctionCausalityLog = Prefix + "FunctionCausalityLog";
 
-        public const string FunctionIndexTableName = Prefix + "FunctionIndex5";
-
         public const string FunctionInvokeLogTableName = Prefix + "FunctionLogs";
 
         public const string FunctionsInJobIndex = Prefix + "FunctionsInJobIndex";

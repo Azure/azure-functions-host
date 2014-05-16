@@ -6,6 +6,7 @@
         var func = new FunctionInvocationSummary();
         func.id = item.id;
         func.functionName = item.functionName;
+        func.functionId = item.functionId;
         func.functionFullName = item.functionFullName;
         func.functionDisplayTitle = item.functionDisplayTitle;
         func.status = item.status;

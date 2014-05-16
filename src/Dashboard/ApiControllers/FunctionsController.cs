@@ -22,7 +22,7 @@ namespace Dashboard.ApiControllers
         private readonly CloudStorageAccount _account;
         private readonly IInvocationLogLoader _invocationLogLoader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
-        private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IFunctionLookup _functionLookup;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
         private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
@@ -32,7 +32,7 @@ namespace Dashboard.ApiControllers
             CloudStorageAccount account,
             IInvocationLogLoader invocationLogLoader,
             IFunctionInstanceLookup functionInstanceLookup,
-            IFunctionTableLookup functionTableLookup,
+            IFunctionLookup functionLookup,
             IProcessTerminationSignalReader terminationSignalReader,
             IProcessTerminationSignalWriter terminationSignalWriter,
             IRunningHostTableReader heartbeatTable, 
@@ -41,7 +41,7 @@ namespace Dashboard.ApiControllers
             _invocationLogLoader = invocationLogLoader;
             _account = account;
             _functionInstanceLookup = functionInstanceLookup;
-            _functionTableLookup = functionTableLookup;
+            _functionLookup = functionLookup;
             _terminationSignalReader = terminationSignalReader;
             _terminationSignalWriter = terminationSignalWriter;
             _heartbeatTable = heartbeatTable;
@@ -73,30 +73,30 @@ namespace Dashboard.ApiControllers
             return Ok(invocations);
         }
 
-        [Route("api/functions/definitions/{functionName}")]
-        public IHttpActionResult GetFunctionDefinition(string functionName)
+        [Route("api/functions/definitions/{functionId}")]
+        public IHttpActionResult GetFunctionDefinition(string functionId)
         {
-            var func = _functionTableLookup.Lookup(functionName);   
+            var func = _functionLookup.Read(functionId);
 
             if (func == null)
             {
                 return NotFound();
             }
 
-            return Ok(new {functionName = functionName, functionId = func.Location.GetId()});
+            return Ok(new {functionName = func.FullName, functionId = func.Id});
         }
 
-        [Route("api/functions/definitions/{functionName}/invocations")]
-        public IHttpActionResult GetInvocationsForFunction(string functionName, [FromUri]PagingInfo pagingInfo)
+        [Route("api/functions/definitions/{functionId}/invocations")]
+        public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]PagingInfo pagingInfo)
         {
-            var func = _functionTableLookup.Lookup(functionName);
+            var func = _functionLookup.Read(functionId);
 
             if (func == null)
             {
                 return NotFound();
             }
 
-            var invocations = _invocationLogLoader.GetInvocationsInFunction(func.Location.GetId(), pagingInfo);
+            var invocations = _invocationLogLoader.GetInvocationsInFunction(func.Id, pagingInfo);
             return Ok(invocations);
         }
 
@@ -139,13 +139,11 @@ namespace Dashboard.ApiControllers
 
             // Do some analysis to find inputs, outputs, 
 
-            var functionModel = _functionTableLookup.Lookup(func.FunctionId);
+            var functionSnapshot = _functionLookup.Read(func.FunctionId);
 
-            if (functionModel != null)
+            if (functionSnapshot != null)
             {
-                var descriptor = new FunctionDefinitionViewModel(functionModel);
-
-                model.Parameters = LogAnalysis.GetParamInfo(descriptor.UnderlyingObject);
+                model.Parameters = LogAnalysis.GetParamInfo(functionSnapshot);
                 LogAnalysis.ApplyRuntimeInfo(func, model.Parameters);
                 LogAnalysis.ApplySelfWatchInfo(_account, func, model.Parameters);
             }
@@ -177,17 +175,16 @@ namespace Dashboard.ApiControllers
         {
             var model = new DashboardIndexViewModel();
             var hearbeats = _heartbeatTable.ReadAll();
-            model.FunctionStatisticsViewModels = _functionTableLookup
+            model.FunctionStatisticsViewModels = _functionLookup
                 .ReadAll()
                 .Select(f => new FunctionStatisticsViewModel
                 {
-                    FunctionFullName = f.ToString(),
-                    FunctionName = f.Location.GetShortName(),
-                    IsRunning = FunctionController.HasValidHeartbeat(f, hearbeats),
-                    IsOldHost = !f.HostVersion.HasValue,
+                    FunctionId = f.Id,
+                    FunctionFullName = f.FullName,
+                    FunctionName = f.ShortName,
+                    IsRunning = FunctionController.HasValidHeartbeat(f.HostId, hearbeats),
                     FailedCount = 0,
-                    SuccessCount = 0,
-                    LastStartTime = f.Timestamp
+                    SuccessCount = 0
                 }).ToArray();
 
             var functionNames = new HashSet<string>(model.FunctionStatisticsViewModels.Select(x => x.FunctionFullName));

@@ -50,51 +50,6 @@ namespace Microsoft.Azure.Jobs
             throw new NotImplementedException("Service Bus invocations from string is not yet implemented.");
         }
 
-        public override string Description
-        {
-            get
-            {
-                if (this.IsInput)
-                {
-                    return string.Format("dequeue from '{0}'", this.EntityPath);
-                }
-                else
-                {
-                    return string.Format("enqueue to '{0}'", this.EntityPath);
-                }
-            }
-        }
-
-        public override string Prompt
-        {
-            get
-            {
-                if (IsInput)
-                {
-                    return "Enter the queue message body";
-                }
-                else
-                {
-                    return "Enter the output entity name";
-                }
-            }
-        }
-
-        public override string DefaultValue
-        {
-            get
-            {
-                if (IsInput)
-                {
-                    return null;
-                }
-                else
-                {
-                    return EntityPath;
-                }
-            }
-        }
-
         public override ParameterDescriptor ToParameterDescriptor()
         {
             return new ServiceBusParameterDescriptor

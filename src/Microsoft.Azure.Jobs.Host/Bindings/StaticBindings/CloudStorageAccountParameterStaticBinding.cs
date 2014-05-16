@@ -16,21 +16,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
             return null;
         }
 
-        public override string Description
-        {
-            get { return null; }
-        }
-
-        public override string DefaultValue
-        {
-            get { return null; }
-        }
-
-        public override string Prompt
-        {
-            get { return null; }
-        }
-
         public override ParameterDescriptor ToParameterDescriptor()
         {
             return new CloudStorageAccountParameterDescriptor();

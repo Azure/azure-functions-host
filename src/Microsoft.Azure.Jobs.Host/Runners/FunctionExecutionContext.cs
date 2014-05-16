@@ -7,6 +7,8 @@ namespace Microsoft.Azure.Jobs
     // @@@ Confirm this can be shared across requests
     internal class FunctionExecutionContext
     {
+        public Guid HostId { get; set; }
+
         public Guid HostInstanceId { get; set; }
 
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }

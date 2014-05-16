@@ -25,27 +25,6 @@ namespace Microsoft.Azure.Jobs
             return new LiteralStringParameterRuntimeBinding { Name = Name, Value = invokeString };
         }
 
-        public override string Description
-        {
-            get
-            {
-                return string.Format("Caller-supplied value");
-            }
-        }
-
-        public override string Prompt
-        {
-            get
-            {
-                return "Enter the value";
-            }
-        }
-
-        public override string DefaultValue
-        {
-            get { return null; }
-        }
-
         public override ParameterDescriptor ToParameterDescriptor()
         {
             return new InvokeParameterDescriptor();

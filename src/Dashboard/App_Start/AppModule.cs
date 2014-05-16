@@ -30,16 +30,18 @@ namespace Dashboard
             ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
             ICloudQueueClient queueClient = account.CreateCloudQueueClient();
             ICloudTableClient tableClient = account.CreateCloudTableClient();
+            CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
 
             Bind<CloudStorageAccount>().ToConstant(sdkAccount);
             Bind<ICloudQueueClient>().ToConstant(queueClient);
             Bind<ICloudTableClient>().ToConstant(tableClient);
+            Bind<CloudBlobClient>().ToConstant(blobClient);
             Bind<IHostVersionReader>().To<HostVersionReader>();
             Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
             Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
-            Bind<IFunctionTableLookup>().ToMethod(() => CreateFunctionTable(sdkAccount));
-            Bind<IFunctionTable>().ToMethod(() => CreateFunctionTable(sdkAccount));
+            Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
+            Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
             Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(tableClient, sdkAccount));
@@ -129,14 +131,6 @@ namespace Dashboard
                 tableMruFunctionFailed);
 
             return new CompositeFunctionInstanceLogger(instanceLogger, statsAggregator);
-        }
-
-        private static IFunctionTable CreateFunctionTable(CloudStorageAccount account)
-        {
-            IAzureTable<FunctionDefinition> table = new AzureTable<FunctionDefinition>(account,
-                DashboardTableNames.FunctionIndexTableName);
-
-            return new FunctionTable(table);
         }
 
         private static IAzureTable<FunctionInstanceGuid> CreateIndexTable(CloudStorageAccount account, string tableName)

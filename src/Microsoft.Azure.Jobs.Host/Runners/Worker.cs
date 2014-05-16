@@ -169,8 +169,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
 
-            // In theory, we could also set HostInstanceId and WebJobRunId; we'd just have to expose that data directly
-            // to this Worker class.
+            // In theory, we could also set HostId, HostInstanceId and WebJobRunId; we'd just have to expose that data
+            // directly to this Worker class.
             return new FunctionCompletedSnapshot
             {
                 FunctionInstanceId = message.Id,

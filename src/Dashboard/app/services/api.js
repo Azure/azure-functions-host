@@ -28,11 +28,11 @@
             recentInvocations: function () {
                 return "api/functions/invocations/recent";
             },
-            invocationsByFunction: function (functionName) {
-                return "api/functions/definitions/" + encodeURIComponent(functionName) + "/invocations";
+            invocationsByFunction: function (functionId) {
+                return "api/functions/definitions/" + encodeURIComponent(functionId) + "/invocations";
             },
-            functionDefinition: function (functionName) {
-                return "api/functions/definitions/" + encodeURIComponent(functionName);
+            functionDefinition: function (functionId) {
+                return "api/functions/definitions/" + encodeURIComponent(functionId);
             },
             functionDefinitions: function () {
                 return "api/functions/definitions";

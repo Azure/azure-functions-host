@@ -17,6 +17,8 @@ namespace Microsoft.Azure.Jobs
             return string.Format("{0} @ {1}", name, startTime);
         }
 
+        public Guid HostId { get; set; }
+
         public Guid HostInstanceId { get; set; }
 
         public WebJobRunIdentifier ExecutingJobRunId { get; set; }

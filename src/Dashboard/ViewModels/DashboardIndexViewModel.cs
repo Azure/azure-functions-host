@@ -40,6 +40,7 @@ namespace Dashboard.ViewModels
         {
             Id = snapshot.Id;
             FunctionName = snapshot.FunctionShortName;
+            FunctionId = snapshot.FunctionId;
             FunctionFullName = snapshot.FunctionFullName;
             FunctionDisplayTitle = BuildFunctionDisplayTitle(snapshot);
             HostInstanceId = snapshot.HostInstanceId;
@@ -108,6 +109,7 @@ namespace Dashboard.ViewModels
         }
 
         public Guid Id { get; set; }
+        public string FunctionId { get; set; }
         public string FunctionName { get; set; }
         public string FunctionFullName { get; set; }
         public string FunctionDisplayTitle { get; set; }
@@ -126,13 +128,13 @@ namespace Dashboard.ViewModels
 
     public class FunctionStatisticsViewModel
     {
+        public string FunctionId { get; set; }
         public string FunctionFullName { get; set; }
         public string FunctionName { get; set; }
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
         public bool IsRunning { get; set; }
         public bool IsOldHost { get; set; }
-        public DateTime? LastStartTime { get; set; }
     }
 
     public class DurationAsMillisecondsJsonConverter : JsonConverter

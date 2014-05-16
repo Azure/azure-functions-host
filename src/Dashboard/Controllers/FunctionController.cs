@@ -19,7 +19,7 @@ namespace Dashboard.Controllers
         internal const string LegacyNonSpaRouteUrl = "function/{action}";
 
         private readonly CloudStorageAccount _account;
-        private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionQueuedLogger _functionQueuedLogger;
         private readonly IRunningHostTableReader _heartbeatTable;
@@ -27,7 +27,7 @@ namespace Dashboard.Controllers
 
         internal FunctionController(
             CloudStorageAccount account,
-            IFunctionTableLookup functionTableLookup,
+            IFunctionLookup functionLookup,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionQueuedLogger functionQueuedLogger,
             IRunningHostTableReader heartbeatTable,
@@ -35,7 +35,7 @@ namespace Dashboard.Controllers
             )
         {
             _account = account;
-            _functionTableLookup = functionTableLookup;
+            _functionLookup = functionLookup;
             _functionInstanceLookup = functionInstanceLookup;
             _functionQueuedLogger = functionQueuedLogger;
             _heartbeatTable = heartbeatTable;
@@ -49,7 +49,7 @@ namespace Dashboard.Controllers
                 return HttpNotFound();
             }
 
-            FunctionDefinition function = GetFunction(functionId);
+            FunctionSnapshot function = GetFunction(functionId);
 
             if (function == null)
             {
@@ -65,7 +65,7 @@ namespace Dashboard.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Run(string functionId, Guid hostId, FormCollection form)
         {
-            FunctionDefinition function = GetFunction(functionId);
+            FunctionSnapshot function = GetFunction(functionId);
 
             return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.RunFromDashboard, null);
         }
@@ -79,7 +79,7 @@ namespace Dashboard.Controllers
 
             Guid parent;
             FunctionInstanceSnapshot parentLog;
-            FunctionDefinition function = GetFunctionFromInstance(parentId, out parent, out parentLog);
+            FunctionSnapshot function = GetFunctionFromInstance(parentId, out parent, out parentLog);
 
             if (function == null)
             {
@@ -96,19 +96,19 @@ namespace Dashboard.Controllers
         public ActionResult Replay(string parentId, Guid hostId, FormCollection form)
         {
             Guid parent;
-            FunctionDefinition function = GetFunctionFromInstance(parentId, out parent);
+            FunctionSnapshot function = GetFunctionFromInstance(parentId, out parent);
 
             return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
         }
 
-        private FunctionStartedSnapshot CreateFunctionStartedSnapshot(FunctionDefinition function, TriggerAndOverrideMessage message)
+        private FunctionStartedSnapshot CreateFunctionStartedSnapshot(FunctionSnapshot function, TriggerAndOverrideMessage message)
         {
             return new FunctionStartedSnapshot
             {
                 FunctionInstanceId = message.Id,
                 FunctionId = message.FunctionId,
-                FunctionFullName = function.Location.FullName,
-                FunctionShortName = function.Location.GetShortName(),
+                FunctionFullName = function.FullName,
+                FunctionShortName = function.ShortName,
                 Arguments = CreateArguments(message.Arguments),
                 ParentId = message.ParentId,
                 Reason = message.Reason,
@@ -128,22 +128,22 @@ namespace Dashboard.Controllers
             return returnValue;
         }
 
-        private RunFunctionViewModel CreateRunFunctionViewModel(FunctionDefinition function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
+        private RunFunctionViewModel CreateRunFunctionViewModel(FunctionSnapshot function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
         {
             return new RunFunctionViewModel
             {
                 HostId = function.HostId,
-                FunctionId = function.Location.GetId(),
+                FunctionId = function.Id,
                 Parameters = parameters,
                 ParentId = parentId,
-                FunctionName = function.Location.GetShortName(),
-                FunctionFullName = function.Location.ToString(),
-                HostIsNotRunning = !IsHostRunning(function),
+                FunctionName = function.ShortName,
+                FunctionFullName = function.FullName,
+                HostIsNotRunning = !IsHostRunning(function.HostId),
                 SubmitText = submitText
             };
         }
 
-        private ActionResult Invoke(Guid hostId, FormCollection form, FunctionDefinition function, string reason, Guid? parentId)
+        private ActionResult Invoke(Guid hostId, FormCollection form, FunctionSnapshot function, string reason, Guid? parentId)
         {
             if (function == null)
             {
@@ -157,7 +157,7 @@ namespace Dashboard.Controllers
             TriggerAndOverrideMessage message = new TriggerAndOverrideMessage
             {
                 Id = id,
-                FunctionId = function.Location.GetId(),
+                FunctionId = function.HostFunctionId,
                 Arguments = arguments,
                 ParentId = parentId,
                 Reason = reason
@@ -171,49 +171,49 @@ namespace Dashboard.Controllers
             return Redirect("~/#/functions/invocations/" + id);
         }
 
-        private bool IsHostRunning(FunctionDefinition function)
+        private bool IsHostRunning(Guid hostId)
         {
             RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-            return HasValidHeartbeat(function, heartbeats);
+            return HasValidHeartbeat(hostId, heartbeats);
         }
 
-        internal static bool HasValidHeartbeat(FunctionDefinition func, IEnumerable<RunningHost> heartbeats)
+        internal static bool HasValidHeartbeat(Guid hostId, IEnumerable<RunningHost> heartbeats)
         {
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == func.HostId);
+            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == hostId);
             return RunningHost.IsValidHeartbeat(heartbeat);
         }
 
-        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function)
+        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionSnapshot function)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
 
-            foreach (ParameterStaticBinding binding in function.Flow.Bindings)
+            foreach (KeyValuePair<string, ParameterSnapshot> parameter in function.Parameters)
             {
-                FunctionParameterViewModel parameter = new FunctionParameterViewModel
+                FunctionParameterViewModel parameterModel = new FunctionParameterViewModel
                 {
-                    Name = binding.Name,
-                    Description = binding.Prompt,
-                    Value = binding.DefaultValue
+                    Name = parameter.Key,
+                    Description = parameter.Value.Prompt,
+                    Value = parameter.Value.DefaultValue
                 };
-                parameters.Add(parameter);
+                parameters.Add(parameterModel);
             }
 
             return parameters;
         }
 
-        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionDefinition function, FunctionInstanceSnapshot snapshot)
+        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionSnapshot function, FunctionInstanceSnapshot snapshot)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
 
-            foreach (ParameterStaticBinding binding in function.Flow.Bindings)
+            foreach (KeyValuePair<string, ParameterSnapshot> parameter in function.Parameters)
             {
-                FunctionParameterViewModel parameter = new FunctionParameterViewModel
+                FunctionParameterViewModel parameterModel = new FunctionParameterViewModel
                 {
-                    Name = binding.Name,
-                    Description = binding.Prompt,
-                    Value = snapshot.Arguments[binding.Name].Value
+                    Name = parameter.Key,
+                    Description = parameter.Value.Prompt,
+                    Value = snapshot.Arguments[parameter.Key].Value
                 };
-                parameters.Add(parameter);
+                parameters.Add(parameterModel);
             }
 
             return parameters;
@@ -237,18 +237,18 @@ namespace Dashboard.Controllers
             return arguments;
         }
 
-        private FunctionDefinition GetFunction(string functionId)
+        private FunctionSnapshot GetFunction(string functionId)
         {
-            return _functionTableLookup.Lookup(functionId);
+            return _functionLookup.Read(functionId);
         }
 
-        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed)
+        private FunctionSnapshot GetFunctionFromInstance(string id, out Guid parsed)
         {
             FunctionInstanceSnapshot ignored;
             return GetFunctionFromInstance(id, out parsed, out ignored);
         }
 
-        private FunctionDefinition GetFunctionFromInstance(string id, out Guid parsed, out FunctionInstanceSnapshot snapshot)
+        private FunctionSnapshot GetFunctionFromInstance(string id, out Guid parsed, out FunctionInstanceSnapshot snapshot)
         {
             if (!Guid.TryParse(id, out parsed))
             {

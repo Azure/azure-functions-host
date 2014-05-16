@@ -56,7 +56,7 @@
                                 });
                             }
                             $scope.breadcrumbs.push({
-                                url: urls.functionDefinition($scope.model.invocation.functionFullName),
+                                url: urls.functionDefinition($scope.model.invocation.functionId),
                                 title: $scope.model.invocation.functionName
                             });
                         } else {
@@ -64,7 +64,7 @@
                                     url: urls.functions(),
                                     title: 'Functions'
                                 }, {
-                                    url: urls.functionDefinition($scope.model.invocation.functionFullName),
+                                    url: urls.functionDefinition($scope.model.invocation.functionId),
                                     title: $scope.model.invocation.functionName
                                 }];
                         }

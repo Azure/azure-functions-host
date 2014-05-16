@@ -8,6 +8,8 @@ namespace Dashboard.Data
     {
         public Guid Id { get; set; }
 
+        public Guid HostId { get; set; }
+
         public Guid HostInstanceId { get; set; }
 
         public string FunctionId { get; set; }

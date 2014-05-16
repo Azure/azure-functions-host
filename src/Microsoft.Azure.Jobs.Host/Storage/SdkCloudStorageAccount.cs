@@ -163,6 +163,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                     throw new ArgumentNullException("entity");
                 }
 
+                _sdk.CreateIfNotExists();
                 _sdk.Execute(TableOperation.InsertOrReplace(entity));
             }
 

@@ -3,10 +3,11 @@
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
-            functionName = $routeParams.functionFullName;
+            functionId = $routeParams.functionId,
+            functionDataUrl = api.sdk.functionDefinition(functionId);
 
         isUsingSdk.setUsing($scope);
-        $scope.functionFullName = functionName;
+        $scope.functionId = functionId;
 
         $scope.breadcrumbs = [{
             url: urls.functions(),
@@ -18,11 +19,19 @@
         }
 
         $scope.invocations = {
-            endpoint: api.sdk.invocationsByFunction(functionName)
+            endpoint: api.sdk.invocationsByFunction(functionId)
         };
 
+        function loadFunctionDetails() {
+            return $http.get(functionDataUrl).success(function (res) {
+                $scope.functionName = res.functionName;
+                });
+        }
+
         function getData() {
-            $scope.$broadcast('invocations:poll');
+            loadFunctionDetails().then(function () {
+                $scope.$broadcast('invocations:poll');
+            });
             lastPoll = new Date();
         }
 

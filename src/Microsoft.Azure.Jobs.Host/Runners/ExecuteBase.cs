@@ -26,6 +26,7 @@ namespace Microsoft.Azure.Jobs
 
             IFunctionInstanceLogger instanceLogger = context.FunctionInstanceLogger;
 
+            logItem.HostId = context.HostId;
             logItem.HostInstanceId = context.HostInstanceId;
             DateTime now = DateTime.UtcNow;
             logItem.QueueTime = now;
@@ -112,6 +113,7 @@ namespace Microsoft.Azure.Jobs
             return new FunctionStartedSnapshot
             {
                 FunctionInstanceId = logEntity.FunctionInstance.Id,
+                HostId = logEntity.HostId,
                 HostInstanceId = logEntity.HostInstanceId,
                 FunctionId = logEntity.FunctionInstance.Location.GetId(),
                 FunctionFullName = logEntity.FunctionInstance.Location.FullName,
@@ -133,6 +135,7 @@ namespace Microsoft.Azure.Jobs
             return new FunctionCompletedSnapshot
             {
                 FunctionInstanceId = logEntity.FunctionInstance.Id,
+                HostId = logEntity.HostId,
                 HostInstanceId = logEntity.HostInstanceId,
                 FunctionId = logEntity.FunctionInstance.Location.GetId(),
                 FunctionFullName = logEntity.FunctionInstance.Location.FullName,

@@ -18,16 +18,16 @@
         functions: function() {
             return '#/functions';
         },
-        functionDefinition: function(functionName) {
-            return '#/functions/definitions/' + encodeURIComponent(functionName);
+        functionDefinition: function(functionId) {
+            return '#/functions/definitions/' + encodeURIComponent(functionId);
         },
         replayFunction: function(invocationId) {
             //return '#/functions/invocations/' + encodeURIComponent(functionId) + '/replay;
             return siteRoot + 'function/replay?parentId=' + encodeURIComponent(invocationId);
         },
-        runFunction: function(functionFullName) {
-            //return '#/functions/definitions/' + encodeURIComponent(functionName) + '/run;
-            return siteRoot + 'function/run?functionId=' + encodeURIComponent(functionFullName);
+        runFunction: function(functionId) {
+            //return '#/functions/definitions/' + encodeURIComponent(functionId) + '/run;
+            return siteRoot + 'function/run?functionId=' + encodeURIComponent(functionId);
         }
     };
 });

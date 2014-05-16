@@ -61,7 +61,7 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, dataConnectionString, serviceBusDataConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_hostInstanceId, account, LogRole);
+                var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account, LogRole);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;

@@ -17,6 +17,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
 
+        /// <summary>Gets or sets the host ID.</summary>
+        public Guid HostId { get; set; }
+
         /// <summary>Gets or sets the host instance ID.</summary>
         public Guid HostInstanceId { get; set; }
 

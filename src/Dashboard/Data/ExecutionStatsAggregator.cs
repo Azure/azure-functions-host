@@ -90,7 +90,7 @@ namespace Dashboard.Data
             var ptr = new FunctionInstanceGuid(instance);
             _tableMRU.Write(PartitionKey, rowKey, ptr);
 
-            string funcId = snapshot.FunctionId; // valid row key
+            string funcId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
         }
 
@@ -107,7 +107,7 @@ namespace Dashboard.Data
             var ptr = new FunctionInstanceGuid(instance);
             _tableMRU.Write(PartitionKey, rowKey, ptr);
 
-            string funcId = snapshot.FunctionId; // valid row key
+            string funcId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
 
             if (snapshot.Succeeded)
@@ -164,7 +164,7 @@ namespace Dashboard.Data
             // Remove the function running log after logging as completed.
             DeleteFunctionStartedIfExists(snapshot);
 
-            string functionId = snapshot.FunctionId;
+            string functionId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString();
             FunctionStatsEntity stats;
             if (!_funcs.TryGetValue(functionId, out stats))
             {
@@ -198,7 +198,7 @@ namespace Dashboard.Data
                 return;
             }
 
-            DeleteIndex(TableClient.GetTickRowKey(snapshot.StartTime.UtcDateTime, snapshot.FunctionInstanceId), snapshot.FunctionId);
+            DeleteIndex(TableClient.GetTickRowKey(snapshot.StartTime.UtcDateTime, snapshot.FunctionInstanceId), new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString());
         }
     }
 }

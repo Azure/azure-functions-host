@@ -81,40 +81,6 @@ namespace Microsoft.Azure.Jobs
             return new TableEntityParameterRuntimeBinding { Name = name, Entity = entity };
         }
 
-        public override string Description
-        {
-            get
-            {
-                return string.Format(CultureInfo.CurrentCulture,
-                    "Access table entity: {0} (PK: {1}, RK: {2})", TableName, PartitionKey, RowKey);
-            }
-        }
-
-        public override string Prompt
-        {
-            get
-            {
-                return "Enter the table entity identifier (TableName/PartitionKey/RowKey)";
-            }
-        }
-
-        public override string DefaultValue
-        {
-            get
-            {
-                if (RouteParser.HasParameterNames(TableName) ||
-                    RouteParser.HasParameterNames(PartitionKey) ||
-                    RouteParser.HasParameterNames(RowKey))
-                {
-                    return null;
-                }
-                else
-                {
-                    return String.Format(CultureInfo.CurrentCulture, "{0}/{1}/{2}", TableName, PartitionKey, RowKey);
-                }
-            }
-        }
-
         public override ParameterDescriptor ToParameterDescriptor()
         {
             return new TableEntityParameterDescriptor

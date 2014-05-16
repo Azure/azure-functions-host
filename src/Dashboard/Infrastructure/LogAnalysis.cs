@@ -37,23 +37,21 @@ namespace Dashboard
     public class LogAnalysis
     {
         // Gets static information
-        internal static ParamModel[] GetParamInfo(FunctionDefinition func)
+        internal static ParamModel[] GetParamInfo(FunctionSnapshot function)
         {
-            var flows = func.Flow.Bindings;
+            var parameters = function.Parameters;
 
-            int len = flows.Length;
-            ParamModel[] ps = new ParamModel[len];
+            ParamModel[] ps = new ParamModel[parameters.Count];
+            int index = 0;
 
-            for (int i = 0; i < len; i++)
+            foreach (KeyValuePair<string, ParameterSnapshot> parameter in parameters)
             {
-                var flow = flows[i];
-                string msg = flow.Description;
-
-                ps[i] = new ParamModel
+                ps[index] = new ParamModel
                 {
-                    Name = flow.Name,
-                    Description = msg,
+                    Name = parameter.Key,
+                    Description = parameter.Value.Description
                 };
+                index++;
             }
             return ps;
         }

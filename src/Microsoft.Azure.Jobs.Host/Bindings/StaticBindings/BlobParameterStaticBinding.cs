@@ -71,56 +71,11 @@ namespace Microsoft.Azure.Jobs
             return new BlobParameterRuntimeBinding { Name = Name, Blob = arg, IsInput = IsInput };
         }
 
-        public override string Description
-        {
-            get
-            {
-                if (IsInput)
-                {
-                    return string.Format("Read from blob: {0}", Path);
-                }
-                else
-                {
-                    return string.Format("Write to blob: {0}", Path);
-                }
-            }
-        }
-
         public override IEnumerable<string> ProducedRouteParameters
         {
             get
             {
                 return Path.GetParameterNames();
-            }
-        }
-
-        public override string Prompt
-        {
-            get
-            {
-                if (IsInput)
-                {
-                    return "Enter the input blob path";
-                }
-                else
-                {
-                    return "Enter the output blob path";
-                }
-            }
-        }
-
-        public override string DefaultValue
-        {
-            get
-            {
-                if (Path.HasParameters())
-                {
-                    return null;
-                }
-                else
-                {
-                    return Path.ToString();
-                }
             }
         }
 
