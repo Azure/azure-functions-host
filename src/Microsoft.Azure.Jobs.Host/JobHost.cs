@@ -189,6 +189,13 @@ namespace Microsoft.Azure.Jobs
                     Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
                         _hostContext.FunctionInstanceLogger, fastpathNotify);
 
+                    if (token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    worker.StartPolling(token);
+
                     while (!token.IsCancellationRequested)
                     {
                         worker.Poll(token);

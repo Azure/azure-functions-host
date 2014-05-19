@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs
             _mapServiceBus = new Dictionary<MessageReceiver, List<ServiceBusTrigger>>(new MessageReceiverComparer());
         }
 
-        public void PollServiceBus(CancellationToken token)
+        public void StartPollingServiceBus(CancellationToken token)
         {
             foreach (var kv in _mapServiceBus)
             {
@@ -28,51 +28,46 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 var receiver = kv.Key;
-                var funcs = kv.Value;
+                var triggers = kv.Value;
 
-                BrokeredMessage msg = null;
-
+                token.Register(receiver.Close);
                 try
                 {
-                    msg = receiver.Receive(TimeSpan.Zero);
+                    receiver.OnMessage(m => Process(m, triggers, token), new OnMessageOptions());
                 }
                 catch (MessagingEntityNotFoundException)
                 {
-                    EnsureMessagingEntityIsAvailable(funcs[0].AccountConnectionString, receiver.Path);
-                    msg = receiver.Receive(TimeSpan.Zero);
-                }
-
-                if (msg != null)
-                {
-                    // TODO: implement lock renewal for servicebus messages
-                    // using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(queue, msg, visibilityTimeout))
-                    {
-                        // timer.Start(executeFirst: false);
-
-                        foreach (var func in funcs)
-                        {
-                            if (token.IsCancellationRequested)
-                            {
-                                return;
-                            }
-
-                            _invoker.OnNewServiceBusMessage(func, msg, token);
-                        }
-                    }
-
-                    // Need to call Delete message only if function succeeded. 
-                    // and that gets trickier when we have multiple funcs listening. 
-                    try
-                    {
-                        msg.Complete();
-                    }
-                    catch (MessageLockLostException)
-                    {
-                        // Completed already, or abandoned and somebody else is working on it, we don't care either way.
-                    }
+                    EnsureMessagingEntityIsAvailable(triggers[0].AccountConnectionString, receiver.Path);
+                    receiver.OnMessage(m => Process(m, triggers, token), new OnMessageOptions());
                 }
             }
         }
+
+        private void Process(BrokeredMessage message, IEnumerable<ServiceBusTrigger> triggers, CancellationToken cancellationToken)
+        {
+            foreach (ServiceBusTrigger trigger in triggers)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    message.Abandon();
+                    return;
+                }
+
+                _invoker.OnNewServiceBusMessage(trigger, message, cancellationToken);
+
+                // The preceding OnNewServiceBusMessage call may have returned without throwing an exception because the
+                // cancellation token was triggered. We're not sure. To be safe, don't treat the message as successfully
+                // processed unless we're positive that it has been (to guarantee our at-least-once semantics). If the
+                // cancellation token is signaled now, assume the previous call terminated early.
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    message.Abandon();
+                    return;
+                }
+            }
+        }
+
         // call create on the entity path (queue, or topic+subscription) and ignore AlreadyExists exceptions,
         // to ensure that the entity is available.
         private static void EnsureMessagingEntityIsAvailable(string connectionString, string entityPath)

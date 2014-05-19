@@ -9,6 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         private string _dataConnectionString;
         private string _runtimeConnectionString;
         private bool _runtimeConnectionStringMayBeNullOrEmpty;
+        private string _serviceBusConnectionString;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -17,7 +18,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         public DefaultConnectionStringProvider()
             : this(_ambientConnectionStringProvider.GetConnectionString(JobHost.DataConnectionStringName),
             _ambientConnectionStringProvider.GetConnectionString(JobHost.LoggingConnectionStringName),
-            false)
+            false,
+            _ambientConnectionStringProvider.GetConnectionString(JobHost.ServiceBusConnectionStringName))
         {
         }
 
@@ -29,27 +31,18 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
         public DefaultConnectionStringProvider(string dataAndRuntimeConnectionString)
-            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString, true)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using one Microsoft Azure
-        /// Storage connection strings for reading and writing data and another connection string for logging.
-        /// </summary>
-        /// <param name="dataConnectionString">The Azure Storage connection string for accessing data.</param>
-        /// <param name="runtimeConnectionString">The Azure Storage connection string for accessing logging.</param>
-        public DefaultConnectionStringProvider(string dataConnectionString, string runtimeConnectionString)
-            : this(dataConnectionString, runtimeConnectionString, true)
+            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString, true,
+            _ambientConnectionStringProvider.GetConnectionString(JobHost.ServiceBusConnectionStringName))
         {
         }
 
         private DefaultConnectionStringProvider(string dataConnectionString, string runtimeConnectionString,
-            bool runtimeConnectionStringMayBeNullOrEmpty)
+            bool runtimeConnectionStringMayBeNullOrEmpty, string serviceBusConnectionString)
         {
             _dataConnectionString = dataConnectionString;
             _runtimeConnectionString = runtimeConnectionString;
             _runtimeConnectionStringMayBeNullOrEmpty = runtimeConnectionStringMayBeNullOrEmpty;
+            _serviceBusConnectionString = serviceBusConnectionString;
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
@@ -70,6 +63,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
+        /// <summary>Gets or sets the Azure Service bus connection string.</summary>
+        public string ServiceBusConnectionString
+        {
+            get { return _serviceBusConnectionString; }
+            set { _serviceBusConnectionString = value; }
+        }
+
         public string GetConnectionString(string connectionStringName)
         {
             if (connectionStringName == JobHost.DataConnectionStringName)
@@ -86,6 +86,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 }
 
                 return _runtimeConnectionString;
+            }
+            else if (connectionStringName == JobHost.ServiceBusConnectionStringName)
+            {
+                return _serviceBusConnectionString;
             }
             else
             {

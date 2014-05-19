@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs
 
         private IBlobListener _blobListener;
 
-        private Action<CancellationToken> pollServiceBus = _ => { };
+        private Action<CancellationToken> startPollingServiceBus = _ => { };
         private Action<ServiceBusTrigger> mapServiceBusTrigger = _ => { };
 
         public Listener(ITriggerMap map, ITriggerInvoke invoker, Worker worker)
@@ -65,8 +65,8 @@ namespace Microsoft.Azure.Jobs
 
             var serviceBusListener = Activator.CreateInstance(type, new object[] {worker});
 
-            var serviceBusPollMethod = type.GetMethod("PollServiceBus");
-            pollServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] {token});
+            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus");
+            startPollingServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] {token});
 
             var serviceBusMapMethod = type.GetMethod("Map");
             mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] {trigger});
@@ -115,23 +115,22 @@ namespace Microsoft.Azure.Jobs
             return account;
         }
 
-        public void Poll()
-        {
-            Poll(CancellationToken.None);
-        }
-
         public void Poll(CancellationToken token)
         {
             try
             {
                 PollBlobs(token);
                 PollQueues(token);
-                pollServiceBus(token);
             }
             catch (StorageException)
             {
                 // Storage exceptions can happen naturally and intermittently from network connectivity issues. Just ignore. 
             }
+        }
+
+        public void StartPolling(CancellationToken token)
+        {
+            startPollingServiceBus(token);
         }
 
         private void PollBlobs(CancellationToken token)

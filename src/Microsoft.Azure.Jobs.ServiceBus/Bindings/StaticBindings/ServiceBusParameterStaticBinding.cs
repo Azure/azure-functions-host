@@ -36,10 +36,11 @@ namespace Microsoft.Azure.Jobs
                     throw new InvalidOperationException("Direct calls are not supported for ServiceBus methods.");
                 }
 
-                return new ServiceBusInputParameterRuntimeBinding { Message = trigger.InputMessage};
+                return new ServiceBusInputParameterRuntimeBinding { Name = Name, Message = trigger.InputMessage};
             }
             return new ServiceBusOutputParameterRuntimeBinding
             {
+                Name = Name,
                 EntityPath = EntityPath,
                 ServiceBusConnectionString = inputs.ServiceBusConnectionString
             };

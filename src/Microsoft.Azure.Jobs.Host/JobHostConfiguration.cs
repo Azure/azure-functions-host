@@ -34,17 +34,6 @@ namespace Microsoft.Azure.Jobs
         {
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using one Microsoft Azure
-        /// Storage connection strings for reading and writing data and another connection string for logging.
-        /// </summary>
-        /// <param name="dataConnectionString">The Azure Storage connection string for accessing data.</param>
-        /// <param name="runtimeConnectionString">The Azure Storage connection string for accessing logging.</param>
-        public JobHostConfiguration(string dataConnectionString, string runtimeConnectionString)
-            : this(new DefaultConnectionStringProvider(dataConnectionString, runtimeConnectionString))
-        {
-        }
-
         private JobHostConfiguration(DefaultConnectionStringProvider connectionStringProvider)
         {
             _connectionStringProvider = connectionStringProvider;
@@ -64,6 +53,13 @@ namespace Microsoft.Azure.Jobs
         {
             get { return _connectionStringProvider.RuntimeConnectionString; }
             set { _connectionStringProvider.RuntimeConnectionString = value; }
+        }
+
+        /// <summary>Gets or sets the Azure Service bus connection string.</summary>
+        public string ServiceBusConnectionString
+        {
+            get { return _connectionStringProvider.ServiceBusConnectionString; }
+            set { _connectionStringProvider.ServiceBusConnectionString = value; }
         }
 
         /// <summary>Gets or sets the type locator.</summary>

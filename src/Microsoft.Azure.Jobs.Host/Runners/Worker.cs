@@ -98,6 +98,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
+        public void StartPolling(CancellationToken token)
+        {
+            _listener.StartPolling(token);
+        }
+
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
         void PollNotifyNewBlobs(CancellationToken token)
