@@ -64,18 +64,16 @@ namespace Microsoft.Azure.Jobs
                 return blobs;
             }
 
-            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
+            foreach (ICloudBlob blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 if (cancel.IsCancellationRequested)
                 {
                     return new ICloudBlob[0];
                 }
 
-                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
-
                 try
                 {
-                    b.FetchAttributes();
+                    blobItem.FetchAttributes();
                 }
                 catch
                 {
@@ -83,7 +81,7 @@ namespace Microsoft.Azure.Jobs
                     continue;
                 }
 
-                var props = b.Properties;
+                var props = blobItem.Properties;
                 var time = props.LastModified.Value.UtcDateTime;
 
                 if (time > lastScanTime)
@@ -93,7 +91,7 @@ namespace Microsoft.Azure.Jobs
 
                 if (time > timestamp)
                 {
-                    blobs.Add(b);
+                    blobs.Add(blobItem);
                 }
             }
 

@@ -167,57 +167,6 @@ namespace Microsoft.Azure.Jobs
             return container;
         }
 
-        // Interpret this as a CloudBlobDirectory and list blobs in that directory and subdir.
-        // ### RAtionalize with ListBlobs. 
-        public IEnumerable<ICloudBlob> ListBlobsInDir(CloudStorageAccount account)
-        {
-            var container = this.GetContainer(account);
-            var dir = this.GetBlobDir(container);
-
-            IEnumerable<IListBlobItem> source = (dir == null) ? container.ListBlobs(useFlatBlobListing: true) : dir.ListBlobs(useFlatBlobListing: true);
-
-            var count = source.Count();
-
-            var blobs = source.OfType<ICloudBlob>();
-
-            var c2 = blobs.Count();
-
-            return blobs;
-        }
-
-        // Can't include {} tokens. Must be a closed string.
-        public CloudBlobDirectory GetBlobDir(CloudStorageAccount account)
-        {
-            return this.GetBlobDir(this.GetContainer(account));
-        }
-
-        // Returned directory may not actually exist.
-        // Enumerating non-existent dir is just empty, not failure. 
-        private CloudBlobDirectory GetBlobDir(CloudBlobContainer container)
-        {
-            if (this.BlobName == null)
-            {
-                return null;
-            }
-            try
-            {
-                string[] parts = BlobName.Split('/');
-
-                var dir = container.GetDirectoryReference(parts[0]);
-                for (int i = 1; i < parts.Length; i++)
-                {
-                    dir = dir.GetSubdirectoryReference(parts[i]);
-                }
-                return dir;
-            }
-            catch
-            {
-                // $$$ Returned directory may not actually exist  and we don't get any failures. 
-                string msg = string.Format("Blobpath '{0}' does not exist", this);
-                throw new InvalidOperationException(msg);
-            }
-        }
-
         private static class Parser
         {
             // If blob names matches actual pattern. 
