@@ -63,7 +63,8 @@ namespace Microsoft.Azure.Jobs
 
                 var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account, LogRole);
                 ctx = logger.GetExecutionContext();
-                _functionInstanceLogger = new PersistentQueueFunctionInstanceLogger(persistentQueue);
+                _functionInstanceLogger = new CompositeFunctionInstanceLogger(
+                    new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
                 _terminationSignalReader = new ProcessTerminationSignalReader(account);
@@ -75,7 +76,8 @@ namespace Microsoft.Azure.Jobs
 
                 ctx = new FunctionExecutionContext
                 {
-                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser()
+                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser(),
+                    FunctionInstanceLogger = new ConsoleFunctionInstanceLogger()
                 };
 
                 _terminationSignalReader = new NullProcessTerminationSignalReader();
@@ -83,7 +85,7 @@ namespace Microsoft.Azure.Jobs
             }
 
             // This is direct execution, doesn't queue up. 
-            _executeFunction = new WebSitesExecuteFunction(config, ctx, new ConsoleHostLogger());
+            _executeFunction = new WebSitesExecuteFunction(config, ctx);
             _functionTableLookup = functionTableLookup;
         }
 
@@ -225,25 +227,6 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 function.HostId = hostId;
-            }
-        }
-
-        private class ConsoleHostLogger : IJobHostLogger
-        {
-            public void LogFunctionStart(FunctionInvokeRequest request)
-            {
-                Console.WriteLine("Executing: '{0}' because {1}", request.Location.GetShortName(), request.TriggerReason);
-            }
-
-            public void LogFunctionEnd(ExecutionInstanceLogEntity logItem)
-            {
-                if (logItem.GetStatusWithoutHeartbeat() == FunctionInstanceStatus.CompletedFailed)
-                {
-                    var oldColor = Console.ForegroundColor;
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("  Function had errors. See Azure Jobs dashboard for details. Instance id is {0}", logItem.FunctionInstance.Id);
-                    Console.ForegroundColor = oldColor;
-                }
             }
         }
     }

@@ -228,9 +228,11 @@
     <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
     <Compile Include="HostContainerNames.cs" />
     <Compile Include="JobHostConfiguration.cs" />
-    <Compile Include="Loggers\ExecutionInstanceLogEntityExtensions.cs" />
+    <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
+    <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
     <Compile Include="Protocols\RunningHostTableWriter.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
+    <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="Runners\TriggerAndOverrideMessageExtensions.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Storage\Table\CloudTableExtensions.cs" />
@@ -362,7 +364,6 @@
     <Compile Include="Runners\IExecuteFunction.cs" />
     <Compile Include="Runners\ExecuteFunctionBase.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
-    <Compile Include="Loggers\FunctionInstanceStatus.cs" />
     <Compile Include="Loggers\IBlobCausalityLogger.cs" />
     <Compile Include="Runners\BlobTriggerReason.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
@@ -378,8 +379,6 @@
     <Compile Include="Indexers\IFunctionTable.cs" />
     <Compile Include="Indexers\IndexException.cs" />
     <Compile Include="StorageConverter.cs" />
-    <Compile Include="Loggers\ExecutionInstanceLogEntity.cs" />
-    <Compile Include="Runners\FunctionInstanceGuid.cs" />
     <Compile Include="Loggers\BlobCausalityLogger.cs" />
     <Compile Include="Loggers\QueueCausalityHelper.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
@@ -397,7 +396,6 @@
     <Compile Include="TableClient.cs" />
     <Compile Include="Tables\WrapperEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\SimpleBinderProvider.cs" />
-    <Compile Include="Runners\IJobHostLogger.cs" />
     <Compile Include="Runners\WebSitesExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />

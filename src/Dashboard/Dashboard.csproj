@@ -159,6 +159,7 @@
     <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Data\DashboardContainerNames.cs" />
     <Compile Include="Data\FunctionIdentifier.cs" />
+    <Compile Include="Data\FunctionInstanceGuid.cs" />
     <Compile Include="Data\VersionedFunction.cs" />
     <Compile Include="Data\HostFunctionIndex.cs" />
     <Compile Include="Data\HostInstanceLogger.cs" />

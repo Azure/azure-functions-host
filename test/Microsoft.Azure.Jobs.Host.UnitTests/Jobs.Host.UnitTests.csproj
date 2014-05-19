@@ -89,6 +89,7 @@
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
     <Compile Include="Bindings\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Bindings\StaticBindings\BlobParameterStaticBindingTests.cs" />
+    <Compile Include="ExecutionInstanceLogEntity.cs" />
     <Compile Include="ExecutionInstanceLogEntitySerializer.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
@@ -101,7 +102,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />
     <Compile Include="Protocols\QueueNamesTest.cs" />
-    <Compile Include="Loggers\ExecutionInstanceLogEntityExtensionsTests.cs" />
     <Compile Include="Protocols\HostMessageTests.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Runners\HostTableTests.cs" />

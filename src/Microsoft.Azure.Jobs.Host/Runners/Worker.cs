@@ -125,7 +125,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             if (instance != null)
             {
-                _triggerCount++;
+                Interlocked.Increment(ref _triggerCount);
                 _executor.Execute(instance, cancellationToken);
             }
         }
@@ -279,7 +279,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
             if (instance != null)
             {
-                _triggerCount++;
+                Interlocked.Increment(ref _triggerCount);
                 _executor.Execute(instance, cancellationToken);
             }
         }
@@ -389,11 +389,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Location = func.Location,
                 Args = args
             };
-
-            if (ctx.NameParameters != null && ctx.NameParameters.Count > 0)
-            {
-                instance.ParametersDisplayText = String.Join(", ", ctx.NameParameters.Values);
-            }
 
             return instance;
         }

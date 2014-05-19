@@ -250,7 +250,7 @@ namespace Microsoft.Azure.Jobs
                 Message = String.Format("This was function was programmatically called via the host APIs.")
             };
 
-            ExecutionInstanceLogEntity logItem;
+            FunctionInvocationResult result;
 
             using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: false))
             {
@@ -258,7 +258,7 @@ namespace Microsoft.Azure.Jobs
 
                 try
                 {
-                    logItem = _hostContext.ExecuteFunction.Execute(instance, cancellationToken);
+                    result = _hostContext.ExecuteFunction.Execute(instance, cancellationToken);
                 }
                 finally
                 {
@@ -266,7 +266,7 @@ namespace Microsoft.Azure.Jobs
                 }
             }
 
-            VerifySuccess(logItem);
+            VerifySuccess(result);
         }
 
         private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
@@ -312,11 +312,11 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Throw if the function failed. 
-        private static void VerifySuccess(ExecutionInstanceLogEntity logItem)
+        private static void VerifySuccess(FunctionInvocationResult result)
         {
-            if (logItem.GetStatusWithoutHeartbeat() == FunctionInstanceStatus.CompletedFailed)
+            if (!result.Succeeded)
             {
-                throw new Exception("Function failed: " + logItem.ExceptionMessage);
+                throw new Exception("Function failed: " + result.ExceptionMessage);
             }
         }
 

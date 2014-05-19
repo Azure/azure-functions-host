@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Dashboard.Data
 {
     // This is a helper class that provides a type-safe wrapper for GUIDs that represent Function instances.
     // $$$ Issues:
@@ -20,10 +20,6 @@ namespace Microsoft.Azure.Jobs
         public FunctionInstanceGuid(Guid guid)
         {
             _instance = guid;
-        }
-        public FunctionInstanceGuid(ExecutionInstanceLogEntity log)
-        {
-            _instance = log.FunctionInstance.Id;
         }
 
         public static implicit operator FunctionInstanceGuid(Guid guid)

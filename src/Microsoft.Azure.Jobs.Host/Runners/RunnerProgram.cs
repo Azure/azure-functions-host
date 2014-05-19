@@ -182,7 +182,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private void Invoke(IConfiguration config, MethodInfo m, FunctionInstanceGuid instance,
+        private void Invoke(IConfiguration config, MethodInfo m, Guid instance,
             IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors, CancellationToken cancellationToken)
         {
             int len = argDescriptors.Length;

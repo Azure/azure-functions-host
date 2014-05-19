@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
-    // Move to extension methods so that serializers don't pick them up. 
     internal static class ExecutionInstanceLogEntityExtensions
     {
         public static FunctionInstanceStatus GetStatusWithoutHeartbeat(this ExecutionInstanceLogEntity obj)

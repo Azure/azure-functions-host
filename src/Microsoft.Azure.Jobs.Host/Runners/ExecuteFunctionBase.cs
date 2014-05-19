@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -9,7 +10,7 @@ namespace Microsoft.Azure.Jobs
     // but abstracts away the actual raw queuing mechanism.
     internal abstract class ExecuteFunctionBase : IExecuteFunction
     {
-        public ExecutionInstanceLogEntity Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+        public FunctionInvocationResult Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
         {
             if (instance.Id == Guid.Empty)
             {
@@ -29,6 +30,6 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Does the actual queueing mechanism (submit to an azure queue, submit as an azure task)
-        protected abstract ExecutionInstanceLogEntity Work(FunctionInvokeRequest instance, CancellationToken cancellationToken);
+        protected abstract FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken);
     }
 }

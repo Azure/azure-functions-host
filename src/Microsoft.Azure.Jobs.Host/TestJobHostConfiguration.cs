@@ -1,4 +1,5 @@
 ﻿using System;
+
 namespace Microsoft.Azure.Jobs.Host
 {
     internal class TestJobHostConfiguration : IServiceProvider

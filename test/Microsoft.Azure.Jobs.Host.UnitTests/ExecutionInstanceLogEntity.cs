@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Like  FunctionInstance plus output stats?
     // Provide the function instance for reply. 

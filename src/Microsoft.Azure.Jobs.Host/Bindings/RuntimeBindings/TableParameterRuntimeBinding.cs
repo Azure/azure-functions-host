@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs
             return Bind(config, t, bindingContext.CancellationToken, bindingContext.FunctionInstanceGuid);
         }
 
-        public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, FunctionInstanceGuid instance)
+        public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, Guid instance)
         {            
             bool isReadOnly = false; // ### eventually get this from an attribute?
 

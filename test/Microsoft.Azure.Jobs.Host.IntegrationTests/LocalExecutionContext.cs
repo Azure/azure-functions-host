@@ -140,9 +140,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             return CallInner(instance, guidThis);
         }
 
-        private Guid CallInner(FunctionInvokeRequest instance)
+        private void CallInner(FunctionInvokeRequest instance)
         {
-            return CallInner(instance, Guid.Empty);
+            CallInner(instance, Guid.Empty);
         }
         private Guid CallInner(FunctionInvokeRequest instance, Guid parentGuid)
         {
@@ -152,19 +152,17 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ParentGuid = parentGuid
             };
 
-            var logItem = _executor.Execute(instance, CancellationToken.None);
-            var guid = logItem.FunctionInstance.Id;
-
-            return guid;
+            var result = _executor.Execute(instance, CancellationToken.None);
+            return result.Id;
         }
 
-        public Guid CallOnBlob(string functionName, string blobPath)
+        public void CallOnBlob(string functionName, string blobPath)
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
             FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, blobInput);
 
-            return CallInner(instance);
+            CallInner(instance);
         }
 
         class LocalExecute : ExecuteFunctionBase
@@ -176,30 +174,38 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            protected override ExecutionInstanceLogEntity Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
             {
                 RunnerProgram runner = RunnerProgram.Create(null);
 
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
+                bool succeeded;
 
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
                     runner.Invoke(instance, _parent._config, cancellationToken);
+                    succeeded = true;
                 }
                 catch (Exception e)
                 {
                     logItem.ExceptionType = e.GetType().FullName;
                     logItem.ExceptionMessage = e.Message;
+                    succeeded = false;
                 }
 
                 // Mark this function as done executing. $$$ Merge with ExecutionBase?
                 logItem.EndTime = DateTime.UtcNow;
                 _parent._functionUpdate.Log(logItem);
 
-                return logItem;
+                return new FunctionInvocationResult
+                {
+                    Id = instance.Id,
+                    Succeeded = succeeded,
+                    ExceptionMessage = logItem.ExceptionMessage
+                };
             }
         }
     }

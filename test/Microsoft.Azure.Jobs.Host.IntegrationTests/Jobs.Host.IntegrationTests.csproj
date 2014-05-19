@@ -93,7 +93,10 @@
     <Compile Include="BinderExtensions.cs" />
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUtil.cs" />
+    <Compile Include="ExecutionInstanceLogEntity.cs" />
+    <Compile Include="ExecutionInstanceLogEntityExtensions.cs" />
     <Compile Include="FunctionInstanceLookupExtensions.cs" />
+    <Compile Include="FunctionInstanceStatus.cs" />
     <Compile Include="IFunctionInstanceLookup.cs" />
     <Compile Include="IFunctionUpdatedLogger.cs" />
     <Compile Include="LocalExecutionContext.cs" />

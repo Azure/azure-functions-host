@@ -26,9 +26,5 @@ namespace Microsoft.Azure.Jobs
         {
             return Location.GetId() + "," + Id.ToString();
         }
-
-        // Optional human readable representation of the parameter values that were 
-        // passed to the invocation.
-        public string ParametersDisplayText { get; set; }
     }
 }

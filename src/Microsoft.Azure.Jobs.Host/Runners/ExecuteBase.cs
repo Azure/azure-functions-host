@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Runners;
 
 namespace Microsoft.Azure.Jobs
 {
-    // Class to ensure a consistent execution experience w.r.t. logging, ExecutionInstanceLogEntity, etc. 
-    // This is coupled to QueueFunctionBase.
+    // Class to ensure a consistent execution experience w.r.t. logging, etc.
     internal static class ExecutionBase
     {
-        public static ExecutionInstanceLogEntity Work(
+        public static FunctionInvocationResult Work(
             FunctionInvokeRequest instance, // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
 
@@ -21,40 +21,60 @@ namespace Microsoft.Azure.Jobs
             Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc
             )
         {
-            var logItem = new ExecutionInstanceLogEntity();
-            logItem.FunctionInstance = instance;
-
             IFunctionInstanceLogger instanceLogger = context.FunctionInstanceLogger;
+            IFunctionOuputLogDispenser outputLogDispenser = context.OutputLogDispenser;
 
-            logItem.HostId = context.HostId;
-            logItem.HostInstanceId = context.HostInstanceId;
-            DateTime now = DateTime.UtcNow;
-            logItem.QueueTime = now;
-            logItem.StartTime = now;
-            logItem.ExecutingJobRunId = WebJobRunIdentifier.Current;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            FunctionStartedSnapshot startedSnapshot = new FunctionStartedSnapshot
+            {
+                FunctionInstanceId = instance.Id,
+                HostId = context.HostId,
+                HostInstanceId = context.HostInstanceId,
+                FunctionId = instance.Location.GetId(),
+                FunctionFullName = instance.Location.FullName,
+                FunctionShortName = instance.Location.GetShortName(),
+                Arguments = CreateArguments(instance.Args),
+                ParentId = instance.TriggerReason != null && instance.TriggerReason.ParentGuid != Guid.Empty
+                    ? (Guid?)instance.TriggerReason.ParentGuid : null,
+                Reason = instance.TriggerReason != null ? instance.TriggerReason.ToString() : null,
+                StartTime = now,
+                StorageConnectionString = instance.Location.AccountConnectionString,
+                ServiceBusConnectionString = instance.Location.ServiceBusConnectionString,
+                WebJobRunIdentifier = WebJobRunIdentifier.Current
+            };
+
+            FunctionCompletedSnapshot completedSnapshot = null;
 
             try
             {
-                Work(instance, context, fpInvokeFunc, logItem, instanceLogger);
+                completedSnapshot = Work(instance, fpInvokeFunc, instanceLogger, outputLogDispenser, startedSnapshot);
             }
             finally
             {
-                // User errors returned via results in inner Work()
-                logItem.EndTime = DateTime.UtcNow;
-
-                if (instanceLogger != null)
+                if (completedSnapshot == null)
                 {
-                    instanceLogger.LogFunctionCompleted(CreateCompletedSnapshot(logItem));
+                    completedSnapshot = CreateCompletedSnapshot(startedSnapshot);
+                    completedSnapshot.Succeeded = false;
                 }
+
+                // User errors returned via results in inner Work()
+                completedSnapshot.EndTime = DateTimeOffset.UtcNow;
+
+                instanceLogger.LogFunctionCompleted(completedSnapshot);
             }
 
-            return logItem;
+            return new FunctionInvocationResult
+            {
+                Id = completedSnapshot.FunctionInstanceId,
+                Succeeded = completedSnapshot.Succeeded,
+                ExceptionMessage = completedSnapshot.ExceptionMessage
+            };
         }
 
         // Have confirmed the function exists.  Do real work.
-        static void Work(
+        static FunctionCompletedSnapshot Work(
             FunctionInvokeRequest instance,         // specific request to execute
-            FunctionExecutionContext context,       // provides services for execution. Not request specific
 
             // Do the actual invocation. Throw an OperationCancelException is the function is cancelled mid-execution. 
             // The incoming TextWriter is where console output should be redirected too. 
@@ -62,18 +82,18 @@ namespace Microsoft.Azure.Jobs
             // Returns a FunctionExecutionResult that describes the execution results of the function. 
             Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc,
 
-            ExecutionInstanceLogEntity logItem,   // current request log entity
-            IFunctionInstanceLogger instanceLogger
+            IFunctionInstanceLogger instanceLogger,
+            IFunctionOuputLogDispenser outputLogDispenser,
+            FunctionStartedSnapshot startedSnapshot
             )
         {
-            FunctionOutputLog functionOutput = context.OutputLogDispenser.CreateLogStream(instance);
-            logItem.OutputUrl = functionOutput.Uri;
-            logItem.ParameterLogUrl = functionOutput.ParameterLogBlob == null ? null : functionOutput.ParameterLogBlob.GetBlockBlob().Uri.AbsoluteUri;
+            FunctionOutputLog functionOutput = outputLogDispenser.CreateLogStream(instance);
+            startedSnapshot.OutputBlobUrl = functionOutput.Uri;
+            startedSnapshot.ParameterLogBlobUrl = functionOutput.ParameterLogBlob == null ? null : functionOutput.ParameterLogBlob.GetBlockBlob().Uri.AbsoluteUri;
 
-            if (instanceLogger != null)
-            {
-                instanceLogger.LogFunctionStarted(CreateStartedSnapshot(logItem));
-            }
+            instanceLogger.LogFunctionStarted(startedSnapshot);
+
+            FunctionCompletedSnapshot completedSnapshot = CreateCompletedSnapshot(startedSnapshot);
 
             try
             {
@@ -82,17 +102,19 @@ namespace Microsoft.Azure.Jobs
                 FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output, functionOutput.ParameterLogBlob);
 
                 // User errors should be caught and returned in result message.
-                logItem.ExceptionType = result.ExceptionType;
-                logItem.ExceptionMessage = result.ExceptionMessage;
+                completedSnapshot.Succeeded = String.IsNullOrEmpty(result.ExceptionMessage);
+                completedSnapshot.ExceptionType = result.ExceptionType;
+                completedSnapshot.ExceptionMessage = result.ExceptionMessage;
             }
             catch (Exception e)
             {
                 if ((e is OperationCanceledException)) // user app exited (probably stack overflow or call to Exit)
                 {
-                    logItem.ExceptionType = e.GetType().FullName;
-                    logItem.ExceptionMessage = e.Message;
+                    completedSnapshot.Succeeded = false;
+                    completedSnapshot.ExceptionType = e.GetType().FullName;
+                    completedSnapshot.ExceptionMessage = e.Message;
 
-                    return;
+                    return completedSnapshot;
                 }
 
                 // Non-user error. Something really bad happened! This shouldn't be happening.
@@ -106,61 +128,30 @@ namespace Microsoft.Azure.Jobs
             {
                 functionOutput.CloseOutput();
             }
+
+            return completedSnapshot;
         }
 
-        private static FunctionStartedSnapshot CreateStartedSnapshot(ExecutionInstanceLogEntity logEntity)
-        {
-            return new FunctionStartedSnapshot
-            {
-                FunctionInstanceId = logEntity.FunctionInstance.Id,
-                HostId = logEntity.HostId,
-                HostInstanceId = logEntity.HostInstanceId,
-                FunctionId = logEntity.FunctionInstance.Location.GetId(),
-                FunctionFullName = logEntity.FunctionInstance.Location.FullName,
-                FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
-                Arguments = CreateArguments(logEntity.FunctionInstance.Args),
-                ParentId = GetParentId(logEntity),
-                Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
-                StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
-                StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
-                ServiceBusConnectionString = logEntity.FunctionInstance.Location.ServiceBusConnectionString,
-                OutputBlobUrl = logEntity.OutputUrl,
-                ParameterLogBlobUrl = logEntity.ParameterLogUrl,
-                WebJobRunIdentifier = logEntity.ExecutingJobRunId
-            };
-        }
-
-        private static FunctionCompletedSnapshot CreateCompletedSnapshot(ExecutionInstanceLogEntity logEntity)
+        private static FunctionCompletedSnapshot CreateCompletedSnapshot(FunctionStartedSnapshot startedSnapshot)
         {
             return new FunctionCompletedSnapshot
             {
-                FunctionInstanceId = logEntity.FunctionInstance.Id,
-                HostId = logEntity.HostId,
-                HostInstanceId = logEntity.HostInstanceId,
-                FunctionId = logEntity.FunctionInstance.Location.GetId(),
-                FunctionFullName = logEntity.FunctionInstance.Location.FullName,
-                FunctionShortName = logEntity.FunctionInstance.Location.GetShortName(),
-                Arguments = CreateArguments(logEntity.FunctionInstance.Args),
-                ParentId = GetParentId(logEntity),
-                Reason = logEntity.FunctionInstance.TriggerReason != null ? logEntity.FunctionInstance.TriggerReason.ToString() : null,
-                StartTime = new DateTimeOffset(logEntity.StartTime.Value.ToUniversalTime(), TimeSpan.Zero),
-                EndTime = new DateTimeOffset(logEntity.EndTime.Value.ToUniversalTime(), TimeSpan.Zero),
-                StorageConnectionString = logEntity.FunctionInstance.Location.AccountConnectionString,
-                ServiceBusConnectionString = logEntity.FunctionInstance.Location.ServiceBusConnectionString,
-                Succeeded = String.IsNullOrEmpty(logEntity.ExceptionType),
-                ExceptionType = logEntity.ExceptionType,
-                ExceptionMessage = logEntity.ExceptionMessage,
-                OutputBlobUrl = logEntity.OutputUrl,
-                ParameterLogBlobUrl = logEntity.ParameterLogUrl,
-                WebJobRunIdentifier = logEntity.ExecutingJobRunId
+                FunctionInstanceId = startedSnapshot.FunctionInstanceId,
+                HostId = startedSnapshot.HostId,
+                HostInstanceId = startedSnapshot.HostInstanceId,
+                FunctionId = startedSnapshot.FunctionId,
+                FunctionFullName = startedSnapshot.FunctionFullName,
+                FunctionShortName = startedSnapshot.FunctionShortName,
+                Arguments = startedSnapshot.Arguments,
+                ParentId = startedSnapshot.ParentId,
+                Reason = startedSnapshot.Reason,
+                StartTime = startedSnapshot.StartTime,
+                StorageConnectionString = startedSnapshot.StorageConnectionString,
+                ServiceBusConnectionString = startedSnapshot.ServiceBusConnectionString,
+                OutputBlobUrl = startedSnapshot.OutputBlobUrl,
+                ParameterLogBlobUrl = startedSnapshot.ParameterLogBlobUrl,
+                WebJobRunIdentifier = startedSnapshot.WebJobRunIdentifier                
             };
-        }
-
-        private static Guid? GetParentId(ExecutionInstanceLogEntity logEntity)
-        {
-            return logEntity.FunctionInstance.TriggerReason != null
-                && logEntity.FunctionInstance.TriggerReason.ParentGuid != Guid.Empty ?
-                (Guid?)logEntity.FunctionInstance.TriggerReason.ParentGuid : null;
         }
 
         private static IDictionary<string, FunctionArgument> CreateArguments(ParameterRuntimeBinding[] runtimeBindings)
