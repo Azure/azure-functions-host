@@ -56,17 +56,24 @@ namespace Dashboard
             return ps;
         }
 
-        internal static void ApplyRuntimeInfo(FunctionInstanceSnapshot snapshot, ParamModel[] ps)
+        internal static void ApplyRuntimeInfo(FunctionInstanceSnapshot snapshot, ParamModel[] parameterModels)
         {
-            for (int i = 0; i < snapshot.Arguments.Count; i++)
+            foreach (KeyValuePair<string, FunctionInstanceArgument> pair in snapshot.Arguments)
             {
-                FunctionInstanceArgument argument = snapshot.Arguments.Values.ElementAt(i);
-                ps[i].ArgInvokeString = argument.Value;
+                ParamModel parameterModel = parameterModels.FirstOrDefault(p => p.Name == pair.Key);
+
+                if (parameterModel == null)
+                {
+                    continue;
+                }
+
+                FunctionInstanceArgument argument = pair.Value;
+                parameterModel.ArgInvokeString = argument.Value;
 
                 // If arg is a blob, provide a blob-aware link to explore that further.
                 if (argument.IsBlob)
                 {
-                    ps[i].ExtendedBlobModel = CreateExtendedBlobModel(snapshot, argument);
+                    parameterModel.ExtendedBlobModel = CreateExtendedBlobModel(snapshot, argument);
                 }
             }
         }
@@ -132,24 +139,31 @@ namespace Dashboard
             }
         }
 
-        internal static void ApplySelfWatchInfo(CloudStorageAccount account, FunctionInstanceSnapshot snapshot, ParamModel[] ps)
+        internal static void ApplySelfWatchInfo(CloudStorageAccount account, FunctionInstanceSnapshot snapshot, ParamModel[] parameterModels)
         {
             // Get selfwatch information
-            string[] selfwatch = GetParameterSelfWatch(account, snapshot);
+            IDictionary<string, string> selfwatch = GetParameterSelfWatch(account, snapshot);
 
             if (selfwatch == null)
             {
                 return;
             }
 
-            for (int i = 0; i < selfwatch.Length; i++)
+            foreach (KeyValuePair<string, string> pair in selfwatch)
             {
-                ps[i].SelfWatch = selfwatch[i] ?? string.Empty;
+                ParamModel parameterModel = parameterModels.FirstOrDefault(p => p.Name == pair.Key);
+
+                if (parameterModel == null)
+                {
+                    continue;
+                }
+
+                parameterModel.SelfWatch = pair.Value;
             }
         }
 
         // Get Live information from current self-watch values. 
-        internal static string[] GetParameterSelfWatch(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
+        private static IDictionary<string, string> GetParameterSelfWatch(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
             if (snapshot.ParameterLogBlobUrl == null)
             {
@@ -168,30 +182,33 @@ namespace Dashboard
                 var content = blob.DownloadText();
                 TextReader tr = new StringReader(content);
 
-                List<string> list = new List<string>();
+                IDictionary<string, string> selfWatches = new Dictionary<string, string>();
+                int index = 0;
                 while (true)
                 {
                     var line = tr.ReadLine();
                     if (line == null)
                     {
-                        if (list.Count != snapshot.Arguments.Count)
+                        if (selfWatches.Count != snapshot.Arguments.Count)
                         {
                             // Corrupted selfwatch information. 
-                            // Return an error message so that we know something went wrong. 
-                            var x = new string[snapshot.Arguments.Count];
-                            for (int i = 0; i < snapshot.Arguments.Count; i++)
+                            // Return an error message so that we know something went wrong.
+                            selfWatches.Clear();
+
+                            foreach (string argumentName in snapshot.Arguments.Keys)
                             {
-                                x[i] = "???";
+                                selfWatches.Add(argumentName, "???");
                             }
-                            return x;
+
+                            return selfWatches;
                         }
 
-                        return list.ToArray();
+                        return selfWatches;
                     }
 
                     line = SelfWatch.DecodeSelfWatchStatus(line);
-
-                    list.Add(line);
+                    selfWatches.Add(snapshot.Arguments.Keys.ElementAt(index), line);
+                    index++;
                 }
             }
             catch

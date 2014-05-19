@@ -79,12 +79,7 @@ namespace Microsoft.Azure.Jobs
                 return inner;
             }
 
-            INotifyNewBlob notify = null;
-            IBinderPrivate privateBinder = bindingContext as IBinderPrivate;
-            if (privateBinder != null)
-            {
-                notify = privateBinder.NotifyNewBlob;
-            }
+            INotifyNewBlob notify = bindingContext.NotifyNewBlob;
 
             // Now wrap it with a result that will tag it with a Guid. 
             Guid functionWriter = bindingContext.FunctionInstanceGuid;

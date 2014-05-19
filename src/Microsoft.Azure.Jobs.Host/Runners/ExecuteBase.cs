@@ -97,8 +97,7 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                // Invoke the function. Redirect all console output to the given stream.
-                // (Function may be invoked in a different process, so we can't just set Console.Out here)
+                // Invoke the function, using the output and parameter log blobs just created.
                 FunctionExecutionResult result = fpInvokeFunc(functionOutput.Output, functionOutput.ParameterLogBlob);
 
                 // User errors should be caught and returned in result message.

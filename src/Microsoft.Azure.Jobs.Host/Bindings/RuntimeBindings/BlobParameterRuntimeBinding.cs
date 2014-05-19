@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.Jobs
             }
 
             ICloudBlob blob = this.Blob.GetBlob();
-            IBlobLeaseHolder _holder = BlobLeaseTestHook();
+            IBlobLeaseHolder _holder = BlobLeaseTestHook(bindingContext.ConsoleOutput);
 
             if (useLease)
             {
@@ -113,10 +114,10 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Test hook for hooking BlobLeases.
-        public static Func<IBlobLeaseHolder> BlobLeaseTestHook = DefaultBlobLeaseTestHook;
-        public static IBlobLeaseHolder DefaultBlobLeaseTestHook()
+        public static Func<TextWriter, IBlobLeaseHolder> BlobLeaseTestHook = DefaultBlobLeaseTestHook;
+        public static IBlobLeaseHolder DefaultBlobLeaseTestHook(TextWriter consoleOutput)
         {
-            return new BlobLeaseHolder();
+            return new BlobLeaseHolder(consoleOutput);
         }
                         
         public override string ConvertToInvokeString()

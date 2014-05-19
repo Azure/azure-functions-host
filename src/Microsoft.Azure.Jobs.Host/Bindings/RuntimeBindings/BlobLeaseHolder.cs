@@ -12,8 +12,15 @@ namespace Microsoft.Azure.Jobs
     // Helper class to manage releasing the blob lease. 
     internal class BlobLeaseHolder : IBlobLeaseHolder, IDisposable
     {
-        ICloudBlob _blob;
-        string _leaseId;
+        private readonly TextWriter _consoleOutput;
+
+        private ICloudBlob _blob;
+        private string _leaseId;
+
+        public BlobLeaseHolder(TextWriter consoleOutput)
+        {
+            _consoleOutput = consoleOutput;
+        }
 
         public string LeaseId
         {
@@ -43,7 +50,7 @@ namespace Microsoft.Azure.Jobs
                     break;
                 }
 
-                Console.WriteLine("Blocked waiting on lease for blob: {0}", path);
+                _consoleOutput.WriteLine("Blocked waiting on lease for blob: {0}", path);
                 Thread.Sleep(2 * 1000);
             }
         }
@@ -51,7 +58,7 @@ namespace Microsoft.Azure.Jobs
         // Suppress release on this object, and transfer ownership to a new holder.
         public IBlobLeaseHolder TransferOwnership()
         {
-            var x = new BlobLeaseHolder { _blob = _blob, _leaseId = _leaseId };
+            var x = new BlobLeaseHolder(_consoleOutput) { _blob = _blob, _leaseId = _leaseId };
             _leaseId = null; // Suppress
             return x;
         }

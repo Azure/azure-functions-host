@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -13,37 +14,36 @@ namespace Microsoft.Azure.Jobs
     // Used for launching an instance
     internal class RunnerProgram
     {
+        private readonly TextWriter _consoleOutput;
         private readonly CloudBlobDescriptor _parameterLogger;
 
-        private RunnerProgram(CloudBlobDescriptor parameterLogger)
+        public RunnerProgram(TextWriter consoleOutput, CloudBlobDescriptor parameterLogger)
         {
+            _consoleOutput = consoleOutput;
             _parameterLogger = parameterLogger;
         }
 
-        public static RunnerProgram Create(CloudBlobDescriptor parameterLogger)
+        public static FunctionExecutionResult MainWorker(TextWriter consoleOutput, CloudBlobDescriptor parameterLogger,
+            FunctionInvokeRequest descr, IConfiguration config, CancellationToken cancellationToken)
         {
-            return new RunnerProgram(parameterLogger);
+            RunnerProgram program = new RunnerProgram(consoleOutput, parameterLogger);
+            return program.MainWorker(descr, config, cancellationToken);
         }
 
-        public static FunctionExecutionResult MainWorker(CloudBlobDescriptor parameterLogger, FunctionInvokeRequest descr, IConfiguration config,
+        private FunctionExecutionResult MainWorker(FunctionInvokeRequest request, IConfiguration configuration,
             CancellationToken cancellationToken)
         {
-            RunnerProgram program = RunnerProgram.Create(parameterLogger);
-            return MainWorker(() => program.Invoke(descr, config, cancellationToken));
-        }
-
-        private static FunctionExecutionResult MainWorker(Action invoke)
-        {
-            Console.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
-            Console.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
+            _consoleOutput.WriteLine("running in pid: {0}", System.Diagnostics.Process.GetCurrentProcess().Id);
+            _consoleOutput.WriteLine("Timestamp:{0}", DateTime.Now.ToLongTimeString());
 
             FunctionExecutionResult result = new FunctionExecutionResult();
 
             try
             {
-                invoke();
+                Invoke(request, configuration, cancellationToken);
+
                 // Success
-                Console.WriteLine("Success");
+                _consoleOutput.WriteLine("Success");
             }
             catch (Exception e)
             {
@@ -52,21 +52,21 @@ namespace Microsoft.Azure.Jobs
                 result.ExceptionMessage = e.Message;
 
                 // Failure. 
-                Console.WriteLine("Exception while executing:");
-                WriteExceptionChain(e);
-                Console.WriteLine("FAIL");
+                _consoleOutput.WriteLine("Exception while executing:");
+                WriteExceptionChain(e, _consoleOutput);
+                _consoleOutput.WriteLine("FAIL");
             }
 
             return result;
         }
 
         // Write an exception and inner exceptions
-        public static void WriteExceptionChain(Exception e)
+        public static void WriteExceptionChain(Exception e, TextWriter output)
         {
             Exception e2 = e;
             while (e2 != null)
             {
-                Console.WriteLine("{0}, {1}", e2.GetType().FullName, e2.Message);
+                output.WriteLine("{0}, {1}", e2.GetType().FullName, e2.Message);
 
                 // Write bonus information for extra diagnostics
                 var se = e2 as StorageException;
@@ -76,12 +76,12 @@ namespace Microsoft.Azure.Jobs
 
                     foreach (var key in nvc.Keys)
                     {
-                        Console.WriteLine("  >{0}: {1}", key, nvc[key]);
+                        output.WriteLine("  >{0}: {1}", key, nvc[key]);
                     }
                 }
 
-                Console.WriteLine(e2.StackTrace);
-                Console.WriteLine();
+                output.WriteLine(e2.StackTrace);
+                output.WriteLine();
                 e2 = e2.InnerException;
             }
         }
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.Jobs
             INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
 
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService, cancellationToken);
+            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();
@@ -208,8 +208,8 @@ namespace Microsoft.Azure.Jobs
                 }
             }
 
-            Console.WriteLine("Parameters bound. Invoking user function.");
-            Console.WriteLine("--------");
+            _consoleOutput.WriteLine("Parameters bound. Invoking user function.");
+            _consoleOutput.WriteLine("--------");
 
             SelfWatch fpStopWatcher = null;
             try
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.Jobs
 
                 try
                 {
-                    Console.WriteLine("--------");
+                    _consoleOutput.WriteLine("--------");
 
                     foreach (int bindResultIndex in bindResultIndicesInPostActionOrder)
                     {
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.Jobs
             if (_parameterLogger != null)
             {
                 CloudBlockBlob blobResults = _parameterLogger.GetBlockBlob();
-                fpStopWatcher = new SelfWatch(binds, ps, blobResults);
+                fpStopWatcher = new SelfWatch(binds, ps, blobResults, _consoleOutput);
             }
 
             // Watchers may tweak args, so do those second.
@@ -305,7 +305,7 @@ namespace Microsoft.Azure.Jobs
             {
                 // $$$ Beware, this loses the stack trace from the user's invocation
                 // Print stacktrace to console now while we have it.
-                Console.WriteLine(e.InnerException.StackTrace);
+                _consoleOutput.WriteLine(e.InnerException.StackTrace);
 
                 throw e.InnerException;
             }
@@ -324,7 +324,7 @@ namespace Microsoft.Azure.Jobs
         /// <summary>
         /// Handles the function return value and logs it, if necessary
         /// </summary>
-        private static void HandleFunctionReturnParameter(MethodInfo m, object returnValue)
+        private void HandleFunctionReturnParameter(MethodInfo m, object returnValue)
         {
             Type returnType = m.ReturnType;
 
@@ -359,14 +359,14 @@ namespace Microsoft.Azure.Jobs
             return typeof(Task).IsAssignableFrom(returnType);
         }
 
-        private static void InformNoAsyncSupport()
+        private void InformNoAsyncSupport()
         {
-            Console.WriteLine("Warning: This asynchronous method will be run synchronously.");
+            _consoleOutput.WriteLine("Warning: This asynchronous method will be run synchronously.");
         }
 
-        private static void LogReturnValue(object value)
+        private void LogReturnValue(object value)
         {
-            Console.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
+            _consoleOutput.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
         }
 
         private class PostActionOrderComparer : IComparer<BindResult>

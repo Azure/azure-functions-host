@@ -1,25 +1,28 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 
 namespace Microsoft.Azure.Jobs
 {
-    internal class BindingContext : IBinderEx, IBinderPrivate
+    internal class BindingContext : IBinderEx
     {
         private readonly IRuntimeBindingInputs _runtimeInputs;
         private readonly IConfiguration _config;
         private readonly Guid _FunctionInstanceGuid;
         private readonly INotifyNewBlob _notificationService;
+        private readonly TextWriter _consoleOutput;
         private readonly CancellationToken _cancellationToken;
 
         public BindingContext(IConfiguration config, IRuntimeBindingInputs runtimeInputs,
-            Guid functionInstance, INotifyNewBlob notificationService,
+            Guid functionInstance, INotifyNewBlob notificationService, TextWriter consoleOutput,
             CancellationToken cancellationToken)
         {
             _config = config;
             _runtimeInputs = runtimeInputs;
             _FunctionInstanceGuid = functionInstance;
             _notificationService = notificationService;
+            _consoleOutput = consoleOutput;
             _cancellationToken = cancellationToken;
         }
 
@@ -58,9 +61,14 @@ namespace Microsoft.Azure.Jobs
             get { return _FunctionInstanceGuid; }
         }
 
-        INotifyNewBlob IBinderPrivate.NotifyNewBlob
+        public INotifyNewBlob NotifyNewBlob
         {
             get { return _notificationService; }
+        }
+
+        public TextWriter ConsoleOutput
+        {
+            get { return _consoleOutput; }
         }
     }
 }

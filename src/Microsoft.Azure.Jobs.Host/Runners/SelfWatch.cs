@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -21,9 +22,9 @@ namespace Microsoft.Azure.Jobs
 
         // Begin self-watches.
         // May update args array with selfwatch wrappers.
-        public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults)
+        public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults, TextWriter consoleOutput)
         {
-            _command = new SelfWatchCommand(binds, ps, blobResults);
+            _command = new SelfWatchCommand(binds, ps, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
             _timer.Start(executeFirst: false);
         }
@@ -84,20 +85,19 @@ namespace Microsoft.Azure.Jobs
         {
             private readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
             private readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
+            private readonly ISelfWatch[] _watches;
+            private readonly CloudBlockBlob _blobResults;
+            private readonly TextWriter _consoleOutput;
 
             private TimeSpan _currentDelay;
-
             private string _lastContent;
 
-            private ISelfWatch[] _watches;
-            private CloudBlockBlob _blobResults;
-
             // May update args array with selfwatch wrappers.
-            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults)
+            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults, TextWriter consoleOutput)
             {
                 _currentDelay = _intialDelay;
-
                 _blobResults = blobResults;
+                _consoleOutput = consoleOutput;
 
                 int len = binds.Length;
                 ISelfWatch[] watches = new ISelfWatch[len];
@@ -155,9 +155,9 @@ namespace Microsoft.Azure.Jobs
                 {
                     // Not fatal if we can't update selfwatch. 
                     // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
-                    Console.WriteLine("---- SelfWatch failed ---");
-                    RunnerProgram.WriteExceptionChain(e);
-                    Console.WriteLine("-------------------------");
+                    _consoleOutput.WriteLine("---- SelfWatch failed ---");
+                    RunnerProgram.WriteExceptionChain(e, _consoleOutput);
+                    _consoleOutput.WriteLine("-------------------------");
                 }
             }
         }

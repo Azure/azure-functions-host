@@ -117,7 +117,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             // Test that we get the blob lease, write while holding the lease. 
             // We don't need a lease to read. 
-            BlobParameterRuntimeBinding.BlobLeaseTestHook = () => new MockBlobLeaseHolder();
+            BlobParameterRuntimeBinding.BlobLeaseTestHook = (_) => new MockBlobLeaseHolder();
 
             var account = TestStorage.GetAccount();
 

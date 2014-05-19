@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
+using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -20,6 +21,9 @@ namespace Microsoft.Azure.Jobs
                 new CancellationTokenStaticBindingProvider(),
                 new CloudStorageAccountStaticBindingProvider(),
                 new BinderStaticBindingProvider(),
+                // The console output binder below will handle all remaining TextWriter parameters. It must come after
+                // the Attribute binder; otherwise bindings like Do([BlobOutput] TextWriter blob) wouldn't work.
+                new ConsoleOutputStaticBindingProvider(),
                 new Sdk1CloudStorageAccountStaticBindingProvider()
             };
 
@@ -345,23 +349,14 @@ namespace Microsoft.Azure.Jobs
             // $$$ This should share policy code with Orchestrator where it builds the listening map. 
 
             // Throw on multiple QueueInputs
-            int qc = 0;
-            foreach (ParameterStaticBinding flow in index.Flow.Bindings)
+            int totalQueueInputParameters = index.Flow.Bindings.OfType<QueueParameterStaticBinding>().Count(q => q.IsInput);
+
+            if (totalQueueInputParameters > 1)
             {
-                var q = flow as QueueParameterStaticBinding;
-                if (q != null && q.IsInput)
-                {
-                    qc++;
-                }
+                throw new InvalidOperationException("Can't have multiple QueueInput parameters on a single function.");
             }
 
-            if (qc > 1)
-            {
-                string msg = string.Format("Can't have multiple QueueInput parameters on a single function.");
-                throw new InvalidOperationException(msg);
-            }
-
-            if (qc > 0)
+            if (totalQueueInputParameters > 0)
             {
                 if (!(index.Flow.Bindings[0] is QueueParameterStaticBinding))
                 {
@@ -373,6 +368,13 @@ namespace Microsoft.Azure.Jobs
                     // This implies a [NoAutomaticTrigger] attribute. 
                     throw new InvalidOperationException("Can't have QueueInput and NoAutomaticTrigger on the same function.");
                 }
+            }
+
+            // Throw on multiple ConsoleOutputs
+            if (index.Flow.Bindings.OfType<ConsoleOutputParameterStaticBinding>().Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    "Can't have multiple console output TextWriter parameters on a single function.");
             }
         }
     }

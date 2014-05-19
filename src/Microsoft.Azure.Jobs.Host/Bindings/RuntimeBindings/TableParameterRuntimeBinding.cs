@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 
@@ -11,10 +12,10 @@ namespace Microsoft.Azure.Jobs
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
             var t = targetParameter.ParameterType;
-            return Bind(config, t, bindingContext.CancellationToken, bindingContext.FunctionInstanceGuid);
+            return Bind(config, t, bindingContext.CancellationToken, bindingContext.FunctionInstanceGuid, bindingContext.ConsoleOutput);
         }
 
-        public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, Guid instance)
+        public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, Guid instance, TextWriter consoleOutput)
         {            
             bool isReadOnly = false; // ### eventually get this from an attribute?
 
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.Jobs
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
             IBinderEx ctx = new BindingContext(config, inputs, instance, notificationService : null,
-                cancellationToken: cancellationToken);
+                consoleOutput: consoleOutput, cancellationToken: cancellationToken);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

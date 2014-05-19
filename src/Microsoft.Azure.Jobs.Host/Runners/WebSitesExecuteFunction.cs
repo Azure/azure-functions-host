@@ -24,15 +24,8 @@ namespace Microsoft.Azure.Jobs.Internals
             Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc =
                 (consoleOutput, parameterLog) =>
                 {
-                    // @@@ May need to be in a new appdomain. 
-                    var oldOutput = Console.Out;
-                    Console.SetOut(consoleOutput);
-
                     // @@@ May need to override config to set ICall
-                    var result = RunnerProgram.MainWorker(parameterLog, request, _config, cancellationToken);
-                    Console.SetOut(oldOutput);
-
-                    return result;
+                    return RunnerProgram.MainWorker(consoleOutput, parameterLog, request, _config, cancellationToken);
                 };
 
             // @@@ somewhere this should be async, handle long-running functions. 
