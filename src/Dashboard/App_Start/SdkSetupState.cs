@@ -13,11 +13,6 @@ namespace Dashboard
             get { return ConnectionStringState != ConnectionStringStates.Valid; }
         }
 
-        public static string RuntimeConnectionStringName
-        {
-            get { return JobHost.LoggingConnectionStringName; }
-        }
-
         public enum ConnectionStringStates
         {
             Missing,

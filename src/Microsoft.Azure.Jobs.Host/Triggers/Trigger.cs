@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs
         public object Tag { get; set; }
 
         // $$$ Need abstraction here, may get via Azure Web Sites instead. 
-        public string AccountConnectionString { get; set; }
+        public string StorageConnectionString { get; set; }
 
         public TriggerType Type { get; set; }
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.Jobs
                     var trigger = new BlobTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = credentials.AccountConnectionString,
+                        StorageConnectionString = credentials.StorageConnectionString,
                         BlobInput = new CloudBlobPath(raw.BlobInput)
                     };
                     if (raw.BlobOutput != null)
@@ -44,14 +44,14 @@ namespace Microsoft.Azure.Jobs
                     return new QueueTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = credentials.AccountConnectionString,
+                        StorageConnectionString = credentials.StorageConnectionString,
                         QueueName = raw.QueueName
                     };
                 case TriggerType.ServiceBus:
                     return new ServiceBusTrigger
                     {
                         CallbackPath = raw.CallbackPath,
-                        AccountConnectionString = credentials.ServiceBusConnectionString,
+                        StorageConnectionString = credentials.ServiceBusConnectionString,
                         SourcePath = raw.EntityName
                     };
                 default:

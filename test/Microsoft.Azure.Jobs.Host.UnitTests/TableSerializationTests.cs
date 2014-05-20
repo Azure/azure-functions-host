@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 TriggerReason = new BlobTriggerReason { },
                 Location = new MethodInfoFunctionLocation
                 {
-                    AccountConnectionString = "some connection string",
+                    StorageConnectionString = "some connection string",
                     MethodName = "method"
                 },
                 Args = new ParameterRuntimeBinding[]

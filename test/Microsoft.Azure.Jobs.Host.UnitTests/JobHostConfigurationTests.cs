@@ -8,19 +8,19 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     public class JobHostConfigurationTests
     {
         [Fact]
-        public void ConnectionStringProvider_NoRuntimeConnectionString_Throw()
+        public void ConnectionStringProvider_NoDashboardConnectionString_Throw()
         {
             JobHostConfiguration configuration = new JobHostConfiguration
             {
-                DataConnectionString = "SOME_DATA_CONNECTION_STRING",
+                StorageConnectionString = "SOME_DATA_CONNECTION_STRING",
             };
-            Assert.Null(configuration.RuntimeConnectionString); // Guard
+            Assert.Null(configuration.DashboardConnectionString); // Guard
             IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
 
             // Act & Assert
             ExceptionAssert.ThrowsInvalidOperation(() => 
-                connectionStringProvider.GetConnectionString(JobHost.LoggingConnectionStringName), 
-                "Failed to validate Microsoft Azure Jobs runtime connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsRuntime' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsRuntime', or by using a constructor for JobHostConfiguration that accepts connection strings.");
+                connectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName), 
+                "Failed to validate Microsoft Azure Jobs dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsDashboard', or by using a constructor for JobHostConfiguration that accepts connection strings.");
         }
 
         /// <summary>

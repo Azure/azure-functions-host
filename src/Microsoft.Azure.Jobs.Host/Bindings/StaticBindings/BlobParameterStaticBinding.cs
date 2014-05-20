@@ -61,7 +61,7 @@ namespace Microsoft.Azure.Jobs
         {
             var arg = new CloudBlobDescriptor
             {
-                AccountConnectionString = inputs.AccountConnectionString,
+                AccountConnectionString = inputs.StorageConnectionString,
                 ContainerName = path.ContainerName,
                 BlobName = path.BlobName
             };

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs
         /// <summary>
         /// Gets the Azure Storage connection string.
         /// </summary>
-        string AccountConnectionString { get; }
+        string StorageConnectionString { get; }
 
         /// <summary>Gets the token to monitor for cancellation requests.</summary>
         CancellationToken CancellationToken { get; }

@@ -6,9 +6,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
     {
         private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new AmbientConnectionStringProvider();
 
-        private string _dataConnectionString;
-        private string _runtimeConnectionString;
-        private bool _runtimeConnectionStringMayBeNullOrEmpty;
+        private string _dashboardConnectionString;
+        private bool _dashboardConnectionStringMayBeNullOrEmpty;
+        private string _storageConnectionString;
         private string _serviceBusConnectionString;
 
         /// <summary>
@@ -16,10 +16,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
         public DefaultConnectionStringProvider()
-            : this(_ambientConnectionStringProvider.GetConnectionString(JobHost.DataConnectionStringName),
-            _ambientConnectionStringProvider.GetConnectionString(JobHost.LoggingConnectionStringName),
-            false,
-            _ambientConnectionStringProvider.GetConnectionString(JobHost.ServiceBusConnectionStringName))
+            : this(_ambientConnectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName),
+            false, _ambientConnectionStringProvider.GetConnectionString(JobHost.StorageConnectionStringName))
         {
         }
 
@@ -27,40 +25,38 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
-        /// <param name="dataAndRuntimeConnectionString">
+        /// <param name="dashboardAndStorageConnectionString">
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
-        public DefaultConnectionStringProvider(string dataAndRuntimeConnectionString)
-            : this(dataAndRuntimeConnectionString, dataAndRuntimeConnectionString, true,
-            _ambientConnectionStringProvider.GetConnectionString(JobHost.ServiceBusConnectionStringName))
+        public DefaultConnectionStringProvider(string dashboardAndStorageConnectionString)
+            : this(dashboardAndStorageConnectionString, true, dashboardAndStorageConnectionString)
         {
         }
 
-        private DefaultConnectionStringProvider(string dataConnectionString, string runtimeConnectionString,
-            bool runtimeConnectionStringMayBeNullOrEmpty, string serviceBusConnectionString)
+        private DefaultConnectionStringProvider(string dashboardConnectionString,
+            bool dashboardConnectionStringMayBeNullOrEmpty, string storageConnectionString)
         {
-            _dataConnectionString = dataConnectionString;
-            _runtimeConnectionString = runtimeConnectionString;
-            _runtimeConnectionStringMayBeNullOrEmpty = runtimeConnectionStringMayBeNullOrEmpty;
-            _serviceBusConnectionString = serviceBusConnectionString;
-        }
-
-        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
-        public string DataConnectionString
-        {
-            get { return _dataConnectionString; }
-            set { _dataConnectionString = value; }
+            _dashboardConnectionString = dashboardConnectionString;
+            _dashboardConnectionStringMayBeNullOrEmpty = dashboardConnectionStringMayBeNullOrEmpty;
+            _storageConnectionString = storageConnectionString;
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
-        public string RuntimeConnectionString
+        public string DashboardConnectionString
         {
-            get { return _runtimeConnectionString; }
+            get { return _dashboardConnectionString; }
             set
             {
-                _runtimeConnectionString = value;
-                _runtimeConnectionStringMayBeNullOrEmpty = true;
+                _dashboardConnectionString = value;
+                _dashboardConnectionStringMayBeNullOrEmpty = true;
             }
+        }
+
+        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
+        public string StorageConnectionString
+        {
+            get { return _storageConnectionString; }
+            set { _storageConnectionString = value; }
         }
 
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>
@@ -72,20 +68,20 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         public string GetConnectionString(string connectionStringName)
         {
-            if (connectionStringName == JobHost.DataConnectionStringName)
+            if (connectionStringName == JobHost.DashboardConnectionStringName)
             {
-                return _dataConnectionString;
-            }
-            else if (connectionStringName == JobHost.LoggingConnectionStringName)
-            {
-                if (!_runtimeConnectionStringMayBeNullOrEmpty && String.IsNullOrEmpty(_runtimeConnectionString))
+                if (!_dashboardConnectionStringMayBeNullOrEmpty && String.IsNullOrEmpty(_dashboardConnectionString))
                 {
-                    var msg = JobHost.FormatConnectionStringValidationError("runtime", JobHost.LoggingConnectionStringName,
+                    var msg = JobHost.FormatConnectionStringValidationError("dashboard", JobHost.DashboardConnectionStringName,
                         "Microsoft Azure Storage account connection string is missing or empty.");
                     throw new InvalidOperationException(msg);
                 }
 
-                return _runtimeConnectionString;
+                return _dashboardConnectionString;
+            }
+            else if (connectionStringName == JobHost.StorageConnectionStringName)
+            {
+                return _storageConnectionString;
             }
             else if (connectionStringName == JobHost.ServiceBusConnectionStringName)
             {

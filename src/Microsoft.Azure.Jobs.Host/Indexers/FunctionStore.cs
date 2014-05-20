@@ -10,20 +10,20 @@ namespace Microsoft.Azure.Jobs.Internals
         private IndexInMemory _store;
         private string _prefix;
 
-        // dataConnectionString - the account that the functions will bind against. 
+        // storageConnectionString - the account that the functions will bind against. 
         // Index all methods in the types provided by the locator
-        public FunctionStore(string dataConnectionString, string serviceBusDataConnectionString, IConfiguration config, IEnumerable<Type> types)
+        public FunctionStore(string storageConnectionString, string serviceBusConnectionString, IConfiguration config, IEnumerable<Type> types)
         {
-            var indexer = Init(dataConnectionString, config);
+            var indexer = Init(storageConnectionString, config);
             foreach (Type t in types)
             {
-                indexer.IndexType(m => OnApplyLocationInfo(dataConnectionString, serviceBusDataConnectionString, m), t);
+                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m), t);
             }
         }
         
-        private Indexer Init(string dataConnectionString, IConfiguration config)
+        private Indexer Init(string storageConnectionString, IConfiguration config)
         {
-            _prefix = GetPrefix(dataConnectionString);
+            _prefix = GetPrefix(storageConnectionString);
 
             _store = new IndexInMemory();
             var indexer = new Indexer(_store);
@@ -57,12 +57,12 @@ namespace Microsoft.Azure.Jobs.Internals
             return accountName + "." + appName;
         }
 
-        private FunctionLocation OnApplyLocationInfo(string accountConnectionString, string serviceBusDataConnectionString, MethodInfo method)
+        private FunctionLocation OnApplyLocationInfo(string accountConnectionString, string serviceBusConnectionString, MethodInfo method)
         {
             var loc = new MethodInfoFunctionLocation(method)
             {
-                AccountConnectionString = accountConnectionString,
-                ServiceBusConnectionString = serviceBusDataConnectionString
+                StorageConnectionString = accountConnectionString,
+                ServiceBusConnectionString = serviceBusConnectionString
             };
 
             loc.Id = _prefix + "." + loc.Id;

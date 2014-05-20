@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
 
-        public JobHostContext(string dataConnectionString, string runtimeConnectionString, string serviceBusDataConnectionString, ITypeLocator typeLocator)
+        public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator)
         {
             _hostInstanceId = Guid.NewGuid();
             IConfiguration config = RunnerProgram.InitBinders();
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs
 
             var types = typeLocator.GetTypes().ToArray();
             AddCustomerBinders(config, types);
-            functionTableLookup = new FunctionStore(dataConnectionString, serviceBusDataConnectionString, config, types);
+            functionTableLookup = new FunctionStore(storageConnectionString, serviceBusConnectionString, config, types);
 
 
             // Determine the host name from the function list
@@ -44,11 +44,11 @@ namespace Microsoft.Azure.Jobs
 
             FunctionExecutionContext ctx;
 
-            if (runtimeConnectionString != null)
+            if (dashboardConnectionString != null)
             {
                 // Create logging against a live azure account 
 
-                CloudStorageAccount account = CloudStorageAccount.Parse(runtimeConnectionString);
+                CloudStorageAccount account = CloudStorageAccount.Parse(dashboardConnectionString);
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
                 IHostTable hostTable = new HostTable(tableClient);
                 string hostName = GetHostName(functions);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.Jobs
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(functionTableLookup, dataConnectionString, serviceBusDataConnectionString,
+                PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
                 var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account, LogRole);
@@ -187,7 +187,7 @@ namespace Microsoft.Azure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string dataConnectionString,
+        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string storageConnectionString,
             string serviceBusConnectionString, IPersistentQueue<PersistentQueueMessage> logger)
         {
             FunctionDefinition[] functions = functionTableLookup.ReadAll();
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.Jobs
             {
                 HostInstanceId = _hostInstanceId,
                 HostId = _hostId,
-                StorageConnectionString = dataConnectionString,
+                StorageConnectionString = storageConnectionString,
                 ServiceBusConnectionString = serviceBusConnectionString,
                 Functions = functionDescriptors
             };

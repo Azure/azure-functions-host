@@ -62,7 +62,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
-                    CloudBlockBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
+                    CloudBlockBlob blob = GetBlob(bindingContext.StorageConnectionString, containerName, blobName);
 
                     var content = blob.DownloadText();
                     return new BindResult { Result = new Model { Value = content }  };
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
                 {
-                    CloudBlockBlob blob = GetBlob(bindingContext.AccountConnectionString, containerName, blobName);
+                    CloudBlockBlob blob = GetBlob(bindingContext.StorageConnectionString, containerName, blobName);
 
                     // On input
                     return new BindCleanupResult

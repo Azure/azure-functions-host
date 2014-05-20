@@ -38,7 +38,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestAggressiveBlobChaining()
         {
             var account = TestStorage.GetAccount();
-            var dataConnectionString = account.ToString(true);
+            var storageConnectionString = account.ToString(true);
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
@@ -46,8 +46,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 TypeLocator = new SimpleTypeLocator(typeof(Program)),
                 ConnectionStringProvider = new SimpleConnectionStringProvider
                 {
-                    DataConnectionString = dataConnectionString,
-                    RuntimeConnectionString = null
+                    StorageConnectionString = storageConnectionString,
+                    DashboardConnectionString = null
                 }
             };
 

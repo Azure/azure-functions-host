@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs
         // The account this function is associated with. 
         // This will be used to resolve all static bindings.
         // This is used at runtime bindings. 
-        public string AccountConnectionString { get; set; }
+        public string StorageConnectionString { get; set; }
 
         public string ServiceBusConnectionString { get; set; }
 

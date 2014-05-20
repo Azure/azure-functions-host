@@ -76,7 +76,7 @@ namespace Microsoft.Azure.Jobs
         private static ParameterRuntimeBinding BindCore(string name, CloudTableEntityDescriptor entity, IRuntimeBindingInputs inputs)
         {
             entity.Validate();
-            entity.AccountConnectionString = inputs.AccountConnectionString;
+            entity.AccountConnectionString = inputs.StorageConnectionString;
 
             return new TableEntityParameterRuntimeBinding { Name = name, Entity = entity };
         }

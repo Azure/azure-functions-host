@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Jobs
     internal interface IRuntimeBindingInputs
     {
         IDictionary<string, string> NameParameters { get; }
-        string AccountConnectionString { get; }
+        string StorageConnectionString { get; }
         string ServiceBusConnectionString { get; }
     }
 }

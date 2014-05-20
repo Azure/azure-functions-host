@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
         {
             public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
-                string accountConnectionString = bindingContext.AccountConnectionString;
+                string accountConnectionString = bindingContext.StorageConnectionString;
                 AzureTable<T> table = TableProviderTestHook.Default.Create<T>(accountConnectionString, tableName);
 
                 DictionaryTableAdapter<T> adapter = new DictionaryTableAdapter<T>(table);

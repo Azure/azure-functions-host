@@ -31,7 +31,7 @@ namespace Microsoft.Azure.Jobs
 
         public CloudStorageAccount GetAccount()
         {
-            return Utility.GetAccount(Location.AccountConnectionString);
+            return Utility.GetAccount(Location.StorageConnectionString);
         }
 
         // This can be used as an azure row/partition key.

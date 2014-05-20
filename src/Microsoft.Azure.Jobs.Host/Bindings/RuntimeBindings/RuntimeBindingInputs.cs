@@ -7,28 +7,28 @@ namespace Microsoft.Azure.Jobs
     {
         private FunctionLocation _location;
 
-        public RuntimeBindingInputs(string accountConnectionString)
-            :this(accountConnectionString, null)
+        public RuntimeBindingInputs(string storageConnectionString)
+            :this(storageConnectionString, null)
         {
         }
 
         public RuntimeBindingInputs(string accountConnectionString, string serviceBusConnectionString)
         {
-            this.AccountConnectionString = accountConnectionString;
+            this.StorageConnectionString = accountConnectionString;
             this.ServiceBusConnectionString = serviceBusConnectionString;
         }
 
         // Location lets us get the account string and pull down any extra config files. 
 
         public RuntimeBindingInputs(FunctionLocation location)
-            : this(location.AccountConnectionString, location.ServiceBusConnectionString)
+            : this(location.StorageConnectionString, location.ServiceBusConnectionString)
         {
             this._location = location;
         }
 
         public string ServiceBusConnectionString { get; private set; }
 
-        public string AccountConnectionString { get; private set; }
+        public string StorageConnectionString { get; private set; }
 
         public IDictionary<string, string> NameParameters { get; set; }
     }

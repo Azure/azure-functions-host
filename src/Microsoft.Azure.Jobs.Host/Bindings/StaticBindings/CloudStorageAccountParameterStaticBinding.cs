@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
 
             public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
             {
-                CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
+                CloudStorageAccount account = Utility.GetAccount(bindingContext.StorageConnectionString);
                 return new BindResult { Result = account };
             }
         }

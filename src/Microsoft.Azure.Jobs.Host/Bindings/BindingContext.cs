@@ -46,9 +46,9 @@ namespace Microsoft.Azure.Jobs
             return Utility.StrongWrapper<T>(result);
         }
 
-        public string AccountConnectionString
+        public string StorageConnectionString
         {
-            get { return _runtimeInputs.AccountConnectionString; }
+            get { return _runtimeInputs.StorageConnectionString; }
         }
 
         public CancellationToken CancellationToken

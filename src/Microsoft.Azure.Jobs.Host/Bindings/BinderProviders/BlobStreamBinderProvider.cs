@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             public bool IsInput;
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                CloudBlockBlob blob = BlobClient.GetBlockBlob(binder.AccountConnectionString, containerName, blobName);
+                CloudBlockBlob blob = BlobClient.GetBlockBlob(binder.StorageConnectionString, containerName, blobName);
 
                 CloudBlobStream writeableBlobStream;
                 WatchableStream watchableBlobStream;

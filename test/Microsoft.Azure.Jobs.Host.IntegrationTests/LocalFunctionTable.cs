@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             // Still need account information because blob inputs are relative to these accounts.
             return new MethodInfoFunctionLocation(method)
             {
-                AccountConnectionString = this.AccountConnectionString,
+                StorageConnectionString = this.AccountConnectionString,
             };
         }
 

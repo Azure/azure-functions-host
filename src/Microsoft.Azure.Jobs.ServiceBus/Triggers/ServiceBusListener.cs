@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs
                 }
                 catch (MessagingEntityNotFoundException)
                 {
-                    EnsureMessagingEntityIsAvailable(triggers[0].AccountConnectionString, receiver.Path);
+                    EnsureMessagingEntityIsAvailable(triggers[0].StorageConnectionString, receiver.Path);
                     receiver.OnMessage(m => Process(m, triggers, token), new OnMessageOptions());
                 }
             }
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.Jobs
 
         private MessagingFactory GetMessagingFactory(Trigger func)
         {
-            return MessagingFactory.CreateFromConnectionString(func.AccountConnectionString);
+            return MessagingFactory.CreateFromConnectionString(func.StorageConnectionString);
         }
     }
 }

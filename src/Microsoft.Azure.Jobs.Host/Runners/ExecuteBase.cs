@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Jobs
                     ? (Guid?)instance.TriggerReason.ParentGuid : null,
                 Reason = instance.TriggerReason != null ? instance.TriggerReason.ToString() : null,
                 StartTime = now,
-                StorageConnectionString = instance.Location.AccountConnectionString,
+                StorageConnectionString = instance.Location.StorageConnectionString,
                 ServiceBusConnectionString = instance.Location.ServiceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current
             };

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
                 WatchableStream watcher = new WatchableStream(ms);
                 TextWriter _content = new StreamWriter(watcher);
 
-                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.StorageConnectionString, containerName, blobName);
 
                 return new BindCleanupResult
                 {

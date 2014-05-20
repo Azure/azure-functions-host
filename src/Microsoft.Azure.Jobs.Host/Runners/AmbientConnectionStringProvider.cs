@@ -5,6 +5,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 {
     internal class AmbientConnectionStringProvider : IConnectionStringProvider
     {
+        internal static string Prefix = "AzureJobs";
+
         /// <summary>
         /// Reads a connection string from the connectionStrings configuration section, or from an environment variable
         /// if it is missing from the configuration file, or is an empty string.
@@ -13,8 +15,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// <returns>The connection string, or <see langword="null"/> if no connection string was found.</returns>
         public string GetConnectionString(string connectionStringName)
         {
+            string prefixedConnectionStringName = Prefix + connectionStringName;
             string connectionStringInConfig = null;
-            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
+            var connectionStringEntry = ConfigurationManager.ConnectionStrings[prefixedConnectionStringName];
             if (connectionStringEntry != null)
             {
                 connectionStringInConfig = connectionStringEntry.ConnectionString;
@@ -25,7 +28,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return connectionStringInConfig;
             }
 
-            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
+            return Environment.GetEnvironmentVariable(prefixedConnectionStringName) ?? connectionStringInConfig;
         }
     }
 }

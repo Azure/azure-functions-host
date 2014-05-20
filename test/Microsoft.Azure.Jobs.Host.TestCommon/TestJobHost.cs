@@ -5,16 +5,16 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
     // Helper for calling individual methods. 
     public class TestJobHost<T>
     {
-        private const string DeveloperAccountConnectionString = "UseDevelopmentStorage=true";
+        private const string DeveloperStorageConnectionString = "UseDevelopmentStorage=true";
         public JobHost Host { get; private set; }
 
         public TestJobHost()
-            : this(DeveloperAccountConnectionString)
+            : this(DeveloperStorageConnectionString)
         {
         }
 
         // accountConnectionString can be null if the test is really sure that it's not using any storage operations. 
-        public TestJobHost(string accountConnectionString)
+        public TestJobHost(string storageConnectionString)
         {
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
@@ -22,9 +22,9 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
                 TypeLocator = new SimpleTypeLocator(typeof(T)),
                 ConnectionStringProvider = new SimpleConnectionStringProvider
                 {
-                    DataConnectionString = accountConnectionString,
+                    StorageConnectionString = storageConnectionString,
                     // use null logging string since unit tests don't need logs. 
-                    RuntimeConnectionString = null
+                    DashboardConnectionString = null
                 }
             };
 

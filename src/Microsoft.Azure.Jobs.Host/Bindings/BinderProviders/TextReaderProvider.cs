@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
         {
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
-                ICloudBlob blob = BlobClient.GetBlob(binder.AccountConnectionString, containerName, blobName);
+                ICloudBlob blob = BlobClient.GetBlob(binder.StorageConnectionString, containerName, blobName);
 
                 long length = blob.Properties.Length;
                 var blobStream = blob.OpenRead();

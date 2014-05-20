@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs
     internal interface IBinderEx
     {
         BindResult<T> Bind<T>(Attribute attribute);
-        string AccountConnectionString { get; }
+        string StorageConnectionString { get; }
         CancellationToken CancellationToken { get; }
         Guid FunctionInstanceGuid { get; }
         INotifyNewBlob NotifyNewBlob { get; }

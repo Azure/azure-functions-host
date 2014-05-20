@@ -72,7 +72,7 @@ namespace Dashboard
             // Validate services
             try
             {
-                var val = GetRuntimeConnectionString();
+                var val = GetDashboardConnectionString();
                 if (val != null)
                 {
                     SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Valid;
@@ -148,9 +148,9 @@ namespace Dashboard
                  row => Tuple.Create("1", row.ToString()));
         }
 
-        private static string GetRuntimeConnectionString()
+        private static string GetDashboardConnectionString()
         {
-            var val = new AmbientConnectionStringProvider().GetConnectionString(JobHost.LoggingConnectionStringName);
+            var val = new AmbientConnectionStringProvider().GetConnectionString(JobHost.DashboardConnectionStringName);
 
             if (String.IsNullOrEmpty(val))
             {

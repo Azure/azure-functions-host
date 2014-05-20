@@ -111,7 +111,7 @@ namespace Microsoft.Azure.Jobs
         // $$$ Should get account via Azure Web Sites internal api.  Abstract this out. 
         private CloudStorageAccount GetAccount(string scope, Trigger func)
         {
-            CloudStorageAccount account = CloudStorageAccount.Parse(func.AccountConnectionString);
+            CloudStorageAccount account = CloudStorageAccount.Parse(func.StorageConnectionString);
             return account;
         }
 

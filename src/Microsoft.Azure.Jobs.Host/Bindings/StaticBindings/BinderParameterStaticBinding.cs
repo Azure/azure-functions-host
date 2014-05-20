@@ -82,9 +82,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
                 return result.Result;
             }
 
-            public string AccountConnectionString
+            public string StorageConnectionString
             {
-                get { return _inner.AccountConnectionString; }
+                get { return _inner.StorageConnectionString; }
             }
 
             public CancellationToken CancellationToken

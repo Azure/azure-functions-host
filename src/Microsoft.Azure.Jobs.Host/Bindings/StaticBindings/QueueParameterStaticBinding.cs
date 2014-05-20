@@ -80,7 +80,7 @@ namespace Microsoft.Azure.Jobs
                     Name = Name,
                     QueueOutput = new CloudQueueDescriptor
                     {
-                        AccountConnectionString = inputs.AccountConnectionString,
+                        AccountConnectionString = inputs.StorageConnectionString,
                         QueueName = queueName
                     }
                 };

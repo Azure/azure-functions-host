@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
         {
             public BindResult Bind(IBinderEx bindingContext, Type targetType, string tableName)
             {
-                CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
+                CloudStorageAccount account = Utility.GetAccount(bindingContext.StorageConnectionString);
                 CloudTableClient client = account.CreateCloudTableClient();
                 CloudTable table = client.GetTableReference(tableName);
                 IQueryable<T> queryable = CreateQueryable(table);

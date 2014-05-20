@@ -33,7 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StaticBindings
             public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
             {
                 Type cloudStorageAccountType = targetParameter.ParameterType;
-                var res = Parse(cloudStorageAccountType, bindingContext.AccountConnectionString);
+                var res = Parse(cloudStorageAccountType, bindingContext.StorageConnectionString);
                 return new BindResult { Result = res };
             }
 

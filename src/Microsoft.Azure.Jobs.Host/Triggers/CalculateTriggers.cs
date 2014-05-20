@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Jobs
         {
             var credentials = new Credentials
             {
-                 AccountConnectionString = func.Location.AccountConnectionString,
+                 StorageConnectionString = func.Location.StorageConnectionString,
                  ServiceBusConnectionString = func.Location.ServiceBusConnectionString
             };
 

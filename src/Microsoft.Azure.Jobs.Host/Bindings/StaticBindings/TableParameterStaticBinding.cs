@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs
                 Name = Name,
                 Table = new CloudTableDescriptor
                 {
-                    AccountConnectionString = inputs.AccountConnectionString,
+                    AccountConnectionString = inputs.StorageConnectionString,
                     TableName = this.TableName
                 }
             };
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.Jobs
                 Name = Name,
                 Table = new CloudTableDescriptor
                 {
-                    AccountConnectionString = inputs.AccountConnectionString,
+                    AccountConnectionString = inputs.StorageConnectionString,
                     TableName = invokeString
                 }
             };

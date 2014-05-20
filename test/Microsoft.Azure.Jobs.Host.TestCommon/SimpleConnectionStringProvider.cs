@@ -2,19 +2,19 @@
 {
     public class SimpleConnectionStringProvider : IConnectionStringProvider
     {
-        public string DataConnectionString { get; set; }
+        public string StorageConnectionString { get; set; }
 
-        public string RuntimeConnectionString { get; set; }
+        public string DashboardConnectionString { get; set; }
 
         public string GetConnectionString(string connectionStringName)
         {
-            if (connectionStringName == JobHost.DataConnectionStringName)
+            if (connectionStringName == JobHost.DashboardConnectionStringName)
             {
-                return DataConnectionString;
+                return DashboardConnectionString;
             }
-            else if (connectionStringName == JobHost.LoggingConnectionStringName)
+            else if (connectionStringName == JobHost.StorageConnectionStringName)
             {
-                return RuntimeConnectionString;
+                return StorageConnectionString;
             }
             else
             {

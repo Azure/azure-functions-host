@@ -26,11 +26,11 @@ namespace Microsoft.Azure.Jobs
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
-        /// <param name="dataAndRuntimeConnectionString">
+        /// <param name="dashboardAndStorageConnectionString">
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
-        public JobHostConfiguration(string dataAndRuntimeConnectionString)
-            : this(new DefaultConnectionStringProvider(dataAndRuntimeConnectionString))
+        public JobHostConfiguration(string dashboardAndStorageConnectionString)
+            : this(new DefaultConnectionStringProvider(dashboardAndStorageConnectionString))
         {
         }
 
@@ -41,18 +41,18 @@ namespace Microsoft.Azure.Jobs
             WriteSiteExtensionManifest();
         }
 
-        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
-        public string DataConnectionString
+        /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
+        public string DashboardConnectionString
         {
-            get { return _connectionStringProvider.DataConnectionString; }
-            set { _connectionStringProvider.DataConnectionString = value; }
+            get { return _connectionStringProvider.DashboardConnectionString; }
+            set { _connectionStringProvider.DashboardConnectionString = value; }
         }
 
-        /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
-        public string RuntimeConnectionString
+        /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
+        public string StorageConnectionString
         {
-            get { return _connectionStringProvider.RuntimeConnectionString; }
-            set { _connectionStringProvider.RuntimeConnectionString = value; }
+            get { return _connectionStringProvider.StorageConnectionString; }
+            set { _connectionStringProvider.StorageConnectionString = value; }
         }
 
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>

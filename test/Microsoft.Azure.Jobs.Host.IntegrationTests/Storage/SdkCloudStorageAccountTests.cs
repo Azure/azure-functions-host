@@ -240,7 +240,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
 
         private static string GetConnectionString()
         {
-            string name = "AzureJobsRuntime";
+            string name = "AzureJobsDashboard";
 
             string value = new AmbientConnectionStringProvider().GetConnectionString(name);
 

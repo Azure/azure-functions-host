@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     {
         public BindResult Bind(IBinderEx bindingContext, string tableName, string partitionKey, string rowKey)
         {
-            CloudStorageAccount account = Utility.GetAccount(bindingContext.AccountConnectionString);
+            CloudStorageAccount account = Utility.GetAccount(bindingContext.StorageConnectionString);
             CloudTableClient client = account.CreateCloudTableClient();
             CloudTable table = client.GetTableReference(tableName);
             TableOperation retrieveOperation = TableOperation.Retrieve<T>(partitionKey, rowKey);

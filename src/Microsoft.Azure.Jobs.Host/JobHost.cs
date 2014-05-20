@@ -15,20 +15,19 @@ namespace Microsoft.Azure.Jobs
     /// </summary>
     public class JobHost
     {
-        // Where we log things to. 
-        // Null if logging is not supported (this is required for pumping).        
-        private readonly string _runtimeConnectionString;
+        // Where we log things to (null if logging is not supported).
+        private readonly string _dashboardConnectionString;
 
         // The user account that we listen on.
         // This is the account that the bindings resolve against.
-        private readonly string _dataConnectionString;
-        private readonly string _serviceBusDataConnectionString;
+        private readonly string _storageConnectionString;
+        private readonly string _serviceBusConnectionString;
 
         private readonly JobHostContext _hostContext;
 
-        internal const string LoggingConnectionStringName = "AzureJobsRuntime";
-        internal const string DataConnectionStringName = "AzureJobsData";
-        internal const string ServiceBusConnectionStringName = "AzureJobsServiceBusData";
+        internal const string DashboardConnectionStringName = "Dashboard";
+        internal const string StorageConnectionStringName = "Storage";
+        internal const string ServiceBusConnectionStringName = "ServiceBus";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -60,9 +59,9 @@ namespace Microsoft.Azure.Jobs
             }
 
             IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
-            _dataConnectionString = connectionStringProvider.GetConnectionString(DataConnectionStringName);
-            _serviceBusDataConnectionString = connectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
-            _runtimeConnectionString = connectionStringProvider.GetConnectionString(LoggingConnectionStringName);
+            _storageConnectionString = connectionStringProvider.GetConnectionString(StorageConnectionStringName);
+            _serviceBusConnectionString = connectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
+            _dashboardConnectionString = connectionStringProvider.GetConnectionString(DashboardConnectionStringName);
 
             ValidateConnectionStrings(serviceProvider.GetStorageValidator());
 
@@ -72,20 +71,20 @@ namespace Microsoft.Azure.Jobs
 
         private void ValidateConnectionStrings(IStorageValidator storageValidator)
         {
-            string dataConnectionStringValidationError;
-            if (!storageValidator.TryValidateConnectionString(_dataConnectionString, out dataConnectionStringValidationError))
+            string storageConnectionStringValidationError;
+            if (!storageValidator.TryValidateConnectionString(_storageConnectionString, out storageConnectionStringValidationError))
             {
-                var msg = FormatConnectionStringValidationError("data", DataConnectionStringName, dataConnectionStringValidationError);
+                var msg = FormatConnectionStringValidationError("storage", StorageConnectionStringName, storageConnectionStringValidationError);
                 throw new InvalidOperationException(msg);
             }
-            if (_runtimeConnectionString != null)
+            if (_dashboardConnectionString != null)
             {
-                if (_runtimeConnectionString != _dataConnectionString)
+                if (_dashboardConnectionString != _storageConnectionString)
                 {
-                    string runtimeConnectionStringValidationError;
-                    if (!storageValidator.TryValidateConnectionString(_runtimeConnectionString, out runtimeConnectionStringValidationError))
+                    string dashboardConnectionStringValidationError;
+                    if (!storageValidator.TryValidateConnectionString(_dashboardConnectionString, out dashboardConnectionStringValidationError))
                     {
-                        var msg = FormatConnectionStringValidationError("runtime", LoggingConnectionStringName, runtimeConnectionStringValidationError);
+                        var msg = FormatConnectionStringValidationError("dashboard", DashboardConnectionStringName, dashboardConnectionStringValidationError);
                         throw new InvalidOperationException(msg);
                     }
                 }
@@ -98,20 +97,12 @@ namespace Microsoft.Azure.Jobs
                 "Failed to validate Microsoft Azure Jobs {0} connection string: {2}" + Environment.NewLine +
                 "The Microsoft Azure Jobs connection string is specified by setting a connection string named '{1}' in the connectionStrings section of the .config file, " +
                 "or with an environment variable named '{1}', or by using a constructor for JobHostConfiguration that accepts connection strings.",
-                connectionStringType, connectionStringName, validationErrorMessage);
-        }
-
-        /// <summary>
-        /// Gets the storage account name from the connection string.
-        /// </summary>
-        public string UserAccountName
-        {
-            get { return Utility.GetAccountName(_dataConnectionString); }
+                connectionStringType, AmbientConnectionStringProvider.Prefix + connectionStringName, validationErrorMessage);
         }
 
         private JobHostContext GetHostContext(ITypeLocator typesLocator)
         {
-            var hostContext = new JobHostContext(_dataConnectionString, _runtimeConnectionString, _serviceBusDataConnectionString, typesLocator);
+            var hostContext = new JobHostContext(_dashboardConnectionString, _storageConnectionString, _serviceBusConnectionString, typesLocator);
             return hostContext;
         }
 
@@ -173,12 +164,12 @@ namespace Microsoft.Azure.Jobs
                     INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
                     QueueTrigger invokeTrigger;
 
-                    if (_runtimeConnectionString != null)
+                    if (_dashboardConnectionString != null)
                     {
                         invokeTrigger = new QueueTrigger
                         {
                             QueueName = QueueNames.GetHostQueueName(_hostContext.HostId),
-                            AccountConnectionString = _runtimeConnectionString
+                            StorageConnectionString = _dashboardConnectionString
                         };
                     }
                     else

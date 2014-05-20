@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     {
         public BindResult Bind(IBinderEx bindingContext, string tableName, string partitionKey, string rowKey)
         {
-            AzureTable<T> table = TableProviderTestHook.Default.Create<T>(bindingContext.AccountConnectionString, tableName);
+            AzureTable<T> table = TableProviderTestHook.Default.Create<T>(bindingContext.StorageConnectionString, tableName);
             IAzureTableReader<T> reader = (IAzureTableReader<T>)table;
             T result = reader.Lookup(partitionKey, rowKey);
 

@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     {
         public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
         {
-            CloudStorageAccount account = Utility.GetAccount(binder.AccountConnectionString);
+            CloudStorageAccount account = Utility.GetAccount(binder.StorageConnectionString);
             CloudBlobClient client = account.CreateCloudBlobClient();
             CloudBlobContainer container = client.GetContainerReference(containerName);
             container.CreateIfNotExists();
