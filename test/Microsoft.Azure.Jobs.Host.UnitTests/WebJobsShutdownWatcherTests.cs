@@ -1,21 +1,19 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Unit test the static parameter bindings. This primarily tests the indexer.
-    public class AntaresShutdownWatcherTests : IDisposable
+    public class WebJobsShutdownWatcherTests : IDisposable
     {
         [Fact]
         public void Signaled()
         {
             string path = WriteEnvVar();
 
-            using (var watcher = new WebjobsShutdownWatcher())
+            using (var watcher = new WebJobsShutdownWatcher())
             {
                 var token = watcher.Token;
                 Assert.True(!token.IsCancellationRequested);
@@ -34,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             string path = WriteEnvVar();
 
             CancellationToken token;
-            using (var watcher = new WebjobsShutdownWatcher())
+            using (var watcher = new WebJobsShutdownWatcher())
             {
                 token = watcher.Token;
                 Assert.True(!token.IsCancellationRequested);
@@ -43,7 +41,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             File.WriteAllText(path, "x");
 
             Assert.True(!token.IsCancellationRequested);
-
         }
 
         [Fact]
@@ -52,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             // Env var not set
             Assert.Null(Environment.GetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE"));
 
-            using (var watcher = new WebjobsShutdownWatcher())
+            using (var watcher = new WebJobsShutdownWatcher())
             {
                 var token = watcher.Token;
 

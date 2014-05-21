@@ -64,7 +64,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "JobHostConfiguration", 
                 "ITypeLocator", 
                 "INameResolver", 
-                "WebjobsShutdownWatcher" 
+                "WebJobsShutdownWatcher" 
             };
 
             AssertPublicTypes(expected, assembly);

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -16,6 +17,11 @@ namespace Microsoft.Azure.Jobs
 
         private string Resolve(string input)
         {
+            if (_resolver == null)
+            {
+                return input;
+            }
+
             return _resolver.ResolveWholeString(input);
         }
 

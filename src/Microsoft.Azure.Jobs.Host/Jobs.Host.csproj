@@ -236,7 +236,9 @@
     <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
     <Compile Include="Triggers\TriggerData.cs" />
     <Compile Include="Converters\TypeToObjectConverter.cs" />
-    <Compile Include="WebjobsShutdownWatcher.cs" />
+    <Compile Include="DefaultNameResolver.cs" />
+    <Compile Include="NameResolverExtensions.cs" />
+    <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\CloudTableBinderProvider.cs" />

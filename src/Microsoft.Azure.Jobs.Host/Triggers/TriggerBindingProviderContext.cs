@@ -15,6 +15,11 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 
         public string Resolve(string input)
         {
+            if (NameResolver == null)
+            {
+                return input;
+            }
+
             return NameResolver.ResolveWholeString(input);
         }
     }
