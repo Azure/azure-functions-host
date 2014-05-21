@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs
         string Resolve(string name);
     }
 
-    class DefaultNameResolver : INameResolver
+    internal class DefaultNameResolver : INameResolver
     {
         public string Resolve(string name)
         {
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs
     /// <summary>
     /// Extensions for INameResolver
     /// </summary>
-    public static class INameResolverExtension
+    internal static class INameResolverExtension
     {
         /// <summary>
         /// Resolve all %% matches within a string. 
