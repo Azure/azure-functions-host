@@ -3,17 +3,12 @@ using System.Threading;
 
 namespace Microsoft.Azure.Jobs
 {
-    // Public one that we bind to. Simpler, doesn't expose a BindResult. 
+    // Public one that we bind to (simpler).
     /// <summary>
     /// Represents an attribute binder.
     /// </summary>
     public interface IBinder
     {
-        /// <summary>
-        /// Gets the Azure Storage connection string.
-        /// </summary>
-        string StorageConnectionString { get; }
-
         /// <summary>Gets the token to monitor for cancellation requests.</summary>
         CancellationToken CancellationToken { get; }
 

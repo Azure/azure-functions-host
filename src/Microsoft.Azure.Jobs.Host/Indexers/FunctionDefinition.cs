@@ -1,24 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
 {
-    // Basic static definition for a function within AzureJobs.
-    // This has extra metadata beyond just FunctionLocation (like Guid (rowkey), in/out, ... )
-    // This should be static once a function is uploaded. It can obviously change when we refresh a function and load
-    // a new version. So the Timestamp property gives us "last modified time"
-    // But it can't change just be executing the function. Store that invocation information somewhere else.
     internal class FunctionDefinition
     {
-        public Guid HostId { get; set; }
-
-        public DateTimeOffset? HostVersion { get; set; }
-
-        // This maps to the builtin property on azure Tables, so it will get set for us.
-        public DateTime Timestamp { get; set; }
-
         // Where the function lives. Location is effectively the row key.
         public FunctionLocation Location { get; set; }
 
@@ -26,13 +16,18 @@ namespace Microsoft.Azure.Jobs
         // This is used by the orchestrator service.
         public FunctionTrigger Trigger { get; set; }
 
-        // How to bind the parameters.
+        // How to bind the parameters (old style).
         public FunctionFlow Flow { get; set; }
 
         public CloudStorageAccount GetAccount()
         {
             return Utility.GetAccount(Location.StorageConnectionString);
         }
+
+        // How to bind the parameters (new style). Will eventually be encapsulated behind Executor & Listener properties.
+        public string TriggerParameterName { get; set; }
+        public ITriggerBinding TriggerBinding { get; set; }
+        public IReadOnlyDictionary<string, IBinding> NonTriggerBindings { get; set; }
 
         // This can be used as an azure row/partition key.
         public override string ToString()
@@ -44,8 +39,18 @@ namespace Microsoft.Azure.Jobs
         {
             IDictionary<string, ParameterDescriptor> parameters = new Dictionary<string, ParameterDescriptor>();
 
+            if (TriggerBinding != null)
+            {
+                parameters.Add(TriggerParameterName, TriggerBinding.ToParameterDescriptor());
+            }
+
             foreach (ParameterStaticBinding binding in Flow.Bindings)
             {
+                if (parameters.ContainsKey(binding.Name))
+                {
+                    continue;
+                }
+
                 parameters.Add(binding.Name, binding.ToParameterDescriptor());
             }
 

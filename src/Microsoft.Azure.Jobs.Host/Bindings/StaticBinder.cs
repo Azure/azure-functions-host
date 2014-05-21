@@ -131,29 +131,7 @@ namespace Microsoft.Azure.Jobs
                 queueName = parameter.Name;
             }
 
-            return new QueueParameterStaticBinding
-            {
-                QueueName = queueName,
-                IsInput = false
-            };
-        }
-
-        private ParameterStaticBinding Bind(QueueInputAttribute attr, ParameterInfo parameter)
-        {
-            string queueName = Resolve(attr.QueueName);
-            if (queueName == null)
-            {
-                queueName = parameter.Name;
-            }
-
-            string[] namedParams = QueueInputParameterRuntimeBinding.GetRouteParametersFromParamType(parameter.ParameterType);
-            
-            return new QueueParameterStaticBinding
-            {
-                QueueName = queueName,
-                IsInput = true,
-                Params = namedParams
-            };
+            return new QueueParameterStaticBinding { QueueName = queueName };
         }
     }
 }

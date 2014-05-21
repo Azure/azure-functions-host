@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
@@ -42,6 +43,13 @@ namespace Microsoft.Azure.Jobs
         // Given a function definition, get the set of Triggers from it. 
         public static TriggerRaw GetTriggerRaw(FunctionDefinition func)
         {
+            QueueTriggerBinding queueTriggerBinding = func.TriggerBinding as QueueTriggerBinding;
+
+            if (queueTriggerBinding != null)
+            {
+                return TriggerRaw.NewQueue(null, queueTriggerBinding.QueueName);
+            }
+
             var trigger = func.Trigger;
 
             var flow = func.Flow;
@@ -66,18 +74,6 @@ namespace Microsoft.Azure.Jobs
                         CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
 
                         return TriggerRaw.NewBlob(null, path.ToString(), GetOutputPath(func));                        
-                    }
-                }
-
-                var queueBinding = input as QueueParameterStaticBinding;
-                if (queueBinding != null)
-                {
-                    if (queueBinding.IsInput)
-                    {
-                        // Queuenames must be all lowercase. Normalize for convenience. 
-                        string queueName = queueBinding.QueueName.ToLower();
-
-                        return TriggerRaw.NewQueue(null, queueName);
                     }
                 }
 

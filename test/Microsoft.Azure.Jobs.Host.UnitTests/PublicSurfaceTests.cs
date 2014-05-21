@@ -36,14 +36,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void JobsPublicSurface_LimitedToSpecificTypes()
         {
-            var assembly = typeof(QueueInputAttribute).Assembly;
+            var assembly = typeof(QueueTriggerAttribute).Assembly;
 
             var expected = new[] {
                 "ServiceBusAttribute",
                 "BlobInputAttribute",
                 "BlobOutputAttribute",
                 "DescriptionAttribute",
-                "QueueInputAttribute",
+                "QueueTriggerAttribute",
                 "QueueOutputAttribute",
                 "NoAutomaticTriggerAttribute",
                 "TableAttribute",

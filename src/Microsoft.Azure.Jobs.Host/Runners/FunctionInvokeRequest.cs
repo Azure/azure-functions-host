@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -19,7 +21,11 @@ namespace Microsoft.Azure.Jobs
 
         public FunctionLocation Location { get; set; }
 
+        // Parameters from old-style bindings
         public ParameterRuntimeBinding[] Args { get; set; }
+
+        // Parameters from new-style bindings
+        public IReadOnlyDictionary<string, IValueProvider> Parameters { get; set; }
 
         // This is a valid azure table row/partition key. 
         public override string ToString()

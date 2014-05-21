@@ -32,9 +32,9 @@ namespace Microsoft.Azure.Jobs
 
         private static string[] _empty = new string[0];
 
-        // BindingContext provides set of possible inputs  (a single blob input that triggered, a queue message, 
+        // BinderEx provides set of possible inputs  (a single blob input that triggered, a queue message, 
         // a dictionary of name parameters)
-        // This is what BindingContext.Bind does.
+        // This is what BinderEx.Bind does.
         public abstract ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs);
 
         // This should roundtrip with ConvertToInvokeString

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.Jobs
                 FunctionId = instance.Location.GetId(),
                 FunctionFullName = instance.Location.FullName,
                 FunctionShortName = instance.Location.GetShortName(),
-                Arguments = CreateArguments(instance.Args),
+                Arguments = CreateArguments(instance.Parameters, instance.Args),
                 ParentId = instance.TriggerReason != null && instance.TriggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)instance.TriggerReason.ParentGuid : null,
                 Reason = instance.TriggerReason != null ? instance.TriggerReason.ToString() : null,
@@ -153,12 +154,25 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        private static IDictionary<string, FunctionArgument> CreateArguments(ParameterRuntimeBinding[] runtimeBindings)
+        private static IDictionary<string, FunctionArgument> CreateArguments(IReadOnlyDictionary<string, IValueProvider> parameters, ParameterRuntimeBinding[] runtimeBindings)
         {
             IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
 
+            if (parameters != null)
+            {
+                foreach (KeyValuePair<string, IValueProvider> parameter in parameters)
+                {
+                    arguments.Add(parameter.Key, new FunctionArgument { Value = parameter.Value.ToInvokeString() });
+                }
+            }
+
             foreach (ParameterRuntimeBinding runtimeBinding in runtimeBindings)
             {
+                if (arguments.ContainsKey(runtimeBinding.Name))
+                {
+                    continue;
+                }
+
                 BlobParameterRuntimeBinding blobRuntimeBinding = runtimeBinding as BlobParameterRuntimeBinding;
                 string value = runtimeBinding.ConvertToInvokeString();
                 FunctionArgument argument = new FunctionArgument { Value = value };

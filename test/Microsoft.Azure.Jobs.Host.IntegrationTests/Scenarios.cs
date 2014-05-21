@@ -160,7 +160,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         // Triggered on queue. 
         // Route parameters are bound from queue values
         public static void GetFromQueue(
-            [QueueInput] Payload queueTest, 
+            [QueueTrigger("queueTest")] Payload queueTest, 
             [BlobOutput(@"daas-test-input/{Output}")] TextWriter output,
             int Value // bound from queueTest.Value
             )
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void BindQueueToTableEntity(
-            [QueueInput] TableEntityPayload queueTest2,
+            [QueueTrigger("queueTest2")] TableEntityPayload queueTest2,
             [Table("{TableName}", "{PartitionKey}", "{RowKey}")] SimpleEntity entity)
         {
             entity.Value = 456;

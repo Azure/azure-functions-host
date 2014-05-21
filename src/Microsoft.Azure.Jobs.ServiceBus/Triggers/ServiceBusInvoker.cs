@@ -28,7 +28,7 @@ namespace Microsoft.Azure.Jobs
             try
             {
                 var payload = new StreamReader(msg.Clone().GetBody<Stream>()).ReadToEnd();
-                p = QueueInputParameterRuntimeBinding.GetRouteParameters(payload, qb.Params);
+                p = ServiceBusStaticBinder.GetRouteParameters(payload, qb.Params);
             }
             catch
             {

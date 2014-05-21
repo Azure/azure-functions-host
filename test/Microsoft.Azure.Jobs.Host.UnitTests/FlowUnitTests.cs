@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.NotNull(m);
 
             Indexer idx = new Indexer(null, nameResolver);
-            FunctionDefinition func = idx.GetFunctionDefinition(m, (IndexTypeContext)null);
+            FunctionDefinition func = idx.GetFunctionDefinition(m, null);
             return func;
         }
 
@@ -88,21 +89,20 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal("reader", t.Name);
         }
 
-        // Queue inputs with implicit names.
-        public static void QueueIn([QueueInput] int inputQueue) { }
+        public static void QueueTrigger([QueueTrigger("inputQueue")] int queueValue) { }
 
         [Fact]
-        public void TestQueueInput()
+        public void TestQueueTrigger()
         {
-            FunctionDefinition func = Get("QueueIn");
+            FunctionDefinition func = Get("QueueTrigger");
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(1, flows.Length);
+            Assert.NotNull(func);
 
-            var t = (QueueParameterStaticBinding)flows[0];            
-            Assert.Equal("inputqueue", t.QueueName); // queue name gets normalized. 
-            Assert.Equal("inputQueue", t.Name); // parameter name does not.
-            Assert.True(t.IsInput);
+            QueueTriggerBinding binding = func.TriggerBinding as QueueTriggerBinding;
+
+            Assert.NotNull(binding);
+            Assert.Equal("inputqueue", binding.QueueName); // queue name gets normalized. 
+            Assert.Equal("queueValue", func.TriggerParameterName); // parameter name does not.
         }
 
         // Queue inputs with implicit names.
@@ -122,7 +122,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var t = (QueueParameterStaticBinding)flows[0];
             Assert.Equal("inputqueue", t.QueueName);
             Assert.Equal("inputQueue", t.Name); // parameter name does not.
-            Assert.False(t.IsInput);
         }
 
         [Jobs.Description("This is a description")]

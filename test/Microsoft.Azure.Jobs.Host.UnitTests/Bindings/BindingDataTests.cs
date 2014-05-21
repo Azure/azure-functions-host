@@ -1,30 +1,33 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
 {
-    public class QueueInputParameterRuntimeBindingTests
+    public class BindingDataTests
     {
         [Fact]
-        public void GetRouteParametersFromObjectParamType()
+        public void GetContractFromObjectParamType()
         {
-            var names = QueueInputParameterRuntimeBinding.GetRouteParametersFromParamType(typeof(object));
+            var names = BindingData.GetContract(typeof(object));
             Assert.Null(names);
         }
 
         [Fact]
-        public void GetRouteParametersFromIntParamType()
+        public void GetContractFromIntParamType()
         {
             // Simple type, not structured, doesn't produce any route parameters.
-            var names = QueueInputParameterRuntimeBinding.GetRouteParametersFromParamType(typeof(int));
+            var names = BindingData.GetContract(typeof(int));
             Assert.Null(names);
         }
 
         [Fact]
-        public void GetRouteParametersFromStructuredParamType()
+        public void GetContractFromStructuredParamType()
         {
-            var names = QueueInputParameterRuntimeBinding.GetRouteParametersFromParamType(typeof(Complex));
+            var names = BindingData.GetContract(typeof(Complex)).Keys.ToArray();
 
             Array.Sort(names);
             var expected = new string[] { "IntProp", "StringProp" };
@@ -32,18 +35,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
         }
 
         [Fact]
-        public void GetRouteParametersSimple()
+        public void GetBindingDataSimple()
         {
             // When JSON is a structured object, we can extract the fields as route parameters.
             string json = @"{ ""Name"" : 12, ""other"" : 13 }";
-            var p = QueueInputParameterRuntimeBinding.GetRouteParameters(json, new string[] { "Name" });
+            var p = BindingData.GetBindingData(json, BindingData.GetContract(typeof(NameClass)));
 
             Assert.Equal(1, p.Count);
-            Assert.Equal("12", p["Name"]);
+            Assert.Equal(12, p["Name"]);
         }
 
         [Fact]
-        public void GetRouteParametersParseError()
+        public void GetBindingDataParseError()
         {
             // Test when payload is not a json object, does not produce any route parameters
             foreach (var json in new string[] { 
@@ -55,14 +58,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
                 null
             })
             {
-                var p = QueueInputParameterRuntimeBinding.GetRouteParameters(json, new string[] { "Name" });
+                var p = BindingData.GetBindingData(json, BindingData.GetContract(typeof(NameClass)));
                 // Shouldn't get route params from json:
                 Assert.Null(p);
             }
         }
 
         [Fact]
-        public void GetRouteParametersComplexJson()
+        public void GetBindingDataComplexJson()
         {
             // 
             // When JSON is a structured object, we can extract the fields as route parameters.
@@ -71,29 +74,28 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
 ""b"":[1,2,3],
 ""c"":{}
 }";
-            var p = QueueInputParameterRuntimeBinding.GetRouteParameters(json, new string[] { "a", "b", "c" });
+            var p = BindingData.GetBindingData(json, BindingData.GetContract(typeof(AbcClass)));
 
             // Only take simple types
             Assert.Equal(1, p.Count);
-            Assert.Equal("1", p["a"]);
+            Assert.Equal(1, p["a"]);
         }
 
-
         [Fact]
-        public void GetRouteParametersDate()
+        public void GetBindingDataDate()
         {
             // Dates with JSON can be tricky. Test Date serialization.
             DateTime date = new DateTime(1950, 6, 1, 2, 3, 30);
 
             var json = JsonConvert.SerializeObject(new { date = date });
-            
-            var p = QueueInputParameterRuntimeBinding.GetRouteParameters(json, new string[] { "date" });
-                        
+
+            var p = BindingData.GetBindingData(json, BindingData.GetContract(typeof(DateClass)));
+
             Assert.Equal(1, p.Count);
-            Assert.Equal(date.ToString(), p["date"]);
+            Assert.Equal(date, p["date"]);
         }
 
-        
+
         // Helper for comparing arrays
         static void AssertArrayEqual(string[] a, string[] b)
         {
@@ -102,7 +104,26 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
             {
                 Assert.Equal(a[i], b[i]);
             }
-        }        
+        }
+
+        private class NameClass
+        {
+            public int Name { get; set; }
+        }
+
+        private class AbcClass
+        {
+            public int a { get; set; }
+
+            public int[] b { get; set; }
+
+            public IDictionary<string, object> c { get; set; }
+        }
+
+        private class DateClass
+        {
+            public DateTime date { get; set; }
+        }
 
         // Type to test yielding route parameters.
         // Only simpl
@@ -111,9 +132,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.RuntimeBindings
             public int _field = 0; // skip: not a property
 
             public int IntProp { get; set; } // Yes
- 
+
             public string StringProp { get; set; } // Yes
-                        
+
             public Complex Nexted { get; set; } // skip: not simple type
 
             public static int StaticIntProp { get; set; } // skip: not instance property

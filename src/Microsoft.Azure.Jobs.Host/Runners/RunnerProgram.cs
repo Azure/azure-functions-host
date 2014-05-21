@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.BinderProviders;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -90,7 +92,9 @@ namespace Microsoft.Azure.Jobs
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            Invoke(config, method, invoke.Id, inputs, invoke.Args, cancellationToken);
+            IReadOnlyDictionary<string, BindResult> parameters = CreateBindResultParameters(config, method, invoke.Id,
+                inputs, invoke.Parameters, invoke.Args, cancellationToken);
+            Invoke(method, parameters);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
@@ -181,16 +185,61 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private void Invoke(IConfiguration config, MethodInfo m, Guid instance,
-            IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors, CancellationToken cancellationToken)
+        private IReadOnlyDictionary<string, BindResult> CreateBindResultParameters(IConfiguration config, MethodInfo m, Guid instance,
+            IRuntimeBindingInputs inputs, IReadOnlyDictionary<string, IValueProvider> parameters, ParameterRuntimeBinding[] runtimeBindings,
+            CancellationToken cancellationToken)
         {
-            int len = argDescriptors.Length;
+            Dictionary<string, BindResult> combinedParameters = new Dictionary<string, BindResult>();
+
+            INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
+            IBinderEx bindingContext = new BinderEx(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
+
+            foreach (ParameterInfo parameterInfo in m.GetParameters())
+            {
+                string name = parameterInfo.Name;
+                IValueProvider valueProvider = parameters != null && parameters.ContainsKey(name) ? parameters[name] : null;
+                ParameterRuntimeBinding runtimeBinding = runtimeBindings.SingleOrDefault(b => b.Name == name);
+
+                if (valueProvider == null && runtimeBindings == null)
+                {
+                    throw new InvalidOperationException("No value provided for parameter '" + name + "'.");
+                }
+
+                BindResult result;
+
+                try
+                {
+                    if (valueProvider != null)
+                    {
+                        result = new BindResult { Result = valueProvider.GetValue() };
+                    }
+                    else
+                    {
+                        result = runtimeBinding.Bind(config, bindingContext, parameterInfo);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    string msg = String.Format(CultureInfo.InvariantCulture, "Error while binding parameter {0} '{1}':{2}",
+                        name, parameterInfo, exception.Message);
+                    result = new NullBindResult(msg) { IsErrorResult = true };
+                }
+
+                combinedParameters.Add(name, result);
+            }
+
+            return combinedParameters;
+        }
+
+        // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
+        private void Invoke(MethodInfo m, IReadOnlyDictionary<string, BindResult> parameters)
+        {
+            int len = parameters.Count;
 
             INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
 
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
+            //IBinderEx bindingContext = new BinderEx(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
 
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();
@@ -199,7 +248,7 @@ namespace Microsoft.Azure.Jobs
                 var p = ps[i];
                 try
                 {
-                    binds[i] = argDescriptors[i].Bind(config, bindingContext, p);
+                    binds[i] = parameters[p.Name];//.Bind(config, bindingContext, p);
                 }
                 catch (Exception e)
                 {

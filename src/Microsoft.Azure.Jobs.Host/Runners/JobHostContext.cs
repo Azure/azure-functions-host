@@ -54,7 +54,6 @@ namespace Microsoft.Azure.Jobs
                 IHostTable hostTable = new HostTable(tableClient);
                 string hostName = GetHostName(functions);
                 _hostId = hostTable.GetOrCreateHostId(hostName);
-                SetHostId(_hostId, functions);
 
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
@@ -214,21 +213,6 @@ namespace Microsoft.Azure.Jobs
         private static void LogRole(TextWriter output)
         {
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
-        }
-
-        private static void SetHostId(Guid hostId, FunctionDefinition[] functions)
-        {
-            Debug.Assert(functions != null);
-
-            foreach (FunctionDefinition function in functions)
-            {
-                if (function == null)
-                {
-                    continue;
-                }
-
-                function.HostId = hostId;
-            }
         }
     }
 }

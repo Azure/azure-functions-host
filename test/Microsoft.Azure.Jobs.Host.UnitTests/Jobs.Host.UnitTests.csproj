@@ -86,9 +86,8 @@
     <Compile Include="Bindings\BindResults\NullBindResultTests.cs" />
     <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
     <Compile Include="Bindings\CloudBlobPathTests.cs" />
-    <Compile Include="Bindings\RuntimeBindings\QueueInputParameterRuntimeBindingsTest.cs" />
+    <Compile Include="Bindings\BindingDataTests.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
-    <Compile Include="Bindings\StaticBindings\QueueParameterStaticBindingTests.cs" />
     <Compile Include="Bindings\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
     <Compile Include="ExecutionInstanceLogEntitySerializer.cs" />
@@ -108,8 +107,8 @@
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
-    <Compile Include="TableSerializationTests.cs" />
     <Compile Include="TableUnitTests.cs" />
+    <Compile Include="TestConfiguration.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />

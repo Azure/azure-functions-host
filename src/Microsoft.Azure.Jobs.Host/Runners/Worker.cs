@@ -4,8 +4,11 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -329,8 +332,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             // Extract any named parameters from the queue payload.
             var flow = func.Flow;
-            QueueParameterStaticBinding qb = flow.Bindings.OfType<QueueParameterStaticBinding>().Where(b => b.IsInput).First();
-            IDictionary<string, string> p = QueueInputParameterRuntimeBinding.GetRouteParameters(payload, qb.Params);
+            QueueTriggerBinding queueTriggerBinding = func.TriggerBinding as QueueTriggerBinding;
+            ITriggerData triggerData = queueTriggerBinding.Bind(msg);
+            IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
             RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg)
@@ -342,12 +346,31 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             instance.TriggerReason = new QueueMessageTriggerReason
             {
-                QueueName = qb.QueueName,
+                QueueName = queueTriggerBinding.QueueName,
                 MessageId = msg.Id,
                 ParentGuid = GetOwnerFromMessage(msg)
             };
 
+            instance.Parameters = new Dictionary<string, IValueProvider> {
+                { func.TriggerParameterName, triggerData.ValueProvider }
+            };
+
             return instance;
+        }
+
+        private static IDictionary<string, string> GetNameParameters(IReadOnlyDictionary<string, object> bindingData)
+        {
+            Dictionary<string, string> nameParameters = new Dictionary<string, string>();
+
+            if (bindingData != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingData)
+                {
+                    nameParameters.Add(item.Key, item.Value.ToString());
+                }
+            }
+
+            return nameParameters;
         }
 
         // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.        
@@ -457,28 +480,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             public override string GetShortName()
             {
                 return Id;
-            }
-        }
-
-        private class PartialParameterRuntimeBinding : ParameterRuntimeBinding
-        {
-            private readonly string _name;
-            private readonly string _value;
-
-            public PartialParameterRuntimeBinding(string name, string value)
-            {
-                _name = name;
-                _value = value;
-            }
-
-            public override string ConvertToInvokeString()
-            {
-                return _value;
-            }
-
-            public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
-            {
-                throw new InvalidOperationException("A PartialParameterRuntimeBinding cannot be bound.");
             }
         }
     }

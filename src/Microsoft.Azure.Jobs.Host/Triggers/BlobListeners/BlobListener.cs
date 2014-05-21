@@ -83,16 +83,14 @@ namespace Microsoft.Azure.Jobs
                 return;
             }
 
-            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
+            foreach (ICloudBlob blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 if (_backgroundCancel.IsCancellationRequested)
                 {
                     return;
                 }
 
-                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
-
-                _queueExistingBlobs.Enqueue(b);
+                _queueExistingBlobs.Enqueue(blobItem);
             }
         }
 

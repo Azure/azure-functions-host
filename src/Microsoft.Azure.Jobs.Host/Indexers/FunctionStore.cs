@@ -15,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Internals
             var indexer = Init(storageConnectionString, config);
             foreach (Type t in types)
             {
-                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m), t);
+                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m),t, storageConnectionString, serviceBusConnectionString);
             }
         }
         

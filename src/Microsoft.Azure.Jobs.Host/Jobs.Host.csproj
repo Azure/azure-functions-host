@@ -202,6 +202,40 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
+    <Compile Include="Bindings\BindingContext.cs" />
+    <Compile Include="Bindings\BindingData.cs" />
+    <Compile Include="Bindings\BindingProviderContext.cs" />
+    <Compile Include="Bindings\CompositeBindingProvider.cs" />
+    <Compile Include="Bindings\IArgumentBindingOfT.cs" />
+    <Compile Include="Bindings\IArgumentBinding.cs" />
+    <Compile Include="Bindings\IBinding.cs" />
+    <Compile Include="Bindings\IBindingProvider.cs" />
+    <Compile Include="Bindings\IValueProvider.cs" />
+    <Compile Include="Converters\IConverter.cs" />
+    <Compile Include="Converters\IdentityConverter.cs" />
+    <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />
+    <Compile Include="Converters\IObjectToTypeConverter.cs" />
+    <Compile Include="Converters\ITypeToObjectConverter.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageToUserTypeConverter.cs" />
+    <Compile Include="Queues\Triggers\InputConverter.cs" />
+    <Compile Include="Queues\Triggers\OutputConverter.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageToObjectConverter.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageToByteArrayConverter.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageToStringConverter.cs" />
+    <Compile Include="Queues\Triggers\QueueTriggerArgumentBinding.cs" />
+    <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
+    <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
+    <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
+    <Compile Include="Runners\IFunctionExecutor.cs" />
+    <Compile Include="Runners\IMethodInvoker.cs" />
+    <Compile Include="Triggers\CompositeTriggerBindingProvider.cs" />
+    <Compile Include="Triggers\ITriggerBindingOfT.cs" />
+    <Compile Include="Triggers\ITriggerBinding.cs" />
+    <Compile Include="Triggers\ITriggerBindingProvider.cs" />
+    <Compile Include="Triggers\ITriggerData.cs" />
+    <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
+    <Compile Include="Triggers\TriggerData.cs" />
+    <Compile Include="Converters\TypeToObjectConverter.cs" />
     <Compile Include="WebjobsShutdownWatcher.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\CloudBlobBinderProvider.cs" />
@@ -294,7 +328,7 @@
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
     <Compile Include="Runners\Worker.cs" />
     <Compile Include="Bindings\BinderProviders\StringBlobBinderProvider.cs" />
-    <Compile Include="Bindings\BindingContext.cs" />
+    <Compile Include="Bindings\BinderEx.cs" />
     <Compile Include="Bindings\BindResults\BindCleanupResult.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TableProviderTestHook.cs" />
@@ -312,7 +346,6 @@
     <Compile Include="Bindings\RuntimeBindings\BlobParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\LiteralStringParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\BindResults\NullBindResult.cs" />
-    <Compile Include="Bindings\RuntimeBindings\QueueInputParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\TableParameterRuntimeBinding.cs" />
     <Compile Include="Runners\SelfWatch.cs" />
