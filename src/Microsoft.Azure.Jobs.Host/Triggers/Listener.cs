@@ -63,13 +63,13 @@ namespace Microsoft.Azure.Jobs
                 return;
             }
 
-            var serviceBusListener = Activator.CreateInstance(type, new object[] {worker});
+            var serviceBusListener = Activator.CreateInstance(type, new object[] { worker });
 
-            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus");
-            startPollingServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] {token});
+            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus", new Type[] { typeof(CancellationToken) });
+            startPollingServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] { token });
 
-            var serviceBusMapMethod = type.GetMethod("Map");
-            mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] {trigger});
+            var serviceBusMapMethod = type.GetMethod("Map", new Type[] { typeof(ServiceBusTrigger) });
+            mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] { trigger });
         }
 
         private void AddTriggers(string scope, Trigger[] funcs)
