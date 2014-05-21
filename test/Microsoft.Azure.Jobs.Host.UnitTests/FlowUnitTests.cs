@@ -57,18 +57,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Null(func);
         }
 
-        //public static void BlobLease([BlobInput(@"daas-test-input/foo.txt")] ref int x) { }
-
-        //[Fact(Skip = "enable the test when we support ref (with proper lease)")]
-        //public void TestBlobLease()
-        //{
-        //    FunctionDefinition func = Get("BlobLease");
-        //    Assert.NotNull(func);
-
-        //    // Even though it's BlobInput, we don't listen on ref parameters (since that would be a cycle).
-        //    var staticBinding = func.Flow.Bindings[0];
-        //}
-
         // Runtime type is irrelevant for table. 
         private static void Table([Table("TableName")] object reader) { }
 

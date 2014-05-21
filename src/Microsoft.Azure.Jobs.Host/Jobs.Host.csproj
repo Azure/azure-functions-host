@@ -298,7 +298,6 @@
     <Compile Include="Bindings\BinderProviders\TableProviderTestHook.cs" />
     <Compile Include="Bindings\BinderProviders\TextWriterProvider.cs" />
     <Compile Include="Bindings\BinderProviders\BlobStreamBinderProvider.cs" />
-    <Compile Include="Bindings\RuntimeBindings\JsonByRefBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\TextReaderProvider.cs" />
     <Compile Include="Runners\Configuration.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
@@ -344,13 +343,11 @@
     <Compile Include="StringConverter.cs" />
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocation.cs" />
-    <Compile Include="Bindings\IBlobLeaseHolder.cs" />
     <Compile Include="Bindings\StaticBindings\ParameterStaticBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\ITriggerNewQueueMessage.cs" />
     <Compile Include="Bindings\RuntimeBindings\ITriggerNewBlob.cs" />
     <Compile Include="Bindings\RuntimeBindings\IRuntimeBindingInputs.cs" />
     <Compile Include="Bindings\RuntimeBindings\ParameterRuntimeBinding.cs" />
-    <Compile Include="Bindings\RuntimeBindings\BlobLeaseHolder.cs" />
     <Compile Include="Loggers\BlobIncrementalTextWriter.cs" />
     <Compile Include="Bindings\CloudBlobPath.cs" />
     <Compile Include="Bindings\ConfigurationExtensions.cs" />

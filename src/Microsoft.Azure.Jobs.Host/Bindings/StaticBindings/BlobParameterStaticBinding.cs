@@ -16,11 +16,10 @@ namespace Microsoft.Azure.Jobs
         {
             BlobClient.ValidateContainerName(this.Path.ContainerName);
 
-            bool useLease;
-            Type type = BlobParameterRuntimeBinding.GetBinderType(parameter, this.IsInput, out useLease);
+            Type type = BlobParameterRuntimeBinding.GetBinderType(parameter, this.IsInput);
             ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
 
-            BlobParameterRuntimeBinding.VerifyBinder(type, blobBinder, useLease);            
+            BlobParameterRuntimeBinding.VerifyBinder(type, blobBinder);
         }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)

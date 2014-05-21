@@ -102,7 +102,6 @@
     <Compile Include="LocalExecutionContext.cs" />
     <Compile Include="LocalFunctionLogger.cs" />
     <Compile Include="LocalFunctionTable.cs" />
-    <Compile Include="MockBlobLeaseHolder.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />

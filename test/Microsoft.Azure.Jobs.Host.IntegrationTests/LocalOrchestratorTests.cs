@@ -112,42 +112,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.Equal("abc", content);
         }
 
-        [Fact(Skip = "enable the test when we support ref (with proper lease)")]
-        public void TestBlobLease()
-        {
-            // Test that we get the blob lease, write while holding the lease. 
-            // We don't need a lease to read. 
-            BlobParameterRuntimeBinding.BlobLeaseTestHook = (_) => new MockBlobLeaseHolder();
-
-            var account = TestStorage.GetAccount();
-
-            string Container = "daas-test-input";
-            string BlobName = "counter.txt";
-
-            var blob = BlobClient.GetBlockBlob(account, Container, BlobName);
-            blob.DeleteIfExists();
-
-            var blobLease = MockBlobLeaseHolder.GetBlobSuffix(blob, ".lease");
-            blob.DeleteIfExists(); // get into a known state
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("BlobLease"); // Invoke once, will create file
-
-            string content = blob.DownloadText();
-            Assert.Equal("1", content);
-
-            string content2 = TestBlobClient.ReadBlob(account, Container, BlobName + ".x");
-            // Ensure wrote while holding the lease
-            Assert.Equal(content, content2);
-
-            lc.Call("BlobLease"); // Invoke second time. 
-
-            string content3 = blob.DownloadText();
-            Assert.Equal("2", content3);
-
-            Assert.False(BlobClient.DoesBlobExist(blobLease), "Blob lease was not released");
-        }
-
         // Test binding a parameter to the CloudStorageAccount that a function is uploaded to. 
         [Fact]
         public void TestBindCloudStorageAccount()
@@ -297,11 +261,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         private class Program
         {
-            public static void BlobLease([BlobInput(@"daas-test-input/counter.txt")]  ref int x)
-            {
-                x++;
-            }
-
             // This can be invoked explicitly (and providing parameters)
             // or it can be invoked implicitly by triggering on input. // (assuming no unbound parameters)
             public static void FuncWithNames(
