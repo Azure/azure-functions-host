@@ -60,7 +60,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             lc.Call("PageBlobMissing");
         }
 
-        [Fact]
+        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
         public void TestQueue()
         {
             var lc = new TestJobHost<Program>();
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.True(Program._QueueInvoked);
         }
 
-        [Fact]
+        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
         public void TestQueueBadName()
         {
             // indexer should notice bad queue name and fail immediately

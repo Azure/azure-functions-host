@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             TestBlobClient.DeleteContainer(account, "daas-test-input");
             TestBlobClient.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
-                        
+
             var d = new Dictionary<string, string>() {
                 { "name", "note" },
                 { "date" , "monday" },
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("BlobLease"); // Invoke once, will create file
-                        
+
             string content = blob.DownloadText();
             Assert.Equal("1", content);
 
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.Equal(content, content2);
 
             lc.Call("BlobLease"); // Invoke second time. 
-                        
+
             string content3 = blob.DownloadText();
             Assert.Equal("2", content3);
 
@@ -154,14 +154,15 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             var account = TestStorage.GetAccount();
 
-            var args = new {
+            var args = new
+            {
                 containerName = "daas-test-input",
                 blobName = "input.txt",
                 value = "abc"
             };
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncCloudStorageAccount", args);            
+            lc.Call("FuncCloudStorageAccount", args);
 
             string content = TestBlobClient.ReadBlob(account, args.containerName, args.blobName);
             Assert.Equal(args.value, content);
@@ -266,7 +267,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
 
-        [Fact]
+        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
         public void TestEnqueueMessage_UsingCloudQueue()
         {
             var account = TestStorage.GetAccount();

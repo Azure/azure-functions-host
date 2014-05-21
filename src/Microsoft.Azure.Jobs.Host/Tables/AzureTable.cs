@@ -153,7 +153,7 @@ namespace AzureTables
 
             properties["PartitionKey"] = item.PartitionKey;
             properties["RowKey"] = item.RowKey;
-            properties["Timestamp"] = item.Timestamp.DateTime.ToString();
+            properties["Timestamp"] = item.Timestamp.ToString("o", CultureInfo.InvariantCulture);
             properties["ETag"] = item.ETag;
 
             foreach (KeyValuePair<string, EntityProperty> property in item.Properties)

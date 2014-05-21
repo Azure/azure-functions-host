@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using AzureTables;
@@ -176,7 +177,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
             {
-                RunnerProgram runner = new RunnerProgram(null, null);
+                RunnerProgram runner = new RunnerProgram(TextWriter.Null, null);
 
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
