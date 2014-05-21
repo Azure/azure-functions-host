@@ -233,7 +233,6 @@
     <Compile Include="ViewModels\FunctionInstanceStatus.cs" />
     <Compile Include="ViewModels\RunFunctionViewModel.cs" />
     <Compile Include="ViewModels\FunctionParameterViewModel.cs" />
-    <Compile Include="ViewModels\FunctionTriggerViewModel.cs" />
     <Compile Include="ViewModels\SortableInvocationEntry.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
     <Compile Include="ViewModels\WebJobTypes.cs" />

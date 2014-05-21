@@ -244,7 +244,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             for (int index = 0; index < boundArguments.Length; index++)
             {
-                function.Flow.GetInputParameters();
                 ParameterStaticBinding staticBinding = function.Flow.Bindings[index];
                 string parameterName = staticBinding.Name;
                 string value;
