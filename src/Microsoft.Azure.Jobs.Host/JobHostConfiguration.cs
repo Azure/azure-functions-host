@@ -114,6 +114,10 @@ namespace Microsoft.Azure.Jobs
             {
                 return _typeLocator;
             }
+            else if (serviceType == typeof(INameResolver))
+            {
+                return _nameResolver;
+            }
             else
             {
                 return null;
