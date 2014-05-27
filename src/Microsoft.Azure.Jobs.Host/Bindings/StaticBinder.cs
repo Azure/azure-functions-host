@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs
             MethodInfo method = (from t in types
                 where t != null
                 select t.GetMethod("Bind",
-                    BindingFlags.NonPublic | BindingFlags.Instance, null,
+                    BindingFlags.NonPublic | BindingFlags.Static, null,
                     new Type[]
                     {
                         attr.GetType(), typeof (ParameterInfo)
