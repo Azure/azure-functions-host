@@ -31,7 +31,9 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
             _cancelToken = new CancellationTokenSource();
 
             _startBlock = MeasurementBlock.BeginNew(0, HostStartMetric);
-            JobHost host = new JobHost(connectionString);
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration(connectionString);
+            JobHost host = new JobHost(hostConfig);
             host.RunAndBlock(_cancelToken.Token);
         }
 
