@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs
             MethodInfo method = (from t in types
                 where t != null
                 select t.GetMethod("Bind",
-                    BindingFlags.NonPublic | BindingFlags.Static, null,
+                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static, null,
                     new Type[]
                     {
                         attr.GetType(), typeof (ParameterInfo)
@@ -54,7 +54,9 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                var result = (ParameterStaticBinding)method.Invoke(this, new object[] { attr, parameter });
+                var result = (ParameterStaticBinding)method.Invoke(
+                    method.IsStatic ? null : this, 
+                    new object[] { attr, parameter });
                 result.Name = parameter.Name;
                 return result;
             }
@@ -121,7 +123,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)
+        private ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)
         {
             string queueName = Resolve(attr.QueueName);
             if (queueName == null)
@@ -136,7 +138,7 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        ParameterStaticBinding Bind(QueueInputAttribute attr, ParameterInfo parameter)
+        private ParameterStaticBinding Bind(QueueInputAttribute attr, ParameterInfo parameter)
         {
             string queueName = Resolve(attr.QueueName);
             if (queueName == null)
