@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -50,33 +51,16 @@ namespace Microsoft.Azure.Jobs
                 return TriggerRaw.NewQueue(null, queueTriggerBinding.QueueName);
             }
 
-            var trigger = func.Trigger;
+            BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
+
+            if (blobTriggerBinding != null)
+            {
+                return TriggerRaw.NewBlob(null, blobTriggerBinding.BlobPath, GetOutputPath(func));
+            }
 
             var flow = func.Flow;
             foreach (var input in flow.Bindings)
             {
-                if (trigger.ListenOnBlobs)
-                {
-                    var blobBinding = input as BlobParameterStaticBinding;
-                    if (blobBinding != null)
-                    {
-                        if (!blobBinding.IsInput)
-                        {
-                            continue;
-                        }
-                        CloudBlobPath path = blobBinding.Path;
-                        string containerName = path.ContainerName;
-
-                        // Check if it's on the ignore list
-                        var account = func.GetAccount();
-
-                        CloudBlobClient clientBlob = account.CreateCloudBlobClient();
-                        CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
-
-                        return TriggerRaw.NewBlob(null, path.ToString(), GetOutputPath(func));                        
-                    }
-                }
-
                 var serviceBusTrigger = _tryGetServiceBusTriggerRaw(input);
                 if (serviceBusTrigger != null)
                 {

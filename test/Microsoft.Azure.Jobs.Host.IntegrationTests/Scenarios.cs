@@ -146,7 +146,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void AddToQueue(
-            [BlobInput(@"daas-test-input/{name}.csv")] TextReader values, 
+            [BlobTrigger(@"daas-test-input/{name}.csv")] TextReader values, 
             [QueueOutput] out Payload queueTest)
         {
             string content = values.ReadToEnd();
@@ -193,7 +193,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     class Program
     {
         public static void Func1(
-            [BlobInput(@"daas-test-input/{name}.1")] TextReader values,
+            [BlobTrigger(@"daas-test-input/{name}.1")] TextReader values,
             string name,
             [BlobOutput(@"daas-test-input/{name}.2")] TextWriter output)
         {
@@ -201,7 +201,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void Func2(
-            [BlobInput(@"daas-test-input/{name}.2")] TextReader values,            
+            [BlobTrigger(@"daas-test-input/{name}.2")] TextReader values,            
             [BlobOutput(@"daas-test-input/{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();

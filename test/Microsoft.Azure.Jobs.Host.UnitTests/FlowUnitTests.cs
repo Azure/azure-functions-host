@@ -1,6 +1,8 @@
 ﻿using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.WindowsAzure.Storage;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -14,22 +16,23 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(m);
 
-            Indexer idx = new Indexer(null, nameResolver);
-            FunctionDefinition func = idx.GetFunctionDefinition(m, null);
+            Indexer idx = new Indexer(null, nameResolver, null);
+            FunctionDefinition func = idx.GetFunctionDefinition(m, new IndexTypeContext
+            {
+                StorageAccount = CloudStorageAccount.DevelopmentStorageAccount
+            });
             return func;
         }
 
-        [NoAutomaticTrigger]
         private static void NoAutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
 
         [Fact]
         public void TestNoAutoTrigger1()
         {
             FunctionDefinition func = Get("NoAutoTrigger1");
-            Assert.Equal(false, func.Trigger.ListenOnBlobs);
+            Assert.Null(func.TriggerBinding);
         }
 
-        [NoAutomaticTrigger]
         private static void NameResolver([BlobInput(@"input/%name%")] TextReader inputs) { }
 
         [Fact]
@@ -43,29 +46,29 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal(@"input/VALUE", ((BlobParameterStaticBinding)bindings[0]).Path.ToString());
         }
 
-        public static void AutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
-                   
+        public static void AutoTrigger1([BlobTrigger(@"daas-test-input/{name}.csv")] TextReader inputs) { }
+
         [Fact]
-        public void TestAutoTrigger1()        
+        public void TestAutoTrigger1()
         {
             FunctionDefinition func = Get("AutoTrigger1");
-            Assert.Equal(true, func.Trigger.ListenOnBlobs);
+            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding);
         }
 
         [NoAutomaticTrigger]
         public static void NoAutoTrigger2(int x, int y) { }
-                   
+
         [Fact]
         public void TestNoAutoTrigger2()
         {
             FunctionDefinition func = Get("NoAutoTrigger2");
-            Assert.Equal(false, func.Trigger.ListenOnBlobs);
+            Assert.Null(func.TriggerBinding);
         }
 
         // Nothing about this method that is indexable.
         // No function (no trigger)
         public static void NoIndex(int x, int y) { }
-        
+
         [Fact]
         public void TestNoIndex()
         {
@@ -84,7 +87,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var flows = func.Flow.Bindings;
             Assert.Equal(1, flows.Length);
 
-            var t = (TableParameterStaticBinding ) flows[0];
+            var t = (TableParameterStaticBinding)flows[0];
             Assert.Equal("TableName", t.TableName);
             Assert.Equal("reader", t.Name);
         }
@@ -109,13 +112,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public static void QueueOutput([QueueOutput] out int inputQueue)
         {
             inputQueue = 0;
-        }                  
+        }
 
         [Fact]
         public void TestQueueOutput()
         {
             FunctionDefinition func = Get("QueueOutput");
-                        
+
             var flows = func.Flow.Bindings;
             Assert.Equal(1, flows.Length);
 
@@ -131,9 +134,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void TestDescriptionOnly()
         {
             FunctionDefinition func = Get("DescriptionOnly");
-            
-            Assert.Equal(false, func.Trigger.ListenOnBlobs); // no blobs
-            
+
+            Assert.Null(func.TriggerBinding); // no blobs
+
             var flows = func.Flow.Bindings;
             Assert.Equal(1, flows.Length);
 
@@ -144,44 +147,40 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
         // Has an unbound parameter, so this will require an explicit invoke.  
         // Trigger: NoListener, explicit
-        public static void HasBlobAndUnboundParameter([BlobInput("container")] Stream input, int unbound) { }
-        
+        public static void HasBlobAndUnboundParameter([BlobTrigger("container")] Stream input, int unbound) { }
+
         [Fact]
         public void TestHasBlobAndUnboundParameter()
         {
             FunctionDefinition func = Get("HasBlobAndUnboundParameter");
 
-            Assert.Equal(true, func.Trigger.ListenOnBlobs); // no blobs
+            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // no blobs
+            Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
 
             var flows = func.Flow.Bindings;
             Assert.Equal(2, flows.Length);
 
-            var t0 = (BlobParameterStaticBinding)flows[0];
-            Assert.Equal("container", t0.Path.ContainerName);
-                        
             var t1 = (InvokeParameterStaticBinding)flows[1];
             Assert.Equal("unbound", t1.Name);
         }
 
         // Both parameters are bound. 
         // Trigger: Automatic listener
-        public static void HasBlobAndBoundParameter([BlobInput(@"container/{bound}")] Stream input, int bound) { }
+        public static void HasBlobAndBoundParameter([BlobTrigger(@"container/{bound}")] Stream input, int bound) { }
 
         [Fact]
         public void TestHasBlobAndBoundParameter()
         {
             FunctionDefinition func = Get("HasBlobAndBoundParameter");
 
-            Assert.Equal(true, func.Trigger.ListenOnBlobs); // all parameters are bound
+            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // all parameters are bound
+            Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
 
             var flows = func.Flow.Bindings;
             Assert.Equal(2, flows.Length);
 
-            var t0 = (BlobParameterStaticBinding)flows[0];
-            Assert.Equal("container", t0.Path.ContainerName);
-
-            var t1 = (NameParameterStaticBinding)flows[1];
-            Assert.Equal("bound", t1.Name);
-        }        
+            var t0 = (NameParameterStaticBinding)flows[1];
+            Assert.Equal("bound", t0.Name);
+        }
     }
 }

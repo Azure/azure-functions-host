@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
         {
             LocalFunctionTable store = new LocalFunctionTable(account);
-            Indexer i = new Indexer(store, config.NameResolver);
+            Indexer i = new Indexer(store, config.NameResolver, null);
 
             IndexTypeContext ctx = new IndexTypeContext { Config = config };
             i.IndexMethod(store.OnApplyLocationInfo, method, ctx);

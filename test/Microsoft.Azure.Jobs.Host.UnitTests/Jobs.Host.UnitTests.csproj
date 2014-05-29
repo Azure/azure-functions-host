@@ -88,7 +88,6 @@
     <Compile Include="Bindings\CloudBlobPathTests.cs" />
     <Compile Include="Bindings\BindingDataTests.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
-    <Compile Include="Bindings\StaticBindings\BlobParameterStaticBindingTests.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
     <Compile Include="ExecutionInstanceLogEntitySerializer.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />

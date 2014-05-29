@@ -33,7 +33,7 @@ namespace Microsoft.Azure.Jobs
             string shortName = System.IO.Path.GetFileName(pathUserAttribute);
             if (String.Equals(shortName, Indexer.AzureJobsFileName, StringComparison.OrdinalIgnoreCase))
             {
-                Assembly hostAssembly = typeof(BlobInputAttribute).Assembly;
+                Assembly hostAssembly = typeof(QueueTriggerAttribute).Assembly;
                 if (attrAssembly != hostAssembly)
                 {
                     // Throw an explicit error on mismatch.
@@ -81,16 +81,11 @@ namespace Microsoft.Azure.Jobs
                 throw new InvalidOperationException("Input blob parameter can't have [Ref] keyword.");
             }
 
-            // Treat ByRef as output. 
-            // - for blob listening: if it were input, this would cause a cycle (since we write to the input)
-            // - it's output since we're writing to it. So we do need to stamp it with a function guid.
-            bool isInput = !isRefKeyword;
-
             var path = new CloudBlobPath(Resolve(attr.BlobPath));
             return new BlobParameterStaticBinding
             {
                 Path = path,
-                IsInput = isInput
+                IsInput = false
             };
         }
 

@@ -140,6 +140,8 @@ namespace Microsoft.Azure.Jobs
                             var ti2 = ti.GetGenericTypeDefinition();
                             if (ti2 == typeof(ICloudBlobStreamBinder<>))
                             {
+                                config.CloudBlobStreamBinderTypes.Add(type);
+
                                 var tyArg = ti.GetGenericArguments()[0];
                                 var tyBinder = typeof(SimpleBinderProvider<>).MakeGenericType(tyArg);
 

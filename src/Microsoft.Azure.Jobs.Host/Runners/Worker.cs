@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
@@ -360,6 +361,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         private static IDictionary<string, string> GetNameParameters(IReadOnlyDictionary<string, object> bindingData)
         {
+            if (bindingData == null)
+            {
+                return null;
+            }
+
             Dictionary<string, string> nameParameters = new Dictionary<string, string>();
 
             if (bindingData != null)
@@ -377,11 +383,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, ICloudBlob blobInput)
         {
             // blobInput was the one that triggered it.
-            // Get the path from the first blob input parameter.
-            var flow = func.Flow;
-            CloudBlobPath firstInput = flow.Bindings.OfType<BlobParameterStaticBinding>().Where(b => b.IsInput).Select(b => b.Path).FirstOrDefault();
+            BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
+            ITriggerData triggerData = blobTriggerBinding.Bind(blobInput);
 
-            var p = firstInput.Match(new CloudBlobPath(blobInput));
+            // Get the binding data from the blob input parameter.
+            IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
+
             if (p == null)
             {
                 // No match.
@@ -400,6 +407,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 BlobPath = new CloudBlobPath(blobInput),
                 ParentGuid = parentGuid
             };
+
+            instance.Parameters = new Dictionary<string, IValueProvider> {
+                { func.TriggerParameterName, triggerData.ValueProvider }
+            };
+
             return instance;
         }
 

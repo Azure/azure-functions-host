@@ -24,28 +24,7 @@ namespace Microsoft.Azure.Jobs
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)
         {
-            // Bind to a blob container
-            var path = this.Path;
-
-            if (path.BlobName == null)
-            {
-                // Just a container match. Match to the input blob.
-                ITriggerNewBlob trigger = inputs as ITriggerNewBlob;
-
-                if (trigger == null)
-                {
-                    throw new InvalidOperationException(
-                        "Direct calls are not supported for BlobInput methods bound only to a container name.");
-                }
-
-                path = new CloudBlobPath(trigger.BlobInput);
-            }
-            else
-            {
-                path = path.ApplyNames(inputs.NameParameters);
-            }
-
-
+            CloudBlobPath path = Path.ApplyNames(inputs.NameParameters);
             return Bind(inputs, path);            
         }
 

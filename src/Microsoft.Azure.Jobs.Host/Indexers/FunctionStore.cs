@@ -22,9 +22,7 @@ namespace Microsoft.Azure.Jobs.Internals
         private Indexer Init(string storageConnectionString, IConfiguration config)
         {
             _store = new IndexInMemory();
-            var indexer = new Indexer(_store, config.NameResolver);
-            indexer.ConfigOverride = config;
-            return indexer;
+            return new Indexer(_store, config.NameResolver, config);
         }
 
         private FunctionLocation OnApplyLocationInfo(string accountConnectionString, string serviceBusConnectionString, MethodInfo method)

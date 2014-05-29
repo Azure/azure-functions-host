@@ -267,7 +267,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 string name, string date,  // used by input
                 string unbound, // not used by in/out
                 string target, // only used by output
-                [BlobInput(@"daas-test-input/{name}-{date}.csv")] TextReader values,
+                [BlobTrigger(@"daas-test-input/{name}-{date}.csv")] TextReader values,
                 [BlobOutput(@"daas-test-input/{target}.csv")] TextWriter output
                 )
             {
@@ -282,14 +282,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void BindBlobToString(
-                [BlobInput(@"daas-test-input/blob.txt")] string blobIn,
+                [BlobTrigger(@"daas-test-input/blob.txt")] string blobIn,
                 [BlobOutput(@"daas-test-input/blob.out")] out string blobOut
                 )
             {
                 blobOut = blobIn;
             }
 
-            [NoAutomaticTrigger]
             public static void FuncWithBlob(
                 [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
                 [BlobInput(@"daas-test-input/blob.csv")] Stream stream
@@ -332,7 +331,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            [NoAutomaticTrigger]
             public static void FuncWithMissingBlob(
                 [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
                 [BlobInput(@"daas-test-input/blob.csv")] Stream stream,
@@ -344,14 +342,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Assert.Null(reader);
             }
 
-            [NoAutomaticTrigger]
             public static void ParseArgument(int x, [BlobOutput(@"daas-test-input/out.csv")] TextWriter output)
             {
                 output.Write(x + 1);
             }
 
             public static void Func1(
-                [BlobInput(@"daas-test-input/input.csv")] TextReader values,
+                [BlobTrigger(@"daas-test-input/input.csv")] TextReader values,
                 [BlobOutput(@"daas-test-input/output.csv")] TextWriter output)
             {
                 string content = values.ReadToEnd();

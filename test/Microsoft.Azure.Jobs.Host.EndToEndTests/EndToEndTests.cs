@@ -72,7 +72,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// - blob name pattern binding
         /// </summary>
         public static void BlobToQueue(
-            [BlobInput(ContainerName + @"/{name}")] CustomObject input,
+            [BlobTrigger(ContainerName + @"/{name}")] CustomObject input,
             string name,
             [QueueOutput(TestQueueName)] out CustomObject output)
         {

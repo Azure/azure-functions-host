@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void AssemblyReferences_InJobsAssembly()
         {
             // The DLL containing the binding attributes should be truly minimal and have no extra dependencies. 
-            var names = GetAssemblyReferences(typeof(BlobInputAttribute).Assembly);
+            var names = GetAssemblyReferences(typeof(QueueTriggerAttribute).Assembly);
 
             Assert.Equal(1, names.Count);
             Assert.Equal("mscorlib", names[0]);
@@ -42,6 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "ServiceBusAttribute",
                 "BlobInputAttribute",
                 "BlobOutputAttribute",
+                "BlobTriggerAttribute",
                 "DescriptionAttribute",
                 "QueueTriggerAttribute",
                 "QueueOutputAttribute",

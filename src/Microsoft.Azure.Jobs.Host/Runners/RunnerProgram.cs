@@ -211,7 +211,7 @@ namespace Microsoft.Azure.Jobs
                 {
                     if (valueProvider != null)
                     {
-                        result = new BindResult { Result = valueProvider.GetValue() };
+                        result = new ValueProviderBindResult(valueProvider);
                     }
                     else
                     {
@@ -236,25 +236,12 @@ namespace Microsoft.Azure.Jobs
         {
             int len = parameters.Count;
 
-            INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
-
-
-            //IBinderEx bindingContext = new BinderEx(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
-
             BindResult[] binds = new BindResult[len];
             ParameterInfo[] ps = m.GetParameters();
             for (int i = 0; i < len; i++)
             {
                 var p = ps[i];
-                try
-                {
-                    binds[i] = parameters[p.Name];//.Bind(config, bindingContext, p);
-                }
-                catch (Exception e)
-                {
-                    string msg = string.Format("Error while binding parameter #{0} '{1}':{2}", i, p, e.Message);
-                    binds[i] = new NullBindResult(msg) { IsErrorResult = true };
-                }
+                binds[i] = parameters[p.Name];
             }
 
             _consoleOutput.WriteLine("Parameters bound. Invoking user function.");
@@ -441,6 +428,36 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 return ((int)x.PostActionOrder).CompareTo((int)y.PostActionOrder);
+            }
+        }
+
+        private class ValueProviderBindResult : BindResult
+        {
+            private readonly IValueProvider _valueProvider;
+            private readonly IWatchable _watchable;
+            private readonly IDisposable _disposable;
+
+            public ValueProviderBindResult(IValueProvider valueProvider)
+            {
+                _valueProvider = valueProvider;
+                _watchable = valueProvider as IWatchable;
+                _disposable = valueProvider as IDisposable;
+                Result = valueProvider.GetValue();
+            }
+
+            public override ISelfWatch Watcher
+            {
+                get { return _watchable != null ? _watchable.Watcher : null; }
+            }
+
+            public override void OnPostAction()
+            {
+                base.OnPostAction();
+
+                if (_disposable != null)
+                {
+                    _disposable.Dispose();
+                }
             }
         }
     }

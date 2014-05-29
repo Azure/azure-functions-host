@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 {
     internal class InputConverter<TOutput> : ITypeToObjectConverter<CloudQueueMessage>
     {
-        readonly IConverter<CloudQueueMessage, TOutput> _innerConverter;
+        private readonly IConverter<CloudQueueMessage, TOutput> _innerConverter;
 
         public InputConverter(IConverter<CloudQueueMessage, TOutput> innerConverter)
         {

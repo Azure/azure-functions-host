@@ -212,13 +212,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void IBlobMissing(
-                [BlobInput("daas-test/missing")] ICloudBlob missing)
+                [BlobTrigger("daas-test/missing")] ICloudBlob missing)
             {
                 Assert.Null(missing);
             }
 
             public static void IBlob(
-                [BlobInput("daas-test/page")] ICloudBlob page,
+                [BlobTrigger("daas-test/page")] ICloudBlob page,
                 [BlobInput("daas-test/block")] ICloudBlob block)
             {
                 Assert.NotNull(page);
@@ -229,26 +229,26 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void BlockBlob(
-               [BlobInput("daas-test/block")] CloudBlockBlob block)
+               [BlobTrigger("daas-test/block")] CloudBlockBlob block)
             {
                 Assert.Equal(BlobType.BlockBlob, block.BlobType);
             }
 
             public static void PageBlob(
-                [BlobInput("daas-test/page")] CloudPageBlob page)
+                [BlobTrigger("daas-test/page")] CloudPageBlob page)
             {
                 Assert.Equal(BlobType.PageBlob, page.BlobType);
             }
 
 
             public static void BlockBlobMissing(
-               [BlobInput("daas-test/missing")] CloudBlockBlob block)
+               [BlobTrigger("daas-test/missing")] CloudBlockBlob block)
             {
                 Assert.Null(block);
             }
 
             public static void PageBlobMissing(
-                [BlobInput("daas-test/page")] CloudPageBlob page)
+                [BlobTrigger("daas-test/page")] CloudPageBlob page)
             {
                 Assert.Null(page);
             }

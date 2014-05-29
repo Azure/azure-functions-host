@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -6,8 +7,17 @@ namespace Microsoft.Azure.Jobs
     /// Represents an attribute that binds a parameter to an Azure Queue message, causing the method to run when a
     /// message is enqueued.
     /// </summary>
-    /// <remarks>The method parameter type can be a user-defined type, or a string, object, or byte array.</remarks>
+    /// <remarks>
+    /// The method parameter type can one of the following:
+    /// <list type="bullet">
+    /// <item><description>CloudQueueMessage</description></item>
+    /// <item><description><see cref="string"/></description></item>
+    /// <item><description><see cref="T:byte[]"/></description></item>
+    /// <item><description>A user-defined type (serialized as JSON)</description></item>
+    /// </list>
+    /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
+    [DebuggerDisplay("{QueueName,nq}")]
     public sealed class QueueTriggerAttribute : Attribute
     {
         private readonly string _queueName;

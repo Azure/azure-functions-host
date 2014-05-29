@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 {
-    class CloudQueueMessageToUserTypeConverter : ITypeToObjectConverter<CloudQueueMessage>
+    internal class CloudQueueMessageToUserTypeConverter : ITypeToObjectConverter<CloudQueueMessage>
     {
         private Type _parameterType;
 

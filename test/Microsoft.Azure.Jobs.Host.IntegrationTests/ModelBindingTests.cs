@@ -127,7 +127,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
 
             public static void Func(
-                [BlobInput(@"daas-test-input/input.txt")] Model input,
+                [BlobTrigger(@"daas-test-input/input.txt")] Model input,
                 [BlobOutput(@"daas-test-input/output.txt")] out Model output)
             {
                 output = new Model { Value = "*" + input.Value + "*" };

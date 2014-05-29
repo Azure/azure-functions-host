@@ -12,10 +12,6 @@ namespace Microsoft.Azure.Jobs
         // Where the function lives. Location is effectively the row key.
         public FunctionLocation Location { get; set; }
 
-        // What causes the function to get triggered.
-        // This is used by the orchestrator service.
-        public FunctionTrigger Trigger { get; set; }
-
         // How to bind the parameters (old style).
         public FunctionFlow Flow { get; set; }
 

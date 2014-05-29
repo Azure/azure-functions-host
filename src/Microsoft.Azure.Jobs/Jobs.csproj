@@ -50,6 +50,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="BlobInputAttribute.cs" />
     <Compile Include="BlobOutputAttribute.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />

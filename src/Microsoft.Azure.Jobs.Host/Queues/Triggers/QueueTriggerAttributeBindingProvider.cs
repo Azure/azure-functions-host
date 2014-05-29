@@ -9,12 +9,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 {
     internal class QueueTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-        static readonly ITypeToObjectConverter<CloudQueueMessage>[] _converters = new ITypeToObjectConverter<CloudQueueMessage>[]
+        private static readonly ITypeToObjectConverter<CloudQueueMessage>[] _converters = new ITypeToObjectConverter<CloudQueueMessage>[]
         {
             new InputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
             new InputConverter<string>(new CloudQueueMessageToStringConverter()),
             new InputConverter<byte[]>(new CloudQueueMessageToByteArrayConverter()),
-            new InputConverter<object>(new CloudQueueMessageToObjectConverter()),
             new CloudQueueMessageToUserTypeConverter()
         };
 
@@ -52,7 +51,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return new QueueTriggerBinding(argumentBinding, queueName);
         }
 
-        string NormalizeAndValidate(string queueName)
+        private static string NormalizeAndValidate(string queueName)
         {
             queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
             QueueClient.ValidateQueueName(queueName);

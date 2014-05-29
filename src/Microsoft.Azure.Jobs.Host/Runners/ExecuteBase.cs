@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
@@ -162,7 +163,20 @@ namespace Microsoft.Azure.Jobs
             {
                 foreach (KeyValuePair<string, IValueProvider> parameter in parameters)
                 {
-                    arguments.Add(parameter.Key, new FunctionArgument { Value = parameter.Value.ToInvokeString() });
+                    IValueProvider valueProvider = parameter.Value;
+
+                    FunctionArgument argument = new FunctionArgument { Value = valueProvider.ToInvokeString() };
+
+                    // TODO: Remove the type checks here. Instead, pass in the bindings, not just the value providers,
+                    // and include in the protocol data the full parameter descriptor from the binding.
+                    if (valueProvider is BlobValueProvider || valueProvider is BlobWatchableValueProvider
+                        || valueProvider is BlobWatchableDisposableValueProvider)
+                    {
+                        argument.IsBlob = true;
+                        argument.IsBlobInput = true;
+                    }
+
+                    arguments.Add(parameter.Key, argument);
                 }
             }
 

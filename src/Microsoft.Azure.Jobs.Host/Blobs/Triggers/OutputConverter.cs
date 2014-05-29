@@ -1,19 +1,19 @@
 ﻿using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
+namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<CloudQueueMessage>
+    internal class OutputConverter<TInput> : IObjectToTypeConverter<ICloudBlob>
         where TInput : class
     {
-        private readonly IConverter<TInput, CloudQueueMessage> _innerConverter;
+        private readonly IConverter<TInput, ICloudBlob> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, CloudQueueMessage> innerConverter)
+        public OutputConverter(IConverter<TInput, ICloudBlob> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out CloudQueueMessage output)
+        public bool TryConvert(object input, out ICloudBlob output)
         {
             TInput typedInput = input as TInput;
 

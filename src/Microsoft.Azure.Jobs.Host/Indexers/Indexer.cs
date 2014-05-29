@@ -5,8 +5,8 @@ using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -32,19 +32,20 @@ namespace Microsoft.Azure.Jobs
                 new Sdk1CloudStorageAccountStaticBindingProvider()
             };
 
-        private static readonly ITriggerBindingProvider _triggerBindingProvider = new QueueTriggerAttributeBindingProvider();
-
         private static readonly IBindingProvider _bindingProvider = new CompositeBindingProvider();
 
         private readonly IFunctionTable _functionTable;
-
         private readonly INameResolver _nameResolver;
+        private readonly IConfiguration _configuration;
+        private readonly ITriggerBindingProvider _triggerBindingProvider;
 
         // Account for where index lives
-        public Indexer(IFunctionTable functionTable, INameResolver nameResolver)
+        public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IConfiguration configuration)
         {
             _functionTable = functionTable;
             _nameResolver = nameResolver;
+            _configuration = configuration;
+            _triggerBindingProvider = CreateTriggerBindingProvider(configuration);
         }
 
         public static string AzureJobsFileName
@@ -52,8 +53,23 @@ namespace Microsoft.Azure.Jobs
             get { return _azureJobsFileName; }
         }
 
-        // If this config is set, use it. 
-        public IConfiguration ConfigOverride { get; set; }
+        private static ITriggerBindingProvider CreateTriggerBindingProvider(IConfiguration configuration)
+        {
+            IEnumerable<Type> cloudBlobStreamBinderTypes;
+
+            if (configuration != null)
+            {
+                cloudBlobStreamBinderTypes = configuration.CloudBlobStreamBinderTypes;
+            }
+            else
+            {
+                cloudBlobStreamBinderTypes = null;
+            }
+
+            return new CompositeTriggerBindingProvider(
+                new QueueTriggerAttributeBindingProvider(),
+                new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
+        }
 
         private static MethodInfo ResolveMethod(Type type, string name)
         {
@@ -110,27 +126,32 @@ namespace Microsoft.Azure.Jobs
         // Register any functions provided by code-configuration.
         private IndexTypeContext InvokeInitMethodOnType(Type type, CloudStorageAccount storageAccount, string serviceBusConnectionString, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
-            if (ConfigOverride != null)
+            IConfiguration configuration;
+
+            if (_configuration != null)
             {
-                return new IndexTypeContext
-                {
-                    Config = ConfigOverride,
-                    StorageAccount = storageAccount,
-                    ServiceBusConnectionString = serviceBusConnectionString
-                };
+                configuration = _configuration;
             }
-
-            var config = new Configuration();
-
-            RunnerProgram.AddDefaultBinders(config);
-            RunnerProgram.ApplyHooks(type, config);
+            else
+            {
+                // Test-only shortcut
+                configuration = CreateTestConfiguration(type);
+            }
 
             return new IndexTypeContext
             {
-                Config = config,
+                Config = configuration,
                 StorageAccount = storageAccount,
                 ServiceBusConnectionString = serviceBusConnectionString
             };
+        }
+
+        private IConfiguration CreateTestConfiguration(Type type)
+        {
+            var config = new Configuration();
+            RunnerProgram.AddDefaultBinders(config);
+            RunnerProgram.ApplyHooks(type, config);
+            return config;
         }
 
         // Helper to convert delegates.
@@ -178,14 +199,14 @@ namespace Microsoft.Azure.Jobs
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
-        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr)
+        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr, IEnumerable<string> triggerParameterNames)
         {
             ParameterInfo[] ps = descr.Parameters;
 
             ParameterStaticBinding[] flows = Array.ConvertAll(ps, BindParameter);
 
             // Populate input names
-            HashSet<string> paramNames = new HashSet<string>();
+            HashSet<string> paramNames = new HashSet<string>(triggerParameterNames);
             foreach (var flow in flows)
             {
                 if (flow != null)
@@ -254,7 +275,7 @@ namespace Microsoft.Azure.Jobs
         // Test hook. 
         static public FunctionDefinition GetFunctionDefinitionTest(MethodInfo method, IndexTypeContext context)
         {
-            Indexer idx = new Indexer(null, null);
+            Indexer idx = new Indexer(null, null, null);
             return idx.GetFunctionDefinition(method, context);
         }
 
@@ -288,11 +309,11 @@ namespace Microsoft.Azure.Jobs
 
             string description = null;
 
-            NoAutomaticTriggerAttribute triggerAttr = null;
+            NoAutomaticTriggerAttribute noAutomaticTrigger = null;
 
             foreach (var attr in descr.MethodAttributes)
             {
-                triggerAttr = triggerAttr ?? (attr as NoAutomaticTriggerAttribute);
+                noAutomaticTrigger = noAutomaticTrigger ?? (attr as NoAutomaticTriggerAttribute);
 
                 var descriptionAttr = attr as DescriptionAttribute;
                 if (descriptionAttr != null)
@@ -303,8 +324,19 @@ namespace Microsoft.Azure.Jobs
 
             // $$$ Lots of other static checks to add.
 
+            IEnumerable<string> triggerParameterNames;
+
+            if (index.TriggerBinding != null && index.TriggerBinding.BindingDataContract != null)
+            {
+                triggerParameterNames = index.TriggerBinding.BindingDataContract.Keys;
+            }
+            else
+            {
+                triggerParameterNames = Enumerable.Empty<string>();
+            }
+
             // Look at parameters.
-            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr);
+            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr, triggerParameterNames);
 
             bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
             AddInvokeBindings(descr, parameterBindings);
@@ -313,51 +345,23 @@ namespace Microsoft.Azure.Jobs
             // We now have all the explicitly provided information. Put it together.
             //
 
-            // Get trigger:
-            // - (default) listen on blobs. Use this if there are flow attributes present.
-            // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
-
-            FunctionTrigger trigger;
-
-            if (index.TriggerBinding != null)
+            if (index.TriggerBinding == null && noAutomaticTrigger == null && !hasAnyBindings && description == null)
             {
-                trigger = new FunctionTrigger();
-            }
-            else if (triggerAttr != null)
-            {
-                // Explicit [NoTrigger] attribute.
-                trigger = new FunctionTrigger(); // no triggers
-            }
-            else if (hasAnyBindings)
-            {
-                // Can't tell the difference between unbound parameters and modelbound parameters.
-                // Assume any unknonw parameters will be solved with model binding, and that if the user didn't
-                // want an invoke, they would have used the [NoTrigger] attribute.
-                trigger = new FunctionTrigger { ListenOnBlobs = true };
-#if false
-
-                // Unbound parameters mean this can't be automatically invoked.
-                // The only reason we listen on blob is for automatic invoke.
-                trigger = new FunctionTrigger { ListenOnBlobs = !hasUnboundParams };
-#endif
-            }
-            else if (description != null)
-            {
-                // Only [Description] attribute, no other binding information.
-                trigger = new FunctionTrigger();
-            }
-            else
-            {
-                // Still no trigger (not even automatic), then ignore this function completely.
+                // No trigger, binding, NoAutomaticTrigger attribute or Description attribute.
+                // Ignore this function completely.
                 return null;
             }
 
-            index.Trigger = trigger;
             index.Flow = new FunctionFlow { Bindings = parameterBindings };
 
-            if (context != null)
+            if (context.Config != null)
             {
                 ValidateParameters(parameterBindings, descr.Parameters, context.Config);
+            }
+
+            if (index.TriggerBinding != null && noAutomaticTrigger != null)
+            {
+                throw new InvalidOperationException("Can't have a trigger and NoAutomaticTrigger on the same function.");
             }
 
             Validate(index);
@@ -365,7 +369,7 @@ namespace Microsoft.Azure.Jobs
             return index;
         }
 
-        private static FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context)
+        private FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context)
         {
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
@@ -375,7 +379,7 @@ namespace Microsoft.Azure.Jobs
                 ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(new TriggerBindingProviderContext
                 {
                     Parameter = parameter,
-                    NameResolver = context != null ? context.Config.NameResolver : null,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : null,
                     StorageAccount = context != null ? context.StorageAccount : null,
                     ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
                 });
@@ -464,11 +468,6 @@ namespace Microsoft.Azure.Jobs
         private static void Validate(FunctionDefinition index)
         {
             // $$$ This should share policy code with Orchestrator where it builds the listening map. 
-
-            if (index.TriggerBinding != null && index.Trigger.ListenOnBlobs)
-            {
-                throw new InvalidOperationException("Can't have a trigger and NoAutomaticTrigger on the same function.");
-            }
 
             // Throw on multiple ConsoleOutputs
             if (index.Flow.Bindings.OfType<ConsoleOutputParameterStaticBinding>().Count() > 1)
