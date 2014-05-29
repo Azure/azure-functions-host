@@ -92,7 +92,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// - table writing
         /// </summary>
         public static void QueueToTable(
-            [QueueTrigger("e2equeue")] CustomObject e2equeue,
+            [QueueTrigger(TestQueueName)] CustomObject e2equeue,
             [Table(TableName)] IDictionary<Tuple<string, string>, CustomObject> table,
             [QueueOutput] out string e2edone)
         {
