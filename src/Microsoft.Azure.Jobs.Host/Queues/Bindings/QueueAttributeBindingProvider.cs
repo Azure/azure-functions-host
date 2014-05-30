@@ -7,13 +7,13 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
     internal class QueueAttributeBindingProvider : IBindingProvider
     {
-        private static readonly IQueueArgumentBindingProvider _innerProvider = new CompositeQueueArgumentBindingProvider(
+        private static readonly IQueueArgumentBindingProvider _innerProvider = new CompositeArgumentBindingProvider(
             new CloudQueueArgumentBindingProvider(),
             new CloudQueueMessageArgumentBindingProvider(),
-            new StringQueueArgumentBindingProvider(),
-            new ByteArrayQueueArgumentBindingProvider(),
-            new CollectionQueueArgumentBindingProvider(),
-            new UserTypeQueueArgumentBindingProvider()); // Must come after collection provider (IEnumerable checks).
+            new StringArgumentBindingProvider(),
+            new ByteArrayArgumentBindingProvider(),
+            new CollectionArgumentBindingProvider(),
+            new UserTypeArgumentBindingProvider()); // Must come after collection provider (IEnumerable checks).
 
         public IBinding TryCreate(BindingProviderContext context)
         {

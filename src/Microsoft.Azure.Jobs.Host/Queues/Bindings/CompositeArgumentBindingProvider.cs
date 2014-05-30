@@ -6,11 +6,11 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class CompositeQueueArgumentBindingProvider : IQueueArgumentBindingProvider
+    internal class CompositeArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         private readonly IEnumerable<IQueueArgumentBindingProvider> _providers;
 
-        public CompositeQueueArgumentBindingProvider(params IQueueArgumentBindingProvider[] providers)
+        public CompositeArgumentBindingProvider(params IQueueArgumentBindingProvider[] providers)
         {
             _providers = providers;
         }

@@ -58,7 +58,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             }
 
             IArgumentBinding<BrokeredMessage> argumentBinding =
-                new ServiceBusTriggerArgumentBinding(converter, parameter.ParameterType);
+                new ConverterArgumentBinding(converter, parameter.ParameterType);
 
             if (queueName != null)
             {

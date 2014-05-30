@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
     internal class ServiceBusAttributeBindingProvider : IBindingProvider
     {
         private static readonly IServiceBusArgumentBindingProvider _innerProvider =
-            new CompositeServiceBusArgumentBindingProvider(
+            new CompositeArgumentBindingProvider(
                 new BrokeredMessageArgumentBindingProvider(),
                 new StringArgumentBindingProvider(),
                 new ByteArrayArgumentBindingProvider(),

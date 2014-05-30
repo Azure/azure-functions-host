@@ -7,12 +7,12 @@ using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
-    internal class ServiceBusTriggerArgumentBinding : IArgumentBinding<BrokeredMessage>
+    internal class ConverterArgumentBinding : IArgumentBinding<BrokeredMessage>
     {
         private readonly ITypeToObjectConverter<BrokeredMessage> _converter;
         private readonly Type _valueType;
 
-        public ServiceBusTriggerArgumentBinding(ITypeToObjectConverter<BrokeredMessage> converter, Type valueType)
+        public ConverterArgumentBinding(ITypeToObjectConverter<BrokeredMessage> converter, Type valueType)
         {
             _converter = converter;
             _valueType = valueType;

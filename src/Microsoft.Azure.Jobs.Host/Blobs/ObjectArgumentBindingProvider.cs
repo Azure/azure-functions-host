@@ -5,12 +5,12 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class ObjectBlobArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class ObjectArgumentBindingProvider : IBlobArgumentBindingProvider
     {
         private readonly ITypelessCloudBlobStreamBinder _typelessBinder;
         private readonly Type _valueType;
 
-        public ObjectBlobArgumentBindingProvider(Type cloudBlobStreamBinderType)
+        public ObjectArgumentBindingProvider(Type cloudBlobStreamBinderType)
         {
             Type genericType = cloudBlobStreamBinderType.GetGenericTypeDefinition();
             _valueType = genericType.GetGenericArguments()[0];

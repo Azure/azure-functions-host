@@ -78,7 +78,7 @@ namespace Microsoft.Azure.Jobs
             return new BlobParameterStaticBinding
             {
                 Path = path,
-                IsInput = false
+                IsInput = true
             };
         }
 

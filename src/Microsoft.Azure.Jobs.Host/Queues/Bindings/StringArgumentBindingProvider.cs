@@ -4,7 +4,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class StringQueueArgumentBindingProvider : IQueueArgumentBindingProvider
+    internal class StringArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
         {
@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return null;
             }
 
-            return new StringQueueArgumentBinding();
+            return new StringArgumentBinding();
         }
     }
 }

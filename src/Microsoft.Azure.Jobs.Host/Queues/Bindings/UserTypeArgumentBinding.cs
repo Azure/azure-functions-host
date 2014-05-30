@@ -4,11 +4,11 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class UserTypeQueueArgumentBinding : IArgumentBinding<CloudQueue>
+    internal class UserTypeArgumentBinding : IArgumentBinding<CloudQueue>
     {
         private readonly Type _valueType;
 
-        public UserTypeQueueArgumentBinding(Type valueType)
+        public UserTypeArgumentBinding(Type valueType)
         {
             _valueType = valueType;
         }

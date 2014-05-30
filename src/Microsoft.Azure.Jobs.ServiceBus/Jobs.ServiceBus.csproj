@@ -77,7 +77,7 @@
     <Compile Include="Bindings\StringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\BrokeredMessageArgumentBindingProvider.cs" />
     <Compile Include="Bindings\MessageSenderExtensions.cs" />
-    <Compile Include="Bindings\CompositeServiceBusArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\CompositeArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IQueueArgumentBindingProvider.cs" />
     <Compile Include="Bindings\OutputConverter.cs" />
     <Compile Include="Bindings\ServiceBusBinding.cs" />
@@ -99,7 +99,7 @@
     <Compile Include="Listeners\ServiceBusCausalityHelper.cs" />
     <Compile Include="Listeners\ServiceBusInvoker.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />
-    <Compile Include="Triggers\ServiceBusTriggerArgumentBinding.cs" />
+    <Compile Include="Triggers\ConverterArgumentBinding.cs" />
     <Compile Include="Triggers\ServiceBusTriggerAttributeBindingProvider.cs" />
     <Compile Include="Triggers\ServiceBusTriggerBinding.cs" />
   </ItemGroup>

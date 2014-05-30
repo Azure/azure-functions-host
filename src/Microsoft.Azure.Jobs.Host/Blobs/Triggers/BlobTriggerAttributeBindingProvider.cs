@@ -32,11 +32,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             {
                 foreach (Type cloudBlobStreamBinderType in cloudBlobStreamBinderTypes)
                 {
-                    innerProviders.Add(new ObjectBlobArgumentBindingProvider(cloudBlobStreamBinderType));
+                    innerProviders.Add(new ObjectArgumentBindingProvider(cloudBlobStreamBinderType));
                 }
             }
 
-            return new CompositeBlobArgumentBindingProvider(innerProviders);
+            return new CompositeArgumentBindingProvider(innerProviders);
         }
 
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)

@@ -8,7 +8,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class CollectionQueueArgumentBindingProvider : IQueueArgumentBindingProvider
+    internal class CollectionArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
         {
@@ -36,11 +36,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             }
             else if (itemType == typeof(string))
             {
-                itemBinding = new StringQueueArgumentBinding();
+                itemBinding = new StringArgumentBinding();
             }
             else if (itemType == typeof(byte[]))
             {
-                itemBinding = new ByteArrayQueueArgumentBinding();
+                itemBinding = new ByteArrayArgumentBinding();
             }
             else
             {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                     throw new InvalidOperationException("Nested collections are not supported.");
                 }
 
-                itemBinding = new UserTypeQueueArgumentBinding(itemType);
+                itemBinding = new UserTypeArgumentBinding(itemType);
             }
 
             return CreateCollectionArgumentBinding(itemType, itemBinding);

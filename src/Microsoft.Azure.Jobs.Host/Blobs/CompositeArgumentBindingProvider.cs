@@ -5,11 +5,11 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class CompositeBlobArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class CompositeArgumentBindingProvider : IBlobArgumentBindingProvider
     {
         private readonly IEnumerable<IBlobArgumentBindingProvider> _providers;
 
-        public CompositeBlobArgumentBindingProvider(IEnumerable<IBlobArgumentBindingProvider> providers)
+        public CompositeArgumentBindingProvider(IEnumerable<IBlobArgumentBindingProvider> providers)
         {
             _providers = providers;
         }

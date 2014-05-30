@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class UserTypeQueueArgumentBindingProvider : IQueueArgumentBindingProvider
+    internal class UserTypeArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
         {
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Non-collection enumerable types are not supported.");
             }
 
-            return new UserTypeQueueArgumentBinding(parameterType);
+            return new UserTypeArgumentBinding(parameterType);
         }
     }
 }

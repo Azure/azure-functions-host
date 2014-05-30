@@ -4,11 +4,11 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class CompositeServiceBusArgumentBindingProvider : IServiceBusArgumentBindingProvider
+    internal class CompositeArgumentBindingProvider : IServiceBusArgumentBindingProvider
     {
         private readonly IEnumerable<IServiceBusArgumentBindingProvider> _providers;
 
-        public CompositeServiceBusArgumentBindingProvider(params IServiceBusArgumentBindingProvider[] providers)
+        public CompositeArgumentBindingProvider(params IServiceBusArgumentBindingProvider[] providers)
         {
             _providers = providers;
         }
