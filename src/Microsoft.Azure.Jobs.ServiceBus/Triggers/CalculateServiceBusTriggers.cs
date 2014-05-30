@@ -1,7 +1,7 @@
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.Azure.Jobs.ServiceBus.Triggers;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class CalculateServiceBusTriggers
     {

@@ -4,23 +4,23 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal class ByteArrayQueueArgumentBinding : IArgumentBinding<CloudQueue>
+    internal class CloudQueueMessageArgumentBinding : IArgumentBinding<CloudQueue>
     {
         public Type ValueType
         {
-            get { return typeof(byte[]); }
+            get { return typeof(CloudQueueMessage); }
         }
 
         public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
         {
-            return new ByteArrayValueBinder(value);
+            return new MessageValueBinder(value);
         }
 
-        private class ByteArrayValueBinder : IOrderedValueBinder
+        private class MessageValueBinder : IOrderedValueBinder
         {
             private readonly CloudQueue _queue;
 
-            public ByteArrayValueBinder(CloudQueue queue)
+            public MessageValueBinder(CloudQueue queue)
             {
                 _queue = queue;
             }
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public Type Type
             {
-                get { return typeof(byte[]); }
+                get { return typeof(CloudQueueMessage); }
             }
 
             public object GetValue()
@@ -47,9 +47,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public void SetValue(object value)
             {
-                byte[] bytes = (byte[])value;
+                CloudQueueMessage message = (CloudQueueMessage)value;
 
-                _queue.AddMessageAndCreateIfNotExists(new CloudQueueMessage(bytes));
+                _queue.AddMessageAndCreateIfNotExists(message);
             }
         }
     }

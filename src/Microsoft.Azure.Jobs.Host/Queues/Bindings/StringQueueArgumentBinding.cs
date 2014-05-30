@@ -49,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             {
                 string text = (string)value;
 
-                _queue.AddMessage(new CloudQueueMessage(text));
+                _queue.AddMessageAndCreateIfNotExists(new CloudQueueMessage(text));
             }
         }
     }

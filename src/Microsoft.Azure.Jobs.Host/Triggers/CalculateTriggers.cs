@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs
 
         static CalculateTriggers()
         {
-            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.CalculateServiceBusTriggers");
+            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.Triggers.CalculateServiceBusTriggers");
             if (type == null)
             {
                 return;

@@ -7,7 +7,7 @@ using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.Azure.Jobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
     internal class ServiceBusInvoker
     {
@@ -50,8 +50,7 @@ namespace Microsoft.Azure.Jobs
         }
         private static Guid GetOwnerFromMessage(BrokeredMessage msg)
         {
-            var qcm = new ServiceBusCausalityHelper();
-            return qcm.GetOwner(msg);
+            return ServiceBusCausalityHelper.GetOwner(msg);
         }
 
         public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, CancellationToken cancellationToken)

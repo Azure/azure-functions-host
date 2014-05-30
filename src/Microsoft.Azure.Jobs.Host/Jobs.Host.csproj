@@ -239,6 +239,9 @@
     <Compile Include="Converters\IObjectToTypeConverter.cs" />
     <Compile Include="Converters\ITypeToObjectConverter.cs" />
     <Compile Include="Queues\Bindings\ByteArrayQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\CloudQueueExtensions.cs" />
+    <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\UserTypeQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\UserTypeQueueArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\CollectionQueueArgumentBindingProvider.cs" />
@@ -332,7 +335,6 @@
     <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
-    <Compile Include="Bindings\BindResults\PostActionOrder.cs" />
     <Compile Include="HostTableNames.cs" />
     <Compile Include="Storage\Table\IQueryModifier.cs" />
     <Compile Include="Runners\HostEntity.cs" />
@@ -354,7 +356,6 @@
     <Compile Include="Indexers\IndexTypeContent.cs" />
     <Compile Include="Indexers\MethodDescriptor.cs" />
     <Compile Include="Indexers\Indexer.cs" />
-    <Compile Include="Bindings\BindResults\IMaybeErrorBindResult.cs" />
     <Compile Include="Timers\ICanFailCommand.cs" />
     <Compile Include="Runners\IConnectionStringProvider.cs" />
     <Compile Include="Timers\LinearSpeedupTimerCommand.cs" />

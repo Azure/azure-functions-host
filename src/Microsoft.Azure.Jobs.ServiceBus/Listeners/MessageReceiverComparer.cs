@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
     internal class MessageReceiverComparer : IEqualityComparer<MessageReceiver>
     {

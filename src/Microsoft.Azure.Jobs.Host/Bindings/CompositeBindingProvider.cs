@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         readonly IEnumerable<IBindingProvider> _providers;
 
-        public CompositeBindingProvider(params IBindingProvider[] providers)
+        public CompositeBindingProvider(IEnumerable<IBindingProvider> providers)
         {
             _providers = providers;
         }

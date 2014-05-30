@@ -9,6 +9,7 @@ namespace Microsoft.Azure.Jobs
     /// The method parameter type can one of the following:
     /// <list type="bullet">
     /// <item><description>CloudQueue</description></item>
+    /// <item><description>CloudQueueMessage (out param)</description></item>
     /// <item><description><see cref="string"/> (out param)</description></item>
     /// <item><description><see cref="T:byte[]"/> (out param)</description></item>
     /// <item><description>A user-defined type (out param, serialized as JSON)</description></item>

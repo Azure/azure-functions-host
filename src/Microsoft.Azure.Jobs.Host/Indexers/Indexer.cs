@@ -33,7 +33,7 @@ namespace Microsoft.Azure.Jobs
                 new Sdk1CloudStorageAccountStaticBindingProvider()
             };
 
-        private static readonly IBindingProvider _bindingProvider = new QueueAttributeBindingProvider();
+        private static readonly IBindingProvider _bindingProvider = CreateBindingProvider();
 
         private readonly IFunctionTable _functionTable;
         private readonly INameResolver _nameResolver;
@@ -72,17 +72,35 @@ namespace Microsoft.Azure.Jobs
 
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
 
-            Type serviceBusAttributeBindingProviderType = ServiceBusExtensionTypeLoader.Get(
+            Type serviceBusProviverType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
 
-            if (serviceBusAttributeBindingProviderType != null)
+            if (serviceBusProviverType != null)
             {
                 ITriggerBindingProvider serviceBusAttributeBindingProvider =
-                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusAttributeBindingProviderType);
+                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviverType);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
 
             return new CompositeTriggerBindingProvider(innerProviders);
+        }
+
+        private static IBindingProvider CreateBindingProvider()
+        {
+            List<IBindingProvider> innerProviders = new List<IBindingProvider>();
+            innerProviders.Add(new QueueAttributeBindingProvider());
+
+            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
+                "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
+
+            if (serviceBusProviderType != null)
+            {
+                IBindingProvider serviceBusAttributeBindingProvider =
+                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType);
+                innerProviders.Add(serviceBusAttributeBindingProvider);
+            }
+
+            return new CompositeBindingProvider(innerProviders);
         }
 
         private static MethodInfo ResolveMethod(Type type, string name)

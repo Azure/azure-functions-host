@@ -5,7 +5,7 @@ using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
     internal class ServiceBusListener
     {

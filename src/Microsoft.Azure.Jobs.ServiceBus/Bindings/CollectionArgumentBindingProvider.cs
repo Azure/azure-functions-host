@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
+namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class CollectionQueueArgumentBindingProvider : IQueueArgumentBindingProvider
+    internal class CollectionArgumentBindingProvider : IServiceBusArgumentBindingProvider
     {
-        public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
+        public IArgumentBinding<ServiceBusEntity> TryCreate(ParameterInfo parameter)
         {
             Type parameterType = parameter.ParameterType;
 
@@ -28,19 +27,19 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             Type itemType = genericTypeDefinition.GetGenericArguments()[0];
 
-            IArgumentBinding<CloudQueue> itemBinding;
+            IArgumentBinding<ServiceBusEntity> itemBinding;
 
-            if (itemType == typeof(CloudQueueMessage))
+            if (itemType == typeof(BrokeredMessage))
             {
-                itemBinding = new CloudQueueMessageArgumentBinding();
+                itemBinding = new BrokeredMessageArgumentBinding();
             }
             else if (itemType == typeof(string))
             {
-                itemBinding = new StringQueueArgumentBinding();
+                itemBinding = new StringArgumentBinding();
             }
             else if (itemType == typeof(byte[]))
             {
-                itemBinding = new ByteArrayQueueArgumentBinding();
+                itemBinding = new ByteArrayArgumentBinding();
             }
             else
             {
@@ -49,24 +48,24 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                     throw new InvalidOperationException("Nested collections are not supported.");
                 }
 
-                itemBinding = new UserTypeQueueArgumentBinding(itemType);
+                itemBinding = new UserTypeArgumentBinding(itemType);
             }
 
             return CreateCollectionArgumentBinding(itemType, itemBinding);
         }
 
-        private static IArgumentBinding<CloudQueue> CreateCollectionArgumentBinding(Type itemType,
-            IArgumentBinding<CloudQueue> itemBinding)
+        private static IArgumentBinding<ServiceBusEntity> CreateCollectionArgumentBinding(Type itemType,
+            IArgumentBinding<ServiceBusEntity> itemBinding)
         {
             Type collectionGenericType = typeof(CollectionQueueArgumentBinding<>).MakeGenericType(itemType);
-            return (IArgumentBinding<CloudQueue>)Activator.CreateInstance(collectionGenericType, itemBinding);
+            return (IArgumentBinding<ServiceBusEntity>)Activator.CreateInstance(collectionGenericType, itemBinding);
         }
 
-        private class CollectionQueueArgumentBinding<T> : IArgumentBinding<CloudQueue>
+        private class CollectionQueueArgumentBinding<T> : IArgumentBinding<ServiceBusEntity>
         {
-            private readonly IArgumentBinding<CloudQueue> _itemBinding;
+            private readonly IArgumentBinding<ServiceBusEntity> _itemBinding;
 
-            public CollectionQueueArgumentBinding(IArgumentBinding<CloudQueue> itemBinding)
+            public CollectionQueueArgumentBinding(IArgumentBinding<ServiceBusEntity> itemBinding)
             {
                 _itemBinding = itemBinding;
             }
@@ -76,20 +75,20 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 get { return typeof(ICollection<T>); }
             }
 
-            public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
+            public IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
             {
                 return new CollectionValueBinder(value, (IValueBinder)_itemBinding.Bind(value, context));
             }
 
             private class CollectionValueBinder : IOrderedValueBinder
             {
-                private readonly CloudQueue _queue;
+                private readonly ServiceBusEntity _entity;
                 private readonly IValueBinder _itemBinder;
                 private readonly ICollection<T> _value = new List<T>();
 
-                public CollectionValueBinder(CloudQueue queue, IValueBinder itemBinder)
+                public CollectionValueBinder(ServiceBusEntity entity, IValueBinder itemBinder)
                 {
-                    _queue = queue;
+                    _entity = entity;
                     _itemBinder = itemBinder;
                 }
 
@@ -110,7 +109,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
                 public string ToInvokeString()
                 {
-                    return _queue.Name;
+                    return _entity.MessageSender.Path;
                 }
 
                 public void SetValue(object value)

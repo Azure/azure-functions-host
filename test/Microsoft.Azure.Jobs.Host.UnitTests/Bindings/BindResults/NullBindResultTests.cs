@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.BindResults
             var expectedMessage = "Some; message; with; new lines";
 
             // Act
-            var actual = ((ISelfWatch)new NullBindResult(message) { IsErrorResult = true }).GetStatus();
+            var actual = ((ISelfWatch)new NullBindResult(message)).GetStatus();
 
             // Assert
             Assert.Equal(expectedMessage, actual);

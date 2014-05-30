@@ -1,21 +1,21 @@
 using System;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
-    internal class ServiceBusCausalityHelper
+    internal static class ServiceBusCausalityHelper
     {
-        const string parentGuidFieldName = "$AzureJobsParentId";
+        private const string _parentGuidFieldName = "$AzureJobsParentId";
 
-        public void EncodePayload(Guid functionOwner, BrokeredMessage msg)
+        public static void EncodePayload(Guid functionOwner, BrokeredMessage msg)
         {
-            msg.Properties[parentGuidFieldName] = functionOwner.ToString();
+            msg.Properties[_parentGuidFieldName] = functionOwner.ToString();
         }
 
-        public Guid GetOwner(BrokeredMessage msg)
+        public static Guid GetOwner(BrokeredMessage msg)
         {
             object parent;
-            if (msg.Properties.TryGetValue(parentGuidFieldName, out parent))
+            if (msg.Properties.TryGetValue(_parentGuidFieldName, out parent))
             {
                 var parentString = parent as string;
                 if (parentString != null)

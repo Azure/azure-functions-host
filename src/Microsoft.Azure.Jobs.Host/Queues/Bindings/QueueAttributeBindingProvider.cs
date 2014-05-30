@@ -9,6 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
     {
         private static readonly IQueueArgumentBindingProvider _innerProvider = new CompositeQueueArgumentBindingProvider(
             new CloudQueueArgumentBindingProvider(),
+            new CloudQueueMessageArgumentBindingProvider(),
             new StringQueueArgumentBindingProvider(),
             new ByteArrayQueueArgumentBindingProvider(),
             new CollectionQueueArgumentBindingProvider(),

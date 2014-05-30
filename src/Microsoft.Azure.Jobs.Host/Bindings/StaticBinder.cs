@@ -42,15 +42,8 @@ namespace Microsoft.Azure.Jobs
                 }
             }
 
-            var types = new[] { typeof(StaticBinder), ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBusStaticBinder") };
-            MethodInfo method = (from t in types
-                where t != null
-                select t.GetMethod("Bind",
-                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static, null,
-                    new Type[]
-                    {
-                        attr.GetType(), typeof (ParameterInfo)
-                    }, null)).FirstOrDefault(m => m!=null);
+            MethodInfo method = typeof(StaticBinder).GetMethod("Bind", BindingFlags.NonPublic | BindingFlags.Instance,
+                null, new Type[] { attr.GetType(), typeof(ParameterInfo) }, null);
 
             if (method == null)
             {

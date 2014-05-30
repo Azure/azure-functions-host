@@ -1,14 +1,16 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
+namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class UserTypeQueueArgumentBinding : IArgumentBinding<CloudQueue>
+    internal class UserTypeArgumentBinding : IArgumentBinding<ServiceBusEntity>
     {
         private readonly Type _valueType;
 
-        public UserTypeQueueArgumentBinding(Type valueType)
+        public UserTypeArgumentBinding(Type valueType)
         {
             _valueType = valueType;
         }
@@ -18,20 +20,20 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
+        public IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
         {
             return new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
         }
 
         private class UserTypeValueBinder : IOrderedValueBinder
         {
-            private readonly CloudQueue _queue;
+            private readonly ServiceBusEntity _entity;
             private readonly Type _valueType;
             private readonly Guid _functionInstanceId;
 
-            public UserTypeValueBinder(CloudQueue queue, Type valueType, Guid functionInstanceId)
+            public UserTypeValueBinder(ServiceBusEntity entity, Type valueType, Guid functionInstanceId)
             {
-                _queue = queue;
+                _entity = entity;
                 _valueType = valueType;
                 _functionInstanceId = functionInstanceId;
             }
@@ -43,7 +45,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public Type Type
             {
-                get { return _valueType; }
+                get { return typeof(byte[]); }
             }
 
             public object GetValue()
@@ -53,15 +55,19 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public string ToInvokeString()
             {
-                return _queue.Name;
+                return _entity.MessageSender.Path;
             }
 
             public void SetValue(object value)
             {
-                QueueCausalityHelper causality = new QueueCausalityHelper();
-                CloudQueueMessage message = causality.EncodePayload(_functionInstanceId, value);
+                string text = JsonCustom.SerializeObject(value);
+                byte[] bytes = Encoding.UTF8.GetBytes(text);
 
-                _queue.AddMessageAndCreateIfNotExists(message);
+                using (MemoryStream stream = new MemoryStream(bytes, writable: false))
+                using (BrokeredMessage message = new BrokeredMessage(stream))
+                {
+                    _entity.SendAndCreateQueueIfNotExists(message, _functionInstanceId);
+                }
             }
         }
     }

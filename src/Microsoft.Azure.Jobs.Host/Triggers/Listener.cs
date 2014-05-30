@@ -57,7 +57,7 @@ namespace Microsoft.Azure.Jobs
 
         private void InitServiceBusListener(Worker worker)
         {
-            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBusListener");
+            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.Listeners.ServiceBusListener");
             if (type == null)
             {
                 return;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
     // This function was executed because an ServiceBus Message
     // Corresponds to [ServiceBusInput].

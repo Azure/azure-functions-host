@@ -225,7 +225,7 @@ namespace Microsoft.Azure.Jobs
                 {
                     string msg = String.Format(CultureInfo.InvariantCulture, "Error while binding parameter {0} '{1}':{2}",
                         name, parameterInfo, exception.Message);
-                    result = new NullBindResult(msg) { IsErrorResult = true };
+                    result = new NullBindResult(msg);
                     hasBindError = true;
                 }
 
@@ -480,7 +480,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private class BindResultValueProvider : IOrderedValueBinder, IWatchable, IDisposable
+        private class BindResultValueProvider : IValueBinder, IWatchable, IDisposable
         {
             private readonly BindResult _bindResult;
             private readonly ISelfWatch _watcher;
@@ -491,11 +491,6 @@ namespace Microsoft.Azure.Jobs
             {
                 _bindResult = bindResult;
                 _watcher = SelfWatch.GetWatcher(bindResult, parameterType);
-            }
-
-            public int StepOrder
-            {
-                get { return (int)_bindResult.PostActionOrder; }
             }
 
             public Type Type
