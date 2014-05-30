@@ -5,11 +5,11 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class ConverterBlobArgumentBindingProvider<T> : IBlobArgumentBindingProvider
+    internal class ConverterArgumentBindingProvider<T> : IBlobArgumentBindingProvider
     {
         private readonly IConverter<ICloudBlob, T> _converter;
 
-        public ConverterBlobArgumentBindingProvider(IConverter<ICloudBlob, T> converter)
+        public ConverterArgumentBindingProvider(IConverter<ICloudBlob, T> converter)
         {
             _converter = converter;
         }

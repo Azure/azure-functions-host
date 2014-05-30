@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Jobs
             // Table name was already validated in property-setter
 
             var type = parameter.ParameterType;
-            TableParameterRuntimeBinding.GetTableBinderOrThrow(config, type, false);
+            TableParameterRuntimeBinding.GetTableBinderOrThrow(config, type);
         }
 
         public override ParameterRuntimeBinding Bind(IRuntimeBindingInputs inputs)

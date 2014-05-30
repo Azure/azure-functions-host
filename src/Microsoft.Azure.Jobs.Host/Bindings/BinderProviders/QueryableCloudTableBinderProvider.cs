@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
 {
     internal class QueryableCloudTableBinderProvider : ICloudTableBinderProvider
     {
-        public ICloudTableBinder TryGetBinder(Type targetType, bool isReadOnly)
+        public ICloudTableBinder TryGetBinder(Type targetType)
         {
             if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(IQueryable<>))
             {
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
                 if (TableClient.ImplementsITableEntity(entityType))
                 {
                     TableClient.VerifyDefaultConstructor(entityType);
-                    return TryGetBinderGeneric(entityType, isReadOnly);
+                    return TryGetBinderGeneric(entityType);
                 }
                 else
                 {
@@ -30,17 +30,17 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             return null;
         }
 
-        private static ICloudTableBinder TryGetBinderGeneric(Type type, bool isReadOnly)
+        private static ICloudTableBinder TryGetBinderGeneric(Type type)
         {
             // Call TryGetBinder<T>(isReadOnly);
             MethodInfo genericMethod = typeof(QueryableCloudTableBinderProvider).GetMethod("TryGetBinder", BindingFlags.Static | BindingFlags.NonPublic);
             MethodInfo methodInfo = genericMethod.MakeGenericMethod(type);
-            Func<bool, ICloudTableBinder> invoker = (Func<bool, ICloudTableBinder>)
-                Delegate.CreateDelegate(typeof(Func<bool, ICloudTableBinder>), methodInfo);
-            return invoker.Invoke(isReadOnly);
+            Func<ICloudTableBinder> invoker =
+                (Func<ICloudTableBinder>)Delegate.CreateDelegate(typeof(Func<ICloudTableBinder>), methodInfo);
+            return invoker.Invoke();
         }
 
-        private static ICloudTableBinder TryGetBinder<T>(bool isReadOnly) where T : ITableEntity, new()
+        private static ICloudTableBinder TryGetBinder<T>() where T : ITableEntity, new()
         {
             return new QueryableCloudTableBinder<T>();
         }

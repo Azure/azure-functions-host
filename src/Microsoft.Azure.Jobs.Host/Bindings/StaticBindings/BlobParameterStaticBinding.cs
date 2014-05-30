@@ -9,15 +9,14 @@ namespace Microsoft.Azure.Jobs
     internal class BlobParameterStaticBinding : ParameterStaticBinding
     {
         public CloudBlobPath Path;
-        public bool IsInput;
 
         // $$$ Ratioanlize these rules with BlobParameterRuntimeBinding
         public override void Validate(IConfiguration config, System.Reflection.ParameterInfo parameter)
         {
             BlobClient.ValidateContainerName(this.Path.ContainerName);
 
-            Type type = BlobParameterRuntimeBinding.GetBinderType(parameter, this.IsInput);
-            ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
+            Type type = BlobParameterRuntimeBinding.GetBinderType(parameter);
+            ICloudBlobBinder blobBinder = config.GetBlobBinder(type);
 
             BlobParameterRuntimeBinding.VerifyBinder(type, blobBinder);
         }
@@ -46,15 +45,7 @@ namespace Microsoft.Azure.Jobs
 
             BlobClient.ValidateContainerName(arg.ContainerName);
 
-            return new BlobParameterRuntimeBinding { Name = Name, Blob = arg, IsInput = IsInput };
-        }
-
-        public override IEnumerable<string> ProducedRouteParameters
-        {
-            get
-            {
-                return Path.GetParameterNames();
-            }
+            return new BlobParameterRuntimeBinding { Name = Name, Blob = arg };
         }
 
         public override ParameterDescriptor ToParameterDescriptor()
@@ -63,7 +54,7 @@ namespace Microsoft.Azure.Jobs
             {
                 ContainerName = Path.ContainerName,
                 BlobName = Path.BlobName,
-                IsInput = IsInput
+                IsInput = false
             };
         }
     }

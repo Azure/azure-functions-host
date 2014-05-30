@@ -290,8 +290,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void FuncWithBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [BlobInput(@"daas-test-input/blob.csv")] Stream stream
+                [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
+                [Blob(@"daas-test-input/blob.csv")] Stream stream
                 )
             {
                 Assert.NotNull(blob);
@@ -332,9 +332,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void FuncWithMissingBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [BlobInput(@"daas-test-input/blob.csv")] Stream stream,
-                [BlobInput(@"daas-test-input/blob.csv")] TextReader reader
+                [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
+                [Blob(@"daas-test-input/blob.csv")] Stream stream,
+                [Blob(@"daas-test-input/blob.csv")] TextReader reader
                 )
             {
                 Assert.Null(blob);

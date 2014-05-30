@@ -130,7 +130,6 @@ namespace Microsoft.Azure.Jobs
             config.BlobBinders.Add(new CloudPageBlobBinderProvider());
             config.BlobBinders.Add(new CloudBlobBinderProvider());
             config.BlobBinders.Add(new BlobStreamBinderProvider());
-            config.BlobBinders.Add(new TextReaderProvider());
             config.BlobBinders.Add(new TextWriterProvider());
             config.BlobBinders.Add(new StringBlobBinderProvider());
 

@@ -22,16 +22,6 @@ namespace Microsoft.Azure.Jobs
             // Nop
         }
 
-        // Get any {name} keys that this binding will provide. 
-        // This notifies the static binder about which names are available for other bindings
-        [JsonIgnore]
-        public virtual IEnumerable<string> ProducedRouteParameters
-        {
-            get { return _empty; }
-        }
-
-        private static string[] _empty = new string[0];
-
         // BinderEx provides set of possible inputs  (a single blob input that triggered, a queue message, 
         // a dictionary of name parameters)
         // This is what BinderEx.Bind does.

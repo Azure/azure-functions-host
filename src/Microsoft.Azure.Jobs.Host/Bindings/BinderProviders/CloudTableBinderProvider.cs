@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     // Binder provider for the CloudTable SDK type
     internal class CloudTableBinderProvider : ICloudTableBinderProvider
     {
-        public ICloudTableBinder TryGetBinder(Type targetType, bool isReadOnly)
+        public ICloudTableBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(CloudTable))
             {

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             }
         }
 
-        public ICloudTableBinder TryGetBinder(Type targetType, bool isReadOnly)
+        public ICloudTableBinder TryGetBinder(Type targetType)
         {
             if (targetType.IsGenericType)
             {

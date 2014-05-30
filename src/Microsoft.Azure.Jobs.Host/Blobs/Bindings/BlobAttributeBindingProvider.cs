@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
+namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
-    internal class BlobTriggerAttributeBindingProvider : ITriggerBindingProvider
+    internal class BlobAttributeBindingProvider : IBindingProvider
     {
         private readonly IBlobArgumentBindingProvider _provider;
 
-        public BlobTriggerAttributeBindingProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
+        public BlobAttributeBindingProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
         {
             _provider = CreateProvider(cloudBlobStreamBinderTypes);
         }
@@ -39,28 +38,36 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return new CompositeArgumentBindingProvider(innerProviders);
         }
 
-        public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
+        public IBinding TryCreate(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>();
+            BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>();
 
-            if (blobTrigger == null)
+            if (blob == null)
             {
                 return null;
             }
 
-            string blobPath = context.Resolve(blobTrigger.BlobPath);
+            string blobPath = context.Resolve(blob.BlobPath);
             CloudBlobPath parsedBlobPath = Parse(blobPath);
+
+            foreach (string parameterName in parsedBlobPath.GetParameterNames())
+            {
+                if (context.BindingDataContract != null && !context.BindingDataContract.ContainsKey(parameterName))
+                {
+                    throw new InvalidOperationException("No binding parameter exists for '" + parameterName + "'.");
+                }
+            }
 
             Type parameterType = parameter.ParameterType;
             IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameterType);
 
             if (argumentBinding == null)
             {
-                throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameterType + "'.");
+                throw new InvalidOperationException("Can't bind Blob to type '" + parameterType + "'.");
             }
 
-            return new BlobTriggerBinding(argumentBinding, context.StorageAccount, parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
+            return new BlobBinding(argumentBinding, context.StorageAccount, parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
         }
 
         private static CloudBlobPath Parse(string blobPath)

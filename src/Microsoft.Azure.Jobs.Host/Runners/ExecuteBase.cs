@@ -194,7 +194,7 @@ namespace Microsoft.Azure.Jobs
                 if (blobRuntimeBinding != null)
                 {
                     argument.IsBlob = true;
-                    argument.IsBlobInput = blobRuntimeBinding.IsInput;
+                    argument.IsBlobInput = false;
                 }
 
                 arguments.Add(runtimeBinding.Name, argument);

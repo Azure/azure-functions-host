@@ -216,6 +216,8 @@
     <Compile Include="Bindings\IWatchable.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
+    <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
+    <Compile Include="Blobs\Bindings\BlobBinding.cs" />
     <Compile Include="Blobs\BlobValueProvider.cs" />
     <Compile Include="Blobs\BlobWatchableValueProvider.cs" />
     <Compile Include="Blobs\BlobWatchableDisposableValueProvider.cs" />
@@ -231,8 +233,8 @@
     <Compile Include="Blobs\TextReaderArgumentBindingProvider.cs" />
     <Compile Include="Blobs\StreamArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Triggers\BlobTriggerBinding.cs" />
-    <Compile Include="Blobs\Triggers\OutputConverter.cs" />
-    <Compile Include="Blobs\Triggers\StringToCloudBlobConverter.cs" />
+    <Compile Include="Blobs\OutputConverter.cs" />
+    <Compile Include="Blobs\StringToCloudBlobConverter.cs" />
     <Compile Include="Converters\IConverter.cs" />
     <Compile Include="Converters\IdentityConverter.cs" />
     <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />
@@ -373,7 +375,6 @@
     <Compile Include="Bindings\BinderProviders\TableProviderTestHook.cs" />
     <Compile Include="Bindings\BinderProviders\TextWriterProvider.cs" />
     <Compile Include="Bindings\BinderProviders\BlobStreamBinderProvider.cs" />
-    <Compile Include="Bindings\BinderProviders\TextReaderProvider.cs" />
     <Compile Include="Runners\Configuration.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
     <Compile Include="Bindings\ICloudBinderVerify.cs" />

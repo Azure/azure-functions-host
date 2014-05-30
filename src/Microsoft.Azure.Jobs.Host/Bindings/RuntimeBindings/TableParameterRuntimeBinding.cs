@@ -17,9 +17,7 @@ namespace Microsoft.Azure.Jobs
 
         public BindResult Bind(IConfiguration config, Type type, CancellationToken cancellationToken, Guid instance, TextWriter consoleOutput)
         {            
-            bool isReadOnly = false; // ### eventually get this from an attribute?
-
-            ICloudTableBinder binder = GetTableBinderOrThrow(config, type, isReadOnly);
+            ICloudTableBinder binder = GetTableBinderOrThrow(config, type);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
             IBinderEx ctx = new BinderEx(config, inputs, instance, notificationService : null,
@@ -28,9 +26,9 @@ namespace Microsoft.Azure.Jobs
             return bind;
         }
 
-        public static ICloudTableBinder GetTableBinderOrThrow(IConfiguration config, Type type, bool isReadOnly)
+        public static ICloudTableBinder GetTableBinderOrThrow(IConfiguration config, Type type)
         {
-            ICloudTableBinder binder = config.GetTableBinder(type, isReadOnly);
+            ICloudTableBinder binder = config.GetTableBinder(type);
             if (binder == null)
             {
                 string msg = string.Format("Can't bind an Azure table to type '{0}'", type.AssemblyQualifiedName);

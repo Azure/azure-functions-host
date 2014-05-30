@@ -6,22 +6,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     // Binder provider for the ICloudBlob SDK type
     internal class CloudBlobBinderProvider : ICloudBlobBinderProvider
     {
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+        public ICloudBlobBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(ICloudBlob))
             {
-                return isInput ? (ICloudBlobBinder)new InputICloudBlobBinder() : new OutputICloudBlobBinder();
+                return new OutputICloudBlobBinder();
             }
 
             return null;
-        }
-
-        private class InputICloudBlobBinder : CloudBlobBinder
-        {
-            protected override object BindCore(CloudBlobContainer container, string blobName)
-            {
-                return container.GetBlobReferenceFromServer(blobName);
-            }
         }
 
         private class OutputICloudBlobBinder : CloudBlobBinder

@@ -54,7 +54,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Get a BindResult for a blob that will stamp the blob with the GUID of the function instance that wrote it. 
-        public static BindResult BindWrapper(bool isInput, ICloudBlobBinder blobBinder, IBinderEx bindingContext, Type targetType, ICloudBlob blob, IBlobCausalityLogger logger)
+        public static BindResult BindWrapper(ICloudBlobBinder blobBinder, IBinderEx bindingContext, Type targetType, ICloudBlob blob, IBlobCausalityLogger logger)
         {
             if (blob == null)
             {
@@ -64,20 +64,8 @@ namespace Microsoft.Azure.Jobs
             string containerName = blob.Container.Name;
             string blobName = blob.Name;
 
-            // On input, special-case non-existent blob to provide the function with null regardless of the requested Type.
-            // $$$ May need to be extended when we improve value Type support.
-            if (isInput && !BlobClient.DoesBlobExist(blob))
-            {
-                return new NullBindResult("Input blob was not found");
-            }
-
             // Invoke the inner binder to create a cloud blob. 
             var inner = blobBinder.Bind(bindingContext, containerName, blobName, targetType);
-            if (isInput)
-            {
-                // Only stamp blobs we write. 
-                return inner;
-            }
 
             INotifyNewBlob notify = bindingContext.NotifyNewBlob;
 

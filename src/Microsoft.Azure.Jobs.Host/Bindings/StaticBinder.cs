@@ -66,29 +66,12 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private ParameterStaticBinding Bind(BlobInputAttribute attr, ParameterInfo parameter)
-        {
-            var isRefKeyword = Utility.IsRefKeyword(parameter);
-            if (isRefKeyword)
-            {
-                throw new InvalidOperationException("Input blob parameter can't have [Ref] keyword.");
-            }
-
-            var path = new CloudBlobPath(Resolve(attr.BlobPath));
-            return new BlobParameterStaticBinding
-            {
-                Path = path,
-                IsInput = true
-            };
-        }
-
         private ParameterStaticBinding Bind(BlobOutputAttribute attr, ParameterInfo parameter)
         {
             var path = new CloudBlobPath(Resolve(attr.BlobPath));
             return new BlobParameterStaticBinding
             {
-                Path = path,
-                IsInput = false
+                Path = path
             };
         }
 

@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
@@ -20,12 +21,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Indexer idx = new Indexer(null, nameResolver, null);
             FunctionDefinition func = idx.GetFunctionDefinition(m, new IndexTypeContext
             {
-                StorageAccount = CloudStorageAccount.DevelopmentStorageAccount
+                StorageAccount = CloudStorageAccount.DevelopmentStorageAccount,
             });
             return func;
         }
 
-        private static void NoAutoTrigger1([BlobInput(@"daas-test-input/{name}.csv")] TextReader inputs) { }
+        private static void NoAutoTrigger1([Blob(@"daas-test-input/{name}.csv")] TextReader inputs) { }
 
         [Fact]
         public void TestNoAutoTrigger1()
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Null(func.TriggerBinding);
         }
 
-        private static void NameResolver([BlobInput(@"input/%name%")] TextReader inputs) { }
+        private static void NameResolver([Blob(@"input/%name%")] TextReader inputs) { }
 
         [Fact]
         public void TestNameResolver()
@@ -42,9 +43,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             DictNameResolver nameResolver = new DictNameResolver();
             nameResolver.Add("name", "VALUE");
             FunctionDefinition func = Get("NameResolver", nameResolver);
-            var bindings = func.Flow.Bindings;
+            var bindings = func.NonTriggerBindings;
 
-            Assert.Equal(@"input/VALUE", ((BlobParameterStaticBinding)bindings[0]).Path.ToString());
+            Assert.Equal(@"input/VALUE", ((BlobBinding)bindings["inputs"]).BlobPath);
         }
 
         public static void AutoTrigger1([BlobTrigger(@"daas-test-input/{name}.csv")] TextReader inputs) { }

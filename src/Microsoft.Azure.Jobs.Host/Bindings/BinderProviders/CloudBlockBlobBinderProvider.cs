@@ -5,7 +5,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
 {
     internal class CloudBlockBlobBinderProvider : ICloudBlobBinderProvider
     {
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+        public ICloudBlobBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(CloudBlockBlob))
             {

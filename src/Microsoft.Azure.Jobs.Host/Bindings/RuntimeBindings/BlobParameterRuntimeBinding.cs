@@ -9,15 +9,14 @@ namespace Microsoft.Azure.Jobs
     internal class BlobParameterRuntimeBinding : ParameterRuntimeBinding
     {
         public CloudBlobDescriptor Blob { get; set; }
-        public bool IsInput { get; set; }
 
         public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
         {
-            Type type = GetBinderType(targetParameter, this.IsInput);
+            Type type = GetBinderType(targetParameter);
             return Bind(config, bindingContext, type);
         }
 
-        static internal Type GetBinderType(ParameterInfo targetParameter, bool IsInput)
+        static internal Type GetBinderType(ParameterInfo targetParameter)
         {
             var type = targetParameter.ParameterType;
 
@@ -26,14 +25,6 @@ namespace Microsoft.Azure.Jobs
             if (type.IsByRef)
             {
                 type = type.GetElementType();
-            }
-
-            if (targetParameter.IsOut)
-            {
-                if (IsInput)
-                {
-                    throw new InvalidOperationException("Input blob parameter can't have [Out] keyword.");
-                }
             }
 
             var isRefKeyword = Utility.IsRefKeyword(targetParameter);
@@ -47,14 +38,14 @@ namespace Microsoft.Azure.Jobs
 
         public BindResult Bind(IConfiguration config, IBinderEx bindingContext, Type type)
         {
-            ICloudBlobBinder blobBinder = config.GetBlobBinder(type, IsInput);
+            ICloudBlobBinder blobBinder = config.GetBlobBinder(type);
 
             VerifyBinder(type, blobBinder);
 
             ICloudBlob blob = this.Blob.GetBlob();
 
             IBlobCausalityLogger logger = new BlobCausalityLogger();
-            return BlobBindResult.BindWrapper(IsInput, blobBinder, bindingContext, type, blob, logger);
+            return BlobBindResult.BindWrapper(blobBinder, bindingContext, type, blob, logger);
         }
 
         internal static void VerifyBinder(Type type, ICloudBlobBinder blobBinder)

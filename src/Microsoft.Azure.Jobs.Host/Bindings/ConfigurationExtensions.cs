@@ -4,11 +4,11 @@ namespace Microsoft.Azure.Jobs
 {
     internal static class ConfigurationExtensions
     {
-        public static ICloudTableBinder GetTableBinder(this IConfiguration config, Type targetType, bool isReadOnly)
+        public static ICloudTableBinder GetTableBinder(this IConfiguration config, Type targetType)
         {
             foreach (var provider in config.TableBinders)
             {
-                var binder = provider.TryGetBinder(targetType, isReadOnly);
+                var binder = provider.TryGetBinder(targetType);
                 if (binder != null)
                 {
                     return binder;
@@ -17,11 +17,11 @@ namespace Microsoft.Azure.Jobs
             return null;
         }
 
-        public static ICloudBlobBinder GetBlobBinder(this IConfiguration config, Type targetType, bool isInput)
+        public static ICloudBlobBinder GetBlobBinder(this IConfiguration config, Type targetType)
         {
             foreach (var provider in config.BlobBinders)
             {
-                var binder = provider.TryGetBinder(targetType, isInput);
+                var binder = provider.TryGetBinder(targetType);
                 if (binder != null)
                 {
                     return binder;

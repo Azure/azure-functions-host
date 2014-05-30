@@ -3,9 +3,9 @@ using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
+namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class StringBlobArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class StringArgumentBindingProvider : IBlobArgumentBindingProvider
     {
         public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
         {

@@ -7,6 +7,28 @@ namespace Microsoft.Azure.Jobs
 {
     internal static class RouteParser
     {
+        public static string ApplyBindingData(string pattern, IReadOnlyDictionary<string, object> bindingData)
+        {
+            IDictionary<string, string> nameParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (bindingData == null)
+            {
+                return pattern;
+            }
+
+            foreach (KeyValuePair<string, object> item in bindingData)
+            {
+                string value = item.Value as string;
+
+                if (value != null)
+                {
+                    nameParameters.Add(item.Key, value);
+                }
+            }
+
+            return ApplyNames(pattern, nameParameters);
+        }
+
         // Given "daas-test-input/{name}.csv" and a dict {name:bob}, 
         // returns: "daas-test-input/bob.csv"
         public static string ApplyNames(string pattern, IDictionary<string, string> nameParameters)

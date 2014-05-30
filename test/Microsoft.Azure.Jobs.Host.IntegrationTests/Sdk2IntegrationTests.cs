@@ -219,7 +219,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             public static void IBlob(
                 [BlobTrigger("daas-test/page")] ICloudBlob page,
-                [BlobInput("daas-test/block")] ICloudBlob block)
+                [Blob("daas-test/block")] ICloudBlob block)
             {
                 Assert.NotNull(page);
                 Assert.NotNull(block);

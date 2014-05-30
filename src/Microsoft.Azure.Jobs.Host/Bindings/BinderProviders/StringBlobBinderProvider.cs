@@ -8,40 +8,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
 {
     class StringBlobBinderProvider : ICloudBlobBinderProvider
     {
-        private class StringBlobInputBinder : ICloudBlobBinder
-        {
-            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
-            {
-                ICloudBlob blob = BlobClient.GetBlob(binder.StorageConnectionString, containerName, blobName);
-
-                string result;
-                string readMessage;
-
-                using (var blobStream = blob.OpenRead())
-                using (var watchable = new WatchableStream(blobStream, blob.Properties.Length))
-                using (var textReader = new StreamReader(watchable))
-                {
-                    result = textReader.ReadToEnd();
-                    readMessage = watchable.GetStatus();
-                }
-
-                var watcher = new SimpleWatcher();
-                watcher.SetStatus(readMessage);
-
-                return new BindCleanupResult
-                {
-                    Result = result,
-                    SelfWatch = watcher
-                };
-            }
-        }
-
         private class StringBlobOutputBinder : ICloudBlobBinder
         {
             public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
             {
                 ICloudBlob blob = BlobClient.GetBlob(binder.StorageConnectionString, containerName, blobName);
-                
+
                 var result = new BindCleanupResult();
                 var watcher = new SimpleWatcher();
                 result.SelfWatch = watcher;
@@ -54,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
                             blob.UploadFromByteArray(bytes, 0, bytes.Length);
                             var status = bytes.Length == 0
                                 ? "Written empty file."
-                                : string.Format(CultureInfo.CurrentCulture, 
+                                : string.Format(CultureInfo.CurrentCulture,
                                     "Written {0} bytes.",
                                     bytes.Length);
                             watcher.SetStatus(status);
@@ -64,18 +36,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             }
         }
 
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+        public ICloudBlobBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(string))
             {
-                if (isInput)
-                {
-                    return new StringBlobInputBinder();
-                }
-                else
-                {
-                    return new StringBlobOutputBinder();
-                }
+                return new StringBlobOutputBinder();
             }
             return null;
         }

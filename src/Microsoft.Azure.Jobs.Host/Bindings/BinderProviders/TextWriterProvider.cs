@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
             }
         }
 
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+        public ICloudBlobBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(TextWriter))
             {

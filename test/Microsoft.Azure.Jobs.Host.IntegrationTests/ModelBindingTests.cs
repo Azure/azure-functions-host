@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("TestBinder");                        
+            lc.Call("TestBinder");
 
             string content = TestBlobClient.ReadBlob(account, "daas-test-input", "directout.txt");
             Assert.Equal("output", content);
@@ -36,10 +36,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var lc = TestStorage.New<Program>(account);
             IConfiguration config = lc.Configuration;
             config.BlobBinders.Add(new ModelBlobBinderProvider());
+            config.CloudBlobStreamBinderTypes.Add(typeof(ModelCloudBlobStreamBinder));
+            config.BlobBinders.Add(new SimpleBinderProvider<Model>(new ModelCloudBlobStreamBinder()));
             lc.CallOnBlob("Func", @"daas-test-input/input.txt");
 
             string content = TestBlobClient.ReadBlob(account, "daas-test-input", "output.txt");
             Assert.Equal("*abc*", content);
+        }
+
+        class ModelCloudBlobStreamBinder : ICloudBlobStreamBinder<Model>
+        {
+
+            public Model ReadFromStream(Stream input)
+            {
+                TextReader reader = new StreamReader(input);
+                string text = reader.ReadToEnd();
+                return new Model { Value = text };
+            }
+
+            public void WriteToStream(Model value, Stream output)
+            {
+                throw new NotSupportedException();
+            }
         }
 
         class ModelBlobBinderProvider : ICloudBlobBinderProvider
@@ -55,17 +73,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     {
                         Cleanup(this.Result);
                     }
-                }
-            }
-
-            class ModelInputBlobBinder : ICloudBlobBinder
-            {
-                public BindResult Bind(IBinderEx bindingContext, string containerName, string blobName, Type targetType)
-                {
-                    CloudBlockBlob blob = GetBlob(bindingContext.StorageConnectionString, containerName, blobName);
-
-                    var content = blob.DownloadText();
-                    return new BindResult { Result = new Model { Value = content }  };
                 }
             }
 
@@ -88,18 +95,11 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+            public ICloudBlobBinder TryGetBinder(Type targetType)
             {
                 if (targetType == typeof(Model))
                 {
-                    if (isInput)
-                    {
-                        return new ModelInputBlobBinder();
-                    }
-                    else
-                    {
-                        return new ModelOutputBlobBinder();
-                    }
+                    return new ModelOutputBlobBinder();
                 }
                 return null;
             }

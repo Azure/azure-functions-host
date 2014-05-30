@@ -13,17 +13,7 @@ namespace Microsoft.Azure.Jobs
         {
             _inner = inner;
         }
-        class InputBinder : ICloudBlobBinder
-        {
-            public ICloudBlobStreamBinder<T> _inner;
 
-            public BindResult Bind(IBinderEx binder, string containerName, string blobName, Type targetType)
-            {
-                var bindStream = binder.BindReadStream<Stream>(containerName, blobName);
-                T obj = _inner.ReadFromStream(bindStream.Result);
-                return new BindResult<T>(obj, bindStream);
-            }
-        }
         class OutputBinder : ICloudBlobBinder
         {
             public ICloudBlobStreamBinder<T> _inner;
@@ -45,18 +35,11 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        public ICloudBlobBinder TryGetBinder(Type targetType, bool isInput)
+        public ICloudBlobBinder TryGetBinder(Type targetType)
         {
             if (targetType == typeof(T))
             {
-                if (isInput)
-                {
-                    return new InputBinder { _inner = this._inner };
-                }
-                else
-                {
-                    return new OutputBinder { _inner = this._inner };
-                }
+                return new OutputBinder { _inner = this._inner };
             }
             return null;
         }

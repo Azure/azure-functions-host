@@ -6,6 +6,6 @@ namespace Microsoft.Azure.Jobs
     {
         // Can this binder read/write the given type?
         // This could be a straight type match, or a generic type.
-        ICloudBlobBinder TryGetBinder(Type targetType, bool isInput);
+        ICloudBlobBinder TryGetBinder(Type targetType);
     }
 }

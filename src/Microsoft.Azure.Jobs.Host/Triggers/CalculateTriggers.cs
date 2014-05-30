@@ -78,18 +78,15 @@ namespace Microsoft.Azure.Jobs
                 var x = staticBinding as BlobParameterStaticBinding;
                 if (x != null)
                 {
-                    if (!x.IsInput)
+                    if (sb == null)
                     {
-                        if (sb == null)
-                        {
-                            sb = new StringBuilder();
-                        }
-                        else
-                        {
-                            sb.Append(';');
-                        }
-                        sb.Append(x.Path);
+                        sb = new StringBuilder();
                     }
+                    else
+                    {
+                        sb.Append(';');
+                    }
+                    sb.Append(x.Path);
                 }
             }
 

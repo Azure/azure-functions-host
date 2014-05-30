@@ -5,6 +5,7 @@ using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
@@ -33,12 +34,11 @@ namespace Microsoft.Azure.Jobs
                 new Sdk1CloudStorageAccountStaticBindingProvider()
             };
 
-        private static readonly IBindingProvider _bindingProvider = CreateBindingProvider();
-
         private readonly IFunctionTable _functionTable;
         private readonly INameResolver _nameResolver;
         private readonly IConfiguration _configuration;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
+        private readonly IBindingProvider _bindingProvider;
 
         // Account for where index lives
         public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IConfiguration configuration)
@@ -47,6 +47,7 @@ namespace Microsoft.Azure.Jobs
             _nameResolver = nameResolver;
             _configuration = configuration;
             _triggerBindingProvider = CreateTriggerBindingProvider(configuration);
+            _bindingProvider = CreateBindingProvider(configuration);
         }
 
         public static string AzureJobsFileName
@@ -59,17 +60,7 @@ namespace Microsoft.Azure.Jobs
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider());
 
-            IEnumerable<Type> cloudBlobStreamBinderTypes;
-
-            if (configuration != null)
-            {
-                cloudBlobStreamBinderTypes = configuration.CloudBlobStreamBinderTypes;
-            }
-            else
-            {
-                cloudBlobStreamBinderTypes = null;
-            }
-
+            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
 
             Type serviceBusProviverType = ServiceBusExtensionTypeLoader.Get(
@@ -85,10 +76,13 @@ namespace Microsoft.Azure.Jobs
             return new CompositeTriggerBindingProvider(innerProviders);
         }
 
-        private static IBindingProvider CreateBindingProvider()
+        private static IBindingProvider CreateBindingProvider(IConfiguration configuration)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
             innerProviders.Add(new QueueAttributeBindingProvider());
+
+            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
+            innerProviders.Add(new BlobAttributeBindingProvider(cloudBlobStreamBinderTypes));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
@@ -101,6 +95,22 @@ namespace Microsoft.Azure.Jobs
             }
 
             return new CompositeBindingProvider(innerProviders);
+        }
+
+        private static IEnumerable<Type> GetCloudBlobStreamBinderTypes(IConfiguration configuration)
+        {
+            IEnumerable<Type> types;
+
+            if (configuration != null)
+            {
+                types = configuration.CloudBlobStreamBinderTypes;
+            }
+            else
+            {
+                types = null;
+            }
+
+            return types;
         }
 
         private static MethodInfo ResolveMethod(Type type, string name)
@@ -239,13 +249,6 @@ namespace Microsoft.Azure.Jobs
 
             // Populate input names
             HashSet<string> paramNames = new HashSet<string>(triggerParameterNames);
-            foreach (var flow in flows)
-            {
-                if (flow != null)
-                {
-                    paramNames.UnionWith(flow.ProducedRouteParameters);
-                }
-            }
 
             // Take a second pass to bind params directly to {key} in the attributes above,.
             // So if we have p1 with attr [BlobInput(@"daas-test-input2/{name}.csv")],
@@ -411,7 +414,7 @@ namespace Microsoft.Azure.Jobs
                 ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(new TriggerBindingProviderContext
                 {
                     Parameter = parameter,
-                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : null,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
                     StorageAccount = context != null ? context.StorageAccount : null,
                     ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
                 });
@@ -452,7 +455,7 @@ namespace Microsoft.Azure.Jobs
                 IBinding binding = _bindingProvider.TryCreate(new BindingProviderContext
                 {
                     Parameter = parameter,
-                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : null,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
                     BindingDataContract = bindingDataContract,
                     StorageAccount = context != null ? context.StorageAccount : null,
                     ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
