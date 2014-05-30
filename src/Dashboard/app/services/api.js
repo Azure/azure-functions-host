@@ -54,7 +54,7 @@
             },
             functionsInJob: function (jobType, jobName, runId) {
                 if (jobType !== 'triggered' && jobType !== 'continuous') {
-                    throw "Unsuppoerted WebJob type " + jobType;
+                    throw "Unsupported WebJob type " + jobType;
                 }
                 if (jobType === 'triggered') {
                     return 'api/jobs/triggered/' + jobName + '/runs/' + runId + '/functions';
