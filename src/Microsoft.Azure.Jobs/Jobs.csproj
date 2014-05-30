@@ -59,6 +59,7 @@
     <Compile Include="DescriptionAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
+    <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

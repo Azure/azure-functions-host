@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{BlobPath,nq}")]
-    public class BlobTriggerAttribute : Attribute
+    public sealed class BlobTriggerAttribute : Attribute
     {
         private readonly string _blobPath;
 

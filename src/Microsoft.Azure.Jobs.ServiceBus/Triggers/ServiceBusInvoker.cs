@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.Jobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs
@@ -20,21 +21,12 @@ namespace Microsoft.Azure.Jobs
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, BrokeredMessage msg)
         {
             // Extract any named parameters from the queue payload.
-            var flow = func.Flow;
-            ServiceBusParameterStaticBinding qb = flow.Bindings.OfType<ServiceBusParameterStaticBinding>().Where(b => b.IsInput).First();
+            ServiceBusTriggerBinding serviceBusTriggerBinding = func.TriggerBinding as ServiceBusTriggerBinding;
+            ITriggerData triggerData = serviceBusTriggerBinding.Bind(msg);
+            IDictionary<string, string> p = Worker.GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
-            IDictionary<string, string> p;
-            try
-            {
-                var payload = new StreamReader(msg.Clone().GetBody<Stream>()).ReadToEnd();
-                p = ServiceBusStaticBinder.GetRouteParameters(payload, qb.Params);
-            }
-            catch
-            {
-                p = null;
-            }
-            RuntimeBindingInputs ctx = new NewServiceBusMessageRuntimeBindingInputs(func.Location, msg)
+            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
             {
                 NameParameters = p
             };
@@ -43,9 +35,13 @@ namespace Microsoft.Azure.Jobs
 
             instance.TriggerReason = new ServiceBusTriggerReason
             {
-                EntityPath = qb.EntityPath,
+                EntityPath = serviceBusTriggerBinding.EntityPath,
                 MessageId = msg.MessageId,
                 ParentGuid = GetOwnerFromMessage(msg)
+            };
+
+            instance.Parameters = new Dictionary<string, IValueProvider> {
+                { func.TriggerParameterName, triggerData.ValueProvider }
             };
 
             return instance;
@@ -60,7 +56,6 @@ namespace Microsoft.Azure.Jobs
         {
             var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, msg);
             _worker.OnNewInvokeableItem(instance, cancellationToken);
-
         }
     }
 }

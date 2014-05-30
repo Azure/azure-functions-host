@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
     {
         private readonly IEnumerable<ITriggerBindingProvider> _providers;
 
-        public CompositeTriggerBindingProvider(params ITriggerBindingProvider[] providers)
+        public CompositeTriggerBindingProvider(IEnumerable<ITriggerBindingProvider> providers)
         {
             _providers = providers;
         }

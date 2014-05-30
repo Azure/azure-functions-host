@@ -39,7 +39,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var assembly = typeof(QueueTriggerAttribute).Assembly;
 
             var expected = new[] {
-                "ServiceBusAttribute",
                 "BlobInputAttribute",
                 "BlobOutputAttribute",
                 "BlobTriggerAttribute",
@@ -50,6 +49,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "TableAttribute",
                 "IBinder",
                 "ICloudBlobStreamBinder`1",
+                "ServiceBusAttribute",
+                "ServiceBusTriggerAttribute"
             };
 
             AssertPublicTypes(expected, assembly);

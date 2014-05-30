@@ -358,9 +358,7 @@
     <Compile Include="Runners\Configuration.cs" />
     <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
     <Compile Include="Bindings\ICloudBinderVerify.cs" />
-    <Compile Include="Bindings\RuntimeBindings\NewQueueMessageRuntimeBindingInputs.cs" />
     <Compile Include="Runners\RunnerProgram.cs" />
-    <Compile Include="Bindings\RuntimeBindings\NewBlobRuntimeBindingInputs.cs" />
     <Compile Include="Bindings\RuntimeBindings\RuntimeBindingInputs.cs" />
     <Compile Include="Bindings\BindResults\BlobBindResult.cs" />
     <Compile Include="Bindings\RuntimeBindings\BlobParameterRuntimeBinding.cs" />

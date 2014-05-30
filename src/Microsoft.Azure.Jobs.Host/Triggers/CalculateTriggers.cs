@@ -3,13 +3,14 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
     internal class CalculateTriggers
     {
-        private static readonly Func<ParameterStaticBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
+        private static readonly Func<ITriggerBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
 
         static CalculateTriggers()
         {
@@ -19,16 +20,16 @@ namespace Microsoft.Azure.Jobs
                 return;
             }
 
-            var getTriggerMethod = type.GetMethod("GetTriggerRaw");
-            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] {binding}) as TriggerRaw;
+            var getTriggerMethod = type.GetMethod("GetTriggerRaw", new Type[] { typeof(ITriggerBinding) });
+            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] { binding }) as TriggerRaw;
         }
 
         public static Trigger GetTrigger(FunctionDefinition func)
         {
             var credentials = new Credentials
             {
-                 StorageConnectionString = func.Location.StorageConnectionString,
-                 ServiceBusConnectionString = func.Location.ServiceBusConnectionString
+                StorageConnectionString = func.Location.StorageConnectionString,
+                ServiceBusConnectionString = func.Location.ServiceBusConnectionString
             };
 
             var raw = GetTriggerRaw(func);
@@ -48,25 +49,22 @@ namespace Microsoft.Azure.Jobs
 
             if (queueTriggerBinding != null)
             {
-                return TriggerRaw.NewQueue(null, queueTriggerBinding.QueueName);
+                return TriggerRaw.NewQueue(queueTriggerBinding.QueueName);
             }
 
             BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
 
             if (blobTriggerBinding != null)
             {
-                return TriggerRaw.NewBlob(null, blobTriggerBinding.BlobPath, GetOutputPath(func));
+                return TriggerRaw.NewBlob(blobTriggerBinding.BlobPath, GetOutputPath(func));
             }
 
-            var flow = func.Flow;
-            foreach (var input in flow.Bindings)
+            var serviceBusTrigger = _tryGetServiceBusTriggerRaw(func.TriggerBinding);
+            if (serviceBusTrigger != null)
             {
-                var serviceBusTrigger = _tryGetServiceBusTriggerRaw(input);
-                if (serviceBusTrigger != null)
-                {
-                    return serviceBusTrigger;
-                }
+                return serviceBusTrigger;
             }
+
             return null; // No triggers
         }
 

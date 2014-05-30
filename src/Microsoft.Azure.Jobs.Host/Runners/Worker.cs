@@ -329,16 +329,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
         {
-            string payload = msg.AsString;
-
             // Extract any named parameters from the queue payload.
-            var flow = func.Flow;
             QueueTriggerBinding queueTriggerBinding = func.TriggerBinding as QueueTriggerBinding;
             ITriggerData triggerData = queueTriggerBinding.Bind(msg);
             IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
-            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg)
+            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
             {
                 NameParameters = p
             };
@@ -359,7 +356,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return instance;
         }
 
-        private static IDictionary<string, string> GetNameParameters(IReadOnlyDictionary<string, object> bindingData)
+        internal static IDictionary<string, string> GetNameParameters(IReadOnlyDictionary<string, object> bindingData)
         {
             if (bindingData == null)
             {
@@ -395,10 +392,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return null;
             }
 
-            var ctx = new NewBlobRuntimeBindingInputs(func.Location, blobInput)
+            var ctx = new RuntimeBindingInputs(func.Location)
             {
-                NameParameters = p,
+                NameParameters = p
             };
+
             FunctionInvokeRequest instance = BindParameters(ctx, func);
 
             Guid parentGuid = GetBlobWriterGuid(blobInput);

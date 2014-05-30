@@ -55,6 +55,9 @@ namespace Microsoft.Azure.Jobs
 
         private static ITriggerBindingProvider CreateTriggerBindingProvider(IConfiguration configuration)
         {
+            List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
+            innerProviders.Add(new QueueTriggerAttributeBindingProvider());
+
             IEnumerable<Type> cloudBlobStreamBinderTypes;
 
             if (configuration != null)
@@ -66,9 +69,19 @@ namespace Microsoft.Azure.Jobs
                 cloudBlobStreamBinderTypes = null;
             }
 
-            return new CompositeTriggerBindingProvider(
-                new QueueTriggerAttributeBindingProvider(),
-                new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
+            innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
+
+            Type serviceBusAttributeBindingProviderType = ServiceBusExtensionTypeLoader.Get(
+                "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
+
+            if (serviceBusAttributeBindingProviderType != null)
+            {
+                ITriggerBindingProvider serviceBusAttributeBindingProvider =
+                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusAttributeBindingProviderType);
+                innerProviders.Add(serviceBusAttributeBindingProvider);
+            }
+
+            return new CompositeTriggerBindingProvider(innerProviders);
         }
 
         private static MethodInfo ResolveMethod(Type type, string name)
