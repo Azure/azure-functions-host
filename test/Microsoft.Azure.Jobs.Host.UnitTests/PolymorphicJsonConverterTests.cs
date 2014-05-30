@@ -5,6 +5,7 @@ using Microsoft.Azure.Jobs.Host.TestCommon;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -453,6 +454,27 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
 
         [Fact]
+        public void WriteJson_MaintainsContractResolver()
+        {
+            // Arrange
+            JsonConverter product = CreateProductUnderTest();
+
+            using (JsonWriter writer = CreateStubWriter())
+            {
+                Type objectType = typeof(object);
+                object value = new object();
+                JsonSerializer serializer = new JsonSerializer();
+                IContractResolver originalContractResolver = serializer.ContractResolver;
+
+                // Act
+                product.WriteJson(writer, value, serializer);
+
+                // Assert
+                Assert.Same(originalContractResolver, serializer.ContractResolver);
+            }
+        }
+
+        [Fact]
         public void WriteJson_IfWriterIsNull_Throws()
         {
             // Arrange
@@ -554,6 +576,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             bool read = reader.Read();
             Assert.True(read);
             return reader;
+        }
+
+        private static JsonWriter CreateStubWriter()
+        {
+            return new Mock<JsonWriter>().Object;
         }
 
         private static string GetJson(JToken token)

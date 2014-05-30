@@ -112,6 +112,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
             Type valueType = value.GetType();
 
+            // Now that we've handled the type, temporarily remove this converter so we can serialize this element and
+            // its children without infinite recursion.
+            IContractResolver originalContractResolver = serializer.ContractResolver;
             serializer.ContractResolver = new NonCircularContractResolver(valueType);
 
             JObject json = JObject.FromObject(value, serializer);
@@ -129,6 +132,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
 
             serializer.Serialize(writer, json);
+
+            // Restore this converter so that subsequent siblings can use it.
+            serializer.ContractResolver = originalContractResolver;
         }
 
         public static IDictionary<string, Type> GetTypeMapping<T>()
