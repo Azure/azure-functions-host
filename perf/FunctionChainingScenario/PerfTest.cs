@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
             host.RunAndBlock(_cancelToken.Token);
         }
 
-        public static void QueuePerfJobStart([QueueTrigger(FirstQueueName)] string input, [QueueOutput(PerfQueuePrefix + "1")] out string output)
+        public static void QueuePerfJobStart([QueueTrigger(FirstQueueName)] string input, [Queue(PerfQueuePrefix + "1")] out string output)
         {
             // When we reach here, it means that the host started and the first function is invoked
             // so we can stop the timer

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30110.0
+VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{639967B0-0544-4C52-94AC-9A3D25E33256}"
 EndProject
@@ -36,6 +36,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.ServiceBus", "src\Microsoft.Azure.Jobs.ServiceBus\Jobs.ServiceBus.csproj", "{7B396753-F2D9-4655-929B-BE7E665A4C7E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Protocols", "src\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj", "{9781D898-5E08-45F1-ACD9-7EA106353AC4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PerformanceTests", "PerformanceTests", "{FA608267-1272-4BD5-B230-0F41A48D18C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.FunctionChainingScenario", "perf\FunctionChainingScenario\Jobs.Host.FunctionChainingScenario.csproj", "{34D23554-5482-4B3D-B65F-46DFF5AF1684}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,6 +91,10 @@ Global
 		{9781D898-5E08-45F1-ACD9-7EA106353AC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9781D898-5E08-45F1-ACD9-7EA106353AC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9781D898-5E08-45F1-ACD9-7EA106353AC4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34D23554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34D23554-5482-4B3D-B65F-46DFF5AF1684}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34D23554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34D23554-5482-4B3D-B65F-46DFF5AF1684}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,5 +105,6 @@ Global
 		{CA75D667-A785-4394-AA5C-3A6C658C23A7} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{31BAB10E-B319-4F4E-9898-EA7A2740AA19} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{7EF78F7B-C9C9-4311-B87D-50ED5932CC93} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{34D23554-5482-4B3D-B65F-46DFF5AF1684} = {FA608267-1272-4BD5-B230-0F41A48D18C8}
 	EndGlobalSection
 EndGlobal
