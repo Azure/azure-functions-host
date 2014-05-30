@@ -19,7 +19,7 @@
 
   <commands>
     <command name="RunTest" wait="Exit">
-      Microsoft.WindowsAzure.Jobs.Host.FunctionChainingScenario.exe /CS={ConnectionString}
+      Microsoft.Azure.Jobs.Host.FunctionChainingScenario.exe /CS={ConnectionString}
     </command>
   </commands>
 
