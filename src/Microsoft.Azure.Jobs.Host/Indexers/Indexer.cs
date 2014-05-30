@@ -6,6 +6,7 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.Jobs
                 new Sdk1CloudStorageAccountStaticBindingProvider()
             };
 
-        private static readonly IBindingProvider _bindingProvider = new CompositeBindingProvider();
+        private static readonly IBindingProvider _bindingProvider = new QueueAttributeBindingProvider();
 
         private readonly IFunctionTable _functionTable;
         private readonly INameResolver _nameResolver;
@@ -351,7 +352,7 @@ namespace Microsoft.Azure.Jobs
             // Look at parameters.
             ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr, triggerParameterNames);
 
-            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
+            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null || index.NonTriggerBindings.Count > 0;
             AddInvokeBindings(descr, parameterBindings);
 
             //
@@ -433,6 +434,7 @@ namespace Microsoft.Azure.Jobs
                 IBinding binding = _bindingProvider.TryCreate(new BindingProviderContext
                 {
                     Parameter = parameter,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : null,
                     BindingDataContract = bindingDataContract,
                     StorageAccount = context != null ? context.StorageAccount : null,
                     ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null

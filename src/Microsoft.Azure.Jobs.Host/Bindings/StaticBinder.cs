@@ -123,16 +123,5 @@ namespace Microsoft.Azure.Jobs
                 };
             }
         }
-
-        private ParameterStaticBinding Bind(QueueOutputAttribute attr, ParameterInfo parameter)
-        {
-            string queueName = Resolve(attr.QueueName);
-            if (queueName == null)
-            {
-                queueName = parameter.Name;
-            }
-
-            return new QueueParameterStaticBinding { QueueName = queueName };
-        }
     }
 }

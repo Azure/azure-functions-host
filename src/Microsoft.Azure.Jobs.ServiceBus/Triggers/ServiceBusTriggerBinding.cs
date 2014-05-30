@@ -60,25 +60,25 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             get { return _entityPath; }
         }
 
-        public ITriggerData Bind(BrokeredMessage value)
+        public ITriggerData Bind(BrokeredMessage value, ArgumentBindingContext context)
         {
             BrokeredMessage clonedMessage = value.Clone();
-            IValueProvider valueProvider = _argumentBinding.Bind(value);
+            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(clonedMessage);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value)
+        public ITriggerData Bind(object value, ArgumentBindingContext context)
         {
             BrokeredMessage message = null;
 
             if (!_converter.TryConvert(value, out message))
             {
-                throw new Exception("Unable to convert trigger to BrokeredMessage.");
+                throw new InvalidOperationException("Unable to convert trigger to BrokeredMessage.");
             }
 
-            return Bind(message);
+            return Bind(message, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

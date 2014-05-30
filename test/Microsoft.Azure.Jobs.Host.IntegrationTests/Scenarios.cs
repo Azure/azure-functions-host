@@ -147,7 +147,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         public static void AddToQueue(
             [BlobTrigger(@"daas-test-input/{name}.csv")] TextReader values, 
-            [QueueOutput] out Payload queueTest)
+            [Queue("queueTest")] out Payload queueTest)
         {
             string content = values.ReadToEnd();
             int val = int.Parse(content);

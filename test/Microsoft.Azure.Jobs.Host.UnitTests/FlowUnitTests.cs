@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Xunit;
@@ -109,7 +110,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
 
         // Queue inputs with implicit names.
-        public static void QueueOutput([QueueOutput] out int inputQueue)
+        public static void QueueOutput([Queue("inputQueue")] out int inputQueue)
         {
             inputQueue = 0;
         }
@@ -119,12 +120,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             FunctionDefinition func = Get("QueueOutput");
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(1, flows.Length);
+            var bindings = func.NonTriggerBindings;
+            Assert.Equal(1, bindings.Count);
 
-            var t = (QueueParameterStaticBinding)flows[0];
+            Assert.True(bindings.ContainsKey("inputQueue")); // parameter name does not.
+            var t = (QueueBinding)bindings["inputQueue"];
             Assert.Equal("inputqueue", t.QueueName);
-            Assert.Equal("inputQueue", t.Name); // parameter name does not.
         }
 
         [Jobs.Description("This is a description")]

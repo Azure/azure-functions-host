@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(CloudQueueMessage value)
+        public IValueProvider Bind(CloudQueueMessage value, ArgumentBindingContext context)
         {
             object converted =_converter.Convert(value);
             return new ObjectMessageValueProvider(value, converted, _valueType);

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 get { return typeof(Stream); }
             }
 
-            public IValueProvider Bind(ICloudBlob value)
+            public IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
             {
                 Stream rawStream = value.OpenRead();
                 WatchableStream watchableStream = new WatchableStream(value.OpenRead(), value.Properties.Length);

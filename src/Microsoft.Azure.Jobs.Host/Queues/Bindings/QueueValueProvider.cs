@@ -1,24 +1,23 @@
 ﻿using System;
-using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
-    internal sealed class BlobValueProvider : IValueProvider
+    internal sealed class QueueValueProvider : IValueProvider
     {
-        private readonly ICloudBlob _blob;
+        private readonly CloudQueue _queue;
         private readonly object _value;
         private readonly Type _valueType;
 
-        public BlobValueProvider(ICloudBlob blob, object value, Type valueType)
+        public QueueValueProvider(CloudQueue queue, object value, Type valueType)
         {
             if (!valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }
 
-            _blob = blob;
+            _queue = queue;
             _value = value;
             _valueType = valueType;
         }
@@ -35,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 
         public string ToInvokeString()
         {
-            return _blob.GetBlobPath();
+            return _queue.Name;
         }
     }
 }

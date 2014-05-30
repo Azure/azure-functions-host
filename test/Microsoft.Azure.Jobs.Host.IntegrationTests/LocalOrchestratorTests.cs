@@ -356,14 +356,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void FuncEnqueue(
-                [QueueOutput] out Payload myoutputqueue)
+                [Queue("myoutputqueue")] out Payload myoutputqueue)
             {
                 // Send payload to Azure queue "myoutputqueue"
                 myoutputqueue = new Payload { Value = 15 };
             }
 
             public static void FuncMultiEnqueueIEnumerable(
-                [QueueOutput] out IEnumerable<Payload> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<Payload> myoutputqueue)
             {
                 List<Payload> payloads = new List<Payload>();
                 payloads.Add(new Payload { Value = 10 });
@@ -373,28 +373,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void FuncMultiEnqueueIEnumerableNested(
-                [QueueOutput] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
             {
                 List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputIEnumerableOfObject(
-                [QueueOutput] out IEnumerable<object> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<object> myoutputqueue)
             {
                 List<object> payloads = new List<object>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputObject(
-                [QueueOutput] out object myoutputqueue)
+                [Queue("myoutputqueue")] out object myoutputqueue)
             {
                 List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputIList(
-                [QueueOutput] out IList<Payload> myoutputqueue)
+                [Queue("myoutputqueue")] out IList<Payload> myoutputqueue)
             {
                 List<Payload> payloads = new List<Payload>();
                 myoutputqueue = payloads;

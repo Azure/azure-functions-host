@@ -38,7 +38,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(ICloudBlob value)
+            public IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
             {
                 return new BlobValueProvider(value, _converter.Convert(value), typeof(T));
             }

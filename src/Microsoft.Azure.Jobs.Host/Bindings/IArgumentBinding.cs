@@ -1,7 +1,11 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Bindings
+﻿using System;
+
+namespace Microsoft.Azure.Jobs.Host.Bindings
 {
-    internal interface IArgumentBinding
+    internal interface IArgumentBinding<T>
     {
-        IValueProvider Bind(object value);
+        Type ValueType { get; }
+
+        IValueProvider Bind(T value, ArgumentBindingContext context);
     }
 }

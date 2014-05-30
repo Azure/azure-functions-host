@@ -202,17 +202,20 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
+    <Compile Include="Bindings\ArgumentBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />
     <Compile Include="Bindings\BindingProviderContext.cs" />
     <Compile Include="Bindings\CompositeBindingProvider.cs" />
-    <Compile Include="Bindings\IArgumentBindingOfT.cs" />
     <Compile Include="Bindings\IArgumentBinding.cs" />
     <Compile Include="Bindings\IBinding.cs" />
     <Compile Include="Bindings\IBindingProvider.cs" />
+    <Compile Include="Bindings\IOrderedValueBinder.cs" />
+    <Compile Include="Bindings\IValueBinder.cs" />
     <Compile Include="Bindings\IValueProvider.cs" />
     <Compile Include="Bindings\IWatchable.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
+    <Compile Include="Bindings\BindStepOrders.cs" />
     <Compile Include="Blobs\BlobValueProvider.cs" />
     <Compile Include="Blobs\BlobWatchableValueProvider.cs" />
     <Compile Include="Blobs\BlobWatchableDisposableValueProvider.cs" />
@@ -235,6 +238,21 @@
     <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />
     <Compile Include="Converters\IObjectToTypeConverter.cs" />
     <Compile Include="Converters\ITypeToObjectConverter.cs" />
+    <Compile Include="Queues\Bindings\ByteArrayQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\UserTypeQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\UserTypeQueueArgumentBinding.cs" />
+    <Compile Include="Queues\Bindings\CollectionQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\ByteArrayQueueArgumentBinding.cs" />
+    <Compile Include="Queues\Bindings\StringQueueArgumentBinding.cs" />
+    <Compile Include="Queues\Bindings\StringQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\QueueValueProvider.cs" />
+    <Compile Include="Queues\Bindings\CloudQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\CompositeQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\IQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\OutputConverter.cs" />
+    <Compile Include="Queues\Bindings\QueueAttributeBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\QueueBinding.cs" />
+    <Compile Include="Queues\Bindings\StringToCloudQueueConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToUserTypeConverter.cs" />
     <Compile Include="Queues\Triggers\InputConverter.cs" />
     <Compile Include="Queues\Triggers\OutputConverter.cs" />
@@ -364,14 +382,12 @@
     <Compile Include="Bindings\RuntimeBindings\BlobParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\LiteralStringParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\BindResults\NullBindResult.cs" />
-    <Compile Include="Bindings\RuntimeBindings\QueueOutputParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\RuntimeBindings\TableParameterRuntimeBinding.cs" />
     <Compile Include="Runners\SelfWatch.cs" />
     <Compile Include="Bindings\FakeParameterInfo.cs" />
     <Compile Include="Bindings\StaticBinder.cs" />
     <Compile Include="Bindings\StaticBindings\BlobParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\NameParameterStaticBinding.cs" />
-    <Compile Include="Bindings\StaticBindings\QueueParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\TableParameterStaticBinding.cs" />
     <Compile Include="Runners\WatchableEnumerable.cs" />
     <Compile Include="Bindings\BinderProviders\DelegatingStream.cs" />
@@ -397,8 +413,6 @@
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Indexers\MethodInfoFunctionLocation.cs" />
     <Compile Include="Bindings\StaticBindings\ParameterStaticBinding.cs" />
-    <Compile Include="Bindings\RuntimeBindings\ITriggerNewQueueMessage.cs" />
-    <Compile Include="Bindings\RuntimeBindings\ITriggerNewBlob.cs" />
     <Compile Include="Bindings\RuntimeBindings\IRuntimeBindingInputs.cs" />
     <Compile Include="Bindings\RuntimeBindings\ParameterRuntimeBinding.cs" />
     <Compile Include="Loggers\BlobIncrementalTextWriter.cs" />

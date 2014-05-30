@@ -74,7 +74,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         public static void BlobToQueue(
             [BlobTrigger(ContainerName + @"/{name}")] CustomObject input,
             string name,
-            [QueueOutput(TestQueueName)] out CustomObject output)
+            [Queue(TestQueueName)] out CustomObject output)
         {
             CustomObject result = new CustomObject()
             {
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         public static void QueueToTable(
             [QueueTrigger(TestQueueName)] CustomObject e2equeue,
             [Table(TableName)] IDictionary<Tuple<string, string>, CustomObject> table,
-            [QueueOutput] out string e2edone)
+            [Queue(DoneQueueName)] out string e2edone)
         {
             const string tableKeys = "test";
 

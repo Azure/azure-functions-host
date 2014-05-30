@@ -2,7 +2,7 @@
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
-    internal class BindingContext
+    internal class BindingContext : ArgumentBindingContext
     {
         public IReadOnlyDictionary<string, object> BindingData { get; set; }
     }

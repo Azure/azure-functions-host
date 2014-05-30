@@ -43,14 +43,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "BlobOutputAttribute",
                 "BlobTriggerAttribute",
                 "DescriptionAttribute",
-                "QueueTriggerAttribute",
-                "QueueOutputAttribute",
-                "NoAutomaticTriggerAttribute",
-                "TableAttribute",
                 "IBinder",
                 "ICloudBlobStreamBinder`1",
+                "NoAutomaticTriggerAttribute",
+                "QueueAttribute",
+                "QueueTriggerAttribute",
                 "ServiceBusAttribute",
-                "ServiceBusTriggerAttribute"
+                "ServiceBusTriggerAttribute",
+                "TableAttribute"
             };
 
             AssertPublicTypes(expected, assembly);

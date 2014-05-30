@@ -27,8 +27,19 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 return null;
             }
 
-            string queueName = context.Resolve(serviceBusTrigger.QueueName);
-            queueName = NormalizeAndValidate(queueName);
+            string queueName = null;
+            string topicName = null;
+            string subscriptionName = null;
+
+            if (serviceBusTrigger.QueueName != null)
+            {
+                queueName = context.Resolve(serviceBusTrigger.QueueName);
+            }
+            else
+            {
+                topicName = context.Resolve(serviceBusTrigger.TopicName);
+                subscriptionName = context.Resolve(serviceBusTrigger.SubscriptionName);
+            }
 
             ITypeToObjectConverter<BrokeredMessage> converter = null;
 
@@ -48,14 +59,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             IArgumentBinding<BrokeredMessage> argumentBinding =
                 new ServiceBusTriggerArgumentBinding(converter, parameter.ParameterType);
-            return new ServiceBusTriggerBinding(argumentBinding, queueName);
-        }
 
-        private static string NormalizeAndValidate(string queueName)
-        {
-            queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
-            QueueClient.ValidateQueueName(queueName);
-            return queueName;
+            if (queueName != null)
+            {
+                return new ServiceBusTriggerBinding(argumentBinding, queueName);
+            }
+            else
+            {
+                return new ServiceBusTriggerBinding(argumentBinding, topicName, subscriptionName);
+            }
         }
     }
 }

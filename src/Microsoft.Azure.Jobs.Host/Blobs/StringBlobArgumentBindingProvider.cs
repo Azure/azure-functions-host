@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 get { return typeof(string); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob)
+            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
             {
                 string value;
                 string status;

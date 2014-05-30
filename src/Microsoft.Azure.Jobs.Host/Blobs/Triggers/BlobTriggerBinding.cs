@@ -61,24 +61,24 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             get { return _containerName + "/" + _blobName; }
         }
 
-        public ITriggerData Bind(ICloudBlob value)
+        public ITriggerData Bind(ICloudBlob value, ArgumentBindingContext context)
         {
-            IValueProvider valueProvider = _argumentBinding.Bind(value);
+            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value)
+        public ITriggerData Bind(object value, ArgumentBindingContext context)
         {
             ICloudBlob blob = null;
 
             if (!_converter.TryConvert(value, out blob))
             {
-                throw new Exception("Unable to convert trigger to ICloudBlob.");
+                throw new InvalidOperationException("Unable to convert trigger to ICloudBlob.");
             }
 
-            return Bind(blob);
+            return Bind(blob, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

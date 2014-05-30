@@ -2,9 +2,11 @@
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
-    internal interface IBinding : IArgumentBinding
+    internal interface IBinding
     {
-        BindResult Bind(BindingContext context);
+        IValueProvider Bind(object value, ArgumentBindingContext context);
+
+        IValueProvider Bind(BindingContext context);
 
         ParameterDescriptor ToParameterDescriptor();
     }

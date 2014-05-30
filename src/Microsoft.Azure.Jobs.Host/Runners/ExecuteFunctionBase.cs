@@ -12,11 +12,6 @@ namespace Microsoft.Azure.Jobs
     {
         public FunctionInvocationResult Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
         {
-            if (instance.Id == Guid.Empty)
-            {
-                instance.Id = Guid.NewGuid(); // used for logging. 
-            }
-
             if (instance.TriggerReason == null)
             {
                 // Having a trigger reason is important for diagnostics. 

@@ -33,24 +33,24 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             get { return _queueName; }
         }
 
-        public ITriggerData Bind(CloudQueueMessage value)
+        public ITriggerData Bind(CloudQueueMessage value, ArgumentBindingContext context)
         {
-            IValueProvider valueProvider = _argumentBinding.Bind(value);
+            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value)
+        public ITriggerData Bind(object value, ArgumentBindingContext context)
         {
             CloudQueueMessage message = null;
 
             if (!_converter.TryConvert(value, out message))
             {
-                throw new Exception("Unable to convert trigger to CloudQueueMessage.");
+                throw new InvalidOperationException("Unable to convert trigger to CloudQueueMessage.");
             }
 
-            return Bind(message);
+            return Bind(message, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

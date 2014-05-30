@@ -20,9 +20,12 @@ namespace Microsoft.Azure.Jobs
 
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, BrokeredMessage msg)
         {
+            Guid functionInstanceId = Guid.NewGuid();
+
             // Extract any named parameters from the queue payload.
             ServiceBusTriggerBinding serviceBusTriggerBinding = func.TriggerBinding as ServiceBusTriggerBinding;
-            ITriggerData triggerData = serviceBusTriggerBinding.Bind(msg);
+            ITriggerData triggerData = serviceBusTriggerBinding.Bind(msg,
+                new ArgumentBindingContext { FunctionInstanceId = functionInstanceId });
             IDictionary<string, string> p = Worker.GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
@@ -31,7 +34,7 @@ namespace Microsoft.Azure.Jobs
                 NameParameters = p
             };
 
-            var instance = Worker.BindParameters(ctx, func);
+            var instance = Worker.BindParameters(ctx, func, functionInstanceId);
 
             instance.TriggerReason = new ServiceBusTriggerReason
             {
@@ -40,9 +43,8 @@ namespace Microsoft.Azure.Jobs
                 ParentGuid = GetOwnerFromMessage(msg)
             };
 
-            instance.Parameters = new Dictionary<string, IValueProvider> {
-                { func.TriggerParameterName, triggerData.ValueProvider }
-            };
+            instance.Parameters = Worker.BindParameters(functionInstanceId, func.TriggerParameterName, triggerData,
+                func.NonTriggerBindings);
 
             return instance;
         }
