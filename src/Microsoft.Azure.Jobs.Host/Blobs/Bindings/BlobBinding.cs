@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -14,13 +15,16 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         private readonly string _containerName;
         private readonly string _blobName;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
+        private readonly bool _outParameter;
 
-        public BlobBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudStorageAccount account, string containerName, string blobName)
+        public BlobBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudStorageAccount account,
+            string containerName, string blobName, bool outParameter)
         {
             _argumentBinding = argumentBinding;
             _client = account.CreateCloudBlobClient();
             _containerName = containerName;
             _blobName = blobName;
+            _outParameter = outParameter;
             _converter = CreateConverter(_client);
         }
 
@@ -46,6 +50,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             get { return _containerName + "/" + _blobName; }
         }
 
+        public bool IsInput
+        {
+            get
+            {
+                return _argumentBinding.ValueType != typeof(TextWriter) &&
+                    _argumentBinding.ValueType != typeof(CloudBlobStream) && !_outParameter;
+            }
+        }
+
         private IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
         {
             return _argumentBinding.Bind(value, context);
@@ -56,7 +69,24 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             string resolvedPath = RouteParser.ApplyBindingData(BlobPath, context.BindingData);
             CloudBlobPath parsedResolvedPath = new CloudBlobPath(resolvedPath);
             CloudBlobContainer container = _client.GetContainerReference(parsedResolvedPath.ContainerName);
-            ICloudBlob blob = container.GetBlobReferenceFromServer(parsedResolvedPath.BlobName);
+
+            Type argumentType = _argumentBinding.ValueType;
+            string blobName = parsedResolvedPath.BlobName;
+            ICloudBlob blob;
+
+            if (argumentType == typeof(CloudBlockBlob))
+            {
+                blob = container.GetBlockBlobReference(blobName);
+            }
+            else if (argumentType == typeof(CloudPageBlob))
+            {
+                blob = container.GetPageBlobReference(blobName);
+            }
+            else
+            {
+                blob = container.GetExistingOrNewBlockBlobReference(blobName);
+            }
+
             return Bind(blob, context);
         }
 
@@ -66,7 +96,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
             if (!_converter.TryConvert(value, out blob))
             {
-                throw new InvalidOperationException("Unable to convert trigger to ICloudBlob.");
+                throw new InvalidOperationException("Unable to convert value to ICloudBlob.");
             }
 
             return Bind(blob, context);
@@ -78,7 +108,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             {
                 ContainerName = _containerName,
                 BlobName = _blobName,
-                IsInput = true
+                IsInput = IsInput
             };
         }
     }

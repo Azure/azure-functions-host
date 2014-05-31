@@ -20,8 +20,7 @@ namespace Microsoft.Azure.Jobs
             ICloudTableBinder binder = GetTableBinderOrThrow(config, type);
 
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(Table.AccountConnectionString);
-            IBinderEx ctx = new BinderEx(config, inputs, instance, notificationService : null,
-                consoleOutput: consoleOutput, cancellationToken: cancellationToken);
+            IBinderEx ctx = new BinderEx(config, inputs, instance, consoleOutput, cancellationToken);
             var bind = binder.Bind(ctx, type, Table.TableName);
             return bind;
         }

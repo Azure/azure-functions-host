@@ -10,14 +10,14 @@ namespace Microsoft.Azure.Jobs
     // or accidentally remove it).
     // An alternative mechanism would be to have a look-aside table. But that's risky because it's
     // a separate object to manage and could get out of sync.
-    internal class BlobCausalityLogger : IBlobCausalityLogger
+    internal static class BlobCausalityLogger
     {
         // Metadata names must adehere to C# identifier rules
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
-        const string MetadataKeyName = "SimpleBatch_WriterFunc";
+        const string MetadataKeyName = "AzureJobsParentId";
 
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
-        public void SetWriter(ICloudBlob blob, Guid function)
+        public static void SetWriter(ICloudBlob blob, Guid function)
         {
             // Beware, SetMetadata() is like a POST, not a PUT, so must
             // fetch existing attributes to preserve them. 
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs
             blob.SetMetadata();
         }
 
-        public Guid GetWriter(ICloudBlob blob)
+        public static Guid GetWriter(ICloudBlob blob)
         {
 
             blob.FetchAttributes();

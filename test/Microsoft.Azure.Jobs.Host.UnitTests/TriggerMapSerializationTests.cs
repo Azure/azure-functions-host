@@ -44,14 +44,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                     {
                         new CloudBlobPath("container/output/{name}.txt"),
                         new CloudBlobPath("container/output2/{name}.txt")
-                    },
-                    CallbackPath = "http://callback?type=blob"
+                    }
                 });
             map.AddTriggers(scope2,
                 new QueueTrigger
                 {
                     StorageConnectionString = acs,
-                    CallbackPath = "http://callback?type=queue",
                     QueueName = "myqueue"
                 }
                 );
@@ -109,7 +107,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
           'container/output/{name}.txt',
           'container/output2/{name}.txt'
         ],
-        'CallbackPath': 'http://callback?type=blob',
         'StorageConnectionString': 'a=1;b=2',
         'Type': 'Blob'
       }
@@ -118,7 +115,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
       {
         '$type': 'Microsoft.Azure.Jobs.QueueTrigger, Microsoft.Azure.Jobs.Host',
         'QueueName': 'myqueue',
-        'CallbackPath': 'http://callback?type=queue',
         'StorageConnectionString': 'a=1;b=2',
         'Type': 'Queue'
       }

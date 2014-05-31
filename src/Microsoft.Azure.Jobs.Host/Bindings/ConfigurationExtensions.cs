@@ -16,18 +16,5 @@ namespace Microsoft.Azure.Jobs
             }
             return null;
         }
-
-        public static ICloudBlobBinder GetBlobBinder(this IConfiguration config, Type targetType)
-        {
-            foreach (var provider in config.BlobBinders)
-            {
-                var binder = provider.TryGetBinder(targetType);
-                if (binder != null)
-                {
-                    return binder;
-                }
-            }
-            return null;
-        }
     }
 }

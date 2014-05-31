@@ -161,7 +161,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         // Route parameters are bound from queue values
         public static void GetFromQueue(
             [QueueTrigger("queueTest")] Payload queueTest, 
-            [BlobOutput(@"daas-test-input/{Output}")] TextWriter output,
+            [Blob(@"daas-test-input/{Output}")] TextWriter output,
             int Value // bound from queueTest.Value
             )
         {
@@ -195,14 +195,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public static void Func1(
             [BlobTrigger(@"daas-test-input/{name}.1")] TextReader values,
             string name,
-            [BlobOutput(@"daas-test-input/{name}.2")] TextWriter output)
+            [Blob(@"daas-test-input/{name}.2")] TextWriter output)
         {
             output.Write(name);
         }
 
         public static void Func2(
             [BlobTrigger(@"daas-test-input/{name}.2")] TextReader values,            
-            [BlobOutput(@"daas-test-input/{name}.3")] TextWriter output)
+            [Blob(@"daas-test-input/{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();
 

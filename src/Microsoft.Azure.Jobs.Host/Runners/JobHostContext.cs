@@ -141,15 +141,6 @@ namespace Microsoft.Azure.Jobs
                             if (ti2 == typeof(ICloudBlobStreamBinder<>))
                             {
                                 config.CloudBlobStreamBinderTypes.Add(type);
-
-                                var tyArg = ti.GetGenericArguments()[0];
-                                var tyBinder = typeof(SimpleBinderProvider<>).MakeGenericType(tyArg);
-
-                                var objInner = Activator.CreateInstance(type);
-                                var obj = Activator.CreateInstance(tyBinder, objInner);
-                                var it = (ICloudBlobBinderProvider)obj;
-
-                                config.BlobBinders.Add(it);
                             }
                         }
                     }

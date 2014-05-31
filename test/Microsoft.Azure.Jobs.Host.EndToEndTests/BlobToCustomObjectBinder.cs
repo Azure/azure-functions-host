@@ -24,10 +24,14 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         public void WriteToStream(CustomObject value, Stream output)
         {
-            using (StreamWriter writer = new StreamWriter(output))
+            const int defaultBufferSize = 1024;
+
+            using (TextWriter writer = new StreamWriter(output, Encoding.UTF8, defaultBufferSize,
+                leaveOpen: true))
             {
                 string jsonString = JsonConvert.SerializeObject(value);
                 writer.Write(jsonString);
+                writer.Flush();
             };
         }
     }

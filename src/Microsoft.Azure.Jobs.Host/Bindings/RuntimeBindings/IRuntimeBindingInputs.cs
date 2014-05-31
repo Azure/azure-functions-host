@@ -8,6 +8,5 @@ namespace Microsoft.Azure.Jobs
     {
         IDictionary<string, string> NameParameters { get; }
         string StorageConnectionString { get; }
-        string ServiceBusConnectionString { get; }
     }
 }

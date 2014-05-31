@@ -163,7 +163,7 @@ namespace Microsoft.Azure.Jobs
 
                 try
                 {
-                    INotifyNewBlobListener fastpathNotify = new NotifyNewBlobViaInMemory();
+                    NotifyNewBlobViaInMemory fastpathNotify = new NotifyNewBlobViaInMemory();
                     QueueTrigger invokeTrigger;
 
                     if (_dashboardConnectionString != null)
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.Jobs
                     }
 
                     Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
-                        _hostContext.FunctionInstanceLogger, fastpathNotify);
+                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify);
 
                     if (token.IsCancellationRequested)
                     {
@@ -260,7 +260,7 @@ namespace Microsoft.Azure.Jobs
 
                 try
                 {
-                    result = _hostContext.ExecuteFunction.Execute(instance, cancellationToken);
+                    result = _hostContext.ExecuteFunction.Execute(instance, null, cancellationToken);
                 }
                 finally
                 {

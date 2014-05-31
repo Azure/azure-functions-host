@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Triggers;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -13,6 +15,7 @@ namespace Microsoft.Azure.Jobs
     internal static class ExecutionBase
     {
         public static FunctionInvocationResult Work(
+            INotifyNewBlob notifyNewBlob,
             FunctionInvokeRequest instance, // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
 
@@ -28,6 +31,8 @@ namespace Microsoft.Azure.Jobs
 
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
+            BindParameters(notifyNewBlob, instance);
+
             FunctionStartedSnapshot startedSnapshot = new FunctionStartedSnapshot
             {
                 FunctionInstanceId = instance.Id,
@@ -36,7 +41,7 @@ namespace Microsoft.Azure.Jobs
                 FunctionId = instance.Location.GetId(),
                 FunctionFullName = instance.Location.FullName,
                 FunctionShortName = instance.Location.GetShortName(),
-                Arguments = CreateArguments(instance.Parameters, instance.Args),
+                Arguments = CreateArguments(instance.NonTriggerBindings, instance.Parameters, instance.Args),
                 ParentId = instance.TriggerReason != null && instance.TriggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)instance.TriggerReason.ParentGuid : null,
                 Reason = instance.TriggerReason != null ? instance.TriggerReason.ToString() : null,
@@ -72,6 +77,41 @@ namespace Microsoft.Azure.Jobs
                 Succeeded = completedSnapshot.Succeeded,
                 ExceptionMessage = completedSnapshot.ExceptionMessage
             };
+        }
+
+        internal static void BindParameters(INotifyNewBlob notifyNewBlob, FunctionInvokeRequest request)
+        {
+            request.Parameters = BindParameters(notifyNewBlob, request.Id, request.TriggerParameterName,
+                request.TriggerData, request.NonTriggerBindings);
+        }
+
+        internal static IReadOnlyDictionary<string, IValueProvider> BindParameters(INotifyNewBlob notifyNewBlob,
+            Guid functionInstanceId, string triggerParameterName, ITriggerData triggerData,
+            IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
+        {
+            Dictionary<string, IValueProvider> parameters = new Dictionary<string, IValueProvider>();
+
+            if (triggerParameterName != null)
+            {
+                parameters.Add(triggerParameterName, triggerData.ValueProvider);
+            }
+
+            BindingContext context = new BindingContext
+            {
+                FunctionInstanceId = functionInstanceId,
+                BindingData = triggerData != null ? triggerData.BindingData : null,
+                NotifyNewBlob = notifyNewBlob
+            };
+
+            if (nonTriggerBindings != null)
+            {
+                foreach (KeyValuePair<string, IBinding> item in nonTriggerBindings)
+                {
+                    parameters.Add(item.Key, item.Value.Bind(context));
+                }
+            }
+
+            return parameters;
         }
 
         // Have confirmed the function exists.  Do real work.
@@ -155,7 +195,10 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        private static IDictionary<string, FunctionArgument> CreateArguments(IReadOnlyDictionary<string, IValueProvider> parameters, ParameterRuntimeBinding[] runtimeBindings)
+        private static IDictionary<string, FunctionArgument> CreateArguments(
+            IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            IReadOnlyDictionary<string, IValueProvider> parameters,
+            ParameterRuntimeBinding[] runtimeBindings)
         {
             IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
 
@@ -167,13 +210,17 @@ namespace Microsoft.Azure.Jobs
 
                     FunctionArgument argument = new FunctionArgument { Value = valueProvider.ToInvokeString() };
 
-                    // TODO: Remove the type checks here. Instead, pass in the bindings, not just the value providers,
-                    // and include in the protocol data the full parameter descriptor from the binding.
-                    if (valueProvider is BlobValueProvider || valueProvider is BlobWatchableValueProvider
-                        || valueProvider is BlobWatchableDisposableValueProvider)
+                    string name = parameter.Key;
+
+                    if (nonTriggerBindings.ContainsKey(name))
                     {
-                        argument.IsBlob = true;
-                        argument.IsBlobInput = true;
+                        BlobBinding binding = nonTriggerBindings[name] as BlobBinding;
+
+                        if (binding != null)
+                        {
+                            argument.IsBlob = true;
+                            argument.IsBlobInput = binding.IsInput;
+                        }
                     }
 
                     arguments.Add(parameter.Key, argument);
@@ -187,15 +234,8 @@ namespace Microsoft.Azure.Jobs
                     continue;
                 }
 
-                BlobParameterRuntimeBinding blobRuntimeBinding = runtimeBinding as BlobParameterRuntimeBinding;
                 string value = runtimeBinding.ConvertToInvokeString();
                 FunctionArgument argument = new FunctionArgument { Value = value };
-
-                if (blobRuntimeBinding != null)
-                {
-                    argument.IsBlob = true;
-                    argument.IsBlobInput = false;
-                }
 
                 arguments.Add(runtimeBinding.Name, argument);
             }

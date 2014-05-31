@@ -1,24 +1,17 @@
 ﻿using System.IO;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal class DelegatingStream : Stream
     {
         private readonly Stream _inner;
 
-        // Capture this as CanWrite will turn to false upon closing the
-        // of the inner stream, and that info might be required
-        private readonly bool _innerWasWriteable;
-
         public DelegatingStream(Stream inner)
         {
             _inner = inner;
-            _innerWasWriteable = inner.CanWrite;
         }
 
         protected Stream Inner { get { return _inner; }}
-
-        protected bool InnerWasWriteable { get { return _innerWasWriteable; } }
 
         public override bool CanRead
         {

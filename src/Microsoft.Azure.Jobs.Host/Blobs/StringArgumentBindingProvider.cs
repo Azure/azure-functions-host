@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -7,9 +8,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal class StringArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
+        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
         {
-            if (parameterType != typeof(string))
+            if (parameter.ParameterType != typeof(string))
             {
                 return null;
             }
@@ -30,11 +31,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 string status;
 
                 using (Stream rawStream = blob.OpenRead())
-                using (WatchableStream watchableStream = new WatchableStream(rawStream, blob.Properties.Length))
-                using (TextReader reader = new StreamReader(watchableStream))
+                using (SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream))
+                using (TextReader reader = new StreamReader(selfWatchStream))
                 {
                     value = reader.ReadToEnd();
-                    status = watchableStream.GetStatus();
+                    status = selfWatchStream.GetStatus();
                 }
 
                 return new BlobWatchableValueProvider(blob, value, typeof(string), new StaticSelfWatch(status));

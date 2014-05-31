@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -7,37 +8,39 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal class ObjectArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        private readonly ITypelessCloudBlobStreamBinder _typelessBinder;
+        private readonly ICloudBlobStreamObjectBinder _objectBinder;
         private readonly Type _valueType;
 
         public ObjectArgumentBindingProvider(Type cloudBlobStreamBinderType)
         {
-            Type genericType = cloudBlobStreamBinderType.GetGenericTypeDefinition();
-            _valueType = genericType.GetGenericArguments()[0];
-            object innerBinder = Activator.CreateInstance(_valueType);
-            Type typelessBinderType = typeof(TypelessCloudBlobStreamBinder<>).MakeGenericType(_valueType);
-            _typelessBinder = (ITypelessCloudBlobStreamBinder)Activator.CreateInstance(typelessBinderType, innerBinder);
+            _objectBinder = CloudBlobStreamObjectBinder.Create(cloudBlobStreamBinderType, out _valueType);
         }
 
-        public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
+        public ObjectArgumentBindingProvider(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
         {
-            if (parameterType != _valueType)
+            _objectBinder = objectBinder;
+            _valueType = valueType;
+        }
+
+        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        {
+            if (parameter.ParameterType != _valueType)
             {
                 return null;
             }
 
-            return new ObjectArgumentBinding(_valueType, _typelessBinder);
+            return new ObjectArgumentBinding(_objectBinder, _valueType);
         }
 
         private class ObjectArgumentBinding : IArgumentBinding<ICloudBlob>
         {
+            private readonly ICloudBlobStreamObjectBinder _objectBinder;
             private readonly Type _valueType;
-            private readonly ITypelessCloudBlobStreamBinder _typelessBinder;
 
-            public ObjectArgumentBinding(Type valueType, ITypelessCloudBlobStreamBinder typelessBinder)
+            public ObjectArgumentBinding(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
             {
+                _objectBinder = objectBinder;
                 _valueType = valueType;
-                _typelessBinder = typelessBinder;
             }
 
             public Type ValueType
@@ -51,33 +54,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 string status;
 
                 using (Stream rawStream = blob.OpenRead())
-                using (WatchableStream watchableStream = new WatchableStream(rawStream, blob.Properties.Length))
+                using (SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream))
                 {
-                    value = _typelessBinder.ReadFromStream(watchableStream);
-                    status = watchableStream.GetStatus();
+                    value = _objectBinder.ReadFromStream(selfWatchStream);
+                    status = selfWatchStream.GetStatus();
                 }
 
                 return new BlobWatchableValueProvider(blob, value, _valueType, new StaticSelfWatch(status));
-            }
-        }
-
-        private interface ITypelessCloudBlobStreamBinder
-        {
-            object ReadFromStream(Stream input);
-        }
-
-        private class TypelessCloudBlobStreamBinder<T>
-        {
-            private readonly ICloudBlobStreamBinder<T> _innerBinder;
-
-            public TypelessCloudBlobStreamBinder(ICloudBlobStreamBinder<T> innerBinder)
-            {
-                _innerBinder = innerBinder;
-            }
-
-            public object ReadFromStream(Stream input)
-            {
-                return _innerBinder.ReadFromStream(input);
             }
         }
     }

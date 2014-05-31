@@ -18,14 +18,18 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _worker = worker;
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, BrokeredMessage msg)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, INotifyNewBlob notifyNewBlob, BrokeredMessage msg)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
             // Extract any named parameters from the queue payload.
             ServiceBusTriggerBinding serviceBusTriggerBinding = func.TriggerBinding as ServiceBusTriggerBinding;
             ITriggerData triggerData = serviceBusTriggerBinding.Bind(msg,
-                new ArgumentBindingContext { FunctionInstanceId = functionInstanceId });
+                new ArgumentBindingContext
+                {
+                    FunctionInstanceId = functionInstanceId,
+                    NotifyNewBlob = notifyNewBlob
+                });
             IDictionary<string, string> p = Worker.GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
@@ -36,15 +40,16 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 
             var instance = Worker.BindParameters(ctx, func, functionInstanceId);
 
+            instance.TriggerParameterName = func.TriggerParameterName;
+            instance.TriggerData = triggerData;
+            instance.NonTriggerBindings = func.NonTriggerBindings;
+
             instance.TriggerReason = new ServiceBusTriggerReason
             {
                 EntityPath = serviceBusTriggerBinding.EntityPath,
                 MessageId = msg.MessageId,
                 ParentGuid = GetOwnerFromMessage(msg)
             };
-
-            instance.Parameters = Worker.BindParameters(functionInstanceId, func.TriggerParameterName, triggerData,
-                func.NonTriggerBindings);
 
             return instance;
         }
@@ -55,7 +60,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 
         public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, CancellationToken cancellationToken)
         {
-            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, msg);
+            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, _worker.NotifyNewBlob, msg);
             _worker.OnNewInvokeableItem(instance, cancellationToken);
         }
     }

@@ -52,12 +52,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             string blobPath = context.Resolve(blobTrigger.BlobPath);
             CloudBlobPath parsedBlobPath = Parse(blobPath);
 
-            Type parameterType = parameter.ParameterType;
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameterType);
+            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {
-                throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameterType + "'.");
+                throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameter.ParameterType + "'.");
             }
 
             return new BlobTriggerBinding(argumentBinding, context.StorageAccount, parsedBlobPath.ContainerName, parsedBlobPath.BlobName);

@@ -123,7 +123,7 @@ namespace Dashboard
 
             try
             {
-                return new BlobCausalityLogger().GetWriter(blob);
+                return BlobCausalityLogger.GetWriter(blob);
             }
             catch (StorageException e)
             {

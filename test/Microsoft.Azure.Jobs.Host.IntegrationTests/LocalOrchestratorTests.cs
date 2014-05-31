@@ -34,9 +34,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             {
                 // $$$ Put this in its own unit test?
-                IBlobCausalityLogger logger = new BlobCausalityLogger();
                 var blob = BlobClient.GetBlob(account, "daas-test-input", "out.csv");
-                var guid = logger.GetWriter(blob);
+                var guid = BlobCausalityLogger.GetWriter(blob);
 
                 Assert.True(guid != Guid.Empty, "Blob is missing causality information");
             }
@@ -268,7 +267,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 string unbound, // not used by in/out
                 string target, // only used by output
                 [BlobTrigger(@"daas-test-input/{name}-{date}.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input/{target}.csv")] TextWriter output
+                [Blob(@"daas-test-input/{target}.csv")] TextWriter output
                 )
             {
                 Assert.Equal("test", unbound);
@@ -283,7 +282,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             public static void BindBlobToString(
                 [BlobTrigger(@"daas-test-input/blob.txt")] string blobIn,
-                [BlobOutput(@"daas-test-input/blob.out")] out string blobOut
+                [Blob(@"daas-test-input/blob.out")] out string blobOut
                 )
             {
                 blobOut = blobIn;
@@ -342,14 +341,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Assert.Null(reader);
             }
 
-            public static void ParseArgument(int x, [BlobOutput(@"daas-test-input/out.csv")] TextWriter output)
+            public static void ParseArgument(int x, [Blob(@"daas-test-input/out.csv")] TextWriter output)
             {
                 output.Write(x + 1);
             }
 
             public static void Func1(
                 [BlobTrigger(@"daas-test-input/input.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input/output.csv")] TextWriter output)
+                [Blob(@"daas-test-input/output.csv")] TextWriter output)
             {
                 string content = values.ReadToEnd();
                 output.Write(content);

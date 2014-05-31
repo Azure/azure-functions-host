@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -14,9 +15,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             _converter = converter;
         }
 
-        public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
+        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
         {
-            if (parameterType != typeof(T))
+            if (parameter.ParameterType != typeof(T))
             {
                 return null;
             }

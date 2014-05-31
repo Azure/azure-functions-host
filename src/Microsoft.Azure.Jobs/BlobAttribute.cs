@@ -11,10 +11,17 @@ namespace Microsoft.Azure.Jobs
     /// <item><description>ICloudBlob</description></item>
     /// <item><description>CloudBlockBlob</description></item>
     /// <item><description>CloudPageBlob</description></item>
-    /// <item><description><see cref="Stream"/></description></item>
+    /// <item><description><see cref="Stream"/> (read-only)</description></item>
+    /// <item><description>CloudBlobStream (write-only)</description></item>
     /// <item><description><see cref="TextReader"/></description></item>
-    /// <item><description><see cref="string"/></description></item>
-    /// <item><description>A custom type implementing <see cref="ICloudBlobStreamBinder{T}"/></description></item>
+    /// <item><description><see cref="TextWriter"/></description></item>
+    /// <item><description>
+    /// <see cref="string"/> (normally for reading, or as an out param for writing)
+    /// </description></item>
+    /// <item><description>
+    /// A custom type implementing <see cref="ICloudBlobStreamBinder{T}"/> (normally for reading, or as an out param for
+    /// writing)
+    /// </description></item>
     /// </list>
     /// </remarks>
     [AttributeUsage(AttributeTargets.Parameter)]

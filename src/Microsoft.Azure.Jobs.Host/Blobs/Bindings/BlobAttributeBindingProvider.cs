@@ -24,14 +24,22 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             innerProviders.Add(new ConverterArgumentBindingProvider<CloudBlockBlob>(new CloudBlobToCloudBlockBlobConverter()));
             innerProviders.Add(new ConverterArgumentBindingProvider<CloudPageBlob>(new CloudBlobToCloudPageBlobConverter()));
             innerProviders.Add(new StreamArgumentBindingProvider());
+            innerProviders.Add(new CloudBlobStreamArgumentBindingProvider());
             innerProviders.Add(new TextReaderArgumentBindingProvider());
+            innerProviders.Add(new TextWriterArgumentBindingProvider());
             innerProviders.Add(new StringArgumentBindingProvider());
+            innerProviders.Add(new OutStringArgumentBindingProvider());
 
             if (cloudBlobStreamBinderTypes != null)
             {
                 foreach (Type cloudBlobStreamBinderType in cloudBlobStreamBinderTypes)
                 {
-                    innerProviders.Add(new ObjectArgumentBindingProvider(cloudBlobStreamBinderType));
+                    Type itemType;
+                    ICloudBlobStreamObjectBinder objectBinder =
+                        CloudBlobStreamObjectBinder.Create(cloudBlobStreamBinderType, out itemType);
+
+                    innerProviders.Add(new ObjectArgumentBindingProvider(objectBinder, itemType));
+                    innerProviders.Add(new OutObjectArgumentBindingProvider(objectBinder, itemType));
                 }
             }
 
@@ -59,15 +67,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 }
             }
 
-            Type parameterType = parameter.ParameterType;
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameterType);
+            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {
-                throw new InvalidOperationException("Can't bind Blob to type '" + parameterType + "'.");
+                throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
             }
 
-            return new BlobBinding(argumentBinding, context.StorageAccount, parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
+            return new BlobBinding(argumentBinding, context.StorageAccount, parsedBlobPath.ContainerName,
+                parsedBlobPath.BlobName, parameter.IsOut);
         }
 
         private static CloudBlobPath Parse(string blobPath)

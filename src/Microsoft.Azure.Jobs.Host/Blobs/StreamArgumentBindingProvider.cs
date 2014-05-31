@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -7,9 +8,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal class StreamArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
+        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
         {
-            if (parameterType != typeof(Stream))
+            if (parameter.ParameterType != typeof(Stream))
             {
                 return null;
             }
@@ -24,12 +25,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
             {
-                Stream rawStream = value.OpenRead();
-                WatchableStream watchableStream = new WatchableStream(value.OpenRead(), value.Properties.Length);
-                return new BlobWatchableDisposableValueProvider(value, watchableStream, typeof(Stream),
-                    watcher: watchableStream, disposable: watchableStream);
+                Stream rawStream = blob.OpenRead();
+                using (SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream))
+                return new BlobWatchableDisposableValueProvider(blob, selfWatchStream, typeof(Stream),
+                    watcher: selfWatchStream, disposable: selfWatchStream);
             }
         }
     }

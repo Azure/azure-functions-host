@@ -7,9 +7,6 @@ namespace Microsoft.Azure.Jobs
     // Base class for triggers that client can listen on. 
     internal abstract class Trigger
     {
-        // Invoke this path when the trigger fires 
-        public string CallbackPath { get; set; }
-
         // Not serialized. For in-memory cases.(This is kind of exclusive with CallbackPath)
         public object Tag { get; set; }
 

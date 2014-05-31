@@ -40,7 +40,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             var expected = new[] {
                 "BlobAttribute",
-                "BlobOutputAttribute",
                 "BlobTriggerAttribute",
                 "DescriptionAttribute",
                 "IBinder",

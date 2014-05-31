@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host;
 
@@ -64,15 +63,6 @@ namespace Microsoft.Azure.Jobs
                 // Unwrap, especially since callers may catch by type.
                 throw e.InnerException;
             }
-        }
-
-        private ParameterStaticBinding Bind(BlobOutputAttribute attr, ParameterInfo parameter)
-        {
-            var path = new CloudBlobPath(Resolve(attr.BlobPath));
-            return new BlobParameterStaticBinding
-            {
-                Path = path
-            };
         }
 
         private ParameterStaticBinding Bind(TableAttribute attr, ParameterInfo parameter)

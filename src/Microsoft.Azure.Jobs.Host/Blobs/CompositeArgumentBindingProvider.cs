@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -14,11 +14,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             _providers = providers;
         }
 
-        public IArgumentBinding<ICloudBlob> TryCreate(Type parameterType)
+        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
         {
             foreach (IBlobArgumentBindingProvider provider in _providers)
             {
-                IArgumentBinding<ICloudBlob> binding = provider.TryCreate(parameterType);
+                IArgumentBinding<ICloudBlob> binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {

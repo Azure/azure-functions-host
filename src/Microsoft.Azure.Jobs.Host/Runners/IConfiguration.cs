@@ -7,9 +7,6 @@ namespace Microsoft.Azure.Jobs
     {
         IList<Type> CloudBlobStreamBinderTypes { get; }
 
-        // Could cache a wrapper directly binding against ICloudBlobBinder.
-        IList<ICloudBlobBinderProvider> BlobBinders { get; }
-
         IList<ICloudTableBinderProvider> TableBinders { get; }
 
         INameResolver NameResolver { get; set; }

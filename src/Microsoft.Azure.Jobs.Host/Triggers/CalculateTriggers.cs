@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -73,10 +74,10 @@ namespace Microsoft.Azure.Jobs
         {
             StringBuilder sb = null;
 
-            foreach (var staticBinding in func.Flow.Bindings)
+            foreach (var binding in func.NonTriggerBindings.Values)
             {
-                var x = staticBinding as BlobParameterStaticBinding;
-                if (x != null)
+                var x = binding as BlobBinding;
+                if (x != null && !x.IsInput)
                 {
                     if (sb == null)
                     {
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.Jobs
                     {
                         sb.Append(';');
                     }
-                    sb.Append(x.Path);
+                    sb.Append(x.BlobPath);
                 }
             }
 

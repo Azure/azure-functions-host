@@ -125,14 +125,6 @@ namespace Microsoft.Azure.Jobs
 
         public static void AddDefaultBinders(IConfiguration config)
         {
-            // Blobs
-            config.BlobBinders.Add(new CloudBlockBlobBinderProvider());
-            config.BlobBinders.Add(new CloudPageBlobBinderProvider());
-            config.BlobBinders.Add(new CloudBlobBinderProvider());
-            config.BlobBinders.Add(new BlobStreamBinderProvider());
-            config.BlobBinders.Add(new TextWriterProvider());
-            config.BlobBinders.Add(new StringBlobBinderProvider());
-
             // Tables
             config.TableBinders.Add(new CloudTableBinderProvider());
             config.TableBinders.Add(new QueryableCloudTableBinderProvider());
@@ -193,8 +185,7 @@ namespace Microsoft.Azure.Jobs
 
             Dictionary<string, IValueProvider> combinedParameters = new Dictionary<string, IValueProvider>();
 
-            INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
-            IBinderEx bindingContext = new BinderEx(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
+            IBinderEx bindingContext = new BinderEx(config, inputs, instance, _consoleOutput, cancellationToken);
 
             foreach (ParameterInfo parameterInfo in m.GetParameters())
             {

@@ -153,7 +153,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ParentGuid = parentGuid
             };
 
-            var result = _executor.Execute(instance, CancellationToken.None);
+            var result = _executor.Execute(instance, null, CancellationToken.None);
             return result.Id;
         }
 
@@ -161,7 +161,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, blobInput);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, null, blobInput);
 
             CallInner(instance);
         }
@@ -175,7 +175,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
             {
                 RunnerProgram runner = new RunnerProgram(TextWriter.Null, null);
 

@@ -83,6 +83,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
+    <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Bindings\BindResults\NullBindResultTests.cs" />
     <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
@@ -113,7 +114,7 @@
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
     <Compile Include="TriggerMapSerializationTests.cs" />
-    <Compile Include="WatchableStreamTests.cs" />
+    <Compile Include="Blobs\SelfWatchReadStreamTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">
