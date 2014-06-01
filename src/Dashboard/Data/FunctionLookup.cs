@@ -46,13 +46,29 @@ namespace Dashboard.Data
         {
             List<FunctionSnapshot> snapshots = new List<FunctionSnapshot>();
 
-            foreach (ICloudBlob blob in _container.ListBlobs(useFlatBlobListing: true))
+            try
             {
-                HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(_container, blob.Name);
-
-                if (hostSnapshot != null)
+                foreach (ICloudBlob blob in _container.ListBlobs(useFlatBlobListing: true))
                 {
-                    snapshots.AddRange(hostSnapshot.Functions);
+                    HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(_container, blob.Name);
+
+                    if (hostSnapshot != null)
+                    {
+                        snapshots.AddRange(hostSnapshot.Functions);
+                    }
+                }
+            }
+            catch (StorageException exception)
+            {
+                RequestResult result = exception.RequestInformation;
+
+                if (result != null && result.HttpStatusCode == 404)
+                {
+                    return snapshots;
+                }
+                else
+                {
+                    throw;
                 }
             }
 
