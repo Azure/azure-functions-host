@@ -54,7 +54,6 @@ namespace Microsoft.Azure.Jobs
                 IHostTable hostTable = new HostTable(tableClient);
                 string hostName = GetHostName(functions);
                 _hostId = hostTable.GetOrCreateHostId(hostName);
-                SetHostId(_hostId, functions);
 
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
@@ -141,14 +140,7 @@ namespace Microsoft.Azure.Jobs
                             var ti2 = ti.GetGenericTypeDefinition();
                             if (ti2 == typeof(ICloudBlobStreamBinder<>))
                             {
-                                var tyArg = ti.GetGenericArguments()[0];
-                                var tyBinder = typeof(SimpleBinderProvider<>).MakeGenericType(tyArg);
-
-                                var objInner = Activator.CreateInstance(type);
-                                var obj = Activator.CreateInstance(tyBinder, objInner);
-                                var it = (ICloudBlobBinderProvider)obj;
-
-                                config.BlobBinders.Add(it);
+                                config.CloudBlobStreamBinderTypes.Add(type);
                             }
                         }
                     }
@@ -214,21 +206,6 @@ namespace Microsoft.Azure.Jobs
         private static void LogRole(TextWriter output)
         {
             output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
-        }
-
-        private static void SetHostId(Guid hostId, FunctionDefinition[] functions)
-        {
-            Debug.Assert(functions != null);
-
-            foreach (FunctionDefinition function in functions)
-            {
-                if (function == null)
-                {
-                    continue;
-                }
-
-                function.HostId = hostId;
-            }
         }
     }
 }

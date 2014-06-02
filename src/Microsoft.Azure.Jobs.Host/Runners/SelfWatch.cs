@@ -22,9 +22,9 @@ namespace Microsoft.Azure.Jobs
 
         // Begin self-watches.
         // May update args array with selfwatch wrappers.
-        public SelfWatch(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults, TextWriter consoleOutput)
+        public SelfWatch(ISelfWatch[] watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
         {
-            _command = new SelfWatchCommand(binds, ps, blobResults, consoleOutput);
+            _command = new SelfWatchCommand(watches, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
             _timer.Start(executeFirst: false);
         }
@@ -93,19 +93,11 @@ namespace Microsoft.Azure.Jobs
             private string _lastContent;
 
             // May update args array with selfwatch wrappers.
-            public SelfWatchCommand(BindResult[] binds, ParameterInfo[] ps, CloudBlockBlob blobResults, TextWriter consoleOutput)
+            public SelfWatchCommand(ISelfWatch[] watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
             {
                 _currentDelay = _intialDelay;
                 _blobResults = blobResults;
                 _consoleOutput = consoleOutput;
-
-                int len = binds.Length;
-                ISelfWatch[] watches = new ISelfWatch[len];
-                for (int i = 0; i < len; i++)
-                {
-                    watches[i] = GetWatcher(binds[i], ps[i]);
-                }
-
                 _watches = watches;
             }
 

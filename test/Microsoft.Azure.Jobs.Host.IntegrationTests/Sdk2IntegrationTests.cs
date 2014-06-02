@@ -75,7 +75,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.Throws<IndexException>(() => new TestJobHost<ProgramBadQueueName>(null));
         }
 
-        [Fact]
         public void TestTable()
         {
             var lc = new TestJobHost<Program>();
@@ -163,6 +162,40 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
         }
 
+        [Fact]
+        public void TestPocoTableEntity()
+        {
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+
+            CloudTableClient client = account.CreateCloudTableClient();
+            CloudTable table = client.GetTableReference("PocoTableEntityTest");
+            table.CreateIfNotExists();
+
+            try
+            {
+                DynamicTableEntity entity = new DynamicTableEntity("PK", "RK");
+                entity.Properties["Fruit"] = new EntityProperty("Banana");
+                entity.Properties["Duration"] = new EntityProperty("1");
+                entity.Properties["Value"] = new EntityProperty("Foo");
+                table.Execute(TableOperation.Insert(entity));
+
+                var host = new TestJobHost<Program>();
+                host.Call("TestPocoTableEntity");
+
+                DynamicTableEntity updatedEntity =
+                    (DynamicTableEntity)table.Execute(TableOperation.Retrieve("PK", "RK")).Result;
+
+                Assert.Equal(3, updatedEntity.Properties.Count);
+                Assert.Equal(new EntityProperty("Pear"), updatedEntity.Properties["Fruit"]);
+                Assert.Equal(new EntityProperty("2"), updatedEntity.Properties["Duration"]);
+                Assert.Equal(new EntityProperty("Bar"), updatedEntity.Properties["Value"]);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
+        }
+
         private static DynamicTableEntity CreateEntity(int row, string property)
         {
             return new DynamicTableEntity("PK", "RK" + row.ToString(), null, CreateProperties("StringProperty", property));
@@ -212,14 +245,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void IBlobMissing(
-                [BlobInput("daas-test/missing")] ICloudBlob missing)
+                [BlobTrigger("daas-test/missing")] ICloudBlob missing)
             {
                 Assert.Null(missing);
             }
 
             public static void IBlob(
-                [BlobInput("daas-test/page")] ICloudBlob page,
-                [BlobInput("daas-test/block")] ICloudBlob block)
+                [BlobTrigger("daas-test/page")] ICloudBlob page,
+                [Blob("daas-test/block")] ICloudBlob block)
             {
                 Assert.NotNull(page);
                 Assert.NotNull(block);
@@ -229,26 +262,26 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void BlockBlob(
-               [BlobInput("daas-test/block")] CloudBlockBlob block)
+               [BlobTrigger("daas-test/block")] CloudBlockBlob block)
             {
                 Assert.Equal(BlobType.BlockBlob, block.BlobType);
             }
 
             public static void PageBlob(
-                [BlobInput("daas-test/page")] CloudPageBlob page)
+                [BlobTrigger("daas-test/page")] CloudPageBlob page)
             {
                 Assert.Equal(BlobType.PageBlob, page.BlobType);
             }
 
 
             public static void BlockBlobMissing(
-               [BlobInput("daas-test/missing")] CloudBlockBlob block)
+               [BlobTrigger("daas-test/missing")] CloudBlockBlob block)
             {
                 Assert.Null(block);
             }
 
             public static void PageBlobMissing(
-                [BlobInput("daas-test/page")] CloudPageBlob page)
+                [BlobTrigger("daas-test/page")] CloudPageBlob page)
             {
                 Assert.Null(page);
             }
@@ -278,8 +311,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             public static void IQueryableMissingTable([Table("NonExistingTable")] IQueryable<QueryableTestEntity> table)
             {
                 int count = 0;
-                
-                foreach(QueryableTestEntity entity in table)
+
+                foreach (QueryableTestEntity entity in table)
                 {
                     ++count;
                 }
@@ -298,6 +331,33 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Assert.NotNull(entity);
                 Assert.Equal("Foo", entity.Value);
 
+                entity.Value = "Bar";
+            }
+
+            public class PocoTableEntity
+            {
+                public Fruit Fruit { get; set; }
+                public TimeSpan Duration { get; set; }
+                public string Value { get; set; }
+            }
+
+            public enum Fruit
+            {
+                Apple,
+                Banana,
+                Pear,
+            }
+
+            [Description("test")]
+            public static void TestPocoTableEntity([Table("TableEntityTest", "PK", "RK")] PocoTableEntity entity)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal(Fruit.Banana, entity.Fruit);
+                Assert.Equal(TimeSpan.FromSeconds(1), entity.Duration);
+                Assert.Equal("Foo", entity.Value);
+
+                entity.Fruit = Fruit.Pear;
+                entity.Duration = TimeSpan.FromMinutes(2);
                 entity.Value = "Bar";
             }
         }

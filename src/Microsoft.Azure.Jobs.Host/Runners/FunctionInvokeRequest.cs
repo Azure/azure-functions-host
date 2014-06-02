@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Triggers;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -19,7 +22,17 @@ namespace Microsoft.Azure.Jobs
 
         public FunctionLocation Location { get; set; }
 
+        // Parameters from old-style bindings
         public ParameterRuntimeBinding[] Args { get; set; }
+
+        // New-style bindings
+        // TODO: Cleanly separate layers that see bindings from layers that see value providers.
+        public string TriggerParameterName { get; set; }
+        public ITriggerData TriggerData { get; set; }
+        public IReadOnlyDictionary<string, IBinding> NonTriggerBindings { get; set; }
+
+        // Parameters from new-style bindings
+        public IReadOnlyDictionary<string, IValueProvider> Parameters { get; set; }
 
         // This is a valid azure table row/partition key. 
         public override string ToString()

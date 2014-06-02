@@ -1,21 +1,15 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs
 {
     internal class Configuration : IConfiguration
     {
-        private IList<ICloudBlobBinderProvider> _blobBinders = new List<ICloudBlobBinderProvider>();
+        private IList<Type> _cloudBlobStreamBinderTypes = new List<Type>();
 
-        private IList<ICloudTableBinderProvider> _tableBinders = new List<ICloudTableBinderProvider>();
-
-        public IList<ICloudBlobBinderProvider> BlobBinders
+        public IList<Type> CloudBlobStreamBinderTypes
         {
-            get { return _blobBinders; }
-        }
-
-        public IList<ICloudTableBinderProvider> TableBinders
-        {
-            get { return _tableBinders; }
+            get { return _cloudBlobStreamBinderTypes; }
         }
 
         public INameResolver NameResolver { get; set; }

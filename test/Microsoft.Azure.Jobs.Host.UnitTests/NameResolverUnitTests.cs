@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public static void ResolveNameNotSet()
         {
             INameResolver resolver = null;
-            Assert.Equal("1%abc%23%xyz%4", resolver.ResolveWholeString("1%abc%23%xyz%4"));
+            ExceptionAssert.ThrowsArgumentNull(() => resolver.ResolveWholeString("1%abc%23%xyz%4"), "resolver");
         }
 
         [Fact]

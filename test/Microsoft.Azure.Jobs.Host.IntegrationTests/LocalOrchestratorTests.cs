@@ -34,9 +34,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             {
                 // $$$ Put this in its own unit test?
-                IBlobCausalityLogger logger = new BlobCausalityLogger();
-                var blob = BlobClient.GetBlob(account, "daas-test-input", "out.csv");
-                var guid = logger.GetWriter(blob);
+                var blob = account.CreateCloudBlobClient().GetContainerReference("daas-test-input").GetBlockBlobReference("out.csv");
+                var guid = BlobCausalityLogger.GetWriter(blob);
 
                 Assert.True(guid != Guid.Empty, "Blob is missing causality information");
             }
@@ -267,8 +266,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 string name, string date,  // used by input
                 string unbound, // not used by in/out
                 string target, // only used by output
-                [BlobInput(@"daas-test-input/{name}-{date}.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input/{target}.csv")] TextWriter output
+                [BlobTrigger(@"daas-test-input/{name}-{date}.csv")] TextReader values,
+                [Blob(@"daas-test-input/{target}.csv")] TextWriter output
                 )
             {
                 Assert.Equal("test", unbound);
@@ -282,17 +281,16 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void BindBlobToString(
-                [BlobInput(@"daas-test-input/blob.txt")] string blobIn,
-                [BlobOutput(@"daas-test-input/blob.out")] out string blobOut
+                [BlobTrigger(@"daas-test-input/blob.txt")] string blobIn,
+                [Blob(@"daas-test-input/blob.out")] out string blobOut
                 )
             {
                 blobOut = blobIn;
             }
 
-            [NoAutomaticTrigger]
             public static void FuncWithBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [BlobInput(@"daas-test-input/blob.csv")] Stream stream
+                [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
+                [Blob(@"daas-test-input/blob.csv")] Stream stream
                 )
             {
                 Assert.NotNull(blob);
@@ -332,11 +330,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            [NoAutomaticTrigger]
             public static void FuncWithMissingBlob(
-                [BlobInput(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [BlobInput(@"daas-test-input/blob.csv")] Stream stream,
-                [BlobInput(@"daas-test-input/blob.csv")] TextReader reader
+                [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
+                [Blob(@"daas-test-input/blob.csv")] Stream stream,
+                [Blob(@"daas-test-input/blob.csv")] TextReader reader
                 )
             {
                 Assert.Null(blob);
@@ -344,29 +341,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Assert.Null(reader);
             }
 
-            [NoAutomaticTrigger]
-            public static void ParseArgument(int x, [BlobOutput(@"daas-test-input/out.csv")] TextWriter output)
+            public static void ParseArgument(int x, [Blob(@"daas-test-input/out.csv")] TextWriter output)
             {
                 output.Write(x + 1);
             }
 
             public static void Func1(
-                [BlobInput(@"daas-test-input/input.csv")] TextReader values,
-                [BlobOutput(@"daas-test-input/output.csv")] TextWriter output)
+                [BlobTrigger(@"daas-test-input/input.csv")] TextReader values,
+                [Blob(@"daas-test-input/output.csv")] TextWriter output)
             {
                 string content = values.ReadToEnd();
                 output.Write(content);
             }
 
             public static void FuncEnqueue(
-                [QueueOutput] out Payload myoutputqueue)
+                [Queue("myoutputqueue")] out Payload myoutputqueue)
             {
                 // Send payload to Azure queue "myoutputqueue"
                 myoutputqueue = new Payload { Value = 15 };
             }
 
             public static void FuncMultiEnqueueIEnumerable(
-                [QueueOutput] out IEnumerable<Payload> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<Payload> myoutputqueue)
             {
                 List<Payload> payloads = new List<Payload>();
                 payloads.Add(new Payload { Value = 10 });
@@ -376,28 +372,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void FuncMultiEnqueueIEnumerableNested(
-                [QueueOutput] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
             {
                 List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputIEnumerableOfObject(
-                [QueueOutput] out IEnumerable<object> myoutputqueue)
+                [Queue("myoutputqueue")] out IEnumerable<object> myoutputqueue)
             {
                 List<object> payloads = new List<object>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputObject(
-                [QueueOutput] out object myoutputqueue)
+                [Queue("myoutputqueue")] out object myoutputqueue)
             {
                 List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
                 myoutputqueue = payloads;
             }
 
             public static void FuncQueueOutputIList(
-                [QueueOutput] out IList<Payload> myoutputqueue)
+                [Queue("myoutputqueue")] out IList<Payload> myoutputqueue)
             {
                 List<Payload> payloads = new List<Payload>();
                 myoutputqueue = payloads;

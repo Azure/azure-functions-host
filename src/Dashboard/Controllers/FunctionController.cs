@@ -311,8 +311,7 @@ namespace Dashboard.Controllers
 
             try
             {
-                IBlobCausalityLogger logger = new BlobCausalityLogger();
-                guid = logger.GetWriter(blob);
+                guid = BlobCausalityLogger.GetWriter(blob);
             }
             catch
             {

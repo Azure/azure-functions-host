@@ -10,13 +10,8 @@ namespace Microsoft.Azure.Jobs
     // but abstracts away the actual raw queuing mechanism.
     internal abstract class ExecuteFunctionBase : IExecuteFunction
     {
-        public FunctionInvocationResult Execute(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+        public FunctionInvocationResult Execute(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
         {
-            if (instance.Id == Guid.Empty)
-            {
-                instance.Id = Guid.NewGuid(); // used for logging. 
-            }
-
             if (instance.TriggerReason == null)
             {
                 // Having a trigger reason is important for diagnostics. 
@@ -26,10 +21,10 @@ namespace Microsoft.Azure.Jobs
             instance.TriggerReason.ChildGuid = instance.Id;
 
             // Execute immediately.
-            return Work(instance, cancellationToken);
+            return Work(instance, notifyNewBlob, cancellationToken);
         }
 
         // Does the actual queueing mechanism (submit to an azure queue, submit as an azure task)
-        protected abstract FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken);
+        protected abstract FunctionInvocationResult Work(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken);
     }
 }

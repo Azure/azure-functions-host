@@ -1,32 +1,36 @@
 ﻿using System;
 using System.Reflection;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
     internal class CalculateTriggers
     {
-        private static readonly Func<ParameterStaticBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
+        private static readonly Func<ITriggerBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
 
         static CalculateTriggers()
         {
-            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.CalculateServiceBusTriggers");
+            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.Triggers.CalculateServiceBusTriggers");
             if (type == null)
             {
                 return;
             }
 
-            var getTriggerMethod = type.GetMethod("GetTriggerRaw");
-            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] {binding}) as TriggerRaw;
+            var getTriggerMethod = type.GetMethod("GetTriggerRaw", new Type[] { typeof(ITriggerBinding) });
+            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] { binding }) as TriggerRaw;
         }
 
         public static Trigger GetTrigger(FunctionDefinition func)
         {
             var credentials = new Credentials
             {
-                 StorageConnectionString = func.Location.StorageConnectionString,
-                 ServiceBusConnectionString = func.Location.ServiceBusConnectionString
+                StorageConnectionString = func.Location.StorageConnectionString,
+                ServiceBusConnectionString = func.Location.ServiceBusConnectionString
             };
 
             var raw = GetTriggerRaw(func);
@@ -42,51 +46,26 @@ namespace Microsoft.Azure.Jobs
         // Given a function definition, get the set of Triggers from it. 
         public static TriggerRaw GetTriggerRaw(FunctionDefinition func)
         {
-            var trigger = func.Trigger;
+            QueueTriggerBinding queueTriggerBinding = func.TriggerBinding as QueueTriggerBinding;
 
-            var flow = func.Flow;
-            foreach (var input in flow.Bindings)
+            if (queueTriggerBinding != null)
             {
-                if (trigger.ListenOnBlobs)
-                {
-                    var blobBinding = input as BlobParameterStaticBinding;
-                    if (blobBinding != null)
-                    {
-                        if (!blobBinding.IsInput)
-                        {
-                            continue;
-                        }
-                        CloudBlobPath path = blobBinding.Path;
-                        string containerName = path.ContainerName;
-
-                        // Check if it's on the ignore list
-                        var account = func.GetAccount();
-
-                        CloudBlobClient clientBlob = account.CreateCloudBlobClient();
-                        CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
-
-                        return TriggerRaw.NewBlob(null, path.ToString(), GetOutputPath(func));                        
-                    }
-                }
-
-                var queueBinding = input as QueueParameterStaticBinding;
-                if (queueBinding != null)
-                {
-                    if (queueBinding.IsInput)
-                    {
-                        // Queuenames must be all lowercase. Normalize for convenience. 
-                        string queueName = queueBinding.QueueName.ToLower();
-
-                        return TriggerRaw.NewQueue(null, queueName);
-                    }
-                }
-
-                var serviceBusTrigger = _tryGetServiceBusTriggerRaw(input);
-                if (serviceBusTrigger != null)
-                {
-                    return serviceBusTrigger;
-                }
+                return TriggerRaw.NewQueue(queueTriggerBinding.QueueName);
             }
+
+            BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
+
+            if (blobTriggerBinding != null)
+            {
+                return TriggerRaw.NewBlob(blobTriggerBinding.BlobPath, GetOutputPath(func));
+            }
+
+            var serviceBusTrigger = _tryGetServiceBusTriggerRaw(func.TriggerBinding);
+            if (serviceBusTrigger != null)
+            {
+                return serviceBusTrigger;
+            }
+
             return null; // No triggers
         }
 
@@ -95,23 +74,20 @@ namespace Microsoft.Azure.Jobs
         {
             StringBuilder sb = null;
 
-            foreach (var staticBinding in func.Flow.Bindings)
+            foreach (var binding in func.NonTriggerBindings.Values)
             {
-                var x = staticBinding as BlobParameterStaticBinding;
-                if (x != null)
+                var x = binding as BlobBinding;
+                if (x != null && !x.IsInput)
                 {
-                    if (!x.IsInput)
+                    if (sb == null)
                     {
-                        if (sb == null)
-                        {
-                            sb = new StringBuilder();
-                        }
-                        else
-                        {
-                            sb.Append(';');
-                        }
-                        sb.Append(x.Path);
+                        sb = new StringBuilder();
                     }
+                    else
+                    {
+                        sb.Append(';');
+                    }
+                    sb.Append(x.BlobPath);
                 }
             }
 

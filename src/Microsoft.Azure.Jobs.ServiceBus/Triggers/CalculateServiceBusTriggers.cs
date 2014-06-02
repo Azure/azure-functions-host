@@ -1,15 +1,20 @@
-namespace Microsoft.Azure.Jobs
+using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.Jobs.ServiceBus.Triggers;
+
+namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class CalculateServiceBusTriggers
     {
-        public static TriggerRaw GetTriggerRaw(ParameterStaticBinding input)
+        public static TriggerRaw GetTriggerRaw(ITriggerBinding triggerBinding)
         {
-            var serviceBusBinding = input as ServiceBusParameterStaticBinding;
-            if (serviceBusBinding != null && serviceBusBinding.IsInput)
+            ServiceBusTriggerBinding serviceBusTriggerBinding = triggerBinding as ServiceBusTriggerBinding;
+
+            if (serviceBusTriggerBinding == null)
             {
-                return TriggerRaw.NewServiceBus(null, serviceBusBinding.EntityPath);
+                return null;
             }
-            return null;
+
+            return TriggerRaw.NewServiceBus(serviceBusTriggerBinding.EntityPath);
         }
     }
 }

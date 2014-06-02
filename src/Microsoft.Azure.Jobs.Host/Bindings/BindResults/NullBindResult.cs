@@ -3,7 +3,7 @@
 namespace Microsoft.Azure.Jobs
 {
     // Input argument is currently null
-    internal class NullBindResult : BindResult, ISelfWatch, IMaybeErrorBindResult
+    internal class NullBindResult : BindResult, ISelfWatch
     {
         private readonly string _message;
 
@@ -33,7 +33,5 @@ namespace Microsoft.Azure.Jobs
             }
             return SelfWatch.EncodeSelfWatchStatus(_message);
         }
-
-        public bool IsErrorResult { get; set; }
     }
 }

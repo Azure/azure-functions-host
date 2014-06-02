@@ -4,8 +4,12 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -18,18 +22,18 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         private readonly IExecuteFunction _executor;
         private readonly QueueTrigger _invokeTrigger;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
+        private readonly INotifyNewBlob _notifyNewBlob;
+        // Fast-path blob listener. 
+        private readonly INotifyNewBlobListener _blobListener;
 
         // General purpose listener for blobs, queues. 
         private Listener _listener;
 
-        // Fast-path blob listener. 
-        private INotifyNewBlobListener _blobListener;
 
         public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute,
-            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlobListener blobListener = null)
+            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob, INotifyNewBlobListener blobListener)
         {
             _invokeTrigger = invokeTrigger;
-            _blobListener = blobListener;
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
@@ -41,8 +45,15 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _functionTable = functionTable;
             _executor = execute;
             _functionInstanceLogger = functionInstanceLogger;
+            _notifyNewBlob = notifyNewBlob;
+            _blobListener = blobListener;
 
             CreateInputMap();
+        }
+
+        public INotifyNewBlob NotifyNewBlob
+        {
+            get { return _notifyNewBlob; }
         }
 
         // Called once at startup to initialize orchestration data structures
@@ -131,7 +142,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             if (instance != null)
             {
                 Interlocked.Increment(ref _triggerCount);
-                _executor.Execute(instance, cancellationToken);
+                _executor.Execute(instance, _notifyNewBlob, cancellationToken);
             }
         }
 
@@ -152,7 +163,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 if (request != null)
                 {
-                    _executor.Execute(request, cancellationToken);
+                    _executor.Execute(request, _notifyNewBlob, cancellationToken);
                 }
                 else
                 {
@@ -213,21 +224,19 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return null;
             }
 
-            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments);
-            request.Id = message.Id;
+            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments, message.Id);
             request.TriggerReason = message.GetTriggerReason();
             return request;
         }
 
         internal static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, TriggerAndOverrideMessage message)
         {
-            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments);
-            request.Id = message.Id;
+            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments, message.Id);
             request.TriggerReason = message.GetTriggerReason();
             return request;
         }
 
-        private static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, IDictionary<string, string> arguments)
+        private static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, IDictionary<string, string> arguments, Guid id)
         {
             if (function == null)
             {
@@ -272,6 +281,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             return new FunctionInvokeRequest
             {
+                Id = id,
                 Location = function.Location,
                 Args = boundArguments
             };
@@ -280,18 +290,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         // Supports explicitly invoking any functions associated with this blob. 
         private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, CancellationToken cancellationToken)
         {
-            FunctionInvokeRequest instance = GetFunctionInvocation(func, blob);
+            FunctionInvokeRequest instance = GetFunctionInvocation(func, _notifyNewBlob, blob);
             if (instance != null)
             {
                 Interlocked.Increment(ref _triggerCount);
-                _executor.Execute(instance, cancellationToken);
+                _executor.Execute(instance, _notifyNewBlob, cancellationToken);
             }
         }
 
         private static Guid GetBlobWriterGuid(ICloudBlob blob)
         {
-            IBlobCausalityLogger logger = new BlobCausalityLogger();
-            return logger.GetWriter(blob);
+            return BlobCausalityLogger.GetWriter(blob);
         }
 
         private static Guid GetOwnerFromMessage(CloudQueueMessage msg)
@@ -308,41 +317,40 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 NameParameters = parameters
             };
-            var instance = BindParameters(ctx, func);
+            var instance = BindParameters(ctx, func, Guid.NewGuid());
 
             return instance;
         }
 
-        // Invoke a function that is completely self-describing.
-        // This means all inputs can be bound without any additional information. 
-        // No reason set. 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func)
+        private FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
         {
-            var ctx = new RuntimeBindingInputs(func.Location);
-            var instance = BindParameters(ctx, func);
-            return instance;
-        }
-
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
-        {
-            string payload = msg.AsString;
+            Guid functionInstanceId = Guid.NewGuid();
 
             // Extract any named parameters from the queue payload.
-            var flow = func.Flow;
-            QueueParameterStaticBinding qb = flow.Bindings.OfType<QueueParameterStaticBinding>().Where(b => b.IsInput).First();
-            IDictionary<string, string> p = QueueInputParameterRuntimeBinding.GetRouteParameters(payload, qb.Params);
+            QueueTriggerBinding queueTriggerBinding = (QueueTriggerBinding)func.TriggerBinding;
+            ITriggerData triggerData = queueTriggerBinding.Bind(msg,
+                new ArgumentBindingContext
+                {
+                    FunctionInstanceId = functionInstanceId,
+                    NotifyNewBlob = _notifyNewBlob
+                });
+            IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
-            RuntimeBindingInputs ctx = new NewQueueMessageRuntimeBindingInputs(func.Location, msg)
+            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
             {
                 NameParameters = p
             };
 
-            var instance = BindParameters(ctx, func);
+            var instance = BindParameters(ctx, func, functionInstanceId);
+
+            instance.TriggerParameterName = func.TriggerParameterName;
+            instance.TriggerData = triggerData;
+            instance.NonTriggerBindings = func.NonTriggerBindings;
 
             instance.TriggerReason = new QueueMessageTriggerReason
             {
-                QueueName = qb.QueueName,
+                QueueName = queueTriggerBinding.QueueName,
                 MessageId = msg.Id,
                 ParentGuid = GetOwnerFromMessage(msg)
             };
@@ -350,26 +358,58 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return instance;
         }
 
-        // policy: blobInput is the first [Input] attribute. Functions are triggered by single input.        
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, ICloudBlob blobInput)
+        internal static IDictionary<string, string> GetNameParameters(IReadOnlyDictionary<string, object> bindingData)
         {
-            // blobInput was the one that triggered it.
-            // Get the path from the first blob input parameter.
-            var flow = func.Flow;
-            CloudBlobPath firstInput = flow.Bindings.OfType<BlobParameterStaticBinding>().Where(b => b.IsInput).Select(b => b.Path).FirstOrDefault();
+            if (bindingData == null)
+            {
+                return null;
+            }
 
-            var p = firstInput.Match(new CloudBlobPath(blobInput));
+            Dictionary<string, string> nameParameters = new Dictionary<string, string>();
+
+            if (bindingData != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingData)
+                {
+                    nameParameters.Add(item.Key, item.Value.ToString());
+                }
+            }
+
+            return nameParameters;
+        }
+
+        internal static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, INotifyNewBlob notifyNewBlob, ICloudBlob blobInput)
+        {
+            Guid functionInstanceId = Guid.NewGuid();
+
+            // blobInput was the one that triggered it.
+            BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
+            ITriggerData triggerData = blobTriggerBinding.Bind(blobInput,
+                new ArgumentBindingContext
+                {
+                    FunctionInstanceId = functionInstanceId,
+                    NotifyNewBlob = notifyNewBlob
+                });
+
+            // Get the binding data from the blob input parameter.
+            IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
+
             if (p == null)
             {
                 // No match.
                 return null;
             }
 
-            var ctx = new NewBlobRuntimeBindingInputs(func.Location, blobInput)
+            var ctx = new RuntimeBindingInputs(func.Location)
             {
-                NameParameters = p,
+                NameParameters = p
             };
-            FunctionInvokeRequest instance = BindParameters(ctx, func);
+
+            FunctionInvokeRequest instance = BindParameters(ctx, func, functionInstanceId);
+
+            instance.TriggerParameterName = func.TriggerParameterName;
+            instance.TriggerData = triggerData;
+            instance.NonTriggerBindings = func.NonTriggerBindings;
 
             Guid parentGuid = GetBlobWriterGuid(blobInput);
             instance.TriggerReason = new BlobTriggerReason
@@ -377,11 +417,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 BlobPath = new CloudBlobPath(blobInput),
                 ParentGuid = parentGuid
             };
+
             return instance;
         }
 
         // Bind the entire flow to an instance
-        public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionDefinition func)
+        public static FunctionInvokeRequest BindParameters(RuntimeBindingInputs ctx, FunctionDefinition func, Guid functionInstanceId)
         {
             FunctionFlow flow = func.Flow;
             int len = flow.Bindings.Length;
@@ -390,6 +431,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             FunctionInvokeRequest instance = new FunctionInvokeRequest
             {
+                Id = functionInstanceId,
                 Location = func.Location,
                 Args = args
             };
@@ -436,49 +478,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
                 _parent.OnNewBlob(func, blob, token);
-            }
-        }
-
-        private class PartialFunctionLocation : FunctionLocation
-        {
-            public string Id { get; set; }
-
-            public PartialFunctionLocation(string id)
-            {
-                Id = id;
-                FullName = id;
-            }
-
-            public override string GetId()
-            {
-                return Id;
-            }
-
-            public override string GetShortName()
-            {
-                return Id;
-            }
-        }
-
-        private class PartialParameterRuntimeBinding : ParameterRuntimeBinding
-        {
-            private readonly string _name;
-            private readonly string _value;
-
-            public PartialParameterRuntimeBinding(string name, string value)
-            {
-                _name = name;
-                _value = value;
-            }
-
-            public override string ConvertToInvokeString()
-            {
-                return _value;
-            }
-
-            public override BindResult Bind(IConfiguration config, IBinderEx bindingContext, ParameterInfo targetParameter)
-            {
-                throw new InvalidOperationException("A PartialParameterRuntimeBinding cannot be bound.");
             }
         }
     }

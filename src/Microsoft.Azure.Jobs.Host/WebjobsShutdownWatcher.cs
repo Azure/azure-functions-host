@@ -1,30 +1,26 @@
 ﻿﻿using System;
-using System.Collections.Generic;
-﻿using System.Globalization;
-﻿using System.Reflection;
-using System.Threading;
-﻿using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using System.IO;
+using System.Threading;
 
 namespace Microsoft.Azure.Jobs
 {
     /// <summary>
-    /// Helper class for providing a cancellation token for when this WebJob's shutdown is signaled. 
+    /// Helper class for providing a cancellation token for when this WebJob's shutdown is signaled.
     /// </summary>
-    public sealed class WebjobsShutdownWatcher : IDisposable
+    public sealed class WebJobsShutdownWatcher : IDisposable
     {
-        private readonly CancellationTokenSource _cts;
         private readonly string _shutdownFile;
+
+        private CancellationTokenSource _cts;
         private FileSystemWatcher _watcher;
 
         /// <summary>
-        /// Begin watching for a shutdown notification from Antares. 
+        /// Begin watching for a shutdown notification from Antares.
         /// </summary>
-        public WebjobsShutdownWatcher()
+        public WebJobsShutdownWatcher()
         {
             // http://blog.amitapple.com/post/2014/05/webjobs-graceful-shutdown/#.U3aIXRFOVaQ
-            // Antares will set this file to signify shutdown 
+            // Antares will set this file to signify shutdown
             _shutdownFile = Environment.GetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE");
             if (_shutdownFile == null)
             {
@@ -48,7 +44,10 @@ namespace Microsoft.Azure.Jobs
             if (e.FullPath.IndexOf(Path.GetFileName(_shutdownFile), StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 // Found the file mark this WebJob as finished
-                _cts.Cancel();
+                if (_cts != null)
+                {
+                    _cts.Cancel();
+                }
             }
         }
 
@@ -59,7 +58,7 @@ namespace Microsoft.Azure.Jobs
         {
             get
             {
-                // CancellationToken.None means CanBeCancelled = false, which can facilitate optimizations with tokens. 
+                // CancellationToken.None means CanBeCancelled = false, which can facilitate optimizations with tokens.
                 return (_cts != null) ? _cts.Token : CancellationToken.None;
             }
         }
@@ -71,10 +70,15 @@ namespace Microsoft.Azure.Jobs
         {
             if (_watcher != null)
             {
-                if (_cts != null)
+                CancellationTokenSource cts = _cts;
+
+                if (cts != null)
                 {
-                    _cts.Dispose();
+                    // Null out the field to prevent a race condition in OnChanged above.
+                    _cts = null;
+                    cts.Dispose();
                 }
+
                 _watcher.Dispose();
                 _watcher = null;
             }

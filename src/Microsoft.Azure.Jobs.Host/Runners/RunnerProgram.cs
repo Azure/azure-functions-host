@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings.BinderProviders;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -90,7 +91,10 @@ namespace Microsoft.Azure.Jobs
         {
             MethodInfo method = GetLocalMethod(invoke);
             IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            Invoke(config, method, invoke.Id, inputs, invoke.Args, cancellationToken);
+            bool hasBindError;
+            IReadOnlyDictionary<string, IValueProvider> parameters = CreateCombinedParameters(config, method, invoke.Id,
+                inputs, invoke.Parameters, invoke.Args, cancellationToken, out hasBindError);
+            Invoke(method, parameters, hasBindError);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
@@ -111,49 +115,7 @@ namespace Microsoft.Azure.Jobs
 
         public static IConfiguration InitBinders()
         {
-            Configuration config = new Configuration();
-
-            AddDefaultBinders(config);
-            return config;
-
-        }
-
-        public static void AddDefaultBinders(IConfiguration config)
-        {
-            // Blobs
-            config.BlobBinders.Add(new CloudBlockBlobBinderProvider());
-            config.BlobBinders.Add(new CloudPageBlobBinderProvider());
-            config.BlobBinders.Add(new CloudBlobBinderProvider());
-            config.BlobBinders.Add(new BlobStreamBinderProvider());
-            config.BlobBinders.Add(new TextReaderProvider());
-            config.BlobBinders.Add(new TextWriterProvider());
-            config.BlobBinders.Add(new StringBlobBinderProvider());
-
-            // Tables
-            config.TableBinders.Add(new CloudTableBinderProvider());
-            config.TableBinders.Add(new QueryableCloudTableBinderProvider());
-            config.TableBinders.Add(new DictionaryTableBinderProvider());
-        }
-
-        internal static bool ShouldIgnoreInvokeString(Type parameterType)
-        {
-            // Work around problem using IBinder and CloudStorageAccount with Run/Replay from dashboard.
-            if (parameterType == typeof(IBinder))
-            {
-                return true;
-            }
-            else if (parameterType == typeof(CloudStorageAccount))
-            {
-                return true;
-            }
-            else if (parameterType.Namespace == "Microsoft.WindowsAzure.Storage" && parameterType.Name == "CloudStorageAccount")
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return new Configuration();
         }
 
         public static void ApplyHooks(Type t, IConfiguration config)
@@ -181,31 +143,80 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // Have to still pass in IRuntimeBindingInputs since methods can do binding at runtime. 
-        private void Invoke(IConfiguration config, MethodInfo m, Guid instance,
-            IRuntimeBindingInputs inputs, ParameterRuntimeBinding[] argDescriptors, CancellationToken cancellationToken)
+        private IReadOnlyDictionary<string, IValueProvider> CreateCombinedParameters(IConfiguration config, MethodInfo m, Guid instance,
+            IRuntimeBindingInputs inputs, IReadOnlyDictionary<string, IValueProvider> parameters, ParameterRuntimeBinding[] runtimeBindings,
+            CancellationToken cancellationToken, out bool hasBindError)
         {
-            int len = argDescriptors.Length;
+            hasBindError = false;
 
-            INotifyNewBlob notificationService = new NotifyNewBlobViaInMemory();
+            Dictionary<string, IValueProvider> combinedParameters = new Dictionary<string, IValueProvider>();
 
+            IBinderEx bindingContext = new BinderEx(config, inputs, instance, _consoleOutput, cancellationToken);
 
-            IBinderEx bindingContext = new BindingContext(config, inputs, instance, notificationService, _consoleOutput, cancellationToken);
-
-            BindResult[] binds = new BindResult[len];
-            ParameterInfo[] ps = m.GetParameters();
-            for (int i = 0; i < len; i++)
+            foreach (ParameterInfo parameterInfo in m.GetParameters())
             {
-                var p = ps[i];
+                string name = parameterInfo.Name;
+                IValueProvider valueProvider = parameters != null && parameters.ContainsKey(name) ? parameters[name] : null;
+
+                if (valueProvider != null)
+                {
+                    combinedParameters.Add(name, valueProvider);
+                    continue;
+                }
+
+                ParameterRuntimeBinding runtimeBinding = runtimeBindings.SingleOrDefault(b => b.Name == name);
+
+                if (valueProvider == null && runtimeBindings == null)
+                {
+                    throw new InvalidOperationException("No value provided for parameter '" + name + "'.");
+                }
+
+                BindResult result;
+
                 try
                 {
-                    binds[i] = argDescriptors[i].Bind(config, bindingContext, p);
+                    result = runtimeBinding.Bind(config, bindingContext, parameterInfo);
                 }
-                catch (Exception e)
+                catch (Exception exception)
                 {
-                    string msg = string.Format("Error while binding parameter #{0} '{1}':{2}", i, p, e.Message);
-                    binds[i] = new NullBindResult(msg) { IsErrorResult = true };
+                    string msg = String.Format(CultureInfo.InvariantCulture, "Error while binding parameter {0} '{1}':{2}",
+                        name, parameterInfo, exception.Message);
+                    result = new NullBindResult(msg);
+                    hasBindError = true;
                 }
+
+                combinedParameters.Add(name, new BindResultValueProvider(result, parameterInfo.ParameterType));
+            }
+
+            return combinedParameters;
+        }
+
+        private void Invoke(MethodInfo m, IReadOnlyDictionary<string, IValueProvider> parameters, bool hasBindError)
+        {
+            ParameterInfo[] parameterInfos = m.GetParameters();
+            int length = parameterInfos.Length;
+            object[] arguments = new object[length];
+            ISelfWatch[] watches = new ISelfWatch[length];
+
+            for (int index = 0; index < length; index++)
+            {
+                string name = parameterInfos[index].Name;
+                IValueProvider valueProvider = parameters[name];
+                arguments[index] = valueProvider.GetValue();
+
+                IWatchable watchable = valueProvider as IWatchable;
+                ISelfWatch watcher;
+
+                if (watchable != null)
+                {
+                    watcher = watchable.Watcher;
+                }
+                else
+                {
+                    watcher = null;
+                }
+
+                watches[index] = watcher;
             }
 
             _consoleOutput.WriteLine("Parameters bound. Invoking user function.");
@@ -214,33 +225,46 @@ namespace Microsoft.Azure.Jobs
             SelfWatch fpStopWatcher = null;
             try
             {
-                fpStopWatcher = InvokeWorker(m, binds, ps);
+                fpStopWatcher = InvokeWorker(m, arguments, watches, hasBindError);
             }
             finally
             {
                 // Process any out parameters, do any cleanup
                 // For update, do any cleanup work. 
 
-                // Ensure queue OnPostAction is called in PostActionOrder. This ordering is particularly important
-                // for ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to
-                // have occurred by the time messages are enqueued.
-                int[] bindResultIndicesInPostActionOrder = SortBindResultIndicesInPostActionOrder(binds);
+                // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
+                // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
+                // occurred by the time messages are enqueued.
+                string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
 
                 try
                 {
                     _consoleOutput.WriteLine("--------");
 
-                    foreach (int bindResultIndex in bindResultIndicesInPostActionOrder)
+                    foreach (string name in parameterNamesInBindOrder)
                     {
-                        var bind = binds[bindResultIndex];
+                        IValueProvider provider = parameters[name];
+                        IValueBinder binder = provider as IValueBinder;
+                        IDisposable disposable = provider as IDisposable;
+                        object argument = arguments[GetParameterIndex(parameterInfos, name)];
+
                         try
                         {
-                            // This could invoke user code and do complex things that may fail. Catch the exception 
-                            bind.OnPostAction();
+                            if (binder != null)
+                            {
+                                // This could invoke do complex things that may fail. Catch the exception.
+                                binder.SetValue(argument);
+                            }
+
+                            if (disposable != null)
+                            {
+                                // Due to BindResult adapter, this could also fail.
+                                disposable.Dispose();
+                            }
                         }
                         catch (Exception e)
                         {
-                            string msg = string.Format("Error while handling parameter #{0} '{1}' after function returned:", bindResultIndex, ps[bindResultIndex]);
+                            string msg = string.Format("Error while handling parameter {0} '{1}' after function returned:", name, argument);
                             throw new InvalidOperationException(msg, e);
                         }
                     }
@@ -258,42 +282,62 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static int[] SortBindResultIndicesInPostActionOrder(BindResult[] original)
+        private static int GetParameterIndex(ParameterInfo[] parameters, string name)
         {
-            int[] indices = new int[original.Length];
-            for (int index = 0; index < indices.Length; index++)
+            for (int index = 0; index < parameters.Length; index++)
             {
-                indices[index] = index;
+                if (parameters[index].Name == name)
+                {
+                    return index;
+                }
             }
-            BindResult[] copy = new BindResult[indices.Length];
-            Array.Copy(original, copy, original.Length);
-            Array.Sort(copy, indices, PostActionOrderComparer.Instance);
-            return indices;
+
+            throw new InvalidOperationException("Cannot find parameter + " + name + ".");
         }
 
-        private SelfWatch InvokeWorker(MethodInfo m, BindResult[] binds, ParameterInfo[] ps)
+        private static string[] SortParameterNamesInStepOrder(IReadOnlyDictionary<string, IValueProvider> parameters)
+        {
+            string[] parameterNames = new string[parameters.Count];
+            int index = 0;
+
+            foreach (string parameterName in parameters.Keys)
+            {
+                parameterNames[index] = parameterName;
+                index++;
+            }
+
+            IValueProvider[] parameterValues = new IValueProvider[parameters.Count];
+            index = 0;
+
+            foreach (IValueProvider parameterValue in parameters.Values)
+            {
+                parameterValues[index] = parameterValue;
+                index++;
+            }
+
+            Array.Sort(parameterValues, parameterNames, ValueBinderStepOrderComparer.Instance);
+            return parameterNames;
+        }
+
+        private SelfWatch InvokeWorker(MethodInfo m, object[] arguments, ISelfWatch[] watches, bool hasBindError)
         {
             SelfWatch fpStopWatcher = null;
             if (_parameterLogger != null)
             {
                 CloudBlockBlob blobResults = _parameterLogger.GetBlockBlob();
-                fpStopWatcher = new SelfWatch(binds, ps, blobResults, _consoleOutput);
+                fpStopWatcher = new SelfWatch(watches, blobResults, _consoleOutput);
             }
-
-            // Watchers may tweak args, so do those second.
-            object[] args = Array.ConvertAll(binds, bind => bind.Result);
 
             try
             {
-                var hasBindErrors = binds.OfType<IMaybeErrorBindResult>().Any(r => r.IsErrorResult);
-                if (!hasBindErrors)
+                if (!hasBindError)
                 {
                     if (IsAsyncMethod(m))
                     {
                         InformNoAsyncSupport();
                     }
 
-                    object returnValue = m.Invoke(null, args);
+                    object returnValue = m.Invoke(null, arguments);
                     HandleFunctionReturnParameter(m, returnValue);
                 }
                 else
@@ -308,14 +352,6 @@ namespace Microsoft.Azure.Jobs
                 _consoleOutput.WriteLine(e.InnerException.StackTrace);
 
                 throw e.InnerException;
-            }
-            finally
-            {
-                // Copy back any ref/out parameters
-                for (int i = 0; i < binds.Length; i++)
-                {
-                    binds[i].Result = args[i];
-                }
             }
 
             return fpStopWatcher;
@@ -369,29 +405,82 @@ namespace Microsoft.Azure.Jobs
             _consoleOutput.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
         }
 
-        private class PostActionOrderComparer : IComparer<BindResult>
+        private class ValueBinderStepOrderComparer : IComparer<IValueProvider>
         {
-            private static readonly PostActionOrderComparer _instance = new PostActionOrderComparer();
+            private static readonly ValueBinderStepOrderComparer _instance = new ValueBinderStepOrderComparer();
 
-            private PostActionOrderComparer()
+            private ValueBinderStepOrderComparer()
             {
             }
 
-            public static PostActionOrderComparer Instance { get { return _instance; } }
+            public static ValueBinderStepOrderComparer Instance { get { return _instance; } }
 
-            public int Compare(BindResult x, BindResult y)
+            public int Compare(IValueProvider x, IValueProvider y)
             {
-                if (x == null)
+                int xOrder = GetStepOrder(x);
+                int yOrder = GetStepOrder(y);
+
+                return Comparer<int>.Default.Compare(xOrder, yOrder);
+            }
+
+            private static int GetStepOrder(IValueProvider provider)
+            {
+                IOrderedValueBinder orderedBinder = provider as IOrderedValueBinder;
+
+                if (orderedBinder == null)
                 {
-                    return y == null ? 0 : -1;
+                    return BindStepOrders.Default;
                 }
 
-                if (y == null)
-                {
-                    return 1;
-                }
+                return orderedBinder.StepOrder;
+            }
+        }
 
-                return ((int)x.PostActionOrder).CompareTo((int)y.PostActionOrder);
+        private class BindResultValueProvider : IValueBinder, IWatchable, IDisposable
+        {
+            private readonly BindResult _bindResult;
+            private readonly ISelfWatch _watcher;
+
+            private bool _disposed;
+
+            public BindResultValueProvider(BindResult bindResult, Type parameterType)
+            {
+                _bindResult = bindResult;
+                _watcher = SelfWatch.GetWatcher(bindResult, parameterType);
+            }
+
+            public Type Type
+            {
+                get { throw new NotSupportedException(); }
+            }
+
+            public ISelfWatch Watcher
+            {
+                get { return _watcher; }
+            }
+
+            public void Dispose()
+            {
+                if (!_disposed)
+                {
+                    _bindResult.OnPostAction();
+                    _disposed = true;
+                }
+            }
+
+            public object GetValue()
+            {
+                return _bindResult.Result;
+            }
+
+            public void SetValue(object value)
+            {
+                _bindResult.Result = value;
+            }
+
+            public string ToInvokeString()
+            {
+                throw new NotSupportedException();
             }
         }
     }

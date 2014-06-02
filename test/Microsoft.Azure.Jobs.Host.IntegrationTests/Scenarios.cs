@@ -146,8 +146,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void AddToQueue(
-            [BlobInput(@"daas-test-input/{name}.csv")] TextReader values, 
-            [QueueOutput] out Payload queueTest)
+            [BlobTrigger(@"daas-test-input/{name}.csv")] TextReader values, 
+            [Queue("queueTest")] out Payload queueTest)
         {
             string content = values.ReadToEnd();
             int val = int.Parse(content);
@@ -160,8 +160,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         // Triggered on queue. 
         // Route parameters are bound from queue values
         public static void GetFromQueue(
-            [QueueInput] Payload queueTest, 
-            [BlobOutput(@"daas-test-input/{Output}")] TextWriter output,
+            [QueueTrigger("queueTest")] Payload queueTest, 
+            [Blob(@"daas-test-input/{Output}")] TextWriter output,
             int Value // bound from queueTest.Value
             )
         {
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void BindQueueToTableEntity(
-            [QueueInput] TableEntityPayload queueTest2,
+            [QueueTrigger("queueTest2")] TableEntityPayload queueTest2,
             [Table("{TableName}", "{PartitionKey}", "{RowKey}")] SimpleEntity entity)
         {
             entity.Value = 456;
@@ -193,16 +193,16 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     class Program
     {
         public static void Func1(
-            [BlobInput(@"daas-test-input/{name}.1")] TextReader values,
+            [BlobTrigger(@"daas-test-input/{name}.1")] TextReader values,
             string name,
-            [BlobOutput(@"daas-test-input/{name}.2")] TextWriter output)
+            [Blob(@"daas-test-input/{name}.2")] TextWriter output)
         {
             output.Write(name);
         }
 
         public static void Func2(
-            [BlobInput(@"daas-test-input/{name}.2")] TextReader values,            
-            [BlobOutput(@"daas-test-input/{name}.3")] TextWriter output)
+            [BlobTrigger(@"daas-test-input/{name}.2")] TextReader values,            
+            [Blob(@"daas-test-input/{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();
 

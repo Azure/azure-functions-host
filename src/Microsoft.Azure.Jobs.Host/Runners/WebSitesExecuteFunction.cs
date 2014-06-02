@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Internals
             _config = config;
             _ctx = ctx;
         }
-        protected override FunctionInvocationResult Work(FunctionInvokeRequest request, CancellationToken cancellationToken)
+        protected override FunctionInvocationResult Work(FunctionInvokeRequest request, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
         {
             var loc = request.Location;
 
@@ -30,6 +30,7 @@ namespace Microsoft.Azure.Jobs.Internals
 
             // @@@ somewhere this should be async, handle long-running functions. 
             return ExecutionBase.Work(
+                notifyNewBlob,
                 request,
                 _ctx,
                 fpInvokeFunc);

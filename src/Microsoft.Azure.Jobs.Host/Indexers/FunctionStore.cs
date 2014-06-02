@@ -15,16 +15,14 @@ namespace Microsoft.Azure.Jobs.Internals
             var indexer = Init(storageConnectionString, config);
             foreach (Type t in types)
             {
-                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m), t);
+                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m),t, storageConnectionString, serviceBusConnectionString);
             }
         }
         
         private Indexer Init(string storageConnectionString, IConfiguration config)
         {
             _store = new IndexInMemory();
-            var indexer = new Indexer(_store, config.NameResolver);
-            indexer.ConfigOverride = config;
-            return indexer;
+            return new Indexer(_store, config.NameResolver, config);
         }
 
         private FunctionLocation OnApplyLocationInfo(string accountConnectionString, string serviceBusConnectionString, MethodInfo method)

@@ -2,8 +2,16 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Queues.Bindings;
+using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -17,25 +25,28 @@ namespace Microsoft.Azure.Jobs
         private static readonly IEnumerable<IStaticBindingProvider> _staticBindingProviders =
             new IStaticBindingProvider[]
             {
-                new AttributeStaticBindingProvider(),
                 new CancellationTokenStaticBindingProvider(),
                 new CloudStorageAccountStaticBindingProvider(),
                 new BinderStaticBindingProvider(),
                 // The console output binder below will handle all remaining TextWriter parameters. It must come after
-                // the Attribute binder; otherwise bindings like Do([BlobOutput] TextWriter blob) wouldn't work.
-                new ConsoleOutputStaticBindingProvider(),
-                new Sdk1CloudStorageAccountStaticBindingProvider()
+                // the Attribute binder; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
+                new ConsoleOutputStaticBindingProvider()
             };
 
         private readonly IFunctionTable _functionTable;
-
         private readonly INameResolver _nameResolver;
+        private readonly IConfiguration _configuration;
+        private readonly ITriggerBindingProvider _triggerBindingProvider;
+        private readonly IBindingProvider _bindingProvider;
 
         // Account for where index lives
-        public Indexer(IFunctionTable functionTable, INameResolver nameResolver)
+        public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IConfiguration configuration)
         {
             _functionTable = functionTable;
             _nameResolver = nameResolver;
+            _configuration = configuration;
+            _triggerBindingProvider = CreateTriggerBindingProvider(configuration);
+            _bindingProvider = CreateBindingProvider(configuration);
         }
 
         public static string AzureJobsFileName
@@ -43,8 +54,65 @@ namespace Microsoft.Azure.Jobs
             get { return _azureJobsFileName; }
         }
 
-        // If this config is set, use it. 
-        public IConfiguration ConfigOverride { get; set; }
+        private static ITriggerBindingProvider CreateTriggerBindingProvider(IConfiguration configuration)
+        {
+            List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
+            innerProviders.Add(new QueueTriggerAttributeBindingProvider());
+
+            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
+            innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
+
+            Type serviceBusProviverType = ServiceBusExtensionTypeLoader.Get(
+                "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
+
+            if (serviceBusProviverType != null)
+            {
+                ITriggerBindingProvider serviceBusAttributeBindingProvider =
+                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviverType);
+                innerProviders.Add(serviceBusAttributeBindingProvider);
+            }
+
+            return new CompositeTriggerBindingProvider(innerProviders);
+        }
+
+        private static IBindingProvider CreateBindingProvider(IConfiguration configuration)
+        {
+            List<IBindingProvider> innerProviders = new List<IBindingProvider>();
+            innerProviders.Add(new QueueAttributeBindingProvider());
+
+            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
+            innerProviders.Add(new BlobAttributeBindingProvider(cloudBlobStreamBinderTypes));
+
+            innerProviders.Add(new TableAttributeBindingProvider());
+
+            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
+                "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
+
+            if (serviceBusProviderType != null)
+            {
+                IBindingProvider serviceBusAttributeBindingProvider =
+                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType);
+                innerProviders.Add(serviceBusAttributeBindingProvider);
+            }
+
+            return new CompositeBindingProvider(innerProviders);
+        }
+
+        private static IEnumerable<Type> GetCloudBlobStreamBinderTypes(IConfiguration configuration)
+        {
+            IEnumerable<Type> types;
+
+            if (configuration != null)
+            {
+                types = configuration.CloudBlobStreamBinderTypes;
+            }
+            else
+            {
+                types = null;
+            }
+
+            return types;
+        }
 
         private static MethodInfo ResolveMethod(Type type, string name)
         {
@@ -57,9 +125,9 @@ namespace Microsoft.Azure.Jobs
             return method;
         }
 
-        public void IndexType(Func<MethodInfo, FunctionLocation> funcApplyLocation, Type type)
+        public void IndexType(Func<MethodInfo, FunctionLocation> funcApplyLocation, Type type, string storageConnectionString, string serviceBusConnectionString)
         {
-            var context = InvokeInitMethodOnType(type, funcApplyLocation);
+            var context = InvokeInitMethodOnType(type, GetCloudStorageAccount(storageConnectionString), serviceBusConnectionString, funcApplyLocation);
 
             // Now register any declaritive methods
             foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags))
@@ -68,6 +136,16 @@ namespace Microsoft.Azure.Jobs
             }
 
             EnsureNoDuplicateFunctions();
+        }
+
+        private static CloudStorageAccount GetCloudStorageAccount(string connectionString)
+        {
+            if (connectionString == null)
+            {
+                return null;
+            }
+
+            return CloudStorageAccount.Parse(connectionString);
         }
 
         // Check for duplicate names. Indexing doesn't support overloads.
@@ -89,21 +167,33 @@ namespace Microsoft.Azure.Jobs
 
         // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
         // Register any functions provided by code-configuration.
-        private IndexTypeContext InvokeInitMethodOnType(Type type, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        private IndexTypeContext InvokeInitMethodOnType(Type type, CloudStorageAccount storageAccount, string serviceBusConnectionString, Func<MethodInfo, FunctionLocation> funcApplyLocation)
         {
-            if (ConfigOverride != null)
+            IConfiguration configuration;
+
+            if (_configuration != null)
             {
-                return new IndexTypeContext { Config = ConfigOverride };
+                configuration = _configuration;
+            }
+            else
+            {
+                // Test-only shortcut
+                configuration = CreateTestConfiguration(type);
             }
 
+            return new IndexTypeContext
+            {
+                Config = configuration,
+                StorageAccount = storageAccount,
+                ServiceBusConnectionString = serviceBusConnectionString
+            };
+        }
+
+        private IConfiguration CreateTestConfiguration(Type type)
+        {
             var config = new Configuration();
-
-            RunnerProgram.AddDefaultBinders(config);
             RunnerProgram.ApplyHooks(type, config);
-
-            var context = new IndexTypeContext { Config = config };
-
-            return context;
+            return config;
         }
 
         // Helper to convert delegates.
@@ -151,21 +241,14 @@ namespace Microsoft.Azure.Jobs
         //   can't be invoked by an automatic trigger)
         // - or the function shouldn't be indexed at all.
         // Caller will make that distinction.
-        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr)
+        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr, IEnumerable<string> triggerParameterNames)
         {
             ParameterInfo[] ps = descr.Parameters;
 
             ParameterStaticBinding[] flows = Array.ConvertAll(ps, BindParameter);
 
             // Populate input names
-            HashSet<string> paramNames = new HashSet<string>();
-            foreach (var flow in flows)
-            {
-                if (flow != null)
-                {
-                    paramNames.UnionWith(flow.ProducedRouteParameters);
-                }
-            }
+            HashSet<string> paramNames = new HashSet<string>(triggerParameterNames);
 
             // Take a second pass to bind params directly to {key} in the attributes above,.
             // So if we have p1 with attr [BlobInput(@"daas-test-input2/{name}.csv")],
@@ -225,13 +308,13 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Test hook. 
-        static public FunctionDefinition GetFunctionDefinition(MethodInfo method)
+        static public FunctionDefinition GetFunctionDefinitionTest(MethodInfo method, IndexTypeContext context)
         {
-            Indexer idx = new Indexer(null, null);
-            return idx.GetFunctionDefinition(method, (IndexTypeContext) null);
+            Indexer idx = new Indexer(null, null, null);
+            return idx.GetFunctionDefinition(method, context);
         }
 
-        public FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context = null)
+        public FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context)
         {
             MethodDescriptor descr = GetMethodDescriptor(method);
             return GetFunctionDefinition(descr, context);
@@ -257,13 +340,15 @@ namespace Microsoft.Azure.Jobs
 
         private FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
         {
+            FunctionDefinition index = CreateFunctionDefinition(descr, context);
+
             string description = null;
 
-            NoAutomaticTriggerAttribute triggerAttr = null;
+            NoAutomaticTriggerAttribute noAutomaticTrigger = null;
 
             foreach (var attr in descr.MethodAttributes)
             {
-                triggerAttr = triggerAttr ?? (attr as NoAutomaticTriggerAttribute);
+                noAutomaticTrigger = noAutomaticTrigger ?? (attr as NoAutomaticTriggerAttribute);
 
                 var descriptionAttr = attr as DescriptionAttribute;
                 if (descriptionAttr != null)
@@ -274,68 +359,134 @@ namespace Microsoft.Azure.Jobs
 
             // $$$ Lots of other static checks to add.
 
-            // Look at parameters.
-            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr);
+            IEnumerable<string> triggerParameterNames;
 
-            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null;
+            if (index.TriggerBinding != null && index.TriggerBinding.BindingDataContract != null)
+            {
+                triggerParameterNames = index.TriggerBinding.BindingDataContract.Keys;
+            }
+            else
+            {
+                triggerParameterNames = Enumerable.Empty<string>();
+            }
+
+            // Look at parameters.
+            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr, triggerParameterNames);
+
+            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null || index.NonTriggerBindings.Count > 0;
             AddInvokeBindings(descr, parameterBindings);
 
             //
             // We now have all the explicitly provided information. Put it together.
             //
 
-            // Get trigger:
-            // - (default) listen on blobs. Use this if there are flow attributes present.
-            // - None - if the [NoAutomaticTriggerAttribute] attribute is present.
-
-            FunctionTrigger trigger;
-
-            if (triggerAttr != null)
+            if (index.TriggerBinding == null && noAutomaticTrigger == null && !hasAnyBindings && description == null)
             {
-                // Explicit [NoTrigger] attribute.
-                trigger = new FunctionTrigger(); // no triggers
-            }
-            else if (hasAnyBindings)
-            {
-                // Can't tell the difference between unbound parameters and modelbound parameters.
-                // Assume any unknonw parameters will be solved with model binding, and that if the user didn't
-                // want an invoke, they would have used the [NoTrigger] attribute.
-                trigger = new FunctionTrigger { ListenOnBlobs = true };
-#if false
-
-                // Unbound parameters mean this can't be automatically invoked.
-                // The only reason we listen on blob is for automatic invoke.
-                trigger = new FunctionTrigger { ListenOnBlobs = !hasUnboundParams };
-#endif
-            }
-            else if (description != null)
-            {
-                // Only [Description] attribute, no other binding information.
-                trigger = new FunctionTrigger();
-            }
-            else
-            {
-                // Still no trigger (not even automatic), then ignore this function completely.
+                // No trigger, binding, NoAutomaticTrigger attribute or Description attribute.
+                // Ignore this function completely.
                 return null;
             }
 
-            FunctionDefinition index = new FunctionDefinition
-            {
-                Trigger = trigger,
-                Flow = new FunctionFlow
-                {
-                    Bindings = parameterBindings
-                }
-            };
+            index.Flow = new FunctionFlow { Bindings = parameterBindings };
 
-            if (context != null)
+            if (context.Config != null)
             {
                 ValidateParameters(parameterBindings, descr.Parameters, context.Config);
+            }
+
+            if (index.TriggerBinding != null && noAutomaticTrigger != null)
+            {
+                throw new InvalidOperationException("Can't have a trigger and NoAutomaticTrigger on the same function.");
             }
 
             Validate(index);
 
             return index;
+        }
+
+        private FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context)
+        {
+            ITriggerBinding triggerBinding = null;
+            ParameterInfo triggerParameter = null;
+            ParameterInfo[] parameters = method.Parameters;
+            foreach (ParameterInfo parameter in parameters)
+            {
+                ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(new TriggerBindingProviderContext
+                {
+                    Parameter = parameter,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
+                    StorageAccount = context != null ? context.StorageAccount : null,
+                    ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
+                });
+
+                if (possibleTriggerBinding != null)
+                {
+                    if (triggerBinding == null)
+                    {
+                        triggerBinding = possibleTriggerBinding;
+                        triggerParameter = parameter;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("More than one trigger per function is not allowed.");
+                    }
+                }
+            }
+
+            Dictionary<string, IBinding> nonTriggerBindings = new Dictionary<string, IBinding>();
+            IReadOnlyDictionary<string, Type> bindingDataContract;
+
+            if (triggerBinding != null)
+            {
+                bindingDataContract = triggerBinding.BindingDataContract;
+            }
+            else
+            {
+                bindingDataContract = null;
+            }
+
+            foreach (ParameterInfo parameter in parameters)
+            {
+                if (parameter == triggerParameter)
+                {
+                    continue;
+                }
+
+                IBinding binding = _bindingProvider.TryCreate(new BindingProviderContext
+                {
+                    Parameter = parameter,
+                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
+                    BindingDataContract = bindingDataContract,
+                    StorageAccount = context != null ? context.StorageAccount : null,
+                    ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
+                });
+
+                if (binding == null)
+                {
+                    if (triggerBinding != null)
+                    {
+                        // throw new InvalidOperationException("Cannot bind parameter '" + parameter.Name + "' when using this trigger.");
+                        // Until all bindings are migrated, skip extra parameters.
+                        continue;
+                    }
+                    else
+                    {
+                        // Host.Call-only parameter
+                        continue;
+                    }
+                }
+
+                nonTriggerBindings.Add(parameter.Name, binding);
+            }
+
+            string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
+
+            return new FunctionDefinition
+            {
+                TriggerParameterName = triggerParameterName,
+                TriggerBinding = triggerBinding,
+                NonTriggerBindings = nonTriggerBindings
+            };
         }
 
         // Do static checking on parameter bindings. 
@@ -353,28 +504,6 @@ namespace Microsoft.Azure.Jobs
         private static void Validate(FunctionDefinition index)
         {
             // $$$ This should share policy code with Orchestrator where it builds the listening map. 
-
-            // Throw on multiple QueueInputs
-            int totalQueueInputParameters = index.Flow.Bindings.OfType<QueueParameterStaticBinding>().Count(q => q.IsInput);
-
-            if (totalQueueInputParameters > 1)
-            {
-                throw new InvalidOperationException("Can't have multiple QueueInput parameters on a single function.");
-            }
-
-            if (totalQueueInputParameters > 0)
-            {
-                if (!(index.Flow.Bindings[0] is QueueParameterStaticBinding))
-                {
-                    throw new InvalidOperationException("A QueueInput parameter must be the first parameter.");
-                }
-
-                if (!index.Trigger.ListenOnBlobs)
-                {
-                    // This implies a [NoAutomaticTrigger] attribute. 
-                    throw new InvalidOperationException("Can't have QueueInput and NoAutomaticTrigger on the same function.");
-                }
-            }
 
             // Throw on multiple ConsoleOutputs
             if (index.Flow.Bindings.OfType<ConsoleOutputParameterStaticBinding>().Count() > 1)

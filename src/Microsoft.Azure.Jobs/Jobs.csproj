@@ -50,14 +50,15 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="BlobInputAttribute.cs" />
-    <Compile Include="BlobOutputAttribute.cs" />
+    <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />
     <Compile Include="IBinder.cs" />
-    <Compile Include="QueueOutputAttribute.cs" />
-    <Compile Include="QueueInputAttribute.cs" />
     <Compile Include="DescriptionAttribute.cs" />
+    <Compile Include="BlobAttribute.cs" />
+    <Compile Include="QueueAttribute.cs" />
+    <Compile Include="QueueTriggerAttribute.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
+    <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

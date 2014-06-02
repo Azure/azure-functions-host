@@ -146,16 +146,15 @@ namespace Microsoft.Azure.Jobs
         {
             CloudBlobContainer container = this.GetContainer(account);
 
-            foreach (var blobItem in container.ListBlobs(useFlatBlobListing: true))
+            foreach (ICloudBlob blobItem in container.ListBlobs(useFlatBlobListing: true))
             {
                 var path = blobItem.Uri.ToString();
-                ICloudBlob b = container.GetBlobReferenceFromServer(blobItem.Uri.ToString());
 
-                var subPath = new CloudBlobPath(b);
+                var subPath = new CloudBlobPath(blobItem);
                 var p = this.Match(subPath);
                 if (p != null)
                 {
-                    yield return b;
+                    yield return blobItem;
                 }
             }
         }

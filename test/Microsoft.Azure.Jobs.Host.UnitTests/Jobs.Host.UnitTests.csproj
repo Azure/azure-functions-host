@@ -82,16 +82,14 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="AntaresShutdownWatcherTests.cs" />
+    <Compile Include="Protocols\HostStartedMessageTests.cs" />
+    <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
+    <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Bindings\BindResults\NullBindResultTests.cs" />
     <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
     <Compile Include="Bindings\CloudBlobPathTests.cs" />
-    <Compile Include="Bindings\RuntimeBindings\QueueInputParameterRuntimeBindingsTest.cs" />
+    <Compile Include="Bindings\BindingDataTests.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
-    <Compile Include="Bindings\StaticBindings\QueueParameterStaticBindingTests.cs" />
-    <Compile Include="Bindings\StaticBindings\BlobParameterStaticBindingTests.cs" />
-    <Compile Include="ExecutionInstanceLogEntity.cs" />
-    <Compile Include="ExecutionInstanceLogEntitySerializer.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
@@ -108,13 +106,12 @@
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
-    <Compile Include="TableSerializationTests.cs" />
-    <Compile Include="TableUnitTests.cs" />
+    <Compile Include="TestConfiguration.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
     <Compile Include="TriggerMapSerializationTests.cs" />
-    <Compile Include="WatchableStreamTests.cs" />
+    <Compile Include="Blobs\SelfWatchReadStreamTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">

@@ -90,7 +90,6 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="BinderExtensions.cs" />
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="CallUtil.cs" />
     <Compile Include="ExecutionInstanceLogEntity.cs" />
@@ -103,7 +102,6 @@
     <Compile Include="LocalFunctionLogger.cs" />
     <Compile Include="LocalFunctionTable.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
-    <Compile Include="LocalOrchestratorTableTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="ModelBindingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

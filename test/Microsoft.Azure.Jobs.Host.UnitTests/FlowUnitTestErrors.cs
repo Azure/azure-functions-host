@@ -13,12 +13,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
-                Assert.Throws<IndexException>(() => Indexer.GetFunctionDefinition(method));
+                Assert.Throws<IndexException>(() => Indexer.GetFunctionDefinitionTest(method, new IndexTypeContext { Config = new TestConfiguration() }));
             }
         }
 
         private static void BadTableName([Table(@"#")] IDictionary<Tuple<string, string>, object> t) { }
 
-        private static void MultipleQueueParams([QueueInput] int p123, [QueueInput] int p234) { }
+        private static void MultipleQueueParams([QueueTrigger("p123")] int p123, [QueueTrigger("p234")] int p234) { }
     }
 }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using AzureTables;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -72,9 +71,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _lookup = x;
             }
 
-            IAzureTable prereqTable = AzureTable.NewInMemory();
-            IAzureTable successorTable = AzureTable.NewInMemory();
-
             var y = new LocalExecute(this);
             _executor = y;
         }
@@ -93,7 +89,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
         {
             LocalFunctionTable store = new LocalFunctionTable(account);
-            Indexer i = new Indexer(store, config.NameResolver);
+            Indexer i = new Indexer(store, config.NameResolver, null);
 
             IndexTypeContext ctx = new IndexTypeContext { Config = config };
             i.IndexMethod(store.OnApplyLocationInfo, method, ctx);
@@ -153,7 +149,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ParentGuid = parentGuid
             };
 
-            var result = _executor.Execute(instance, CancellationToken.None);
+            var result = _executor.Execute(instance, null, CancellationToken.None);
             return result.Id;
         }
 
@@ -161,7 +157,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, blobInput);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, null, blobInput);
 
             CallInner(instance);
         }
@@ -175,7 +171,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
             {
                 RunnerProgram runner = new RunnerProgram(TextWriter.Null, null);
 

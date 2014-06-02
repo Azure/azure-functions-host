@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// Used to syncronize the application start and blob creation
         /// </summary>
         public static void NotifyStart(
-            [QueueInput(HostStartQueueName)] string input)
+            [QueueTrigger(HostStartQueueName)] string input)
         {
             _startWaitHandle.Set();
         }
@@ -72,9 +72,9 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// - blob name pattern binding
         /// </summary>
         public static void BlobToQueue(
-            [BlobInput(ContainerName + @"/{name}")] CustomObject input,
+            [BlobTrigger(ContainerName + @"/{name}")] CustomObject input,
             string name,
-            [QueueOutput(TestQueueName)] out CustomObject output)
+            [Queue(TestQueueName)] out CustomObject output)
         {
             CustomObject result = new CustomObject()
             {
@@ -92,9 +92,9 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// - table writing
         /// </summary>
         public static void QueueToTable(
-            [QueueInput] CustomObject e2equeue,
+            [QueueTrigger(TestQueueName)] CustomObject e2equeue,
             [Table(TableName)] IDictionary<Tuple<string, string>, CustomObject> table,
-            [QueueOutput] out string e2edone)
+            [Queue(DoneQueueName)] out string e2edone)
         {
             const string tableKeys = "test";
 
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// Notifies the completion of the scenario
         /// </summary>
         public static void NotifyCompletion(
-            [QueueInput] string e2edone)
+            [QueueTrigger("e2edone")] string e2edone)
         {
             _functionChainWaitHandle.Set();
         }

@@ -7,9 +7,6 @@ namespace Microsoft.Azure.Jobs
     // Base class for triggers that client can listen on. 
     internal abstract class Trigger
     {
-        // Invoke this path when the trigger fires 
-        public string CallbackPath { get; set; }
-
         // Not serialized. For in-memory cases.(This is kind of exclusive with CallbackPath)
         public object Tag { get; set; }
 
@@ -18,11 +15,6 @@ namespace Microsoft.Azure.Jobs
 
         public TriggerType Type { get; set; }
 
-        public static IEnumerable<Trigger> FromWire(IEnumerable<TriggerRaw> raw, Credentials credentials)
-        {
-            return from x in raw select FromWire(x, credentials);
-        }
-
         public static Trigger FromWire(TriggerRaw raw, Credentials credentials)
         {
             switch (raw.Type)
@@ -30,7 +22,6 @@ namespace Microsoft.Azure.Jobs
                 case TriggerType.Blob:
                     var trigger = new BlobTrigger
                     {
-                        CallbackPath = raw.CallbackPath,
                         StorageConnectionString = credentials.StorageConnectionString,
                         BlobInput = new CloudBlobPath(raw.BlobInput)
                     };
@@ -43,14 +34,12 @@ namespace Microsoft.Azure.Jobs
                 case TriggerType.Queue:
                     return new QueueTrigger
                     {
-                        CallbackPath = raw.CallbackPath,
                         StorageConnectionString = credentials.StorageConnectionString,
                         QueueName = raw.QueueName
                     };
                 case TriggerType.ServiceBus:
                     return new ServiceBusTrigger
                     {
-                        CallbackPath = raw.CallbackPath,
                         StorageConnectionString = credentials.ServiceBusConnectionString,
                         SourcePath = raw.EntityName
                     };

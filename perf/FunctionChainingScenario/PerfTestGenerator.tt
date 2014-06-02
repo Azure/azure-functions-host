@@ -14,13 +14,13 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 	for (int i=1; i<NumberOfMethodsToGenerate; i++)
 	{
 #>
-		public static void QueuePerfJob<#= i #>([QueueInput(PerfQueuePrefix + "<#= i #>")] string input, [QueueOutput(PerfQueuePrefix + "<#= i + 1 #>")] out string output)
+		public static void QueuePerfJob<#= i #>([QueueTrigger(PerfQueuePrefix + "<#= i #>")] string input, [Queue(PerfQueuePrefix + "<#= i + 1 #>")] out string output)
 		{
 			output = input;
 		}
 
 <# } #>
-		public static void QueuePerfJob<#= NumberOfMethodsToGenerate #>([QueueInput(PerfQueuePrefix + "<#= NumberOfMethodsToGenerate #>")] string input, [QueueOutput(LastQueueName)] out string output)
+		public static void QueuePerfJob<#= NumberOfMethodsToGenerate #>([QueueTrigger(PerfQueuePrefix + "<#= NumberOfMethodsToGenerate #>")] string input, [Queue(LastQueueName)] out string output)
 		{
 			output = input;
 		}
