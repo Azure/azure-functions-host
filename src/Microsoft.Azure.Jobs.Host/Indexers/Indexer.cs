@@ -29,9 +29,8 @@ namespace Microsoft.Azure.Jobs
                 new CloudStorageAccountStaticBindingProvider(),
                 new BinderStaticBindingProvider(),
                 // The console output binder below will handle all remaining TextWriter parameters. It must come after
-                // the Attribute binder; otherwise bindings like Do([BlobOutput] TextWriter blob) wouldn't work.
-                new ConsoleOutputStaticBindingProvider(),
-                new Sdk1CloudStorageAccountStaticBindingProvider()
+                // the Attribute binder; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
+                new ConsoleOutputStaticBindingProvider()
             };
 
         private readonly IFunctionTable _functionTable;

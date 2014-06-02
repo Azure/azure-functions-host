@@ -317,12 +317,10 @@
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
     <Compile Include="Bindings\StaticBindingProviders\BinderStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\ConsoleOutputStaticBindingProvider.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\Sdk1CloudStorageAccountStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\CloudStorageAccountStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\CancellationTokenStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\BinderParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\InvokeParameterStaticBinding.cs" />
-    <Compile Include="Bindings\StaticBindings\Sdk1CloudStorageAccountParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\CloudStorageAccountParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\CancellationTokenParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindingProviders\IStaticBindingProvider.cs" />
