@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using AzureTables;
+using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
 {
@@ -10,36 +11,37 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
     {
         public BindResult Bind(IBinderEx bindingContext, string tableName, string partitionKey, string rowKey)
         {
-            AzureTable<T> table = TableProviderTestHook.Default.Create<T>(bindingContext.StorageConnectionString, tableName);
-            IAzureTableReader<T> reader = (IAzureTableReader<T>)table;
-            T result = reader.Lookup(partitionKey, rowKey);
+            ICloudTableClient client = TableProviderTestHook.Default.Create(bindingContext.StorageConnectionString);
+            ICloudTable table = client.GetTableReference(tableName);
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(partitionKey, rowKey);
 
-            if (result == null)
+            if (entity == null)
             {
                 return new BindResult { Result = null };
             }
             else
             {
-                return new PocoTableEntityBindResult(result, partitionKey, rowKey, table);
+
+                return new PocoTableEntityBindResult(table, entity);
             }
         }
 
         private class PocoTableEntityBindResult : BindResult, ISelfWatch
         {
-            private readonly string _partitionKey;
-            private readonly string _rowKey;
-            private readonly AzureTable<T> _table;
+            private readonly ICloudTable _table;
+            private readonly T _result;
+            private readonly DynamicTableEntity _originalEntity;
             private readonly IDictionary<string, string> _originalProperties;
 
             private string _status;
 
-            public PocoTableEntityBindResult(T result, string partitionKey, string rowKey, AzureTable<T> table)
+            public PocoTableEntityBindResult(ICloudTable table, DynamicTableEntity entity)
             {
-                Result = result;
-                _partitionKey = partitionKey;
-                _rowKey = rowKey;
                 _table = table;
-                _originalProperties = ObjectBinderHelpers.ConvertObjectToDict(result);
+                _originalEntity = entity;
+                _result = PocoTableEntity.ToPocoEntity<T>(entity);
+                Result = _result;
+                _originalProperties = ObjectBinderHelpers.ConvertObjectToDict(_result);
             }
 
             public override ISelfWatch Watcher
@@ -60,8 +62,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
                 if (EntityHasChanged())
                 {
                     _status = "1 entity updated.";
-                    _table.Write(_partitionKey, _rowKey, Result);
-                    _table.Flush();
+                    ITableEntity entity = PocoTableEntity.ToTableEntity(
+                        _originalEntity.PartitionKey, _originalEntity.RowKey, _result);
+                    _table.InsertOrReplace(entity);
                 }
             }
 

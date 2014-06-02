@@ -154,12 +154,24 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
+    <Compile Include="Data\AzureTable.cs" />
+    <Compile Include="Data\AzureTableOfTPartRowKeyTValue.cs" />
+    <Compile Include="Data\AzureTableOfTValue.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
     <Compile Include="Data\CausalityLogger.cs" />
     <Compile Include="Data\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Data\DashboardContainerNames.cs" />
     <Compile Include="Data\FunctionIdentifier.cs" />
     <Compile Include="Data\FunctionInstanceGuid.cs" />
+    <Compile Include="Data\IAzureTable.cs" />
+    <Compile Include="Data\IAzureTableOfT.cs" />
+    <Compile Include="Data\IAzureTableReader.cs" />
+    <Compile Include="Data\IAzureTableReaderOfT.cs" />
+    <Compile Include="Data\IAzureTableWriter.cs" />
+    <Compile Include="Data\ITableCorePartitionWriter.cs" />
+    <Compile Include="Data\LiveTableCore.cs" />
+    <Compile Include="Data\LocalTableCore.cs" />
+    <Compile Include="Data\TableCore.cs" />
     <Compile Include="Data\VersionedFunction.cs" />
     <Compile Include="Data\HostFunctionIndex.cs" />
     <Compile Include="Data\HostInstanceLogger.cs" />
@@ -198,6 +210,7 @@
     <Compile Include="Data\TableParameterSnapshot.cs" />
     <Compile Include="Data\VersionedDocument.cs" />
     <Compile Include="Data\VersionedDocumentStore.cs" />
+    <Compile Include="Data\WrapperEnumerable.cs" />
     <Compile Include="Protocols\Invoker.cs" />
     <Compile Include="Protocols\RunningHostTableReader.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />

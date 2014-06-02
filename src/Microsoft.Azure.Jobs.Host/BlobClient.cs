@@ -61,46 +61,6 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        public static ICloudBlob GetBlob(string accountConnectionString, string containerName, string blobName)
-        {
-            var account = Utility.GetAccount(accountConnectionString);
-            return GetBlob(account, containerName, blobName);
-        }
-
-        public static CloudBlockBlob GetBlockBlob(string accountConnectionString, string containerName, string blobName)
-        {
-            var account = Utility.GetAccount(accountConnectionString);
-            return GetBlockBlob(account, containerName, blobName);
-        }
-
-        public static ICloudBlob GetBlob(CloudStorageAccount account, string containerName, string blobName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            ICloudBlob blob;
-            try
-            {
-                blob = c.GetBlobReferenceFromServer(blobName);
-            }
-            catch (StorageException exception)
-            {
-                if (exception.RequestInformation.HttpStatusCode != 404)
-                {
-                    throw;
-                }
-                blob = c.GetBlockBlobReference(blobName);
-            }
-            return blob;
-        }
-
-        public static CloudBlockBlob GetBlockBlob(CloudStorageAccount account, string containerName, string blobName)
-        {
-            var client = account.CreateCloudBlobClient();
-            var c = GetContainer(client, containerName);
-            var blob = c.GetBlockBlobReference(blobName);
-            return blob;
-        }
-
         // GEt container, and validate the name.
 
         public static CloudBlobContainer GetContainer(string accountConnectionString, string containerName)

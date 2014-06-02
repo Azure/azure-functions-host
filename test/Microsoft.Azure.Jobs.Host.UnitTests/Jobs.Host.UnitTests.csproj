@@ -90,8 +90,6 @@
     <Compile Include="Bindings\CloudBlobPathTests.cs" />
     <Compile Include="Bindings\BindingDataTests.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
-    <Compile Include="ExecutionInstanceLogEntity.cs" />
-    <Compile Include="ExecutionInstanceLogEntitySerializer.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
@@ -108,7 +106,6 @@
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="Runners\HostTableTests.cs" />
     <Compile Include="SelfWatchTests.cs" />
-    <Compile Include="TableUnitTests.cs" />
     <Compile Include="TestConfiguration.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />

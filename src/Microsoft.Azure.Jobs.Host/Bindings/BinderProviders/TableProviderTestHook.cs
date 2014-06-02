@@ -1,4 +1,5 @@
-﻿using AzureTables;
+﻿using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -8,19 +9,10 @@ namespace Microsoft.Azure.Jobs
     // $$$ Make this private/internal, go through an extensibility model?
     internal class TableProviderTestHook
     {
-        public virtual AzureTable Create(string accountConnectionString, string tableName)
+        public virtual ICloudTableClient Create(string accountConnectionString)
         {
-            CloudStorageAccount account = Utility.GetAccount(accountConnectionString);
-            AzureTable table = new AzureTable(account, tableName);
-            return table;
-        }
-
-        public virtual AzureTable<T> Create<T>(string accountConnectionString, string tableName)
-            where T : new()
-        {
-            CloudStorageAccount account = Utility.GetAccount(accountConnectionString);
-            AzureTable<T> table = new AzureTable<T>(account, tableName);
-            return table;
+            ICloudStorageAccount account = new SdkCloudStorageAccount(CloudStorageAccount.Parse(accountConnectionString));
+            return account.CreateCloudTableClient();
         }
 
         // Tests can override

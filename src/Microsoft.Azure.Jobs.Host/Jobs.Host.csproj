@@ -203,6 +203,7 @@
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
     <Compile Include="Bindings\ArgumentBindingContext.cs" />
+    <Compile Include="Bindings\BinderProviders\PocoTableEntity.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />
     <Compile Include="Bindings\BindingProviderContext.cs" />
@@ -329,13 +330,7 @@
     <Compile Include="Runners\TriggerAndOverrideMessageExtensions.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Storage\Table\CloudTableExtensions.cs" />
-    <Compile Include="Tables\IAzureTable.cs" />
-    <Compile Include="Tables\IAzureTableOfT.cs" />
-    <Compile Include="Tables\IAzureTableReader.cs" />
-    <Compile Include="Tables\IAzureTableReaderOfT.cs" />
-    <Compile Include="Tables\IAzureTableWriter.cs" />
     <Compile Include="Bindings\IBinderEx.cs" />
-    <Compile Include="Bindings\BinderProviders\ICloudBlobBinder.cs" />
     <Compile Include="Bindings\BinderProviders\ICloudTableBinder.cs" />
     <Compile Include="Bindings\BinderProviders\ICloudTableBinderProvider.cs" />
     <Compile Include="Runners\IConfiguration.cs" />
@@ -377,10 +372,8 @@
     <Compile Include="Runners\Worker.cs" />
     <Compile Include="Bindings\BinderEx.cs" />
     <Compile Include="Bindings\BindResults\BindCleanupResult.cs" />
-    <Compile Include="Bindings\BinderProviders\DictionaryTableBinderProvider.cs" />
     <Compile Include="Bindings\BinderProviders\TableProviderTestHook.cs" />
     <Compile Include="Runners\Configuration.cs" />
-    <Compile Include="Bindings\BinderProviders\DictionaryTableAdapter.cs" />
     <Compile Include="Bindings\ICloudBinderVerify.cs" />
     <Compile Include="Runners\RunnerProgram.cs" />
     <Compile Include="Bindings\RuntimeBindings\RuntimeBindingInputs.cs" />
@@ -450,19 +443,10 @@
     <Compile Include="Loggers\BlobCausalityLogger.cs" />
     <Compile Include="Loggers\QueueCausalityHelper.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
-    <Compile Include="Tables\AzureTableOfTValue.cs" />
-    <Compile Include="Tables\AzureTableOfTPartRowKeyTValue.cs" />
-    <Compile Include="Tables\AzureTable.cs" />
-    <Compile Include="Tables\AzureTableConstants.cs" />
-    <Compile Include="Tables\LiveTableCore.cs" />
-    <Compile Include="Tables\LocalTableCore.cs" />
-    <Compile Include="Tables\ITableCorePartitionWriter.cs" />
-    <Compile Include="Tables\TableCore.cs" />
     <Compile Include="Triggers\DictionaryExtensions.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="QueueClient.cs" />
     <Compile Include="TableClient.cs" />
-    <Compile Include="Tables\WrapperEnumerable.cs" />
     <Compile Include="Runners\WebSitesExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />

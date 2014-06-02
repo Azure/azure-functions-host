@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
 
         private static ICloudTableBinder TryGetBinderGeneric(Type type)
         {
-            // Call TryGetBinder<T>(isReadOnly);
+            // Call TryGetBinder<T>();
             MethodInfo genericMethod = typeof(QueryableCloudTableBinderProvider).GetMethod("TryGetBinder", BindingFlags.Static | BindingFlags.NonPublic);
             MethodInfo methodInfo = genericMethod.MakeGenericMethod(type);
             Func<ICloudTableBinder> invoker =

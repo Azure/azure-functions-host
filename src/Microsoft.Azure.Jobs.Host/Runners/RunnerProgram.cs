@@ -128,28 +128,6 @@ namespace Microsoft.Azure.Jobs
             // Tables
             config.TableBinders.Add(new CloudTableBinderProvider());
             config.TableBinders.Add(new QueryableCloudTableBinderProvider());
-            config.TableBinders.Add(new DictionaryTableBinderProvider());
-        }
-
-        internal static bool ShouldIgnoreInvokeString(Type parameterType)
-        {
-            // Work around problem using IBinder and CloudStorageAccount with Run/Replay from dashboard.
-            if (parameterType == typeof(IBinder))
-            {
-                return true;
-            }
-            else if (parameterType == typeof(CloudStorageAccount))
-            {
-                return true;
-            }
-            else if (parameterType.Namespace == "Microsoft.WindowsAzure.Storage" && parameterType.Name == "CloudStorageAccount")
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         public static void ApplyHooks(Type t, IConfiguration config)

@@ -40,12 +40,6 @@ namespace AzureTables
             _core = new LiveTableCore(account, tableName);
         }
 
-        public AzureTable<TPartRowKey, TValue> GetTypeSafeWrapper<TPartRowKey, TValue>(Func<TPartRowKey, Tuple<string, string>> funcGetRowPartKey) where TValue : new()
-        {
-            // $$$ Consistency issues with flushing?
-            return new AzureTable<TPartRowKey, TValue>(_core, funcGetRowPartKey);
-        }
-
         public AzureTable<TValue> GetTypeSafeWrapper<TValue>() where TValue : new()
         {
             // $$$ Consistency issues with flushing?
@@ -68,12 +62,6 @@ namespace AzureTables
             }
         }
 
-
-        // Need co create more cache space. 
-        private void FlushPartial()
-        {
-            Flush();
-        }
 
         // Delete the entire table
         public void Clear()

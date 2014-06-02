@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using AzureTables;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -71,9 +70,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _functionUpdate = x;
                 _lookup = x;
             }
-
-            IAzureTable prereqTable = AzureTable.NewInMemory();
-            IAzureTable successorTable = AzureTable.NewInMemory();
 
             var y = new LocalExecute(this);
             _executor = y;
