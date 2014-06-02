@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 
 namespace Microsoft.Azure.Jobs
@@ -41,6 +42,13 @@ namespace Microsoft.Azure.Jobs
         public string BlobPath
         {
             get { return _blobPath; }
+        }
+
+        // IBinder's self watch uses an attribute's ToString as a key.
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return String.Format(CultureInfo.InvariantCulture, "[Blob(\"{0}\")]", _blobPath);
         }
     }
 }

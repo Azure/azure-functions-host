@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -20,12 +21,12 @@ namespace Microsoft.Azure.Jobs
             _queue.Enqueue(msg);
         }
 
-        public void ProcessMessages(Action<BlobWrittenMessage, CancellationToken> fpOnNewBlob, CancellationToken token)
+        public void ProcessMessages(Action<BlobWrittenMessage, RuntimeBindingProviderContext> fpOnNewBlob, RuntimeBindingProviderContext context)
         {
             BlobWrittenMessage msg;
-            while (!token.IsCancellationRequested && _queue.TryDequeue(out msg))
+            while (!context.CancellationToken.IsCancellationRequested && _queue.TryDequeue(out msg))
             {
-                fpOnNewBlob(msg, token);
+                fpOnNewBlob(msg, context);
             }
         }
     }

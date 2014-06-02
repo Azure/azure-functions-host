@@ -1,24 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs.Internals
 {
     internal class FunctionStore : IFunctionTableLookup
     {
         private IndexInMemory _store;
+        private Indexer _indexer;
 
         // storageConnectionString - the account that the functions will bind against. 
         // Index all methods in the types provided by the locator
         public FunctionStore(string storageConnectionString, string serviceBusConnectionString, IConfiguration config, IEnumerable<Type> types)
         {
-            var indexer = Init(storageConnectionString, config);
+            _indexer = Init(storageConnectionString, config);
             foreach (Type t in types)
             {
-                indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m),t, storageConnectionString, serviceBusConnectionString);
+                _indexer.IndexType(m => OnApplyLocationInfo(storageConnectionString, serviceBusConnectionString, m),t, storageConnectionString, serviceBusConnectionString);
             }
         }
+
+        public IBindingProvider BindingProvider
+        {
+            get { return _indexer.BindingProvider; }
+        }
         
+        public INameResolver NameResolver
+        {
+            get { return _indexer.NameResolver; }
+        }
+
         private Indexer Init(string storageConnectionString, IConfiguration config)
         {
             _store = new IndexInMemory();

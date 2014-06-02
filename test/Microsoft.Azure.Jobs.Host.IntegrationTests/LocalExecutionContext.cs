@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -149,7 +150,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ParentGuid = parentGuid
             };
 
-            var result = _executor.Execute(instance, null, CancellationToken.None);
+            var result = _executor.Execute(instance, new RuntimeBindingProviderContext
+            {
+                CancellationToken = CancellationToken.None
+            });
             return result.Id;
         }
 
@@ -171,7 +175,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
+            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
             {
                 RunnerProgram runner = new RunnerProgram(TextWriter.Null, null);
 
@@ -183,7 +187,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    runner.Invoke(instance, _parent._config, cancellationToken);
+                    runner.Invoke(instance, _parent._config, context.CancellationToken);
                     succeeded = true;
                 }
                 catch (Exception e)

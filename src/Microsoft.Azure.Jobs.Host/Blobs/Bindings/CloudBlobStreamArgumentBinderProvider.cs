@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
     {
         public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
         {
-            if (parameter.ParameterType != typeof(TextWriter))
+            if (parameter.ParameterType != typeof(CloudBlobStream))
             {
                 return null;
             }

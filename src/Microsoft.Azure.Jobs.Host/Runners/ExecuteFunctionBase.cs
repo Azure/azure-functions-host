@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 
@@ -10,7 +11,7 @@ namespace Microsoft.Azure.Jobs
     // but abstracts away the actual raw queuing mechanism.
     internal abstract class ExecuteFunctionBase : IExecuteFunction
     {
-        public FunctionInvocationResult Execute(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
+        public FunctionInvocationResult Execute(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
         {
             if (instance.TriggerReason == null)
             {
@@ -21,10 +22,10 @@ namespace Microsoft.Azure.Jobs
             instance.TriggerReason.ChildGuid = instance.Id;
 
             // Execute immediately.
-            return Work(instance, notifyNewBlob, cancellationToken);
+            return Work(instance, context);
         }
 
         // Does the actual queueing mechanism (submit to an azure queue, submit as an azure task)
-        protected abstract FunctionInvocationResult Work(FunctionInvokeRequest instance, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken);
+        protected abstract FunctionInvocationResult Work(FunctionInvokeRequest instance, RuntimeBindingProviderContext context);
     }
 }

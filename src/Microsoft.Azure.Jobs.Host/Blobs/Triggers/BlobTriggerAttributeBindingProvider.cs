@@ -42,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>();
+            BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
 
             if (blobTrigger == null)
             {

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            QueueTriggerAttribute queueTrigger = parameter.GetCustomAttribute<QueueTriggerAttribute>();
+            QueueTriggerAttribute queueTrigger = parameter.GetCustomAttribute<QueueTriggerAttribute>(inherit: false);
 
             if (queueTrigger == null)
             {

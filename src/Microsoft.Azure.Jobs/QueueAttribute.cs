@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -35,6 +36,13 @@ namespace Microsoft.Azure.Jobs
         public string QueueName
         {
             get { return _queueName; }
+        }
+
+        // IBinder's self watch uses an attribute's ToString as a key.
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            return String.Format(CultureInfo.InvariantCulture, "[Queue(\"{0}\")]", _queueName);
         }
     }
 }

@@ -1,12 +1,11 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
-    internal class ArgumentBindingContext
+    internal class RuntimeBindingProviderContext
     {
-        public Guid FunctionInstanceId { get; set; }
+        public IBindingProvider BindingProvider { get; set; }
 
         public INotifyNewBlob NotifyNewBlob { get; set; }
 

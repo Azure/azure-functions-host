@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -98,11 +99,11 @@ namespace Microsoft.Azure.Jobs
         // Blob could have been deleted by the time the callback is invoked. 
         // - race where it was explicitly deleted
         // - if we detected blob via a log, then there's a long window (possibly hours) where it could have easily been deleted. 
-        public void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel)
+        public void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context)
         {
             if (!_completedFullScanOnStartup)
             {
-                _backgroundCancel = cancel;
+                _backgroundCancel = context.CancellationToken;
                 _completedFullScanOnStartup = true;
                 InitialScan();
             }
@@ -115,20 +116,20 @@ namespace Microsoft.Azure.Jobs
                 {
                     break;
                 }
-                callback(b, cancel);
+                callback(b, context);
             }
 
             // Listen on logs for new events. 
             foreach (var client in _clientListeners)
             {
-                if (cancel.IsCancellationRequested)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
                 foreach (var path in client.GetRecentBlobWrites())
                 {
-                    if (cancel.IsCancellationRequested)
+                    if (context.CancellationToken.IsCancellationRequested)
                     {
                         return;
                     }
@@ -141,7 +142,7 @@ namespace Microsoft.Azure.Jobs
 
                     var blob = path.Resolve(client.Client);
 
-                    callback(blob, cancel);
+                    callback(blob, context);
                 }
             }
         }

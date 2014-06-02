@@ -47,13 +47,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
             // There's no way to dispose a CloudBlobStream without committing.
             // This class intentionally does not implement IDisposable because there's nothing it can do in Dispose.
-            private sealed class TextWriterValueBinder : IValueBinder, IWatchable, IDisposable
+            private class TextWriterValueBinder : IValueBinder, IWatchable
             {
                 private readonly ICloudBlob _blob;
                 private readonly SelfWatchCloudBlobStream _stream;
                 private readonly TextWriter _value;
-
-                private bool _disposed;
 
                 public TextWriterValueBinder(ICloudBlob blob, SelfWatchCloudBlobStream stream, TextWriter value)
                 {
@@ -93,17 +91,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 public string ToInvokeString()
                 {
                     return _blob.GetBlobPath();
-                }
-
-                public void Dispose()
-                {
-                    if (!_disposed)
-                    {
-                        // The TextWriter can be disposed here because it leaves the stream open.
-                        // The underlying CloudBlobStream can't be disposed without committing.
-                        _value.Dispose();
-                        _disposed = true;
-                    }
                 }
             }
         }

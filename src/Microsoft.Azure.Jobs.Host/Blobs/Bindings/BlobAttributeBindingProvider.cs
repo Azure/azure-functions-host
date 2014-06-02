@@ -49,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         public IBinding TryCreate(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>();
+            BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
 
             if (blob == null)
             {

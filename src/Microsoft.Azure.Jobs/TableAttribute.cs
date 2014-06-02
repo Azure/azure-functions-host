@@ -83,5 +83,20 @@ namespace Microsoft.Azure.Jobs
                     _tableName, _partitionKey, _rowKey);
             }
         }
+
+        // IBinder's self watch uses an attribute's ToString as a key.
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            if (_rowKey == null)
+            {
+                return String.Format(CultureInfo.InvariantCulture, "[Table(\"{0}\")]", _tableName);
+            }
+            else
+            {
+                return String.Format(CultureInfo.InvariantCulture,
+                    "[Table(\"{0}\", \"{1}\", \"{2}\")]", _tableName, _partitionKey, _rowKey);
+            }
+        }
     }
 }

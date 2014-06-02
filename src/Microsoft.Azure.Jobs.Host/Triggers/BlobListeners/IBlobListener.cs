@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
@@ -8,6 +8,6 @@ namespace Microsoft.Azure.Jobs
     {
         // Scan the container
         // Callbacks may fire multiple times. Or out of order relative to creation date. 
-        void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel);
+        void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context);
     }
 }

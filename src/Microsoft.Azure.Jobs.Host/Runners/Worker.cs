@@ -51,11 +51,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             CreateInputMap();
         }
 
-        public INotifyNewBlob NotifyNewBlob
-        {
-            get { return _notifyNewBlob; }
-        }
-
         // Called once at startup to initialize orchestration data structures
         // This is just retrieving the data structures created by the Indexer.
         private void CreateInputMap()
@@ -83,14 +78,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         private int _triggerCount = 0;
 
-        public void Poll(CancellationToken token)
+        public void Poll(RuntimeBindingProviderContext context)
         {
-            while (!token.IsCancellationRequested)
+            while (!context.CancellationToken.IsCancellationRequested)
             {
                 int lastCount = _triggerCount;
 
                 // this is a fast poll (checking a queue), so give it high priority
-                PollNotifyNewBlobs(token);
+                PollNotifyNewBlobs(context);
                 if (_triggerCount != lastCount)
                 {
                     // This is a critical optimization.
@@ -99,7 +94,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                     continue;
                 }
 
-                _listener.Poll(token);
+                _listener.Poll(context);
 
                 if (_triggerCount != lastCount)
                 {
@@ -109,44 +104,44 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        public void StartPolling(CancellationToken token)
+        public void StartPolling(RuntimeBindingProviderContext context)
         {
-            _listener.StartPolling(token);
+            _listener.StartPolling(context);
         }
 
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
-        void PollNotifyNewBlobs(CancellationToken token)
+        void PollNotifyNewBlobs(RuntimeBindingProviderContext context)
         {
             if (_blobListener != null)
             {
-                _blobListener.ProcessMessages(this.NewBlob, token);
+                _blobListener.ProcessMessages(this.NewBlob, context);
             }
         }
 
         // Called if the external system thinks we may have a new blob. 
-        public void NewBlob(BlobWrittenMessage msg, CancellationToken cancellationToken)
+        public void NewBlob(BlobWrittenMessage msg, RuntimeBindingProviderContext context)
         {
-            _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName, cancellationToken);
+            _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName, context);
         }
 
-        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func, CancellationToken cancellationToken)
+        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func, RuntimeBindingProviderContext context)
         {
-            var instance = GetFunctionInvocation(func, msg);
+            var instance = GetFunctionInvocation(func, context, msg);
 
-            OnNewInvokeableItem(instance, cancellationToken);
+            OnNewInvokeableItem(instance, context);
         }
 
-        public void OnNewInvokeableItem(FunctionInvokeRequest instance, CancellationToken cancellationToken)
+        public void OnNewInvokeableItem(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
         {
             if (instance != null)
             {
                 Interlocked.Increment(ref _triggerCount);
-                _executor.Execute(instance, _notifyNewBlob, cancellationToken);
+                _executor.Execute(instance, context);
             }
         }
 
-        private void InvokeFromDashboard(CloudQueueMessage message, CancellationToken cancellationToken)
+        private void InvokeFromDashboard(CloudQueueMessage message, RuntimeBindingProviderContext context)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
 
@@ -163,7 +158,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 if (request != null)
                 {
-                    _executor.Execute(request, _notifyNewBlob, cancellationToken);
+                    _executor.Execute(request, context);
                 }
                 else
                 {
@@ -288,13 +283,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
-        private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, CancellationToken cancellationToken)
+        private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, RuntimeBindingProviderContext context)
         {
-            FunctionInvokeRequest instance = GetFunctionInvocation(func, _notifyNewBlob, blob);
+            FunctionInvokeRequest instance = GetFunctionInvocation(func, context, blob);
             if (instance != null)
             {
                 Interlocked.Increment(ref _triggerCount);
-                _executor.Execute(instance, _notifyNewBlob, cancellationToken);
+                _executor.Execute(instance, context);
             }
         }
 
@@ -319,10 +314,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
             var instance = BindParameters(ctx, func, Guid.NewGuid());
 
+            instance.NonTriggerBindings = func.NonTriggerBindings;
+
             return instance;
         }
 
-        private FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, CloudQueueMessage msg)
+        private FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, CloudQueueMessage msg)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
@@ -332,7 +329,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 new ArgumentBindingContext
                 {
                     FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = _notifyNewBlob
+                    NotifyNewBlob = context.NotifyNewBlob,
+                    CancellationToken = context.CancellationToken,
+                    NameResolver = context.NameResolver,
+                    StorageAccount = context.StorageAccount,
+                    ServiceBusConnectionString = context.ServiceBusConnectionString,
                 });
             IDictionary<string, string> p = GetNameParameters(triggerData.BindingData);
 
@@ -378,7 +379,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return nameParameters;
         }
 
-        internal static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, INotifyNewBlob notifyNewBlob, ICloudBlob blobInput)
+        internal static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, ICloudBlob blobInput)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
@@ -388,7 +389,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 new ArgumentBindingContext
                 {
                     FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = notifyNewBlob
+                    NotifyNewBlob = context.NotifyNewBlob,
+                    CancellationToken = context.CancellationToken,
+                    NameResolver = context.NameResolver,
+                    StorageAccount = context.StorageAccount,
+                    ServiceBusConnectionString = context.ServiceBusConnectionString,
                 });
 
             // Get the binding data from the blob input parameter.
@@ -460,24 +465,24 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 _parent = parent;
             }
 
-            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, CancellationToken token)
+            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, RuntimeBindingProviderContext context)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
 
                 if (func == null)
                 {
-                    _parent.InvokeFromDashboard(msg, token);
+                    _parent.InvokeFromDashboard(msg, context);
                 }
                 else
                 {
-                    _parent.OnNewQueueItem(msg, func, token);
+                    _parent.OnNewQueueItem(msg, func, context);
                 }
             }
 
-            void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, CancellationToken token)
+            void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, RuntimeBindingProviderContext context)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-                _parent.OnNewBlob(func, blob, token);
+                _parent.OnNewBlob(func, blob, context);
             }
         }
     }

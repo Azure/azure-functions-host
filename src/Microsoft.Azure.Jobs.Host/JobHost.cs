@@ -1,11 +1,13 @@
 ﻿﻿using System;
 using System.Collections.Generic;
-﻿using System.Globalization;
-﻿using System.Reflection;
+using System.Globalization;
+using System.Reflection;
 using System.Threading;
-﻿using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -182,16 +184,26 @@ namespace Microsoft.Azure.Jobs
                     Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
                         _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify);
 
+                    RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
+                    {
+                        BindingProvider = _hostContext.BindingProvider,
+                        NotifyNewBlob = fastpathNotify,
+                        CancellationToken = token,
+                        NameResolver = _hostContext.NameResolver,
+                        StorageAccount = CloudStorageAccount.Parse(_storageConnectionString),
+                        ServiceBusConnectionString = _serviceBusConnectionString
+                    };
+
                     if (token.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    worker.StartPolling(token);
+                    worker.StartPolling(context);
 
                     while (!token.IsCancellationRequested)
                     {
-                        worker.Poll(token);
+                        worker.Poll(context);
 
                         if (token.IsCancellationRequested)
                         {
@@ -258,9 +270,18 @@ namespace Microsoft.Azure.Jobs
                 cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token).Token;
                 timer.Start(executeFirst: true);
 
+                RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
+                {
+                    BindingProvider = _hostContext.BindingProvider,
+                    CancellationToken = cancellationToken,
+                    NameResolver = _hostContext.NameResolver,
+                    StorageAccount = _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
+                    ServiceBusConnectionString = _serviceBusConnectionString
+                };
+
                 try
                 {
-                    result = _hostContext.ExecuteFunction.Execute(instance, null, cancellationToken);
+                    result = _hostContext.ExecuteFunction.Execute(instance, context);
                 }
                 finally
                 {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -33,17 +34,17 @@ namespace Microsoft.Azure.Jobs
         // Does one iteration and then returns.
         // Poll containers, invoke callback for any new ones added.
         // $$$ Switch to queuing instead of just invoking callback
-        public void Poll(Action<ICloudBlob, CancellationToken> callback, CancellationToken cancel)
+        public void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context)
         {
-            for (int i = 0; !cancel.IsCancellationRequested && i < _containers.Length; i++)
+            for (int i = 0; !context.CancellationToken.IsCancellationRequested && i < _containers.Length; i++)
             {
                 var time = _lastUpdateTimes[i];
 
-                var newBlobs = PollNewBlobs(_containers[i], time, cancel, ref _lastUpdateTimes[i]);
+                var newBlobs = PollNewBlobs(_containers[i], time, context.CancellationToken, ref _lastUpdateTimes[i]);
 
                 foreach (var blob in newBlobs)
                 {
-                    callback(blob, cancel);
+                    callback(blob, context);
                 }
             }
         }

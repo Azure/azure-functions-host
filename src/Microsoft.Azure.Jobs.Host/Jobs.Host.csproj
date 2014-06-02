@@ -202,6 +202,8 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
+    <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\IAttributeBinding.cs" />
     <Compile Include="Bindings\ArgumentBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />
@@ -214,6 +216,9 @@
     <Compile Include="Bindings\IValueBinder.cs" />
     <Compile Include="Bindings\IValueProvider.cs" />
     <Compile Include="Bindings\IWatchable.cs" />
+    <Compile Include="Bindings\RuntimeBinding.cs" />
+    <Compile Include="Bindings\RuntimeBindingProvider.cs" />
+    <Compile Include="Bindings\RuntimeBindingProviderContext.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
@@ -315,18 +320,15 @@
     <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\BinderStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\ConsoleOutputStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\CloudStorageAccountStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\CancellationTokenStaticBindingProvider.cs" />
-    <Compile Include="Bindings\StaticBindings\BinderParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\InvokeParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\CloudStorageAccountParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\CancellationTokenParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindingProviders\IStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
-    <Compile Include="Bindings\BindResults\BindResultOfT.cs" />
     <Compile Include="Bindings\StaticBindings\ConsoleOutputParameterStaticBinding.cs" />
     <Compile Include="HostContainerNames.cs" />
     <Compile Include="INameResolver.cs" />
@@ -385,7 +387,6 @@
     <Compile Include="Bindings\RuntimeBindings\LiteralStringParameterRuntimeBinding.cs" />
     <Compile Include="Bindings\BindResults\NullBindResult.cs" />
     <Compile Include="Runners\SelfWatch.cs" />
-    <Compile Include="Bindings\FakeParameterInfo.cs" />
     <Compile Include="Bindings\StaticBindings\NameParameterStaticBinding.cs" />
     <Compile Include="Runners\WatchableEnumerable.cs" />
     <Compile Include="Blobs\DelegatingStream.cs" />

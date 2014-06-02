@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -8,6 +9,6 @@ namespace Microsoft.Azure.Jobs
     // ### Can this be merged with the other general blob listener or IBlobListener?     
     internal interface INotifyNewBlobListener
     {
-        void ProcessMessages(Action<BlobWrittenMessage, CancellationToken> fpOnNewBlob, CancellationToken token);
+        void ProcessMessages(Action<BlobWrittenMessage, RuntimeBindingProviderContext> fpOnNewBlob, RuntimeBindingProviderContext context);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
@@ -17,27 +18,31 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             CloudBlobClient client = account.CreateCloudBlobClient();
             var container = client.GetContainerReference(containerName);
             IBlobListener l = new ContainerScannerBlobListener(new CloudBlobContainer[] { container });
+            RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
+            {
+                CancellationToken = CancellationToken.None
+            };
 
-            l.Poll((blob, cancel) =>
+            l.Poll((blob, ignore) =>
                 {
                     Assert.True(false, "shouldn't be any blobs in the container");
-                }, CancellationToken.None);
+                }, context);
 
             TestBlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
 
             int count = 0;
-            l.Poll((blob, cancel) =>
+            l.Poll((blob, ignore) =>
             {
                 count++;
                 Assert.Equal("foo1.csv", blob.Name);
-            }, CancellationToken.None);
+            }, context);
             Assert.Equal(1, count);
 
             // No poll again, shouldn't show up. 
-            l.Poll((blob, cancel) =>
+            l.Poll((blob, ignore) =>
             {
                 Assert.True(false, "shouldn't retrigger the same blob");
-            }, CancellationToken.None);            
+            }, context);            
         }
 
         // Set dev storage. These are well known values.

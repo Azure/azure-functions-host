@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.Jobs
 
         private IBlobListener _blobListener;
 
-        private Action<CancellationToken> startPollingServiceBus = _ => { };
+        private Action<RuntimeBindingProviderContext> startPollingServiceBus = _ => { };
         private Action<ServiceBusTrigger> mapServiceBusTrigger = _ => { };
 
         public Listener(ITriggerMap map, ITriggerInvoke invoker, Worker worker)
@@ -65,8 +66,8 @@ namespace Microsoft.Azure.Jobs
 
             var serviceBusListener = Activator.CreateInstance(type, new object[] { worker });
 
-            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus", new Type[] { typeof(CancellationToken) });
-            startPollingServiceBus = token => serviceBusPollMethod.Invoke(serviceBusListener, new object[] { token });
+            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus", new Type[] { typeof(RuntimeBindingProviderContext) });
+            startPollingServiceBus = context => serviceBusPollMethod.Invoke(serviceBusListener, new object[] { context });
 
             var serviceBusMapMethod = type.GetMethod("Map", new Type[] { typeof(ServiceBusTrigger) });
             mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] { trigger });
@@ -115,12 +116,12 @@ namespace Microsoft.Azure.Jobs
             return account;
         }
 
-        public void Poll(CancellationToken token)
+        public void Poll(RuntimeBindingProviderContext context)
         {
             try
             {
-                PollBlobs(token);
-                PollQueues(token);
+                PollBlobs(context);
+                PollQueues(context);
             }
             catch (StorageException)
             {
@@ -128,19 +129,19 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        public void StartPolling(CancellationToken token)
+        public void StartPolling(RuntimeBindingProviderContext context)
         {
-            startPollingServiceBus(token);
+            startPollingServiceBus(context);
         }
 
-        private void PollBlobs(CancellationToken token)
+        private void PollBlobs(RuntimeBindingProviderContext context)
         {
-            _blobListener.Poll(OnNewBlobWorker, token);
+            _blobListener.Poll(OnNewBlobWorker, context);
         }
 
         // Called as a hint if an external source knows we have a new blob. Will invoke triggers. 
         // This will invoke back any associated triggers
-        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName, CancellationToken cancellationToken)
+        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName, RuntimeBindingProviderContext context)
         {
             foreach (var container in _map.Keys)
             {
@@ -150,13 +151,13 @@ namespace Microsoft.Azure.Jobs
                     if (sameAccount)
                     {
                         var blob = container.GetBlockBlobReference(blobName);
-                        OnNewBlobWorker(blob, cancellationToken);
+                        OnNewBlobWorker(blob, context);
                     }
                 }
             }
         }
 
-        private void OnNewBlobWorker(ICloudBlob blob, CancellationToken cancellationToken)
+        private void OnNewBlobWorker(ICloudBlob blob, RuntimeBindingProviderContext context)
         {
             var client = blob.ServiceClient;
 
@@ -199,7 +200,7 @@ namespace Microsoft.Azure.Jobs
 
                     if (invoke)
                     {
-                        _invoker.OnNewBlob(blob, func, cancellationToken);
+                        _invoker.OnNewBlob(blob, func, context);
                     }
                 }
             }
@@ -252,11 +253,11 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Listen for all queue results.
-        private void PollQueues(CancellationToken token)
+        private void PollQueues(RuntimeBindingProviderContext context)
         {
             foreach (var kv in _mapQueues)
             {
-                if (token.IsCancellationRequested)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
@@ -280,12 +281,12 @@ namespace Microsoft.Azure.Jobs
 
                         foreach (var func in funcs)
                         {
-                            if (token.IsCancellationRequested)
+                            if (context.CancellationToken.IsCancellationRequested)
                             {
                                 return;
                             }
 
-                            _invoker.OnNewQueueItem(msg, func, token);
+                            _invoker.OnNewQueueItem(msg, func, context);
                         }
                     }
 

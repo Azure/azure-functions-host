@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            ServiceBusTriggerAttribute serviceBusTrigger = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>();
+            ServiceBusTriggerAttribute serviceBusTrigger = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>(inherit: false);
 
             if (serviceBusTrigger == null)
             {

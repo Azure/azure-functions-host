@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 
 namespace Microsoft.Azure.Jobs.Internals
@@ -17,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Internals
             _config = config;
             _ctx = ctx;
         }
-        protected override FunctionInvocationResult Work(FunctionInvokeRequest request, INotifyNewBlob notifyNewBlob, CancellationToken cancellationToken)
+        protected override FunctionInvocationResult Work(FunctionInvokeRequest request, RuntimeBindingProviderContext context)
         {
             var loc = request.Location;
 
@@ -25,12 +26,12 @@ namespace Microsoft.Azure.Jobs.Internals
                 (consoleOutput, parameterLog) =>
                 {
                     // @@@ May need to override config to set ICall
-                    return RunnerProgram.MainWorker(consoleOutput, parameterLog, request, _config, cancellationToken);
+                    return RunnerProgram.MainWorker(consoleOutput, parameterLog, request, _config, context.CancellationToken);
                 };
 
             // @@@ somewhere this should be async, handle long-running functions. 
             return ExecutionBase.Work(
-                notifyNewBlob,
+                context,
                 request,
                 _ctx,
                 fpInvokeFunc);

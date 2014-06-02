@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
         public IBinding TryCreate(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            ServiceBusAttribute serviceBusAttribute = parameter.GetCustomAttribute<ServiceBusAttribute>();
+            ServiceBusAttribute serviceBusAttribute = parameter.GetCustomAttribute<ServiceBusAttribute>(inherit: false);
 
             if (serviceBusAttribute == null)
             {

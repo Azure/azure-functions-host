@@ -18,7 +18,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _worker = worker;
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, INotifyNewBlob notifyNewBlob, BrokeredMessage msg)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
+            RuntimeBindingProviderContext context, BrokeredMessage msg)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
@@ -28,7 +29,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                 new ArgumentBindingContext
                 {
                     FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = notifyNewBlob
+                    NotifyNewBlob = context.NotifyNewBlob,
+                    CancellationToken = context.CancellationToken,
+                    NameResolver = context.NameResolver,
+                    StorageAccount = context.StorageAccount,
+                    ServiceBusConnectionString = context.ServiceBusConnectionString,
                 });
             IDictionary<string, string> p = Worker.GetNameParameters(triggerData.BindingData);
 
@@ -58,10 +63,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             return ServiceBusCausalityHelper.GetOwner(msg);
         }
 
-        public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, CancellationToken cancellationToken)
+        public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, RuntimeBindingProviderContext context)
         {
-            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, _worker.NotifyNewBlob, msg);
-            _worker.OnNewInvokeableItem(instance, cancellationToken);
+            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, context, msg);
+            _worker.OnNewInvokeableItem(instance, context);
         }
     }
 }

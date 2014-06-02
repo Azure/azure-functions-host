@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -18,11 +19,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _mapServiceBus = new Dictionary<MessageReceiver, List<ServiceBusTrigger>>(new MessageReceiverComparer());
         }
 
-        public void StartPollingServiceBus(CancellationToken token)
+        public void StartPollingServiceBus(RuntimeBindingProviderContext context)
         {
             foreach (var kv in _mapServiceBus)
             {
-                if (token.IsCancellationRequested)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
@@ -30,37 +31,37 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                 var receiver = kv.Key;
                 var triggers = kv.Value;
 
-                token.Register(receiver.Close);
+                context.CancellationToken.Register(receiver.Close);
                 try
                 {
-                    receiver.OnMessage(m => Process(m, triggers, token), new OnMessageOptions());
+                    receiver.OnMessage(m => Process(m, triggers, context), new OnMessageOptions());
                 }
                 catch (MessagingEntityNotFoundException)
                 {
                     EnsureMessagingEntityIsAvailable(triggers[0].StorageConnectionString, receiver.Path);
-                    receiver.OnMessage(m => Process(m, triggers, token), new OnMessageOptions());
+                    receiver.OnMessage(m => Process(m, triggers, context), new OnMessageOptions());
                 }
             }
         }
 
-        private void Process(BrokeredMessage message, IEnumerable<ServiceBusTrigger> triggers, CancellationToken cancellationToken)
+        private void Process(BrokeredMessage message, IEnumerable<ServiceBusTrigger> triggers, RuntimeBindingProviderContext context)
         {
             foreach (ServiceBusTrigger trigger in triggers)
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     message.Abandon();
                     return;
                 }
 
-                _invoker.OnNewServiceBusMessage(trigger, message, cancellationToken);
+                _invoker.OnNewServiceBusMessage(trigger, message, context);
 
                 // The preceding OnNewServiceBusMessage call may have returned without throwing an exception because the
                 // cancellation token was triggered. We're not sure. To be safe, don't treat the message as successfully
                 // processed unless we're positive that it has been (to guarantee our at-least-once semantics). If the
                 // cancellation token is signaled now, assume the previous call terminated early.
 
-                if (cancellationToken.IsCancellationRequested)
+                if (context.CancellationToken.IsCancellationRequested)
                 {
                     message.Abandon();
                     return;

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.Jobs
         private readonly Guid _hostId;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
+        private readonly FunctionStore _functionStore;
 
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
@@ -37,7 +39,8 @@ namespace Microsoft.Azure.Jobs
 
             var types = typeLocator.GetTypes().ToArray();
             AddCustomerBinders(config, types);
-            functionTableLookup = new FunctionStore(storageConnectionString, serviceBusConnectionString, config, types);
+            _functionStore = new FunctionStore(storageConnectionString, serviceBusConnectionString, config, types);
+            functionTableLookup = _functionStore;
 
 
             // Determine the host name from the function list
@@ -122,6 +125,16 @@ namespace Microsoft.Azure.Jobs
         public IProcessTerminationSignalReader TerminationSignalReader
         {
             get { return _terminationSignalReader; }
+        }
+
+        public IBindingProvider BindingProvider
+        {
+            get { return _functionStore.BindingProvider; }
+        }
+
+        public INameResolver NameResolver
+        {
+            get { return _functionStore.NameResolver; }
         }
 
         // Search for any types that implement ICloudBlobStreamBinder<T>

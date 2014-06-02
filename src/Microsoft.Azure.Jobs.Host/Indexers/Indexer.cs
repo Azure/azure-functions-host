@@ -27,7 +27,6 @@ namespace Microsoft.Azure.Jobs
             {
                 new CancellationTokenStaticBindingProvider(),
                 new CloudStorageAccountStaticBindingProvider(),
-                new BinderStaticBindingProvider(),
                 // The console output binder below will handle all remaining TextWriter parameters. It must come after
                 // the Attribute binder; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
                 new ConsoleOutputStaticBindingProvider()
@@ -52,6 +51,16 @@ namespace Microsoft.Azure.Jobs
         public static string AzureJobsFileName
         {
             get { return _azureJobsFileName; }
+        }
+
+        public IBindingProvider BindingProvider
+        {
+            get { return _bindingProvider; }
+        }
+
+        public INameResolver NameResolver
+        {
+            get { return _nameResolver; }
         }
 
         private static ITriggerBindingProvider CreateTriggerBindingProvider(IConfiguration configuration)
@@ -94,6 +103,8 @@ namespace Microsoft.Azure.Jobs
                     (IBindingProvider)Activator.CreateInstance(serviceBusProviderType);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
+
+            innerProviders.Add(new RuntimeBindingProvider());
 
             return new CompositeBindingProvider(innerProviders);
         }

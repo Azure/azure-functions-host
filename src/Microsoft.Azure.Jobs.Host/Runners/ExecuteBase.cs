@@ -15,7 +15,7 @@ namespace Microsoft.Azure.Jobs
     internal static class ExecutionBase
     {
         public static FunctionInvocationResult Work(
-            INotifyNewBlob notifyNewBlob,
+            RuntimeBindingProviderContext runtimeContext,
             FunctionInvokeRequest instance, // specific request to execute.
             FunctionExecutionContext context, // provides services for execution. Not request specific
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.Jobs
 
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
-            BindParameters(notifyNewBlob, instance);
+            BindParameters(runtimeContext, instance);
 
             FunctionStartedSnapshot startedSnapshot = new FunctionStartedSnapshot
             {
@@ -79,13 +79,13 @@ namespace Microsoft.Azure.Jobs
             };
         }
 
-        internal static void BindParameters(INotifyNewBlob notifyNewBlob, FunctionInvokeRequest request)
+        internal static void BindParameters(RuntimeBindingProviderContext context, FunctionInvokeRequest request)
         {
-            request.Parameters = BindParameters(notifyNewBlob, request.Id, request.TriggerParameterName,
+            request.Parameters = BindParameters(context, request.Id, request.TriggerParameterName,
                 request.TriggerData, request.NonTriggerBindings);
         }
 
-        internal static IReadOnlyDictionary<string, IValueProvider> BindParameters(INotifyNewBlob notifyNewBlob,
+        internal static IReadOnlyDictionary<string, IValueProvider> BindParameters(RuntimeBindingProviderContext runtimeContext,
             Guid functionInstanceId, string triggerParameterName, ITriggerData triggerData,
             IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
         {
@@ -99,8 +99,13 @@ namespace Microsoft.Azure.Jobs
             BindingContext context = new BindingContext
             {
                 FunctionInstanceId = functionInstanceId,
+                NotifyNewBlob = runtimeContext.NotifyNewBlob,
+                CancellationToken = runtimeContext.CancellationToken,
+                NameResolver = runtimeContext.NameResolver,
+                StorageAccount = runtimeContext.StorageAccount,
+                ServiceBusConnectionString = runtimeContext.ServiceBusConnectionString,
                 BindingData = triggerData != null ? triggerData.BindingData : null,
-                NotifyNewBlob = notifyNewBlob
+                BindingProvider = runtimeContext.BindingProvider
             };
 
             if (nonTriggerBindings != null)

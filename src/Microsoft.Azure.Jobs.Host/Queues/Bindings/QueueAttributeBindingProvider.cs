@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         public IBinding TryCreate(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            QueueAttribute queueAttribute = parameter.GetCustomAttribute<QueueAttribute>();
+            QueueAttribute queueAttribute = parameter.GetCustomAttribute<QueueAttribute>(inherit: false);
 
             if (queueAttribute == null)
             {

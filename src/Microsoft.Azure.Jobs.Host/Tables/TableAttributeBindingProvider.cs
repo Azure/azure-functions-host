@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         public IBinding TryCreate(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
-            TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>();
+            TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
 
             if (tableAttribute == null)
             {
