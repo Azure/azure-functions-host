@@ -9,6 +9,7 @@ using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Tables;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -24,7 +25,6 @@ namespace Microsoft.Azure.Jobs
         private static readonly IEnumerable<IStaticBindingProvider> _staticBindingProviders =
             new IStaticBindingProvider[]
             {
-                new AttributeStaticBindingProvider(),
                 new CancellationTokenStaticBindingProvider(),
                 new CloudStorageAccountStaticBindingProvider(),
                 new BinderStaticBindingProvider(),
@@ -83,6 +83,8 @@ namespace Microsoft.Azure.Jobs
 
             IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
             innerProviders.Add(new BlobAttributeBindingProvider(cloudBlobStreamBinderTypes));
+
+            innerProviders.Add(new TableAttributeBindingProvider());
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
@@ -191,7 +193,6 @@ namespace Microsoft.Azure.Jobs
         private IConfiguration CreateTestConfiguration(Type type)
         {
             var config = new Configuration();
-            RunnerProgram.AddDefaultBinders(config);
             RunnerProgram.ApplyHooks(type, config);
             return config;
         }

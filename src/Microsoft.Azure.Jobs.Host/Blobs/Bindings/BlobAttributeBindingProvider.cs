@@ -59,6 +59,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             string blobPath = context.Resolve(blob.BlobPath);
             CloudBlobPath parsedBlobPath = Parse(blobPath);
 
+            if (!parsedBlobPath.HasParameters())
+            {
+                BlobClient.ValidateContainerName(parsedBlobPath.ContainerName);
+                BlobClient.ValidateBlobName(parsedBlobPath.BlobName);
+            }
+
             foreach (string parameterName in parsedBlobPath.GetParameterNames())
             {
                 if (context.BindingDataContract != null && !context.BindingDataContract.ContainsKey(parameterName))

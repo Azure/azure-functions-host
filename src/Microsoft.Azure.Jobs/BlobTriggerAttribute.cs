@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs
     /// uploaded.
     /// </summary>
     /// <remarks>
-    /// The method parameter type can one of the following:
+    /// The method parameter type can be one of the following:
     /// <list type="bullet">
     /// <item><description>ICloudBlob</description></item>
     /// <item><description>CloudBlockBlob</description></item>

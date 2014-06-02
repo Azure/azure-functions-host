@@ -16,14 +16,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         {
             _argumentBinding = argumentBinding;
             _queue = queue;
-            _converter = CreateConverter(queue.ServiceClient);
+            _converter = CreateConverter(queue);
         }
 
-        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueueClient client)
+        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueue queue)
         {
             return new CompositeObjectToTypeConverter<CloudQueue>(
                 new OutputConverter<CloudQueue>(new IdentityConverter<CloudQueue>()),
-                new OutputConverter<string>(new StringToCloudQueueConverter(client)));
+                new OutputConverter<string>(new StringToCloudQueueConverter(queue)));
         }
 
         public string QueueName

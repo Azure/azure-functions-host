@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.BinderProviders;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -116,18 +115,7 @@ namespace Microsoft.Azure.Jobs
 
         public static IConfiguration InitBinders()
         {
-            Configuration config = new Configuration();
-
-            AddDefaultBinders(config);
-            return config;
-
-        }
-
-        public static void AddDefaultBinders(IConfiguration config)
-        {
-            // Tables
-            config.TableBinders.Add(new CloudTableBinderProvider());
-            config.TableBinders.Add(new QueryableCloudTableBinderProvider());
+            return new Configuration();
         }
 
         public static void ApplyHooks(Type t, IConfiguration config)

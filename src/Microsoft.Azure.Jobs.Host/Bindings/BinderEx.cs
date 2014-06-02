@@ -32,7 +32,8 @@ namespace Microsoft.Azure.Jobs
             ParameterInfo p = new FakeParameterInfo(typeof(T), name: "?", isOut: false);
 
             // Same static binding as used in indexing
-            ParameterStaticBinding staticBind = new StaticBinder(_config.NameResolver).DoStaticBind(attribute, p);
+            // TODO: Move to use new-style bindings.
+            ParameterStaticBinding staticBind = null;
 
             // If somebody tried an non-sensical bind, we'd get the failure here 
             // here because the binding input doesn't have the information. 

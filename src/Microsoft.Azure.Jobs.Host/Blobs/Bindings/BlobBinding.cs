@@ -25,14 +25,16 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _containerName = containerName;
             _blobName = blobName;
             _outParameter = outParameter;
-            _converter = CreateConverter(_client);
+            _converter = CreateConverter(_client, containerName, blobName, argumentBinding.ValueType);
         }
 
-        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
+        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
+            string blobName, Type argumentType)
         {
             return new CompositeObjectToTypeConverter<ICloudBlob>(
                 new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(client)));
+                new OutputConverter<string>(new StringToCloudBlobConverter(client, containerName, blobName,
+                    argumentType)));
         }
 
         public string ContainerName

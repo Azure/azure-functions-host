@@ -15,12 +15,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
         {
             _argumentBinding = argumentBinding;
             _entity = entity;
-            _converter = CreateConverter(entity.Account);
+            _converter = CreateConverter(entity);
         }
 
-        private static IObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusAccount account)
+        private static IObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusEntity entity)
         {
-            return new OutputConverter<string>(new StringToServiceBusEntityConverter(account));
+            return new OutputConverter<string>(new StringToServiceBusEntityConverter(entity));
         }
 
         public IValueProvider Bind(BindingContext context)

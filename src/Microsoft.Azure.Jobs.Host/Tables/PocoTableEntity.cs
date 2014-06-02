@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.BinderProviders
+namespace Microsoft.Azure.Jobs.Host.Tables
 {
     internal static class PocoTableEntity
     {

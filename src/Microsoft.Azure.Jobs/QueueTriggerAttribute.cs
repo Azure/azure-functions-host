@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs
     /// message is enqueued.
     /// </summary>
     /// <remarks>
-    /// The method parameter type can one of the following:
+    /// The method parameter type can be one of the following:
     /// <list type="bullet">
     /// <item><description>CloudQueueMessage</description></item>
     /// <item><description><see cref="string"/></description></item>

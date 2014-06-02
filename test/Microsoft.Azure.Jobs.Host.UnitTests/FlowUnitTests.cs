@@ -4,7 +4,9 @@ using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
+using Microsoft.Azure.Jobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -78,20 +80,19 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Null(func);
         }
 
-        // Runtime type is irrelevant for table. 
-        private static void Table([Table("TableName")] object reader) { }
+        private static void Table([Table("TableName")] CloudTable table) { }
 
         [Fact]
         public void TestTable()
         {
             FunctionDefinition func = Get("Table");
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(1, flows.Length);
+            var flows = func.NonTriggerBindings;
+            Assert.Equal(1, flows.Count);
 
-            var t = (TableParameterStaticBinding)flows[0];
+            Assert.True(flows.ContainsKey("table"));
+            var t = (TableBinding)flows["table"];
             Assert.Equal("TableName", t.TableName);
-            Assert.Equal("reader", t.Name);
         }
 
         public static void QueueTrigger([QueueTrigger("inputQueue")] int queueValue) { }

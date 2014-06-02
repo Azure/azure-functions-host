@@ -1,20 +1,27 @@
-﻿using Microsoft.Azure.Jobs.Host.Converters;
+﻿using System;
+using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
     internal class StringToCloudQueueConverter : IConverter<string, CloudQueue>
     {
-        private readonly CloudQueueClient _client;
+        private readonly CloudQueue _defaultQueue;
 
-        public StringToCloudQueueConverter(CloudQueueClient client)
+        public StringToCloudQueueConverter(CloudQueue defaultQueue)
         {
-            _client = client;
+            _defaultQueue = defaultQueue;
         }
 
         public CloudQueue Convert(string input)
         {
-            return _client.GetQueueReference(input);
+            // For convenience, treat an an empty string as a request for the default value.
+            if (String.IsNullOrEmpty(input))
+            {
+                return _defaultQueue;
+            }
+
+            return _defaultQueue.ServiceClient.GetQueueReference(input);
         }
     }
 }

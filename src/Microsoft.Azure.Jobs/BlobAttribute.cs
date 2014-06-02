@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs
 {
     /// <summary>Represents an attribute that binds a parameter to an Azure Blob.</summary>
     /// <remarks>
-    /// The method parameter type can one of the following:
+    /// The method parameter type can be one of the following:
     /// <list type="bullet">
     /// <item><description>ICloudBlob</description></item>
     /// <item><description>CloudBlockBlob</description></item>

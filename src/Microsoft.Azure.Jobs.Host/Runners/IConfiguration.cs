@@ -7,8 +7,6 @@ namespace Microsoft.Azure.Jobs
     {
         IList<Type> CloudBlobStreamBinderTypes { get; }
 
-        IList<ICloudTableBinderProvider> TableBinders { get; }
-
         INameResolver NameResolver { get; set; }
     }
 }

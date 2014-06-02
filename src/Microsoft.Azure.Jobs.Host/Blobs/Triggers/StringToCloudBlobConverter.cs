@@ -1,7 +1,7 @@
 ﻿using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
 {
     internal class StringToCloudBlobConverter : IConverter<string, ICloudBlob>
     {

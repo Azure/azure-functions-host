@@ -10,11 +10,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             get { return new Type[0]; }
         }
 
-        public IList<ICloudTableBinderProvider> TableBinders
-        {
-            get { return new ICloudTableBinderProvider[0]; }
-        }
-
         public INameResolver NameResolver { get; set; }
     }
 }

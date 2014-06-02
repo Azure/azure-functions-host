@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs
 {
     /// <summary>Binds to Azure Service Bus Queues and Topics.</summary>
     /// <remarks>
-    /// The method parameter type can one of the following:
+    /// The method parameter type can be one of the following:
     /// <list type="bullet">
     /// <item><description>BrokeredMessage (out param)</description></item>
     /// <item><description><see cref="string"/> (out param)</description></item>
