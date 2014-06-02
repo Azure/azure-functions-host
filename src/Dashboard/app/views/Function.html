@@ -6,7 +6,7 @@
             Function invocation log <small ng-bind="functionName"></small>
         </h3>
         <p>
-            <a ng-if="functionFullName" class="btn btn-primary" href="{{_urls.runFunction(functionId)}}">Run function</a>
+            <a ng-if="functionId" class="btn btn-primary" href="{{_urls.runFunction(functionId)}}">Run function</a>
         </p>
         <ng-include src="'app/views/shared/FunctionInvocationsTable.html'"></ng-include>
     </div>
