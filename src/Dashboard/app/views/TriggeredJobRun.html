@@ -4,6 +4,9 @@
         <h3>
             WebJob Run Details <small ng-bind="jobName"></small>
         </h3>
+
+        <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
+
         <p ng-if="!jobRun">Loading...</p>
         <p ng-if="jobRun" ng-class="jobRun.getAlertClass()" class="alert">
             <b ng-bind="jobRun.getAlertHeader()"></b>
@@ -12,7 +15,7 @@
         </p>
         <console-output ng-if="job && jobRun" log-url="jobRun.outUrl" console-owner="jobRun" collapse-by-default="job.usingSdk">
         </console-output>
-        
+
         <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>
 
         <section ng-if="!invocations && !_sdkNotConfigured">

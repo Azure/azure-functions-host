@@ -272,6 +272,7 @@
     <Content Include="app\views\shared\ConsoleOutput.html" />
     <Content Include="app\views\ContinuousJob.html" />
     <Content Include="app\views\shared\FunctionInvocationsTable.html" />
+    <Content Include="app\views\shared\ConnectionStringError.html" />
     <Content Include="app\views\shared\SdkTeaser.html" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.css" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.min.css" />

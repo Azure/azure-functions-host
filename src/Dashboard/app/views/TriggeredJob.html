@@ -4,6 +4,9 @@
         <h3>
             WebJob Details <small ng-bind="jobName"></small>
         </h3>
+
+        <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
+
         <p ng-if="!job">Loading...</p>
         <p ng-if="job" class="alert alert-info">Run command: {{job.runCommand}}</p>
         <h4>Recent job runs</h4>
@@ -33,5 +36,7 @@
                 </tr>
             </tbody>
         </table>
+
+        <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>
     </div>
 </div>

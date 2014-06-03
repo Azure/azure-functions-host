@@ -4,6 +4,9 @@
         <h3>
             Continuous WebJob Details <small ng-bind="jobName"></small>
         </h3>
+
+        <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
+
         <p ng-if="!job">Loading...</p>
         <p ng-if="job" ng-class="job.getAlertClass()" class="alert">
             <b ng-bind="job.getAlertHeader()"></b><br />
@@ -11,7 +14,7 @@
         </p>
         <console-output ng-if="job" log-url="job.outUrl" console-owner="job" collapse-by-default="job.usingSdk">
         </console-output>
-        
+
         <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>
 
         <section ng-if="!invocations && !_sdkNotConfigured">
