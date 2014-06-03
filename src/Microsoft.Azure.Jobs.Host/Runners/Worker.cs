@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -154,7 +150,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             if (triggerOverrideModel != null)
             {
-                FunctionInvokeRequest request = CreateInvokeRequest(triggerOverrideModel);
+                FunctionInvokeRequest request = CreateInvokeRequest(triggerOverrideModel, context);
 
                 if (request != null)
                 {
@@ -210,7 +206,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return returnValue;
         }
 
-        private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message)
+        private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message, RuntimeBindingProviderContext context)
         {
             FunctionDefinition function = _functionTable.Lookup(message.FunctionId);
 
@@ -219,24 +215,23 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return null;
             }
 
-            FunctionInvokeRequest request = CreateInvokeRequest(function, message.Arguments, message.Id);
-            request.TriggerReason = message.GetTriggerReason();
-            return request;
-        }
+            IDictionary<string, object> objectParameters = new Dictionary<string, object>();
 
-        private static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition function, IDictionary<string, string> arguments, Guid id)
-        {
-            if (function == null)
+            if (message.Arguments != null)
             {
-                throw new ArgumentNullException("function");
+                foreach (KeyValuePair<string, string> item in message.Arguments)
+                {
+                    objectParameters.Add(item.Key, item.Value);
+                }
             }
 
-            if (arguments == null)
+            return new FunctionInvokeRequest
             {
-                throw new ArgumentNullException("arguments");
-            }
-
-            return CreateInvokeRequest(function, id);
+                Id = message.Id,
+                Location = function.Location,
+                ParametersProvider = new InvokeParametersProvider(message.Id, function, objectParameters, context),
+                TriggerReason = message.GetTriggerReason(),
+            };
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
@@ -261,83 +256,56 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return qcm.GetOwner(msg);
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(
-            FunctionDefinition func,
-            IDictionary<string, string> parameters)
+        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
+            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
         {
-            return CreateInvokeRequest(func, Guid.NewGuid());
+            Guid functionInstanceId = Guid.NewGuid();
+
+            return new FunctionInvokeRequest
+            {
+                Id = functionInstanceId,
+                Location = func.Location,
+                ParametersProvider = new InvokeParametersProvider(functionInstanceId, func, parameters, context),
+                TriggerReason = new InvokeTriggerReason
+                {
+                    Message = "This was function was programmatically called via the host APIs."
+                }
+            };
         }
 
         private FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, CloudQueueMessage msg)
         {
+            QueueTriggerBinding queueTriggerBinding = (QueueTriggerBinding)func.TriggerBinding;
             Guid functionInstanceId = Guid.NewGuid();
 
-            // Extract any named parameters from the queue payload.
-            QueueTriggerBinding queueTriggerBinding = (QueueTriggerBinding)func.TriggerBinding;
-            ITriggerData triggerData = queueTriggerBinding.Bind(msg,
-                new ArgumentBindingContext
-                {
-                    FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = context.NotifyNewBlob,
-                    CancellationToken = context.CancellationToken,
-                    ConsoleOutput = context.ConsoleOutput,
-                    NameResolver = context.NameResolver,
-                    StorageAccount = context.StorageAccount,
-                    ServiceBusConnectionString = context.ServiceBusConnectionString,
-                });
-
-            // msg was the one that triggered it.
-            var instance = CreateInvokeRequest(func, functionInstanceId);
-
-            instance.TriggerData = triggerData;
-            instance.TriggerReason = new QueueMessageTriggerReason
+            return new FunctionInvokeRequest
             {
-                QueueName = queueTriggerBinding.QueueName,
-                MessageId = msg.Id,
-                ParentGuid = GetOwnerFromMessage(msg)
+                Id = functionInstanceId,
+                Location = func.Location,
+                ParametersProvider = new TriggerParametersProvider<CloudQueueMessage>(functionInstanceId, func, msg, context),
+                TriggerReason = new QueueMessageTriggerReason
+                {
+                    QueueName = queueTriggerBinding.QueueName,
+                    MessageId = msg.Id,
+                    ParentGuid = GetOwnerFromMessage(msg)
+                }
             };
-
-            return instance;
         }
 
         internal static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, ICloudBlob blobInput)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
-            // blobInput was the one that triggered it.
-            BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
-            ITriggerData triggerData = blobTriggerBinding.Bind(blobInput,
-                new ArgumentBindingContext
-                {
-                    FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = context.NotifyNewBlob,
-                    CancellationToken = context.CancellationToken,
-                    ConsoleOutput = context.ConsoleOutput,
-                    NameResolver = context.NameResolver,
-                    StorageAccount = context.StorageAccount,
-                    ServiceBusConnectionString = context.ServiceBusConnectionString,
-                });
-
-            FunctionInvokeRequest instance = CreateInvokeRequest(func, functionInstanceId);
-
-            instance.TriggerData = triggerData;
-            instance.TriggerReason = new BlobTriggerReason
-            {
-                BlobPath = new CloudBlobPath(blobInput),
-                ParentGuid = GetBlobWriterGuid(blobInput)
-            };
-
-            return instance;
-        }
-
-        public static FunctionInvokeRequest CreateInvokeRequest(FunctionDefinition func, Guid functionInstanceId)
-        {
             return new FunctionInvokeRequest
             {
                 Id = functionInstanceId,
                 Location = func.Location,
-                TriggerParameterName = func.TriggerParameterName,
-                NonTriggerBindings = func.NonTriggerBindings
+                ParametersProvider = new TriggerParametersProvider<ICloudBlob>(functionInstanceId, func, blobInput, context),
+                TriggerReason = new BlobTriggerReason
+                {
+                    BlobPath = new CloudBlobPath(blobInput),
+                    ParentGuid = GetBlobWriterGuid(blobInput)
+                }
             };
         }
 

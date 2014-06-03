@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
             _hostInstanceId = Guid.NewGuid();
-            IConfiguration config = RunnerProgram.InitBinders();
+            IConfiguration config = new Configuration();
             config.NameResolver = nameResolver;
 
             IFunctionTableLookup functionTableLookup;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.Jobs
             }
 
             // This is direct execution, doesn't queue up. 
-            _executeFunction = new WebSitesExecuteFunction(config, ctx);
+            _executeFunction = new WebSitesExecuteFunction(ctx);
             _functionTableLookup = functionTableLookup;
         }
 

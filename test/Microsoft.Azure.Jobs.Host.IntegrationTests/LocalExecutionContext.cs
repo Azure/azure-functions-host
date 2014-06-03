@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -42,12 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         private static IConfiguration CreateConfig(Type scope)
         {
-            IConfiguration config = RunnerProgram.InitBinders();
-
-            if (scope != null)
-            {
-                RunnerProgram.ApplyHooks(scope, config);
-            }
+            IConfiguration config = new Configuration();
 
             JobHostContext.AddCustomerBinders(config, new Type[] { scope } );
 
@@ -132,7 +128,17 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public Guid Call(MethodInfo method, IDictionary<string, string> parameters = null)
         {
             FunctionDefinition func = ResolveFunctionDefinition(method);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, parameters);
+            IDictionary<string, object> objectParameters = new Dictionary<string, object>();
+
+            if (parameters != null)
+            {
+                foreach (KeyValuePair<string, string> item in parameters)
+                {
+                    objectParameters.Add(item.Key, item.Value);
+                }
+            }
+
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters, null);
 
             Guid guidThis = CallUtil.GetParentGuid(parameters);
             return CallInner(instance, guidThis);
@@ -166,7 +172,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             CallInner(instance);
         }
 
-        class LocalExecute : ExecuteFunctionBase
+        class LocalExecute : IExecuteFunction
         {
             private readonly LocalExecutionContext _parent;
 
@@ -175,19 +181,27 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            protected override FunctionInvocationResult Work(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
+            public FunctionInvocationResult Execute(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
             {
-                RunnerProgram runner = new RunnerProgram(TextWriter.Null, null);
+                if (instance.TriggerReason == null)
+                {
+                    // Having a trigger reason is important for diagnostics. 
+                    // So make sure it's not accidentally null. 
+                    throw new InvalidOperationException("Function instance must have a trigger reason set.");
+                }
+                instance.TriggerReason.ChildGuid = instance.Id;
 
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
                 bool succeeded;
 
+                MethodInfo method = ((MethodInfoFunctionLocation)instance.Location).MethodInfo;
+
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    runner.Invoke(instance);
+                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(), instance.ParametersProvider.Bind(), TextWriter.Null);
                     succeeded = true;
                 }
                 catch (Exception e)

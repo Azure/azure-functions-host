@@ -205,7 +205,6 @@ namespace Microsoft.Azure.Jobs
         private IConfiguration CreateTestConfiguration(Type type)
         {
             var config = new Configuration();
-            RunnerProgram.ApplyHooks(type, config);
             return config;
         }
 

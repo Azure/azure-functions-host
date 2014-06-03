@@ -234,7 +234,7 @@ namespace Microsoft.Azure.Jobs
         /// </summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
         /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
-        public void Call(MethodInfo method, object arguments)
+        public void Call(MethodInfo method, IDictionary<string, object> arguments)
         {
             Call(method, arguments, CancellationToken.None);
         }
@@ -245,22 +245,23 @@ namespace Microsoft.Azure.Jobs
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
         /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        public void Call(MethodInfo method, object arguments, CancellationToken cancellationToken)
+        public void Call(MethodInfo method, IDictionary<string, object> arguments, CancellationToken cancellationToken)
         {
             if (method == null)
             {
                 throw new ArgumentNullException("method");
             }
 
-            IDictionary<string, string> args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
-
             FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionTableLookup);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, args2);
-
-            instance.TriggerReason = new InvokeTriggerReason
+            RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
             {
-                Message = String.Format("This was function was programmatically called via the host APIs.")
+                BindingProvider = _hostContext.BindingProvider,
+                CancellationToken = cancellationToken,
+                NameResolver = _hostContext.NameResolver,
+                StorageAccount = _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
+                ServiceBusConnectionString = _serviceBusConnectionString
             };
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, arguments, context);
 
             FunctionInvocationResult result;
 
@@ -269,15 +270,6 @@ namespace Microsoft.Azure.Jobs
             {
                 cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token).Token;
                 timer.Start(executeFirst: true);
-
-                RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
-                {
-                    BindingProvider = _hostContext.BindingProvider,
-                    CancellationToken = cancellationToken,
-                    NameResolver = _hostContext.NameResolver,
-                    StorageAccount = _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
-                    ServiceBusConnectionString = _serviceBusConnectionString
-                };
 
                 try
                 {

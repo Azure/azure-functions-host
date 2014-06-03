@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host;
@@ -10,18 +11,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     // Unit test the static parameter bindings. This primarily tests the indexer.
     public class HostUnitTests
     {
-        // Host.Call with parameters has not yet been migrated.
-        //public void SimpleInvoke()
-        //{
-        //    var host = new TestJobHost<ProgramSimple>(null);
+        [Fact]
+        public void SimpleInvoke()
+        {
+            var host = new TestJobHost<ProgramSimple>(null);
 
-        //    var x = "abc";
-        //    ProgramSimple._value = null;
-        //    host.Call("Test", new { value = x });
+            var x = "abc";
+            ProgramSimple._value = null;
+            host.Call("Test", new Dictionary<string, object> { { "value", x } });
 
-        //    // Ensure test method was invoked properly.
-        //    Assert.Equal(x, ProgramSimple._value);
-        //}
+            // Ensure test method was invoked properly.
+            Assert.Equal(x, ProgramSimple._value);
+        }
 
         [Fact]
         public void CallWithCancellationToken_PassesCancellationTokenToMethod()

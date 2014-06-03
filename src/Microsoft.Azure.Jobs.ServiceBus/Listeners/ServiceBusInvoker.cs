@@ -1,9 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.Azure.Jobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
@@ -21,34 +18,21 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
         public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
             RuntimeBindingProviderContext context, BrokeredMessage msg)
         {
+            ServiceBusTriggerBinding serviceBusTriggerBinding = (ServiceBusTriggerBinding)func.TriggerBinding;
             Guid functionInstanceId = Guid.NewGuid();
 
-            // Extract any named parameters from the queue payload.
-            ServiceBusTriggerBinding serviceBusTriggerBinding = func.TriggerBinding as ServiceBusTriggerBinding;
-            ITriggerData triggerData = serviceBusTriggerBinding.Bind(msg,
-                new ArgumentBindingContext
-                {
-                    FunctionInstanceId = functionInstanceId,
-                    NotifyNewBlob = context.NotifyNewBlob,
-                    CancellationToken = context.CancellationToken,
-                    ConsoleOutput = context.ConsoleOutput,
-                    NameResolver = context.NameResolver,
-                    StorageAccount = context.StorageAccount,
-                    ServiceBusConnectionString = context.ServiceBusConnectionString,
-                });
-
-            // msg was the one that triggered it.
-            var instance = Worker.CreateInvokeRequest(func, functionInstanceId);
-
-            instance.TriggerData = triggerData;
-            instance.TriggerReason = new ServiceBusTriggerReason
+            return new FunctionInvokeRequest
             {
-                EntityPath = serviceBusTriggerBinding.EntityPath,
-                MessageId = msg.MessageId,
-                ParentGuid = GetOwnerFromMessage(msg)
+                Id = functionInstanceId,
+                Location = func.Location,
+                ParametersProvider = new TriggerParametersProvider<BrokeredMessage>(functionInstanceId, func, msg, context),
+                TriggerReason = new ServiceBusTriggerReason
+                {
+                    EntityPath = serviceBusTriggerBinding.EntityPath,
+                    MessageId = msg.MessageId,
+                    ParentGuid = GetOwnerFromMessage(msg)
+                }
             };
-
-            return instance;
         }
         private static Guid GetOwnerFromMessage(BrokeredMessage msg)
         {

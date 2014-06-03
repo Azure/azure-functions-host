@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Collections.Generic;
+using System.Threading;
 
 namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
@@ -37,13 +38,13 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
             Call(methodName, null);
         }
 
-        public void Call(string methodName, object arguments)
+        public void Call(string methodName, IDictionary<string, object> arguments)
         {
             var methodInfo = typeof(T).GetMethod(methodName);
             Host.Call(methodInfo, arguments);
         }
 
-        public void Call(string methodName, object arguments, CancellationToken cancellationToken)
+        public void Call(string methodName, IDictionary<string, object> arguments, CancellationToken cancellationToken)
         {
             var methodInfo = typeof(T).GetMethod(methodName);
             Host.Call(methodInfo, arguments, cancellationToken);

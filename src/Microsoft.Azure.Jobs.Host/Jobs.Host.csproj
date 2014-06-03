@@ -203,6 +203,7 @@
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
     <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenValueProvider.cs" />
@@ -218,12 +219,13 @@
     <Compile Include="Bindings\Data\TToStringConverter.cs" />
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
+    <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />
     <Compile Include="Bindings\Invoke\StructInvokeBinding.cs" />
     <Compile Include="Bindings\ObjectValueProvider.cs" />
     <Compile Include="Bindings\ClassOutputConverter.cs" />
-    <Compile Include="Bindings\Runtime\CompositeDisposable.cs" />
+    <Compile Include="Bindings\CompositeDisposable.cs" />
     <Compile Include="Bindings\Runtime\CompositeSelfWatch.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
@@ -249,6 +251,7 @@
     <Compile Include="Bindings\RuntimeBindingProviderContext.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
+    <Compile Include="Bindings\ValueProviderDisposable.cs" />
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\BlobBinding.cs" />
     <Compile Include="Blobs\Bindings\BlobCommittedAction.cs" />
@@ -313,8 +316,11 @@
     <Compile Include="Queues\Triggers\QueueTriggerArgumentBinding.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
+    <Compile Include="Runners\InvokeParametersProvider.cs" />
+    <Compile Include="Runners\TriggerParametersProvider.cs" />
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
     <Compile Include="Runners\IFunctionExecutor.cs" />
+    <Compile Include="Runners\IParametersProvider.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
     <Compile Include="Tables\NullEntityValueProvider.cs" />
     <Compile Include="Tables\OutputConverter.cs" />
@@ -397,7 +403,6 @@
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
     <Compile Include="Runners\Worker.cs" />
     <Compile Include="Runners\Configuration.cs" />
-    <Compile Include="Runners\RunnerProgram.cs" />
     <Compile Include="Runners\SelfWatch.cs" />
     <Compile Include="Runners\WatchableEnumerable.cs" />
     <Compile Include="Blobs\DelegatingStream.cs" />
@@ -424,18 +429,15 @@
     <Compile Include="Loggers\BlobIncrementalTextWriter.cs" />
     <Compile Include="Bindings\CloudBlobPath.cs" />
     <Compile Include="Runners\FunctionExecutionContext.cs" />
-    <Compile Include="Runners\ExecuteBase.cs" />
     <Compile Include="Loggers\IFunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\BlobWrittenMessage.cs" />
     <Compile Include="Runners\NotifyNewBlobViaInMemory.cs" />
     <Compile Include="Runners\INotifyNewBlobListener.cs" />
     <Compile Include="Runners\NotifyNewBlobExtensions.cs" />
-    <Compile Include="Runners\FunctionExecutionResult.cs" />
     <Compile Include="Loggers\FunctionOutputLog.cs" />
     <Compile Include="Loggers\FunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\INotifyNewBlob.cs" />
     <Compile Include="Runners\IExecuteFunction.cs" />
-    <Compile Include="Runners\ExecuteFunctionBase.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
     <Compile Include="Runners\BlobTriggerReason.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
-    internal sealed class CompositeDisposable : IDisposable
+    internal sealed class CollectingDisposable : IDisposable
     {
         private readonly IList<IDisposable> _disposables = new List<IDisposable>();
 

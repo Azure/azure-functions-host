@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
         private readonly IAttributeBinding _binding;
         private readonly IList<IValueBinder> _binders = new List<IValueBinder>();
         private readonly CompositeSelfWatch _watcher = new CompositeSelfWatch();
-        private readonly CompositeDisposable _disposable = new CompositeDisposable();
+        private readonly CollectingDisposable _disposable = new CollectingDisposable();
 
         private bool _disposed;
 
