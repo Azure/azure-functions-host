@@ -187,7 +187,7 @@ namespace Dashboard.ApiControllers
                     SuccessCount = 0
                 }).ToArray();
 
-            var functionNames = new HashSet<string>(model.FunctionStatisticsViewModels.Select(x => x.FunctionFullName));
+            var functionNames = new HashSet<string>(model.FunctionStatisticsViewModels.Select(x => x.FunctionId));
 
             var all = _invokeStatsTable.Enumerate();
             foreach (var item in all)
@@ -204,7 +204,7 @@ namespace Dashboard.ApiControllers
                 var statsModel = model
                     .FunctionStatisticsViewModels
                     .FirstOrDefault(x =>
-                        x.FunctionFullName == rowKey
+                        x.FunctionId == rowKey
                     );
 
                 if (statsModel != null)
