@@ -29,10 +29,6 @@ namespace Microsoft.Azure.Jobs
             IFunctionInstanceLogger instanceLogger = context.FunctionInstanceLogger;
             IFunctionOuputLogDispenser outputLogDispenser = context.OutputLogDispenser;
 
-            DateTimeOffset now = DateTimeOffset.UtcNow;
-
-            BindParameters(runtimeContext, instance);
-
             FunctionStartedSnapshot startedSnapshot = new FunctionStartedSnapshot
             {
                 FunctionInstanceId = instance.Id,
@@ -41,11 +37,10 @@ namespace Microsoft.Azure.Jobs
                 FunctionId = instance.Location.GetId(),
                 FunctionFullName = instance.Location.FullName,
                 FunctionShortName = instance.Location.GetShortName(),
-                Arguments = CreateArguments(instance.NonTriggerBindings, instance.Parameters, instance.Args),
                 ParentId = instance.TriggerReason != null && instance.TriggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)instance.TriggerReason.ParentGuid : null,
                 Reason = instance.TriggerReason != null ? instance.TriggerReason.ToString() : null,
-                StartTime = now,
+                StartTime = DateTimeOffset.UtcNow,
                 StorageConnectionString = instance.Location.StorageConnectionString,
                 ServiceBusConnectionString = instance.Location.ServiceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current
@@ -55,7 +50,17 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                completedSnapshot = Work(instance, fpInvokeFunc, instanceLogger, outputLogDispenser, startedSnapshot);
+                FunctionOutputLog functionOutput = outputLogDispenser.CreateLogStream(instance);
+                startedSnapshot.OutputBlobUrl = functionOutput.Uri;
+                startedSnapshot.ParameterLogBlobUrl = functionOutput.ParameterLogBlob == null ? null : functionOutput.ParameterLogBlob.GetBlockBlob().Uri.AbsoluteUri;
+
+                runtimeContext.ConsoleOutput = functionOutput.Output;
+                BindParameters(runtimeContext, instance);
+                startedSnapshot.Arguments = CreateArguments(instance.NonTriggerBindings, instance.Parameters, instance.Args);
+
+                instanceLogger.LogFunctionStarted(startedSnapshot);
+
+                completedSnapshot = Work(instance, fpInvokeFunc, instanceLogger, functionOutput, startedSnapshot);
             }
             finally
             {
@@ -101,6 +106,7 @@ namespace Microsoft.Azure.Jobs
                 FunctionInstanceId = functionInstanceId,
                 NotifyNewBlob = runtimeContext.NotifyNewBlob,
                 CancellationToken = runtimeContext.CancellationToken,
+                ConsoleOutput = runtimeContext.ConsoleOutput,
                 NameResolver = runtimeContext.NameResolver,
                 StorageAccount = runtimeContext.StorageAccount,
                 ServiceBusConnectionString = runtimeContext.ServiceBusConnectionString,
@@ -130,16 +136,10 @@ namespace Microsoft.Azure.Jobs
             Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc,
 
             IFunctionInstanceLogger instanceLogger,
-            IFunctionOuputLogDispenser outputLogDispenser,
+            FunctionOutputLog functionOutput,
             FunctionStartedSnapshot startedSnapshot
             )
         {
-            FunctionOutputLog functionOutput = outputLogDispenser.CreateLogStream(instance);
-            startedSnapshot.OutputBlobUrl = functionOutput.Uri;
-            startedSnapshot.ParameterLogBlobUrl = functionOutput.ParameterLogBlob == null ? null : functionOutput.ParameterLogBlob.GetBlockBlob().Uri.AbsoluteUri;
-
-            instanceLogger.LogFunctionStarted(startedSnapshot);
-
             FunctionCompletedSnapshot completedSnapshot = CreateCompletedSnapshot(startedSnapshot);
 
             try

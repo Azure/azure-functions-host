@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
 
@@ -20,8 +19,6 @@ namespace Microsoft.Azure.Jobs.Internals
         }
         protected override FunctionInvocationResult Work(FunctionInvokeRequest request, RuntimeBindingProviderContext context)
         {
-            var loc = request.Location;
-
             Func<TextWriter, CloudBlobDescriptor, FunctionExecutionResult> fpInvokeFunc =
                 (consoleOutput, parameterLog) =>
                 {

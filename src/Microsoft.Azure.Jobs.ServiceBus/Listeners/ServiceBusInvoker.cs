@@ -31,6 +31,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                     FunctionInstanceId = functionInstanceId,
                     NotifyNewBlob = context.NotifyNewBlob,
                     CancellationToken = context.CancellationToken,
+                    ConsoleOutput = context.ConsoleOutput,
                     NameResolver = context.NameResolver,
                     StorageAccount = context.StorageAccount,
                     ServiceBusConnectionString = context.ServiceBusConnectionString,

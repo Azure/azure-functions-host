@@ -206,6 +206,9 @@
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenValueProvider.cs" />
+    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBinding.cs" />
+    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBindingProvider.cs" />
+    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputValueProvider.cs" />
     <Compile Include="Bindings\Runtime\CompositeDisposable.cs" />
     <Compile Include="Bindings\Runtime\CompositeSelfWatch.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
@@ -331,12 +334,9 @@
     <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\ConsoleOutputStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\InvokeParameterStaticBinding.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\IStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
-    <Compile Include="Bindings\StaticBindings\ConsoleOutputParameterStaticBinding.cs" />
     <Compile Include="HostContainerNames.cs" />
     <Compile Include="INameResolver.cs" />
     <Compile Include="JobHostConfiguration.cs" />

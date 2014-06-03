@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.IO;
+using System.Threading;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
@@ -10,6 +11,8 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public INotifyNewBlob NotifyNewBlob { get; set; }
 
         public CancellationToken CancellationToken { get; set; }
+
+        public TextWriter ConsoleOutput { get; set; }
 
         public INameResolver NameResolver { get; set; }
 

@@ -4,9 +4,8 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
+using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
-using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
-using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
 using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
@@ -24,14 +23,6 @@ namespace Microsoft.Azure.Jobs
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
-
-        private static readonly IEnumerable<IStaticBindingProvider> _staticBindingProviders =
-            new IStaticBindingProvider[]
-            {
-                // The console output binder below will handle all remaining TextWriter parameters. It must come after
-                // the Attribute binder; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
-                new ConsoleOutputStaticBindingProvider()
-            };
 
         private readonly IFunctionTable _functionTable;
         private readonly INameResolver _nameResolver;
@@ -107,6 +98,11 @@ namespace Microsoft.Azure.Jobs
 
             innerProviders.Add(new CloudStorageAccountBindingProvider());
             innerProviders.Add(new CancellationTokenBindingProvider());
+
+            // The console output binder below will handle all remaining TextWriter parameters. It must come after the
+            // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
+            innerProviders.Add(new ConsoleOutputBindingProvider());
+
             innerProviders.Add(new RuntimeBindingProvider());
 
             return new CompositeBindingProvider(innerProviders);
@@ -259,7 +255,7 @@ namespace Microsoft.Azure.Jobs
         {
             ParameterInfo[] ps = descr.Parameters;
 
-            ParameterStaticBinding[] flows = Array.ConvertAll(ps, BindParameter);
+            ParameterStaticBinding[] flows = new ParameterStaticBinding[ps.Length];
 
             // Populate input names
             HashSet<string> paramNames = new HashSet<string>(triggerParameterNames);
@@ -280,21 +276,6 @@ namespace Microsoft.Azure.Jobs
             }
 
             return flows;
-        }
-
-        private ParameterStaticBinding BindParameter(ParameterInfo parameter)
-        {
-            foreach (IStaticBindingProvider provider in _staticBindingProviders)
-            {
-                ParameterStaticBinding binding = provider.TryBind(parameter, _nameResolver);
-
-                if (binding != null)
-                {
-                    return binding;
-                }
-            }
-
-            return null;
         }
 
         public static void AddInvokeBindings(MethodDescriptor descr, ParameterStaticBinding[] flows)
@@ -520,7 +501,7 @@ namespace Microsoft.Azure.Jobs
             // $$$ This should share policy code with Orchestrator where it builds the listening map. 
 
             // Throw on multiple ConsoleOutputs
-            if (index.Flow.Bindings.OfType<ConsoleOutputParameterStaticBinding>().Count() > 1)
+            if (index.NonTriggerBindings.OfType<ConsoleOutputBinding>().Count() > 1)
             {
                 throw new InvalidOperationException(
                     "Can't have multiple console output TextWriter parameters on a single function.");
