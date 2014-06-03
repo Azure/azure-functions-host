@@ -203,6 +203,9 @@
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
     <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
+    <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
+    <Compile Include="Bindings\Cancellation\CancellationTokenValueProvider.cs" />
     <Compile Include="Bindings\Runtime\CompositeDisposable.cs" />
     <Compile Include="Bindings\Runtime\CompositeSelfWatch.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
@@ -329,9 +332,7 @@
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
     <Compile Include="Bindings\StaticBindingProviders\ConsoleOutputStaticBindingProvider.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\CancellationTokenStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\InvokeParameterStaticBinding.cs" />
-    <Compile Include="Bindings\StaticBindings\CancellationTokenParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindingProviders\IStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
     <Compile Include="Bindings\BindResults\BindResult.cs" />
