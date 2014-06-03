@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Bindings
+﻿namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingProvider : IBindingProvider
     {

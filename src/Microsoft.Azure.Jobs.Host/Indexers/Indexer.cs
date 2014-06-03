@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindingProviders;
 using Microsoft.Azure.Jobs.Host.Bindings.StaticBindings;
+using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
@@ -26,7 +28,6 @@ namespace Microsoft.Azure.Jobs
             new IStaticBindingProvider[]
             {
                 new CancellationTokenStaticBindingProvider(),
-                new CloudStorageAccountStaticBindingProvider(),
                 // The console output binder below will handle all remaining TextWriter parameters. It must come after
                 // the Attribute binder; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
                 new ConsoleOutputStaticBindingProvider()
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.Jobs
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
 
+            innerProviders.Add(new CloudStorageAccountBindingProvider());
             innerProviders.Add(new RuntimeBindingProvider());
 
             return new CompositeBindingProvider(innerProviders);

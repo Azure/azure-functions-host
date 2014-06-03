@@ -203,6 +203,14 @@
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
     <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\Runtime\CompositeDisposable.cs" />
+    <Compile Include="Bindings\Runtime\CompositeSelfWatch.cs" />
+    <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
+    <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
+    <Compile Include="Bindings\StorageAccount\StringToCloudStorageAccountConverter.cs" />
+    <Compile Include="Bindings\StorageAccount\OutputConverter.cs" />
+    <Compile Include="Bindings\StorageAccount\CloudStorageAccountBinding.cs" />
+    <Compile Include="Bindings\StorageAccount\CloudStorageAccountBindingProvider.cs" />
     <Compile Include="Bindings\IAttributeBinding.cs" />
     <Compile Include="Bindings\ArgumentBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
@@ -216,8 +224,8 @@
     <Compile Include="Bindings\IValueBinder.cs" />
     <Compile Include="Bindings\IValueProvider.cs" />
     <Compile Include="Bindings\IWatchable.cs" />
-    <Compile Include="Bindings\RuntimeBinding.cs" />
-    <Compile Include="Bindings\RuntimeBindingProvider.cs" />
+    <Compile Include="Bindings\Runtime\RuntimeBinding.cs" />
+    <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
     <Compile Include="Bindings\RuntimeBindingProviderContext.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
@@ -321,10 +329,8 @@
     <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
     <Compile Include="Bindings\StaticBindingProviders\ConsoleOutputStaticBindingProvider.cs" />
-    <Compile Include="Bindings\StaticBindingProviders\CloudStorageAccountStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindingProviders\CancellationTokenStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\InvokeParameterStaticBinding.cs" />
-    <Compile Include="Bindings\StaticBindings\CloudStorageAccountParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindings\CancellationTokenParameterStaticBinding.cs" />
     <Compile Include="Bindings\StaticBindingProviders\IStaticBindingProvider.cs" />
     <Compile Include="Bindings\StaticBindings\RouteParser.cs" />
