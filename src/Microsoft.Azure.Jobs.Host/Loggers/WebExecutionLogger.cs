@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs
     {
         private readonly FunctionExecutionContext _ctx;
 
-        public WebExecutionLogger(Guid hostId, Guid hostInstanceId, CloudStorageAccount account, Action<TextWriter> addHeaderInfo)
+        public WebExecutionLogger(Guid hostId, Guid hostInstanceId, CloudStorageAccount account)
         {
             _ctx = new FunctionExecutionContext
             {
@@ -20,8 +20,7 @@ namespace Microsoft.Azure.Jobs
                 HostInstanceId = hostInstanceId,
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     account,
-                    addHeaderInfo,
-                    HostContainerNames.ConsoleOuputLogContainerName
+                    HostContainerNames.ConsoleOutputLogContainerName
                 )
             };
         }

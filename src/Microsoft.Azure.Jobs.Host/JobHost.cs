@@ -156,7 +156,7 @@ namespace Microsoft.Azure.Jobs
         // Run the jobs on the current thread. 
         // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
         internal void RunAndBlock(CancellationToken token, Action pauseAction)
-        {   
+        {
             using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
             using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: true))
             {
@@ -181,8 +181,14 @@ namespace Microsoft.Azure.Jobs
                         invokeTrigger = null;
                     }
 
+                    Credentials credentials = new Credentials
+                    {
+                        StorageConnectionString = _storageConnectionString,
+                        ServiceBusConnectionString = _serviceBusConnectionString
+                    };
+
                     Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
-                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify);
+                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify, credentials);
 
                     RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
                     {
@@ -349,13 +355,9 @@ namespace Microsoft.Azure.Jobs
         {
             foreach (FunctionDefinition func in functionTableLookup.ReadAll())
             {
-                MethodInfoFunctionLocation loc = func.Location as MethodInfoFunctionLocation;
-                if (loc != null)
+                if (func.Method.Equals(method))
                 {
-                    if (loc.MethodInfo.Equals(method))
-                    {
-                        return func;
-                    }
+                    return func;
                 }
             }
 

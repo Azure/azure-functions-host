@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.IntegrationTests
@@ -12,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     {
         public override string ToString()
         {
-            var name = this.FunctionInstance.Location.GetShortName();
+            var name = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", FunctionInstance.Method.DeclaringType.Name, FunctionInstance.Method.Name);
             string startTime = this.StartTime.HasValue ? this.StartTime.Value.ToUniversalTime().ToString() : this.QueueTime.ToUniversalTime().ToString();
             return string.Format("{0} @ {1}", name, startTime);
         }

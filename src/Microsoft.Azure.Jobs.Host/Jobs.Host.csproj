@@ -290,6 +290,8 @@
     <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />
     <Compile Include="Converters\IObjectToTypeConverter.cs" />
     <Compile Include="Converters\ITypeToObjectConverter.cs" />
+    <Compile Include="Indexers\DefaultBindingProvider.cs" />
+    <Compile Include="Indexers\DefaultTriggerBindingProvider.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\CloudQueueExtensions.cs" />
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />
@@ -319,7 +321,6 @@
     <Compile Include="Runners\InvokeParametersProvider.cs" />
     <Compile Include="Runners\TriggerParametersProvider.cs" />
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
-    <Compile Include="Runners\IFunctionExecutor.cs" />
     <Compile Include="Runners\IParametersProvider.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
     <Compile Include="Tables\NullEntityValueProvider.cs" />
@@ -367,8 +368,6 @@
     <Compile Include="Storage\Table\CloudTableExtensions.cs" />
     <Compile Include="Bindings\IBinderEx.cs" />
     <Compile Include="Runners\IConfiguration.cs" />
-    <Compile Include="Indexers\FunctionDefinitionExtensions.cs" />
-    <Compile Include="Indexers\MethodInfoFunctionLocationExtensions.cs" />
     <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
@@ -390,8 +389,6 @@
     <Compile Include="Loggers\WebExecutionLogger.cs" />
     <Compile Include="Loggers\IExecutionLogger.cs" />
     <Compile Include="Triggers\CalculateTriggers.cs" />
-    <Compile Include="Indexers\IndexTypeContent.cs" />
-    <Compile Include="Indexers\MethodDescriptor.cs" />
     <Compile Include="Indexers\Indexer.cs" />
     <Compile Include="Timers\ICanFailCommand.cs" />
     <Compile Include="Runners\IConnectionStringProvider.cs" />
@@ -425,7 +422,6 @@
     <Compile Include="ITypeLocator.cs" />
     <Compile Include="StringConverter.cs" />
     <Compile Include="JsonCustom.cs" />
-    <Compile Include="Indexers\MethodInfoFunctionLocation.cs" />
     <Compile Include="Loggers\BlobIncrementalTextWriter.cs" />
     <Compile Include="Bindings\CloudBlobPath.cs" />
     <Compile Include="Runners\FunctionExecutionContext.cs" />
@@ -444,9 +440,7 @@
     <Compile Include="Runners\QueueMessageTriggerReason.cs" />
     <Compile Include="Runners\InvokeTriggerReason.cs" />
     <Compile Include="Runners\TriggerReason.cs" />
-    <Compile Include="Runners\TriggerReasonEntity.cs" />
     <Compile Include="Runners\FunctionInvokeRequest.cs" />
-    <Compile Include="Indexers\FunctionLocation.cs" />
     <Compile Include="Indexers\FunctionDefinition.cs" />
     <Compile Include="Indexers\IFunctionTable.cs" />
     <Compile Include="Indexers\IndexException.cs" />

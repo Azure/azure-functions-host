@@ -2,24 +2,23 @@
 
 namespace Microsoft.Azure.Jobs.Internals
 {
-    // $$$ Merge with Orch's IndexInMemory 
     class IndexInMemory : IFunctionTable
     {
-        List<FunctionDefinition> List = new List<FunctionDefinition>();
+        private readonly List<FunctionDefinition> _list = new List<FunctionDefinition>();
 
         public void Add(FunctionDefinition func)
         {
-            List.Add(func);
+            _list.Add(func);
         }
 
         void IFunctionTable.Delete(FunctionDefinition func)
         {
-            string funcString = func.ToString();
-            foreach (var x in List)
+            string id = func.Id;
+            foreach (var x in _list)
             {
-                if (x.ToString() == funcString)
+                if (x.Id == id)
                 {
-                    List.Remove(x);
+                    _list.Remove(x);
                     return;
                 }
             }
@@ -28,9 +27,9 @@ namespace Microsoft.Azure.Jobs.Internals
         public FunctionDefinition Lookup(string functionId)
         {
             // $$$ Not linear :(
-            foreach (var x in List)
+            foreach (var x in _list)
             {
-                if (x.Location.ToString() == functionId)
+                if (x.Id == functionId)
                 {
                     return x;
                 }
@@ -40,7 +39,7 @@ namespace Microsoft.Azure.Jobs.Internals
 
         public FunctionDefinition[] ReadAll()
         {
-            return List.ToArray();
+            return _list.ToArray();
         }
     }
 }

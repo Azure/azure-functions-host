@@ -1,19 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
-using Microsoft.Azure.Jobs.Host.Bindings.Data;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
-using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
-using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
-using Microsoft.Azure.Jobs.Host.Queues.Bindings;
-using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -24,27 +17,23 @@ namespace Microsoft.Azure.Jobs
     {
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
-        private static readonly string _azureJobsFileName = typeof(TableAttribute).Assembly.ManifestModule.Name;
-
         private readonly IFunctionTable _functionTable;
         private readonly INameResolver _nameResolver;
-        private readonly IConfiguration _configuration;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
+        private readonly CloudStorageAccount _storageAccount;
+        private readonly string _serviceBusConnectionString;
 
         // Account for where index lives
-        public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IConfiguration configuration)
+        public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IEnumerable<Type> cloudBlobStreamBinderTypes,
+            CloudStorageAccount storageAccount, string serviceBusConnectionString)
         {
             _functionTable = functionTable;
             _nameResolver = nameResolver;
-            _configuration = configuration;
-            _triggerBindingProvider = CreateTriggerBindingProvider(configuration);
-            _bindingProvider = CreateBindingProvider(configuration);
-        }
-
-        public static string AzureJobsFileName
-        {
-            get { return _azureJobsFileName; }
+            _triggerBindingProvider = DefaultTriggerBindingProvider.Create(cloudBlobStreamBinderTypes);
+            _bindingProvider = DefaultBindingProvider.Create(cloudBlobStreamBinderTypes);
+            _storageAccount = storageAccount;
+            _serviceBusConnectionString = serviceBusConnectionString;
         }
 
         public IBindingProvider BindingProvider
@@ -57,108 +46,15 @@ namespace Microsoft.Azure.Jobs
             get { return _nameResolver; }
         }
 
-        private static ITriggerBindingProvider CreateTriggerBindingProvider(IConfiguration configuration)
+        public void IndexType(Type type)
         {
-            List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
-            innerProviders.Add(new QueueTriggerAttributeBindingProvider());
-
-            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
-            innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
-
-            Type serviceBusProviverType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
-
-            if (serviceBusProviverType != null)
-            {
-                ITriggerBindingProvider serviceBusAttributeBindingProvider =
-                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviverType);
-                innerProviders.Add(serviceBusAttributeBindingProvider);
-            }
-
-            return new CompositeTriggerBindingProvider(innerProviders);
-        }
-
-        private static IBindingProvider CreateBindingProvider(IConfiguration configuration)
-        {
-            List<IBindingProvider> innerProviders = new List<IBindingProvider>();
-            innerProviders.Add(new QueueAttributeBindingProvider());
-
-            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(configuration);
-            innerProviders.Add(new BlobAttributeBindingProvider(cloudBlobStreamBinderTypes));
-
-            innerProviders.Add(new TableAttributeBindingProvider());
-
-            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
-
-            if (serviceBusProviderType != null)
-            {
-                IBindingProvider serviceBusAttributeBindingProvider =
-                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType);
-                innerProviders.Add(serviceBusAttributeBindingProvider);
-            }
-
-            innerProviders.Add(new CloudStorageAccountBindingProvider());
-            innerProviders.Add(new CancellationTokenBindingProvider());
-
-            // The console output binder below will handle all remaining TextWriter parameters. It must come after the
-            // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
-            innerProviders.Add(new ConsoleOutputBindingProvider());
-
-            innerProviders.Add(new RuntimeBindingProvider());
-            innerProviders.Add(new DataBindingProvider());
-
-            return new CompositeBindingProvider(innerProviders);
-        }
-
-        private static IEnumerable<Type> GetCloudBlobStreamBinderTypes(IConfiguration configuration)
-        {
-            IEnumerable<Type> types;
-
-            if (configuration != null)
-            {
-                types = configuration.CloudBlobStreamBinderTypes;
-            }
-            else
-            {
-                types = null;
-            }
-
-            return types;
-        }
-
-        private static MethodInfo ResolveMethod(Type type, string name)
-        {
-            var method = type.GetMethod(name, _publicStaticMethodFlags);
-            if (method == null)
-            {
-                string msg = string.Format("A public static method '{0}' could not be found on type '{1}'.", name, type.FullName);
-                throw new InvalidOperationException(msg);
-            }
-            return method;
-        }
-
-        public void IndexType(Func<MethodInfo, FunctionLocation> funcApplyLocation, Type type, string storageConnectionString, string serviceBusConnectionString)
-        {
-            var context = InvokeInitMethodOnType(type, GetCloudStorageAccount(storageConnectionString), serviceBusConnectionString, funcApplyLocation);
-
             // Now register any declaritive methods
             foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags))
             {
-                IndexMethod(funcApplyLocation, method, context);
+                IndexMethod(method);
             }
 
             EnsureNoDuplicateFunctions();
-        }
-
-        private static CloudStorageAccount GetCloudStorageAccount(string connectionString)
-        {
-            if (connectionString == null)
-            {
-                return null;
-            }
-
-            return CloudStorageAccount.Parse(connectionString);
         }
 
         // Check for duplicate names. Indexing doesn't support overloads.
@@ -168,7 +64,7 @@ namespace Microsoft.Azure.Jobs
 
             foreach (FunctionDefinition func in _functionTable.ReadAll())
             {
-                var locationKey = func.Location.ToString();
+                var locationKey = func.Id;
                 if (!locations.Add(locationKey))
                 {
                     // Dup found!
@@ -178,143 +74,55 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // Invoke the Initialize(IConfiguration) hook on a type in the assembly we're indexing.
-        // Register any functions provided by code-configuration.
-        private IndexTypeContext InvokeInitMethodOnType(Type type, CloudStorageAccount storageAccount, string serviceBusConnectionString, Func<MethodInfo, FunctionLocation> funcApplyLocation)
+        public void IndexMethod(MethodInfo method)
         {
-            IConfiguration configuration;
-
-            if (_configuration != null)
-            {
-                configuration = _configuration;
-            }
-            else
-            {
-                // Test-only shortcut
-                configuration = CreateTestConfiguration(type);
-            }
-
-            return new IndexTypeContext
-            {
-                Config = configuration,
-                StorageAccount = storageAccount,
-                ServiceBusConnectionString = serviceBusConnectionString
-            };
-        }
-
-        private IConfiguration CreateTestConfiguration(Type type)
-        {
-            var config = new Configuration();
-            return config;
-        }
-
-        // Helper to convert delegates.
-        private Func<MethodDescriptor, FunctionLocation> Convert(Func<string, MethodInfo> fpFuncLookup, Func<MethodInfo, FunctionLocation> funcApplyLocation)
-        {
-            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 =
-             (descr) =>
-             {
-                 MethodInfo method = fpFuncLookup(descr.Name);
-                 return funcApplyLocation(method);
-             };
-
-            return funcApplyLocation2;
-        }
-
-        // Entry-point from reflection-based configuration. This is looking at inline attributes.
-        public void IndexMethod(Func<MethodInfo, FunctionLocation> funcApplyLocation, MethodInfo method, IndexTypeContext context)
-        {
-            MethodDescriptor descr = GetMethodDescriptor(method);
-
-            Func<string, MethodInfo> fpFuncLookup = name => ResolveMethod(method.DeclaringType, name);
-            Func<MethodDescriptor, FunctionLocation> funcApplyLocation2 = Convert(fpFuncLookup, funcApplyLocation);
-
-            IndexMethod(funcApplyLocation2, descr, context);
-        }
-
-        // Container is where the method lived on the cloud.
-        // Common path for both attribute-cased and code-based configuration.
-        public void IndexMethod(Func<MethodDescriptor, FunctionLocation> funcApplyLocation, MethodDescriptor descr, IndexTypeContext context)
-        {
-            FunctionDefinition index = GetFunctionDefinition(descr, context);
+            FunctionDefinition index = CreateFunctionDefinition(method);
             if (index != null)
             {
-                FunctionLocation loc = funcApplyLocation(descr);
-                index.Location = loc;
-
                 _functionTable.Add(index);
             }
         }
 
-        private static MethodDescriptor GetMethodDescriptor(MethodInfo method)
-        {
-            var descr = new MethodDescriptor();
-            descr.Name = method.Name;
-            descr.MethodAttributes = Array.ConvertAll(method.GetCustomAttributes(true), attr => (Attribute)attr);
-            descr.Parameters = method.GetParameters();
-
-            return descr;
-        }
-
-        // Test hook. 
-        static public FunctionDefinition GetFunctionDefinitionTest(MethodInfo method, IndexTypeContext context)
-        {
-            Indexer idx = new Indexer(null, null, null);
-            return idx.GetFunctionDefinition(method, context);
-        }
-
-        public FunctionDefinition GetFunctionDefinition(MethodInfo method, IndexTypeContext context)
-        {
-            MethodDescriptor descr = GetMethodDescriptor(method);
-            return GetFunctionDefinition(descr, context);
-        }
-
-        // Returns a partially instantiated FunctionIndexEntity.
-        // Caller must add Location information.
-        public FunctionDefinition GetFunctionDefinition(MethodDescriptor descr, IndexTypeContext context)
+        public FunctionDefinition CreateFunctionDefinition(MethodInfo method)
         {
             try
             {
-                return GetDescriptionForMethodInternal(descr, context);
+                return CreateFunctionDefinitionInternal(method);
             }
-            catch (Exception e)
+            catch (Exception exception)
             {
-                if (e is IndexException)
-                {
-                    throw;
-                }
-                throw IndexException.NewMethod(descr.Name, e);
+                throw IndexException.NewMethod(method.Name, exception);
             }
         }
 
-        private FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
+        private FunctionDefinition CreateFunctionDefinitionInternal(MethodInfo method)
         {
             DescriptionAttribute description = null;
             NoAutomaticTriggerAttribute noAutomaticTrigger = null;
 
-            foreach (var attr in descr.MethodAttributes)
+            foreach (var attr in method.GetCustomAttributes())
             {
                 description = description ?? (attr as DescriptionAttribute);
                 noAutomaticTrigger = noAutomaticTrigger ?? (attr as NoAutomaticTriggerAttribute);
             }
 
-            return CreateFunctionDefinition(descr, context, noAutomaticTrigger != null, description != null);
+            return CreateFunctionDefinition(method, noAutomaticTrigger != null, description != null);
         }
 
-        private FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context,
-            bool hasNoAutomaticTrigger, bool hasDescription)
+        private FunctionDefinition CreateFunctionDefinition(MethodInfo method, bool hasNoAutomaticTrigger,
+            bool hasDescription)
         {
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
-            ParameterInfo[] parameters = method.Parameters;
+            ParameterInfo[] parameters = method.GetParameters();
             foreach (ParameterInfo parameter in parameters)
             {
                 ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(new TriggerBindingProviderContext
                 {
                     Parameter = parameter,
-                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
-                    StorageAccount = context != null ? context.StorageAccount : null,
-                    ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
+                    NameResolver = _nameResolver,
+                    StorageAccount = _storageAccount,
+                    ServiceBusConnectionString = _serviceBusConnectionString
                 });
 
                 if (possibleTriggerBinding != null)
@@ -355,10 +163,10 @@ namespace Microsoft.Azure.Jobs
                 IBinding binding = _bindingProvider.TryCreate(new BindingProviderContext
                 {
                     Parameter = parameter,
-                    NameResolver = context != null && context.Config != null ? context.Config.NameResolver : _nameResolver,
+                    NameResolver = _nameResolver,
                     BindingDataContract = bindingDataContract,
-                    StorageAccount = context != null ? context.StorageAccount : null,
-                    ServiceBusConnectionString = context != null ? context.ServiceBusConnectionString : null
+                    StorageAccount = _storageAccount,
+                    ServiceBusConnectionString = _serviceBusConnectionString
                 });
 
                 if (binding == null)
@@ -400,6 +208,10 @@ namespace Microsoft.Azure.Jobs
 
             return new FunctionDefinition
             {
+                Id = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name),
+                FullName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name),
+                ShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.Name, method.Name),
+                Method = method,
                 TriggerParameterName = triggerParameterName,
                 TriggerBinding = triggerBinding,
                 NonTriggerBindings = nonTriggerBindings

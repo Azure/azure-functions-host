@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Runners;
 
 namespace Microsoft.Azure.Jobs
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.Jobs
         // Assert: this.TriggerReason.ChildGuid == this.Id
         public TriggerReason TriggerReason { get; set; }
 
-        public FunctionLocation Location { get; set; }
+        public MethodInfo Method { get; set; }
 
         public IParametersProvider ParametersProvider { get; set; }
     }

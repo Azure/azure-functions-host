@@ -25,7 +25,7 @@ namespace Dashboard.ApiControllers
         private readonly IFunctionLookup _functionLookup;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
-        private readonly AzureTable<FunctionLocation, FunctionStatsEntity> _invokeStatsTable;
+        private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
         private readonly IRunningHostTableReader _heartbeatTable;
 
         internal FunctionsController(
@@ -36,7 +36,7 @@ namespace Dashboard.ApiControllers
             IProcessTerminationSignalReader terminationSignalReader,
             IProcessTerminationSignalWriter terminationSignalWriter,
             IRunningHostTableReader heartbeatTable, 
-            AzureTable<FunctionLocation, FunctionStatsEntity> invokeStatsTable)
+            AzureTable<string, FunctionStatsEntity> invokeStatsTable)
         {
             _invocationLogLoader = invocationLogLoader;
             _account = account;

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             return new FunctionInvokeRequest
             {
                 Id = functionInstanceId,
-                Location = func.Location,
+                Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<BrokeredMessage>(functionInstanceId, func, msg, context),
                 TriggerReason = new ServiceBusTriggerReason
                 {

@@ -25,9 +25,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         // General purpose listener for blobs, queues. 
         private Listener _listener;
 
-
         public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute,
-            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob, INotifyNewBlobListener blobListener)
+            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob,
+            INotifyNewBlobListener blobListener, Credentials credentials)
         {
             _invokeTrigger = invokeTrigger;
             if (functionTable == null)
@@ -44,12 +44,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _notifyNewBlob = notifyNewBlob;
             _blobListener = blobListener;
 
-            CreateInputMap();
+            CreateInputMap(credentials);
         }
 
         // Called once at startup to initialize orchestration data structures
         // This is just retrieving the data structures created by the Indexer.
-        private void CreateInputMap()
+        private void CreateInputMap(Credentials credentials)
         {
             FunctionDefinition[] funcs = _functionTable.ReadAll();
 
@@ -57,10 +57,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             foreach (var func in funcs)
             {
-                var ts = CalculateTriggers.GetTrigger(func);
+                var ts = CalculateTriggers.GetTrigger(func, credentials);
                 if (ts != null)
                 {
-                    map.AddTriggers(func.Location.GetId(), ts);
+                    map.AddTriggers(func.Id, ts);
                 }
             }
 
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return new FunctionInvokeRequest
             {
                 Id = message.Id,
-                Location = function.Location,
+                Method = function.Method,
                 ParametersProvider = new InvokeParametersProvider(message.Id, function, objectParameters, context),
                 TriggerReason = message.GetTriggerReason(),
             };
@@ -264,7 +264,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return new FunctionInvokeRequest
             {
                 Id = functionInstanceId,
-                Location = func.Location,
+                Method = func.Method,
                 ParametersProvider = new InvokeParametersProvider(functionInstanceId, func, parameters, context),
                 TriggerReason = new InvokeTriggerReason
                 {
@@ -281,7 +281,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return new FunctionInvokeRequest
             {
                 Id = functionInstanceId,
-                Location = func.Location,
+                Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<CloudQueueMessage>(functionInstanceId, func, msg, context),
                 TriggerReason = new QueueMessageTriggerReason
                 {
@@ -299,7 +299,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return new FunctionInvokeRequest
             {
                 Id = functionInstanceId,
-                Location = func.Location,
+                Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<ICloudBlob>(functionInstanceId, func, blobInput, context),
                 TriggerReason = new BlobTriggerReason
                 {

@@ -25,14 +25,8 @@ namespace Microsoft.Azure.Jobs
             _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] { binding }) as TriggerRaw;
         }
 
-        public static Trigger GetTrigger(FunctionDefinition func)
+        public static Trigger GetTrigger(FunctionDefinition func, Credentials credentials)
         {
-            var credentials = new Credentials
-            {
-                StorageConnectionString = func.Location.StorageConnectionString,
-                ServiceBusConnectionString = func.Location.ServiceBusConnectionString
-            };
-
             var raw = GetTriggerRaw(func);
             if (raw != null)
             {

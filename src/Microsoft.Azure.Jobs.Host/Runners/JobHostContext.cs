@@ -39,9 +39,20 @@ namespace Microsoft.Azure.Jobs
 
             var types = typeLocator.GetTypes().ToArray();
             AddCustomerBinders(config, types);
-            _functionStore = new FunctionStore(storageConnectionString, serviceBusConnectionString, config, types);
-            functionTableLookup = _functionStore;
 
+            CloudStorageAccount storageAccount;
+
+            if (storageConnectionString == null)
+            {
+                storageAccount = null;
+            }
+            else
+            {
+                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
+            }
+
+            _functionStore = new FunctionStore(storageAccount, serviceBusConnectionString, config, types);
+            functionTableLookup = _functionStore;
 
             // Determine the host name from the function list
             FunctionDefinition[] functions = functionTableLookup.ReadAll();
@@ -64,7 +75,7 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account, LogRole);
+                var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
@@ -171,7 +182,7 @@ namespace Microsoft.Azure.Jobs
 
             if (firstFunction != null)
             {
-                string hostName = firstFunction.GetAssemblyFullName();
+                string hostName = firstFunction.Method.DeclaringType.Assembly.FullName;
 
                 if (hostName != null)
                 {
@@ -214,11 +225,6 @@ namespace Microsoft.Azure.Jobs
                 Functions = functionDescriptors
             };
             logger.Enqueue(message);
-        }
-
-        private static void LogRole(TextWriter output)
-        {
-            output.WriteLine("Local {0}", Process.GetCurrentProcess().Id);
         }
     }
 }

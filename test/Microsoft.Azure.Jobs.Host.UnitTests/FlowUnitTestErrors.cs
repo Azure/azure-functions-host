@@ -13,7 +13,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
-                Assert.Throws<IndexException>(() => Indexer.GetFunctionDefinitionTest(method, new IndexTypeContext { Config = new TestConfiguration() }));
+                Indexer indexer = new Indexer(null, null, null, null, null);
+                Assert.Throws<IndexException>(() => indexer.CreateFunctionDefinition(method));
             }
         }
 

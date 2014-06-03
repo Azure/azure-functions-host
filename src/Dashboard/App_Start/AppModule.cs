@@ -43,7 +43,7 @@ namespace Dashboard
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
-            Bind<AzureTable<FunctionLocation, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
+            Bind<AzureTable<string, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(tableClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IInvoker>().To<Invoker>();
@@ -140,12 +140,12 @@ namespace Dashboard
 
         // Table that maps function types to summary statistics. 
         // Table is populated by the ExecutionStatsAggregator
-        private static AzureTable<FunctionLocation, FunctionStatsEntity> CreateInvokeStatsTable(CloudStorageAccount account)
+        private static AzureTable<string, FunctionStatsEntity> CreateInvokeStatsTable(CloudStorageAccount account)
         {
-            return new AzureTable<FunctionLocation, FunctionStatsEntity>(
+            return new AzureTable<string, FunctionStatsEntity>(
                 account,
                 DashboardTableNames.FunctionInvokeStatsTableName,
-                 row => Tuple.Create("1", row.ToString()));
+                 row => Tuple.Create("1", row));
         }
 
         private static string GetDashboardConnectionString()

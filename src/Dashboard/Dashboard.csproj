@@ -172,6 +172,7 @@
     <Compile Include="Data\LiveTableCore.cs" />
     <Compile Include="Data\LocalTableCore.cs" />
     <Compile Include="Data\TableCore.cs" />
+    <Compile Include="Data\TriggerReasonEntity.cs" />
     <Compile Include="Data\VersionedFunction.cs" />
     <Compile Include="Data\HostFunctionIndex.cs" />
     <Compile Include="Data\HostInstanceLogger.cs" />

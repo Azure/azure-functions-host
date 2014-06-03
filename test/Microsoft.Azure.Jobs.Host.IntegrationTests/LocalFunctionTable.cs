@@ -36,17 +36,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             throw new InvalidOperationException(msg);
         }
 
-        public FunctionLocation OnApplyLocationInfo(MethodInfo method)
-        {
-            _mapping.Add(method);
-
-            // Still need account information because blob inputs are relative to these accounts.
-            return new MethodInfoFunctionLocation(method)
-            {
-                StorageConnectionString = this.AccountConnectionString,
-            };
-        }
-
         void IFunctionTable.Add(FunctionDefinition func)
         {
             _funcs.Add(func);
@@ -68,11 +57,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         FunctionDefinition[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();
-        }
-
-        public DateTime? GetLastExecutionTime(FunctionLocation func)
-        {
-            return null;
         }
 
         public FunctionDefinition Lookup(string functionId)

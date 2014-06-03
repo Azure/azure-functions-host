@@ -7,6 +7,6 @@ namespace Microsoft.Azure.Jobs.Host
     {
         // This is the container where the role can write console output logs for each run.
         // Useful to ensure this container has public access so that browsers can read the logs
-        public const string ConsoleOuputLogContainerName = ContainerNames.Prefix + "invoke-log";
+        public const string ConsoleOutputLogContainerName = ContainerNames.Prefix + "invoke-log";
     }
 }

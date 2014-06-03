@@ -22,11 +22,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(m);
 
-            Indexer idx = new Indexer(null, nameResolver, null);
-            FunctionDefinition func = idx.GetFunctionDefinition(m, new IndexTypeContext
-            {
-                StorageAccount = CloudStorageAccount.DevelopmentStorageAccount,
-            });
+            Indexer idx = new Indexer(null, nameResolver, null, CloudStorageAccount.DevelopmentStorageAccount, null);
+            FunctionDefinition func = idx.CreateFunctionDefinition(m);
             return func;
         }
 

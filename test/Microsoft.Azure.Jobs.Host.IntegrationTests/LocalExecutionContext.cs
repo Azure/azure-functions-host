@@ -86,10 +86,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
         {
             LocalFunctionTable store = new LocalFunctionTable(account);
-            Indexer i = new Indexer(store, config.NameResolver, null);
+            Indexer i = new Indexer(store, config.NameResolver, config.CloudBlobStreamBinderTypes, null, null);
 
-            IndexTypeContext ctx = new IndexTypeContext { Config = config };
-            i.IndexMethod(store.OnApplyLocationInfo, method, ctx);
+            i.IndexMethod(method);
 
             IFunctionTable functionTable = store;
             var funcs = functionTable.ReadAll();
@@ -195,7 +194,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 logItem.FunctionInstance = instance;
                 bool succeeded;
 
-                MethodInfo method = ((MethodInfoFunctionLocation)instance.Location).MethodInfo;
+                MethodInfo method = instance.Method;
 
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 

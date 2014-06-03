@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -34,7 +35,8 @@ namespace Microsoft.Azure.Jobs.Internals
 
             request.TriggerReason.ChildGuid = request.Id;
 
-            FunctionStartedSnapshot startedSnapshot = CreateStartedShapshotWithoutArguments(request);
+            FunctionStartedSnapshot startedSnapshot = CreateStartedShapshotWithoutArguments(request,
+                context.StorageAccount, context.ServiceBusConnectionString);
             FunctionCompletedSnapshot completedSnapshot = null;
 
             try
@@ -119,7 +121,7 @@ namespace Microsoft.Azure.Jobs.Internals
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
             CloudBlobDescriptor parameterLogger)
         {
-            MethodInfo method = GetMethodInfo(request);
+            MethodInfo method = request.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
             SelfWatch selfWatch = CreateSelfWatch(parameterLogger, parameterInfos, parameters, consoleOutput);
 
@@ -267,7 +269,8 @@ namespace Microsoft.Azure.Jobs.Internals
             return reflectionParameters;
         }
 
-        private FunctionStartedSnapshot CreateStartedShapshotWithoutArguments(FunctionInvokeRequest request)
+        private FunctionStartedSnapshot CreateStartedShapshotWithoutArguments(FunctionInvokeRequest request,
+            CloudStorageAccount storageAccount, string serviceBusConnectionString)
         {
             TriggerReason triggerReason = request.TriggerReason;
 
@@ -276,15 +279,15 @@ namespace Microsoft.Azure.Jobs.Internals
                 FunctionInstanceId = request.Id,
                 HostId = _sharedContext.HostId,
                 HostInstanceId = _sharedContext.HostInstanceId,
-                FunctionId = request.Location.GetId(),
-                FunctionFullName = request.Location.FullName,
-                FunctionShortName = request.Location.GetShortName(),
+                FunctionId = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.FullName, request.Method.Name),
+                FunctionFullName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.FullName, request.Method.Name),
+                FunctionShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.Name, request.Method.Name),
                 ParentId = triggerReason != null && triggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)triggerReason.ParentGuid : null,
                 Reason = triggerReason != null ? triggerReason.ToString() : null,
                 StartTime = DateTimeOffset.UtcNow,
-                StorageConnectionString = request.Location.StorageConnectionString,
-                ServiceBusConnectionString = request.Location.ServiceBusConnectionString,
+                StorageConnectionString = storageAccount != null ? storageAccount.ToString(exportSecrets: true) : null,
+                ServiceBusConnectionString = serviceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current
             };
         }
@@ -369,22 +372,6 @@ namespace Microsoft.Azure.Jobs.Internals
                 output.WriteLine();
                 e2 = e2.InnerException;
             }
-        }
-
-        private static MethodInfo GetMethodInfo(FunctionInvokeRequest invoke)
-        {
-            var methodLocation = invoke.Location as MethodInfoFunctionLocation;
-            if (methodLocation != null)
-            {
-                var method = methodLocation.MethodInfo;
-                if (method != null)
-                {
-                    return method;
-                }
-            }
-
-            throw new InvalidOperationException("Can't get a MethodInfo from function location:" + invoke.Location.ToString());
-
         }
 
         private static int GetParameterIndex(ParameterInfo[] parameters, string name)
