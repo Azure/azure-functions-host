@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionsHomeController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionDefinition, FunctionInvocationSummary, api, isUsingSdk) {
+    function ($scope, $routeParams, $interval, $http, stringUtils, api, isUsingSdk) {
         var poll,
             functionsPollInterval = 20 * 1000,
             invocationsPollInterval = 10 * 1000,
@@ -17,33 +17,20 @@
         $scope.invocations = {
             endpoint: api.sdk.recentInvocations()
         };
-
-        function getFunctionDefinitions() {
-            return $http.get(api.sdk.functionDefinitions()).then(function (res) {
-                var ix,
-                    item,
-                    functionDefinition,
-                    result = res.data.functionStatisticsViewModels,
-                    len = result.length;
-                $scope.storageAccount = res.data.storageAccountName;
-                $scope.functionDefinitions = [];
-                for (ix = 0; ix !== len; ++ix) {
-                    item = result[ix];
-                    functionDefinition = FunctionDefinition.fromJson(item);
-                    $scope.functionDefinitions.push(functionDefinition);
-                }
-            });
-        }
+        $scope.functionDefinitions = {
+            endpoint: api.sdk.functionDefinitions()
+        };
 
         poll = $interval(function () {
             if (((new Date()) - lastFunctionsPoll) > functionsPollInterval) {
                 lastFunctionsPoll = new Date();
-                getFunctionDefinitions();
+                $scope.$broadcast('functionDefinitions:poll');
             }
             if (((new Date()) - lastInvocationsPoll) > invocationsPollInterval) {
                 lastInvocationsPoll = new Date();
                 $scope.$broadcast('invocations:poll');
             }
+
             $scope.$broadcast('invocations:updateTiming');
         }, 2000);
 

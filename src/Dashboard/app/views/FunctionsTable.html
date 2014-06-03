@@ -1,0 +1,46 @@
+﻿<section ng-controller="FunctionsTableController">
+    <h3>Functions <small ng-if="storageAccount">Registered in storage account {{storageAccount}}</small></h3>
+
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th class="col-md-3">Function Name
+                    <span href=""
+                          class="label label-default"
+                          style="margin-left: 15px;"
+                          ng-show="functionDefinitions.hasNew && functionDefinitions.firstPage"
+                          ng-click="functionDefinitions.loadFirstPage()"
+                          title="New functions were detected, click here to reload the table">Show new functions</span>
+                </th>
+                <th class="col-md-1">Statistics</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-if="!functionDefinitions.entries">
+                <td colspan="2">Loading...</td>
+            </tr>
+            <tr ng-if="functionDefinitions.entries.length === 0">
+                <td colspan="2">No functions are present.</td>
+            </tr>
+            <tr ng-repeat="entry in functionDefinitions.entries">
+                <td>
+                    <span ng-if="entry.functionDefinition.isOldHost" title="Old host version" class="glyphicon glyphicon-exclamation-sign old-version"></span>
+                    <span ng-if="!entry.functionDefinition.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
+                    <a title="Invocations" href="{{_urls.functionDefinition(entry.functionDefinition.functionId)}}">{{entry.functionDefinition.functionName}}</a>
+                </td>
+                <td>
+                    <span class="label label-success">{{entry.functionDefinition.successCount}}</span>
+                    <span class="label label-danger">{{entry.functionDefinition.failedCount}}</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <ul class="pager" ng-class="functionDefinitions.disablePager ? 'disabled' : ''">
+        <li class="previous" ng-if="!functionDefinitions.firstPage" ng-click="functionDefinitions.loadPreviousPage()">
+            <a href="">← Previous</a>
+        </li>
+        <li class="next" ng-if="functionDefinitions.hasMore" ng-click="functionDefinitions.loadNextPage()">
+            <a href="">Next →</a>
+        </li>
+    </ul>
+</section>

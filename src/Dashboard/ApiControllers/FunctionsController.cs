@@ -171,11 +171,12 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions()
+        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
         {
-            var model = new DashboardIndexViewModel();
             var hearbeats = _heartbeatTable.ReadAll();
-            model.FunctionStatisticsViewModels = _functionLookup
+
+            var model = new FunctionStatisticsPageViewModel();
+            IEnumerable<FunctionStatisticsViewModel> query = _functionLookup
                 .ReadAll()
                 .Select(f => new FunctionStatisticsViewModel
                 {
@@ -185,27 +186,39 @@ namespace Dashboard.ApiControllers
                     IsRunning = FunctionController.HasValidHeartbeat(f.HostId, hearbeats),
                     FailedCount = 0,
                     SuccessCount = 0
-                }).ToArray();
+                })
+                .OrderBy(f => f.FunctionId);
 
-            var functionNames = new HashSet<string>(model.FunctionStatisticsViewModels.Select(x => x.FunctionId));
+            var lastElement = query.Last();
+
+            if (!string.IsNullOrEmpty(pagingInfo.NewerThan))
+            {
+                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.NewerThan) < 0);
+            }
+
+            if (!string.IsNullOrEmpty(pagingInfo.OlderThan))
+            {
+                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThan) > 0);
+            }
+
+            if (!string.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
+            {
+                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThanOrEqual) >= 0);
+            }
+
+            if (pagingInfo.Limit != null)
+            {
+                query = query.Take((int)pagingInfo.Limit);
+            }
+
+            model.Entries = query.ToArray();
+            model.HasMore = !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId));
 
             var all = _invokeStatsTable.Enumerate();
             foreach (var item in all)
             {
-                string rowKey = item["RowKey"];
-                var funcExists = functionNames.Contains(rowKey);
-
-                if (!funcExists)
-                {
-                    // ignore functions in stats but not found
-                    continue;
-                }
-
-                var statsModel = model
-                    .FunctionStatisticsViewModels
-                    .FirstOrDefault(x =>
-                        x.FunctionId == rowKey
-                    );
+                var statsModel = model.Entries.FirstOrDefault(x =>
+                    x.FunctionId.Equals(item["RowKey"]));
 
                 if (statsModel != null)
                 {

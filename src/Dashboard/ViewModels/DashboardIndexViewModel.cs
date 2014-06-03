@@ -10,13 +10,6 @@ using Newtonsoft.Json.Converters;
 
 namespace Dashboard.ViewModels
 {
-    public class DashboardIndexViewModel
-    {
-        public IEnumerable<InvocationLogViewModel> InvocationLogViewModels { get; set; }
-        public IEnumerable<FunctionStatisticsViewModel> FunctionStatisticsViewModels { get; set; }
-        public string StorageAccountName { get; set; }
-    }
-
     public class WebJobRunIdentifierViewModel
     {
         internal WebJobRunIdentifierViewModel(WebJobTypes jobType, string jobName, string jobRunId)

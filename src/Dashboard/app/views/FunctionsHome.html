@@ -1,38 +1,10 @@
 ﻿<ng-include src="'app/views/shared/breadcrumb.html'"></ng-include>
 <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
 <ng-include src="'app/views/shared/SdkTeaser.html'"></ng-include>
+
 <div class="row" ng-if="!_sdkNotConfigured">
     <div class="col-md-6">
-        <h3>Functions <small ng-if="storageAccount">Registered in storage account {{storageAccount}}</small></h3>
-        <section>
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Function Name</th>
-                        <th>Statistics</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-if="!functionDefinitions">
-                        <td colspan="2">Loading...</td>
-                    </tr>
-                    <tr ng-if="functionDefinitions.length === 0">
-                        <td colspan="2">No functions are present.</td>
-                    </tr>
-                    <tr ng-repeat="functionDefinition in functionDefinitions">
-                        <td>
-                            <span ng-if="functionDefinition.isOldHost" title="Old host version" class="glyphicon glyphicon-exclamation-sign old-version"></span>
-                            <span ng-if="!functionDefinition.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
-                            <a title="Invocations" href="{{_urls.functionDefinition(functionDefinition.functionId)}}">{{functionDefinition.functionName}}</a>
-                        </td>
-                        <td>
-                            <span class="label label-success">{{functionDefinition.successCount}}</span>
-                            <span class="label label-danger">{{functionDefinition.failedCount}}</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </section>
+        <ng-include src="'app/views/FunctionsTable.html'"></ng-include>
     </div>
     <div class="col-md-6">
         <h3>Invocation Log <small>Recently executed functions</small></h3>

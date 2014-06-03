@@ -215,6 +215,7 @@
     <Compile Include="Protocols\Invoker.cs" />
     <Compile Include="Protocols\RunningHostTableReader.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
+    <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="InvocationLog\IInvocationLogLoader.cs" />
     <Compile Include="InvocationLog\InvocationLogLoader.cs" />
@@ -255,6 +256,7 @@
     <Content Include="app\controllers\ConsoleOutputController.js" />
     <Content Include="app\controllers\FunctionsHomeController.js" />
     <Content Include="app\controllers\FunctionController.js" />
+    <Content Include="app\controllers\FunctionsTableController.js" />
     <Content Include="app\controllers\InvocationsTableController.js" />
     <Content Include="app\controllers\JobsListController.js" />
     <Content Include="app\controllers\ContinuousJobController.js" />
@@ -266,6 +268,7 @@
     <Content Include="app\services\urls.js" />
     <Content Include="app\services\api.js" />
     <Content Include="app\services\invocationUtils.js" />
+    <Content Include="app\views\FunctionsTable.html" />
     <Content Include="app\views\FunctionsHome.html" />
     <Content Include="app\views\Function.html" />
     <Content Include="app\views\JobsList.html" />
