@@ -2,8 +2,8 @@
 
 namespace Microsoft.Azure.Jobs.Host.Triggers
 {
-    internal interface ITriggerBinding<T> : ITriggerBinding
+    internal interface ITriggerBinding<TTriggerValue> : ITriggerBinding
     {
-        ITriggerData Bind(T value, ArgumentBindingContext context);
+        ITriggerData Bind(TTriggerValue value, ArgumentBindingContext context);
     }
 }

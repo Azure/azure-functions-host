@@ -7,6 +7,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         CancellationToken CancellationToken { get; }
 
-        IValueProvider Bind<T>(Attribute attribute);
+        IValueProvider Bind<TValue>(Attribute attribute);
     }
 }

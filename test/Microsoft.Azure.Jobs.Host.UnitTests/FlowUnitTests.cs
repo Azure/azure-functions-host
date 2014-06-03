@@ -1,5 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Bindings.Data;
+using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
@@ -140,31 +142,33 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             Assert.Null(func.TriggerBinding); // no blobs
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(1, flows.Length);
+            var flows = func.NonTriggerBindings;
+            Assert.Equal(1, flows.Count);
 
             // Assumes any unrecognized parameters are supplied by the user
-            var t = (InvokeParameterStaticBinding)flows[0];
-            Assert.Equal("stuff", t.Name);
+            Assert.True(flows.ContainsKey("stuff"));
+            Assert.IsType<ClassInvokeBinding<string>>(flows["stuff"]);
         }
 
         // Has an unbound parameter, so this will require an explicit invoke.  
         // Trigger: NoListener, explicit
+        [NoAutomaticTrigger]
         public static void HasBlobAndUnboundParameter([BlobTrigger("container")] Stream input, int unbound) { }
 
         [Fact]
         public void TestHasBlobAndUnboundParameter()
         {
+
             FunctionDefinition func = Get("HasBlobAndUnboundParameter");
 
             Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // no blobs
             Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(2, flows.Length);
+            var flows = func.NonTriggerBindings;
+            Assert.Equal(1, flows.Count);
 
-            var t1 = (InvokeParameterStaticBinding)flows[1];
-            Assert.Equal("unbound", t1.Name);
+            Assert.True(flows.ContainsKey("unbound"));
+            Assert.IsType<StructInvokeBinding<int>>(flows["unbound"]);
         }
 
         // Both parameters are bound. 
@@ -179,11 +183,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // all parameters are bound
             Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
 
-            var flows = func.Flow.Bindings;
-            Assert.Equal(2, flows.Length);
+            var flows = func.NonTriggerBindings;
+            Assert.Equal(1, flows.Count);
 
-            var t0 = (NameParameterStaticBinding)flows[1];
-            Assert.Equal("bound", t0.Name);
+            Assert.True(flows.ContainsKey("bound"));
+            Assert.IsType<StructDataBinding<string, int>>(flows["bound"]);
         }
     }
 }

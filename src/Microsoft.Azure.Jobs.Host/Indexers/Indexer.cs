@@ -5,6 +5,8 @@ using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
+using Microsoft.Azure.Jobs.Host.Bindings.Data;
+using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
 using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
 using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
@@ -104,6 +106,7 @@ namespace Microsoft.Azure.Jobs
             innerProviders.Add(new ConsoleOutputBindingProvider());
 
             innerProviders.Add(new RuntimeBindingProvider());
+            innerProviders.Add(new DataBindingProvider());
 
             return new CompositeBindingProvider(innerProviders);
         }
@@ -244,54 +247,6 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // Get any bindings that can be explicitly deduced.
-        // This always returns a non-null array, but array may have null elements
-        // for bindings that can't be determined.
-        // - either those bindings are user supplied parameters (which means this function
-        //   can't be invoked by an automatic trigger)
-        // - or the function shouldn't be indexed at all.
-        // Caller will make that distinction.
-        public ParameterStaticBinding[] CreateExplicitBindings(MethodDescriptor descr, IEnumerable<string> triggerParameterNames)
-        {
-            ParameterInfo[] ps = descr.Parameters;
-
-            ParameterStaticBinding[] flows = new ParameterStaticBinding[ps.Length];
-
-            // Populate input names
-            HashSet<string> paramNames = new HashSet<string>(triggerParameterNames);
-
-            // Take a second pass to bind params directly to {key} in the attributes above,.
-            // So if we have p1 with attr [BlobInput(@"daas-test-input2/{name}.csv")],
-            // then we'll bind 'string name' to the {name} value.
-            for (int pos = 0; pos < ps.Length; pos++)
-            {
-                if (flows[pos] == null)
-                {
-                    var parameterName = ps[pos].Name;
-                    if (paramNames.Contains(parameterName))
-                    {
-                        flows[pos] = new NameParameterStaticBinding { Name = parameterName };
-                    }
-                }
-            }
-
-            return flows;
-        }
-
-        public static void AddInvokeBindings(MethodDescriptor descr, ParameterStaticBinding[] flows)
-        {
-            ParameterInfo[] ps = descr.Parameters;
-
-            for (int i = 0; i < flows.Length; i++)
-            {
-                if (flows[i] == null)
-                {
-                    string name = ps[i].Name;
-                    flows[i] = new InvokeParameterStaticBinding { Name = name };
-                }
-            }
-        }
-
         private static MethodDescriptor GetMethodDescriptor(MethodInfo method)
         {
             var descr = new MethodDescriptor();
@@ -335,71 +290,20 @@ namespace Microsoft.Azure.Jobs
 
         private FunctionDefinition GetDescriptionForMethodInternal(MethodDescriptor descr, IndexTypeContext context)
         {
-            FunctionDefinition index = CreateFunctionDefinition(descr, context);
-
-            string description = null;
-
+            DescriptionAttribute description = null;
             NoAutomaticTriggerAttribute noAutomaticTrigger = null;
 
             foreach (var attr in descr.MethodAttributes)
             {
+                description = description ?? (attr as DescriptionAttribute);
                 noAutomaticTrigger = noAutomaticTrigger ?? (attr as NoAutomaticTriggerAttribute);
-
-                var descriptionAttr = attr as DescriptionAttribute;
-                if (descriptionAttr != null)
-                {
-                    description = descriptionAttr.Description;
-                }
             }
 
-            // $$$ Lots of other static checks to add.
-
-            IEnumerable<string> triggerParameterNames;
-
-            if (index.TriggerBinding != null && index.TriggerBinding.BindingDataContract != null)
-            {
-                triggerParameterNames = index.TriggerBinding.BindingDataContract.Keys;
-            }
-            else
-            {
-                triggerParameterNames = Enumerable.Empty<string>();
-            }
-
-            // Look at parameters.
-            ParameterStaticBinding[] parameterBindings = CreateExplicitBindings(descr, triggerParameterNames);
-
-            bool hasAnyBindings = Array.Find(parameterBindings, x => x != null) != null || index.NonTriggerBindings.Count > 0;
-            AddInvokeBindings(descr, parameterBindings);
-
-            //
-            // We now have all the explicitly provided information. Put it together.
-            //
-
-            if (index.TriggerBinding == null && noAutomaticTrigger == null && !hasAnyBindings && description == null)
-            {
-                // No trigger, binding, NoAutomaticTrigger attribute or Description attribute.
-                // Ignore this function completely.
-                return null;
-            }
-
-            index.Flow = new FunctionFlow { Bindings = parameterBindings };
-
-            if (context.Config != null)
-            {
-                ValidateParameters(parameterBindings, descr.Parameters, context.Config);
-            }
-
-            if (index.TriggerBinding != null && noAutomaticTrigger != null)
-            {
-                throw new InvalidOperationException("Can't have a trigger and NoAutomaticTrigger on the same function.");
-            }
-
-            Validate(index);
-
-            return index;
+            return CreateFunctionDefinition(descr, context, noAutomaticTrigger != null, description != null);
         }
 
-        private FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context)
+        private FunctionDefinition CreateFunctionDefinition(MethodDescriptor method, IndexTypeContext context,
+            bool hasNoAutomaticTrigger, bool hasDescription)
         {
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
@@ -440,6 +344,8 @@ namespace Microsoft.Azure.Jobs
                 bindingDataContract = null;
             }
 
+            bool hasNonInvokeBinding = false;
+
             foreach (ParameterInfo parameter in parameters)
             {
                 if (parameter == triggerParameter)
@@ -458,20 +364,37 @@ namespace Microsoft.Azure.Jobs
 
                 if (binding == null)
                 {
-                    if (triggerBinding != null)
+                    if (triggerBinding != null && !hasNoAutomaticTrigger)
                     {
-                        // throw new InvalidOperationException("Cannot bind parameter '" + parameter.Name + "' when using this trigger.");
-                        // Until all bindings are migrated, skip extra parameters.
-                        continue;
+                        throw new InvalidOperationException("Cannot bind parameter '" + parameter.Name + "' when using this trigger.");
                     }
                     else
                     {
                         // Host.Call-only parameter
-                        continue;
+                        binding = InvokeBinding.Create(parameter.Name, parameter.ParameterType);
                     }
+                }
+                else
+                {
+                    hasNonInvokeBinding = true;
                 }
 
                 nonTriggerBindings.Add(parameter.Name, binding);
+            }
+
+            if (triggerBinding == null && !hasNonInvokeBinding && !hasNoAutomaticTrigger && !hasDescription)
+            {
+                // No trigger, binding (other than invoke binding, which always gets created), NoAutomaticTrigger
+                // attribute or Description attribute.
+                // Ignore this function completely.
+                return null;
+            }
+
+            // Validation: prevent multiple ConsoleOutputs
+            if (nonTriggerBindings.OfType<ConsoleOutputBinding>().Count() > 1)
+            {
+                throw new InvalidOperationException(
+                    "Can't have multiple console output TextWriter parameters on a single function.");
             }
 
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
@@ -482,30 +405,6 @@ namespace Microsoft.Azure.Jobs
                 TriggerBinding = triggerBinding,
                 NonTriggerBindings = nonTriggerBindings
             };
-        }
-
-        // Do static checking on parameter bindings. 
-        // Throw if we detect an error. 
-        private static void ValidateParameters(ParameterStaticBinding[] parameterBindings, ParameterInfo[] parameters, IConfiguration config)
-        {
-            for (int i = 0; i < parameterBindings.Length; i++)
-            {
-                var binding = parameterBindings[i];
-                var param = parameters[i];
-                binding.Validate(config, param);
-            }
-        }
-
-        private static void Validate(FunctionDefinition index)
-        {
-            // $$$ This should share policy code with Orchestrator where it builds the listening map. 
-
-            // Throw on multiple ConsoleOutputs
-            if (index.NonTriggerBindings.OfType<ConsoleOutputBinding>().Count() > 1)
-            {
-                throw new InvalidOperationException(
-                    "Can't have multiple console output TextWriter parameters on a single function.");
-            }
         }
     }
 }

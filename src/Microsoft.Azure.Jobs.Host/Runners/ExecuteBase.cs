@@ -56,7 +56,7 @@ namespace Microsoft.Azure.Jobs
 
                 runtimeContext.ConsoleOutput = functionOutput.Output;
                 BindParameters(runtimeContext, instance);
-                startedSnapshot.Arguments = CreateArguments(instance.NonTriggerBindings, instance.Parameters, instance.Args);
+                startedSnapshot.Arguments = CreateArguments(instance.NonTriggerBindings, instance.Parameters);
 
                 instanceLogger.LogFunctionStarted(startedSnapshot);
 
@@ -202,8 +202,7 @@ namespace Microsoft.Azure.Jobs
 
         private static IDictionary<string, FunctionArgument> CreateArguments(
             IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IReadOnlyDictionary<string, IValueProvider> parameters,
-            ParameterRuntimeBinding[] runtimeBindings)
+            IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
 
@@ -230,19 +229,6 @@ namespace Microsoft.Azure.Jobs
 
                     arguments.Add(parameter.Key, argument);
                 }
-            }
-
-            foreach (ParameterRuntimeBinding runtimeBinding in runtimeBindings)
-            {
-                if (arguments.ContainsKey(runtimeBinding.Name))
-                {
-                    continue;
-                }
-
-                string value = runtimeBinding.ConvertToInvokeString();
-                FunctionArgument argument = new FunctionArgument { Value = value };
-
-                arguments.Add(runtimeBinding.Name, argument);
             }
 
             return arguments;

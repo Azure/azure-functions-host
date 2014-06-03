@@ -5,9 +5,40 @@ using System.Globalization;
 using System.Reflection;
 
 namespace Microsoft.Azure.Jobs
-{    
+{
     internal static class ObjectBinderHelpers
     {
+        public static bool CanBindFromString(Type targetType)
+        {
+            if (targetType == typeof(string))
+            {
+                return true;
+            }
+
+            MethodInfo tryParseMethod = targetType.GetMethod("TryParse", new[] { typeof(string), targetType.MakeByRefType() });
+            if (tryParseMethod != null)
+            {
+                return true;
+            }
+
+            var converter = GetConverter(targetType);
+            if (converter != null)
+            {
+                if (converter.CanConvertFrom(typeof(string)))
+                {
+                    return true;
+
+                }
+            }
+
+            if (targetType.IsEnum)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         // Beware, we deserializing, DateTimes may arbitrarily be Local or UTC time.
         // Callers can normalize via DateTime.ToUniversalTime()
         // Can't really normalize here because DateTimes could be embedded deep in the target type.
@@ -115,7 +146,7 @@ namespace Microsoft.Azure.Jobs
             // Does type implemnet IDictionary<string, TValue>?
             // If so, run through and call
             foreach (var typeInterface in objectType.GetInterfaces())
-            {    
+            {
                 if (typeInterface.IsGenericType)
                 {
                     if (typeInterface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
@@ -124,7 +155,7 @@ namespace Microsoft.Azure.Jobs
                         if (typeArgs[0] == typeof(string))
                         {
                             var m = methodConvertDict.MakeGenericMethod(typeArgs[1]);
-                            IDictionary<string, string> result = (IDictionary<string, string>) m.Invoke(null, new object[] { obj });
+                            IDictionary<string, string> result = (IDictionary<string, string>)m.Invoke(null, new object[] { obj });
                             return result;
                         }
                     }
@@ -257,7 +288,7 @@ namespace Microsoft.Azure.Jobs
             var x = DateTime.Parse(s, CultureInfo.InvariantCulture);
 
             if (x.Kind == DateTimeKind.Unspecified)
-            {                
+            {
                 // Assume if there's no timezone info, it's UTC.
                 return DateTime.SpecifyKind(x, DateTimeKind.Utc);
             }
@@ -280,12 +311,12 @@ namespace Microsoft.Azure.Jobs
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 
             // That gives them higher compatibily with just regular strings. 
-            return TableClient.IsDefaultTableType(t) || 
+            return TableClient.IsDefaultTableType(t) ||
                 (t == typeof(char)) ||
                 (t.IsEnum) || // ensures Enums are represented as string values instead of numerical.
-                (t == typeof(TimeSpan)) || 
-                (t == typeof(CloudBlobPath) 
-                
+                (t == typeof(TimeSpan)) ||
+                (t == typeof(CloudBlobPath)
+
                 );
         }
     }

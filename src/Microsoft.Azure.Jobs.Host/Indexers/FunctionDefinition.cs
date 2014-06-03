@@ -12,15 +12,12 @@ namespace Microsoft.Azure.Jobs
         // Where the function lives. Location is effectively the row key.
         public FunctionLocation Location { get; set; }
 
-        // How to bind the parameters (old style).
-        public FunctionFlow Flow { get; set; }
-
         public CloudStorageAccount GetAccount()
         {
             return Utility.GetAccount(Location.StorageConnectionString);
         }
 
-        // How to bind the parameters (new style). Will eventually be encapsulated behind Executor & Listener properties.
+        // How to bind the parameters. Will eventually be encapsulated behind Executor & Listener properties.
         public string TriggerParameterName { get; set; }
         public ITriggerBinding TriggerBinding { get; set; }
         public IReadOnlyDictionary<string, IBinding> NonTriggerBindings { get; set; }
@@ -40,14 +37,9 @@ namespace Microsoft.Azure.Jobs
                 parameters.Add(TriggerParameterName, TriggerBinding.ToParameterDescriptor());
             }
 
-            foreach (ParameterStaticBinding binding in Flow.Bindings)
+            foreach (KeyValuePair<string, IBinding> item in NonTriggerBindings)
             {
-                if (parameters.ContainsKey(binding.Name))
-                {
-                    continue;
-                }
-
-                parameters.Add(binding.Name, binding.ToParameterDescriptor());
+                parameters.Add(item.Key, item.Value.ToParameterDescriptor());
             }
 
             return new FunctionDescriptor

@@ -53,16 +53,16 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             return null;
         }
 
-        public T Bind<T>(Attribute attribute)
+        public TValue Bind<TValue>(Attribute attribute)
         {
-            IValueProvider provider = _binding.Bind<T>(attribute);
+            IValueProvider provider = _binding.Bind<TValue>(attribute);
 
             if (provider == null)
             {
-                return default(T);
+                return default(TValue);
             }
 
-            Debug.Assert(provider.Type == typeof(T));
+            Debug.Assert(provider.Type == typeof(TValue));
 
             IWatchable watchable = provider as IWatchable;
             _watcher.Add(attribute.ToString(), watchable); // Add even if null to show name in status.
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
                 _disposable.Add(disposableProvider);
             }
 
-            return (T)provider.GetValue();
+            return (TValue)provider.GetValue();
         }
 
         public void Dispose()

@@ -18,11 +18,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _context.CancellationToken; }
         }
 
-        public IValueProvider Bind<T>(Attribute attribute)
+        public IValueProvider Bind<TValue>(Attribute attribute)
         {
             IBinding binding = _context.BindingProvider.TryCreate(new BindingProviderContext
             {
-                Parameter = new FakeParameterInfo(typeof(T), attribute),
+                Parameter = new FakeParameterInfo(typeof(TValue), attribute),
                 NameResolver = _context.NameResolver,
                 StorageAccount = _context.StorageAccount,
                 ServiceBusConnectionString = _context.ServiceBusConnectionString

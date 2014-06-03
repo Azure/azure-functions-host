@@ -2,11 +2,11 @@
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class CloudBlobStreamObjectBinder<T> : ICloudBlobStreamObjectBinder
+    internal class CloudBlobStreamObjectBinder<TValue> : ICloudBlobStreamObjectBinder
     {
-        private readonly ICloudBlobStreamBinder<T> _innerBinder;
+        private readonly ICloudBlobStreamBinder<TValue> _innerBinder;
 
-        public CloudBlobStreamObjectBinder(ICloudBlobStreamBinder<T> innerBinder)
+        public CloudBlobStreamObjectBinder(ICloudBlobStreamBinder<TValue> innerBinder)
         {
             _innerBinder = innerBinder;
         }
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 
         public void WriteToStream(Stream output, object value)
         {
-            _innerBinder.WriteToStream((T)value, output);
+            _innerBinder.WriteToStream((TValue)value, output);
         }
     }
 }

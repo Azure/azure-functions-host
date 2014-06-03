@@ -2,10 +2,10 @@
 
 namespace Microsoft.Azure.Jobs.Host.Converters
 {
-    internal interface ITypeToObjectConverter<T>
+    internal interface ITypeToObjectConverter<TInput>
     {
         bool CanConvert(Type outputType);
 
-        object Convert(T input);
+        object Convert(TInput input);
     }
 }

@@ -6,9 +6,14 @@ namespace Microsoft.Azure.Jobs.Host.Converters
     {
         private readonly IEnumerable<IObjectToTypeConverter<T>> _converters;
 
-        public CompositeObjectToTypeConverter(params IObjectToTypeConverter<T>[] converters)
+        public CompositeObjectToTypeConverter(IEnumerable<IObjectToTypeConverter<T>> converters)
         {
             _converters = converters;
+        }
+
+        public CompositeObjectToTypeConverter(params IObjectToTypeConverter<T>[] converters)
+            : this((IEnumerable<IObjectToTypeConverter<T>>)converters)
+        {
         }
 
         public bool TryConvert(object value, out T converted)

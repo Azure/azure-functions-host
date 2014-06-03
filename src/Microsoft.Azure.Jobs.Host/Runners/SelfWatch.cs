@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Text;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -27,58 +25,6 @@ namespace Microsoft.Azure.Jobs
             _command = new SelfWatchCommand(watches, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
             _timer.Start(executeFirst: false);
-        }
-
-        // May update the object with a Selfwatch wrapper.
-        static ISelfWatch GetWatcher(BindResult bind, ParameterInfo targetParameter)
-        {
-            return GetWatcher(bind, targetParameter.ParameterType);
-        }
-
-        public static ISelfWatch GetWatcher(BindResult bind, Type targetType)
-        {
-            ISelfWatch watch = bind.Watcher;
-            if (watch != null)
-            {
-                // If explicitly provided, use that.
-                return watch;
-            }
-
-            watch = bind.Result as ISelfWatch;
-            if (watch != null)
-            {
-                return watch;
-            }
-
-            // See if we can apply a watcher on the result
-            var t = IsIEnumerableT(targetType);
-            if (t != null)
-            {
-                var tWatcher = typeof(WatchableEnumerable<>).MakeGenericType(t);
-                var result = Activator.CreateInstance(tWatcher, bind.Result);
-
-                bind.Result = result; // Update to watchable version.
-                return result as ISelfWatch;
-            }
-
-            // Nope, 
-            return null;
-        }
-
-        // Get the T from an IEnumerable<T>. 
-        internal static Type IsIEnumerableT(Type typeTarget)
-        {
-            if (typeTarget.IsGenericType)
-            {
-                var t2 = typeTarget.GetGenericTypeDefinition();
-                if (t2 == typeof(IEnumerable<>))
-                {
-                    // RowAs<T> doesn't take System.Type, so need to use some reflection. 
-                    var rowType = typeTarget.GetGenericArguments()[0];
-                    return rowType;
-                }
-            }
-            return null;
         }
 
         private class SelfWatchCommand : IIntervalSeparationCommand

@@ -1,8 +1,8 @@
 ﻿namespace Microsoft.Azure.Jobs.Host.Converters
 {
-    internal class IdentityConverter<T> : IConverter<T, T>
+    internal class IdentityConverter<TValue> : IConverter<TValue, TValue>
     {
-        public T Convert(T input)
+        public TValue Convert(TValue input)
         {
             return input;
         }

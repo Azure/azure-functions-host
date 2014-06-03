@@ -6,13 +6,9 @@ using Microsoft.Azure.Jobs.Host.Triggers;
 namespace Microsoft.Azure.Jobs
 {
     // Request information to invoke a function. 
-    // This is just request information and doesn't contain any response information
-    // This can be serialized. 
-    // This has private information (account keys via Args) 
     internal class FunctionInvokeRequest
     {
         // Guid provides unique id to recognize function invocation instance.
-        // This should get set once the function is queued. 
         public Guid Id { get; set; }
 
         // Diagnostic information about why this function was executed. 
@@ -22,16 +18,11 @@ namespace Microsoft.Azure.Jobs
 
         public FunctionLocation Location { get; set; }
 
-        // Parameters from old-style bindings
-        public ParameterRuntimeBinding[] Args { get; set; }
-
-        // New-style bindings
         // TODO: Cleanly separate layers that see bindings from layers that see value providers.
         public string TriggerParameterName { get; set; }
         public ITriggerData TriggerData { get; set; }
         public IReadOnlyDictionary<string, IBinding> NonTriggerBindings { get; set; }
 
-        // Parameters from new-style bindings
         public IReadOnlyDictionary<string, IValueProvider> Parameters { get; set; }
 
         // This is a valid azure table row/partition key. 

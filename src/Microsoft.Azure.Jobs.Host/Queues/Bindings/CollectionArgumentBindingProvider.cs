@@ -62,7 +62,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             return (IArgumentBinding<CloudQueue>)Activator.CreateInstance(collectionGenericType, itemBinding);
         }
 
-        private class CollectionQueueArgumentBinding<T> : IArgumentBinding<CloudQueue>
+        private class CollectionQueueArgumentBinding<TItem> : IArgumentBinding<CloudQueue>
         {
             private readonly IArgumentBinding<CloudQueue> _itemBinding;
 
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public Type ValueType
             {
-                get { return typeof(ICollection<T>); }
+                get { return typeof(ICollection<TItem>); }
             }
 
             public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             {
                 private readonly CloudQueue _queue;
                 private readonly IValueBinder _itemBinder;
-                private readonly ICollection<T> _value = new List<T>();
+                private readonly ICollection<TItem> _value = new List<TItem>();
 
                 public CollectionValueBinder(CloudQueue queue, IValueBinder itemBinder)
                 {
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
                 public Type Type
                 {
-                    get { return typeof(ICollection<T>); }
+                    get { return typeof(ICollection<TItem>); }
                 }
 
                 public object GetValue()
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 public void SetValue(object value)
                 {
                     // Not ByRef, so can ignore value argument.
-                    foreach (T item in _value)
+                    foreach (TItem item in _value)
                     {
                         _itemBinder.SetValue(item);
                     }

@@ -187,7 +187,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    runner.Invoke(instance, _parent._config, context.CancellationToken);
+                    runner.Invoke(instance);
                     succeeded = true;
                 }
                 catch (Exception e)

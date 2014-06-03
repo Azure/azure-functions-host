@@ -85,7 +85,6 @@
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
-    <Compile Include="Bindings\BindResults\NullBindResultTests.cs" />
     <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
     <Compile Include="Bindings\CloudBlobPathTests.cs" />
     <Compile Include="Bindings\BindingDataTests.cs" />

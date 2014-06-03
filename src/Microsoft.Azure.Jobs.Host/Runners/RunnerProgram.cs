@@ -41,7 +41,7 @@ namespace Microsoft.Azure.Jobs
 
             try
             {
-                Invoke(request, configuration, cancellationToken);
+                Invoke(request);
 
                 // Success
                 _consoleOutput.WriteLine("Success");
@@ -87,14 +87,10 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        public void Invoke(FunctionInvokeRequest invoke, IConfiguration config, CancellationToken cancellationToken)
+        public void Invoke(FunctionInvokeRequest invoke)
         {
             MethodInfo method = GetLocalMethod(invoke);
-            IRuntimeBindingInputs inputs = new RuntimeBindingInputs(invoke.Location);
-            bool hasBindError;
-            IReadOnlyDictionary<string, IValueProvider> parameters = CreateCombinedParameters(config, method, invoke.Id,
-                inputs, invoke.Parameters, invoke.Args, cancellationToken, out hasBindError);
-            Invoke(method, parameters, hasBindError);
+            Invoke(method, invoke.Parameters);
         }
 
         private static MethodInfo GetLocalMethod(FunctionInvokeRequest invoke)
@@ -143,55 +139,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private IReadOnlyDictionary<string, IValueProvider> CreateCombinedParameters(IConfiguration config, MethodInfo m, Guid instance,
-            IRuntimeBindingInputs inputs, IReadOnlyDictionary<string, IValueProvider> parameters, ParameterRuntimeBinding[] runtimeBindings,
-            CancellationToken cancellationToken, out bool hasBindError)
-        {
-            hasBindError = false;
-
-            Dictionary<string, IValueProvider> combinedParameters = new Dictionary<string, IValueProvider>();
-
-            IBinderEx bindingContext = new BinderEx(config, inputs, instance, _consoleOutput, cancellationToken);
-
-            foreach (ParameterInfo parameterInfo in m.GetParameters())
-            {
-                string name = parameterInfo.Name;
-                IValueProvider valueProvider = parameters != null && parameters.ContainsKey(name) ? parameters[name] : null;
-
-                if (valueProvider != null)
-                {
-                    combinedParameters.Add(name, valueProvider);
-                    continue;
-                }
-
-                ParameterRuntimeBinding runtimeBinding = runtimeBindings.SingleOrDefault(b => b.Name == name);
-
-                if (valueProvider == null && runtimeBindings == null)
-                {
-                    throw new InvalidOperationException("No value provided for parameter '" + name + "'.");
-                }
-
-                BindResult result;
-
-                try
-                {
-                    result = runtimeBinding.Bind(config, bindingContext, parameterInfo);
-                }
-                catch (Exception exception)
-                {
-                    string msg = String.Format(CultureInfo.InvariantCulture, "Error while binding parameter {0} '{1}':{2}",
-                        name, parameterInfo, exception.Message);
-                    result = new NullBindResult(msg);
-                    hasBindError = true;
-                }
-
-                combinedParameters.Add(name, new BindResultValueProvider(result, parameterInfo.ParameterType));
-            }
-
-            return combinedParameters;
-        }
-
-        private void Invoke(MethodInfo m, IReadOnlyDictionary<string, IValueProvider> parameters, bool hasBindError)
+        private void Invoke(MethodInfo m, IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             ParameterInfo[] parameterInfos = m.GetParameters();
             int length = parameterInfos.Length;
@@ -225,7 +173,7 @@ namespace Microsoft.Azure.Jobs
             SelfWatch fpStopWatcher = null;
             try
             {
-                fpStopWatcher = InvokeWorker(m, arguments, watches, hasBindError);
+                fpStopWatcher = InvokeWorker(m, arguments, watches, hasBindError: false);
             }
             finally
             {
@@ -433,54 +381,6 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 return orderedBinder.StepOrder;
-            }
-        }
-
-        private class BindResultValueProvider : IValueBinder, IWatchable, IDisposable
-        {
-            private readonly BindResult _bindResult;
-            private readonly ISelfWatch _watcher;
-
-            private bool _disposed;
-
-            public BindResultValueProvider(BindResult bindResult, Type parameterType)
-            {
-                _bindResult = bindResult;
-                _watcher = SelfWatch.GetWatcher(bindResult, parameterType);
-            }
-
-            public Type Type
-            {
-                get { throw new NotSupportedException(); }
-            }
-
-            public ISelfWatch Watcher
-            {
-                get { return _watcher; }
-            }
-
-            public void Dispose()
-            {
-                if (!_disposed)
-                {
-                    _bindResult.OnPostAction();
-                    _disposed = true;
-                }
-            }
-
-            public object GetValue()
-            {
-                return _bindResult.Result;
-            }
-
-            public void SetValue(object value)
-            {
-                _bindResult.Result = value;
-            }
-
-            public string ToInvokeString()
-            {
-                throw new NotSupportedException();
             }
         }
     }

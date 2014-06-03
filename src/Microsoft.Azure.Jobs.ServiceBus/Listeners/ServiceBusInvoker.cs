@@ -36,20 +36,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                     StorageAccount = context.StorageAccount,
                     ServiceBusConnectionString = context.ServiceBusConnectionString,
                 });
-            IDictionary<string, string> p = Worker.GetNameParameters(triggerData.BindingData);
 
             // msg was the one that triggered it.
-            RuntimeBindingInputs ctx = new RuntimeBindingInputs(func.Location)
-            {
-                NameParameters = p
-            };
+            var instance = Worker.CreateInvokeRequest(func, functionInstanceId);
 
-            var instance = Worker.BindParameters(ctx, func, functionInstanceId);
-
-            instance.TriggerParameterName = func.TriggerParameterName;
             instance.TriggerData = triggerData;
-            instance.NonTriggerBindings = func.NonTriggerBindings;
-
             instance.TriggerReason = new ServiceBusTriggerReason
             {
                 EntityPath = serviceBusTriggerBinding.EntityPath,

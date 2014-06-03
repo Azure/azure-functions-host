@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Microsoft.Azure.Jobs
 {
     internal class CloudTableEntityDescriptor
     {
-        public string AccountConnectionString { get; set; }
-
         public string TableName { get; set; }
 
         public string PartitionKey { get; set; }
@@ -19,18 +15,6 @@ namespace Microsoft.Azure.Jobs
             TableClient.ValidateAzureTableName(TableName);
             TableClient.ValidateAzureTableKeyValue(PartitionKey);
             TableClient.ValidateAzureTableKeyValue(RowKey);
-        }
-
-        // Return new entity descriptor with names filled in. 
-        // Throws if any unbound values. 
-        public static CloudTableEntityDescriptor ApplyNames(string tableName, string partitionKey, string rowKey, IDictionary<string, string> nameParameters)
-        {
-            return new CloudTableEntityDescriptor
-            {
-                TableName = RouteParser.ApplyNames(tableName, nameParameters),
-                PartitionKey = RouteParser.ApplyNames(partitionKey, nameParameters),
-                RowKey = RouteParser.ApplyNames(rowKey, nameParameters)
-            };
         }
 
         public static CloudTableEntityDescriptor Parse(string value)
