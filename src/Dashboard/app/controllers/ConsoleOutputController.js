@@ -38,24 +38,29 @@
                 originalText = $scope.consoleText;
                 start = originalText.split(/\n/).length;
             }
+
             $http({
                 method: "GET",
                 url: $scope.logUrl(),
                 params: { start: start }
             }).then(function (res) {
                 consoleLoadedAtLeastOnce = true;
-                if (res.data.length === 0) {
-                    return;
+
+                if (res.data) {
+                    if ($scope.consoleText) {
+                        $scope.consoleText += res.data;
+                    } else {
+                        $scope.consoleText = res.data;
+                    }
+                } else if (!$scope.consoleText) {
+                    $scope.consoleText = '';
                 }
-                if (originalText !== null) {
-                    $scope.consoleText = originalText + '\n' + res.data;
-                } else {
-                    $scope.consoleText = res.data;
-                }
+
                 // TODO: do this in a more angular-y way - do not  manipulate DOM directly from a controller
                 $timeout(function() {
                     textArea.scrollTop(textArea[0].scrollHeight);
                 });
+
                 lastUpdated = new Date();
             });
         }

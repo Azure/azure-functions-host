@@ -61,18 +61,14 @@ namespace Dashboard.ApiControllers
             {
                 using (var sr = new StreamReader(stream))
                 {
-                    string line;
-                    var i = 0;
-                    do
+                    string line = sr.ReadLine();
+                    for (int i = 0; line != null; i++, line = sr.ReadLine())
                     {
-                        line = sr.ReadLine();
-
-                        if (i++ > start)
+                        if (i >= start)
                         {
                             sb.AppendLine(line);
                         }
-                     
-                    }   while (line != null) ;
+                    }
                 }
             }
 
