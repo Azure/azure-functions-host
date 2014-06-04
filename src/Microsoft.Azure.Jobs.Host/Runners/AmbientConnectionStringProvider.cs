@@ -7,6 +7,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
     {
         internal static string Prefix = "AzureJobs";
 
+        public static string GetPrefixedConnectionStringName(string connectionStringName)
+        {
+            return Prefix + connectionStringName;
+        }
+
         /// <summary>
         /// Reads a connection string from the connectionStrings configuration section, or from an environment variable
         /// if it is missing from the configuration file, or is an empty string.
@@ -15,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// <returns>The connection string, or <see langword="null"/> if no connection string was found.</returns>
         public string GetConnectionString(string connectionStringName)
         {
-            string prefixedConnectionStringName = Prefix + connectionStringName;
+            string prefixedConnectionStringName = GetPrefixedConnectionStringName(connectionStringName);
             string connectionStringInConfig = null;
             var connectionStringEntry = ConfigurationManager.ConnectionStrings[prefixedConnectionStringName];
             if (connectionStringEntry != null)
