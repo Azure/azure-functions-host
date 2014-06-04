@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -75,12 +76,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             context.ConsoleOutput = consoleOutput;
 
             // Must bind before logging (bound invoke string is included in log message).
-            IReadOnlyDictionary<string, IValueProvider> parameters = request.ParametersProvider.Bind();
+            IParametersProvider parametersProvider = request.ParametersProvider;
+            IReadOnlyDictionary<string, IValueProvider> parameters = parametersProvider.Bind();
 
             using (ValueProviderDisposable.Create(parameters))
             {
-                IReadOnlyDictionary<string, IBinding> nonTriggerBindings = request.ParametersProvider.NonTriggerBindings;
-                LogFunctionStarted(message, functionOutput, parameters, nonTriggerBindings);
+                LogFunctionStarted(message, functionOutput, parameters, parametersProvider.TriggerParameterName,
+                    parametersProvider.TriggerBinding, parametersProvider.NonTriggerBindings);
 
                 try
                 {
@@ -101,14 +103,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         private void LogFunctionStarted(FunctionStartedMessage message, FunctionOutputLog functionOutput,
-            IReadOnlyDictionary<string, IValueProvider> parameters,
-            IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
+            IReadOnlyDictionary<string, IValueProvider> parameters, string triggerParameterName,
+            ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
         {
             // Finish populating the function started snapshot.
             message.OutputBlobUrl = functionOutput.Uri;
             CloudBlobDescriptor parameterLogger = functionOutput.ParameterLogBlob;
             message.ParameterLogBlobUrl = parameterLogger == null ? null : parameterLogger.GetBlockBlob().Uri.AbsoluteUri;
-            message.Arguments = CreateArguments(nonTriggerBindings, parameters);
+            message.Arguments = CreateArguments(triggerParameterName, triggerBinding, nonTriggerBindings, parameters);
 
             // Log that the function started.
             _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
@@ -311,8 +313,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private static IDictionary<string, FunctionArgument> CreateArguments(
-            IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+        private static IDictionary<string, FunctionArgument> CreateArguments(string triggerParameterName,
+            ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
@@ -321,22 +323,26 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 foreach (KeyValuePair<string, IValueProvider> parameter in parameters)
                 {
+                    string name = parameter.Key;
+                    ParameterDescriptor parameterDescriptor;
+
+                    if (name == triggerParameterName)
+                    {
+                        parameterDescriptor = triggerBinding.ToParameterDescriptor();
+                    }
+                    else
+                    {
+                        IBinding binding = nonTriggerBindings[name];
+                        parameterDescriptor = binding.ToParameterDescriptor();
+                    }
+
                     IValueProvider valueProvider = parameter.Value;
 
-                    FunctionArgument argument = new FunctionArgument { Value = valueProvider.ToInvokeString() };
-
-                    string name = parameter.Key;
-
-                    if (nonTriggerBindings.ContainsKey(name))
+                    FunctionArgument argument = new FunctionArgument
                     {
-                        BlobBinding binding = nonTriggerBindings[name] as BlobBinding;
-
-                        if (binding != null)
-                        {
-                            argument.IsBlob = true;
-                            argument.IsBlobInput = binding.IsInput;
-                        }
-                    }
+                        ParameterType = parameterDescriptor,
+                        Value = valueProvider.ToInvokeString()
+                    };
 
                     arguments.Add(parameter.Key, argument);
                 }

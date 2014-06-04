@@ -11,13 +11,10 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class FunctionArgument
 #endif
     {
+        /// <summary>Gets or sets the argument's parameter type.</summary>
+        public ParameterDescriptor ParameterType { get; set; }
+
         /// <summary>Gets or sets the argument's value.</summary>
         public string Value { get; set; }
-
-        /// <summary>Gets or sets a value indicating whether the argument represents a blob.</summary>
-        public bool? IsBlob { get; set; }
-
-        /// <summary>Gets or sets a value indicating whether the argument represents an input blob.</summary>
-        public bool? IsBlobInput { get; set; }
     }
 }

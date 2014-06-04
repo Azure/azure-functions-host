@@ -24,12 +24,7 @@ namespace Dashboard.Data
 
         public bool IsBlob
         {
-            get { return _argumentEntity.IsBlob.HasValue && _argumentEntity.IsBlob.Value; }
-        }
-
-        public bool IsBlobInput
-        {
-            get { return _argumentEntity.IsBlobInput.HasValue && _argumentEntity.IsBlobInput.Value; }
+            get { return _argumentEntity.IsBlob; }
         }
     }
 }

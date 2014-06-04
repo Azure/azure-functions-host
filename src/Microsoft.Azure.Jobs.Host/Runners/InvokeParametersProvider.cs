@@ -25,6 +25,16 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _context = context;
         }
 
+        public string TriggerParameterName
+        {
+            get { return _triggerParameterName; }
+        }
+
+        public ITriggerBinding TriggerBinding
+        {
+            get { return _triggerBinding; }
+        }
+
         public IReadOnlyDictionary<string, IBinding> NonTriggerBindings
         {
             get { return _nonTriggerBindings; }

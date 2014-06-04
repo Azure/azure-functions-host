@@ -11,9 +11,7 @@ namespace Dashboard.Data
 
         public string Value { get; set; }
 
-        public bool? IsBlob { get; set; }
-
-        public bool? IsBlobInput { get; set; }
+        public bool IsBlob { get; set; }
 
         internal static string GetRowKey(Guid functionInstanceId, int index)
         {

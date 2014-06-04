@@ -201,8 +201,7 @@ namespace Dashboard.Data
                     RowKey = FunctionArgumentEntity.GetRowKey(functionInstanceId, index),
                     Name = argument.Key,
                     Value = argument.Value.Value,
-                    IsBlob = argument.Value.IsBlob,
-                    IsBlobInput = argument.Value.IsBlobInput
+                    IsBlob = argument.Value.ParameterType is BlobParameterDescriptor,
                 });
 
                 index++;
