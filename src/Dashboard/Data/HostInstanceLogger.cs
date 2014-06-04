@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -110,14 +111,29 @@ namespace Dashboard.Data
                     {
                         ContainerName = blobParameter.ContainerName,
                         BlobName = blobParameter.BlobName,
-                        IsInput = blobParameter.IsInput
+                        IsInput = blobParameter.Access == FileAccess.Read
+                    };
+                case "BlobTrigger":
+                    BlobTriggerParameterDescriptor blobTriggerParameter = (BlobTriggerParameterDescriptor)parameter;
+                    return new BlobParameterSnapshot
+                    {
+                        ContainerName = blobTriggerParameter.ContainerName,
+                        BlobName = blobTriggerParameter.BlobName,
+                        IsInput = true
                     };
                 case "Queue":
                     QueueParameterDescriptor queueParameter = (QueueParameterDescriptor)parameter;
                     return new QueueParameterSnapshot
                     {
                         QueueName = queueParameter.QueueName,
-                        IsInput = queueParameter.IsInput
+                        IsInput = queueParameter.Access == FileAccess.Read
+                    };
+                case "QueueTrigger":
+                    QueueTriggerParameterDescriptor queueTriggerParameter = (QueueTriggerParameterDescriptor)parameter;
+                    return new QueueParameterSnapshot
+                    {
+                        QueueName = queueTriggerParameter.QueueName,
+                        IsInput = true
                     };
                 case "Table":
                     TableParameterDescriptor tableParameter = (TableParameterDescriptor)parameter;
@@ -137,8 +153,17 @@ namespace Dashboard.Data
                     ServiceBusParameterDescriptor serviceBusParameter = (ServiceBusParameterDescriptor)parameter;
                     return new ServiceBusParameterSnapshot
                     {
-                        EntityPath = serviceBusParameter.EntityPath,
-                        IsInput = serviceBusParameter.IsInput
+                        EntityPath = serviceBusParameter.QueueOrTopicName,
+                        IsInput = false
+                    };
+                case "ServiceBusTrigger":
+                    ServiceBusTriggerParameterDescriptor serviceBusTriggerParameter = (ServiceBusTriggerParameterDescriptor)parameter;
+                    return new ServiceBusParameterSnapshot
+                    {
+                        EntityPath = serviceBusTriggerParameter.QueueName != null ?
+                            serviceBusTriggerParameter.QueueName :
+                            serviceBusTriggerParameter.TopicName + "/Subscriptions/" + serviceBusTriggerParameter.SubscriptionName,
+                        IsInput = true
                     };
                 case "Invoke":
                 case "Route":

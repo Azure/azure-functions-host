@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.Jobs
             foreach (var binding in func.NonTriggerBindings.Values)
             {
                 var x = binding as BlobBinding;
-                if (x != null && !x.IsInput)
+                if (x != null && x.Access == FileAccess.Write)
                 {
                     if (sb == null)
                     {

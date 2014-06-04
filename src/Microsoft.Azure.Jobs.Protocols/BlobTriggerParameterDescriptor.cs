@@ -6,12 +6,12 @@ namespace Microsoft.Azure.Jobs.Protocols
 namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a parameter bound to a blob in Azure Storage.</summary>
-    [JsonTypeName("Blob")]
+    /// <summary>Represents a parameter triggered on a blob in Azure Storage.</summary>
+    [JsonTypeName("BlobTrigger")]
 #if PUBLICPROTOCOL
-    public class BlobParameterDescriptor : ParameterDescriptor
+    public class BlobTriggerParameterDescriptor : ParameterDescriptor
 #else
-    internal class BlobParameterDescriptor : ParameterDescriptor
+    internal class BlobTriggerParameterDescriptor : ParameterDescriptor
 #endif
     {
         /// <summary>Gets or sets the name of the container.</summary>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -31,6 +32,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return _queue.Name; }
         }
 
+        private FileAccess Access
+        {
+            get
+            {
+                return _argumentBinding.ValueType == typeof(CloudQueue)
+                    ? FileAccess.ReadWrite : FileAccess.Write;
+            }
+        }
+
         public IValueProvider Bind(BindingContext context)
         {
             return Bind(_queue, context);
@@ -58,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             return new QueueParameterDescriptor
             {
                 QueueName = _queue.Name,
-                IsInput = false
+                Access = Access
             };
         }
     }

@@ -4,7 +4,7 @@ namespace Microsoft.Azure.Jobs.Protocols
 namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a parameter bound to a table entity in an Azure Storage.</summary>
+    /// <summary>Represents a parameter bound to a table entity in Azure Storage.</summary>
     [JsonTypeName("TableEntity")]
 #if PUBLICPROTOCOL
     public class TableEntityParameterDescriptor : ParameterDescriptor

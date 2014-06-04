@@ -49,8 +49,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
         {
             return new ServiceBusParameterDescriptor
             {
-                EntityPath = _entity.MessageSender.Path,
-                IsInput = false
+                QueueOrTopicName = _entity.MessageSender.Path
             };
         }
     }

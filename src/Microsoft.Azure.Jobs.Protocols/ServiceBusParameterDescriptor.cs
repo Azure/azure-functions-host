@@ -14,10 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class ServiceBusParameterDescriptor : ParameterDescriptor
 #endif
     {
-        /// <summary>Gets or sets the entity path.</summary>
-        public string EntityPath { get; set; }
-
-        /// <summary>Gets or sets a value indicating whether the parameter is an input parameter.</summary>
-        public bool IsInput { get; set; }
+        /// <summary>Gets or sets the name of the queue or topic.</summary>
+        public string QueueOrTopicName { get; set; }
     }
 }

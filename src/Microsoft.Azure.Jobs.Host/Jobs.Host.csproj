@@ -88,6 +88,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobParameterDescriptor.cs">
       <Link>Protocols\BlobParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobTriggerParameterDescriptor.cs">
+      <Link>Protocols\BlobTriggerParameterDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CancellationTokenParameterDescriptor.cs">
       <Link>Protocols\CancellationTokenParameterDescriptor.cs</Link>
     </Compile>
@@ -166,6 +169,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueParameterDescriptor.cs">
       <Link>Protocols\QueueParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueTriggerParameterDescriptor.cs">
+      <Link>Protocols\QueueTriggerParameterDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RouteParameterDescriptor.cs">
       <Link>Protocols\RouteParameterDescriptor.cs</Link>
     </Compile>
@@ -174,6 +180,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusParameterDescriptor.cs">
       <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusTriggerParameterDescriptor.cs">
+      <Link>Protocols\ServiceBusTriggerParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>

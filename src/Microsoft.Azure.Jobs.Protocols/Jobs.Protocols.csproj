@@ -51,11 +51,13 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
     <Compile Include="HostVersionReader.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
     <Compile Include="ProcessTerminationSignalReader.cs" />
     <Compile Include="ProcessTerminationSignalWriter.cs" />
+    <Compile Include="QueueTriggerParameterDescriptor.cs" />
     <Compile Include="RouteParameterDescriptor.cs" />
     <Compile Include="BinderParameterDescriptor.cs" />
     <Compile Include="BlobParameterDescriptor.cs" />
@@ -87,6 +89,7 @@
     <Compile Include="QueueNames.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />
     <Compile Include="RunningHost.cs" />
+    <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />
     <Compile Include="ServiceBusParameterDescriptor.cs" />
     <Compile Include="TableEntityParameterDescriptor.cs" />
     <Compile Include="TableNames.cs" />

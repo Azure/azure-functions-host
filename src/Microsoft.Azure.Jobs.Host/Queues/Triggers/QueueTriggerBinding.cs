@@ -55,10 +55,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new QueueParameterDescriptor
+            return new QueueTriggerParameterDescriptor
             {
-                QueueName = _queueName,
-                IsInput = true
+                QueueName = _queueName
             };
         }
 

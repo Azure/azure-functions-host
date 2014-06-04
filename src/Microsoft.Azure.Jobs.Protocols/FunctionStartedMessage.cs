@@ -24,6 +24,12 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the host instance ID.</summary>
         public Guid HostInstanceId { get; set; }
 
+        /// <summary>Gets or sets the connection string for Azure Storage data.</summary>
+        public string StorageConnectionString { get; set; }
+
+        /// <summary>Gets or sets the connection string for Service Bus data.</summary>
+        public string ServiceBusConnectionString { get; set; }
+
         /// <summary>Gets or sets the function ID.</summary>
         public string FunctionId { get; set; }
 
@@ -44,12 +50,6 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         /// <summary>Gets or sets the time the function started executing.</summary>
         public DateTimeOffset StartTime { get; set; }
-
-        /// <summary>Gets or sets the connection string for Azure Storage data.</summary>
-        public string StorageConnectionString { get; set; }
-
-        /// <summary>Gets or sets the connection string for Service Bus data.</summary>
-        public string ServiceBusConnectionString { get; set; }
 
         /// <summary>Gets or sets the URL of the blob containing console output from the function.</summary>
         public string OutputBlobUrl { get; set; }

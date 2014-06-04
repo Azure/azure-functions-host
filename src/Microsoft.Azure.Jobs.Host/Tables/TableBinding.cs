@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -33,6 +34,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             get { return _tableName; }
         }
 
+        private FileAccess Access
+        {
+            get
+            {
+                return _argumentBinding.ValueType == typeof(CloudTable)
+                    ? FileAccess.ReadWrite : FileAccess.Read;
+            }
+        }
+
         public IValueProvider Bind(BindingContext context)
         {
             string resolvedTableName = RouteParser.ApplyBindingData(_tableName, context.BindingData);
@@ -63,7 +73,8 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             return new TableParameterDescriptor
             {
-                TableName = _tableName
+                TableName = _tableName,
+                Access = Access
             };
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -61,6 +62,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             get { return _containerName + "/" + _blobName; }
         }
 
+        private FileAccess Access
+        {
+            get
+            {
+                return typeof(ICloudBlob).IsAssignableFrom(_argumentBinding.ValueType)
+                    ? FileAccess.ReadWrite : FileAccess.Read;
+            }
+        }
+
         public ITriggerData Bind(ICloudBlob value, ArgumentBindingContext context)
         {
             IValueProvider valueProvider = _argumentBinding.Bind(value, context);
@@ -83,11 +93,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new BlobParameterDescriptor
+            return new BlobTriggerParameterDescriptor
             {
                 ContainerName = _containerName,
                 BlobName = _blobName,
-                IsInput = true
+                Access = Access
             };
         }
 

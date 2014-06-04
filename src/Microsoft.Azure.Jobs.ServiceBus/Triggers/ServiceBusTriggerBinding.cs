@@ -83,10 +83,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new ServiceBusParameterDescriptor
+            return new ServiceBusTriggerParameterDescriptor
             {
-                EntityPath = _entityPath,
-                IsInput = true
+                QueueName = _queueName,
+                TopicName = _topicName,
+                SubscriptionName = _subscriptionName
             };
         }
 

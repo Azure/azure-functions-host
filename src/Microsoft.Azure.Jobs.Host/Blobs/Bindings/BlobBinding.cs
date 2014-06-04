@@ -52,12 +52,24 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             get { return _containerName + "/" + _blobName; }
         }
 
-        public bool IsInput
+        public FileAccess Access
         {
             get
             {
-                return _argumentBinding.ValueType != typeof(TextWriter) &&
-                    _argumentBinding.ValueType != typeof(CloudBlobStream) && !_outParameter;
+                if (typeof(ICloudBlob).IsAssignableFrom(_argumentBinding.ValueType))
+                {
+                    return FileAccess.ReadWrite;
+                }
+                else if (_argumentBinding.ValueType == typeof(CloudBlobStream) ||
+                    _argumentBinding.ValueType == typeof(TextWriter) ||
+                    _outParameter)
+                {
+                    return FileAccess.Write;
+                }
+                else
+                {
+                    return FileAccess.Read;
+                }
             }
         }
 
@@ -110,7 +122,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             {
                 ContainerName = _containerName,
                 BlobName = _blobName,
-                IsInput = IsInput
+                Access = Access
             };
         }
     }

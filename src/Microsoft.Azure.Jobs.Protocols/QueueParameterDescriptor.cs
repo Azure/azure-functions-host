@@ -1,10 +1,12 @@
-﻿#if PUBLICPROTOCOL
+﻿using System.IO;
+
+#if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
 #else
 namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a parameter bound to a queue in an Azure Storage.</summary>
+    /// <summary>Represents a parameter bound to a queue in Azure Storage.</summary>
     [JsonTypeName("Queue")]
 #if PUBLICPROTOCOL
     public class QueueParameterDescriptor : ParameterDescriptor
@@ -15,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the name of the queue.</summary>
         public string QueueName { get; set; }
 
-        /// <summary>Gets or sets a value indicating whether the parameter is an input parameter.</summary>
-        public bool IsInput { get; set; }
+        /// <summary>Gets or sets the kind of access the parameter has to the queue.</summary>
+        public FileAccess Access { get; set; }
     }
 }
