@@ -130,24 +130,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal("inputqueue", t.QueueName);
         }
 
-        [Jobs.Description("This is a description")]
-        public static void DescriptionOnly(string stuff) { }
-
-        [Fact]
-        public void TestDescriptionOnly()
-        {
-            FunctionDefinition func = Get("DescriptionOnly");
-
-            Assert.Null(func.TriggerBinding); // no blobs
-
-            var flows = func.NonTriggerBindings;
-            Assert.Equal(1, flows.Count);
-
-            // Assumes any unrecognized parameters are supplied by the user
-            Assert.True(flows.ContainsKey("stuff"));
-            Assert.IsType<ClassInvokeBinding<string>>(flows["stuff"]);
-        }
-
         // Has an unbound parameter, so this will require an explicit invoke.  
         // Trigger: NoListener, explicit
         [NoAutomaticTrigger]

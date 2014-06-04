@@ -53,7 +53,6 @@
     <Compile Include="BlobTriggerAttribute.cs" />
     <Compile Include="ICloudBlobStreamBinder.cs" />
     <Compile Include="IBinder.cs" />
-    <Compile Include="DescriptionAttribute.cs" />
     <Compile Include="BlobAttribute.cs" />
     <Compile Include="QueueAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />

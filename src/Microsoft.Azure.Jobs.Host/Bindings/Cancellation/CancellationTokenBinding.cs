@@ -6,6 +6,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 {
     internal class CancellationTokenBinding : IBinding
     {
+        public bool FromAttribute
+        {
+            get { return false; }
+        }
+
         private IValueProvider Bind(CancellationToken token, ArgumentBindingContext context)
         {
             return new CancellationTokenValueProvider(token);

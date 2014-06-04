@@ -18,6 +18,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
             _parameterName = parameterName;
         }
 
+        public bool FromAttribute
+        {
+            get { return false; }
+        }
+
         private IValueProvider Bind(TValue value, ArgumentBindingContext context)
         {
             return new ObjectValueProvider(value, typeof(TValue));

@@ -27,6 +27,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             _rowKey = rowKey;
         }
 
+        public bool FromAttribute
+        {
+            get { return true; }
+        }
+
         public string TableName
         {
             get { return _tableName; }

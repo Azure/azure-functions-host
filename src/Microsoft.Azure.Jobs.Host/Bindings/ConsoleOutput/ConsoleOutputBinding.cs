@@ -7,6 +7,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 {
     internal class ConsoleOutputBinding : IBinding
     {
+        public bool FromAttribute
+        {
+            get { return false; }
+        }
+
         private IValueProvider Bind(TextWriter writer, ArgumentBindingContext context)
         {
             return new ConsoleOutputValueProvider(writer);

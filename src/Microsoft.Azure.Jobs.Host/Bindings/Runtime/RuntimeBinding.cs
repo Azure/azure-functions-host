@@ -5,6 +5,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBinding : IBinding
     {
+        public bool FromAttribute
+        {
+            get { return false; }
+        }
+
         private IValueProvider Bind(IAttributeBinding binding, ArgumentBindingContext context)
         {
             return new RuntimeValueProvider(binding);

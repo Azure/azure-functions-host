@@ -29,6 +29,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 new OutputConverter<string>(new StringToCloudTableConverter(client, tableName)));
         }
 
+        public bool FromAttribute
+        {
+            get { return true; }
+        }
+
         public string TableName
         {
             get { return _tableName; }

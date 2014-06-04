@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
+using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
+using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -95,21 +98,8 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 
         private FunctionDefinition CreateFunctionDefinitionInternal(MethodInfo method)
         {
-            DescriptionAttribute description = null;
-            NoAutomaticTriggerAttribute noAutomaticTrigger = null;
+            bool hasNoAutomaticTrigger = method.GetCustomAttribute<NoAutomaticTriggerAttribute>() != null;
 
-            foreach (var attr in method.GetCustomAttributes())
-            {
-                description = description ?? (attr as DescriptionAttribute);
-                noAutomaticTrigger = noAutomaticTrigger ?? (attr as NoAutomaticTriggerAttribute);
-            }
-
-            return CreateFunctionDefinition(method, noAutomaticTrigger != null, description != null);
-        }
-
-        private FunctionDefinition CreateFunctionDefinition(MethodInfo method, bool hasNoAutomaticTrigger,
-            bool hasDescription)
-        {
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
             ParameterInfo[] parameters = method.GetParameters();
@@ -149,7 +139,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                 bindingDataContract = null;
             }
 
-            bool hasNonInvokeBinding = false;
+            bool hasParameterBindingAttribute = false;
 
             foreach (ParameterInfo parameter in parameters)
             {
@@ -179,20 +169,24 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                         binding = InvokeBinding.Create(parameter.Name, parameter.ParameterType);
                     }
                 }
-                else
+                else if (!hasParameterBindingAttribute)
                 {
-                    hasNonInvokeBinding = true;
+                    hasParameterBindingAttribute = binding.FromAttribute;
                 }
 
                 nonTriggerBindings.Add(parameter.Name, binding);
             }
 
-            if (triggerBinding == null && !hasNonInvokeBinding && !hasNoAutomaticTrigger && !hasDescription)
+            // Only index functions with some kind of attribute on them. Three ways that could happen:
+            // 1. There's an attribute on a trigger parameter (all triggers come from attributes).
+            // 2. There's an attribute on a non-trigger parameter (some non-trigger bindings come from attributes).
+            if (triggerBinding == null && !hasParameterBindingAttribute)
             {
-                // No trigger, binding (other than invoke binding, which always gets created), NoAutomaticTrigger
-                // attribute or Description attribute.
-                // Ignore this function completely.
-                return null;
+                // 3. There's an attribute on the method itself (NoAutomaticTrigger).
+                if (method.GetCustomAttribute<NoAutomaticTriggerAttribute>() == null)
+                {
+                    return null;
+                }
             }
 
             // Validation: prevent multiple ConsoleOutputs

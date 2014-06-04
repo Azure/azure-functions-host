@@ -4,6 +4,7 @@ using System.Threading;
 namespace Microsoft.Azure.Jobs
 {
     /// <summary>Represents an attribute binder.</summary>
+    /// <remarks>This interface enables imperative binding with attribute information specified at runtime.</remarks>
     public interface IBinder
     {
         /// <summary>Gets the token to monitor for cancellation requests.</summary>

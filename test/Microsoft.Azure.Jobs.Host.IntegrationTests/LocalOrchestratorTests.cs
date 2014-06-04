@@ -230,7 +230,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
 
-        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
+        [Fact]
         public void TestEnqueueMessage_UsingCloudQueue()
         {
             var account = TestStorage.GetAccount();
@@ -399,17 +399,16 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 myoutputqueue = payloads;
             }
 
-            [Jobs.Description("cloud queue function")] // needed for indexing since we have no other attrs
             public static void FuncCloudQueueEnqueue(
-                CloudQueue myoutputqueue)
+                [Queue("myoutputqueue")]CloudQueue queue)
             {
-                myoutputqueue.AddMessage(new CloudQueueMessage("10"));
-                myoutputqueue.AddMessage(new CloudQueueMessage("20"));
-                myoutputqueue.AddMessage(new CloudQueueMessage("30"));
+                queue.AddMessage(new CloudQueueMessage("10"));
+                queue.AddMessage(new CloudQueueMessage("20"));
+                queue.AddMessage(new CloudQueueMessage("30"));
             }
 
             // Test binding to CloudStorageAccount 
-            [Jobs.Description("test")]
+            [NoAutomaticTrigger]
             public static void FuncCloudStorageAccount(CloudStorageAccount account, string value, string containerName, string blobName)
             {
                 TestBlobClient.WriteBlob(account, containerName, blobName, value);

@@ -60,7 +60,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             lc.Call("PageBlobMissing");
         }
 
-        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
+        [Fact]
         public void TestQueue()
         {
             var lc = new TestJobHost<Program>();
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.True(Program._QueueInvoked);
         }
 
-        [Fact(Skip = "CloudQueue binding is temporarily unavailable.")]
+        [Fact]
         public void TestQueueBadName()
         {
             // indexer should notice bad queue name and fail immediately
@@ -211,8 +211,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         class ProgramBadQueueName
         {
-            [Description("test")]
-            public static void QueueBadName(CloudQueue IllegalName)
+            public static void QueueBadName([Queue("IllegalName")] CloudQueue queue)
             {
                 throw new NotSupportedException("shouldnt get invoked");
             }
@@ -221,7 +220,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         class Program
         {
             // Test binding to CloudStorageAccount 
-            [Description("test")]
+            [NoAutomaticTrigger]
             public static void FuncCloudStorageAccount(CloudStorageAccount account)
             {
                 var account2 = CloudStorageAccount.DevelopmentStorageAccount;
@@ -237,11 +236,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             public static int RowCount { get; set; }
 
-            [Description("test")]
-            public static void Queue(CloudQueue mytestqueue)
+            public static void Queue([Queue("mytestqueue")]CloudQueue queue)
             {
                 _QueueInvoked = true;
-                Assert.NotNull(mytestqueue);
+                Assert.NotNull(queue);
             }
 
             public static void IBlobMissing(
@@ -286,7 +284,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Assert.Null(page);
             }
 
-            [Description("test")]
             public static void Table([Table("DaasTestTable")] CloudTable table)
             {
                 Assert.NotNull(table);
@@ -298,7 +295,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 public string StringProperty { get; set; }
             }
 
-            [Description("test")]
             public static void CountEntitiesWithStringPropertyB([Table("QueryableTest")] IQueryable<QueryableTestEntity> table)
             {
                 IQueryable<QueryableTestEntity> query = from QueryableTestEntity entity in table
@@ -307,7 +303,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 EntitiesWithStringPropertyB = query.ToArray().Count();
             }
 
-            [Description("test")]
             public static void IQueryableMissingTable([Table("NonExistingTable")] IQueryable<QueryableTestEntity> table)
             {
                 int count = 0;
@@ -325,7 +320,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 public string Value { get; set; }
             }
 
-            [Description("test")]
             public static void TestITableEntity([Table("ITableEntityTest", "PK", "RK")] ValueTableEntity entity)
             {
                 Assert.NotNull(entity);
@@ -348,7 +342,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Pear,
             }
 
-            [Description("test")]
             public static void TestPocoTableEntity([Table("TableEntityTest", "PK", "RK")] PocoTableEntity entity)
             {
                 Assert.NotNull(entity);

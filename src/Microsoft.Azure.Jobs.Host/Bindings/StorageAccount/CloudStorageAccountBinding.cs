@@ -7,10 +7,15 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
 {
     internal class CloudStorageAccountBinding : IBinding
     {
-        private readonly IObjectToTypeConverter<CloudStorageAccount> _converter =
+        private static readonly IObjectToTypeConverter<CloudStorageAccount> _converter =
             new CompositeObjectToTypeConverter<CloudStorageAccount>(
                 new OutputConverter<CloudStorageAccount>(new IdentityConverter<CloudStorageAccount>()),
                 new OutputConverter<string>(new StringToCloudStorageAccountConverter()));
+
+        public bool FromAttribute
+        {
+            get { return false; }
+        }
 
         private IValueProvider Bind(CloudStorageAccount account, ArgumentBindingContext context)
         {

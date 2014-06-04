@@ -66,7 +66,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             public static string _value; // evidence of execution
 
-            [Description("empty test function")]
+            [NoAutomaticTrigger]
             public static void Test(string value)
             {
                 _value = value;
@@ -85,14 +85,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 IsCancellationRequested = false;
             }
 
-            [Description("test")]
+            [NoAutomaticTrigger]
             public static void BindCancellationToken(CancellationToken cancellationToken)
             {
                 CancellationTokenSource.Cancel();
                 IsCancellationRequested = cancellationToken.IsCancellationRequested;
             }
 
-            [Description("test")]
+            [NoAutomaticTrigger]
             public static void BindCancellationTokenViaIBinder(IBinder binder)
             {
                 CancellationTokenSource.Cancel();

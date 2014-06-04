@@ -41,7 +41,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var expected = new[] {
                 "BlobAttribute",
                 "BlobTriggerAttribute",
-                "DescriptionAttribute",
                 "IBinder",
                 "ICloudBlobStreamBinder`1",
                 "NoAutomaticTriggerAttribute",

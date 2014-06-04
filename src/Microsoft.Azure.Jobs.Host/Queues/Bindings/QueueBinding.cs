@@ -27,6 +27,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 new OutputConverter<string>(new StringToCloudQueueConverter(queue)));
         }
 
+        public bool FromAttribute
+        {
+            get { return true; }
+        }
+
         public string QueueName
         {
             get { return _queue.Name; }

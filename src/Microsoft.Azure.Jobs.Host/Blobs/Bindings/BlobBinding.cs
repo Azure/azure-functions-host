@@ -28,6 +28,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _converter = CreateConverter(_client, containerName, blobName, argumentBinding.ValueType);
         }
 
+        public bool FromAttribute
+        {
+            get { return true; }
+        }
+
         private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
             string blobName, Type argumentType)
         {

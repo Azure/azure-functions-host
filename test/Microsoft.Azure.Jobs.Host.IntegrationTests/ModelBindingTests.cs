@@ -61,7 +61,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         class Program
         {
-            [Description("Invoke with an IBinder")]
+            [NoAutomaticTrigger]
             public static void TestBinder(IBinder binder)
             {
                 TextWriter tw = binder.Bind<TextWriter>(new BlobAttribute("daas-test-input/directout.txt"));

@@ -18,6 +18,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             _converter = CreateConverter(entity);
         }
 
+        public bool FromAttribute
+        {
+            get { return true; }
+        }
+
         private static IObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusEntity entity)
         {
             return new OutputConverter<string>(new StringToServiceBusEntityConverter(entity));
