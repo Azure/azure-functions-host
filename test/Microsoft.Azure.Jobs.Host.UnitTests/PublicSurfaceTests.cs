@@ -46,8 +46,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "NoAutomaticTriggerAttribute",
                 "QueueAttribute",
                 "QueueTriggerAttribute",
-                "ServiceBusAttribute",
-                "ServiceBusTriggerAttribute",
                 "TableAttribute"
             };
 

@@ -56,8 +56,6 @@
     <Compile Include="BlobAttribute.cs" />
     <Compile Include="QueueAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />
-    <Compile Include="ServiceBusAttribute.cs" />
-    <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
