@@ -189,45 +189,48 @@ namespace Dashboard.ApiControllers
                 })
                 .OrderBy(f => f.FunctionId);
 
-            var lastElement = query.Last();
-
-            if (!string.IsNullOrEmpty(pagingInfo.NewerThan))
+            var lastElement = query.LastOrDefault();
+            if (lastElement != null)
             {
-                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.NewerThan) < 0);
-            }
-
-            if (!string.IsNullOrEmpty(pagingInfo.OlderThan))
-            {
-                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThan) > 0);
-            }
-
-            if (!string.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
-            {
-                query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThanOrEqual) >= 0);
-            }
-
-            if (pagingInfo.Limit != null)
-            {
-                query = query.Take((int)pagingInfo.Limit);
-            }
-
-            model.Entries = query.ToArray();
-            model.HasMore = !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId));
-
-            var all = _invokeStatsTable.Enumerate();
-            foreach (var item in all)
-            {
-                var statsModel = model.Entries.FirstOrDefault(x =>
-                    x.FunctionId.Equals(item["RowKey"]));
-
-                if (statsModel != null)
+                if (!string.IsNullOrEmpty(pagingInfo.NewerThan))
                 {
-                    var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
-                    statsModel.FailedCount = stats.CountErrors;
-                    statsModel.SuccessCount = stats.CountCompleted;
+                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.NewerThan) < 0);
+                }
+
+                if (!string.IsNullOrEmpty(pagingInfo.OlderThan))
+                {
+                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThan) > 0);
+                }
+
+                if (!string.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
+                {
+                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThanOrEqual) >= 0);
+                }
+
+                if (pagingInfo.Limit != null)
+                {
+                    query = query.Take((int)pagingInfo.Limit);
+                }
+
+                var all = _invokeStatsTable.Enumerate();
+                foreach (var item in all)
+                {
+                    var statsModel = model.Entries.FirstOrDefault(x =>
+                        x.FunctionId.Equals(item["RowKey"]));
+
+                    if (statsModel != null)
+                    {
+                        var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
+                        statsModel.FailedCount = stats.CountErrors;
+                        statsModel.SuccessCount = stats.CountCompleted;
+                    }
                 }
             }
 
+            model.Entries = query.ToArray();
+            model.HasMore = lastElement != null ? 
+                !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId)) :
+                false;
             model.StorageAccountName = _account.Credentials.AccountName;
 
             return Ok(model);
