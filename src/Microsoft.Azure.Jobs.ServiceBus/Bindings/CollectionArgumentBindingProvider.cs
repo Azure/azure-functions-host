@@ -7,7 +7,7 @@ using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class CollectionArgumentBindingProvider : IServiceBusArgumentBindingProvider
+    internal class CollectionArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         public IArgumentBinding<ServiceBusEntity> TryCreate(ParameterInfo parameter)
         {

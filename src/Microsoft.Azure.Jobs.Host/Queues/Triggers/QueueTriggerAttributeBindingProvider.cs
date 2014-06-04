@@ -9,13 +9,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 {
     internal class QueueTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-        private static readonly ITypeToObjectConverter<CloudQueueMessage>[] _converters = new ITypeToObjectConverter<CloudQueueMessage>[]
-        {
-            new InputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
-            new InputConverter<string>(new CloudQueueMessageToStringConverter()),
-            new InputConverter<byte[]>(new CloudQueueMessageToByteArrayConverter()),
-            new CloudQueueMessageToUserTypeConverter()
-        };
+        private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
+            new CompositeArgumentBindingProvider(
+                new ConverterArgumentBindingProvider<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
+                new ConverterArgumentBindingProvider<string>(new CloudQueueMessageToStringConverter()),
+                new ConverterArgumentBindingProvider<byte[]>(new CloudQueueMessageToByteArrayConverter()),
+                new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
         {
@@ -30,24 +29,13 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             string queueName = context.Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
-            ITypeToObjectConverter<CloudQueueMessage> converter = null;
+            IArgumentBinding<CloudQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
 
-            foreach (ITypeToObjectConverter<CloudQueueMessage> possibleConverter in _converters)
-            {
-                if (possibleConverter.CanConvert(parameter.ParameterType))
-                {
-                    converter = possibleConverter;
-                    break;
-                }
-            }
-
-            if (converter == null)
+            if (argumentBinding == null)
             {
                 throw new InvalidOperationException("Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IArgumentBinding<CloudQueueMessage> argumentBinding =
-                new QueueTriggerArgumentBinding(converter, parameter.ParameterType);
             return new QueueTriggerBinding(argumentBinding, queueName);
         }
 

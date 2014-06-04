@@ -3,7 +3,7 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class ByteArrayArgumentBindingProvider : IServiceBusArgumentBindingProvider
+    internal class ByteArrayArgumentBindingProvider : IQueueArgumentBindingProvider
     {
         public IArgumentBinding<ServiceBusEntity> TryCreate(ParameterInfo parameter)
         {

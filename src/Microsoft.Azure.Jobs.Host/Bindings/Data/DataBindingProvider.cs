@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Converters;
 
@@ -31,37 +30,26 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 
         private class TypedDataBindingProvider<TBindingData> : IBindingProvider
         {
-            private static readonly ITypeToObjectConverter<TBindingData>[] _converters = new ITypeToObjectConverter<TBindingData>[]
-            {
-                new InputConverter<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
-                new InputConverter<TBindingData, string>(new TToStringConverter<TBindingData>()),
-                new StringToTTypeToObjectConverter<TBindingData>()
-            };
+            private static readonly IDataArgumentBindingProvider<TBindingData> _innerProvider =
+                new CompositeArgumentBindingProvider<TBindingData>(
+                    new ConverterArgumentBindingProvider<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
+                    new ConverterArgumentBindingProvider<TBindingData, string>(new TToStringConverter<TBindingData>()),
+                    new StringToTArgumentBindingProvider<TBindingData>());
 
             public IBinding TryCreate(BindingProviderContext context)
             {
-                ITypeToObjectConverter<TBindingData> converter = null;
                 ParameterInfo parameter = context.Parameter;
-                Type parameterType = parameter.ParameterType;
 
-                foreach (ITypeToObjectConverter<TBindingData> possibleConverter in _converters)
-                {
-                    if (possibleConverter.CanConvert(parameterType))
-                    {
-                        converter = possibleConverter;
-                        break;
-                    }
-                }
+                IArgumentBinding<TBindingData> argumentBinding = _innerProvider.TryCreate(parameter);
 
                 string parameterName = parameter.Name;
+                Type parameterType = parameter.ParameterType;
 
-                if (converter == null)
+                if (argumentBinding == null)
                 {
                     throw new InvalidOperationException(
                         "Can't bind parameter '" + parameterName + "' to type '" + parameterType + "'.");
                 }
-
-                IArgumentBinding<TBindingData> argumentBinding = new DataArgumentBinding<TBindingData>(converter, parameterType);
 
                 return CreateBinding<TBindingData>(parameterType, argumentBinding, parameterName);
             }

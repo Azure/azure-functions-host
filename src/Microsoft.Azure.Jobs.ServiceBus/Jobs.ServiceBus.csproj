@@ -105,19 +105,21 @@
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
+    <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />
     <Compile Include="Triggers\CalculateServiceBusTriggers.cs" />
     <Compile Include="Triggers\BrokeredMessageToByteArrayConverter.cs" />
     <Compile Include="Triggers\BrokeredMessageToStringConverter.cs" />
-    <Compile Include="Triggers\BrokeredMessageToUserTypeConverter.cs" />
-    <Compile Include="Triggers\InputConverter.cs" />
+    <Compile Include="Triggers\UserTypeArgumentBindingProvider.cs" />
+    <Compile Include="Triggers\CompositeArgumentBindingProvider.cs" />
+    <Compile Include="Triggers\ConverterArgumentBindingProvider.cs" />
     <Compile Include="Listeners\MessageReceiverComparer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Listeners\ServiceBusTriggerReason.cs" />
+    <Compile Include="Triggers\IQueueTriggerArgumentBindingProvider.cs" />
     <Compile Include="Triggers\OutputConverter.cs" />
     <Compile Include="Listeners\ServiceBusCausalityHelper.cs" />
     <Compile Include="Listeners\ServiceBusInvoker.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />
-    <Compile Include="Triggers\ConverterArgumentBinding.cs" />
     <Compile Include="Triggers\ServiceBusTriggerAttributeBindingProvider.cs" />
     <Compile Include="Triggers\ServiceBusTriggerBinding.cs" />
   </ItemGroup>

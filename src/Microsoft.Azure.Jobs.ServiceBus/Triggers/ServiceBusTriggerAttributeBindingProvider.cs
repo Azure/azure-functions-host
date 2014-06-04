@@ -9,13 +9,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class ServiceBusTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-        private static readonly ITypeToObjectConverter<BrokeredMessage>[] _converters = new ITypeToObjectConverter<BrokeredMessage>[]
-        {
-            new InputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
-            new InputConverter<string>(new BrokeredMessageToStringConverter()),
-            new InputConverter<byte[]>(new BrokeredMessageToByteArrayConverter()),
-            new BrokeredMessageToUserTypeConverter()
-        };
+        private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
+            new CompositeArgumentBindingProvider(
+                new ConverterArgumentBindingProvider<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
+                new ConverterArgumentBindingProvider<string>(new BrokeredMessageToStringConverter()),
+                new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
+                new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
         public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
         {
@@ -41,24 +40,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 subscriptionName = context.Resolve(serviceBusTrigger.SubscriptionName);
             }
 
-            ITypeToObjectConverter<BrokeredMessage> converter = null;
+            IArgumentBinding<BrokeredMessage> argumentBinding = _innerProvider.TryCreate(parameter);
 
-            foreach (ITypeToObjectConverter<BrokeredMessage> possibleConverter in _converters)
-            {
-                if (possibleConverter.CanConvert(parameter.ParameterType))
-                {
-                    converter = possibleConverter;
-                    break;
-                }
-            }
-
-            if (converter == null)
+            if (argumentBinding == null)
             {
                 throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
             }
-
-            IArgumentBinding<BrokeredMessage> argumentBinding =
-                new ConverterArgumentBinding(converter, parameter.ParameterType);
 
             if (queueName != null)
             {
