@@ -9,7 +9,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Dashboard.Data
 {
     /// <summary>Represents a reader that provides host version information.</summary>
     public class HostVersionReader : IHostVersionReader
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Protocols
         /// <param name="account">The cloud storage account.</param>
         [CLSCompliant(false)]
         public HostVersionReader(CloudStorageAccount account)
-            : this(account.CreateCloudBlobClient().GetContainerReference(ContainerNames.VersionContainerName))
+            : this(account.CreateCloudBlobClient().GetContainerReference(DashboardContainerNames.VersionContainerName))
         {
         }
 

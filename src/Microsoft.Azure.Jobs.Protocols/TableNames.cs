@@ -13,9 +13,6 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         internal const string Prefix = "AzureJobs";
 
-        /// <summary>The name of the table where protocol queue messages are stored.</summary>
-        public const string EventQueueTableName = Prefix + "EventQueue";
-
         /// <summary>The name of the table where host heartbeats are stored.</summary>
         public const string RunningHostsTableName = Prefix + "RunningHosts";
     }

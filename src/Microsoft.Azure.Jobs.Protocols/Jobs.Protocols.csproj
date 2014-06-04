@@ -53,7 +53,6 @@
     </Compile>
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
-    <Compile Include="HostVersionReader.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
     <Compile Include="ProcessTerminationSignalReader.cs" />
     <Compile Include="ProcessTerminationSignalWriter.cs" />
@@ -70,8 +69,6 @@
     <Compile Include="FunctionStartedMessage.cs" />
     <Compile Include="HostMessage.cs" />
     <Compile Include="HostStartedMessage.cs" />
-    <Compile Include="HostVersion.cs" />
-    <Compile Include="IHostVersionReader.cs" />
     <Compile Include="IInvoker.cs" />
     <Compile Include="IPersistentQueue.cs" />
     <Compile Include="IProcessTerminationSignalReader.cs" />
@@ -91,6 +88,7 @@
     <Compile Include="RunningHost.cs" />
     <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />
     <Compile Include="ServiceBusParameterDescriptor.cs" />
+    <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="TableEntityParameterDescriptor.cs" />
     <Compile Include="TableNames.cs" />
     <Compile Include="TableParameterDescriptor.cs" />

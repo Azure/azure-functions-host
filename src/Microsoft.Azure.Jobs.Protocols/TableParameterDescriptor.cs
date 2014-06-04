@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -18,6 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         public string TableName { get; set; }
 
         /// <summary>Gets or sets the kind of access the parameter has to the table.</summary>
+        [JsonConverter(typeof(StringEnumConverter))]
         public FileAccess Access { get; set; }
     }
 }

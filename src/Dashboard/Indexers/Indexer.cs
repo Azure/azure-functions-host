@@ -48,19 +48,19 @@ namespace Dashboard.Indexers
                 return;
             }
 
-            FunctionStartedMessage functionStartedMessage = message as FunctionStartedMessage;
-
-            if (functionStartedMessage != null)
-            {
-                Process(functionStartedMessage);
-                return;
-            }
-
             FunctionCompletedMessage functionCompletedMessage = message as FunctionCompletedMessage;
 
             if (functionCompletedMessage != null)
             {
                 Process(functionCompletedMessage);
+                return;
+            }
+
+            FunctionStartedMessage functionStartedMessage = message as FunctionStartedMessage;
+
+            if (functionStartedMessage != null)
+            {
+                Process(functionStartedMessage);
                 return;
             }
 

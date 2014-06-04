@@ -1,15 +1,7 @@
-﻿#if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
-#else
-namespace Microsoft.Azure.Jobs.Host.Protocols
-#endif
+﻿namespace Dashboard.Data
 {
     /// <summary>Represents a host version compatibility warning.</summary>
-#if PUBLICPROTOCOL
     public class HostVersion
-#else
-    internal class HostVersion
-#endif
     {
         /// <summary>Gets or sets a label describing the required feature.</summary>
         public string Label { get; set; }

@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs.Protocols
+﻿namespace Dashboard.Data
 {
     /// <summary>Defines a reader that provides host version information.</summary>
     public interface IHostVersionReader

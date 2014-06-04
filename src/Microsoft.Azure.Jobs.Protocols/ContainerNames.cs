@@ -13,13 +13,10 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         internal const string Prefix = "azure-jobs-";
 
-        /// <summary>The name of the container where version compatibility warnings are stored.</summary>
-        public const string VersionContainerName = Prefix + "versions";
-
         /// <summary>The name of the container where host instance abort requests are stored.</summary>
         public const string AbortHostInstanceContainerName = Prefix + "aborts";
 
-        /// <summary>The name of the container where protocol queue message payloads are stored.</summary>
-        public const string EventQueueContainerName = Prefix + "event-queue";
+        /// <summary>The name of the container where protocol messages from the host are stored.</summary>
+        public const string HostOutputContainerName = Prefix + "host-output";
     }
 }

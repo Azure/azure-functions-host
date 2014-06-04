@@ -6,5 +6,8 @@
         private const string Prefix = "azure-jobs-dashboard-";
 
         public const string HostContainer = Prefix + "hosts";
+
+        /// <summary>The name of the container where version compatibility warnings are stored.</summary>
+        public const string VersionContainerName = Prefix + "versions";
     }
 }

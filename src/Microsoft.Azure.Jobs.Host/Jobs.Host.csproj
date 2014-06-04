@@ -184,6 +184,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusTriggerParameterDescriptor.cs">
       <Link>Protocols\ServiceBusTriggerParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageExceptionExtensions.cs">
+      <Link>Protocols\StorageExceptionExtensions.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
     </Compile>

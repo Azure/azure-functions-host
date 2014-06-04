@@ -1,5 +1,4 @@
-﻿using Dashboard.Protocols;
-using Microsoft.Azure.Jobs.Protocols;
+﻿using Dashboard.Data;
 
 namespace Dashboard
 {
