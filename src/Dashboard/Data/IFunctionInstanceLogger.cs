@@ -4,8 +4,8 @@ namespace Dashboard.Data
 {
     internal interface IFunctionInstanceLogger
     {
-        void LogFunctionStarted(FunctionStartedSnapshot snapshot);
+        void LogFunctionStarted(FunctionStartedMessage message);
 
-        void LogFunctionCompleted(FunctionCompletedSnapshot snapshot);
+        void LogFunctionCompleted(FunctionCompletedMessage message);
     }
 }

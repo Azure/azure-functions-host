@@ -17,14 +17,14 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _queue = queue;
         }
 
-        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
+        public void LogFunctionStarted(FunctionStartedMessage message)
         {
-            _queue.Enqueue(new FunctionStartedMessage { Snapshot = snapshot });
+            _queue.Enqueue(message);
         }
 
-        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
+        public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            _queue.Enqueue(new FunctionCompletedMessage { Snapshot = snapshot });
+            _queue.Enqueue(message);
         }
     }
 }

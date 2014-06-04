@@ -4,7 +4,6 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Web.Mvc;
 using Dashboard.Data;
-using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
@@ -101,9 +100,9 @@ namespace Dashboard.Controllers
             return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
         }
 
-        private FunctionStartedSnapshot CreateFunctionStartedSnapshot(FunctionSnapshot function, TriggerAndOverrideMessage message)
+        private FunctionStartedMessage CreateFunctionStartedMessage(FunctionSnapshot function, TriggerAndOverrideMessage message)
         {
-            return new FunctionStartedSnapshot
+            return new FunctionStartedMessage
             {
                 FunctionInstanceId = message.Id,
                 FunctionId = message.FunctionId,
@@ -163,8 +162,8 @@ namespace Dashboard.Controllers
                 Reason = reason
             };
 
-            FunctionStartedSnapshot snapshot = CreateFunctionStartedSnapshot(function, message);
-            _functionQueuedLogger.LogFunctionQueued(snapshot);
+            FunctionStartedMessage queuedMessage = CreateFunctionStartedMessage(function, message);
+            _functionQueuedLogger.LogFunctionQueued(queuedMessage);
 
             _invoker.TriggerAndOverride(hostId, message);
 

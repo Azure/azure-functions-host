@@ -13,19 +13,19 @@ namespace Dashboard.Data
             _loggers = loggers;
         }
 
-        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
+        public void LogFunctionStarted(FunctionStartedMessage message)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.LogFunctionStarted(snapshot);
+                logger.LogFunctionStarted(message);
             }
         }
 
-        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
+        public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.LogFunctionCompleted(snapshot);
+                logger.LogFunctionCompleted(message);
             }
         }
     }

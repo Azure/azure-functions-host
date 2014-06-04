@@ -4,8 +4,8 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 

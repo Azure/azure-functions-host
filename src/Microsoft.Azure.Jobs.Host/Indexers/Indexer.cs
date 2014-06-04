@@ -1,16 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
-using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     // Go down and build an index
     internal class Indexer
@@ -208,9 +206,9 @@ namespace Microsoft.Azure.Jobs
 
             return new FunctionDefinition
             {
-                Id = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name),
-                FullName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.FullName, method.Name),
-                ShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", method.DeclaringType.Name, method.Name),
+                Id = method.GetFullName(),
+                FullName = method.GetFullName(),
+                ShortName = method.GetShortName(),
                 Method = method,
                 TriggerParameterName = triggerParameterName,
                 TriggerBinding = triggerBinding,

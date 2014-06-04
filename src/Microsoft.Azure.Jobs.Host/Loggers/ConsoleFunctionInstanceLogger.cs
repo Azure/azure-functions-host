@@ -5,18 +5,18 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal class ConsoleFunctionInstanceLogger : IFunctionInstanceLogger
     {
-        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
+        public void LogFunctionStarted(FunctionStartedMessage message)
         {
-            Console.WriteLine("Executing: '{0}' because {1}", snapshot.FunctionShortName, snapshot.Reason);
+            Console.WriteLine("Executing: '{0}' because {1}", message.FunctionShortName, message.Reason);
         }
 
-        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
+        public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            if (!snapshot.Succeeded)
+            if (!message.Succeeded)
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("  Function had errors. See Azure Jobs dashboard for details. Instance id is {0}", snapshot.FunctionInstanceId);
+                Console.WriteLine("  Function had errors. See Azure Jobs dashboard for details. Instance id is {0}", message.FunctionInstanceId);
                 Console.ForegroundColor = oldColor;
             }
         }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using Microsoft.Azure.Jobs.Internals;
+using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs

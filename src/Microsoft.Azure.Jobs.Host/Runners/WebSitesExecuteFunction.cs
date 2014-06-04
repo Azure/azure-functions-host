@@ -1,18 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
-using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Internals
+namespace Microsoft.Azure.Jobs.Host.Runners
 {
     // In-memory executor. 
     class WebSitesExecuteFunction : IExecuteFunction
@@ -35,42 +32,42 @@ namespace Microsoft.Azure.Jobs.Internals
 
             request.TriggerReason.ChildGuid = request.Id;
 
-            FunctionStartedSnapshot startedSnapshot = CreateStartedShapshotWithoutArguments(request,
+            FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(request,
                 context.StorageAccount, context.ServiceBusConnectionString);
-            FunctionCompletedSnapshot completedSnapshot = null;
+            FunctionCompletedMessage completedMessage = null;
 
             try
             {
-                ExecuteWithSnapshot(request, context, startedSnapshot);
-                completedSnapshot = CreateCompletedSnapshot(startedSnapshot);
-                completedSnapshot.Succeeded = true;
+                ExecuteWithLogMessage(request, context, startedMessage);
+                completedMessage = CreateCompletedMessage(startedMessage);
+                completedMessage.Succeeded = true;
             }
             catch (Exception e)
             {
-                if (completedSnapshot == null)
+                if (completedMessage == null)
                 {
-                    completedSnapshot = CreateCompletedSnapshot(startedSnapshot);
+                    completedMessage = CreateCompletedMessage(startedMessage);
                 }
 
-                completedSnapshot.Succeeded = false;
-                completedSnapshot.ExceptionType = e.GetType().FullName;
-                completedSnapshot.ExceptionMessage = e.Message;
+                completedMessage.Succeeded = false;
+                completedMessage.ExceptionType = e.GetType().FullName;
+                completedMessage.ExceptionMessage = e.Message;
             }
             finally
             {
-                completedSnapshot.EndTime = DateTimeOffset.UtcNow;
-                _sharedContext.FunctionInstanceLogger.LogFunctionCompleted(completedSnapshot);
+                completedMessage.EndTime = DateTimeOffset.UtcNow;
+                _sharedContext.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
             }
 
             return new FunctionInvocationResult
             {
-                Id = completedSnapshot.FunctionInstanceId,
-                Succeeded = completedSnapshot.Succeeded,
-                ExceptionMessage = completedSnapshot.ExceptionMessage
+                Id = completedMessage.FunctionInstanceId,
+                Succeeded = completedMessage.Succeeded,
+                ExceptionMessage = completedMessage.ExceptionMessage
             };
         }
 
-        private void ExecuteWithSnapshot(FunctionInvokeRequest request, RuntimeBindingProviderContext context, FunctionStartedSnapshot snapshot)
+        private void ExecuteWithLogMessage(FunctionInvokeRequest request, RuntimeBindingProviderContext context, FunctionStartedMessage message)
         {
             // Create the console output writer
             FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(request);
@@ -83,7 +80,7 @@ namespace Microsoft.Azure.Jobs.Internals
             using (ValueProviderDisposable.Create(parameters))
             {
                 IReadOnlyDictionary<string, IBinding> nonTriggerBindings = request.ParametersProvider.NonTriggerBindings;
-                LogFunctionStarted(snapshot, functionOutput, parameters, nonTriggerBindings);
+                LogFunctionStarted(message, functionOutput, parameters, nonTriggerBindings);
 
                 try
                 {
@@ -103,18 +100,18 @@ namespace Microsoft.Azure.Jobs.Internals
             }
         }
 
-        private void LogFunctionStarted(FunctionStartedSnapshot snapshot, FunctionOutputLog functionOutput,
+        private void LogFunctionStarted(FunctionStartedMessage message, FunctionOutputLog functionOutput,
             IReadOnlyDictionary<string, IValueProvider> parameters,
             IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
         {
             // Finish populating the function started snapshot.
-            snapshot.OutputBlobUrl = functionOutput.Uri;
+            message.OutputBlobUrl = functionOutput.Uri;
             CloudBlobDescriptor parameterLogger = functionOutput.ParameterLogBlob;
-            snapshot.ParameterLogBlobUrl = parameterLogger == null ? null : parameterLogger.GetBlockBlob().Uri.AbsoluteUri;
-            snapshot.Arguments = CreateArguments(nonTriggerBindings, parameters);
+            message.ParameterLogBlobUrl = parameterLogger == null ? null : parameterLogger.GetBlockBlob().Uri.AbsoluteUri;
+            message.Arguments = CreateArguments(nonTriggerBindings, parameters);
 
             // Log that the function started.
-            _sharedContext.FunctionInstanceLogger.LogFunctionStarted(snapshot);
+            _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
         }
 
         private void ExecuteWithOutputLogs(FunctionInvokeRequest request,
@@ -269,19 +266,19 @@ namespace Microsoft.Azure.Jobs.Internals
             return reflectionParameters;
         }
 
-        private FunctionStartedSnapshot CreateStartedShapshotWithoutArguments(FunctionInvokeRequest request,
+        private FunctionStartedMessage CreateStartedMessageWithoutArguments(FunctionInvokeRequest request,
             CloudStorageAccount storageAccount, string serviceBusConnectionString)
         {
             TriggerReason triggerReason = request.TriggerReason;
 
-            return new FunctionStartedSnapshot
+            return new FunctionStartedMessage
             {
                 FunctionInstanceId = request.Id,
                 HostId = _sharedContext.HostId,
                 HostInstanceId = _sharedContext.HostInstanceId,
-                FunctionId = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.FullName, request.Method.Name),
-                FunctionFullName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.FullName, request.Method.Name),
-                FunctionShortName = String.Format(CultureInfo.InvariantCulture, "{0}.{1}", request.Method.DeclaringType.Name, request.Method.Name),
+                FunctionId = request.Method.GetFullName(),
+                FunctionFullName = request.Method.GetFullName(),
+                FunctionShortName = request.Method.GetShortName(),
                 ParentId = triggerReason != null && triggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)triggerReason.ParentGuid : null,
                 Reason = triggerReason != null ? triggerReason.ToString() : null,
@@ -292,25 +289,25 @@ namespace Microsoft.Azure.Jobs.Internals
             };
         }
 
-        private static FunctionCompletedSnapshot CreateCompletedSnapshot(FunctionStartedSnapshot startedSnapshot)
+        private static FunctionCompletedMessage CreateCompletedMessage(FunctionStartedMessage startedMessage)
         {
-            return new FunctionCompletedSnapshot
+            return new FunctionCompletedMessage
             {
-                FunctionInstanceId = startedSnapshot.FunctionInstanceId,
-                HostId = startedSnapshot.HostId,
-                HostInstanceId = startedSnapshot.HostInstanceId,
-                FunctionId = startedSnapshot.FunctionId,
-                FunctionFullName = startedSnapshot.FunctionFullName,
-                FunctionShortName = startedSnapshot.FunctionShortName,
-                Arguments = startedSnapshot.Arguments,
-                ParentId = startedSnapshot.ParentId,
-                Reason = startedSnapshot.Reason,
-                StartTime = startedSnapshot.StartTime,
-                StorageConnectionString = startedSnapshot.StorageConnectionString,
-                ServiceBusConnectionString = startedSnapshot.ServiceBusConnectionString,
-                OutputBlobUrl = startedSnapshot.OutputBlobUrl,
-                ParameterLogBlobUrl = startedSnapshot.ParameterLogBlobUrl,
-                WebJobRunIdentifier = startedSnapshot.WebJobRunIdentifier
+                FunctionInstanceId = startedMessage.FunctionInstanceId,
+                HostId = startedMessage.HostId,
+                HostInstanceId = startedMessage.HostInstanceId,
+                FunctionId = startedMessage.FunctionId,
+                FunctionFullName = startedMessage.FunctionFullName,
+                FunctionShortName = startedMessage.FunctionShortName,
+                Arguments = startedMessage.Arguments,
+                ParentId = startedMessage.ParentId,
+                Reason = startedMessage.Reason,
+                StartTime = startedMessage.StartTime,
+                StorageConnectionString = startedMessage.StorageConnectionString,
+                ServiceBusConnectionString = startedMessage.ServiceBusConnectionString,
+                OutputBlobUrl = startedMessage.OutputBlobUrl,
+                ParameterLogBlobUrl = startedMessage.ParameterLogBlobUrl,
+                WebJobRunIdentifier = startedMessage.WebJobRunIdentifier
             };
         }
 

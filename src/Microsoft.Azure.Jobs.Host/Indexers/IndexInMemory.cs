@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Microsoft.Azure.Jobs.Internals
+namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     class IndexInMemory : IFunctionTable
     {

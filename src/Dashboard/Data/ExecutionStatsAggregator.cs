@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using AzureTables;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 
@@ -77,11 +75,11 @@ namespace Dashboard.Data
             _funcs.Clear(); // cause it to be reloaded
         }
 
-        private void LogMru(FunctionStartedSnapshot snapshot)
+        private void LogMru(FunctionStartedMessage message)
         {
-            Guid instance = snapshot.FunctionInstanceId;
+            Guid instance = message.FunctionInstanceId;
 
-            DateTime rowKeyTimestamp = snapshot.StartTime.UtcDateTime;
+            DateTime rowKeyTimestamp = message.StartTime.UtcDateTime;
 
             // Use function's actual end time (so we can reindex)
             // and append with the function instance ID just in case there are ties. 
@@ -90,15 +88,15 @@ namespace Dashboard.Data
             var ptr = new FunctionInstanceGuid(instance);
             _tableMRU.Write(PartitionKey, rowKey, ptr);
 
-            string funcId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString(); // valid row key
+            string funcId = new FunctionIdentifier(message.HostId, message.FunctionId).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
         }
 
-        private void LogMru(FunctionCompletedSnapshot snapshot)
+        private void LogMru(FunctionCompletedMessage message)
         {
-            Guid instance = snapshot.FunctionInstanceId;
+            Guid instance = message.FunctionInstanceId;
 
-            DateTime rowKeyTimestamp = snapshot.EndTime.UtcDateTime;
+            DateTime rowKeyTimestamp = message.EndTime.UtcDateTime;
 
             // Use function's actual end time (so we can reindex)
             // and append with the function instance ID just in case there are ties. 
@@ -107,10 +105,10 @@ namespace Dashboard.Data
             var ptr = new FunctionInstanceGuid(instance);
             _tableMRU.Write(PartitionKey, rowKey, ptr);
 
-            string funcId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString(); // valid row key
+            string funcId = new FunctionIdentifier(message.HostId, message.FunctionId).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
 
-            if (snapshot.Succeeded)
+            if (message.Succeeded)
             {
                 _tableMRUByFunctionSucceed.Write(funcId, rowKey, ptr);
             }
@@ -126,16 +124,16 @@ namespace Dashboard.Data
             _tableMRUByFunction.Delete(TableClient.GetAsTableKey(functionId), rowKey);
         }
 
-        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
+        public void LogFunctionStarted(FunctionStartedMessage mesage)
         {
             // This method may be called concurrently with LogFunctionCompleted.
             // Don't log a function running after it has been logged as completed.
-            if (HasLoggedFunctionCompleted(snapshot.FunctionInstanceId))
+            if (HasLoggedFunctionCompleted(mesage.FunctionInstanceId))
             {
                 return;
             }
 
-            LogMru(snapshot);
+            LogMru(mesage);
             Flush();
         }
 
@@ -156,15 +154,15 @@ namespace Dashboard.Data
             return !object.ReferenceEquals(completedRow, null);
         }
 
-        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
+        public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            LogMru(snapshot);
+            LogMru(message);
 
             // This method may be called concurrently with LogFunctionStarted.
             // Remove the function running log after logging as completed.
-            DeleteFunctionStartedIfExists(snapshot);
+            DeleteFunctionStartedIfExists(message);
 
-            string functionId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString();
+            string functionId = new FunctionIdentifier(message.HostId, message.FunctionId).ToString();
             FunctionStatsEntity stats;
             if (!_funcs.TryGetValue(functionId, out stats))
             {
@@ -176,10 +174,10 @@ namespace Dashboard.Data
                 _funcs[functionId] = stats;
             }
 
-            if (snapshot.Succeeded)
+            if (message.Succeeded)
             {
                 stats.CountCompleted++;
-                TimeSpan duration = snapshot.EndTime - snapshot.StartTime;
+                TimeSpan duration = message.EndTime - message.StartTime;
                 stats.Runtime += duration;
                 stats.LastWriteTime = DateTime.UtcNow;
             }
@@ -191,14 +189,14 @@ namespace Dashboard.Data
             Flush();
         }
 
-        private void DeleteFunctionStartedIfExists(FunctionCompletedSnapshot snapshot)
+        private void DeleteFunctionStartedIfExists(FunctionCompletedMessage message)
         {
-            if (snapshot.StartTime.Ticks == snapshot.EndTime.Ticks)
+            if (message.StartTime.Ticks == message.EndTime.Ticks)
             {
                 return;
             }
 
-            DeleteIndex(TableClient.GetTickRowKey(snapshot.StartTime.UtcDateTime, snapshot.FunctionInstanceId), new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString());
+            DeleteIndex(TableClient.GetTickRowKey(message.StartTime.UtcDateTime, message.FunctionInstanceId), new FunctionIdentifier(message.HostId, message.FunctionId).ToString());
         }
     }
 }

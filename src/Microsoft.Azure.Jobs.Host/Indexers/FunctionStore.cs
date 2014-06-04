@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Internals
+namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     internal class FunctionStore : IFunctionTableLookup
     {

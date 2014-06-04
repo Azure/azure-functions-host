@@ -4,6 +4,7 @@ using Microsoft.Azure.Jobs.Host.Bindings.Data;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.Azure.Jobs.Host.Tables;

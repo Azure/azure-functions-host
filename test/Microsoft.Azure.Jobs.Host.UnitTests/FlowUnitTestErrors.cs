@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests

@@ -1,16 +1,14 @@
 ﻿﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
-using Microsoft.Azure.Jobs.Internals;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs

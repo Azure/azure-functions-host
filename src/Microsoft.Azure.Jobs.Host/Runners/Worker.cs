@@ -159,8 +159,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 else
                 {
                     // Log that the function failed.
-                    FunctionCompletedSnapshot snapshot = CreateFailedSnapshot(triggerOverrideModel, message.InsertionTime.Value);
-                    _functionInstanceLogger.LogFunctionCompleted(snapshot);
+                    FunctionCompletedMessage failedMessage = CreateFailedMessage(triggerOverrideModel,
+                        message.InsertionTime.Value);
+                    _functionInstanceLogger.LogFunctionCompleted(failedMessage);
                 }
             }
             else
@@ -172,13 +173,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         // This snapshot won't contain full normal data for FunctionLongName and FunctionShortName.
         // (All we know is an unavailable function ID; which function location method info to use is a mystery.)
-        private static FunctionCompletedSnapshot CreateFailedSnapshot(TriggerAndOverrideMessage message, DateTimeOffset insertionType)
+        private static FunctionCompletedMessage CreateFailedMessage(TriggerAndOverrideMessage message, DateTimeOffset insertionType)
         {
             DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
 
             // In theory, we could also set HostId, HostInstanceId and WebJobRunId; we'd just have to expose that data
             // directly to this Worker class.
-            return new FunctionCompletedSnapshot
+            return new FunctionCompletedMessage
             {
                 FunctionInstanceId = message.Id,
                 FunctionId = message.FunctionId,

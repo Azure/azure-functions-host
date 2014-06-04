@@ -76,34 +76,34 @@ namespace Dashboard.Indexers
 
         private void Process(FunctionStartedMessage message)
         {
-            _functionInstanceLogger.LogFunctionStarted(message.Snapshot);
-            _causalityLogger.LogTriggerReason(CreateTriggerReason(message.Snapshot));
+            _functionInstanceLogger.LogFunctionStarted(message);
+            _causalityLogger.LogTriggerReason(CreateTriggerReason(message));
 
-            if (message.Snapshot.WebJobRunIdentifier != null)
+            if (message.WebJobRunIdentifier != null)
             {
-                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.Snapshot.FunctionInstanceId,
-                    message.Snapshot.StartTime.UtcDateTime, message.Snapshot.WebJobRunIdentifier);
+                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.FunctionInstanceId,
+                    message.StartTime.UtcDateTime, message.WebJobRunIdentifier);
             }
         }
 
-        internal static TriggerReason CreateTriggerReason(FunctionStartedSnapshot snapshot)
+        internal static TriggerReason CreateTriggerReason(FunctionStartedMessage message)
         {
-            if (!snapshot.ParentId.HasValue && String.IsNullOrEmpty(snapshot.Reason))
+            if (!message.ParentId.HasValue && String.IsNullOrEmpty(message.Reason))
             {
                 return null;
             }
 
             return new InvokeTriggerReason
             {
-                ChildGuid = snapshot.FunctionInstanceId,
-                ParentGuid = snapshot.ParentId.GetValueOrDefault(),
-                Message = snapshot.Reason
+                ChildGuid = message.FunctionInstanceId,
+                ParentGuid = message.ParentId.GetValueOrDefault(),
+                Message = message.Reason
             };
         }
 
         private void Process(FunctionCompletedMessage message)
         {
-            _functionInstanceLogger.LogFunctionCompleted(message.Snapshot);
+            _functionInstanceLogger.LogFunctionCompleted(message);
         }
     }
 }

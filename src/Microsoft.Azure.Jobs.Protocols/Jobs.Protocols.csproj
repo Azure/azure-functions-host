@@ -64,10 +64,8 @@
     <Compile Include="ContainerNames.cs" />
     <Compile Include="FunctionArgument.cs" />
     <Compile Include="FunctionCompletedMessage.cs" />
-    <Compile Include="FunctionCompletedSnapshot.cs" />
     <Compile Include="FunctionDescriptor.cs" />
     <Compile Include="FunctionStartedMessage.cs" />
-    <Compile Include="FunctionStartedSnapshot.cs" />
     <Compile Include="HostMessage.cs" />
     <Compile Include="HostStartedMessage.cs" />
     <Compile Include="HostVersion.cs" />

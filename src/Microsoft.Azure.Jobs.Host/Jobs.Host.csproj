@@ -106,17 +106,11 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedMessage.cs">
       <Link>Protocols\FunctionCompletedMessage.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedSnapshot.cs">
-      <Link>Protocols\FunctionCompletedSnapshot.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionDescriptor.cs">
       <Link>Protocols\FunctionDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessage.cs">
       <Link>Protocols\FunctionStartedMessage.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedSnapshot.cs">
-      <Link>Protocols\FunctionStartedSnapshot.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostMessage.cs">
       <Link>Protocols\HostMessage.cs</Link>
@@ -292,6 +286,7 @@
     <Compile Include="Converters\ITypeToObjectConverter.cs" />
     <Compile Include="Indexers\DefaultBindingProvider.cs" />
     <Compile Include="Indexers\DefaultTriggerBindingProvider.cs" />
+    <Compile Include="MethodInfoExtensions.cs" />
     <Compile Include="ObjectDictionaryConverter.cs" />
     <Compile Include="PropertyHelper.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />

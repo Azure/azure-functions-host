@@ -31,20 +31,20 @@ namespace Dashboard.Data
         }
 
         // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
-        public void LogFunctionQueued(FunctionStartedSnapshot snapshot)
+        public void LogFunctionQueued(FunctionStartedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
             // Fix the abuse of FunctionStartedSnapshot.
             group.InstanceEntity.StartTime = null;
             _table.Insert(group.GetEntities());
         }
 
-        public void LogFunctionStarted(FunctionStartedSnapshot snapshot)
+        public void LogFunctionStarted(FunctionStartedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
 
             // Which operation to run depends on whether or not the entity currently exists in the "queued" status.
-            FunctionInstanceEntityGroup existingGroup = FunctionInstanceEntityGroup.Lookup(_table, snapshot.FunctionInstanceId);
+            FunctionInstanceEntityGroup existingGroup = FunctionInstanceEntityGroup.Lookup(_table, message.FunctionInstanceId);
 
             bool previouslyQueued;
 
@@ -140,19 +140,19 @@ namespace Dashboard.Data
             }
         }
 
-        public void LogFunctionCompleted(FunctionCompletedSnapshot snapshot)
+        public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(snapshot);
+            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
 
             // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionCompleted wins by
             // having it replace the LogFunctionStarted record, if any.
             _table.InsertOrReplace(group.GetEntities());
         }
 
-        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionStartedSnapshot snapshot)
+        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionStartedMessage message)
         {
-            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(snapshot);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(snapshot.FunctionInstanceId, snapshot.Arguments);
+            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId, message.Arguments);
 
             return new FunctionInstanceEntityGroup
             {
@@ -161,29 +161,29 @@ namespace Dashboard.Data
             };
         }
 
-        private static FunctionInstanceEntity CreateInstanceEntity(FunctionStartedSnapshot snapshot)
+        private static FunctionInstanceEntity CreateInstanceEntity(FunctionStartedMessage message)
         {
             return new FunctionInstanceEntity
             {
                 PartitionKey = PartitionKey,
-                RowKey = FunctionInstanceEntity.GetRowKey(snapshot.FunctionInstanceId),
-                Id = snapshot.FunctionInstanceId,
-                HostId = snapshot.HostId,
-                HostInstanceId = snapshot.HostInstanceId,
-                FunctionId = new FunctionIdentifier(snapshot.HostId, snapshot.FunctionId).ToString(),
-                FunctionFullName = snapshot.FunctionFullName,
-                FunctionShortName = snapshot.FunctionShortName,
-                ParentId = snapshot.ParentId,
-                Reason = snapshot.Reason,
-                QueueTime = snapshot.StartTime,
-                StartTime = snapshot.StartTime,
-                StorageConnectionString = snapshot.StorageConnectionString,
-                OutputBlobUrl = snapshot.OutputBlobUrl,
-                ParameterLogBlobUrl = snapshot.ParameterLogBlobUrl,
-                WebSiteName = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.WebSiteName : null,
-                WebJobType = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.JobType.ToString() : null,
-                WebJobName = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.JobName : null,
-                WebJobRunId = snapshot.WebJobRunIdentifier != null ? snapshot.WebJobRunIdentifier.RunId : null
+                RowKey = FunctionInstanceEntity.GetRowKey(message.FunctionInstanceId),
+                Id = message.FunctionInstanceId,
+                HostId = message.HostId,
+                HostInstanceId = message.HostInstanceId,
+                FunctionId = new FunctionIdentifier(message.HostId, message.FunctionId).ToString(),
+                FunctionFullName = message.FunctionFullName,
+                FunctionShortName = message.FunctionShortName,
+                ParentId = message.ParentId,
+                Reason = message.Reason,
+                QueueTime = message.StartTime,
+                StartTime = message.StartTime,
+                StorageConnectionString = message.StorageConnectionString,
+                OutputBlobUrl = message.OutputBlobUrl,
+                ParameterLogBlobUrl = message.ParameterLogBlobUrl,
+                WebSiteName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.WebSiteName : null,
+                WebJobType = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.JobType.ToString() : null,
+                WebJobName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.JobName : null,
+                WebJobRunId = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.RunId : null
             };
         }
 
@@ -211,10 +211,10 @@ namespace Dashboard.Data
             return entities;
         }
 
-        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionCompletedSnapshot snapshot)
+        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionCompletedMessage message)
         {
-            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(snapshot);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(snapshot.FunctionInstanceId, snapshot.Arguments);
+            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId, message.Arguments);
 
             return new FunctionInstanceEntityGroup
             {
@@ -223,13 +223,13 @@ namespace Dashboard.Data
             };
         }
 
-        private static FunctionInstanceEntity CreateInstanceEntity(FunctionCompletedSnapshot snapshot)
+        private static FunctionInstanceEntity CreateInstanceEntity(FunctionCompletedMessage message)
         {
-            FunctionInstanceEntity entity = CreateInstanceEntity((FunctionStartedSnapshot)snapshot);
-            entity.EndTime = snapshot.EndTime;
-            entity.Succeeded = snapshot.Succeeded;
-            entity.ExceptionType = snapshot.ExceptionType;
-            entity.ExceptionMessage = snapshot.ExceptionMessage;
+            FunctionInstanceEntity entity = CreateInstanceEntity((FunctionStartedMessage)message);
+            entity.EndTime = message.EndTime;
+            entity.Succeeded = message.Succeeded;
+            entity.ExceptionType = message.ExceptionType;
+            entity.ExceptionMessage = message.ExceptionMessage;
             return entity;
         }
     }
