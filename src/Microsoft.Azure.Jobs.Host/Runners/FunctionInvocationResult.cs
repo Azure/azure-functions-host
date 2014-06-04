@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.ExceptionServices;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
 {
@@ -8,6 +9,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         public bool Succeeded { get; set; }
 
-        public string ExceptionMessage { get; set; }
+        public IDelayedException ExceptionInfo { get; set; }
     }
 }

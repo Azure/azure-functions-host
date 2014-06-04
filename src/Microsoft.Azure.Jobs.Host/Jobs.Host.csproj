@@ -324,6 +324,10 @@
     <Compile Include="Queues\Triggers\QueueTriggerArgumentBinding.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
+    <Compile Include="Runners\AggregateDelayedException.cs" />
+    <Compile Include="Runners\DelayedException.cs" />
+    <Compile Include="Runners\ExceptionDispatchInfoDelayedException.cs" />
+    <Compile Include="Runners\IDelayedException.cs" />
     <Compile Include="Runners\InvokeParametersProvider.cs" />
     <Compile Include="Runners\TriggerParametersProvider.cs" />
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />

@@ -352,7 +352,7 @@ namespace Microsoft.Azure.Jobs
         {
             if (!result.Succeeded)
             {
-                throw new Exception("Function failed: " + result.ExceptionMessage);
+                result.ExceptionInfo.Throw();
             }
         }
 

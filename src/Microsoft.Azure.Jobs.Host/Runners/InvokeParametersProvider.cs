@@ -47,7 +47,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             if (_triggerParameterName != null)
             {
-                if (_parameters.ContainsKey(_triggerParameterName))
+                if (_parameters == null || !_parameters.ContainsKey(_triggerParameterName))
                 {
                     throw new InvalidOperationException(
                         "Missing value for trigger parameter '" + _triggerParameterName + "'.");

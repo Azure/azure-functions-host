@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return null;
             }
 
-            Type itemType = genericTypeDefinition.GetGenericArguments()[0];
+            Type itemType = parameterType.GetGenericArguments()[0];
 
             IArgumentBinding<CloudQueue> itemBinding;
 

@@ -86,7 +86,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
         {
             LocalFunctionTable store = new LocalFunctionTable(account);
-            Indexer i = new Indexer(store, config.NameResolver, config.CloudBlobStreamBinderTypes, null, null);
+            Indexer i = new Indexer(store, config.NameResolver, config.CloudBlobStreamBinderTypes, account, null);
 
             i.IndexMethod(method);
 
@@ -137,7 +137,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters, null);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters,
+                new RuntimeBindingProviderContext());
 
             Guid guidThis = CallUtil.GetParentGuid(parameters);
             return CallInner(instance, guidThis);
@@ -218,7 +219,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 {
                     Id = instance.Id,
                     Succeeded = succeeded,
-                    ExceptionMessage = logItem.ExceptionMessage
+                    ExceptionInfo = new DelayedException(new Exception(logItem.ExceptionMessage))
                 };
             }
         }

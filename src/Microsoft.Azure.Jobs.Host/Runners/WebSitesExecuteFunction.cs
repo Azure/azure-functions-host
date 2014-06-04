@@ -9,6 +9,7 @@ using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System.Runtime.ExceptionServices;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
 {
@@ -37,6 +38,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 context.StorageAccount, context.ServiceBusConnectionString);
             FunctionCompletedMessage completedMessage = null;
 
+            ExceptionDispatchInfo exceptionInfo = null;
+
             try
             {
                 ExecuteWithLogMessage(request, context, startedMessage);
@@ -53,6 +56,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 completedMessage.Succeeded = false;
                 completedMessage.ExceptionType = e.GetType().FullName;
                 completedMessage.ExceptionMessage = e.Message;
+
+                exceptionInfo = ExceptionDispatchInfo.Capture(e);
             }
             finally
             {
@@ -64,7 +69,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 Id = completedMessage.FunctionInstanceId,
                 Succeeded = completedMessage.Succeeded,
-                ExceptionMessage = completedMessage.ExceptionMessage
+                ExceptionInfo = exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null
             };
         }
 
@@ -172,14 +177,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         internal static void ExecuteWithSelfWatch(MethodInfo method, ParameterInfo[] parameterInfos,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput)
         {
-            AggregateException aggregateBindingException;
-            object[] reflectionParameters = PrepareParameters(parameterInfos, parameters, out aggregateBindingException);
+            IDelayedException delayedBindingException;
+            object[] reflectionParameters = PrepareParameters(parameterInfos, parameters, out delayedBindingException);
 
-            if (aggregateBindingException != null)
+            if (delayedBindingException != null)
             {
                 // This is done inside a self watch context so that each binding error is publish next to the binding in
                 // the self watch log.
-                throw aggregateBindingException;
+                delayedBindingException.Throw();
             }
 
             if (IsAsyncMethod(method))
@@ -235,8 +240,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        private static object[] PrepareParameters(ParameterInfo[] parameterInfos, IReadOnlyDictionary<string, IValueProvider> parameters,
-            out AggregateException aggregateBindingException)
+        private static object[] PrepareParameters(ParameterInfo[] parameterInfos,
+            IReadOnlyDictionary<string, IValueProvider> parameters, out IDelayedException delayedBindingException)
         {
             object[] reflectionParameters = new object[parameterInfos.Length];
             List<Exception> bindingExceptions = new List<Exception>();
@@ -258,11 +263,15 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             if (bindingExceptions.Count == 0)
             {
-                aggregateBindingException = null;
+                delayedBindingException = null;
+            }
+            else if (bindingExceptions.Count == 1)
+            {
+                delayedBindingException = new DelayedException(bindingExceptions[0]);
             }
             else
             {
-                aggregateBindingException = new AggregateException(bindingExceptions);
+                delayedBindingException = new AggregateDelayedException(new AggregateException(bindingExceptions));
             }
 
             return reflectionParameters;

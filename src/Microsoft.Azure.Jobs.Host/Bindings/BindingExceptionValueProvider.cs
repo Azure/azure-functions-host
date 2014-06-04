@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         {
             _message = exception.Message;
             _exception = new InvalidOperationException(String.Format(CultureInfo.InvariantCulture,
-                "Exception binding parameter '{0}': {1}", parameterName, exception.Message));
+                "Exception binding parameter '{0}'", parameterName), exception);
         }
 
         public Exception Exception

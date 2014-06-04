@@ -27,6 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
             {
+                value.CreateIfNotExists();
                 return new QueueValueProvider(value, value, typeof(CloudQueue));
             }
         }

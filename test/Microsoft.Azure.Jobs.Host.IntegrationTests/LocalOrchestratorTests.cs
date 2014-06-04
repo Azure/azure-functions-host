@@ -20,21 +20,19 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestBlobClient.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
 
             var d = new Dictionary<string, string>() {
-                { "name", "note" },
-                { "date" , "monday" },
+                { "values", "daas-test-input/note-monday.csv" },
                 { "unbound", "test" },
-                { "target", "out"}
             };
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncWithNames", d);
 
-            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "out.csv");
+            string content = TestBlobClient.ReadBlob(account, "daas-test-input", "note.csv");
             Assert.Equal("done", content);
 
             {
                 // $$$ Put this in its own unit test?
-                var blob = account.CreateCloudBlobClient().GetContainerReference("daas-test-input").GetBlockBlobReference("out.csv");
+                var blob = account.CreateCloudBlobClient().GetContainerReference("daas-test-input").GetBlockBlobReference("note.csv");
                 var guid = BlobCausalityLogger.GetWriter(blob);
 
                 Assert.True(guid != Guid.Empty, "Blob is missing causality information");
@@ -160,7 +158,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             QueueClient.DeleteQueue(queue);
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncMultiEnqueueIEnumerable");
+            lc.Call("FuncMultiEnqueueICollection");
 
             for (int i = 10; i <= 30; i += 10)
             {
@@ -262,12 +260,12 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             // This can be invoked explicitly (and providing parameters)
             // or it can be invoked implicitly by triggering on input. // (assuming no unbound parameters)
+            [NoAutomaticTrigger]
             public static void FuncWithNames(
                 string name, string date,  // used by input
                 string unbound, // not used by in/out
-                string target, // only used by output
                 [BlobTrigger(@"daas-test-input/{name}-{date}.csv")] TextReader values,
-                [Blob(@"daas-test-input/{target}.csv")] TextWriter output
+                [Blob(@"daas-test-input/{name}.csv")] TextWriter output
                 )
             {
                 Assert.Equal("test", unbound);
@@ -361,18 +359,16 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 myoutputqueue = new Payload { Value = 15 };
             }
 
-            public static void FuncMultiEnqueueIEnumerable(
-                [Queue("myoutputqueue")] out IEnumerable<Payload> myoutputqueue)
+            public static void FuncMultiEnqueueICollection(
+                [Queue("myoutputqueue")] ICollection<Payload> myoutputqueue)
             {
-                List<Payload> payloads = new List<Payload>();
-                payloads.Add(new Payload { Value = 10 });
-                payloads.Add(new Payload { Value = 20 });
-                payloads.Add(new Payload { Value = 30 });
-                myoutputqueue = payloads;
+                myoutputqueue.Add(new Payload { Value = 10 });
+                myoutputqueue.Add(new Payload { Value = 20 });
+                myoutputqueue.Add(new Payload { Value = 30 });
             }
 
             public static void FuncMultiEnqueueIEnumerableNested(
-                [Queue("myoutputqueue")] out IEnumerable<IEnumerable<Payload>> myoutputqueue)
+                [Queue("myoutputqueue")] ICollection<IEnumerable<Payload>> myoutputqueue)
             {
                 List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
                 myoutputqueue = payloads;

@@ -240,15 +240,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
 
         private static string GetConnectionString()
         {
-            string name = "AzureJobsDashboard";
-
+            string name = JobHost.DashboardConnectionStringName;
             string value = new AmbientConnectionStringProvider().GetConnectionString(name);
 
             if (String.IsNullOrEmpty(value))
             {
                 string message = String.Format(
                     "This test needs an Azure storage connection string to run. Please set the '{0}' environment " +
-                    "variable or App.config connection string before running this test.", name);
+                    "variable or App.config connection string before running this test.", AmbientConnectionStringProvider.Prefix + name);
                 throw new InvalidOperationException(message);
             }
 

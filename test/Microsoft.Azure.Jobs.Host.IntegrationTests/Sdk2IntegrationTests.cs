@@ -42,11 +42,11 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             var lc = new TestJobHost<Program>();
 
-            lc.Call("IBlob");
+            lc.Call("IBlob", new { page = page });
 
-            lc.Call("BlockBlob");
+            lc.Call("BlockBlob", new { block = block });
 
-            lc.Call("PageBlob");
+            lc.Call("PageBlob", new { page = page });
 
             container.DeleteIfExists();
         }
@@ -55,9 +55,12 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestMissingIBlob()
         {
             var lc = new TestJobHost<Program>();
-            lc.Call("IBlobMissing");
-            lc.Call("BlockBlobMissing");
-            lc.Call("PageBlobMissing");
+            ExceptionAssert.ThrowsInvalidOperation(() => lc.Call("IBlobMissing"),
+                "Missing value for trigger parameter 'missing'.");
+            ExceptionAssert.ThrowsInvalidOperation(() => lc.Call("BlockBlobMissing"),
+                "Missing value for trigger parameter 'block'.");
+            ExceptionAssert.ThrowsInvalidOperation(() => lc.Call("PageBlobMissing"),
+                "Missing value for trigger parameter 'page'.");
         }
 
         [Fact]
