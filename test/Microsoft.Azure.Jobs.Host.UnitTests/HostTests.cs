@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
             var x = "abc";
             ProgramSimple._value = null;
-            host.Call("Test", new Dictionary<string, object> { { "value", x } });
+            host.Call("Test", new { value = x });
 
             // Ensure test method was invoked properly.
             Assert.Equal(x, ProgramSimple._value);

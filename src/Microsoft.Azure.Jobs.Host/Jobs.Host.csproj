@@ -292,6 +292,8 @@
     <Compile Include="Converters\ITypeToObjectConverter.cs" />
     <Compile Include="Indexers\DefaultBindingProvider.cs" />
     <Compile Include="Indexers\DefaultTriggerBindingProvider.cs" />
+    <Compile Include="ObjectDictionaryConverter.cs" />
+    <Compile Include="PropertyHelper.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\CloudQueueExtensions.cs" />
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />

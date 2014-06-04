@@ -226,30 +226,45 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        /// <summary>
-        /// Invoke a specific function specified by the method parameter.
-        /// </summary>
+        /// <summary>Invokes a job function.</summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
         public void Call(MethodInfo method)
         {
-            Call(method, arguments: null);
+            Call(method, arguments: (IDictionary<string, object>)null);
         }
 
-        /// <summary>
-        /// Invoke a specific function specified by the method parameter.
-        /// </summary>
+        /// <summary>Invokes a job function.</summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
-        /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
+        /// <param name="arguments">
+        /// An object with public properties representing argument names and values to bind to parameters in the job
+        /// method.
+        /// </param>
+        public void Call(MethodInfo method, object arguments)
+        {
+            Call(method, arguments, CancellationToken.None);
+        }
+
+        /// <summary>Invokes a job function.</summary>
+        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <param name="arguments">The argument names and values to bind to parameters in the job method.</param>
         public void Call(MethodInfo method, IDictionary<string, object> arguments)
         {
             Call(method, arguments, CancellationToken.None);
         }
 
-        /// <summary>
-        /// Invoke a specific function specified by the method parameter.
-        /// </summary>
+        /// <summary>Invokes a job function.</summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
         /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        public void Call(MethodInfo method, object arguments, CancellationToken cancellationToken)
+        {
+            IDictionary<string, object> argumentsDictionary = ObjectDictionaryConverter.AsDictionary(arguments);
+            Call(method, argumentsDictionary, cancellationToken);
+        }
+
+        /// <summary>Invokes a job function.</summary>
+        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <param name="arguments">The argument names and values to bind to parameters in the job method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         public void Call(MethodInfo method, IDictionary<string, object> arguments, CancellationToken cancellationToken)
         {
