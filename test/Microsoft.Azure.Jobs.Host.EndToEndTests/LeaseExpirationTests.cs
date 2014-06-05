@@ -52,7 +52,8 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// <summary>
         /// The function used to test the renewal. Whenever it is invoked, a counter increases
         /// </summary>
-        public static void QueueMessageLeaseRenewFunction([QueueTrigger(TestQueueName)] string message, CloudQueue queueleaserenew)
+        public static void QueueMessageLeaseRenewFunction([QueueTrigger(TestQueueName)] string message,
+            [Queue("queueleaserenew")]CloudQueue queueleaserenew)
         {
             // The time when the function will stop if the message is not found again
             DateTime endTime = DateTime.Now.AddMinutes(15);

@@ -26,26 +26,16 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             if (String.IsNullOrEmpty(input))
             {
                 CloudBlobContainer defaultContainer = _client.GetContainerReference(_defaultContainerName);
-
-                if (_argumentType == typeof(CloudBlockBlob))
-                {
-                    return defaultContainer.GetBlockBlobReference(_defaultBlobName);
-                }
-                else if (_argumentType == typeof(CloudPageBlob))
-                {
-                    return defaultContainer.GetPageBlobReference(_defaultBlobName);
-                }
-                else
-                {
-                    return defaultContainer.GetExistingOrNewBlockBlobReference(_defaultBlobName);
-                }
+                defaultContainer.CreateIfNotExists();
+                return defaultContainer.GetBlobReferenceForArgumentType(_defaultBlobName, _argumentType);
             }
 
             CloudBlobPath path = new CloudBlobPath(input);
             BlobClient.ValidateContainerName(path.ContainerName);
             BlobClient.ValidateBlobName(path.BlobName);
             CloudBlobContainer container = _client.GetContainerReference(path.ContainerName);
-            return container.GetBlobReferenceFromServer(path.BlobName);
+            container.CreateIfNotExists();
+            return container.GetBlobReferenceForArgumentType(path.BlobName, _argumentType);
         }
     }
 }

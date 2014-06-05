@@ -15,10 +15,12 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     // Exposes some of the logging objects so that callers can monitor what happened. 
     internal class LocalExecutionContext
     {
+        private readonly CloudStorageAccount _account;
         private readonly IConfiguration _config;
         private readonly IExecuteFunction _executor;
         private readonly IFunctionInstanceLookup _lookup;
         private readonly IFunctionUpdatedLogger _functionUpdate;
+        private readonly RuntimeBindingProviderContext _context;
 
         private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
         private readonly Func<string, MethodInfo> _fpResolveMethod;
@@ -45,22 +47,22 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             IConfiguration config = new Configuration();
 
-            JobHostContext.AddCustomerBinders(config, new Type[] { scope } );
+            JobHostContext.AddCustomerBinders(config, new Type[] { scope });
 
             return config;
         }
 
         public LocalExecutionContext(string accountConnectionString, Type scope)
         {
-            var account = CloudStorageAccount.Parse(accountConnectionString);
+            _account = CloudStorageAccount.Parse(accountConnectionString);
 
             _config = CreateConfig(scope);
 
             // These resolution functions are "open". We lazily resolve to any method on the scope type. 
             _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
-            _fpResolveFuncDefinition = method => Resolve(account, _config, method); // MethodInfo-->FunctionDefinition
+            _fpResolveFuncDefinition = method => Resolve(_account, _config, method); // MethodInfo-->FunctionDefinition
 
-            _fpResolveBlobs = blobPath => (CloudBlockBlob)new CloudBlobPath(blobPath).Resolve(account);
+            _fpResolveBlobs = blobPath => (CloudBlockBlob)new CloudBlobPath(blobPath).Resolve(_account);
 
             {
                 var x = new LocalFunctionLogger();
@@ -70,6 +72,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             var y = new LocalExecute(this);
             _executor = y;
+
+            _context = new RuntimeBindingProviderContext
+            {
+                CancellationToken = CancellationToken.None,
+                StorageAccount = _account,
+                BindingProvider = DefaultBindingProvider.Create(null)
+            };
         }
 
         private static MethodInfo Resolve(Type scope, string functionShortName)
@@ -137,8 +146,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters,
-                new RuntimeBindingProviderContext());
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters, _context);
 
             Guid guidThis = CallUtil.GetParentGuid(parameters);
             return CallInner(instance, guidThis);
@@ -156,10 +164,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ParentGuid = parentGuid
             };
 
-            var result = _executor.Execute(instance, new RuntimeBindingProviderContext
-            {
-                CancellationToken = CancellationToken.None
-            });
+            var result = _executor.Execute(instance, _context);
             return result.Id;
         }
 
@@ -167,7 +172,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, null, blobInput);
+            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, _context, blobInput);
 
             CallInner(instance);
         }

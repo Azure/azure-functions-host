@@ -88,23 +88,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             string resolvedPath = RouteParser.ApplyBindingData(BlobPath, context.BindingData);
             CloudBlobPath parsedResolvedPath = new CloudBlobPath(resolvedPath);
             CloudBlobContainer container = _client.GetContainerReference(parsedResolvedPath.ContainerName);
+            container.CreateIfNotExists();
 
             Type argumentType = _argumentBinding.ValueType;
             string blobName = parsedResolvedPath.BlobName;
-            ICloudBlob blob;
-
-            if (argumentType == typeof(CloudBlockBlob))
-            {
-                blob = container.GetBlockBlobReference(blobName);
-            }
-            else if (argumentType == typeof(CloudPageBlob))
-            {
-                blob = container.GetPageBlobReference(blobName);
-            }
-            else
-            {
-                blob = container.GetExistingOrNewBlockBlobReference(blobName);
-            }
+            ICloudBlob blob = container.GetBlobReferenceForArgumentType(blobName, argumentType);
 
             return Bind(blob, context);
         }

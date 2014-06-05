@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
     {
         public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
         {
-            if (!parameter.IsOut || parameter.ParameterType != typeof(string).MakeByRefType())
+            if (!parameter.IsOut || parameter.ParameterType != typeof(CloudQueueMessage).MakeByRefType())
             {
                 return null;
             }

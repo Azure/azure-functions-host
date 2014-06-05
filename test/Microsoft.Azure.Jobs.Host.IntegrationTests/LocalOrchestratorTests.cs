@@ -279,7 +279,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
 
             public static void BindBlobToString(
-                [BlobTrigger(@"daas-test-input/blob.txt")] string blobIn,
+                [Blob(@"daas-test-input/blob.txt")] string blobIn,
                 [Blob(@"daas-test-input/blob.out")] out string blobOut
                 )
             {

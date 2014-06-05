@@ -178,7 +178,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 DynamicTableEntity entity = new DynamicTableEntity("PK", "RK");
                 entity.Properties["Fruit"] = new EntityProperty("Banana");
-                entity.Properties["Duration"] = new EntityProperty("1");
+                entity.Properties["Duration"] = new EntityProperty("00:00:01");
                 entity.Properties["Value"] = new EntityProperty("Foo");
                 table.Execute(TableOperation.Insert(entity));
 
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
                 Assert.Equal(3, updatedEntity.Properties.Count);
                 Assert.Equal(new EntityProperty("Pear"), updatedEntity.Properties["Fruit"]);
-                Assert.Equal(new EntityProperty("2"), updatedEntity.Properties["Duration"]);
+                Assert.Equal(new EntityProperty("00:02:00"), updatedEntity.Properties["Duration"]);
                 Assert.Equal(new EntityProperty("Bar"), updatedEntity.Properties["Value"]);
             }
             finally
@@ -345,7 +345,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 Pear,
             }
 
-            public static void TestPocoTableEntity([Table("TableEntityTest", "PK", "RK")] PocoTableEntity entity)
+            public static void TestPocoTableEntity([Table("PocoTableEntityTest", "PK", "RK")] PocoTableEntity entity)
             {
                 Assert.NotNull(entity);
                 Assert.Equal(Fruit.Banana, entity.Fruit);

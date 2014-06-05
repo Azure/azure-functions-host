@@ -259,7 +259,7 @@
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\BlobBinding.cs" />
     <Compile Include="Blobs\Bindings\BlobCommittedAction.cs" />
-    <Compile Include="Blobs\CloudBlobContainerExtensions.cs" />
+    <Compile Include="Blobs\Bindings\CloudBlobContainerExtensions.cs" />
     <Compile Include="Blobs\Bindings\CloudBlobStreamArgumentBinderProvider.cs" />
     <Compile Include="Blobs\Bindings\DelegatingCloudBlobStream.cs" />
     <Compile Include="Blobs\Bindings\IBlobCommitedAction.cs" />

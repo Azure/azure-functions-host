@@ -93,18 +93,20 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// </summary>
         public static void QueueToTable(
             [QueueTrigger(TestQueueName)] CustomObject e2equeue,
-            [Table(TableName)] IDictionary<Tuple<string, string>, CustomObject> table,
+            [Table(TableName)] CloudTable table,
             [Queue(DoneQueueName)] out string e2edone)
         {
             const string tableKeys = "test";
 
-            CustomObject result = new CustomObject()
+            CustomTableEntity result = new CustomTableEntity
             {
+                PartitionKey = tableKeys,
+                RowKey = tableKeys,
                 Text = e2equeue.Text + " " + "QueueToTable",
                 Number = e2equeue.Number + 1
             };
 
-            table.Add(new Tuple<string, string>(tableKeys, tableKeys), result);
+            table.Execute(TableOperation.InsertOrReplace(result));
 
             // Write a queue message to signal the scenario completion
             e2edone = "done";
@@ -278,7 +280,14 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             Assert.NotNull(result);
 
             Assert.Equal("Test testblob QueueToTable", result.Properties["Text"].StringValue);
-            Assert.Equal("44", result.Properties["Number"].StringValue);
+            Assert.Equal(44, result.Properties["Number"].Int32Value);
+        }
+
+        private class CustomTableEntity : TableEntity
+        {
+            public string Text { get; set; }
+
+            public int Number { get; set; }
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
             public IValueProvider Bind(CloudTable value, ArgumentBindingContext context)
             {
+                value.CreateIfNotExists();
                 return new TableValueProvider(value, value, typeof(CloudTable));
             }
         }
