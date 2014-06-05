@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionsTableController',
-    function FunctionsTableController($scope, $http, api, FunctionDefinition) {
+    function FunctionsTableController($scope, $rootScope, $http, api, FunctionDefinition) {
 
         if (!$scope.functionDefinitions || !$scope.functionDefinitions.endpoint) {
             throw Error("Parent scope must define 'functionDefinitions' object, with an 'endpoint' property pointing at the server endpoint for retrieving Invocation objects.");
@@ -118,7 +118,7 @@
                 result = data.entries,
                 len = result.length;
 
-            $scope.storageAccount = data.storageAccountName;
+            $rootScope.storageAccount = data.storageAccountName;
             $scope.functionDefinitions.initializing = false;
             $scope.functionDefinitions.entries = [];
 

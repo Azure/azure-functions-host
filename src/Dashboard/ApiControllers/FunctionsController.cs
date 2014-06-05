@@ -192,17 +192,17 @@ namespace Dashboard.ApiControllers
             var lastElement = query.LastOrDefault();
             if (lastElement != null)
             {
-                if (!string.IsNullOrEmpty(pagingInfo.NewerThan))
+                if (!String.IsNullOrEmpty(pagingInfo.NewerThan))
                 {
                     query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.NewerThan) < 0);
                 }
 
-                if (!string.IsNullOrEmpty(pagingInfo.OlderThan))
+                if (!String.IsNullOrEmpty(pagingInfo.OlderThan))
                 {
                     query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThan) > 0);
                 }
 
-                if (!string.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
+                if (!String.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
                 {
                     query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThanOrEqual) >= 0);
                 }
@@ -211,20 +211,6 @@ namespace Dashboard.ApiControllers
                 {
                     query = query.Take((int)pagingInfo.Limit);
                 }
-
-                var all = _invokeStatsTable.Enumerate();
-                foreach (var item in all)
-                {
-                    var statsModel = model.Entries.FirstOrDefault(x =>
-                        x.FunctionId.Equals(item["RowKey"]));
-
-                    if (statsModel != null)
-                    {
-                        var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
-                        statsModel.FailedCount = stats.CountErrors;
-                        statsModel.SuccessCount = stats.CountCompleted;
-                    }
-                }
             }
 
             model.Entries = query.ToArray();
@@ -232,6 +218,20 @@ namespace Dashboard.ApiControllers
                 !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId)) :
                 false;
             model.StorageAccountName = _account.Credentials.AccountName;
+
+            var all = _invokeStatsTable.Enumerate();
+            foreach (var item in all)
+            {
+                var statsModel = model.Entries.FirstOrDefault(x =>
+                    x.FunctionId.Equals(item["RowKey"]));
+
+                if (statsModel != null)
+                {
+                    var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
+                    statsModel.FailedCount = stats.CountErrors;
+                    statsModel.SuccessCount = stats.CountCompleted;
+                }
+            }
 
             return Ok(model);
         }
