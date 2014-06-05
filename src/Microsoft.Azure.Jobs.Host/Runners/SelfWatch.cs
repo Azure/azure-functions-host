@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -20,8 +21,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Begin self-watches.
-        // May update args array with selfwatch wrappers.
-        public SelfWatch(ISelfWatch[] watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
+        public SelfWatch(IReadOnlyDictionary<string, ISelfWatch> watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
         {
             _command = new SelfWatchCommand(watches, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs
         {
             private readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
             private readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
-            private readonly ISelfWatch[] _watches;
+            private readonly IReadOnlyDictionary<string, ISelfWatch> _watches;
             private readonly CloudBlockBlob _blobResults;
             private readonly TextWriter _consoleOutput;
 
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs
             private string _lastContent;
 
             // May update args array with selfwatch wrappers.
-            public SelfWatchCommand(ISelfWatch[] watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
+            public SelfWatchCommand(IReadOnlyDictionary<string, ISelfWatch> watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
             {
                 _currentDelay = _intialDelay;
                 _blobResults = blobResults;
@@ -65,28 +65,38 @@ namespace Microsoft.Azure.Jobs
                 {
                     return;
                 }
-                StringBuilder sb = new StringBuilder();
-                foreach (var watch in _watches)
+
+                IDictionary<string, string> statusDictionary = new Dictionary<string, string>();
+
+                foreach (KeyValuePair<string, ISelfWatch> item in _watches)
                 {
-                    if (watch != null)
+                    ISelfWatch watch = item.Value;
+
+                    if (watch == null)
                     {
-                        string val = watch.GetStatus();
-                        sb.AppendLine(val);
+                        continue;
                     }
-                    else
+
+                    string status = watch.GetStatus();
+
+                    if (status == null)
                     {
-                        sb.AppendLine(); // blank for a place holder.
+                        continue;
                     }
+
+                    statusDictionary.Add(item.Key, status);
                 }
+
+                string content = JsonConvert.SerializeObject(statusDictionary);
+
                 try
                 {
-                    string content = sb.ToString();
-
                     if (_lastContent == content)
                     {
                         // If it hasn't change, then don't re upload stale content.
                         return;
                     }
+
                     _lastContent = content;
                     _blobResults.UploadText(content);
                 }
@@ -99,30 +109,6 @@ namespace Microsoft.Azure.Jobs
                     _consoleOutput.WriteLine("-------------------------");
                 }
             }
-        }
-
-        /// <summary>
-        /// The protocol between Host and Dashboard for SelfWatch notes demand that newlines are encoded as "; ".
-        /// </summary>
-        public static string EncodeSelfWatchStatus(string status)
-        {
-            if (status == null)
-            {
-                throw new ArgumentNullException("status");
-            }
-            return status.Replace(Environment.NewLine, "; ");
-        }
-
-        /// <summary>
-        /// The protocol between Host and Dashboard for SelfWatch notes demand that newlines are encoded as "; ".
-        /// </summary>
-        public static string DecodeSelfWatchStatus(string status)
-        {
-            if (status == null)
-            {
-                throw new ArgumentNullException("status");
-            }
-            return status.Replace("; ", Environment.NewLine);
         }
     }
 }

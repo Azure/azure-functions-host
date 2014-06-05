@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
                 builder.AppendLine();
             }
 
-            return SelfWatch.EncodeSelfWatchStatus(builder.ToString());
+            return builder.ToString();
         }
     }
 }

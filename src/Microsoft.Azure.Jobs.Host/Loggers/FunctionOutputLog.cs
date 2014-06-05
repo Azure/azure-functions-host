@@ -55,7 +55,7 @@ namespace Microsoft.Azure.Jobs
                 {
                      AccountConnectionString = accountConnectionString,
                      ContainerName = containerName,
-                     BlobName = f.ToString() + ".params.txt"
+                     BlobName = f.Id.ToString("N") + ".params.txt"
                 }
             };
         }

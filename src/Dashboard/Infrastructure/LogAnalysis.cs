@@ -6,6 +6,7 @@ using Dashboard.Data;
 using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json;
 
 namespace Dashboard
 {
@@ -170,46 +171,30 @@ namespace Dashboard
                 return null;
             }
 
+            CloudBlockBlob blob = new CloudBlockBlob(new Uri(snapshot.ParameterLogBlobUrl), account.Credentials);
+
+            string contents;
+
             try
             {
-                CloudBlockBlob blob = new CloudBlockBlob(new Uri(snapshot.ParameterLogBlobUrl), account.Credentials);
-
-                if (!BlobClient.DoesBlobExist(blob))
+                contents = blob.DownloadText();
+            }
+            catch (StorageException exception)
+            {
+                // common case, no selfwatch information written.
+                if (exception.IsNotFound())
                 {
-                    return null; // common case, no selfwatch information written.
+                    return null;
                 }
-
-                var content = blob.DownloadText();
-                TextReader tr = new StringReader(content);
-
-                IDictionary<string, string> selfWatches = new Dictionary<string, string>();
-                int index = 0;
-                while (true)
+                else
                 {
-                    var line = tr.ReadLine();
-                    if (line == null)
-                    {
-                        if (selfWatches.Count != snapshot.Arguments.Count)
-                        {
-                            // Corrupted selfwatch information. 
-                            // Return an error message so that we know something went wrong.
-                            selfWatches.Clear();
-
-                            foreach (string argumentName in snapshot.Arguments.Keys)
-                            {
-                                selfWatches.Add(argumentName, "???");
-                            }
-
-                            return selfWatches;
-                        }
-
-                        return selfWatches;
-                    }
-
-                    line = SelfWatch.DecodeSelfWatchStatus(line);
-                    selfWatches.Add(snapshot.Arguments.Keys.ElementAt(index), line);
-                    index++;
+                    throw;
                 }
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<IDictionary<string, string>>(contents);
             }
             catch
             {

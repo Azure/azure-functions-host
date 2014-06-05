@@ -6,7 +6,7 @@
 
         public StaticSelfWatch(string status)
         {
-            _status = SelfWatch.EncodeSelfWatchStatus(status);
+            _status = status;
         }
 
         public string GetStatus()

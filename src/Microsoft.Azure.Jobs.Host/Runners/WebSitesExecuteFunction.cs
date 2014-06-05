@@ -151,19 +151,15 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return null;
             }
 
-            ISelfWatch[] watches = new ISelfWatch[parameterInfos.Length];
+            Dictionary<string, ISelfWatch> watches = new Dictionary<string, ISelfWatch>();
 
-            for (int index = 0; index < parameterInfos.Length; index++)
+            foreach (KeyValuePair<string, IValueProvider> item in parameters)
             {
-                ParameterInfo parameterInfo = parameterInfos[index];
-                string name = parameterInfo.Name;
-                IValueProvider valueProvider = parameters[name];
-
-                IWatchable watchable = valueProvider as IWatchable;
+                IWatchable watchable = item.Value as IWatchable;
 
                 if (watchable != null)
                 {
-                    watches[index] = watchable.Watcher;
+                    watches.Add(item.Key, watchable.Watcher);
                 }
             }
 

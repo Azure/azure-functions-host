@@ -199,7 +199,8 @@ namespace Dashboard.Data
                     Name = argument.Key,
                     Value = argument.Value,
                     IsBlob = function.Parameters != null && function.Parameters.ContainsKey(argument.Key)
-                        && function.Parameters[argument.Key] is BlobParameterDescriptor,
+                        && (function.Parameters[argument.Key] is BlobParameterDescriptor
+                        || function.Parameters[argument.Key] is BlobTriggerParameterDescriptor),
                 });
 
                 index++;
