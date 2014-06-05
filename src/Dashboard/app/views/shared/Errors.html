@@ -11,3 +11,8 @@
         Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Microsoft Azure Website.
 </p>
 </section>
+<section ng-if="isOldHost">
+    <p class="alert alert-warning">
+        Jobs from an earlier version of the Azure WebJobs SDK have been detected. Please upgrade the jobs to the latest version in order to see their status in the dashboard. Please visit <a href="http://go.microsoft.com/fwlink/?LinkID=401520">this article</a> for more information about the Azure WebJobs SDK.
+    </p>
+</section>

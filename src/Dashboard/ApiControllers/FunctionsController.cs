@@ -1,17 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web.Http;
-using AzureTables;
+﻿using AzureTables;
 using Dashboard.Controllers;
 using Dashboard.Data;
 using Dashboard.InvocationLog;
-using Dashboard.Protocols;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Http;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
@@ -60,6 +58,27 @@ namespace Dashboard.ApiControllers
             return GetFunctionsInJob(WebJobTypes.Continuous, jobName, null, pagingInfo);
         }
 
+        /// <summary>
+        /// This method determines if a warning should be shown in the dashboard by
+        /// checking if there are old data model tables and, if so, check if there are already
+        /// new records (in which case the warning would not be shown).
+        /// </summary>
+        /// <param name="noNewRecords">true if it is known that there are new records; false if unknown</param>
+        /// <returns>True if warning should be shown; false otherwise</returns>
+        private bool OldHostExists(bool noNewRecords)
+        {
+            try
+            {
+                return _account.CreateCloudTableClient()
+                    .GetTableReference(DashboardTableNames.OldFunctionInJobsIndex).Exists() &&
+                    (noNewRecords || _functionLookup.ReadAll().Count == 0);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] PagingInfo pagingInfo)
         {
             if (pagingInfo.Limit <= 0)
@@ -70,6 +89,12 @@ namespace Dashboard.ApiControllers
             var runIdentifier = new Microsoft.Azure.Jobs.Protocols.WebJobRunIdentifier(Environment.GetEnvironmentVariable(Microsoft.Azure.Jobs.Host.WebSitesKnownKeyNames.WebSiteNameKey), (InternalWebJobTypes)webJobType, jobName, runId);
 
             var invocations = _invocationLogLoader.GetInvocationsInJob(runIdentifier.GetKey(), pagingInfo);
+
+            if (invocations.Entries.Length == 0)
+            {
+                invocations.IsOldHost = OldHostExists(false);
+            }
+
             return Ok(invocations);
         }
 
@@ -218,6 +243,11 @@ namespace Dashboard.ApiControllers
                 !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId)) :
                 false;
             model.StorageAccountName = _account.Credentials.AccountName;
+
+            if (lastElement == null)
+            {
+                model.IsOldHost = OldHostExists(true);
+            }
 
             var all = _invokeStatsTable.Enumerate();
             foreach (var item in all)

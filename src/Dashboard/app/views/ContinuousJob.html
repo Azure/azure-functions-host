@@ -5,7 +5,7 @@
             Continuous WebJob Details <small ng-bind="jobName"></small>
         </h3>
 
-        <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
+        <ng-include src="'app/views/shared/Errors.html'"></ng-include>
 
         <p ng-if="!job">Loading...</p>
         <p ng-if="job" ng-class="job.getAlertClass()" class="alert">

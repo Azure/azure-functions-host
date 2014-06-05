@@ -10,7 +10,8 @@ namespace Dashboard.ViewModels
         public FunctionStatisticsViewModel[] Entries { get; set; }
         public bool HasMore { get; set; }
 
-        // TODO: consider moving this elsewhere
+        // TODO: consider moving these elsewhere as they are not related to functions only
         public string StorageAccountName { get; set; }
+        public bool IsOldHost { get; set; }
     }
 }

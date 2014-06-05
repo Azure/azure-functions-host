@@ -9,8 +9,8 @@ namespace Dashboard.Data
     {
         public DateTime LastWriteTime { get; set; } // last time function was executed and succeeded
 
-        public int CountCompleted { get; set; } // Total run            
+        public int CountCompleted { get; set; } // Total run
         public int CountErrors { get; set; } // number of runs with failure status
-        public TimeSpan Runtime { get; set; } // total time spent running.         
+        public TimeSpan Runtime { get; set; } // total time spent running.
     }
 }

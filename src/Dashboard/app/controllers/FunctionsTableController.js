@@ -119,6 +119,8 @@
                 len = result.length;
 
             $rootScope.storageAccount = data.storageAccountName;
+            $rootScope.isOldHost = data.isOldHost;
+
             $scope.functionDefinitions.initializing = false;
             $scope.functionDefinitions.entries = [];
 

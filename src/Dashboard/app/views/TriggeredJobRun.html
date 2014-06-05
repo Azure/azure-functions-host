@@ -5,7 +5,7 @@
             WebJob Run Details <small ng-bind="jobName"></small>
         </h3>
 
-        <ng-include src="'app/views/shared/ConnectionStringError.html'"></ng-include>
+        <ng-include src="'app/views/shared/Errors.html'"></ng-include>
 
         <p ng-if="!jobRun">Loading...</p>
         <p ng-if="jobRun" ng-class="jobRun.getAlertClass()" class="alert">

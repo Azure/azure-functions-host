@@ -22,5 +22,6 @@ namespace Dashboard.ViewModels
     {
         public SortableInvocationEntry[] Entries { get; set; }
         public bool HasMore { get; set; }
+        public bool IsOldHost { get; set; }
     }
 }

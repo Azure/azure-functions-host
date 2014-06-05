@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('InvocationsTableController',
-    function InvocationsTableController($scope, $http, api, FunctionInvocationSummary) {
+    function InvocationsTableController($scope, $rootScope, $http, api, FunctionInvocationSummary) {
 
         if (!$scope.invocations || !$scope.invocations.endpoint) {
             throw Error("Parent scope must define 'invocations' object, with an 'endpoint' property pointing at the server endpoint for retrieving Invocation objects.");
@@ -159,6 +159,11 @@
                 ix,
                 item,
                 invocation;
+
+            if (data.isOldHost !== undefined) {
+                $rootScope.isOldHost = data.isOldHost;
+            }
+
             $scope.invocations.initializing = false;
             $scope.invocations.entries = [];
             $scope.invocations.nonFinalInvocations = {};

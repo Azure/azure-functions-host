@@ -22,7 +22,6 @@
             </tr>
             <tr ng-repeat="entry in functionDefinitions.entries">
                 <td>
-                    <span ng-if="entry.functionDefinition.isOldHost" title="Old host version" class="glyphicon glyphicon-exclamation-sign old-version"></span>
                     <span ng-if="!entry.functionDefinition.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
                     <a title="Invocations" href="{{_urls.functionDefinition(entry.functionDefinition.functionId)}}">{{entry.functionDefinition.functionName}}</a>
                 </td>
