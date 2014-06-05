@@ -67,9 +67,7 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
-                if (result != null && result.HttpStatusCode == 409)
+                if (exception.IsPreconditionFailed())
                 {
                     return false;
                 }
@@ -102,7 +100,7 @@ namespace Dashboard.Data
             {
                 RequestResult result = exception.RequestInformation;
 
-                if (result != null && result.HttpStatusCode == 409)
+                if (exception.IsPreconditionFailed())
                 {
                     return false;
                 }
@@ -125,9 +123,8 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
-                if (result != null && result.HttpStatusCode == 409)
+                // The item may have already been deleted (409) or updated by someone else (412).
+                if (exception.IsConflict() || exception.IsPreconditionFailed())
                 {
                     return false;
                 }

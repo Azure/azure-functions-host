@@ -106,7 +106,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
             catch (StorageException exception)
             {
-                if (exception.IsFileNotFound())
+                if (exception.IsNotFound())
                 {
                     return null;
                 }
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
             catch (StorageException exception)
             {
-                if (exception.IsConflict())
+                if (exception.IsPreconditionFailed())
                 {
                     return false;
                 }
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
             catch (StorageException exception)
             {
-                if (exception.IsFileNotFound())
+                if (exception.IsNotFound())
                 {
                     // If the item no longer exists, someone else finished processing it, and we should look for another
                     // next item.

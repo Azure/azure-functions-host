@@ -105,11 +105,9 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
                 // If there's a conflict, LogFunctionCompleted already ran, so there's no work to do here.
 
-                if (result.HttpStatusCode != 409)
+                if (!exception.IsConflict())
                 {
                     throw;
                 }
@@ -129,11 +127,9 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
                 // If the ETag doesn't match, LogFunctionCompleted already ran, so there's no work to do here.
 
-                if (result.HttpStatusCode != 409)
+                if (!exception.IsPreconditionFailed())
                 {
                     throw;
                 }

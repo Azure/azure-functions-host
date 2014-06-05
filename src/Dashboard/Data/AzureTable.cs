@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
+using Dashboard.Data;
 using Microsoft.Azure.Jobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -407,16 +407,12 @@ namespace AzureTables
                     }
                     catch (StorageException exception)
                     {
-                        RequestResult result = exception.RequestInformation;
-                        if (result != null)
+                        if (exception.IsConflict())
                         {
-                            if (result.HttpStatusCode == 409)
-                            {
-                                // Conflict. Duplicate keys. We don't get the specific duplicate key.
-                                // Server shouldn't do this if we support upsert.
-                                // (although an old emulator that doesn't yet support upsert may throw it).
-                                throw new InvalidOperationException(string.Format("Table has duplicate keys. {0}", exception.Message));
-                            }
+                            // Conflict. Duplicate keys. We don't get the specific duplicate key.
+                            // Server shouldn't do this if we support upsert.
+                            // (although an old emulator that doesn't yet support upsert may throw it).
+                            throw new InvalidOperationException(string.Format("Table has duplicate keys. {0}", exception.Message));
                         }
                         throw; // rethrow
                     }

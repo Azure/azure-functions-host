@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
@@ -230,10 +230,8 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 }
                 catch (StorageException queryException)
                 {
-                    RequestResult result = queryException.RequestInformation;
-
                     // unless it is 404, do not recover
-                    if (result == null || result.HttpStatusCode != 404)
+                    if (!queryException.IsNotFound())
                     {
                         throw;
                     }
@@ -244,7 +242,7 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                     catch (StorageException createException)
                     {
                         // a possible race condition on table creation
-                        if (createException.RequestInformation.HttpStatusCode != 409)
+                        if (!createException.IsConflict())
                         {
                             throw;
                         }
@@ -270,10 +268,8 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 }
                 catch (StorageException exception)
                 {
-                    RequestResult result = exception.RequestInformation;
-
                     // If the insert failed because the entity already exists, try to get instead.
-                    if (result != null && result.HttpStatusCode == 409)
+                    if (exception.IsConflict())
                     {
                         IQueryable queryable = _sdk.CreateQuery<TElement>();
                         Debug.Assert(queryable != null);
