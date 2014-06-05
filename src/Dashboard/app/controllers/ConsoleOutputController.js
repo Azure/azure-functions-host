@@ -33,10 +33,9 @@
             if (!$scope.shouldShowConsole) {
                 return;
             }
-            var start = 0, originalText = null;
+            var start = 0;
             if ($scope.supportsIncrementalUpdates() && $scope.consoleText && $scope.consoleText.length > 0) {
-                originalText = $scope.consoleText;
-                start = originalText.split(/\n/).length;
+                start = $scope.consoleText.split(/\n/).length;
             }
 
             $http({
@@ -46,14 +45,14 @@
             }).then(function (res) {
                 consoleLoadedAtLeastOnce = true;
 
-                if (res.data) {
-                    if ($scope.consoleText) {
+                if (res.data && res.data.trim() != '') {
+                    if ($scope.consoleText && $scope.consoleText.trim() != '') {
                         $scope.consoleText += res.data;
                     } else {
                         $scope.consoleText = res.data;
                     }
                 } else if (!$scope.consoleText) {
-                    $scope.consoleText = '';
+                    $scope.consoleText = ' ';
                 }
 
                 // TODO: do this in a more angular-y way - do not  manipulate DOM directly from a controller
