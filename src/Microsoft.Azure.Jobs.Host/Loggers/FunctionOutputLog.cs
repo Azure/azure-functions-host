@@ -28,7 +28,7 @@ namespace Microsoft.Azure.Jobs
         // Get a default instance of 
         public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, string accountConnectionString, string containerName)
         {            
-            string name = f.ToString() + ".txt";
+            string name = f.Id.ToString("N") + ".txt";
 
             var c = BlobClient.GetContainer(accountConnectionString, containerName);
             if (c.CreateIfNotExists())
