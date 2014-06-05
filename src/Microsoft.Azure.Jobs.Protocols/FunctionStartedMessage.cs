@@ -10,37 +10,19 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// <summary>Represents a message indicating that a function started executing.</summary>
     [JsonTypeName("FunctionStarted")]
 #if PUBLICPROTOCOL
-    public class FunctionStartedMessage : PersistentQueueMessage
+    public class FunctionStartedMessage : HostOutputMessage
 #else
-    internal class FunctionStartedMessage : PersistentQueueMessage
+    internal class FunctionStartedMessage : HostOutputMessage
 #endif
     {
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
 
-        /// <summary>Gets or sets the host ID.</summary>
-        public Guid HostId { get; set; }
+        /// <summary>Gets or sets the function executing.</summary>
+        public FunctionDescriptor Function { get; set; }
 
-        /// <summary>Gets or sets the host instance ID.</summary>
-        public Guid HostInstanceId { get; set; }
-
-        /// <summary>Gets or sets the connection string for Azure Storage data.</summary>
-        public string StorageConnectionString { get; set; }
-
-        /// <summary>Gets or sets the connection string for Service Bus data.</summary>
-        public string ServiceBusConnectionString { get; set; }
-
-        /// <summary>Gets or sets the function ID.</summary>
-        public string FunctionId { get; set; }
-
-        /// <summary>Gets or sets the full name of the function.</summary>
-        public string FunctionFullName { get; set; }
-
-        /// <summary>Gets or sets the shortened display name of the function.</summary>
-        public string FunctionShortName { get; set; }
-
-        /// <summary>Gets or sets the function's arguments.</summary>
-        public IDictionary<string, FunctionArgument> Arguments { get; set; }
+        /// <summary>Gets or sets the function's argument values.</summary>
+        public IDictionary<string, string> Arguments { get; set; }
 
         /// <summary>Gets or sets the ID of the ancestor function instance.</summary>
         public Guid? ParentId { get; set; }
@@ -56,8 +38,5 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         /// <summary>Gets or sets the URL of the blob containing per-parameter logging data.</summary>
         public string ParameterLogBlobUrl { get; set; }
-
-        /// <summary>Gets or sets the ID of the web job under which the function is running, if any.</summary>
-        public WebJobRunIdentifier WebJobRunIdentifier { get; set; }
     }
 }

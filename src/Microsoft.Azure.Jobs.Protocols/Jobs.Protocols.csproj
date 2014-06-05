@@ -53,6 +53,7 @@
     </Compile>
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
+    <Compile Include="HostOutputMessage.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
     <Compile Include="ProcessTerminationSignalReader.cs" />
     <Compile Include="ProcessTerminationSignalWriter.cs" />
@@ -63,7 +64,6 @@
     <Compile Include="CancellationTokenParameterDescriptor.cs" />
     <Compile Include="CloudStorageAccountParameterDescriptor.cs" />
     <Compile Include="ContainerNames.cs" />
-    <Compile Include="FunctionArgument.cs" />
     <Compile Include="FunctionCompletedMessage.cs" />
     <Compile Include="FunctionDescriptor.cs" />
     <Compile Include="FunctionStartedMessage.cs" />
@@ -80,7 +80,6 @@
     <Compile Include="NullRunningHostTableWriter.cs" />
     <Compile Include="ParameterDescriptor.cs" />
     <Compile Include="PersistentQueue.cs" />
-    <Compile Include="PersistentQueueEntity.cs" />
     <Compile Include="PersistentQueueMessage.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="QueueNames.cs" />

@@ -105,26 +105,17 @@ namespace Dashboard.Controllers
             return new FunctionStartedMessage
             {
                 FunctionInstanceId = message.Id,
-                FunctionId = message.FunctionId,
-                FunctionFullName = function.FullName,
-                FunctionShortName = function.ShortName,
-                Arguments = CreateArguments(message.Arguments),
+                Function = new FunctionDescriptor
+                {
+                    Id = message.FunctionId,
+                    FullName = function.FullName,
+                    ShortName = function.ShortName
+                },
+                Arguments = message.Arguments,
                 ParentId = message.ParentId,
                 Reason = message.Reason,
                 StartTime = DateTimeOffset.UtcNow
             };
-        }
-
-        private static IDictionary<string, FunctionArgument> CreateArguments(IDictionary<string, string> arguments)
-        {
-            IDictionary<string, FunctionArgument> returnValue = new Dictionary<string, FunctionArgument>();
-
-            foreach (KeyValuePair<string, string> argument in arguments)
-            {
-                returnValue.Add(argument.Key, new FunctionArgument { Value = argument.Value });
-            }
-
-            return returnValue;
         }
 
         private RunFunctionViewModel CreateRunFunctionViewModel(FunctionSnapshot function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)

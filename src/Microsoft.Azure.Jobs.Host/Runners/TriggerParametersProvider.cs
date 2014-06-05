@@ -9,36 +9,24 @@ namespace Microsoft.Azure.Jobs.Host.Runners
     internal class TriggerParametersProvider<TTriggerValue> : IParametersProvider
     {
         private readonly Guid _functionInstanceId;
-        private readonly string _triggerParameterName;
+        private readonly FunctionDefinition _function;
         private readonly ITriggerBinding<TTriggerValue> _triggerBinding;
         private readonly TTriggerValue _triggerValue;
-        private readonly IReadOnlyDictionary<string, IBinding> _nonTriggerBindings;
         private readonly RuntimeBindingProviderContext _context;
 
         public TriggerParametersProvider(Guid functionInstanceId, FunctionDefinition function,
             TTriggerValue triggerValue, RuntimeBindingProviderContext context)
         {
             _functionInstanceId = functionInstanceId;
-            _triggerParameterName = function.TriggerParameterName;
+            _function = function;
             _triggerBinding = (ITriggerBinding<TTriggerValue>)function.TriggerBinding;
             _triggerValue = triggerValue;
-            _nonTriggerBindings = function.NonTriggerBindings;
             _context = context;
         }
 
-        public string TriggerParameterName
+        public FunctionDefinition Function
         {
-            get { return _triggerParameterName; }
-        }
-
-        public ITriggerBinding TriggerBinding
-        {
-            get { return _triggerBinding; }
-        }
-
-        public IReadOnlyDictionary<string, IBinding> NonTriggerBindings
-        {
-            get { return _nonTriggerBindings; }
+            get { return _function ; }
         }
 
         public IReadOnlyDictionary<string, IValueProvider> Bind()
@@ -58,6 +46,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             IValueProvider triggerProvider;
             IReadOnlyDictionary<string, object> bindingData;
+            string triggerParameterName = _function.TriggerParameterName;
 
             try
             {
@@ -67,11 +56,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
             catch (Exception exception)
             {
-                triggerProvider = new BindingExceptionValueProvider(_triggerParameterName, exception);
+                triggerProvider = new BindingExceptionValueProvider(triggerParameterName, exception);
                 bindingData = null;
             }
 
-            parameters.Add(_triggerParameterName, triggerProvider);
+            parameters.Add(triggerParameterName, triggerProvider);
 
             BindingContext bindingContext = new BindingContext
             {
@@ -86,7 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 BindingProvider = _context.BindingProvider
             };
 
-            foreach (KeyValuePair<string, IBinding> item in _nonTriggerBindings)
+            foreach (KeyValuePair<string, IBinding> item in _function.NonTriggerBindings)
             {
                 string name = item.Key;
                 IBinding binding = item.Value;

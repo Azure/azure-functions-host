@@ -81,13 +81,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             context.ConsoleOutput = consoleOutput;
 
             // Must bind before logging (bound invoke string is included in log message).
-            IParametersProvider parametersProvider = request.ParametersProvider;
-            IReadOnlyDictionary<string, IValueProvider> parameters = parametersProvider.Bind();
+            IReadOnlyDictionary<string, IValueProvider> parameters = request.ParametersProvider.Bind();
 
             using (ValueProviderDisposable.Create(parameters))
             {
-                LogFunctionStarted(message, functionOutput, parameters, parametersProvider.TriggerParameterName,
-                    parametersProvider.TriggerBinding, parametersProvider.NonTriggerBindings);
+                LogFunctionStarted(message, functionOutput, parameters);
 
                 try
                 {
@@ -108,14 +106,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         private void LogFunctionStarted(FunctionStartedMessage message, FunctionOutputLog functionOutput,
-            IReadOnlyDictionary<string, IValueProvider> parameters, string triggerParameterName,
-            ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
+            IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             // Finish populating the function started snapshot.
             message.OutputBlobUrl = functionOutput.Uri;
             CloudBlobDescriptor parameterLogger = functionOutput.ParameterLogBlob;
             message.ParameterLogBlobUrl = parameterLogger == null ? null : parameterLogger.GetBlockBlob().Uri.AbsoluteUri;
-            message.Arguments = CreateArguments(triggerParameterName, triggerBinding, nonTriggerBindings, parameters);
+            message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
             _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
@@ -284,19 +281,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             return new FunctionStartedMessage
             {
-                FunctionInstanceId = request.Id,
                 HostId = _sharedContext.HostId,
                 HostInstanceId = _sharedContext.HostInstanceId,
-                FunctionId = request.Method.GetFullName(),
-                FunctionFullName = request.Method.GetFullName(),
-                FunctionShortName = request.Method.GetShortName(),
+                StorageConnectionString = storageAccount != null ? storageAccount.ToString(exportSecrets: true) : null,
+                ServiceBusConnectionString = serviceBusConnectionString,
+                WebJobRunIdentifier = WebJobRunIdentifier.Current,
+                FunctionInstanceId = request.Id,
+                Function = request.ParametersProvider.Function.ToFunctionDescriptor(),
                 ParentId = triggerReason != null && triggerReason.ParentGuid != Guid.Empty
                     ? (Guid?)triggerReason.ParentGuid : null,
                 Reason = triggerReason != null ? triggerReason.ToString() : null,
-                StartTime = DateTimeOffset.UtcNow,
-                StorageConnectionString = storageAccount != null ? storageAccount.ToString(exportSecrets: true) : null,
-                ServiceBusConnectionString = serviceBusConnectionString,
-                WebJobRunIdentifier = WebJobRunIdentifier.Current
+                StartTime = DateTimeOffset.UtcNow
             };
         }
 
@@ -304,56 +299,31 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             return new FunctionCompletedMessage
             {
-                FunctionInstanceId = startedMessage.FunctionInstanceId,
                 HostId = startedMessage.HostId,
                 HostInstanceId = startedMessage.HostInstanceId,
-                FunctionId = startedMessage.FunctionId,
-                FunctionFullName = startedMessage.FunctionFullName,
-                FunctionShortName = startedMessage.FunctionShortName,
+                StorageConnectionString = startedMessage.StorageConnectionString,
+                ServiceBusConnectionString = startedMessage.ServiceBusConnectionString,
+                WebJobRunIdentifier = startedMessage.WebJobRunIdentifier,
+                FunctionInstanceId = startedMessage.FunctionInstanceId,
+                Function = startedMessage.Function,
                 Arguments = startedMessage.Arguments,
                 ParentId = startedMessage.ParentId,
                 Reason = startedMessage.Reason,
                 StartTime = startedMessage.StartTime,
-                StorageConnectionString = startedMessage.StorageConnectionString,
-                ServiceBusConnectionString = startedMessage.ServiceBusConnectionString,
                 OutputBlobUrl = startedMessage.OutputBlobUrl,
-                ParameterLogBlobUrl = startedMessage.ParameterLogBlobUrl,
-                WebJobRunIdentifier = startedMessage.WebJobRunIdentifier
+                ParameterLogBlobUrl = startedMessage.ParameterLogBlobUrl
             };
         }
 
-        private static IDictionary<string, FunctionArgument> CreateArguments(string triggerParameterName,
-            ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IReadOnlyDictionary<string, IValueProvider> parameters)
+        private static IDictionary<string, string> CreateArguments(IReadOnlyDictionary<string, IValueProvider> parameters)
         {
-            IDictionary<string, FunctionArgument> arguments = new Dictionary<string, FunctionArgument>();
+            IDictionary<string, string> arguments = new Dictionary<string, string>();
 
             if (parameters != null)
             {
                 foreach (KeyValuePair<string, IValueProvider> parameter in parameters)
                 {
-                    string name = parameter.Key;
-                    ParameterDescriptor parameterDescriptor;
-
-                    if (name == triggerParameterName)
-                    {
-                        parameterDescriptor = triggerBinding.ToParameterDescriptor();
-                    }
-                    else
-                    {
-                        IBinding binding = nonTriggerBindings[name];
-                        parameterDescriptor = binding.ToParameterDescriptor();
-                    }
-
-                    IValueProvider valueProvider = parameter.Value;
-
-                    FunctionArgument argument = new FunctionArgument
-                    {
-                        ParameterType = parameterDescriptor,
-                        Value = valueProvider.ToInvokeString()
-                    };
-
-                    arguments.Add(parameter.Key, argument);
+                    arguments.Add(parameter.Key, parameter.Value.ToInvokeString());
                 }
             }
 

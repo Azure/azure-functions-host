@@ -152,7 +152,8 @@ namespace Dashboard.Data
         private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionStartedMessage message)
         {
             FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId, message.Arguments);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId,
+                message.Function, message.Arguments);
 
             return new FunctionInstanceEntityGroup
             {
@@ -170,9 +171,9 @@ namespace Dashboard.Data
                 Id = message.FunctionInstanceId,
                 HostId = message.HostId,
                 HostInstanceId = message.HostInstanceId,
-                FunctionId = new FunctionIdentifier(message.HostId, message.FunctionId).ToString(),
-                FunctionFullName = message.FunctionFullName,
-                FunctionShortName = message.FunctionShortName,
+                FunctionId = new FunctionIdentifier(message.HostId, message.Function.Id).ToString(),
+                FunctionFullName = message.Function.FullName,
+                FunctionShortName = message.Function.ShortName,
                 ParentId = message.ParentId,
                 Reason = message.Reason,
                 QueueTime = message.StartTime,
@@ -188,20 +189,21 @@ namespace Dashboard.Data
         }
 
         private static IReadOnlyList<FunctionArgumentEntity> CreateArgumentEntities(Guid functionInstanceId,
-            IDictionary<string, FunctionArgument> arguments)
+            FunctionDescriptor function, IDictionary<string, string> arguments)
         {
             List<FunctionArgumentEntity> entities = new List<FunctionArgumentEntity>();
             int index = 0;
 
-            foreach (KeyValuePair<string, FunctionArgument> argument in arguments)
+            foreach (KeyValuePair<string, string> argument in arguments)
             {
                 entities.Add(new FunctionArgumentEntity
                 {
                     PartitionKey = PartitionKey,
                     RowKey = FunctionArgumentEntity.GetRowKey(functionInstanceId, index),
                     Name = argument.Key,
-                    Value = argument.Value.Value,
-                    IsBlob = argument.Value.ParameterType is BlobParameterDescriptor,
+                    Value = argument.Value,
+                    IsBlob = function.Parameters != null && function.Parameters.ContainsKey(argument.Key)
+                        && function.Parameters[argument.Key] is BlobParameterDescriptor,
                 });
 
                 index++;
@@ -213,7 +215,8 @@ namespace Dashboard.Data
         private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionCompletedMessage message)
         {
             FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId, message.Arguments);
+            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId,
+                message.Function, message.Arguments);
 
             return new FunctionInstanceEntityGroup
             {

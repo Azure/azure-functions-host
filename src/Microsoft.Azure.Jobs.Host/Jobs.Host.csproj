@@ -103,9 +103,6 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ContainerNames.cs">
       <Link>Protocols\ContainerNames.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionArgument.cs">
-      <Link>Protocols\FunctionArgument.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedMessage.cs">
       <Link>Protocols\FunctionCompletedMessage.cs</Link>
     </Compile>
@@ -117,6 +114,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostMessage.cs">
       <Link>Protocols\HostMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostOutputMessage.cs">
+      <Link>Protocols\HostOutputMessage.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostStartedMessage.cs">
       <Link>Protocols\HostStartedMessage.cs</Link>
@@ -150,9 +150,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueue.cs">
       <Link>Protocols\PersistentQueue.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueEntity.cs">
-      <Link>Protocols\PersistentQueueEntity.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueMessage.cs">
       <Link>Protocols\PersistentQueueMessage.cs</Link>

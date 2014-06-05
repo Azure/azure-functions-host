@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
     {
         public void LogFunctionStarted(FunctionStartedMessage message)
         {
-            Console.WriteLine("Executing: '{0}' because {1}", message.FunctionShortName, message.Reason);
+            Console.WriteLine("Executing: '{0}' because {1}", message.Function.ShortName, message.Reason);
         }
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)

@@ -220,6 +220,7 @@ namespace Microsoft.Azure.Jobs
                 HostId = _hostId,
                 StorageConnectionString = storageConnectionString,
                 ServiceBusConnectionString = serviceBusConnectionString,
+                WebJobRunIdentifier = WebJobRunIdentifier.Current,
                 Functions = functionDescriptors
             };
             logger.Enqueue(message);

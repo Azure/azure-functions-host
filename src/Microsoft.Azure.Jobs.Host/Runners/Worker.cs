@@ -171,7 +171,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        // This snapshot won't contain full normal data for FunctionLongName and FunctionShortName.
+        // This snapshot won't contain full normal data for Function.FullName, Function.ShortName and Function.Parameters.
         // (All we know is an unavailable function ID; which function location method info to use is a mystery.)
         private static FunctionCompletedMessage CreateFailedMessage(TriggerAndOverrideMessage message, DateTimeOffset insertionType)
         {
@@ -182,8 +182,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return new FunctionCompletedMessage
             {
                 FunctionInstanceId = message.Id,
-                FunctionId = message.FunctionId,
-                Arguments = CreateArguments(message.Arguments),
+                Function = new FunctionDescriptor
+                {
+                    Id = message.FunctionId
+                },
+                Arguments = message.Arguments,
                 ParentId = message.ParentId,
                 Reason = message.Reason,
                 StartTime = startAndEndTime,
@@ -193,18 +196,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 ExceptionMessage = String.Format(CultureInfo.CurrentCulture,
                         "No function '{0}' currently exists.", message.FunctionId)
             };
-        }
-
-        private static IDictionary<string, FunctionArgument> CreateArguments(IDictionary<string, string> arguments)
-        {
-            IDictionary<string, FunctionArgument> returnValue = new Dictionary<string, FunctionArgument>();
-
-            foreach (KeyValuePair<string, string> argument in arguments)
-            {
-                returnValue.Add(argument.Key, new FunctionArgument { Value = argument.Value });
-            }
-
-            return returnValue;
         }
 
         private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message, RuntimeBindingProviderContext context)

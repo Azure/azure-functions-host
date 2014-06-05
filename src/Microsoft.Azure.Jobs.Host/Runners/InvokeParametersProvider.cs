@@ -8,9 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
     internal class InvokeParametersProvider : IParametersProvider
     {
         private readonly Guid _functionInstanceId;
-        private readonly string _triggerParameterName;
-        private readonly ITriggerBinding _triggerBinding;
-        private readonly IReadOnlyDictionary<string, IBinding> _nonTriggerBindings;
+        private readonly FunctionDefinition _function;
         private readonly IDictionary<string, object> _parameters;
         private readonly RuntimeBindingProviderContext _context;
 
@@ -18,26 +16,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
         {
             _functionInstanceId = functionInstanceId;
-            _triggerParameterName = function.TriggerParameterName;
-            _triggerBinding = function.TriggerBinding;
-            _nonTriggerBindings = function.NonTriggerBindings;
+            _function = function;
             _parameters = parameters;
             _context = context;
         }
 
-        public string TriggerParameterName
+        public FunctionDefinition Function
         {
-            get { return _triggerParameterName; }
-        }
-
-        public ITriggerBinding TriggerBinding
-        {
-            get { return _triggerBinding; }
-        }
-
-        public IReadOnlyDictionary<string, IBinding> NonTriggerBindings
-        {
-            get { return _nonTriggerBindings; }
+            get { return _function; }
         }
 
         public IReadOnlyDictionary<string, IValueProvider> Bind()
@@ -45,15 +31,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             Dictionary<string, IValueProvider> parameters = new Dictionary<string, IValueProvider>();
             IReadOnlyDictionary<string, object> bindingData;
 
-            if (_triggerParameterName != null)
+            string triggerParameterName = _function.TriggerParameterName;
+
+            if (triggerParameterName != null)
             {
-                if (_parameters == null || !_parameters.ContainsKey(_triggerParameterName))
+                if (_parameters == null || !_parameters.ContainsKey(triggerParameterName))
                 {
                     throw new InvalidOperationException(
-                        "Missing value for trigger parameter '" + _triggerParameterName + "'.");
+                        "Missing value for trigger parameter '" + triggerParameterName + "'.");
                 }
 
-                object triggerValue = _parameters[_triggerParameterName];
+                object triggerValue = _parameters[triggerParameterName];
 
                 ArgumentBindingContext triggerContext = new ArgumentBindingContext
                 {
@@ -70,17 +58,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 try
                 {
-                    ITriggerData triggerData = _triggerBinding.Bind(triggerValue, triggerContext);
+                    ITriggerData triggerData = _function.TriggerBinding.Bind(triggerValue, triggerContext);
                     triggerProvider = triggerData.ValueProvider;
                     bindingData = triggerData.BindingData;
                 }
                 catch (Exception exception)
                 {
-                    triggerProvider = new BindingExceptionValueProvider(_triggerParameterName, exception);
+                    triggerProvider = new BindingExceptionValueProvider(triggerParameterName, exception);
                     bindingData = null;
                 }
 
-                parameters.Add(_triggerParameterName, triggerProvider);
+                parameters.Add(triggerParameterName, triggerProvider);
             }
             else
             {
@@ -100,7 +88,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 BindingProvider = _context.BindingProvider
             };
 
-            foreach (KeyValuePair<string, IBinding> item in _nonTriggerBindings)
+            foreach (KeyValuePair<string, IBinding> item in _function.NonTriggerBindings)
             {
                 string name = item.Key;
                 IBinding binding = item.Value;
