@@ -7,9 +7,9 @@ namespace Microsoft.Azure.Jobs
     internal class UpdateHostHeartbeatCommand : ICanFailCommand
     {
         private readonly IRunningHostTableWriter _heartbeatTable;
-        private readonly Guid _hostId;
+        private readonly string _hostName;
 
-        public UpdateHostHeartbeatCommand(IRunningHostTableWriter heartbeatTable, Guid hostOrInstanceId)
+        public UpdateHostHeartbeatCommand(IRunningHostTableWriter heartbeatTable, string hostName)
         {
             if (heartbeatTable == null)
             {
@@ -17,14 +17,14 @@ namespace Microsoft.Azure.Jobs
             }
 
             _heartbeatTable = heartbeatTable;
-            _hostId = hostOrInstanceId;
+            _hostName = hostName;
         }
 
         public bool TryExecute()
         {
             try
             {
-                _heartbeatTable.SignalHeartbeat(_hostId);
+                _heartbeatTable.SignalHeartbeat(_hostName);
                 return true;
             }
             catch (StorageException exception)

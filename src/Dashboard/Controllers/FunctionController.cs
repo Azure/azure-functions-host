@@ -62,11 +62,11 @@ namespace Dashboard.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Run(string functionId, Guid hostId, FormCollection form)
+        public ActionResult Run(string queue, string functionId, FormCollection form)
         {
             FunctionSnapshot function = GetFunction(functionId);
 
-            return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.RunFromDashboard, null);
+            return Invoke(queue, form, function, TriggerAndOverrideMessageReasons.RunFromDashboard, null);
         }
 
         public ActionResult Replay(string parentId)
@@ -92,12 +92,12 @@ namespace Dashboard.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Replay(string parentId, Guid hostId, FormCollection form)
+        public ActionResult Replay(string parentId, string queue, FormCollection form)
         {
             Guid parent;
             FunctionSnapshot function = GetFunctionFromInstance(parentId, out parent);
 
-            return Invoke(hostId, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
+            return Invoke(queue, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
         }
 
         private FunctionStartedMessage CreateFunctionStartedMessage(FunctionSnapshot function, TriggerAndOverrideMessage message)
@@ -122,18 +122,18 @@ namespace Dashboard.Controllers
         {
             return new RunFunctionViewModel
             {
-                HostId = function.HostId,
+                QueueName = function.QueueName,
                 FunctionId = function.Id,
                 Parameters = parameters,
                 ParentId = parentId,
                 FunctionName = function.ShortName,
                 FunctionFullName = function.FullName,
-                HostIsNotRunning = !IsHostRunning(function.HostId),
+                HostIsNotRunning = !IsHostRunning(function.QueueName),
                 SubmitText = submitText
             };
         }
 
-        private ActionResult Invoke(Guid hostId, FormCollection form, FunctionSnapshot function, string reason, Guid? parentId)
+        private ActionResult Invoke(string queueName, FormCollection form, FunctionSnapshot function, string reason, Guid? parentId)
         {
             if (function == null)
             {
@@ -156,20 +156,20 @@ namespace Dashboard.Controllers
             FunctionStartedMessage queuedMessage = CreateFunctionStartedMessage(function, message);
             _functionQueuedLogger.LogFunctionQueued(queuedMessage);
 
-            _invoker.TriggerAndOverride(hostId, message);
+            _invoker.TriggerAndOverride(queueName, message);
 
             return Redirect("~/#/functions/invocations/" + id);
         }
 
-        private bool IsHostRunning(Guid hostId)
+        private bool IsHostRunning(string queueName)
         {
             RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-            return HasValidHeartbeat(hostId, heartbeats);
+            return HasValidHeartbeat(queueName, heartbeats);
         }
 
-        internal static bool HasValidHeartbeat(Guid hostId, IEnumerable<RunningHost> heartbeats)
+        internal static bool HasValidHeartbeat(string hostName, IEnumerable<RunningHost> heartbeats)
         {
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostId == hostId);
+            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostName == hostName);
             return RunningHost.IsValidHeartbeat(heartbeat);
         }
 

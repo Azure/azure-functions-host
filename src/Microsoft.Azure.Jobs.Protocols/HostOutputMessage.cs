@@ -17,8 +17,13 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the host instance ID.</summary>
         public Guid HostInstanceId { get; set; }
 
-        /// <summary>Gets or sets the host ID.</summary>
-        public Guid HostId { get; set; }
+        /// <summary>Gets or sets a short, non-unique name for the host suitable for display purposes.</summary>
+        public string HostDisplayName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the name of the shared queue to which all instances of this host listen, if any.
+        /// </summary>
+        public string SharedQueueName { get; set; }
 
         /// <summary>Gets or sets the connection string for Azure Storage data.</summary>
         public string StorageConnectionString { get; set; }

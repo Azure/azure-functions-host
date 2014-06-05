@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Loggers;
@@ -21,15 +22,17 @@ namespace Microsoft.Azure.Jobs
         private readonly IExecuteFunction _executeFunction;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionTableLookup _functionTableLookup;
-        private readonly Guid _hostInstanceId;
+        private readonly Guid _id;
         private readonly Guid _hostId;
+        private readonly string _displayName;
+        private readonly string _sharedQueueName;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IRunningHostTableWriter _heartbeatTable;
         private readonly FunctionStore _functionStore;
 
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
-            _hostInstanceId = Guid.NewGuid();
+            _id = Guid.NewGuid();
             IConfiguration config = new Configuration();
             config.NameResolver = nameResolver;
 
@@ -64,8 +67,11 @@ namespace Microsoft.Azure.Jobs
                 CloudStorageAccount account = CloudStorageAccount.Parse(dashboardConnectionString);
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
                 IHostTable hostTable = new HostTable(tableClient);
-                string hostName = GetHostName(functions);
+                Assembly hostAssembly = GetHostAssembly(functions);
+                string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
                 _hostId = hostTable.GetOrCreateHostId(hostName);
+                _sharedQueueName = QueueNames.GetHostQueueName(_hostId);
+                _displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
 
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
@@ -73,7 +79,7 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_hostId, _hostInstanceId, account);
+                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
@@ -116,14 +122,14 @@ namespace Microsoft.Azure.Jobs
             get { return _functionTableLookup; }
         }
 
-        public Guid HostId
+        public Guid Id
         {
-            get { return _hostId; }
+            get { return _id; }
         }
 
-        public Guid HostInstanceId
+        public string SharedQueueName
         {
-            get { return _hostInstanceId; }
+            get { return _sharedQueueName; }
         }
 
         public IRunningHostTableWriter RunningHostTableWriter
@@ -173,19 +179,14 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static string GetHostName(FunctionDefinition[] functions)
+        private static Assembly GetHostAssembly(FunctionDefinition[] functions)
         {
             // 1. Try to get the assembly name from the first function definition.
             FunctionDefinition firstFunction = functions.FirstOrDefault();
 
             if (firstFunction != null)
             {
-                string hostName = firstFunction.Method.DeclaringType.Assembly.FullName;
-
-                if (hostName != null)
-                {
-                    return hostName;
-                }
+                return firstFunction.Method.DeclaringType.Assembly;
             }
 
             // 2. If there are no function definitions, try to use the entry assembly.
@@ -193,11 +194,11 @@ namespace Microsoft.Azure.Jobs
 
             if (entryAssembly != null)
             {
-                return entryAssembly.FullName;
+                return entryAssembly;
             }
 
             // 3. If there's no entry assembly either, we don't have anything to use.
-            return "Unknown";
+            return null;
         }
 
         // Publish functions to the cloud
@@ -216,8 +217,9 @@ namespace Microsoft.Azure.Jobs
 
             HostStartedMessage message = new HostStartedMessage
             {
-                HostInstanceId = _hostInstanceId,
-                HostId = _hostId,
+                HostInstanceId = _id,
+                HostDisplayName = _displayName,
+                SharedQueueName = _sharedQueueName,
                 StorageConnectionString = storageConnectionString,
                 ServiceBusConnectionString = serviceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current,

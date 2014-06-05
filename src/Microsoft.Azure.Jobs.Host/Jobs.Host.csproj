@@ -160,9 +160,6 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ProcessTerminationSignalReader.cs">
       <Link>Protocols\ProcessTerminationSignalReader.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueNames.cs">
-      <Link>Protocols\QueueNames.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueParameterDescriptor.cs">
       <Link>Protocols\QueueParameterDescriptor.cs</Link>
     </Compile>
@@ -298,6 +295,7 @@
     <Compile Include="MethodInfoExtensions.cs" />
     <Compile Include="ObjectDictionaryConverter.cs" />
     <Compile Include="PropertyHelper.cs" />
+    <Compile Include="HostQueueNames.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\CloudQueueExtensions.cs" />
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />

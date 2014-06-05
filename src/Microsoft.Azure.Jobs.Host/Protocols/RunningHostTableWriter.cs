@@ -33,9 +33,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             _table = table;
         }
 
-        public void SignalHeartbeat(Guid hostOrInstanceId)
+        public void SignalHeartbeat(string hostName)
         {
-            DynamicTableEntity entity = new DynamicTableEntity(PartitionKey, hostOrInstanceId.ToString());
+            DynamicTableEntity entity = new DynamicTableEntity(PartitionKey, hostName);
             _table.InsertOrReplace(entity);
         }
     }

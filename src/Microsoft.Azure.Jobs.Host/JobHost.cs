@@ -172,7 +172,7 @@ namespace Microsoft.Azure.Jobs
                     {
                         invokeTrigger = new QueueTrigger
                         {
-                            QueueName = QueueNames.GetHostQueueName(_hostContext.HostId),
+                            QueueName = _hostContext.SharedQueueName,
                             StorageConnectionString = _dashboardConnectionString
                         };
                     }
@@ -329,22 +329,22 @@ namespace Microsoft.Azure.Jobs
 
         private UpdateHostHeartbeatCommand CreateRunningHostHeartbeat()
         {
-            return CreateUpdateHostHeartbeatCommand(_hostContext.HostId);
+            return CreateUpdateHostHeartbeatCommand(_hostContext.SharedQueueName);
         }
 
         private UpdateHostHeartbeatCommand CreateRunningHostInstanceHeartbeat()
         {
-            return CreateUpdateHostHeartbeatCommand(_hostContext.HostInstanceId);
+            return CreateUpdateHostHeartbeatCommand(_hostContext.Id.ToString("N"));
         }
 
-        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand(Guid hostOrInstanceId)
+        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand(string hostName)
         {
-            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, hostOrInstanceId);
+            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, hostName);
         }
 
         private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()
         {
-            return new TerminateProcessUponRequestCommand(_hostContext.TerminationSignalReader, _hostContext.HostInstanceId);
+            return new TerminateProcessUponRequestCommand(_hostContext.TerminationSignalReader, _hostContext.Id);
         }
 
         // Throw if the function failed. 

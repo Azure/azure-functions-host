@@ -277,8 +277,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             return new FunctionStartedMessage
             {
-                HostId = _sharedContext.HostId,
                 HostInstanceId = _sharedContext.HostInstanceId,
+                HostDisplayName = _sharedContext.HostDisplayName,
+                SharedQueueName = _sharedContext.SharedQueueName,
                 StorageConnectionString = storageAccount != null ? storageAccount.ToString(exportSecrets: true) : null,
                 ServiceBusConnectionString = serviceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current,
@@ -295,8 +296,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             return new FunctionCompletedMessage
             {
-                HostId = startedMessage.HostId,
                 HostInstanceId = startedMessage.HostInstanceId,
+                HostDisplayName = startedMessage.HostDisplayName,
+                SharedQueueName = startedMessage.SharedQueueName,
                 StorageConnectionString = startedMessage.StorageConnectionString,
                 ServiceBusConnectionString = startedMessage.ServiceBusConnectionString,
                 WebJobRunIdentifier = startedMessage.WebJobRunIdentifier,

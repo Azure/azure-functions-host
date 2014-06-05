@@ -27,8 +27,7 @@ namespace Dashboard.UnitTests.Protocols
         public void TriggerAndOverride_IfQueueAlreadyExists_AddsExpectedMessage()
         {
             // Arrange
-            Guid expectedHostId = CreateGuid();
-            string expectedQueueName = QueueNames.GetHostQueueName(expectedHostId);
+            string expectedQueueName = CreateQueueName();
             TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
@@ -47,7 +46,7 @@ namespace Dashboard.UnitTests.Protocols
             IInvoker product = CreateProductUnderTest(client);
 
             // Act
-            product.TriggerAndOverride(expectedHostId, expectedMessage);
+            product.TriggerAndOverride(expectedQueueName, expectedMessage);
 
             // Assert
             string expectedContent = ToJson(expectedMessage);
@@ -58,8 +57,7 @@ namespace Dashboard.UnitTests.Protocols
         public void TriggerAndOverride_IfQueueDoesNotAlreadyExist_AddsExpectedMessage()
         {
             // Arrange
-            Guid expectedHostId = CreateGuid();
-            string expectedQueueName = QueueNames.GetHostQueueName(expectedHostId);
+            string expectedQueueName = CreateQueueName();
             TriggerAndOverrideMessage expectedMessage = CreateTriggerMessage();
 
             List<string> messagesAdded = new List<string>();
@@ -90,7 +88,7 @@ namespace Dashboard.UnitTests.Protocols
             IInvoker product = CreateProductUnderTest(client);
 
             // Act
-            product.TriggerAndOverride(expectedHostId, expectedMessage);
+            product.TriggerAndOverride(expectedQueueName, expectedMessage);
 
             // Assert
             string expectedContent = ToJson(expectedMessage);
@@ -101,12 +99,12 @@ namespace Dashboard.UnitTests.Protocols
         public void TriggerAndOverride_IfMessageIsNull_Throws()
         {
             // Arrange
-            Guid hostId = CreateGuid();
+            string queueName = CreateQueueName();
             TriggerAndOverrideMessage message = null;
             IInvoker product = CreateProductUnderTest(CreateDummyClient());
 
             // Act & Assert
-            ExceptionAssert.ThrowsArgumentNull(() => product.TriggerAndOverride(hostId, message), "message");
+            ExceptionAssert.ThrowsArgumentNull(() => product.TriggerAndOverride(queueName, message), "message");
         }
 
         private static IDictionary<string, string> CreateArguments()
@@ -166,6 +164,11 @@ namespace Dashboard.UnitTests.Protocols
         private static IInvoker CreateProductUnderTest(ICloudQueueClient client)
         {
             return new Invoker(client);
+        }
+
+        private static string CreateQueueName()
+        {
+            return "ignore-queue";
         }
 
         private static StorageException CreateStorageException(int httpStatusCode)

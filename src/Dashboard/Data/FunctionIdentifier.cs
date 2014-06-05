@@ -4,16 +4,16 @@ namespace Dashboard.Data
 {
     internal class FunctionIdentifier
     {
-        private readonly Guid _hostId;
+        private readonly string _hostId;
         private readonly string _hostFunctionId;
 
-        public FunctionIdentifier(Guid hostId, string hostFunctionId)
+        public FunctionIdentifier(string hostId, string hostFunctionId)
         {
             _hostId = hostId;
             _hostFunctionId = hostFunctionId;
         }
 
-        public Guid HostId
+        public string HostId
         {
             get { return _hostId; }
         }
@@ -26,15 +26,14 @@ namespace Dashboard.Data
         public static FunctionIdentifier Parse(string functionId)
         {
             int underscoreIndex = functionId.IndexOf('_');
-            string hostIdPortion = functionId.Substring(0, underscoreIndex);
-            Guid hostId = Guid.Parse(hostIdPortion);
+            string hostId = functionId.Substring(0, underscoreIndex);
             string hostFunctionId = functionId.Substring(underscoreIndex + 1);
             return new FunctionIdentifier(hostId, hostFunctionId);
         }
 
         public override string ToString()
         {
-            return _hostId.ToString() + "_" + _hostFunctionId;
+            return _hostId + "_" + _hostFunctionId;
         }
     }
 }

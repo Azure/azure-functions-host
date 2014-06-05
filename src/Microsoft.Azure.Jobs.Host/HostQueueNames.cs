@@ -1,17 +1,8 @@
 ﻿using System;
 
-#if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
-#else
-namespace Microsoft.Azure.Jobs.Host.Protocols
-#endif
+namespace Microsoft.Azure.Jobs.Host
 {
-    /// <summary>Provides well-known queue names in the protocol.</summary>
-#if PUBLICPROTOCOL
-    public static class QueueNames
-#else
     internal static class QueueNames
-#endif
     {
         private const string Prefix = "azure-jobs-";
 

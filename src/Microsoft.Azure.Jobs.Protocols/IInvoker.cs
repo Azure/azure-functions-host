@@ -6,8 +6,8 @@ namespace Microsoft.Azure.Jobs.Protocols
     public interface IInvoker
     {
         /// <summary>Triggers a function using override values for all parameters.</summary>
-        /// <param name="hostId">The ID of the host.</param>
+        /// <param name="queueName">The name of the queue to which the host is listening.</param>
         /// <param name="message">The message containing data about the function to trigger.</param>
-        void TriggerAndOverride(Guid hostId, TriggerAndOverrideMessage message);
+        void TriggerAndOverride(string queueName, TriggerAndOverrideMessage message);
     }
 }

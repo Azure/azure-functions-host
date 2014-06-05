@@ -20,14 +20,14 @@ namespace Dashboard.Protocols
             _client = client;
         }
 
-        public void TriggerAndOverride(Guid hostId, TriggerAndOverrideMessage message)
+        public void TriggerAndOverride(string queueName, TriggerAndOverrideMessage message)
         {
             if (message == null)
             {
                 throw new ArgumentNullException("message");
             }
 
-            ICloudQueue queue = _client.GetQueueReference(QueueNames.GetHostQueueName(hostId));
+            ICloudQueue queue = _client.GetQueueReference(queueName);
             Debug.Assert(queue != null);
             queue.CreateIfNotExists();
             string content = JsonCustom.SerializeObject(message);

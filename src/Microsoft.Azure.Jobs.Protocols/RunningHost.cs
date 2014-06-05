@@ -23,12 +23,12 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         // Provide more understandable names that indicate how the built-in properties are being used.
 
-        /// <summary>Gets the Host ID.</summary>
-        public Guid HostId
+        /// <summary>Gets the host name.</summary>
+        public string HostName
         {
             get
             {
-                return Guid.Parse(RowKey);
+                return RowKey;
             }
         }
 

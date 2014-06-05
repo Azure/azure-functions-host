@@ -208,7 +208,7 @@ namespace Dashboard.ApiControllers
                     FunctionId = f.Id,
                     FunctionFullName = f.FullName,
                     FunctionName = f.ShortName,
-                    IsRunning = FunctionController.HasValidHeartbeat(f.HostId, hearbeats),
+                    IsRunning = FunctionController.HasValidHeartbeat(f.QueueName, hearbeats),
                     FailedCount = 0,
                     SuccessCount = 0
                 })

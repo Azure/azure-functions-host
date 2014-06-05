@@ -23,14 +23,14 @@ namespace Dashboard.Data
 
         public void LogHostStarted(HostStartedMessage message)
         {
-            string hostId = message.HostId.ToString();
+            string hostId = message.SharedQueueName;
             HostSnapshot newSnapshot = CreateSnapshot(message);
 
             VersionedDocument<HostSnapshot> existingVersionedSnapshot = _store.Read(hostId);
 
             if (existingVersionedSnapshot == null)
             {
-                if (_store.TryCreate(message.HostId.ToString(), newSnapshot))
+                if (_store.TryCreate(hostId, newSnapshot))
                 {
                     return;
                 }
@@ -55,28 +55,28 @@ namespace Dashboard.Data
             return new HostSnapshot
             {
                 HostVersion = message.EnqueuedOn,
-                Functions = CreateFunctionSnapshots(message.HostId, message.Functions)
+                Functions = CreateFunctionSnapshots(message.SharedQueueName, message.Functions)
             };
         }
 
-        private static IEnumerable<FunctionSnapshot> CreateFunctionSnapshots(Guid hostId, IEnumerable<FunctionDescriptor> functions)
+        private static IEnumerable<FunctionSnapshot> CreateFunctionSnapshots(string queueName, IEnumerable<FunctionDescriptor> functions)
         {
             List<FunctionSnapshot> snapshots = new List<FunctionSnapshot>();
 
             foreach (FunctionDescriptor function in functions)
             {
-                snapshots.Add(CreateFunctionSnapshot(hostId, function));
+                snapshots.Add(CreateFunctionSnapshot(queueName, function));
             }
 
             return snapshots;
         }
 
-        private static FunctionSnapshot CreateFunctionSnapshot(Guid hostId, FunctionDescriptor function)
+        private static FunctionSnapshot CreateFunctionSnapshot(string queueName, FunctionDescriptor function)
         {
             return new FunctionSnapshot
             {
-                Id = String.Format(CultureInfo.InvariantCulture, "{0}_{1}", hostId, function.Id),
-                HostId = hostId,
+                Id = String.Format(CultureInfo.InvariantCulture, "{0}_{1}", queueName, function.Id),
+                QueueName = queueName,
                 HostFunctionId = function.Id,
                 FullName = function.FullName,
                 ShortName = function.ShortName,

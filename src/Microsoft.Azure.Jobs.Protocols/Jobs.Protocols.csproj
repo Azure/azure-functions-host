@@ -82,7 +82,6 @@
     <Compile Include="PersistentQueue.cs" />
     <Compile Include="PersistentQueueMessage.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
-    <Compile Include="QueueNames.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />
     <Compile Include="RunningHost.cs" />
     <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />

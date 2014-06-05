@@ -8,7 +8,7 @@ namespace Dashboard.Data
     {
         public Guid Id { get; set; }
 
-        public Guid HostId { get; set; }
+        public string SharedQueueName { get; set; }
 
         public Guid HostInstanceId { get; set; }
 

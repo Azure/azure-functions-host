@@ -7,7 +7,7 @@ namespace Dashboard.Data
     {
         public string Id { get; set; }
 
-        public Guid HostId { get; set; }
+        public string QueueName { get; set; }
 
         public string HostFunctionId { get; set; }
 

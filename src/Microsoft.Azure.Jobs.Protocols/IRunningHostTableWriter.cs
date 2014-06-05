@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
     {
         /// <summary>Signals a heartbeat from a running host.</summary>
-        /// <param name="hostOrInstanceId">The ID of the host or host instance.</param>
-        void SignalHeartbeat(Guid hostOrInstanceId);
+        /// <param name="hostName">The name of the host or host instance.</param>
+        void SignalHeartbeat(string hostName);
     }
 }

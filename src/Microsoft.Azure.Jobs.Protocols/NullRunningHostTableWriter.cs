@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
     {
         /// <inheritdoc />
-        public void SignalHeartbeat(Guid hostOrInstanceId)
+        public void SignalHeartbeat(string hostName)
         {
         }
     }
