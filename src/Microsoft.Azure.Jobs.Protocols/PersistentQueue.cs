@@ -25,18 +25,14 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         private const string NextVisibleTimeKey = "NextVisibleTime";
         private const string CreatedKey = "Created";
 
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented
-        };
-
         private readonly CloudBlobContainer _blobContainer;
 
         /// <summary>Initializes a new instance of the <see cref="PersistentQueue{T}"/> class.</summary>
-        /// <param name="account">The cloud storage account.</param>
-        public PersistentQueue(CloudStorageAccount account)
-            : this(account.CreateCloudBlobClient().GetContainerReference(ContainerNames.HostOutputContainerName))
+        /// <param name="client">
+        /// A blob client for the storage account into which host output messages are written.
+        /// </param>
+        public PersistentQueue(CloudBlobClient client)
+            : this(client.GetContainerReference(ContainerNames.HostOutputContainerName))
         {
         }
 
@@ -202,7 +198,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 }
             }
 
-            nextItem = JsonConvert.DeserializeObject<T>(contents, _settings);
+            nextItem = JsonConvert.DeserializeObject<T>(contents, JsonSerialization.Settings);
             nextItem.EnqueuedOn = GetCreatedOn(possibleNextItem);
             nextItem.PopReceipt = possibleNextItem.Name;
             return true;
@@ -240,7 +236,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
             Guid messageId = Guid.NewGuid();
             CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId.ToString("N"));
-            string messageBody = JsonConvert.SerializeObject(message, _settings);
+            string messageBody = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
             blob.UploadText(messageBody);
         }
 

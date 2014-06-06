@@ -11,14 +11,9 @@ namespace Microsoft.Azure.Jobs.Protocols
         private readonly CloudBlobClient _client;
 
         /// <summary>Initializes a new instance of the <see cref="HeartbeatMonitor"/> class.</summary>
-        /// <param name="account">The storage account in which to monitor heartbeats.</param>
+        /// <param name="client">A blob client for the storage account in which to monitor heartbeats.</param>
         [CLSCompliant(false)]
-        public HeartbeatMonitor(CloudStorageAccount account)
-            : this(account.CreateCloudBlobClient())
-        {
-        }
-
-        private HeartbeatMonitor(CloudBlobClient client)
+        public HeartbeatMonitor(CloudBlobClient client)
         {
             _client = client;
         }

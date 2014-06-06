@@ -12,6 +12,7 @@ using System.Linq;
 using System.Web.Http;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
+using Dashboard.HostMessaging;
 
 namespace Dashboard.ApiControllers
 {
@@ -21,28 +22,25 @@ namespace Dashboard.ApiControllers
         private readonly IInvocationLogLoader _invocationLogLoader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionLookup _functionLookup;
-        private readonly IProcessTerminationSignalReader _terminationSignalReader;
-        private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
-        private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
+        private readonly IAborter _aborter;
+        private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
 
         internal FunctionsController(
             CloudStorageAccount account,
             IInvocationLogLoader invocationLogLoader,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionLookup functionLookup,
-            IProcessTerminationSignalReader terminationSignalReader,
-            IProcessTerminationSignalWriter terminationSignalWriter,
             IHeartbeatMonitor heartbeatMonitor,
+            IAborter aborter,
             AzureTable<string, FunctionStatsEntity> invokeStatsTable)
         {
-            _invocationLogLoader = invocationLogLoader;
             _account = account;
+            _invocationLogLoader = invocationLogLoader;
             _functionInstanceLookup = functionInstanceLookup;
             _functionLookup = functionLookup;
-            _terminationSignalReader = terminationSignalReader;
-            _terminationSignalWriter = terminationSignalWriter;
             _heartbeatMonitor = heartbeatMonitor;
+            _aborter = aborter;
             _invokeStatsTable = invokeStatsTable;
         }
 
@@ -160,7 +158,8 @@ namespace Dashboard.ApiControllers
             model.Invocation = new InvocationLogViewModel(func, HostHasHeartbeat(func));
             model.TriggerReason = new TriggerReasonViewModel(func);
             model.Trigger = model.TriggerReason.ToString();
-            model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
+            model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running
+                && _aborter.HasRequestedHostInstanceAbort(func.InstanceQueueName);
 
             // Do some analysis to find inputs, outputs, 
 
@@ -264,10 +263,10 @@ namespace Dashboard.ApiControllers
             return Ok(model);
         }
 
-        [Route("api/hostInstances/{hostInstanceId}/abort")]
-        public IHttpActionResult Abort(Guid hostInstanceId)
+        [Route("api/hostInstances/{instanceQueueName}/abort")]
+        public IHttpActionResult Abort(string instanceQueueName)
         {
-            _terminationSignalWriter.RequestTermination(hostInstanceId);
+            _aborter.RequestHostInstanceAbort(instanceQueueName);
 
             return Ok();
         }

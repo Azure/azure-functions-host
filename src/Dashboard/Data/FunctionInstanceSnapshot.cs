@@ -10,6 +10,8 @@ namespace Dashboard.Data
 
         public Guid HostInstanceId { get; set; }
 
+        public string InstanceQueueName { get; set; }
+
         public HeartbeatDescriptor Heartbeat { get; set; }
 
         public string FunctionId { get; set; }

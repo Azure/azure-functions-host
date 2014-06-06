@@ -22,8 +22,8 @@
             },
         },
         sdk: {
-            abortHostInstance: function (hostInstanceId) {
-                return "api/hostInstances/" + encodeURIComponent(hostInstanceId) + "/abort";
+            abortHostInstance: function (instanceQueueName) {
+                return "api/hostInstances/" + encodeURIComponent(instanceQueueName) + "/abort";
             },
             recentInvocations: function () {
                 return "api/functions/invocations/recent";

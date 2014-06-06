@@ -23,7 +23,7 @@
             $scope.aborting = true;
             $http({
                 method: "POST",
-                url: api.sdk.abortHostInstance($scope.model.invocation.hostInstanceId)
+                url: api.sdk.abortHostInstance($scope.model.invocation.instanceQueueName)
             }).then(function() {
                 $scope.model.isAborted = true;
                 delete $scope.aborting;

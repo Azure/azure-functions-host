@@ -103,6 +103,7 @@ namespace Dashboard.Data
             {
                 Id = message.FunctionInstanceId,
                 HostInstanceId = message.HostInstanceId,
+                InstanceQueueName = message.InstanceQueueName,
                 Heartbeat = message.Heartbeat,
                 FunctionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString(),
                 FunctionFullName = message.Function.FullName,

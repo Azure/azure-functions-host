@@ -16,6 +16,7 @@
         func.exceptionMessage = item.exceptionMessage;
         func.updateTimingStrings();
         func.hostInstanceId = item.hostInstanceId;
+        func.instanceQueueName = item.instanceQueueName;
         return func;
     };
 

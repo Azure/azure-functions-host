@@ -24,6 +24,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// </summary>
         public string SharedQueueName { get; set; }
 
+        /// <summary>
+        /// Gets or sets the name of the shared queue to which only this host instance listens, if any.
+        /// </summary>
+        public string InstanceQueueName { get; set; }
+
         /// <summary>Gets or sets the heartbeat for the host instance, if any.</summary>
         public HeartbeatDescriptor Heartbeat { get; set; }
 

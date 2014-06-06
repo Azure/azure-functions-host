@@ -10,13 +10,14 @@ namespace Microsoft.Azure.Jobs
         private readonly FunctionExecutionContext _ctx;
 
         public WebExecutionLogger(Guid hostInstanceId, string hostDisplayName, string sharedQueueName,
-            HeartbeatDescriptor heartbeatDescriptor, CloudStorageAccount account)
+            string instanceQueueName, HeartbeatDescriptor heartbeatDescriptor, CloudStorageAccount account)
         {
             _ctx = new FunctionExecutionContext
             {
                 HostInstanceId = hostInstanceId,
                 HostDisplayName = hostDisplayName,
                 SharedQueueName = sharedQueueName,
+                InstanceQueueName = instanceQueueName,
                 HeartbeatDescriptor = heartbeatDescriptor,
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     account,

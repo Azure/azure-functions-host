@@ -12,6 +12,8 @@ namespace Microsoft.Azure.Jobs
 
         public string SharedQueueName { get; set; }
 
+        public string InstanceQueueName { get; set; }
+
         public HeartbeatDescriptor HeartbeatDescriptor { get; set; }
 
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }

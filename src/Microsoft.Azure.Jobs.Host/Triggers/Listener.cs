@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -16,7 +17,8 @@ namespace Microsoft.Azure.Jobs
         private readonly ITriggerInvoke _invoker;
 
         private Dictionary<CloudBlobContainer, List<BlobTrigger>> _map;
-        private Dictionary<CloudQueue, List<QueueTrigger>> _mapQueues;
+        private readonly IList<Tuple<CloudQueue, QueueTrigger>> _queueTriggers = new List<Tuple<CloudQueue, QueueTrigger>>();
+        private readonly IList<IntervalSeparationTimer> _queueListeners = new List<IntervalSeparationTimer>();
 
         private IBlobListener _blobListener;
 
@@ -29,7 +31,6 @@ namespace Microsoft.Azure.Jobs
             _invoker = invoker;
 
             _map = new Dictionary<CloudBlobContainer, List<BlobTrigger>>(new CloudContainerComparer());
-            _mapQueues = new Dictionary<CloudQueue, List<QueueTrigger>>(new CloudQueueComparer());
 
             foreach (var scope in map.GetScopes())
             {
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.Jobs
 
                     CloudQueue queue = clientQueue.GetQueueReference(queueName);
 
-                    _mapQueues.GetOrCreate(queue).Add(queueTrigger);
+                    _queueTriggers.Add(new Tuple<CloudQueue, QueueTrigger>(queue, queueTrigger));
                 }
 
                 var serviceBusTrigger = func as ServiceBusTrigger;
@@ -121,7 +122,6 @@ namespace Microsoft.Azure.Jobs
             try
             {
                 PollBlobs(context);
-                PollQueues(context);
             }
             catch (StorageException)
             {
@@ -131,7 +131,35 @@ namespace Microsoft.Azure.Jobs
 
         public void StartPolling(RuntimeBindingProviderContext context)
         {
+            StartPollingQueues(context);
             startPollingServiceBus(context);
+        }
+
+        private void StartPollingQueues(RuntimeBindingProviderContext context)
+        {
+            foreach (Tuple<CloudQueue, QueueTrigger> item in _queueTriggers)
+            {
+                ICanFailCommand pollCommand = new PollQueueCommand(item.Item1, item.Item2, _invoker, context);
+                // TODO: Replace with exponential backoff range.
+                IIntervalSeparationCommand timingCommand = new LinearSpeedupTimerCommand(pollCommand,
+                    normalInterval: TimeSpan.FromSeconds(2), minimumInterval: TimeSpan.FromSeconds(2));
+                IntervalSeparationTimer listener = new IntervalSeparationTimer(timingCommand);
+                listener.Start(executeFirst: false);
+                _queueListeners.Add(listener);
+            }
+        }
+
+        public void StopPolling()
+        {
+            StopPollingQueues();
+        }
+
+        private void StopPollingQueues()
+        {
+            foreach (IntervalSeparationTimer listener in _queueListeners)
+            {
+                listener.Stop();
+            }
         }
 
         private void PollBlobs(RuntimeBindingProviderContext context)
@@ -250,61 +278,6 @@ namespace Microsoft.Azure.Jobs
                 }
             }
             return false;
-        }
-
-        // Listen for all queue results.
-        private void PollQueues(RuntimeBindingProviderContext context)
-        {
-            foreach (var kv in _mapQueues)
-            {
-                if (context.CancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                var queue = kv.Key;
-                var funcs = kv.Value;
-
-                if (!queue.Exists())
-                {
-                    continue;
-                }
-
-                // What if job takes longer. Call CloudQueue.UpdateMessage
-                var visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
-                var msg = queue.GetMessage(visibilityTimeout);
-                if (msg != null)
-                {
-                    using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(queue, msg, visibilityTimeout))
-                    {
-                        timer.Start(executeFirst: false);
-
-                        foreach (var func in funcs)
-                        {
-                            if (context.CancellationToken.IsCancellationRequested)
-                            {
-                                return;
-                            }
-
-                            _invoker.OnNewQueueItem(msg, func, context);
-                        }
-                    }
-
-                    // Need to call Delete message only if function succeeded. 
-                    // and that gets trickier when we have multiple funcs listening. 
-                    queue.DeleteMessage(msg);
-                }
-            }
-        }
-
-        private static IntervalSeparationTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
-            CloudQueueMessage message, TimeSpan visibilityTimeout)
-        {
-            // Update a message's visibility when it is halfway to expiring.
-            TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
-
-            ICanFailCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
-            return LinearSpeedupTimerCommand.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
         }
     }
 }

@@ -166,19 +166,26 @@ namespace Microsoft.Azure.Jobs
                 try
                 {
                     NotifyNewBlobViaInMemory fastpathNotify = new NotifyNewBlobViaInMemory();
-                    QueueTrigger invokeTrigger;
+                    QueueTrigger sharedTrigger;
+                    QueueTrigger instanceTrigger;
 
                     if (_dashboardConnectionString != null)
                     {
-                        invokeTrigger = new QueueTrigger
+                        sharedTrigger = new QueueTrigger
                         {
                             QueueName = _hostContext.SharedQueueName,
+                            StorageConnectionString = _dashboardConnectionString
+                        };
+                        instanceTrigger = new QueueTrigger
+                        {
+                            QueueName = _hostContext.InstanceQueueName,
                             StorageConnectionString = _dashboardConnectionString
                         };
                     }
                     else
                     {
-                        invokeTrigger = null;
+                        sharedTrigger = null;
+                        instanceTrigger = null;
                     }
 
                     Credentials credentials = new Credentials
@@ -187,8 +194,9 @@ namespace Microsoft.Azure.Jobs
                         ServiceBusConnectionString = _serviceBusConnectionString
                     };
 
-                    Worker worker = new Worker(invokeTrigger, _hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
-                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify, credentials);
+                    Worker worker = new Worker(sharedTrigger, instanceTrigger, _hostContext.FunctionTableLookup,
+                        _hostContext.ExecuteFunction, _hostContext.FunctionInstanceLogger, fastpathNotify,
+                        fastpathNotify, credentials);
 
                     RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
                     {
@@ -207,16 +215,23 @@ namespace Microsoft.Azure.Jobs
 
                     worker.StartPolling(context);
 
-                    while (!token.IsCancellationRequested)
+                    try
                     {
-                        worker.Poll(context);
-
-                        if (token.IsCancellationRequested)
+                        while (!token.IsCancellationRequested)
                         {
-                            return;
-                        }
+                            worker.Poll(context);
 
-                        pauseAction();
+                            if (token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            pauseAction();
+                        }
+                    }
+                    finally
+                    {
+                        worker.StopPolling();
                     }
                 }
                 finally
@@ -314,27 +329,19 @@ namespace Microsoft.Azure.Jobs
 
         private ICanFailCommand CreateHeartbeat(bool hostIsRunning)
         {
-            ICanFailCommand terminationCommand = CreateTerminateProcessUponRequestCommand();
-
             if (!hostIsRunning)
             {
-                return terminationCommand;
+                return null;
             }
             else
             {
-                ICanFailCommand heartbeatCommand = CreateUpdateHostHeartbeatCommand();
-                return new CompositeCanFailCommand(terminationCommand, heartbeatCommand);
+                return CreateUpdateHostHeartbeatCommand();
             }
         }
 
         private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand()
         {
             return new UpdateHostHeartbeatCommand(_hostContext.HeartbeatCommand);
-        }
-
-        private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()
-        {
-            return new TerminateProcessUponRequestCommand(_hostContext.TerminationSignalReader, _hostContext.Id);
         }
 
         // Throw if the function failed. 

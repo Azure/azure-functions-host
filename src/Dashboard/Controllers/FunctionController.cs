@@ -5,6 +5,7 @@ using System.Linq;
 using System.Web.Mvc;
 using Dashboard.ApiControllers;
 using Dashboard.Data;
+using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
@@ -101,24 +102,6 @@ namespace Dashboard.Controllers
             return Invoke(queue, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
         }
 
-        private FunctionStartedMessage CreateFunctionStartedMessage(FunctionSnapshot function, TriggerAndOverrideMessage message)
-        {
-            return new FunctionStartedMessage
-            {
-                FunctionInstanceId = message.Id,
-                Function = new FunctionDescriptor
-                {
-                    Id = message.FunctionId,
-                    FullName = function.FullName,
-                    ShortName = function.ShortName
-                },
-                Arguments = message.Arguments,
-                ParentId = message.ParentId,
-                Reason = message.Reason,
-                StartTime = DateTimeOffset.UtcNow
-            };
-        }
-
         private RunFunctionViewModel CreateRunFunctionViewModel(FunctionSnapshot function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
         {
             return new RunFunctionViewModel
@@ -143,21 +126,7 @@ namespace Dashboard.Controllers
 
             IDictionary<string, string> arguments = GetArguments(form);
 
-            Guid id = Guid.NewGuid();
-
-            TriggerAndOverrideMessage message = new TriggerAndOverrideMessage
-            {
-                Id = id,
-                FunctionId = function.HostFunctionId,
-                Arguments = arguments,
-                ParentId = parentId,
-                Reason = reason
-            };
-
-            FunctionStartedMessage queuedMessage = CreateFunctionStartedMessage(function, message);
-            _functionQueuedLogger.LogFunctionQueued(queuedMessage);
-
-            _invoker.TriggerAndOverride(queueName, message);
+            Guid id = _invoker.TriggerAndOverride(queueName, function, arguments, parentId, reason);
 
             return Redirect("~/#/functions/invocations/" + id);
         }

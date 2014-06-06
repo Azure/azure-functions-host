@@ -82,6 +82,9 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\AbortHostInstanceMessage.cs">
+      <Link>Protocols\AbortHostInstanceMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterDescriptor.cs">
       <Link>Protocols\BinderParameterDescriptor.cs</Link>
     </Compile>
@@ -136,20 +139,14 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IPersistentQueue.cs">
       <Link>Protocols\IPersistentQueue.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IProcessTerminationSignalReader.cs">
-      <Link>Protocols\IProcessTerminationSignalReader.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IProcessTerminationSignalWriter.cs">
-      <Link>Protocols\IProcessTerminationSignalWriter.cs</Link>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonSerialization.cs">
+      <Link>Protocols\JsonSerialization.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonTypeNameAttribute.cs">
       <Link>Protocols\JsonTypeNameAttribute.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullHeartbeatCommand.cs">
       <Link>Protocols\NullHeartbeatCommand.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullProcessTerminationSignalReader.cs">
-      <Link>Protocols\NullProcessTerminationSignalReader.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterDescriptor.cs">
       <Link>Protocols\ParameterDescriptor.cs</Link>
@@ -162,9 +159,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PolymorphicJsonConverter.cs">
       <Link>Protocols\PolymorphicJsonConverter.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ProcessTerminationSignalReader.cs">
-      <Link>Protocols\ProcessTerminationSignalReader.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueParameterDescriptor.cs">
       <Link>Protocols\QueueParameterDescriptor.cs</Link>
@@ -360,6 +354,7 @@
     <Compile Include="Triggers\ITriggerBinding.cs" />
     <Compile Include="Triggers\ITriggerBindingProvider.cs" />
     <Compile Include="Triggers\ITriggerData.cs" />
+    <Compile Include="Triggers\PollQueueCommand.cs" />
     <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
     <Compile Include="Triggers\TriggerData.cs" />
     <Compile Include="DefaultNameResolver.cs" />
@@ -396,7 +391,6 @@
     <Compile Include="Storage\Table\ICloudTable.cs" />
     <Compile Include="Storage\Table\ICloudTableClient.cs" />
     <Compile Include="TestJobHostConfiguration.cs" />
-    <Compile Include="Timers\CompositeCanFailCommand.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Loggers\WebExecutionLogger.cs" />
     <Compile Include="Loggers\IExecutionLogger.cs" />
@@ -408,7 +402,6 @@
     <Compile Include="Triggers\ServiceBusTrigger.cs" />
     <Compile Include="Triggers\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
-    <Compile Include="Runners\TerminateProcessUponRequestCommand.cs" />
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
     <Compile Include="Runners\Worker.cs" />
     <Compile Include="Runners\Configuration.cs" />
@@ -424,7 +417,6 @@
     <Compile Include="BlobClient.cs" />
     <Compile Include="Bindings\CloudBlobPathConverter.cs" />
     <Compile Include="Triggers\CloudContainerComparer.cs" />
-    <Compile Include="Triggers\CloudQueueComparer.cs" />
     <Compile Include="Runners\DefaultStorageValidator.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
     <Compile Include="Bindings\CloudQueueDescriptor.cs" />

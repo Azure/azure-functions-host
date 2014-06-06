@@ -165,6 +165,8 @@
     <Compile Include="Data\FunctionInstanceGuid.cs" />
     <Compile Include="Data\HostVersion.cs" />
     <Compile Include="Data\HostVersionReader.cs" />
+    <Compile Include="Data\AbortRequestLogger.cs" />
+    <Compile Include="Data\IAbortRequestLogger.cs" />
     <Compile Include="Data\IAzureTable.cs" />
     <Compile Include="Data\IAzureTableOfT.cs" />
     <Compile Include="Data\IAzureTableReader.cs" />
@@ -213,7 +215,10 @@
     <Compile Include="Data\VersionedDocument.cs" />
     <Compile Include="Data\VersionedDocumentStore.cs" />
     <Compile Include="Data\WrapperEnumerable.cs" />
-    <Compile Include="Protocols\Invoker.cs" />
+    <Compile Include="HostMessaging\Aborter.cs" />
+    <Compile Include="HostMessaging\IAborter.cs" />
+    <Compile Include="HostMessaging\IInvoker.cs" />
+    <Compile Include="HostMessaging\Invoker.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />

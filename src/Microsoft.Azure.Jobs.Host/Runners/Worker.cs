@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
@@ -16,7 +17,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
-        private readonly QueueTrigger _invokeTrigger;
+        private readonly QueueTrigger _sharedTrigger;
+        private readonly QueueTrigger _instanceTrigger;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly INotifyNewBlob _notifyNewBlob;
         // Fast-path blob listener. 
@@ -25,11 +27,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         // General purpose listener for blobs, queues. 
         private Listener _listener;
 
-        public Worker(QueueTrigger invokeTrigger, IFunctionTableLookup functionTable, IExecuteFunction execute,
-            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob,
+        public Worker(QueueTrigger sharedTrigger, QueueTrigger instanceTrigger, IFunctionTableLookup functionTable,
+            IExecuteFunction execute, IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob,
             INotifyNewBlobListener blobListener, Credentials credentials)
         {
-            _invokeTrigger = invokeTrigger;
+            _sharedTrigger = sharedTrigger;
+            _instanceTrigger = instanceTrigger;
+
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
@@ -64,9 +68,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 }
             }
 
-            if (_invokeTrigger != null)
+            if (_sharedTrigger != null)
             {
-                map.AddTriggers(String.Empty, _invokeTrigger);
+                map.AddTriggers(String.Empty, _sharedTrigger);
+            }
+
+            if (_instanceTrigger != null)
+            {
+                map.AddTriggers(String.Empty, _instanceTrigger);
             }
 
             _listener = new Listener(map, new MyInvoker(this), this);
@@ -105,6 +114,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _listener.StartPolling(context);
         }
 
+        public void StopPolling()
+        {
+            _listener.StopPolling();
+        }
+
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
         void PollNotifyNewBlobs(RuntimeBindingProviderContext context)
@@ -137,7 +151,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        private void InvokeFromDashboard(CloudQueueMessage message, RuntimeBindingProviderContext context)
+        private void ProcessHostMessage(CloudQueueMessage message, RuntimeBindingProviderContext context)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
 
@@ -150,25 +164,44 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             if (triggerOverrideModel != null)
             {
-                FunctionInvokeRequest request = CreateInvokeRequest(triggerOverrideModel, context);
+                ProcessTriggerAndOverrideMessage(triggerOverrideModel, message.InsertionTime.Value, context);
+                return;
+            }
 
-                if (request != null)
-                {
-                    _executor.Execute(request, context);
-                }
-                else
-                {
-                    // Log that the function failed.
-                    FunctionCompletedMessage failedMessage = CreateFailedMessage(triggerOverrideModel,
-                        message.InsertionTime.Value);
-                    _functionInstanceLogger.LogFunctionCompleted(failedMessage);
-                }
+            AbortHostInstanceMessage abortModel = model as AbortHostInstanceMessage;
+
+            if (abortModel != null)
+            {
+                ProcessAbortHostInstanceMessage();
+                return;
+            }
+
+            string error = String.Format(CultureInfo.InvariantCulture,
+                "Unsupported invocation type '{0}'.", model.Type);
+            throw new NotSupportedException(error);
+        }
+
+        private void ProcessTriggerAndOverrideMessage(TriggerAndOverrideMessage message,
+            DateTimeOffset insertionTime, RuntimeBindingProviderContext context)
+        {
+            FunctionInvokeRequest request = CreateInvokeRequest(message, context);
+
+            if (request != null)
+            {
+                _executor.Execute(request, context);
             }
             else
             {
-                string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);
-                throw new NotSupportedException(error);
+                // Log that the function failed.
+                FunctionCompletedMessage failedMessage = CreateFailedMessage(message, insertionTime);
+                _functionInstanceLogger.LogFunctionCompleted(failedMessage);
             }
+        }
+
+        private void ProcessAbortHostInstanceMessage()
+        {
+            bool terminated = NativeMethods.TerminateProcess(NativeMethods.GetCurrentProcess(), 1);
+            Debug.Assert(terminated);
         }
 
         // This snapshot won't contain full normal data for Function.FullName, Function.ShortName and Function.Parameters.
@@ -316,7 +349,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 if (func == null)
                 {
-                    _parent.InvokeFromDashboard(msg, context);
+                    _parent.ProcessHostMessage(msg, context);
                 }
                 else
                 {

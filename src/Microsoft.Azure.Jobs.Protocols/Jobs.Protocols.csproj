@@ -53,13 +53,13 @@
     </Compile>
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
+    <Compile Include="JsonSerialization.cs" />
     <Compile Include="HeartbeatCommand.cs" />
     <Compile Include="HeartbeatDescriptor.cs" />
+    <Compile Include="HostMessageSender.cs" />
     <Compile Include="HostOutputMessage.cs" />
     <Compile Include="HeartbeatMonitor.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
-    <Compile Include="ProcessTerminationSignalReader.cs" />
-    <Compile Include="ProcessTerminationSignalWriter.cs" />
     <Compile Include="QueueTriggerParameterDescriptor.cs" />
     <Compile Include="RouteParameterDescriptor.cs" />
     <Compile Include="BinderParameterDescriptor.cs" />
@@ -72,14 +72,11 @@
     <Compile Include="FunctionStartedMessage.cs" />
     <Compile Include="HostMessage.cs" />
     <Compile Include="HostStartedMessage.cs" />
-    <Compile Include="IInvoker.cs" />
+    <Compile Include="IHostMessageSender.cs" />
     <Compile Include="IPersistentQueue.cs" />
-    <Compile Include="IProcessTerminationSignalReader.cs" />
-    <Compile Include="IProcessTerminationSignalWriter.cs" />
     <Compile Include="IHeartbeatMonitor.cs" />
     <Compile Include="IHeartbeatCommand.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
-    <Compile Include="NullProcessTerminationSignalReader.cs" />
     <Compile Include="NullHeartbeatCommand.cs" />
     <Compile Include="ParameterDescriptor.cs" />
     <Compile Include="PersistentQueue.cs" />
@@ -92,6 +89,7 @@
     <Compile Include="TableEntityParameterDescriptor.cs" />
     <Compile Include="TableNames.cs" />
     <Compile Include="TableParameterDescriptor.cs" />
+    <Compile Include="AbortHostInstanceMessage.cs" />
     <Compile Include="TriggerAndOverrideMessage.cs" />
     <Compile Include="TriggerAndOverrideMessageReasons.cs" />
     <Compile Include="WebJobRunIdentifier.cs" />

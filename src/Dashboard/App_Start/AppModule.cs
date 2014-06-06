@@ -1,17 +1,17 @@
 ﻿using System;
 using AzureTables;
 using Dashboard.Data;
+using Dashboard.HostMessaging;
 using Dashboard.Indexers;
 using Dashboard.InvocationLog;
-using Dashboard.Protocols;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
-using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Ninject.Modules;
 using Ninject.Syntax;
 
@@ -28,17 +28,15 @@ namespace Dashboard
             }
 
             ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
-            ICloudQueueClient queueClient = account.CreateCloudQueueClient();
             ICloudTableClient tableClient = account.CreateCloudTableClient();
+            CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
             CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
 
             Bind<CloudStorageAccount>().ToConstant(sdkAccount);
-            Bind<ICloudQueueClient>().ToConstant(queueClient);
+            Bind<CloudQueueClient>().ToConstant(queueClient);
             Bind<ICloudTableClient>().ToConstant(tableClient);
             Bind<CloudBlobClient>().ToConstant(blobClient);
             Bind<IHostVersionReader>().To<HostVersionReader>();
-            Bind<IProcessTerminationSignalReader>().To<ProcessTerminationSignalReader>();
-            Bind<IProcessTerminationSignalWriter>().To<ProcessTerminationSignalWriter>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
@@ -46,12 +44,15 @@ namespace Dashboard
             Bind<AzureTable<string, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
-            Bind<IInvoker>().To<Invoker>();
+            Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
             Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
+            Bind<IInvoker>().To<Invoker>();
+            Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
+            Bind<IAborter>().To<Aborter>();
             Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
             BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
             BindFunctionInvocationIndexReader("invocationsInFunctionReader",

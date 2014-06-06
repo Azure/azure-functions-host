@@ -11,6 +11,7 @@ using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -26,8 +27,8 @@ namespace Microsoft.Azure.Jobs
         private readonly Guid _hostId;
         private readonly string _displayName;
         private readonly string _sharedQueueName;
+        private readonly string _instanceQueueName;
         private readonly HeartbeatDescriptor _heartbeatDescriptor;
-        private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IHeartbeatCommand _heartbeatCommand;
         private readonly FunctionStore _functionStore;
 
@@ -66,12 +67,14 @@ namespace Microsoft.Azure.Jobs
                 // Create logging against a live azure account 
 
                 CloudStorageAccount account = CloudStorageAccount.Parse(dashboardConnectionString);
+                CloudBlobClient blobClient = account.CreateCloudBlobClient();
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
                 IHostTable hostTable = new HostTable(tableClient);
                 Assembly hostAssembly = GetHostAssembly(functions);
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 _sharedQueueName = QueueNames.GetHostQueueName(_hostId);
+                _instanceQueueName = QueueNames.GetHostQueueName(_id);
                 _displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
                 _heartbeatDescriptor = new HeartbeatDescriptor
                 {
@@ -81,19 +84,19 @@ namespace Microsoft.Azure.Jobs
                     ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                 };
 
-                IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
+                IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(blobClient);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, _heartbeatDescriptor, account);
+                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, _instanceQueueName,
+                    _heartbeatDescriptor, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
-                _terminationSignalReader = new ProcessTerminationSignalReader(account);
                 _heartbeatCommand = new HeartbeatCommand(account, _heartbeatDescriptor.SharedContainerName,
                     _heartbeatDescriptor.SharedDirectoryName + "/" + _heartbeatDescriptor.InstanceBlobName);
             }
@@ -107,7 +110,6 @@ namespace Microsoft.Azure.Jobs
                     FunctionInstanceLogger = new ConsoleFunctionInstanceLogger()
                 };
 
-                _terminationSignalReader = new NullProcessTerminationSignalReader();
                 _heartbeatCommand = new NullHeartbeatCommand();
             }
 
@@ -141,14 +143,14 @@ namespace Microsoft.Azure.Jobs
             get { return _sharedQueueName; }
         }
 
+        public string InstanceQueueName
+        {
+            get { return _instanceQueueName; }
+        }
+
         public IHeartbeatCommand HeartbeatCommand
         {
             get { return _heartbeatCommand; }
-        }
-
-        public IProcessTerminationSignalReader TerminationSignalReader
-        {
-            get { return _terminationSignalReader; }
         }
 
         public IBindingProvider BindingProvider
@@ -229,6 +231,7 @@ namespace Microsoft.Azure.Jobs
                 HostInstanceId = _id,
                 HostDisplayName = _displayName,
                 SharedQueueName = _sharedQueueName,
+                InstanceQueueName = _instanceQueueName,
                 Heartbeat = _heartbeatDescriptor,
                 StorageConnectionString = storageConnectionString,
                 ServiceBusConnectionString = serviceBusConnectionString,
