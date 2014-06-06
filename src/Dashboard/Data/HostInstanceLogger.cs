@@ -38,10 +38,7 @@ namespace Dashboard.Data
 
             while (existingVersionedSnapshot.Document.HostVersion < message.EnqueuedOn)
             {
-                VersionedDocument<HostSnapshot> newVersionedSnapshot = new VersionedDocument<HostSnapshot>(newSnapshot,
-                    existingVersionedSnapshot.ETag);
-
-                if (_store.TryUpdate(hostId, newVersionedSnapshot))
+                if (_store.TryUpdate(hostId, newSnapshot, existingVersionedSnapshot.ETag))
                 {
                     return;
                 }

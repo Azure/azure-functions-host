@@ -1,42 +1,54 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json;
 
 namespace Dashboard.Data
 {
     internal class FunctionInstanceLookup : IFunctionInstanceLookup
     {
-        private const string PartitionKey = "1";
+        private static readonly JsonSerializerSettings _settings =
+            VersionedDocumentStore<FunctionInstanceSnapshot>.JsonSerializerSettings;
 
-        private readonly ICloudTable _table;
+        private readonly CloudBlobContainer _container;
 
-        public FunctionInstanceLookup(ICloudTableClient tableClient)
-            : this(tableClient.GetTableReference(DashboardTableNames.FunctionInvokeLogTableName))
+        public FunctionInstanceLookup(CloudBlobClient client)
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer))
         {
         }
 
-        public FunctionInstanceLookup(ICloudTable table)
+        public FunctionInstanceLookup(CloudBlobContainer container)
         {
-            if (table == null)
+            if (container == null)
             {
-                throw new ArgumentNullException("table");
+                throw new ArgumentNullException("container");
             }
 
-            _table = table;
+            _container = container;
         }
 
         FunctionInstanceSnapshot IFunctionInstanceLookup.Lookup(Guid id)
         {
-            FunctionInstanceEntityGroup group = FunctionInstanceEntityGroup.Lookup(_table, id);
+            CloudBlockBlob blob = _container.GetBlockBlobReference(id.ToString("N"));
+            string contents;
 
-            if (group == null)
+            try
             {
-                return null;
+                contents = blob.DownloadText();
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsNotFound())
+                {
+                    return null;
+                }
+                else
+                {
+                    throw;
+                }
             }
 
-            return new FunctionInstanceSnapshot(group.InstanceEntity, group.ArgumentEntities);
+            return JsonConvert.DeserializeObject<FunctionInstanceSnapshot>(contents, _settings);
         }
    }
 }

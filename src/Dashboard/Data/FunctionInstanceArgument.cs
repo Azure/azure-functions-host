@@ -1,30 +1,9 @@
-﻿using System;
-
-namespace Dashboard.Data
+﻿namespace Dashboard.Data
 {
     public class FunctionInstanceArgument
     {
-        private readonly FunctionArgumentEntity _argumentEntity;
+        public string Value { get; set; }
 
-        [CLSCompliant(false)]
-        public FunctionInstanceArgument(FunctionArgumentEntity argumentEntity)
-        {
-            if (argumentEntity == null)
-            {
-                throw new ArgumentNullException("argumentEntity");
-            }
-
-            _argumentEntity = argumentEntity;
-        }
-
-        public string Value
-        {
-            get { return _argumentEntity.Value; }
-        }
-
-        public bool IsBlob
-        {
-            get { return _argumentEntity.IsBlob; }
-        }
+        public bool IsBlob { get; set; }
     }
 }

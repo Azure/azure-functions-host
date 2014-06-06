@@ -1,139 +1,50 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 
 namespace Dashboard.Data
 {
     public class FunctionInstanceSnapshot
     {
-        private readonly FunctionInstanceEntity _instanceEntity;
-        private readonly IDictionary<string, FunctionInstanceArgument> _arguments;
+        public Guid Id { get; set; }
 
-        [CLSCompliant(false)]
-        public FunctionInstanceSnapshot(FunctionInstanceEntity instanceEntity, IEnumerable<FunctionArgumentEntity> argumentEntities)
-        {
-            if (instanceEntity == null)
-            {
-                throw new ArgumentNullException("instanceEntity");
-            }
-            else if (argumentEntities == null)
-            {
-                throw new ArgumentNullException("argumentEntities");
-            }
+        public Guid HostInstanceId { get; set; }
 
-            _instanceEntity = instanceEntity;
-            _arguments = new Dictionary<string, FunctionInstanceArgument>();
+        public string FunctionId { get; set; }
 
-            foreach (FunctionArgumentEntity argumentEntity in argumentEntities)
-            {
-                _arguments.Add(argumentEntity.Name, new FunctionInstanceArgument(argumentEntity));
-            }
-        }
+        public string FunctionFullName { get; set; }
 
-        public Guid Id
-        {
-            get { return _instanceEntity.Id; }
-        }
+        public string FunctionShortName { get; set; }
 
-        public Guid HostInstanceId
-        {
-            get { return _instanceEntity.HostInstanceId; }
-        }
+        public IDictionary<string, FunctionInstanceArgument> Arguments  { get; set; }
 
-        public string FunctionId
-        {
-            get { return _instanceEntity.FunctionId; }
-        }
+        public Guid? ParentId  { get; set; }
 
-        public string FunctionFullName
-        {
-            get { return _instanceEntity.FunctionFullName; }
-        }
+        public string Reason { get; set; }
 
-        public string FunctionShortName
-        {
-            get { return _instanceEntity.FunctionShortName; }
-        }
+        public DateTimeOffset QueueTime { get; set; }
 
-        public IDictionary<string, FunctionInstanceArgument> Arguments
-        {
-            get { return _arguments; }
-        }
+        public DateTimeOffset? StartTime { get; set; }
 
-        public Guid? ParentId
-        {
-            get { return _instanceEntity.ParentId; }
-        }
+        public DateTimeOffset? EndTime { get; set; }
 
-        public string Reason
-        {
-            get { return _instanceEntity.Reason; }
-        }
+        public string StorageConnectionString { get; set; }
 
-        public DateTimeOffset QueueTime
-        {
-            get { return _instanceEntity.QueueTime; }
-        }
+        public string OutputBlobUrl { get; set; }
 
-        public DateTimeOffset? StartTime
-        {
-            get { return _instanceEntity.StartTime; }
-        }
+        public string ParameterLogBlobUrl { get; set; }
 
-        public DateTimeOffset? EndTime
-        {
-            get { return _instanceEntity.EndTime; }
-        }
+        public string WebSiteName { get; set; }
 
-        public string StorageConnectionString
-        {
-            get { return _instanceEntity.StorageConnectionString; }
-        }
+        public string WebJobType { get; set; }
 
-        public string OutputBlobUrl
-        {
-            get { return _instanceEntity.OutputBlobUrl; }
-        }
+        public string WebJobName { get; set; }
 
-        public string ParameterLogBlobUrl
-        {
-            get { return _instanceEntity.ParameterLogBlobUrl; }
-        }
+        public string WebJobRunId { get; set; }
 
-        public string WebSiteName
-        {
-            get { return _instanceEntity.WebSiteName; }
-        }
+        public bool? Succeeded { get; set; }
 
-        public string WebJobType
-        {
-            get { return _instanceEntity.WebJobType; }
-        }
+        public string ExceptionType { get; set; }
 
-        public string WebJobName
-        {
-            get { return _instanceEntity.WebJobName; }
-        }
-
-        public string WebJobRunId
-        {
-            get { return _instanceEntity.WebJobRunId; }
-        }
-
-        public bool? Succeeded
-        {
-            get { return _instanceEntity.Succeeded; }
-        }
-
-        public string ExceptionType
-        {
-            get { return _instanceEntity.ExceptionType; }
-        }
-
-        public string ExceptionMessage
-        {
-            get { return _instanceEntity.ExceptionMessage; }
-        }
+        public string ExceptionMessage { get; set; }
     }
 }

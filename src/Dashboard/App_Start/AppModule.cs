@@ -44,12 +44,12 @@ namespace Dashboard
             Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
             Bind<AzureTable<string, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
-            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(tableClient, sdkAccount));
+            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IInvoker>().To<Invoker>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(tableClient, sdkAccount));
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
@@ -94,10 +94,10 @@ namespace Dashboard
             return new AzureTable<TriggerReasonEntity>(account, DashboardTableNames.FunctionCausalityLog);
         }
 
-        private static ICausalityReader CreateCausalityReader(ICloudTableClient tableClient, CloudStorageAccount account)
+        private static ICausalityReader CreateCausalityReader(CloudBlobClient blobClient, CloudStorageAccount account)
         {
             IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
-            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(tableClient);
+            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(blobClient);
             return new CausalityLogger(table, lookup);
         }
 
@@ -108,10 +108,10 @@ namespace Dashboard
             return new CausalityLogger(table, logger);
         }
 
-        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(ICloudTableClient tableClient, CloudStorageAccount account)
+        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudBlobClient blobClient, CloudStorageAccount account)
         {
-            IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(tableClient);
-            IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(tableClient);
+            IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(blobClient);
+            IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(blobClient);
 
             var tableStatsSummary = new AzureTable<FunctionStatsEntity>(account, DashboardTableNames.FunctionInvokeStatsTableName);
             var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);

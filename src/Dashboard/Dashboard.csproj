@@ -182,11 +182,8 @@
     <Compile Include="Data\HostInstanceLogger.cs" />
     <Compile Include="Data\IHostFunctionIndexStore.cs" />
     <Compile Include="Data\ExecutionStatsAggregator.cs" />
-    <Compile Include="Data\FunctionArgumentEntity.cs" />
-    <Compile Include="Data\FunctionInstanceEntityGroup.cs" />
     <Compile Include="Data\FunctionLookup.cs" />
     <Compile Include="Data\FunctionInstanceLookup.cs" />
-    <Compile Include="Data\FunctionInstanceEntity.cs" />
     <Compile Include="Data\FunctionInstanceSnapshot.cs" />
     <Compile Include="Data\FunctionInvocationIndexEntity.cs" />
     <Compile Include="Data\FunctionsInJobIndexer.cs" />

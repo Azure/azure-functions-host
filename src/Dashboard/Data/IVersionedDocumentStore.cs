@@ -4,9 +4,11 @@
     {
         VersionedDocument<TDocument> Read(string id);
 
+        void CreateOrUpdate(string id, TDocument document);
+
         bool TryCreate(string id, TDocument document);
 
-        bool TryUpdate(string id, VersionedDocument<TDocument> versionedDocument);
+        bool TryUpdate(string id, TDocument document, string eTag);
 
         bool TryDelete(string id, string eTag);
     }

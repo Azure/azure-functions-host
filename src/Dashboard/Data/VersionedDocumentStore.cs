@@ -33,9 +33,7 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
-                if (result != null && result.HttpStatusCode == 404)
+                if (exception.IsNotFound())
                 {
                     return null;
                 }
@@ -55,62 +53,44 @@ namespace Dashboard.Data
             get { return _settings; }
         }
 
+        public void CreateOrUpdate(string id, TDocument document)
+        {
+            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            string contents = JsonConvert.SerializeObject(document, _settings);
+
+            try
+            {
+                blob.UploadText(contents);
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsNotFound())
+                {
+                    _container.CreateIfNotExists();
+                    blob.UploadText(contents);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
+
         public bool TryCreate(string id, TDocument document)
         {
             CloudBlockBlob blob = _container.GetBlockBlobReference(id);
             _container.CreateIfNotExists();
             string contents = JsonConvert.SerializeObject(document, _settings);
 
-            try
-            {
-                blob.UploadText(contents, accessCondition: new AccessCondition { IfNoneMatchETag = "*" });
-            }
-            catch (StorageException exception)
-            {
-                if (exception.IsPreconditionFailed())
-                {
-                    return false;
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return true;
+            return TryUploadTextAndCreateContainerIfNotExists(blob, contents, new AccessCondition { IfNoneMatchETag = "*" });
         }
 
-        public bool TryUpdate(string id, VersionedDocument<TDocument> versionedDocument)
+        public bool TryUpdate(string id, TDocument document, string eTag)
         {
-            if (versionedDocument == null)
-            {
-                throw new ArgumentNullException("versionedDocument");
-            }
-
-            TDocument document = versionedDocument.Document;
-
             CloudBlockBlob blob = _container.GetBlockBlobReference(id);
             string contents = JsonConvert.SerializeObject(document, _settings);
 
-            try
-            {
-                blob.UploadText(contents, accessCondition: new AccessCondition { IfMatchETag = versionedDocument.ETag });
-            }
-            catch (StorageException exception)
-            {
-                RequestResult result = exception.RequestInformation;
-
-                if (exception.IsPreconditionFailed())
-                {
-                    return false;
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return true;
+            return TryUploadTextAndCreateContainerIfNotExists(blob, contents, new AccessCondition { IfMatchETag = eTag });
         }
 
         public bool TryDelete(string id, string eTag)
@@ -123,10 +103,53 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                // The item may have already been deleted (409) or updated by someone else (412).
-                if (exception.IsConflict() || exception.IsPreconditionFailed())
+                // The item may have already been deleted (409) or updated by someone else (412), or (unusual) the container
+                // may have been deleted (404).
+                if (exception.IsConflict() || exception.IsPreconditionFailed() || exception.IsNotFound())
                 {
                     return false;
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return true;
+        }
+
+        private bool TryUploadTextAndCreateContainerIfNotExists(CloudBlockBlob blob, string contents,
+            AccessCondition accessCondition)
+        {
+            try
+            {
+                blob.UploadText(contents, accessCondition: accessCondition);
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsPreconditionFailed())
+                {
+                    return false;
+                }
+                else if (exception.IsNotFound())
+                {
+                    _container.CreateIfNotExists();
+
+                    try
+                    {
+                        blob.UploadText(contents, accessCondition: accessCondition);
+                    }
+                    catch (StorageException retryException)
+                    {
+                        if (retryException.IsPreconditionFailed())
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
                 }
                 else
                 {

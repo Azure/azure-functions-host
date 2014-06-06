@@ -1,55 +1,53 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
+﻿using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Protocols;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    // Primary access to the azure table storing function invoke requests.
     internal class FunctionInstanceLogger : IFunctionInstanceLogger, IFunctionQueuedLogger
     {
-        private const string PartitionKey = "1";
+        private readonly IVersionedDocumentStore<FunctionInstanceSnapshot> _store;
 
-        private readonly ICloudTable _table;
-
-        public FunctionInstanceLogger(ICloudTableClient tableClient)
-            : this(tableClient.GetTableReference(DashboardTableNames.FunctionInvokeLogTableName))
+        public FunctionInstanceLogger(CloudBlobClient client)
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer))
         {
         }
 
-        public FunctionInstanceLogger(ICloudTable table)
+        private FunctionInstanceLogger(CloudBlobContainer container)
+            : this(new VersionedDocumentStore<FunctionInstanceSnapshot>(container))
         {
-            if (table == null)
-            {
-                throw new ArgumentNullException("table");
-            }
-            _table = table;
+        }
+
+        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store)
+        {
+            _store = store;
         }
 
         // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
         public void LogFunctionQueued(FunctionStartedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
+            FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
             // Fix the abuse of FunctionStartedSnapshot.
-            group.InstanceEntity.StartTime = null;
-            _table.Insert(group.GetEntities());
+            snapshot.StartTime = null;
+
+            // Ignore the return result. Only the dashboard calls this method, and it does so before enqueuing the
+            // message to the host to run the function. So realistically the blob can't already exist. And even if the
+            // host did see the message before this call, an existing blob just means something more recent than
+            // "queued" status, so there's nothing to do here in that case anyway.
+            _store.TryCreate(GetId(message), snapshot);
         }
 
         public void LogFunctionStarted(FunctionStartedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
+            FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
 
             // Which operation to run depends on whether or not the entity currently exists in the "queued" status.
-            FunctionInstanceEntityGroup existingGroup = FunctionInstanceEntityGroup.Lookup(_table, message.FunctionInstanceId);
+            VersionedDocument<FunctionInstanceSnapshot> existingSnapshot = _store.Read(GetId(message));
 
             bool previouslyQueued;
 
             // If the existing entity doesn't contain a StartTime, it must be in the "queued" status.
-            if (existingGroup != null && !existingGroup.InstanceEntity.StartTime.HasValue)
+            if (existingSnapshot != null && existingSnapshot.Document != null && !existingSnapshot.Document.StartTime.HasValue)
             {
                 previouslyQueued = true;
             }
@@ -58,118 +56,57 @@ namespace Dashboard.Data
                 previouslyQueued = false;
             }
 
-            IEnumerable<ITableEntity> entities = group.GetEntities();
-
             if (!previouslyQueued)
             {
-                LogFunctionStartedWhenNotPreviouslyQueued(entities);
+                LogFunctionStartedWhenNotPreviouslyQueued(snapshot);
             }
             else
             {
-                CopyETags(existingGroup, group);
-                LogFunctionStartedWhenPreviouslyQueued(entities);
+                LogFunctionStartedWhenPreviouslyQueued(snapshot, existingSnapshot.ETag);
             }
         }
 
-        private static void CopyETags(FunctionInstanceEntityGroup source, FunctionInstanceEntityGroup destination)
+        private void LogFunctionStartedWhenNotPreviouslyQueued(FunctionInstanceSnapshot snapshot)
         {
-            if (source == null)
-            {
-                throw new ArgumentNullException("source");
-            }
-            else if (destination == null)
-            {
-                throw new ArgumentNullException("destination");
-            }
-            else if (source.ArgumentEntities.Count != destination.ArgumentEntities.Count)
-            {
-                throw new InvalidOperationException("Count of arguments has changed.");
-            }
-
-            destination.InstanceEntity.ETag = source.InstanceEntity.ETag;
-
-            for (int index = 0; index < source.ArgumentEntities.Count; index++)
-            {
-                destination.ArgumentEntities[index].ETag = source.ArgumentEntities[index].ETag;
-            }
+            // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionStarted loses by just
+            // doing a simple Insert that will fail if the entity already exists. LogFunctionCompleted wins by having it
+            // replace the LogFunctionStarted record, if any.
+            // Ignore the return value: if the item already exists, LogFunctionCompleted already ran, so there's no work
+            // to do here.
+            _store.TryCreate(GetId(snapshot), snapshot);
         }
 
-        private void LogFunctionStartedWhenNotPreviouslyQueued(IEnumerable<ITableEntity> entities)
+        private void LogFunctionStartedWhenPreviouslyQueued(FunctionInstanceSnapshot snapshot, string etag)
         {
-            try
-            {
-                // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionStarted loses by
-                // just doing a simple Insert that will fail if the entity already exists. LogFunctionCompleted wins by
-                // having it replace the LogFunctionStarted record, if any.
-                _table.Insert(entities);
-            }
-            catch (StorageException exception)
-            {
-                // If there's a conflict, LogFunctionCompleted already ran, so there's no work to do here.
-
-                if (!exception.IsConflict())
-                {
-                    throw;
-                }
-            }
-        }
-
-        private void LogFunctionStartedWhenPreviouslyQueued(IEnumerable<ITableEntity> entities)
-        {
-            try
-            {
-                // LogFunctionStarted and LogFunctionCompleted may run concurrently. LogFunctionQueued does not run
-                // concurrently. Ensure LogFunctionStarted wins over LogFunctionQueued but loses to LogFunctionCompleted
-                // by doing a Replace with ETag check that will fail if the entity has been changed.
-                // LogFunctionCompleted wins by doing a Replace without an ETag check, so it will replace the
-                // LogFunctionStarted (or Queued) record, if any.
-                _table.Replace(entities);
-            }
-            catch (StorageException exception)
-            {
-                // If the ETag doesn't match, LogFunctionCompleted already ran, so there's no work to do here.
-
-                if (!exception.IsPreconditionFailed())
-                {
-                    throw;
-                }
-            }
+            // LogFunctionStarted and LogFunctionCompleted may run concurrently. LogFunctionQueued does not run
+            // concurrently. Ensure LogFunctionStarted wins over LogFunctionQueued but loses to LogFunctionCompleted by
+            // doing a Replace with ETag check that will fail if the entity has been changed.
+            // LogFunctionCompleted wins by doing a Replace without an ETag check, so it will replace the
+            // LogFunctionStarted (or Queued) record, if any.
+            // Ignore the return value: if the ETag doesn't match, LogFunctionCompleted already ran, so there's no work
+            // to do here.
+            _store.TryUpdate(GetId(snapshot), snapshot, etag);
         }
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            FunctionInstanceEntityGroup group = CreateEntityGroup(message);
+            FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
 
             // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionCompleted wins by
             // having it replace the LogFunctionStarted record, if any.
-            _table.InsertOrReplace(group.GetEntities());
+            _store.CreateOrUpdate(GetId(snapshot), snapshot);
         }
 
-        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionStartedMessage message)
+        private static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
         {
-            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId,
-                message.Function, message.Arguments);
-
-            return new FunctionInstanceEntityGroup
+            return new FunctionInstanceSnapshot
             {
-                InstanceEntity = instanceEntity,
-                ArgumentEntities = argumentEntities
-            };
-        }
-
-        private static FunctionInstanceEntity CreateInstanceEntity(FunctionStartedMessage message)
-        {
-            return new FunctionInstanceEntity
-            {
-                PartitionKey = PartitionKey,
-                RowKey = FunctionInstanceEntity.GetRowKey(message.FunctionInstanceId),
                 Id = message.FunctionInstanceId,
-                SharedQueueName = message.SharedQueueName,
                 HostInstanceId = message.HostInstanceId,
                 FunctionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString(),
                 FunctionFullName = message.Function.FullName,
                 FunctionShortName = message.Function.ShortName,
+                Arguments = CreateArguments(message.Function.Parameters, message.Arguments),
                 ParentId = message.ParentId,
                 Reason = message.Reason,
                 QueueTime = message.StartTime,
@@ -184,52 +121,45 @@ namespace Dashboard.Data
             };
         }
 
-        private static IReadOnlyList<FunctionArgumentEntity> CreateArgumentEntities(Guid functionInstanceId,
-            FunctionDescriptor function, IDictionary<string, string> arguments)
+        private static IDictionary<string, FunctionInstanceArgument> CreateArguments(
+            IDictionary<string, ParameterDescriptor> parameters, IDictionary<string, string> argumentValues)
         {
-            List<FunctionArgumentEntity> entities = new List<FunctionArgumentEntity>();
-            int index = 0;
+            IDictionary<string, FunctionInstanceArgument> arguments =
+                new Dictionary<string, FunctionInstanceArgument>();
 
-            foreach (KeyValuePair<string, string> argument in arguments)
+            foreach (KeyValuePair<string, string> item in argumentValues)
             {
-                entities.Add(new FunctionArgumentEntity
+                string name = item.Key;
+                arguments.Add(name, new FunctionInstanceArgument
                 {
-                    PartitionKey = PartitionKey,
-                    RowKey = FunctionArgumentEntity.GetRowKey(functionInstanceId, index),
-                    Name = argument.Key,
-                    Value = argument.Value,
-                    IsBlob = function.Parameters != null && function.Parameters.ContainsKey(argument.Key)
-                        && (function.Parameters[argument.Key] is BlobParameterDescriptor
-                        || function.Parameters[argument.Key] is BlobTriggerParameterDescriptor),
+                    Value = item.Value,
+                    IsBlob = parameters != null && parameters.ContainsKey(name)
+                        && (parameters[name] is BlobParameterDescriptor
+                        || parameters[name] is BlobTriggerParameterDescriptor),
                 });
-
-                index++;
             }
 
-            return entities;
+            return arguments;
         }
 
-        private static FunctionInstanceEntityGroup CreateEntityGroup(FunctionCompletedMessage message)
+        private static FunctionInstanceSnapshot CreateSnapshot(FunctionCompletedMessage message)
         {
-            FunctionInstanceEntity instanceEntity = CreateInstanceEntity(message);
-            IReadOnlyList<FunctionArgumentEntity> argumentEntities = CreateArgumentEntities(message.FunctionInstanceId,
-                message.Function, message.Arguments);
-
-            return new FunctionInstanceEntityGroup
-            {
-                InstanceEntity = instanceEntity,
-                ArgumentEntities = argumentEntities
-            };
-        }
-
-        private static FunctionInstanceEntity CreateInstanceEntity(FunctionCompletedMessage message)
-        {
-            FunctionInstanceEntity entity = CreateInstanceEntity((FunctionStartedMessage)message);
+            FunctionInstanceSnapshot entity = CreateSnapshot((FunctionStartedMessage)message);
             entity.EndTime = message.EndTime;
             entity.Succeeded = message.Succeeded;
             entity.ExceptionType = message.ExceptionType;
             entity.ExceptionMessage = message.ExceptionMessage;
             return entity;
+        }
+
+        private static string GetId(FunctionInstanceSnapshot snapshot)
+        {
+            return snapshot.Id.ToString("N");
+        }
+
+        private static string GetId(FunctionStartedMessage message)
+        {
+            return message.FunctionInstanceId.ToString("N");
         }
     }
 }
