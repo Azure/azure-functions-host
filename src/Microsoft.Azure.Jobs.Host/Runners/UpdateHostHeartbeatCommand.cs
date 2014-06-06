@@ -6,25 +6,23 @@ namespace Microsoft.Azure.Jobs
 {
     internal class UpdateHostHeartbeatCommand : ICanFailCommand
     {
-        private readonly IRunningHostTableWriter _heartbeatTable;
-        private readonly string _hostName;
+        private readonly IHeartbeatCommand _heartbeatCommand;
 
-        public UpdateHostHeartbeatCommand(IRunningHostTableWriter heartbeatTable, string hostName)
+        public UpdateHostHeartbeatCommand(IHeartbeatCommand heartbeatCommand)
         {
-            if (heartbeatTable == null)
+            if (heartbeatCommand == null)
             {
-                throw new ArgumentNullException("heartbeatTable");
+                throw new ArgumentNullException("heartbeatCommand");
             }
 
-            _heartbeatTable = heartbeatTable;
-            _hostName = hostName;
+            _heartbeatCommand = heartbeatCommand;
         }
 
         public bool TryExecute()
         {
             try
             {
-                _heartbeatTable.SignalHeartbeat(_hostName);
+                _heartbeatCommand.Beat();
                 return true;
             }
             catch (StorageException exception)

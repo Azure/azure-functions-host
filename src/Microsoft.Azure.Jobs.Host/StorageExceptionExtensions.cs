@@ -12,13 +12,14 @@ namespace Microsoft.Azure.Jobs
                 throw new ArgumentNullException("exception");
             }
 
-            if (exception.RequestInformation == null)
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
             {
                 return false;
             }
 
-            int statusCode = exception.RequestInformation.HttpStatusCode;
-
+            int statusCode = result.HttpStatusCode;
             return statusCode >= 500 && statusCode < 600;
         }
     }

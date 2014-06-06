@@ -36,7 +36,7 @@ namespace Dashboard.ViewModels
             return GetStatusWithHeartbeat(snapshot, null);
         }
 
-        public static FunctionInstanceStatus GetStatusWithHeartbeat(this FunctionInstanceSnapshot snapshot, DateTime? heartbeatExpires)
+        public static FunctionInstanceStatus GetStatusWithHeartbeat(this FunctionInstanceSnapshot snapshot, bool? heartbeatIsValid)
         {
             if (snapshot == null)
             {
@@ -54,15 +54,15 @@ namespace Dashboard.ViewModels
                     return FunctionInstanceStatus.CompletedFailed;
                 }
             }
-            else if (heartbeatExpires.HasValue)
+            else if (heartbeatIsValid.HasValue)
             {
-                if (heartbeatExpires.Value < DateTime.UtcNow)
+                if (heartbeatIsValid.Value)
                 {
-                    return FunctionInstanceStatus.NeverFinished;
+                    return FunctionInstanceStatus.Running;
                 }
                 else
                 {
-                    return FunctionInstanceStatus.Running;
+                    return FunctionInstanceStatus.NeverFinished;
                 }
             }
             else if (snapshot.StartTime.HasValue)

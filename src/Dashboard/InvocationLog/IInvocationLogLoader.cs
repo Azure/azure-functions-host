@@ -15,7 +15,5 @@ namespace Dashboard.InvocationLog
         InvocationLogPage GetInvocationsInJob(string jobKey, PagingInfo pagingInfo);
 
         InvocationLogViewModel[] GetInvocationsByIds(IEnumerable<Guid> invocationIds);
-
-        DateTimeOffset? GetHeartbeat(Guid hostInstanceId);
     }
 }

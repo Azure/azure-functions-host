@@ -42,7 +42,7 @@ namespace Dashboard
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
-            Bind<IRunningHostTableReader>().To<RunningHostTableReader>();
+            Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
             Bind<AzureTable<string, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));

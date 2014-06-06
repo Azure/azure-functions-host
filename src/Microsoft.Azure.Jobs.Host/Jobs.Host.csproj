@@ -112,6 +112,12 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessage.cs">
       <Link>Protocols\FunctionStartedMessage.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HeartbeatCommand.cs">
+      <Link>Protocols\HeartbeatCommand.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HeartbeatDescriptor.cs">
+      <Link>Protocols\HeartbeatDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostMessage.cs">
       <Link>Protocols\HostMessage.cs</Link>
     </Compile>
@@ -120,6 +126,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HostStartedMessage.cs">
       <Link>Protocols\HostStartedMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IHeartbeatCommand.cs">
+      <Link>Protocols\IHeartbeatCommand.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\InvokeParameterDescriptor.cs">
       <Link>Protocols\InvokeParameterDescriptor.cs</Link>
@@ -133,17 +142,14 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IProcessTerminationSignalWriter.cs">
       <Link>Protocols\IProcessTerminationSignalWriter.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IRunningHostTableWriter.cs">
-      <Link>Protocols\IRunningHostTableWriter.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonTypeNameAttribute.cs">
       <Link>Protocols\JsonTypeNameAttribute.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullHeartbeatCommand.cs">
+      <Link>Protocols\NullHeartbeatCommand.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullProcessTerminationSignalReader.cs">
       <Link>Protocols\NullProcessTerminationSignalReader.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullRunningHostTableWriter.cs">
-      <Link>Protocols\NullRunningHostTableWriter.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterDescriptor.cs">
       <Link>Protocols\ParameterDescriptor.cs</Link>
@@ -168,9 +174,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RouteParameterDescriptor.cs">
       <Link>Protocols\RouteParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RunningHost.cs">
-      <Link>Protocols\RunningHost.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusParameterDescriptor.cs">
       <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
@@ -327,6 +330,7 @@
     <Compile Include="Runners\AggregateDelayedException.cs" />
     <Compile Include="Runners\DelayedException.cs" />
     <Compile Include="Runners\ExceptionDispatchInfoDelayedException.cs" />
+    <Compile Include="Runners\HeartbeatIntervals.cs" />
     <Compile Include="Runners\IDelayedException.cs" />
     <Compile Include="Runners\InvokeParametersProvider.cs" />
     <Compile Include="Runners\TriggerParametersProvider.cs" />
@@ -369,7 +373,6 @@
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
-    <Compile Include="Protocols\RunningHostTableWriter.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="Runners\TriggerAndOverrideMessageExtensions.cs" />

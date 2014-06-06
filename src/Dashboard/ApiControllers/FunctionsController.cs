@@ -24,7 +24,7 @@ namespace Dashboard.ApiControllers
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
         private readonly IProcessTerminationSignalWriter _terminationSignalWriter;
         private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
-        private readonly IRunningHostTableReader _heartbeatTable;
+        private readonly IHeartbeatMonitor _heartbeatMonitor;
 
         internal FunctionsController(
             CloudStorageAccount account,
@@ -33,7 +33,7 @@ namespace Dashboard.ApiControllers
             IFunctionLookup functionLookup,
             IProcessTerminationSignalReader terminationSignalReader,
             IProcessTerminationSignalWriter terminationSignalWriter,
-            IRunningHostTableReader heartbeatTable, 
+            IHeartbeatMonitor heartbeatMonitor,
             AzureTable<string, FunctionStatsEntity> invokeStatsTable)
         {
             _invocationLogLoader = invocationLogLoader;
@@ -42,7 +42,7 @@ namespace Dashboard.ApiControllers
             _functionLookup = functionLookup;
             _terminationSignalReader = terminationSignalReader;
             _terminationSignalWriter = terminationSignalWriter;
-            _heartbeatTable = heartbeatTable;
+            _heartbeatMonitor = heartbeatMonitor;
             _invokeStatsTable = invokeStatsTable;
         }
 
@@ -108,7 +108,7 @@ namespace Dashboard.ApiControllers
                 return NotFound();
             }
 
-            return Ok(new {functionName = func.FullName, functionId = func.Id});
+            return Ok(new { functionName = func.FullName, functionId = func.Id });
         }
 
         [Route("api/functions/definitions/{functionId}/invocations")]
@@ -131,7 +131,7 @@ namespace Dashboard.ApiControllers
             var invocations = _invocationLogLoader.GetRecentInvocations(pagingInfo);
             return Ok(invocations);
         }
-        
+
         [Route("api/functions/invocationsByIds")]
         public IHttpActionResult PostInvocationsByIds(Guid[] ids)
         {
@@ -157,7 +157,7 @@ namespace Dashboard.ApiControllers
             }
 
             var model = new FunctionInstanceDetailsViewModel();
-            model.Invocation = new InvocationLogViewModel(func, _invocationLogLoader.GetHeartbeat(func.HostInstanceId));
+            model.Invocation = new InvocationLogViewModel(func, HostHasHeartbeat(func));
             model.TriggerReason = new TriggerReasonViewModel(func);
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running && _terminationSignalReader.IsTerminationRequested(func.HostInstanceId);
@@ -178,18 +178,18 @@ namespace Dashboard.ApiControllers
             if (parentGuid.HasValue)
             {
                 FunctionInstanceSnapshot ancestor = _functionInstanceLookup.Lookup(parentGuid.Value);
-                DateTimeOffset? heartbeat;
+                bool? hasValidHeartbeat;
 
                 if (ancestor != null)
                 {
-                    heartbeat = _invocationLogLoader.GetHeartbeat(ancestor.HostInstanceId);
+                    hasValidHeartbeat = HostHasHeartbeat(ancestor);
                 }
                 else
                 {
-                    heartbeat = null;
+                    hasValidHeartbeat = null;
                 }
 
-                model.Ancestor = new InvocationLogViewModel(ancestor, heartbeat);
+                model.Ancestor = new InvocationLogViewModel(ancestor, hasValidHeartbeat);
             }
 
             return Ok(model);
@@ -198,8 +198,6 @@ namespace Dashboard.ApiControllers
         [Route("api/functions/definitions")]
         public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
         {
-            var hearbeats = _heartbeatTable.ReadAll();
-
             var model = new FunctionStatisticsPageViewModel();
             IEnumerable<FunctionStatisticsViewModel> query = _functionLookup
                 .ReadAll()
@@ -208,7 +206,7 @@ namespace Dashboard.ApiControllers
                     FunctionId = f.Id,
                     FunctionFullName = f.FullName,
                     FunctionName = f.ShortName,
-                    IsRunning = FunctionController.HasValidHeartbeat(f.QueueName, hearbeats),
+                    IsRunning = HostHasHeartbeat(f).GetValueOrDefault(true),
                     FailedCount = 0,
                     SuccessCount = 0
                 })
@@ -239,7 +237,7 @@ namespace Dashboard.ApiControllers
             }
 
             model.Entries = query.ToArray();
-            model.HasMore = lastElement != null ? 
+            model.HasMore = lastElement != null ?
                 !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId)) :
                 false;
             model.StorageAccountName = _account.Credentials.AccountName;
@@ -272,6 +270,37 @@ namespace Dashboard.ApiControllers
             _terminationSignalWriter.RequestTermination(hostInstanceId);
 
             return Ok();
+        }
+
+        private bool? HostHasHeartbeat(FunctionSnapshot snapshot)
+        {
+            return HostHasHeartbeat(_heartbeatMonitor, snapshot);
+        }
+
+        internal static bool? HostHasHeartbeat(IHeartbeatMonitor heartbeatMonitor, FunctionSnapshot snapshot)
+        {
+            int? expiration = snapshot.HeartbeatExpirationInSeconds;
+
+            if (!expiration.HasValue)
+            {
+                return null;
+            }
+
+            return heartbeatMonitor.IsSharedHeartbeatValid(snapshot.HeartbeatSharedContainerName,
+                snapshot.HeartbeatSharedDirectoryName, expiration.Value);
+        }
+
+        private bool? HostHasHeartbeat(FunctionInstanceSnapshot snapshot)
+        {
+            HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
+
+            if (heartbeat == null)
+            {
+                return null;
+            }
+
+            return _heartbeatMonitor.IsSharedHeartbeatValid(heartbeat.SharedContainerName,
+                heartbeat.SharedDirectoryName, heartbeat.ExpirationInSeconds);
         }
     }
 }

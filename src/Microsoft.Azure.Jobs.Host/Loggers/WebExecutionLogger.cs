@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -8,13 +9,15 @@ namespace Microsoft.Azure.Jobs
     {
         private readonly FunctionExecutionContext _ctx;
 
-        public WebExecutionLogger(Guid hostInstanceId, string hostDisplayName, string sharedQueueName, CloudStorageAccount account)
+        public WebExecutionLogger(Guid hostInstanceId, string hostDisplayName, string sharedQueueName,
+            HeartbeatDescriptor heartbeatDescriptor, CloudStorageAccount account)
         {
             _ctx = new FunctionExecutionContext
             {
                 HostInstanceId = hostInstanceId,
                 HostDisplayName = hostDisplayName,
                 SharedQueueName = sharedQueueName,
+                HeartbeatDescriptor = heartbeatDescriptor,
                 OutputLogDispenser = new FunctionOutputLogDispenser(
                     account,
                     HostContainerNames.ConsoleOutputLogContainerName

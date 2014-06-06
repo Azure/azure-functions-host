@@ -9,6 +9,12 @@ namespace Dashboard.Data
 
         public string QueueName { get; set; }
 
+        public string HeartbeatSharedContainerName { get; set; }
+
+        public string HeartbeatSharedDirectoryName { get; set; }
+
+        public int? HeartbeatExpirationInSeconds { get; set; }
+
         public string HostFunctionId { get; set; }
 
         public string FullName { get; set; }

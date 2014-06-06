@@ -10,6 +10,9 @@ using Dashboard.Infrastructure;
 using Ninject;
 using Ninject.Modules;
 using Ninject.Web.Common;
+using Ninject.Selection.Heuristics;
+using Ninject.Planning.Directives;
+using Ninject.Activation;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NinjectWebCommon), "Start")]
 [assembly: WebActivatorEx.ApplicationShutdownMethodAttribute(typeof(NinjectWebCommon), "Stop")]
@@ -54,6 +57,8 @@ namespace Dashboard.App_Start
             var kernel = new StandardKernel(GetModules().ToArray());
             try
             {
+                kernel.Components.RemoveAll<IConstructorScorer>();
+                kernel.Components.Add<IConstructorScorer, PreferPublicConstructorScorer>();
                 kernel.Settings.InjectNonPublic = true;
                 kernel.Bind<Func<IKernel>>().ToMethod(ctx => () => new Bootstrapper().Kernel);
                 kernel.Bind<IHttpModule>().To<HttpApplicationInitializationHttpModule>();
@@ -69,6 +74,40 @@ namespace Dashboard.App_Start
         private static IEnumerable<NinjectModule> GetModules()
         {
             yield return new AppModule();
+        }
+
+        private class PreferPublicConstructorScorer : IConstructorScorer
+        {
+            private readonly IConstructorScorer _defaultScorer = new StandardConstructorScorer();
+
+            public int Score(IContext context, ConstructorInjectionDirective directive)
+            {
+                int result = _defaultScorer.Score(context, directive);
+
+                if (directive.Constructor.IsPublic)
+                {
+                    result++;
+                }
+
+                return result;
+            }
+
+            public INinjectSettings Settings
+            {
+                get
+                {
+                    return _defaultScorer.Settings;
+                }
+                set
+                {
+                    _defaultScorer.Settings = value;
+                }
+            }
+
+            public void Dispose()
+            {
+                _defaultScorer.Dispose();
+            }
         }
     }
 }

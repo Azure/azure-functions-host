@@ -52,28 +52,32 @@ namespace Dashboard.Data
             return new HostSnapshot
             {
                 HostVersion = message.EnqueuedOn,
-                Functions = CreateFunctionSnapshots(message.SharedQueueName, message.Functions)
+                Functions = CreateFunctionSnapshots(message.SharedQueueName, message.Heartbeat, message.Functions)
             };
         }
 
-        private static IEnumerable<FunctionSnapshot> CreateFunctionSnapshots(string queueName, IEnumerable<FunctionDescriptor> functions)
+        private static IEnumerable<FunctionSnapshot> CreateFunctionSnapshots(string queueName,
+            HeartbeatDescriptor heartbeat, IEnumerable<FunctionDescriptor> functions)
         {
             List<FunctionSnapshot> snapshots = new List<FunctionSnapshot>();
 
             foreach (FunctionDescriptor function in functions)
             {
-                snapshots.Add(CreateFunctionSnapshot(queueName, function));
+                snapshots.Add(CreateFunctionSnapshot(queueName, heartbeat, function));
             }
 
             return snapshots;
         }
 
-        private static FunctionSnapshot CreateFunctionSnapshot(string queueName, FunctionDescriptor function)
+        private static FunctionSnapshot CreateFunctionSnapshot(string queueName, HeartbeatDescriptor heartbeat, FunctionDescriptor function)
         {
             return new FunctionSnapshot
             {
                 Id = String.Format(CultureInfo.InvariantCulture, "{0}_{1}", queueName, function.Id),
                 QueueName = queueName,
+                HeartbeatSharedContainerName = heartbeat != null ? heartbeat.SharedContainerName : null,
+                HeartbeatSharedDirectoryName = heartbeat != null ? heartbeat.SharedDirectoryName : null,
+                HeartbeatExpirationInSeconds = heartbeat != null ? (int?)heartbeat.ExpirationInSeconds : null,
                 HostFunctionId = function.Id,
                 FullName = function.FullName,
                 ShortName = function.ShortName,

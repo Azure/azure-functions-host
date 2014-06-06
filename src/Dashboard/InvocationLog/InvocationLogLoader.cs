@@ -22,7 +22,7 @@ namespace Dashboard.InvocationLog
         private readonly IFunctionInvocationIndexReader _recentInvocationsReader;
         private readonly IFunctionInvocationIndexReader _invocationChildrenReader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
-        private readonly IRunningHostTableReader _runningHostTableReader;
+        private readonly IHeartbeatMonitor _heartbeatMonitor;
 
         public InvocationLogLoader(
             IFunctionInvocationIndexReader invocationsInJobReader,
@@ -30,14 +30,14 @@ namespace Dashboard.InvocationLog
             IFunctionInvocationIndexReader recentInvocationsReader,
             IFunctionInvocationIndexReader invocationChildrenReader, 
             IFunctionInstanceLookup functionInstanceLookup,
-            IRunningHostTableReader runningHostTableReader)
+            IHeartbeatMonitor heartbeatMonitor)
         {
             _invocationsInJobReader = invocationsInJobReader;
             _invocationsInFunctionReader = invocationsInFunctionReader;
             _recentInvocationsReader = recentInvocationsReader;
             _invocationChildrenReader = invocationChildrenReader;
             _functionInstanceLookup = functionInstanceLookup;
-            _runningHostTableReader = runningHostTableReader;
+            _heartbeatMonitor = heartbeatMonitor;
         }
 
         public InvocationLogPage GetInvocationChildren(Guid invocationId, PagingInfo pagingInfo)
@@ -101,7 +101,7 @@ namespace Dashboard.InvocationLog
                     var invocation = _functionInstanceLookup.Lookup(invocationId);
                     if (invocation != null)
                     {
-                        invocationModel = new InvocationLogViewModel(invocation, GetHeartbeat(invocation.HostInstanceId));
+                        invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(invocation));
                         if (invocationModel.IsFinal())
                         {
                             HttpRuntime.Cache.Insert(cacheKey, invocationModel, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(30));
@@ -114,16 +114,24 @@ namespace Dashboard.InvocationLog
                 var invocation = _functionInstanceLookup.Lookup(invocationId);
                 if (invocation != null)
                 {
-                    invocationModel = new InvocationLogViewModel(invocation, GetHeartbeat(invocation.HostInstanceId));
+                    invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(invocation));
                 }
             }
 
             return invocationModel;
         }
 
-        public DateTimeOffset? GetHeartbeat(Guid hostInstanceId)
+        private bool? HasValidHeartbeat(FunctionInstanceSnapshot snapshot)
         {
-            return _runningHostTableReader.Read(hostInstanceId);
+            HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
+
+            if (heartbeat == null)
+            {
+                return null;
+            }
+
+            return _heartbeatMonitor.IsInstanceHeartbeatValid(heartbeat.SharedContainerName,
+                heartbeat.SharedDirectoryName, heartbeat.InstanceBlobName, heartbeat.ExpirationInSeconds);
         }
     }
 }

@@ -26,8 +26,9 @@ namespace Microsoft.Azure.Jobs
         private readonly Guid _hostId;
         private readonly string _displayName;
         private readonly string _sharedQueueName;
+        private readonly HeartbeatDescriptor _heartbeatDescriptor;
         private readonly IProcessTerminationSignalReader _terminationSignalReader;
-        private readonly IRunningHostTableWriter _heartbeatTable;
+        private readonly IHeartbeatCommand _heartbeatCommand;
         private readonly FunctionStore _functionStore;
 
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
@@ -72,6 +73,13 @@ namespace Microsoft.Azure.Jobs
                 _hostId = hostTable.GetOrCreateHostId(hostName);
                 _sharedQueueName = QueueNames.GetHostQueueName(_hostId);
                 _displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+                _heartbeatDescriptor = new HeartbeatDescriptor
+                {
+                    SharedContainerName = HostContainerNames.HeartbeatContainerName,
+                    SharedDirectoryName = _hostId.ToString("N"),
+                    InstanceBlobName = _id.ToString("N"),
+                    ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
+                };
 
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(account);
 
@@ -79,14 +87,15 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, account);
+                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, _heartbeatDescriptor, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
                 _terminationSignalReader = new ProcessTerminationSignalReader(account);
-                _heartbeatTable = new RunningHostTableWriter(tableClient);
+                _heartbeatCommand = new HeartbeatCommand(account, _heartbeatDescriptor.SharedContainerName,
+                    _heartbeatDescriptor.SharedDirectoryName + "/" + _heartbeatDescriptor.InstanceBlobName);
             }
             else
             {
@@ -99,7 +108,7 @@ namespace Microsoft.Azure.Jobs
                 };
 
                 _terminationSignalReader = new NullProcessTerminationSignalReader();
-                _heartbeatTable = new NullRunningHostTableWriter();
+                _heartbeatCommand = new NullHeartbeatCommand();
             }
 
             // This is direct execution, doesn't queue up. 
@@ -132,9 +141,9 @@ namespace Microsoft.Azure.Jobs
             get { return _sharedQueueName; }
         }
 
-        public IRunningHostTableWriter RunningHostTableWriter
+        public IHeartbeatCommand HeartbeatCommand
         {
-            get { return _heartbeatTable; }
+            get { return _heartbeatCommand; }
         }
 
         public IProcessTerminationSignalReader TerminationSignalReader
@@ -220,6 +229,7 @@ namespace Microsoft.Azure.Jobs
                 HostInstanceId = _id,
                 HostDisplayName = _displayName,
                 SharedQueueName = _sharedQueueName,
+                Heartbeat = _heartbeatDescriptor,
                 StorageConnectionString = storageConnectionString,
                 ServiceBusConnectionString = serviceBusConnectionString,
                 WebJobRunIdentifier = WebJobRunIdentifier.Current,

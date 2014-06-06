@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -24,6 +23,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// Gets or sets the name of the shared queue to which all instances of this host listen, if any.
         /// </summary>
         public string SharedQueueName { get; set; }
+
+        /// <summary>Gets or sets the heartbeat for the host instance, if any.</summary>
+        public HeartbeatDescriptor Heartbeat { get; set; }
 
         /// <summary>Gets or sets the connection string for Azure Storage data.</summary>
         public string StorageConnectionString { get; set; }

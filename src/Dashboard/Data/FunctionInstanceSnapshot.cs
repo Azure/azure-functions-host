@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
@@ -8,6 +9,8 @@ namespace Dashboard.Data
         public Guid Id { get; set; }
 
         public Guid HostInstanceId { get; set; }
+
+        public HeartbeatDescriptor Heartbeat { get; set; }
 
         public string FunctionId { get; set; }
 

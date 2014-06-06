@@ -29,7 +29,7 @@ namespace Dashboard.ViewModels
 
     public class InvocationLogViewModel
     {
-        internal InvocationLogViewModel(FunctionInstanceSnapshot snapshot, DateTimeOffset? heartbeat)
+        internal InvocationLogViewModel(FunctionInstanceSnapshot snapshot, bool? heartbeatIsValid)
         {
             Id = snapshot.Id;
             FunctionName = snapshot.FunctionShortName;
@@ -43,15 +43,12 @@ namespace Dashboard.ViewModels
                 ExecutingJobRunId = new WebJobRunIdentifierViewModel((WebJobTypes)Enum.Parse(typeof(WebJobTypes),
                     snapshot.WebJobType), snapshot.WebJobName, snapshot.WebJobRunId);
             }
-            DateTime? heartbeatExpires;
-            if (heartbeat.HasValue)
+            if (heartbeatIsValid.HasValue)
             {
-                heartbeatExpires = heartbeat.Value.UtcDateTime.Add(RunningHost.HeartbeatPollInterval);
-                Status = snapshot.GetStatusWithHeartbeat(heartbeatExpires);
+                Status = snapshot.GetStatusWithHeartbeat(heartbeatIsValid.Value);
             }
             else
             {
-                heartbeatExpires = null;
                 Status = snapshot.GetStatusWithoutHeartbeat();
             }
             switch (Status)
@@ -72,7 +69,7 @@ namespace Dashboard.ViewModels
                     break;
                 case FunctionInstanceStatus.NeverFinished:
                     WhenUtc = snapshot.StartTime.Value.UtcDateTime;
-                    Duration = heartbeatExpires - snapshot.StartTime;
+                    Duration = null;
                     break;
             }
         }

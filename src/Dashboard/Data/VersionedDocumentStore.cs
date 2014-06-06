@@ -127,7 +127,7 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                if (exception.IsPreconditionFailed())
+                if (exception.IsPreconditionFailed() || exception.IsConflict())
                 {
                     return false;
                 }
@@ -141,7 +141,7 @@ namespace Dashboard.Data
                     }
                     catch (StorageException retryException)
                     {
-                        if (retryException.IsPreconditionFailed())
+                        if (retryException.IsPreconditionFailed() || exception.IsConflict())
                         {
                             return false;
                         }

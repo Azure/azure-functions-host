@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Web.Mvc;
+using Dashboard.ApiControllers;
 using Dashboard.Data;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
@@ -21,7 +22,7 @@ namespace Dashboard.Controllers
         private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionQueuedLogger _functionQueuedLogger;
-        private readonly IRunningHostTableReader _heartbeatTable;
+        private readonly IHeartbeatMonitor _heartbeatMonitor;
         private readonly IInvoker _invoker;
 
         internal FunctionController(
@@ -29,7 +30,7 @@ namespace Dashboard.Controllers
             IFunctionLookup functionLookup,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionQueuedLogger functionQueuedLogger,
-            IRunningHostTableReader heartbeatTable,
+            IHeartbeatMonitor heartbeatMonitor,
             IInvoker invoker
             )
         {
@@ -37,7 +38,7 @@ namespace Dashboard.Controllers
             _functionLookup = functionLookup;
             _functionInstanceLookup = functionInstanceLookup;
             _functionQueuedLogger = functionQueuedLogger;
-            _heartbeatTable = heartbeatTable;
+            _heartbeatMonitor = heartbeatMonitor;
             _invoker = invoker;
         }
 
@@ -128,7 +129,7 @@ namespace Dashboard.Controllers
                 ParentId = parentId,
                 FunctionName = function.ShortName,
                 FunctionFullName = function.FullName,
-                HostIsNotRunning = !IsHostRunning(function.QueueName),
+                HostIsNotRunning = !FunctionsController.HostHasHeartbeat(_heartbeatMonitor, function).GetValueOrDefault(true),
                 SubmitText = submitText
             };
         }
@@ -159,18 +160,6 @@ namespace Dashboard.Controllers
             _invoker.TriggerAndOverride(queueName, message);
 
             return Redirect("~/#/functions/invocations/" + id);
-        }
-
-        private bool IsHostRunning(string queueName)
-        {
-            RunningHost[] heartbeats = _heartbeatTable.ReadAll();
-            return HasValidHeartbeat(queueName, heartbeats);
-        }
-
-        internal static bool HasValidHeartbeat(string hostName, IEnumerable<RunningHost> heartbeats)
-        {
-            RunningHost heartbeat = heartbeats.FirstOrDefault(h => h.HostName == hostName);
-            return RunningHost.IsValidHeartbeat(heartbeat);
         }
 
         private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionSnapshot function)

@@ -308,7 +308,8 @@ namespace Microsoft.Azure.Jobs
         private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
         {
             ICanFailCommand heartbeat = CreateHeartbeat(hostIsRunning);
-            return LinearSpeedupTimerCommand.CreateTimer(heartbeat, RunningHost.HeartbeatSignalInterval, TimeSpan.FromSeconds(10));
+            return LinearSpeedupTimerCommand.CreateTimer(heartbeat,
+                HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }
 
         private ICanFailCommand CreateHeartbeat(bool hostIsRunning)
@@ -321,25 +322,14 @@ namespace Microsoft.Azure.Jobs
             }
             else
             {
-                ICanFailCommand runningHostHeartbeat = CreateRunningHostHeartbeat();
-                ICanFailCommand runningHostInstanceHeartbeat = CreateRunningHostInstanceHeartbeat();
-                return new CompositeCanFailCommand(terminationCommand, runningHostHeartbeat, runningHostInstanceHeartbeat);
+                ICanFailCommand heartbeatCommand = CreateUpdateHostHeartbeatCommand();
+                return new CompositeCanFailCommand(terminationCommand, heartbeatCommand);
             }
         }
 
-        private UpdateHostHeartbeatCommand CreateRunningHostHeartbeat()
+        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand()
         {
-            return CreateUpdateHostHeartbeatCommand(_hostContext.SharedQueueName);
-        }
-
-        private UpdateHostHeartbeatCommand CreateRunningHostInstanceHeartbeat()
-        {
-            return CreateUpdateHostHeartbeatCommand(_hostContext.Id.ToString("N"));
-        }
-
-        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand(string hostName)
-        {
-            return new UpdateHostHeartbeatCommand(_hostContext.RunningHostTableWriter, hostName);
+            return new UpdateHostHeartbeatCommand(_hostContext.HeartbeatCommand);
         }
 
         private TerminateProcessUponRequestCommand CreateTerminateProcessUponRequestCommand()

@@ -53,7 +53,10 @@
     </Compile>
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
+    <Compile Include="HeartbeatCommand.cs" />
+    <Compile Include="HeartbeatDescriptor.cs" />
     <Compile Include="HostOutputMessage.cs" />
+    <Compile Include="HeartbeatMonitor.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
     <Compile Include="ProcessTerminationSignalReader.cs" />
     <Compile Include="ProcessTerminationSignalWriter.cs" />
@@ -73,17 +76,16 @@
     <Compile Include="IPersistentQueue.cs" />
     <Compile Include="IProcessTerminationSignalReader.cs" />
     <Compile Include="IProcessTerminationSignalWriter.cs" />
-    <Compile Include="IRunningHostTableReader.cs" />
-    <Compile Include="IRunningHostTableWriter.cs" />
+    <Compile Include="IHeartbeatMonitor.cs" />
+    <Compile Include="IHeartbeatCommand.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
     <Compile Include="NullProcessTerminationSignalReader.cs" />
-    <Compile Include="NullRunningHostTableWriter.cs" />
+    <Compile Include="NullHeartbeatCommand.cs" />
     <Compile Include="ParameterDescriptor.cs" />
     <Compile Include="PersistentQueue.cs" />
     <Compile Include="PersistentQueueMessage.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />
-    <Compile Include="RunningHost.cs" />
     <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />
     <Compile Include="ServiceBusParameterDescriptor.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />

@@ -214,7 +214,6 @@
     <Compile Include="Data\VersionedDocumentStore.cs" />
     <Compile Include="Data\WrapperEnumerable.cs" />
     <Compile Include="Protocols\Invoker.cs" />
-    <Compile Include="Protocols\RunningHostTableReader.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />

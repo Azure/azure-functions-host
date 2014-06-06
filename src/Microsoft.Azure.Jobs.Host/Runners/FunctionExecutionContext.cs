@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Azure.Jobs.Host.Loggers;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -10,6 +11,8 @@ namespace Microsoft.Azure.Jobs
         public string HostDisplayName { get; set; }
 
         public string SharedQueueName { get; set; }
+
+        public HeartbeatDescriptor HeartbeatDescriptor { get; set; }
 
         public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
 
