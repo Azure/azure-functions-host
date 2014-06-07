@@ -12,16 +12,18 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
     {
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
         private readonly CloudBlobClient _client;
+        private readonly string _accountName;
         private readonly string _containerName;
         private readonly string _blobName;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
         private readonly bool _outParameter;
 
-        public BlobBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudStorageAccount account,
-            string containerName, string blobName, bool outParameter)
+        public BlobBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client, string containerName,
+            string blobName, bool outParameter)
         {
             _argumentBinding = argumentBinding;
-            _client = account.CreateCloudBlobClient();
+            _client = client;
+            _accountName = BlobClient.GetAccountName(client);
             _containerName = containerName;
             _blobName = blobName;
             _outParameter = outParameter;
@@ -31,15 +33,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         public bool FromAttribute
         {
             get { return true; }
-        }
-
-        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
-            string blobName, Type argumentType)
-        {
-            return new CompositeObjectToTypeConverter<ICloudBlob>(
-                new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(client, containerName, blobName,
-                    argumentType)));
         }
 
         public string ContainerName
@@ -78,6 +71,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             }
         }
 
+        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
+            string blobName, Type argumentType)
+        {
+            return new CompositeObjectToTypeConverter<ICloudBlob>(
+                new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
+                new OutputConverter<string>(new StringToCloudBlobConverter(client, containerName, blobName,
+                    argumentType)));
+        }
+
         private IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
         {
             return _argumentBinding.Bind(value, context);
@@ -113,6 +115,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         {
             return new BlobParameterDescriptor
             {
+                AccountName = _accountName,
                 ContainerName = _containerName,
                 BlobName = _blobName,
                 Access = Access

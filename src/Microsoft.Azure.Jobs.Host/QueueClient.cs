@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -28,6 +29,16 @@ namespace Microsoft.Azure.Jobs
             catch (StorageException)
             {
             }
+        }
+
+        public static string GetAccountName(CloudQueueClient client)
+        {
+            if (client == null)
+            {
+                return null;
+            }
+
+            return StorageClient.GetAccountName(client.Credentials);
         }
 
         // This function from: http://blogs.msdn.com/b/neilkidd/archive/2008/11/11/windows-azure-queues-are-quite-particular.aspx

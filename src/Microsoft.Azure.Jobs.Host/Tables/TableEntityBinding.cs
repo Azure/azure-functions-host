@@ -8,23 +8,25 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 {
     internal class TableEntityBinding : IBinding
     {
-        private static readonly IObjectToTypeConverter<TableEntityContext> _converter =
-            new EntityOutputConverter<TableEntityContext>(new IdentityConverter<TableEntityContext>());
 
         private readonly IArgumentBinding<TableEntityContext> _argumentBinding;
         private readonly CloudTableClient _client;
+        private readonly string _accountName;
         private readonly string _tableName;
         private readonly string _partitionKey;
         private readonly string _rowKey;
+        private readonly IObjectToTypeConverter<TableEntityContext> _converter;
 
         public TableEntityBinding(IArgumentBinding<TableEntityContext> argumentBinding, CloudTableClient client,
             string tableName, string partitionKey, string rowKey)
         {
             _argumentBinding = argumentBinding;
             _client = client;
+            _accountName = TableClient.GetAccountName(client);
             _tableName = tableName;
             _partitionKey = partitionKey;
             _rowKey = rowKey;
+            _converter = CreateConverter(client, tableName, partitionKey, rowKey);
         }
 
         public bool FromAttribute
@@ -45,6 +47,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         public string RowKey
         {
             get { return _rowKey; }
+        }
+
+        private static IObjectToTypeConverter<TableEntityContext> CreateConverter(CloudTableClient client,
+            string tableName, string partitionKey, string rowKey)
+        {
+            return new CompositeObjectToTypeConverter<TableEntityContext>(
+                new EntityOutputConverter<TableEntityContext>(new IdentityConverter<TableEntityContext>()),
+                new EntityOutputConverter<string>(new StringToTableEntityContextConverter(client, tableName,
+                    partitionKey, rowKey)));
         }
 
         public IValueProvider Bind(BindingContext context)
@@ -93,6 +104,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             return new TableEntityParameterDescriptor
             {
+                AccountName = _accountName,
                 TableName = _tableName,
                 PartitionKey = _partitionKey,
                 RowKey = _rowKey

@@ -20,21 +20,21 @@ namespace Microsoft.Azure.Jobs
     // and return a set of services that the host can use for invoking, listening, etc. 
     internal class JobHostContext
     {
+        private static readonly Func<string, ConnectionStringDescriptor> _serviceBusConnectionStringDescriptorFactory =
+            CreateServiceBusConnectionStringDescriptorFactory();
+
         private readonly IExecuteFunction _executeFunction;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionTableLookup _functionTableLookup;
-        private readonly Guid _id;
-        private readonly Guid _hostId;
-        private readonly string _displayName;
         private readonly string _sharedQueueName;
         private readonly string _instanceQueueName;
-        private readonly HeartbeatDescriptor _heartbeatDescriptor;
+        private readonly HostOutputMessage _hostOutputMessage;
         private readonly IHeartbeatCommand _heartbeatCommand;
         private readonly FunctionStore _functionStore;
 
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
-            _id = Guid.NewGuid();
+            Guid id = Guid.NewGuid();
             IConfiguration config = new Configuration();
             config.NameResolver = nameResolver;
 
@@ -71,17 +71,32 @@ namespace Microsoft.Azure.Jobs
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
                 IHostTable hostTable = new HostTable(tableClient);
                 Assembly hostAssembly = GetHostAssembly(functions);
+
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                _hostId = hostTable.GetOrCreateHostId(hostName);
-                _sharedQueueName = QueueNames.GetHostQueueName(_hostId);
-                _instanceQueueName = QueueNames.GetHostQueueName(_id);
-                _displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
-                _heartbeatDescriptor = new HeartbeatDescriptor
+                Guid hostId = hostTable.GetOrCreateHostId(hostName);
+                _sharedQueueName = QueueNames.GetHostQueueName(hostId);
+                _instanceQueueName = QueueNames.GetHostQueueName(id);
+                string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+
+                HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                 {
                     SharedContainerName = HostContainerNames.HeartbeatContainerName,
-                    SharedDirectoryName = _hostId.ToString("N"),
-                    InstanceBlobName = _id.ToString("N"),
+                    SharedDirectoryName = hostId.ToString("N"),
+                    InstanceBlobName = id.ToString("N"),
                     ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
+                };
+
+                CredentialsDescriptor credentialsDescriptor = CreateCredentialsDescriptor(storageAccount,
+                    serviceBusConnectionString);
+
+                _hostOutputMessage = new DataOnlyHostOutputMessage {
+                    HostInstanceId = id,
+                    HostDisplayName = displayName,
+                    SharedQueueName = _sharedQueueName,
+                    InstanceQueueName = _instanceQueueName,
+                    Heartbeat = heartbeatDescriptor,
+                    Credentials = credentialsDescriptor,
+                    WebJobRunIdentifier = WebJobRunIdentifier.Current,
                 };
 
                 IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(blobClient);
@@ -90,15 +105,14 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueue);
 
-                var logger = new WebExecutionLogger(_id, _displayName, _sharedQueueName, _instanceQueueName,
-                    _heartbeatDescriptor, account);
+                var logger = new WebExecutionLogger(_hostOutputMessage, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
-                _heartbeatCommand = new HeartbeatCommand(account, _heartbeatDescriptor.SharedContainerName,
-                    _heartbeatDescriptor.SharedDirectoryName + "/" + _heartbeatDescriptor.InstanceBlobName);
+                _heartbeatCommand = new HeartbeatCommand(account, heartbeatDescriptor.SharedContainerName,
+                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
             }
             else
             {
@@ -106,6 +120,7 @@ namespace Microsoft.Azure.Jobs
 
                 ctx = new FunctionExecutionContext
                 {
+                    HostOutputMessage = new DataOnlyHostOutputMessage(),
                     OutputLogDispenser = new ConsoleFunctionOuputLogDispenser(),
                     FunctionInstanceLogger = new ConsoleFunctionInstanceLogger()
                 };
@@ -133,11 +148,6 @@ namespace Microsoft.Azure.Jobs
             get { return _functionTableLookup; }
         }
 
-        public Guid Id
-        {
-            get { return _id; }
-        }
-
         public string SharedQueueName
         {
             get { return _sharedQueueName; }
@@ -161,6 +171,21 @@ namespace Microsoft.Azure.Jobs
         public INameResolver NameResolver
         {
             get { return _functionStore.NameResolver; }
+        }
+
+        private static Func<string, ConnectionStringDescriptor> CreateServiceBusConnectionStringDescriptorFactory()
+        {
+            Type factoryType = ServiceBusExtensionTypeLoader.Get(
+                "Microsoft.Azure.Jobs.ServiceBus.Listeners.ServiceBusConnectionStringDescriptorFactory");
+
+            if (factoryType == null)
+            {
+                return (_) => null;
+            }
+
+            MethodInfo method = factoryType.GetMethod("Create", new Type[] { typeof(string) });
+            return (Func<string, ConnectionStringDescriptor>)Delegate.CreateDelegate(
+                typeof(Func<string, ConnectionStringDescriptor>), method);
         }
 
         // Search for any types that implement ICloudBlobStreamBinder<T>
@@ -228,17 +253,57 @@ namespace Microsoft.Azure.Jobs
 
             HostStartedMessage message = new HostStartedMessage
             {
-                HostInstanceId = _id,
-                HostDisplayName = _displayName,
-                SharedQueueName = _sharedQueueName,
-                InstanceQueueName = _instanceQueueName,
-                Heartbeat = _heartbeatDescriptor,
-                StorageConnectionString = storageConnectionString,
-                ServiceBusConnectionString = serviceBusConnectionString,
-                WebJobRunIdentifier = WebJobRunIdentifier.Current,
+                HostInstanceId = _hostOutputMessage.HostInstanceId,
+                HostDisplayName = _hostOutputMessage.HostDisplayName,
+                SharedQueueName = _hostOutputMessage.SharedQueueName,
+                InstanceQueueName = _hostOutputMessage.InstanceQueueName,
+                Heartbeat = _hostOutputMessage.Heartbeat,
+                Credentials = _hostOutputMessage.Credentials,
+                WebJobRunIdentifier = _hostOutputMessage.WebJobRunIdentifier,
                 Functions = functionDescriptors
             };
+
             logger.Enqueue(message);
+        }
+
+        private static CredentialsDescriptor CreateCredentialsDescriptor(CloudStorageAccount storageAccount,
+            string serviceBusConnectionString)
+        {
+            List<ConnectionStringDescriptor> connectionStrings = new List<ConnectionStringDescriptor>();
+
+            if (storageAccount != null)
+            {
+                connectionStrings.Add(new StorageConnectionStringDescriptor
+                {
+                    Account = storageAccount.Credentials.AccountName,
+                    ConnectionString = storageAccount.ToString(exportSecrets: true)
+                });
+            }
+
+            if (serviceBusConnectionString != null)
+            {
+                ConnectionStringDescriptor serviceBusConnectionStringDescriptor =
+                    _serviceBusConnectionStringDescriptorFactory.Invoke(serviceBusConnectionString);
+
+                if (serviceBusConnectionStringDescriptor != null)
+                {
+                    connectionStrings.Add(serviceBusConnectionStringDescriptor);
+                }
+            }
+
+            if (connectionStrings.Count == 0)
+            {
+                return null;
+            }
+
+            return new CredentialsDescriptor
+            {
+                ConnectionStrings = connectionStrings.ToArray()
+            };
+        }
+
+        private class DataOnlyHostOutputMessage : HostOutputMessage
+        {
         }
     }
 }

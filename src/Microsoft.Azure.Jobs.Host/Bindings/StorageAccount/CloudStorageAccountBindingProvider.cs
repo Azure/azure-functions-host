@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
                 return null;
             }
 
-            return new CloudStorageAccountBinding();
+            return new CloudStorageAccountBinding(context.StorageAccount);
         }
     }
 }

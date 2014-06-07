@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.ServiceBus;
-using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
@@ -35,20 +33,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Can't bind ServiceBus to type '" + parameter.ParameterType + "'.");
             }
 
-            string connectionString = context.ServiceBusConnectionString;
-            MessagingFactory messagingFactory = MessagingFactory.CreateFromConnectionString(connectionString);
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
+                context.ServiceBusConnectionString);
 
-            ServiceBusEntity entity = new ServiceBusEntity
-            {
-                Account = new ServiceBusAccount
-                {
-                    NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString),
-                    MessagingFactory = messagingFactory
-                },
-                MessageSender = messagingFactory.CreateMessageSender(queueOrTopicName)
-            };
-
-            return new ServiceBusBinding(argumentBinding, entity);
+            return new ServiceBusBinding(argumentBinding, account, queueOrTopicName);
         }
     }
 }

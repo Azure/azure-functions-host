@@ -12,5 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class CloudStorageAccountParameterDescriptor : ParameterDescriptor
 #endif
     {
+        /// <summary>Gets or sets the name of the storage account.</summary>
+        public string AccountName { get; set; }
     }
 }

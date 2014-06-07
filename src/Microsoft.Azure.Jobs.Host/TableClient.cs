@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -23,6 +24,16 @@ namespace Microsoft.Azure.Jobs
         static TableClient()
         {
             _invalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
+        }
+
+        public static string GetAccountName(CloudTableClient client)
+        {
+            if (client == null)
+            {
+                return null;
+            }
+
+            return StorageClient.GetAccountName(client.Credentials);
         }
 
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx

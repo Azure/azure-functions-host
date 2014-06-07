@@ -98,12 +98,14 @@
     <Compile Include="Bindings\OutputConverter.cs" />
     <Compile Include="Bindings\ServiceBusBinding.cs" />
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
-    <Compile Include="Bindings\ServiceBusAccount.cs" />
+    <Compile Include="ServiceBusAccount.cs" />
     <Compile Include="Bindings\ServiceBusEntity.cs" />
     <Compile Include="Bindings\StringToServiceBusEntityConverter.cs" />
     <Compile Include="Bindings\UserTypeArgumentBinding.cs" />
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
+    <Compile Include="Listeners\ServiceBusConnectionStringDescriptorFactory.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
+    <Compile Include="ServiceBusClient.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />
     <Compile Include="Triggers\CalculateServiceBusTriggers.cs" />

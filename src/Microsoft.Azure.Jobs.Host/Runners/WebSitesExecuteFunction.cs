@@ -277,14 +277,13 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             return new FunctionStartedMessage
             {
-                HostInstanceId = _sharedContext.HostInstanceId,
-                HostDisplayName = _sharedContext.HostDisplayName,
-                SharedQueueName = _sharedContext.SharedQueueName,
-                InstanceQueueName = _sharedContext.InstanceQueueName,
-                Heartbeat = _sharedContext.HeartbeatDescriptor,
-                StorageConnectionString = storageAccount != null ? storageAccount.ToString(exportSecrets: true) : null,
-                ServiceBusConnectionString = serviceBusConnectionString,
-                WebJobRunIdentifier = WebJobRunIdentifier.Current,
+                HostInstanceId = _sharedContext.HostOutputMessage.HostInstanceId,
+                HostDisplayName = _sharedContext.HostOutputMessage.HostDisplayName,
+                SharedQueueName = _sharedContext.HostOutputMessage .SharedQueueName,
+                InstanceQueueName = _sharedContext.HostOutputMessage.InstanceQueueName,
+                Heartbeat = _sharedContext.HostOutputMessage.Heartbeat,
+                Credentials = _sharedContext.HostOutputMessage.Credentials,
+                WebJobRunIdentifier = _sharedContext.HostOutputMessage.WebJobRunIdentifier,
                 FunctionInstanceId = request.Id,
                 Function = request.ParametersProvider.Function.ToFunctionDescriptor(),
                 ParentId = triggerReason != null && triggerReason.ParentGuid != Guid.Empty
@@ -303,8 +302,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 SharedQueueName = startedMessage.SharedQueueName,
                 InstanceQueueName = startedMessage.InstanceQueueName,
                 Heartbeat = startedMessage.Heartbeat,
-                StorageConnectionString = startedMessage.StorageConnectionString,
-                ServiceBusConnectionString = startedMessage.ServiceBusConnectionString,
+                Credentials = startedMessage.Credentials,
                 WebJobRunIdentifier = startedMessage.WebJobRunIdentifier,
                 FunctionInstanceId = startedMessage.FunctionInstanceId,
                 Function = startedMessage.Function,

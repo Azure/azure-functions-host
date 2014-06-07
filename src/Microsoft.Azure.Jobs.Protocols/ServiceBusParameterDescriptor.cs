@@ -14,6 +14,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class ServiceBusParameterDescriptor : ParameterDescriptor
 #endif
     {
+        /// <summary>Gets or sets the name of the Service Bus namespace.</summary>
+        public string NamespaceName { get; set; }
+
         /// <summary>Gets or sets the name of the queue or topic.</summary>
         public string QueueOrTopicName { get; set; }
     }

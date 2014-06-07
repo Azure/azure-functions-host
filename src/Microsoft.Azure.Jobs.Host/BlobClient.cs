@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -9,6 +10,16 @@ namespace Microsoft.Azure.Jobs
 {
     internal static class BlobClient
     {
+        public static string GetAccountName(CloudBlobClient client)
+        {
+            if (client == null)
+            {
+                return null;
+            }
+
+            return StorageClient.GetAccountName(client.Credentials);
+        }
+
         public static DateTime? GetBlobModifiedUtcTime(ICloudBlob blob)
         {
             if (!DoesBlobExist(blob))

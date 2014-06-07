@@ -6,22 +6,30 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
     internal class StringToCloudQueueConverter : IConverter<string, CloudQueue>
     {
-        private readonly CloudQueue _defaultQueue;
+        private readonly CloudQueueClient _client;
+        private readonly string _defaultQueueName;
 
-        public StringToCloudQueueConverter(CloudQueue defaultQueue)
+        public StringToCloudQueueConverter(CloudQueueClient client, string defaultQueueName)
         {
-            _defaultQueue = defaultQueue;
+            _client = client;
+            _defaultQueueName = defaultQueueName;
         }
 
         public CloudQueue Convert(string input)
         {
+            string queueName;
+
             // For convenience, treat an an empty string as a request for the default value.
             if (String.IsNullOrEmpty(input))
             {
-                return _defaultQueue;
+                queueName = _defaultQueueName;
+            }
+            else
+            {
+                queueName = input;
             }
 
-            return _defaultQueue.ServiceClient.GetQueueReference(input);
+            return _client.GetQueueReference(queueName);
         }
     }
 }

@@ -323,6 +323,12 @@ namespace Microsoft.Azure.Jobs
         private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
         {
             ICanFailCommand heartbeat = CreateHeartbeat(hostIsRunning);
+
+            if (heartbeat == null)
+            {
+                return new IntervalSeparationTimer(new NullTimerCommand());
+            }
+
             return LinearSpeedupTimerCommand.CreateTimer(heartbeat,
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }

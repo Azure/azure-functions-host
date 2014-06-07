@@ -100,11 +100,17 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CloudStorageAccountParameterDescriptor.cs">
       <Link>Protocols\CloudStorageAccountParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ConnectionStringDescriptor.cs">
+      <Link>Protocols\ConnectionStringDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ConsoleOutputParameterDescriptor.cs">
       <Link>Protocols\ConsoleOutputParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ContainerNames.cs">
       <Link>Protocols\ContainerNames.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CredentialsDescriptor.cs">
+      <Link>Protocols\CredentialsDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedMessage.cs">
       <Link>Protocols\FunctionCompletedMessage.cs</Link>
@@ -169,20 +175,23 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RouteParameterDescriptor.cs">
       <Link>Protocols\RouteParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusConnectionStringDescriptor.cs">
+      <Link>Protocols\ServiceBusConnectionStringDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusParameterDescriptor.cs">
       <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusTriggerParameterDescriptor.cs">
       <Link>Protocols\ServiceBusTriggerParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageConnectionStringDescriptor.cs">
+      <Link>Protocols\StorageConnectionStringDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageExceptionExtensions.cs">
       <Link>Protocols\StorageExceptionExtensions.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableNames.cs">
-      <Link>Protocols\TableNames.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableParameterDescriptor.cs">
       <Link>Protocols\TableParameterDescriptor.cs</Link>
@@ -218,6 +227,7 @@
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />
     <Compile Include="Bindings\Invoke\StructInvokeBinding.cs" />
@@ -349,6 +359,7 @@
     <Compile Include="Tables\TableEntityContext.cs" />
     <Compile Include="Tables\TableValueProvider.cs" />
     <Compile Include="Tables\TableAttributeBindingProvider.cs" />
+    <Compile Include="Timers\NullTimerCommand.cs" />
     <Compile Include="Triggers\CompositeTriggerBindingProvider.cs" />
     <Compile Include="Triggers\ITriggerBindingOfT.cs" />
     <Compile Include="Triggers\ITriggerBinding.cs" />

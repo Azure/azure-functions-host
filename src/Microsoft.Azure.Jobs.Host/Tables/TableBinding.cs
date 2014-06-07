@@ -11,6 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
     {
         private readonly IArgumentBinding<CloudTable> _argumentBinding;
         private readonly CloudTableClient _client;
+        private readonly string _accountName;
         private readonly string _tableName;
         private readonly IObjectToTypeConverter<CloudTable> _converter;
 
@@ -18,15 +19,9 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             _argumentBinding = argumentBinding;
             _client = client;
+            _accountName = TableClient.GetAccountName(client);
             _tableName = tableName;
             _converter = CreateConverter(client, tableName);
-        }
-
-        private static IObjectToTypeConverter<CloudTable> CreateConverter(CloudTableClient client, string tableName)
-        {
-            return new CompositeObjectToTypeConverter<CloudTable>(
-                new OutputConverter<CloudTable>(new IdentityConverter<CloudTable>()),
-                new OutputConverter<string>(new StringToCloudTableConverter(client, tableName)));
         }
 
         public bool FromAttribute
@@ -46,6 +41,13 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return _argumentBinding.ValueType == typeof(CloudTable)
                     ? FileAccess.ReadWrite : FileAccess.Read;
             }
+        }
+
+        private static IObjectToTypeConverter<CloudTable> CreateConverter(CloudTableClient client, string tableName)
+        {
+            return new CompositeObjectToTypeConverter<CloudTable>(
+                new OutputConverter<CloudTable>(new IdentityConverter<CloudTable>()),
+                new OutputConverter<string>(new StringToCloudTableConverter(client, tableName)));
         }
 
         public IValueProvider Bind(BindingContext context)
@@ -78,6 +80,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             return new TableParameterDescriptor
             {
+                AccountName = _accountName,
                 TableName = _tableName,
                 Access = Access
             };

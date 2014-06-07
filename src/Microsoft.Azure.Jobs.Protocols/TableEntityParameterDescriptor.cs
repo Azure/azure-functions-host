@@ -12,6 +12,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class TableEntityParameterDescriptor : ParameterDescriptor
 #endif
     {
+        /// <summary>Gets or sets the name of the storage account.</summary>
+        public string AccountName { get; set; }
+
         /// <summary>Gets or sets the name of the table.</summary>
         public string TableName { get; set; }
 

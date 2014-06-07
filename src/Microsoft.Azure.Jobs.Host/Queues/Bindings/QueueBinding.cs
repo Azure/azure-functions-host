@@ -10,21 +10,18 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
     internal class QueueBinding : IBinding
     {
         private readonly IArgumentBinding<CloudQueue> _argumentBinding;
-        private readonly CloudQueue _queue;
+        private readonly CloudQueueClient _client;
+        private readonly string _accountName;
+        private readonly string _queueName;
         private readonly IObjectToTypeConverter<CloudQueue> _converter;
 
-        public QueueBinding(IArgumentBinding<CloudQueue> argumentBinding, CloudQueue queue)
+        public QueueBinding(IArgumentBinding<CloudQueue> argumentBinding, CloudQueueClient client, string queueName)
         {
             _argumentBinding = argumentBinding;
-            _queue = queue;
-            _converter = CreateConverter(queue);
-        }
-
-        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueue queue)
-        {
-            return new CompositeObjectToTypeConverter<CloudQueue>(
-                new OutputConverter<CloudQueue>(new IdentityConverter<CloudQueue>()),
-                new OutputConverter<string>(new StringToCloudQueueConverter(queue)));
+            _client = client;
+            _accountName = QueueClient.GetAccountName(client);
+            _queueName = queueName;
+            _converter = CreateConverter(client, queueName);
         }
 
         public bool FromAttribute
@@ -34,7 +31,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
         public string QueueName
         {
-            get { return _queue.Name; }
+            get { return _queueName; }
         }
 
         private FileAccess Access
@@ -46,9 +43,17 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             }
         }
 
+        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueueClient client, string queueName)
+        {
+            return new CompositeObjectToTypeConverter<CloudQueue>(
+                new OutputConverter<CloudQueue>(new IdentityConverter<CloudQueue>()),
+                new OutputConverter<string>(new StringToCloudQueueConverter(client, queueName)));
+        }
+
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(_queue, context);
+            CloudQueue queue = _client.GetQueueReference(_queueName);
+            return Bind(queue, context);
         }
 
         private IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
@@ -72,7 +77,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         {
             return new QueueParameterDescriptor
             {
-                QueueName = _queue.Name,
+                AccountName = _accountName,
+                QueueName = _queueName,
                 Access = Access
             };
         }

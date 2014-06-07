@@ -15,21 +15,26 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>());
 
         private readonly IArgumentBinding<BrokeredMessage> _argumentBinding;
+        private readonly string _namespaceName;
         private readonly string _queueName;
         private readonly string _topicName;
         private readonly string _subscriptionName;
         private readonly string _entityPath;
 
-        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, string queueName)
+        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
+            string queueName)
         {
             _argumentBinding = argumentBinding;
+            _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _queueName = queueName;
             _entityPath = queueName;
         }
 
-        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, string topicName, string subscriptionName)
+        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
+            string topicName, string subscriptionName)
         {
             _argumentBinding = argumentBinding;
+            _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _topicName = topicName;
             _subscriptionName = subscriptionName;
             _entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
@@ -85,6 +90,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         {
             return new ServiceBusTriggerParameterDescriptor
             {
+                NamespaceName = _namespaceName,
                 QueueName = _queueName,
                 TopicName = _topicName,
                 SubscriptionName = _subscriptionName

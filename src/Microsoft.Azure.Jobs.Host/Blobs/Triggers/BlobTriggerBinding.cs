@@ -5,7 +5,6 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
@@ -13,23 +12,19 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
     internal class BlobTriggerBinding : ITriggerBinding<ICloudBlob>
     {
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
+        private readonly string _accountName;
         private readonly string _containerName;
         private readonly string _blobName;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
 
-        public BlobTriggerBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudStorageAccount account, string containerName, string blobName)
+        public BlobTriggerBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client,
+            string containerName, string blobName)
         {
             _argumentBinding = argumentBinding;
+            _accountName = BlobClient.GetAccountName(client);
             _containerName = containerName;
             _blobName = blobName;
-            _converter = CreateConverter(account);
-        }
-
-        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudStorageAccount account)
-        {
-            return new CompositeObjectToTypeConverter<ICloudBlob>(
-                new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(account.CreateCloudBlobClient())));
+            _converter = CreateConverter(client);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
@@ -71,6 +66,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             }
         }
 
+        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
+        {
+            return new CompositeObjectToTypeConverter<ICloudBlob>(
+                new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
+                new OutputConverter<string>(new StringToCloudBlobConverter(client)));
+        }
+
         public ITriggerData Bind(ICloudBlob value, ArgumentBindingContext context)
         {
             IValueProvider valueProvider = _argumentBinding.Bind(value, context);
@@ -95,6 +97,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         {
             return new BlobTriggerParameterDescriptor
             {
+                AccountName = _accountName,
                 ContainerName = _containerName,
                 BlobName = _blobName,
                 Access = Access

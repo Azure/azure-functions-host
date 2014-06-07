@@ -4,6 +4,7 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
@@ -15,11 +16,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
 
         private readonly IArgumentBinding<CloudQueueMessage> _argumentBinding;
+        private readonly string _accountName;
         private readonly string _queueName;
 
-        public QueueTriggerBinding(IArgumentBinding<CloudQueueMessage> argumentBinding, string queueName)
+        public QueueTriggerBinding(IArgumentBinding<CloudQueueMessage> argumentBinding, CloudStorageAccount account,
+            string queueName)
         {
             _argumentBinding = argumentBinding;
+            _accountName = StorageClient.GetAccountName(account);
             _queueName = queueName;
         }
 
@@ -57,6 +61,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
         {
             return new QueueTriggerParameterDescriptor
             {
+                AccountName = _accountName,
                 QueueName = _queueName
             };
         }

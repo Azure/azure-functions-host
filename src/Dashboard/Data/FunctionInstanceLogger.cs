@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -99,6 +100,19 @@ namespace Dashboard.Data
 
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
         {
+            string storageConnectionString = null;
+
+            if (message.Credentials != null && message.Credentials.ConnectionStrings != null)
+            {
+                StorageConnectionStringDescriptor descriptor =
+                    message.Credentials.ConnectionStrings.OfType<StorageConnectionStringDescriptor>().FirstOrDefault();
+
+                if (descriptor != null)
+                {
+                    storageConnectionString = descriptor.ConnectionString;
+                }
+            }
+
             return new FunctionInstanceSnapshot
             {
                 Id = message.FunctionInstanceId,
@@ -113,7 +127,7 @@ namespace Dashboard.Data
                 Reason = message.Reason,
                 QueueTime = message.StartTime,
                 StartTime = message.StartTime,
-                StorageConnectionString = message.StorageConnectionString,
+                StorageConnectionString = storageConnectionString,
                 OutputBlobUrl = message.OutputBlobUrl,
                 ParameterLogBlobUrl = message.ParameterLogBlobUrl,
                 WebSiteName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.WebSiteName : null,

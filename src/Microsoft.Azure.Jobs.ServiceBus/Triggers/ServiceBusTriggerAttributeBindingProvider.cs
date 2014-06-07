@@ -47,13 +47,16 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
             }
 
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
+                context.ServiceBusConnectionString);
+
             if (queueName != null)
             {
-                return new ServiceBusTriggerBinding(argumentBinding, queueName);
+                return new ServiceBusTriggerBinding(argumentBinding, account, queueName);
             }
             else
             {
-                return new ServiceBusTriggerBinding(argumentBinding, topicName, subscriptionName);
+                return new ServiceBusTriggerBinding(argumentBinding, account, topicName, subscriptionName);
             }
         }
     }

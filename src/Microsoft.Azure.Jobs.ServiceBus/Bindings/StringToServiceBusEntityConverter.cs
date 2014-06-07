@@ -5,25 +5,33 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
     internal class StringToServiceBusEntityConverter : IConverter<string, ServiceBusEntity>
     {
-        private readonly ServiceBusEntity _defaultEntity;
+        private readonly ServiceBusAccount _account;
+        private readonly string _defaultQueueOrTopicName;
 
-        public StringToServiceBusEntityConverter(ServiceBusEntity defaultEntity)
+        public StringToServiceBusEntityConverter(ServiceBusAccount account, string defaultQueueOrTopicName)
         {
-            _defaultEntity = defaultEntity;
+            _account = account;
+            _defaultQueueOrTopicName = defaultQueueOrTopicName;
         }
 
         public ServiceBusEntity Convert(string input)
         {
+            string queueOrTopicName;
+
             // For convenience, treat an an empty string as a request for the default value.
             if (String.IsNullOrEmpty(input))
             {
-                return _defaultEntity;
+                queueOrTopicName = _defaultQueueOrTopicName;
+            }
+            else
+            {
+                queueOrTopicName = input;
             }
 
             return new ServiceBusEntity
             {
-                Account = _defaultEntity.Account,
-                MessageSender = _defaultEntity.Account.MessagingFactory.CreateMessageSender(input)
+                Account = _account,
+                MessageSender = _account.MessagingFactory.CreateMessageSender(queueOrTopicName)
             };
         }
     }
