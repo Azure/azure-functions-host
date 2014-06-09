@@ -7,15 +7,17 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
     internal class ServiceBusBinding : IBinding
     {
+        private readonly string _parameterName;
         private readonly IArgumentBinding<ServiceBusEntity> _argumentBinding;
         private readonly ServiceBusAccount _account;
         private readonly string _namespaceName;
         private readonly string _queueOrTopicName;
         private readonly IObjectToTypeConverter<ServiceBusEntity> _converter;
 
-        public ServiceBusBinding(IArgumentBinding<ServiceBusEntity> argumentBinding, ServiceBusAccount account,
-            string queueOrTopicName)
+        public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding,
+            ServiceBusAccount account, string queueOrTopicName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
@@ -65,6 +67,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
         {
             return new ServiceBusParameterDescriptor
             {
+                Name = _parameterName,
                 NamespaceName = _namespaceName,
                 QueueOrTopicName = _queueOrTopicName
             };

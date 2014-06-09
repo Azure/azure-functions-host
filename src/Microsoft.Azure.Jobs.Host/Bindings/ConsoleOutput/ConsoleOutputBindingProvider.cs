@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Reflection;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 {
@@ -6,12 +7,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
     {
         public IBinding TryCreate(BindingProviderContext context)
         {
-            if (context.Parameter.ParameterType != typeof(TextWriter))
+            ParameterInfo parameter = context.Parameter;
+
+            if (parameter.ParameterType != typeof(TextWriter))
             {
                 return null;
             }
 
-            return new ConsoleOutputBinding();
+            return new ConsoleOutputBinding(parameter.Name);
         }
     }
 }

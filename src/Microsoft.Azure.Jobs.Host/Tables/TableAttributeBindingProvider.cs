@@ -46,7 +46,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table to type '" + parameterType + "'.");
                 }
 
-                return new TableBinding(argumentBinding, client, tableName);
+                return new TableBinding(parameter.Name, argumentBinding, client, tableName);
             }
             else
             {
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table entity to type '" + parameterType + "'.");
                 }
 
-                return new TableEntityBinding(argumentBinding, client, tableName, partitionKey, rowKey);
+                return new TableEntityBinding(parameter.Name, argumentBinding, client, tableName, partitionKey, rowKey);
             }
         }
     }

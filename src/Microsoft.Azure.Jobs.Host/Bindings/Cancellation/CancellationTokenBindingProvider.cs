@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Reflection;
+using System.Threading;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 {
@@ -6,12 +7,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
     {
         public IBinding TryCreate(BindingProviderContext context)
         {
-            if (context.Parameter.ParameterType != typeof(CancellationToken))
+            ParameterInfo parameter = context.Parameter;
+
+            if (parameter.ParameterType != typeof(CancellationToken))
             {
                 return null;
             }
 
-            return new CancellationTokenBinding();
+            return new CancellationTokenBinding(parameter.Name);
         }
     }
 }

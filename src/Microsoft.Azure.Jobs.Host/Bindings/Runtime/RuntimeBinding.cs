@@ -5,6 +5,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBinding : IBinding
     {
+        private readonly string _parameterName;
+
+        public RuntimeBinding(string parameterName)
+        {
+            _parameterName = parameterName;
+        }
+
         public bool FromAttribute
         {
             get { return false; }
@@ -34,7 +41,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new BinderParameterDescriptor();
+            return new BinderParameterDescriptor
+            {
+                Name = _parameterName
+            };
         }
     }
 }

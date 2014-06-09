@@ -6,6 +6,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 {
     internal class CancellationTokenBinding : IBinding
     {
+        private readonly string _parameterName;
+
+        public CancellationTokenBinding(string parameterName)
+        {
+            _parameterName = parameterName;
+        }
+
         public bool FromAttribute
         {
             get { return false; }
@@ -35,7 +42,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new CancellationTokenParameterDescriptor();
+            return new CancellationTokenParameterDescriptor
+            {
+                Name = _parameterName
+            };
         }
     }
 }

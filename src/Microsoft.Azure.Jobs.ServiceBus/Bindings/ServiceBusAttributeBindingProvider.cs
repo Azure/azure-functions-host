@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
                 context.ServiceBusConnectionString);
 
-            return new ServiceBusBinding(argumentBinding, account, queueOrTopicName);
+            return new ServiceBusBinding(parameter.Name, argumentBinding, account, queueOrTopicName);
         }
     }
 }

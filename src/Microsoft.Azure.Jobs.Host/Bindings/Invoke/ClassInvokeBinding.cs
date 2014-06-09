@@ -47,7 +47,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new InvokeParameterDescriptor();
+            return new InvokeParameterDescriptor
+            {
+                Name = _parameterName
+            };
         }
     }
 }

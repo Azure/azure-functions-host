@@ -14,6 +14,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         private static readonly IObjectToTypeConverter<BrokeredMessage> _converter =
             new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>());
 
+        private readonly string _parameterName;
         private readonly IArgumentBinding<BrokeredMessage> _argumentBinding;
         private readonly string _namespaceName;
         private readonly string _queueName;
@@ -21,9 +22,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         private readonly string _subscriptionName;
         private readonly string _entityPath;
 
-        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
-            string queueName)
+        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding,
+            ServiceBusAccount account, string queueName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _queueName = queueName;
@@ -90,6 +92,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         {
             return new ServiceBusTriggerParameterDescriptor
             {
+                Name = _parameterName,
                 NamespaceName = _namespaceName,
                 QueueName = _queueName,
                 TopicName = _topicName,

@@ -1,15 +1,19 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
+﻿using System.Reflection;
+
+namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingProvider : IBindingProvider
     {
         public IBinding TryCreate(BindingProviderContext context)
         {
-            if (context.Parameter.ParameterType != typeof(IBinder))
+            ParameterInfo parameter = context.Parameter;
+
+            if (parameter.ParameterType != typeof(IBinder))
             {
                 return null;
             }
 
-            return new RuntimeBinding();
+            return new RuntimeBinding(parameter.Name);
         }
     }
 }

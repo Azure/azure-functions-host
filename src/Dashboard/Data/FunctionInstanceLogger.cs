@@ -137,8 +137,8 @@ namespace Dashboard.Data
             };
         }
 
-        private static IDictionary<string, FunctionInstanceArgument> CreateArguments(
-            IDictionary<string, ParameterDescriptor> parameters, IDictionary<string, string> argumentValues)
+        private static IDictionary<string, FunctionInstanceArgument> CreateArguments(IEnumerable<ParameterDescriptor> parameters,
+            IDictionary<string, string> argumentValues)
         {
             IDictionary<string, FunctionInstanceArgument> arguments =
                 new Dictionary<string, FunctionInstanceArgument>();
@@ -146,16 +146,20 @@ namespace Dashboard.Data
             foreach (KeyValuePair<string, string> item in argumentValues)
             {
                 string name = item.Key;
+                ParameterDescriptor descriptor = GetParameterDescriptor(parameters, name);
                 arguments.Add(name, new FunctionInstanceArgument
                 {
                     Value = item.Value,
-                    IsBlob = parameters != null && parameters.ContainsKey(name)
-                        && (parameters[name] is BlobParameterDescriptor
-                        || parameters[name] is BlobTriggerParameterDescriptor),
+                    IsBlob = descriptor is BlobParameterDescriptor || descriptor is BlobTriggerParameterDescriptor,
                 });
             }
 
             return arguments;
+        }
+
+        private static ParameterDescriptor GetParameterDescriptor(IEnumerable<ParameterDescriptor> parameters, string name)
+        {
+            return parameters.FirstOrDefault(p => p != null && p.Name == name);
         }
 
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionCompletedMessage message)

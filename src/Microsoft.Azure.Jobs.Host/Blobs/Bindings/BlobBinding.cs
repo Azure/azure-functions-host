@@ -10,6 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
     internal class BlobBinding : IBinding
     {
+        private readonly string _parameterName;
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
         private readonly CloudBlobClient _client;
         private readonly string _accountName;
@@ -18,9 +19,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
         private readonly bool _outParameter;
 
-        public BlobBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client, string containerName,
-            string blobName, bool outParameter)
+        public BlobBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client,
+            string containerName, string blobName, bool outParameter)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = BlobClient.GetAccountName(client);
@@ -115,6 +117,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         {
             return new BlobParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 ContainerName = _containerName,
                 BlobName = _blobName,

@@ -7,6 +7,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 {
     internal class ConsoleOutputBinding : IBinding
     {
+        private readonly string _parameterName;
+
+        public ConsoleOutputBinding(string parameterName)
+        {
+            _parameterName = parameterName;
+        }
+
         public bool FromAttribute
         {
             get { return false; }
@@ -36,7 +43,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new ConsoleOutputParameterDescriptor();
+            return new ConsoleOutputParameterDescriptor
+            {
+                Name = _parameterName
+            };
         }
     }
 }

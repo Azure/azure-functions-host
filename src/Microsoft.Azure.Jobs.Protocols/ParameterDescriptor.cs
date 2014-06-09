@@ -17,6 +17,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the parameter type.</summary>
         public string Type { get; set; }
 
+        /// <summary>Gets or sets the parameter name.</summary>
+        public string Name { get; set; }
+
         private class ParameterDescriptorConverter : PolymorphicJsonConverter
         {
             public ParameterDescriptorConverter()

@@ -12,10 +12,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
                 new OutputConverter<CloudStorageAccount>(new IdentityConverter<CloudStorageAccount>()),
                 new OutputConverter<string>(new StringToCloudStorageAccountConverter()));
 
-        private static string _accountName;
+        private readonly string _parameterName;
+        private readonly string _accountName;
 
-        public CloudStorageAccountBinding(CloudStorageAccount account)
+        public CloudStorageAccountBinding(string parameterName, CloudStorageAccount account)
         {
+            _parameterName = parameterName;
             _accountName = StorageClient.GetAccountName(account);
         }
 
@@ -50,6 +52,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
         {
             return new CloudStorageAccountParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName
             };
         }

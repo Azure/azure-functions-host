@@ -20,16 +20,20 @@ namespace Microsoft.Azure.Jobs
 
         public FunctionDescriptor ToFunctionDescriptor()
         {
-            IDictionary<string, ParameterDescriptor> parameters = new Dictionary<string, ParameterDescriptor>();
+            List<ParameterDescriptor> parameters = new List<ParameterDescriptor>();
 
-            if (TriggerBinding != null)
+            foreach (ParameterInfo parameter in Method.GetParameters())
             {
-                parameters.Add(TriggerParameterName, TriggerBinding.ToParameterDescriptor());
-            }
+                string name = parameter.Name;
 
-            foreach (KeyValuePair<string, IBinding> item in NonTriggerBindings)
-            {
-                parameters.Add(item.Key, item.Value.ToParameterDescriptor());
+                if (name == TriggerParameterName)
+                {
+                    parameters.Add(TriggerBinding.ToParameterDescriptor());
+                }
+                else
+                {
+                    parameters.Add(NonTriggerBindings[name].ToParameterDescriptor());
+                }
             }
 
             return new FunctionDescriptor

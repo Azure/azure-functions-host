@@ -15,13 +15,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             new OutputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
             new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
 
+        private readonly string _parameterName;
         private readonly IArgumentBinding<CloudQueueMessage> _argumentBinding;
         private readonly string _accountName;
         private readonly string _queueName;
 
-        public QueueTriggerBinding(IArgumentBinding<CloudQueueMessage> argumentBinding, CloudStorageAccount account,
-            string queueName)
+        public QueueTriggerBinding(string parameterName, IArgumentBinding<CloudQueueMessage> argumentBinding,
+            CloudStorageAccount account, string queueName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _accountName = StorageClient.GetAccountName(account);
             _queueName = queueName;
@@ -61,6 +63,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
         {
             return new QueueTriggerParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 QueueName = _queueName
             };

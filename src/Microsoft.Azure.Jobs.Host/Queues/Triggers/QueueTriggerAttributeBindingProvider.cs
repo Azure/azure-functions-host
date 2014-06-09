@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 throw new InvalidOperationException("Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            return new QueueTriggerBinding(argumentBinding, context.StorageAccount, queueName);
+            return new QueueTriggerBinding(parameter.Name, argumentBinding, context.StorageAccount, queueName);
         }
 
         private static string NormalizeAndValidate(string queueName)

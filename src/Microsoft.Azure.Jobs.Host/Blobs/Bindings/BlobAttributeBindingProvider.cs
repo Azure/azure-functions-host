@@ -80,7 +80,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
             }
 
-            return new BlobBinding(argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
+            return new BlobBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
                 parsedBlobPath.ContainerName, parsedBlobPath.BlobName, parameter.IsOut);
         }
 

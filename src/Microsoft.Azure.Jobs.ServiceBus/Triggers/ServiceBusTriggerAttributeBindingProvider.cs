@@ -52,7 +52,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             if (queueName != null)
             {
-                return new ServiceBusTriggerBinding(argumentBinding, account, queueName);
+                return new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, queueName);
             }
             else
             {

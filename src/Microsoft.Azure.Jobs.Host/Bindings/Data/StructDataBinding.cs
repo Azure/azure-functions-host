@@ -11,13 +11,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             new StructOutputConverter<TValue, TValue>(new IdentityConverter<TValue>()),
             new ClassOutputConverter<string, TValue>(new StringToTConverter<TValue>()));
 
-        private readonly IArgumentBinding<TBindingData> _argumentBinding;
         private readonly string _parameterName;
+        private readonly IArgumentBinding<TBindingData> _argumentBinding;
 
-        public StructDataBinding(IArgumentBinding<TBindingData> argumentBinding, string parameterName)
+        public StructDataBinding(string parameterName, IArgumentBinding<TBindingData> argumentBinding)
         {
-            _argumentBinding = argumentBinding;
             _parameterName = parameterName;
+            _argumentBinding = argumentBinding;
         }
 
         public bool FromAttribute
@@ -49,7 +49,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new RouteParameterDescriptor();
+            return new RouteParameterDescriptor
+            {
+                Name = _parameterName
+            };
         }
     }
 }

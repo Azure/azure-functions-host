@@ -35,7 +35,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
-            return new QueueBinding(argumentBinding, context.StorageAccount.CreateCloudQueueClient(), queueName);
+            return new QueueBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudQueueClient(),
+                queueName);
         }
 
         private static string NormalizeAndValidate(string queueName)

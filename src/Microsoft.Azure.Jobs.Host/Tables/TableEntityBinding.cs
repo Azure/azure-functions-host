@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 {
     internal class TableEntityBinding : IBinding
     {
-
+        private readonly string _parameterName;
         private readonly IArgumentBinding<TableEntityContext> _argumentBinding;
         private readonly CloudTableClient _client;
         private readonly string _accountName;
@@ -17,9 +17,10 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         private readonly string _rowKey;
         private readonly IObjectToTypeConverter<TableEntityContext> _converter;
 
-        public TableEntityBinding(IArgumentBinding<TableEntityContext> argumentBinding, CloudTableClient client,
-            string tableName, string partitionKey, string rowKey)
+        public TableEntityBinding(string parameterName, IArgumentBinding<TableEntityContext> argumentBinding,
+            CloudTableClient client, string tableName, string partitionKey, string rowKey)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = TableClient.GetAccountName(client);
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             return new TableEntityParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 TableName = _tableName,
                 PartitionKey = _partitionKey,

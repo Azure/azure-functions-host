@@ -51,11 +51,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                         "Can't bind parameter '" + parameterName + "' to type '" + parameterType + "'.");
                 }
 
-                return CreateBinding<TBindingData>(parameterType, argumentBinding, parameterName);
+                return CreateBinding<TBindingData>(parameterType, parameterName, argumentBinding);
             }
         }
 
-        private static IBinding CreateBinding<TBindingData>(Type parameterType, IArgumentBinding<TBindingData> argumentBinding, string parameterName)
+        private static IBinding CreateBinding<TBindingData>(Type parameterType, string parameterName, IArgumentBinding<TBindingData> argumentBinding)
         {
             Type genericTypeDefinition;
 
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             }
 
             Type genericType = genericTypeDefinition.MakeGenericType(typeof(TBindingData), parameterType);
-            return (IBinding)Activator.CreateInstance(genericType, argumentBinding, parameterName);
+            return (IBinding)Activator.CreateInstance(genericType, parameterName, argumentBinding);
         }
     }
 }

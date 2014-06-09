@@ -11,15 +11,17 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
 {
     internal class BlobTriggerBinding : ITriggerBinding<ICloudBlob>
     {
+        private readonly string _parameterName;
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
         private readonly string _accountName;
         private readonly string _containerName;
         private readonly string _blobName;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
 
-        public BlobTriggerBinding(IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client,
-            string containerName, string blobName)
+        public BlobTriggerBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding,
+            CloudBlobClient client, string containerName, string blobName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _accountName = BlobClient.GetAccountName(client);
             _containerName = containerName;
@@ -97,6 +99,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         {
             return new BlobTriggerParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 ContainerName = _containerName,
                 BlobName = _blobName,

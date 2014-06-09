@@ -23,6 +23,6 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         public string ShortName { get; set; }
 
         /// <summary>Gets or sets the function's parameters.</summary>
-        public IDictionary<string, ParameterDescriptor> Parameters { get; set; }
+        public IEnumerable<ParameterDescriptor> Parameters { get; set; }
     }
 }

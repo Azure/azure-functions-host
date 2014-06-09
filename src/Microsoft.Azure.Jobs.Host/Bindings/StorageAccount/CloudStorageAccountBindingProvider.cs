@@ -1,4 +1,5 @@
-﻿using Microsoft.WindowsAzure.Storage;
+﻿using System.Reflection;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
 {
@@ -6,12 +7,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
     {
         public IBinding TryCreate(BindingProviderContext context)
         {
+            ParameterInfo parameter = context.Parameter;
+
             if (context.Parameter.ParameterType != typeof(CloudStorageAccount))
             {
                 return null;
             }
 
-            return new CloudStorageAccountBinding(context.StorageAccount);
+            return new CloudStorageAccountBinding(parameter.Name, context.StorageAccount);
         }
     }
 }

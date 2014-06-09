@@ -9,14 +9,17 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 {
     internal class QueueBinding : IBinding
     {
+        private readonly string _parameterName;
         private readonly IArgumentBinding<CloudQueue> _argumentBinding;
         private readonly CloudQueueClient _client;
         private readonly string _accountName;
         private readonly string _queueName;
         private readonly IObjectToTypeConverter<CloudQueue> _converter;
 
-        public QueueBinding(IArgumentBinding<CloudQueue> argumentBinding, CloudQueueClient client, string queueName)
+        public QueueBinding(string parameterName, IArgumentBinding<CloudQueue> argumentBinding, CloudQueueClient client,
+            string queueName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = QueueClient.GetAccountName(client);
@@ -77,6 +80,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         {
             return new QueueParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 QueueName = _queueName,
                 Access = Access

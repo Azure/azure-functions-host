@@ -59,8 +59,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            return new BlobTriggerBinding(argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
-                parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
+            return new BlobTriggerBinding(parameter.Name, argumentBinding,
+                context.StorageAccount.CreateCloudBlobClient(), parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
         }
 
         private static CloudBlobPath Parse(string blobPath)

@@ -9,14 +9,17 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 {
     internal class TableBinding : IBinding
     {
+        private readonly string _parameterName;
         private readonly IArgumentBinding<CloudTable> _argumentBinding;
         private readonly CloudTableClient _client;
         private readonly string _accountName;
         private readonly string _tableName;
         private readonly IObjectToTypeConverter<CloudTable> _converter;
 
-        public TableBinding(IArgumentBinding<CloudTable> argumentBinding, CloudTableClient client, string tableName)
+        public TableBinding(string parameterName, IArgumentBinding<CloudTable> argumentBinding, CloudTableClient client,
+            string tableName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = TableClient.GetAccountName(client);
@@ -80,6 +83,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         {
             return new TableParameterDescriptor
             {
+                Name = _parameterName,
                 AccountName = _accountName,
                 TableName = _tableName,
                 Access = Access

@@ -85,17 +85,18 @@ namespace Dashboard.Data
             };
         }
 
-        private static IDictionary<string, ParameterSnapshot> CreateParameterSnapshots(IDictionary<string, ParameterDescriptor> parameters)
+        private static IDictionary<string, ParameterSnapshot> CreateParameterSnapshots(
+            IEnumerable<ParameterDescriptor> parameters)
         {
             IDictionary<string, ParameterSnapshot> snapshots = new Dictionary<string, ParameterSnapshot>();
 
-            foreach (KeyValuePair<string, ParameterDescriptor> parameter in parameters)
+            foreach (ParameterDescriptor parameter in parameters)
             {
-                ParameterSnapshot snapshot = CreateParameterSnapshot(parameter.Value);
+                ParameterSnapshot snapshot = CreateParameterSnapshot(parameter);
 
                 if (snapshot != null)
                 {
-                    snapshots.Add(parameter.Key, snapshot);
+                    snapshots.Add(parameter.Name, snapshot);
                 }
             }
 
