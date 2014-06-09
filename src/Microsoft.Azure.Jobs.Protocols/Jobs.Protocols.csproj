@@ -55,6 +55,7 @@
     <Compile Include="ConnectionStringDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
     <Compile Include="CredentialsDescriptor.cs" />
+    <Compile Include="FunctionFailure.cs" />
     <Compile Include="JsonSerialization.cs" />
     <Compile Include="HeartbeatCommand.cs" />
     <Compile Include="HeartbeatDescriptor.cs" />

@@ -118,6 +118,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionDescriptor.cs">
       <Link>Protocols\FunctionDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionFailure.cs">
+      <Link>Protocols\FunctionFailure.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessage.cs">
       <Link>Protocols\FunctionStartedMessage.cs</Link>
     </Compile>
@@ -227,6 +230,7 @@
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Runners\ExceptionExtensions.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />

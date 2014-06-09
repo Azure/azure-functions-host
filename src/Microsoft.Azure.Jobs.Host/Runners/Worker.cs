@@ -224,10 +224,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Reason = message.Reason,
                 StartTime = startAndEndTime,
                 EndTime = startAndEndTime,
-                Succeeded = false,
-                ExceptionType = typeof(InvalidOperationException).FullName,
-                ExceptionMessage = String.Format(CultureInfo.CurrentCulture,
+                Failure = new FunctionFailure
+                {
+                    ExceptionType = typeof(InvalidOperationException).FullName,
+                    ExceptionDetails = String.Format(CultureInfo.CurrentCulture,
                         "No function '{0}' currently exists.", message.FunctionId)
+                }
             };
         }
 

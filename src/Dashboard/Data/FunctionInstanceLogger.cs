@@ -167,8 +167,8 @@ namespace Dashboard.Data
             FunctionInstanceSnapshot entity = CreateSnapshot((FunctionStartedMessage)message);
             entity.EndTime = message.EndTime;
             entity.Succeeded = message.Succeeded;
-            entity.ExceptionType = message.ExceptionType;
-            entity.ExceptionMessage = message.ExceptionMessage;
+            entity.ExceptionType = message.Failure != null ? message.Failure.ExceptionType : null;
+            entity.ExceptionMessage = message.Failure != null ? message.Failure.ExceptionDetails : null;
             return entity;
         }
 

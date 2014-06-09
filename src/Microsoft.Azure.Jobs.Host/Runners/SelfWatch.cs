@@ -105,7 +105,7 @@ namespace Microsoft.Azure.Jobs
                     // Not fatal if we can't update selfwatch. 
                     // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
                     _consoleOutput.WriteLine("---- SelfWatch failed ---");
-                    WebSitesExecuteFunction.WriteExceptionChain(e, _consoleOutput);
+                    _consoleOutput.WriteLine(e.ToDetails());
                     _consoleOutput.WriteLine("-------------------------");
                 }
             }

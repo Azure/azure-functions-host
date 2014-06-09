@@ -44,7 +44,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 ExecuteWithLogMessage(request, context, startedMessage);
                 completedMessage = CreateCompletedMessage(startedMessage);
-                completedMessage.Succeeded = true;
             }
             catch (Exception e)
             {
@@ -53,9 +52,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                     completedMessage = CreateCompletedMessage(startedMessage);
                 }
 
-                completedMessage.Succeeded = false;
-                completedMessage.ExceptionType = e.GetType().FullName;
-                completedMessage.ExceptionMessage = e.Message;
+                completedMessage.Failure = new FunctionFailure
+                {
+                    ExceptionType = e.GetType().FullName,
+                    ExceptionDetails = e.ToDetails(),
+                };
 
                 exceptionInfo = ExceptionDispatchInfo.Capture(e);
             }
@@ -95,7 +96,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 {
                     consoleOutput.WriteLine("--------");
                     consoleOutput.WriteLine("Exception while executing:");
-                    WriteExceptionChain(exception, consoleOutput);
+                    consoleOutput.Write(exception.ToDetails());
                     throw;
                 }
                 finally
@@ -328,32 +329,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
 
             return arguments;
-        }
-
-        // Write an exception and inner exceptions
-        public static void WriteExceptionChain(Exception e, TextWriter output)
-        {
-            Exception e2 = e;
-            while (e2 != null)
-            {
-                output.WriteLine("{0}, {1}", e2.GetType().FullName, e2.Message);
-
-                // Write bonus information for extra diagnostics
-                var se = e2 as StorageException;
-                if (se != null)
-                {
-                    var nvc = se.RequestInformation.ExtendedErrorInformation.AdditionalDetails;
-
-                    foreach (var key in nvc.Keys)
-                    {
-                        output.WriteLine("  >{0}: {1}", key, nvc[key]);
-                    }
-                }
-
-                output.WriteLine(e2.StackTrace);
-                output.WriteLine();
-                e2 = e2.InnerException;
-            }
         }
 
         private static int GetParameterIndex(ParameterInfo[] parameters, string name)
