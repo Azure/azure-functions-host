@@ -220,11 +220,11 @@ namespace Dashboard
 
             foreach (KeyValuePair<string, ParameterLog> status in parameterLogs)
             {
-                StringParameterLog stringLog = status.Value as StringParameterLog;
+                TextParameterLog textLog = status.Value as TextParameterLog;
 
-                if (stringLog != null)
+                if (textLog != null)
                 {
-                    logs.Add(status.Key, stringLog.Value);
+                    logs.Add(status.Key, textLog.Value);
                 }
             }
 

@@ -5,11 +5,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
     /// <summary>Represents a function parameter log stored as text.</summary>
-    [JsonTypeName("String")]
+    [JsonTypeName("Text")]
 #if PUBLICPROTOCOL
-    public class StringParameterLog : ParameterLog
+    public class TextParameterLog : ParameterLog
 #else
-    internal class StringParameterLog : ParameterLog
+    internal class TextParameterLog : ParameterLog
 #endif
     {
         /// <summary>Gets or sets the log contents.</summary>

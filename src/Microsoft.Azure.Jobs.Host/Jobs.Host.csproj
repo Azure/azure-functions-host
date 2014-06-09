@@ -199,14 +199,14 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageExceptionExtensions.cs">
       <Link>Protocols\StorageExceptionExtensions.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StringParameterLog.cs">
-      <Link>Protocols\StringParameterLog.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableParameterDescriptor.cs">
       <Link>Protocols\TableParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TextParameterLog.cs">
+      <Link>Protocols\TextParameterLog.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TriggerAndOverrideMessage.cs">
       <Link>Protocols\TriggerAndOverrideMessage.cs</Link>

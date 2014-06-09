@@ -48,7 +48,7 @@ namespace Microsoft.Azure.Jobs
                     continue;
                 }
 
-                collector.Add(item.Key, new StringParameterLog { Value = status });
+                collector.Add(item.Key, new TextParameterLog { Value = status });
             }
         }
 
