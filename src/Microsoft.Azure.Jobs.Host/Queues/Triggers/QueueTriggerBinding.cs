@@ -19,6 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
         private readonly IArgumentBinding<CloudQueueMessage> _argumentBinding;
         private readonly string _accountName;
         private readonly string _queueName;
+        private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
         public QueueTriggerBinding(string parameterName, IArgumentBinding<CloudQueueMessage> argumentBinding,
             CloudStorageAccount account, string queueName)
@@ -27,16 +28,41 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             _argumentBinding = argumentBinding;
             _accountName = StorageClient.GetAccountName(account);
             _queueName = queueName;
+            _bindingDataContract = CreateBindingDataContract(argumentBinding.ValueType);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
         {
-            get { return BindingData.GetContract(_argumentBinding.ValueType); }
+            get { return _bindingDataContract; }
         }
 
         public string QueueName
         {
             get { return _queueName; }
+        }
+
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(Type valueType)
+        {
+            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            contract.Add("DequeueCount", typeof(int));
+            contract.Add("ExpirationTime", typeof(DateTimeOffset));
+            contract.Add("Id", typeof(string));
+            contract.Add("InsertionTime", typeof(DateTimeOffset));
+            contract.Add("NextVisibleTime", typeof(DateTimeOffset));
+            contract.Add("PopReceipt", typeof(string));
+
+            IReadOnlyDictionary<string, Type> contractFromValueType = BindingData.GetContract(valueType);
+
+            if (contractFromValueType != null)
+            {
+                foreach (KeyValuePair<string, Type> item in contractFromValueType)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    contract[item.Key] = item.Value;
+                }
+            }
+
+            return contract;
         }
 
         public ITriggerData Bind(CloudQueueMessage value, ArgumentBindingContext context)
@@ -71,7 +97,27 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 
         private IReadOnlyDictionary<string, object> CreateBindingData(CloudQueueMessage value)
         {
-            return BindingData.GetBindingData(value.AsString, BindingDataContract);
+            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            bindingData.Add("DequeueCount", value.DequeueCount);
+            bindingData.Add("ExpirationTime", value.ExpirationTime.GetValueOrDefault(DateTimeOffset.MaxValue));
+            bindingData.Add("Id", value.Id);
+            bindingData.Add("InsertionTime", value.InsertionTime.GetValueOrDefault(DateTimeOffset.UtcNow));
+            bindingData.Add("NextVisibleTime", value.NextVisibleTime.GetValueOrDefault(DateTimeOffset.MaxValue));
+            bindingData.Add("PopReceipt", value.PopReceipt);
+            
+            IReadOnlyDictionary<string, object> bindingDataFromValueType = BindingData.GetBindingData(value.AsString,
+                _bindingDataContract);
+
+            if (bindingDataFromValueType != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingDataFromValueType)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    bindingData[item.Key] = item.Value;
+                }
+            }
+
+            return bindingData;
         }
     }
 }
