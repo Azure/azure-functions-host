@@ -9,6 +9,21 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     public class WebJobsShutdownWatcherTests : IDisposable
     {
         [Fact]
+        public void InvalidPath()
+        {
+            WriteEnvVar(@"C:\This\path\should\not\exist");
+
+            using (var watcher = new WebJobsShutdownWatcher())
+            {
+                var token = watcher.Token;
+
+                // When no env set, then token can never be cancelled. 
+                Assert.True(!token.CanBeCanceled);
+                Assert.True(!token.IsCancellationRequested);
+            }
+        }
+
+        [Fact]
         public void Signaled()
         {
             string path = WriteEnvVar();
@@ -47,7 +62,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void None()
         {
             // Env var not set
-            Assert.Null(Environment.GetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE"));
+            RemoveEnvVar();
 
             using (var watcher = new WebJobsShutdownWatcher())
             {
@@ -59,14 +74,23 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             }
         }
 
-        static string WriteEnvVar()
+        public void Dispose()
         {
-            string path = Path.GetTempFileName();
+            RemoveEnvVar();
+        }
+
+        private static string WriteEnvVar()
+        {
+            return WriteEnvVar(Path.GetTempFileName());
+        }
+
+        private static string WriteEnvVar(string path)
+        {
             Environment.SetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE", path);
             return path;
         }
 
-        public void Dispose()
+        private static void RemoveEnvVar()
         {
             Environment.SetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE", null);
         }

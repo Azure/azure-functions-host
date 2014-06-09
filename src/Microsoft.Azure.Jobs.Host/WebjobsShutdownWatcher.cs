@@ -28,15 +28,28 @@ namespace Microsoft.Azure.Jobs
                 return;
             }
 
-            _cts = new CancellationTokenSource();
-
             // Setup a file system watcher on that file's directory to know when the file is created
-            _watcher = new FileSystemWatcher(Path.GetDirectoryName(_shutdownFile));
+
+            string directoryName = Path.GetDirectoryName(_shutdownFile);
+            try
+            {
+                // FileSystemWatcher throws an argument exception if the part of 
+                // the directory name does not exist
+                _watcher = new FileSystemWatcher(directoryName);
+            }
+            catch(ArgumentException)
+            {
+                // The path is invalid
+                return;
+            }
+
             _watcher.Created += OnChanged;
             _watcher.Changed += OnChanged;
             _watcher.NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite;
             _watcher.IncludeSubdirectories = false;
             _watcher.EnableRaisingEvents = true;
+
+            _cts = new CancellationTokenSource();
         }
 
         private void OnChanged(object sender, FileSystemEventArgs e)
