@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -8,20 +9,22 @@ namespace Dashboard.Data
     internal class FunctionInstanceLogger : IFunctionInstanceLogger, IFunctionQueuedLogger
     {
         private readonly IVersionedDocumentStore<FunctionInstanceSnapshot> _store;
+        private readonly CloudBlobClient _client;
 
         public FunctionInstanceLogger(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer))
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer), client)
         {
         }
 
-        private FunctionInstanceLogger(CloudBlobContainer container)
-            : this(new VersionedDocumentStore<FunctionInstanceSnapshot>(container))
+        private FunctionInstanceLogger(CloudBlobContainer container, CloudBlobClient client)
+            : this(new VersionedDocumentStore<FunctionInstanceSnapshot>(container), client)
         {
         }
 
-        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store)
+        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store, CloudBlobClient client)
         {
             _store = store;
+            _client = client;
         }
 
         // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
@@ -92,26 +95,39 @@ namespace Dashboard.Data
         public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
+            
+            // The completed message includes the full parameter logs; delete the extra blob used for running status
+            // updates.
+            DeleteParameterLogBlob(message.Credentials, snapshot.ParameterLogBlob);
+            snapshot.ParameterLogBlob = null;
 
             // LogFunctionStarted and LogFunctionCompleted may run concurrently. Ensure LogFunctionCompleted wins by
             // having it replace the LogFunctionStarted record, if any.
             _store.CreateOrUpdate(GetId(snapshot), snapshot);
         }
 
+        private void DeleteParameterLogBlob(CredentialsDescriptor credentials, LocalBlobDescriptor blobDescriptor)
+        {
+            if (credentials == null || blobDescriptor == null)
+            {
+                return;
+            }
+
+            string connectionString = credentials.GetStorageConnectionString();
+
+            if (connectionString == null)
+            {
+                return;
+            }
+
+            CloudBlockBlob blob = blobDescriptor.GetBlockBlob(connectionString);
+            blob.DeleteIfExists();
+        }
+
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
         {
-            string storageConnectionString = null;
-
-            if (message.Credentials != null && message.Credentials.ConnectionStrings != null)
-            {
-                StorageConnectionStringDescriptor descriptor =
-                    message.Credentials.ConnectionStrings.OfType<StorageConnectionStringDescriptor>().FirstOrDefault();
-
-                if (descriptor != null)
-                {
-                    storageConnectionString = descriptor.ConnectionString;
-                }
-            }
+            string storageConnectionString = message.Credentials != null ?
+                message.Credentials.GetStorageConnectionString() : null;
 
             return new FunctionInstanceSnapshot
             {
@@ -128,8 +144,8 @@ namespace Dashboard.Data
                 QueueTime = message.StartTime,
                 StartTime = message.StartTime,
                 StorageConnectionString = storageConnectionString,
-                OutputBlobUrl = message.OutputBlobUrl,
-                ParameterLogBlobUrl = message.ParameterLogBlobUrl,
+                OutputBlob = message.OutputBlob,
+                ParameterLogBlob = message.ParameterLogBlob,
                 WebSiteName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.WebSiteName : null,
                 WebJobType = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.JobType.ToString() : null,
                 WebJobName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.JobName : null,
@@ -165,6 +181,7 @@ namespace Dashboard.Data
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionCompletedMessage message)
         {
             FunctionInstanceSnapshot entity = CreateSnapshot((FunctionStartedMessage)message);
+            entity.ParameterLogs = message.ParameterLogs;
             entity.EndTime = message.EndTime;
             entity.Succeeded = message.Succeeded;
             entity.ExceptionType = message.Failure != null ? message.Failure.ExceptionType : null;

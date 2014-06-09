@@ -22,6 +22,8 @@ namespace Dashboard.Data
 
         public IDictionary<string, FunctionInstanceArgument> Arguments  { get; set; }
 
+        public IDictionary<string, ParameterLog> ParameterLogs { get; set; }
+
         public Guid? ParentId  { get; set; }
 
         public string Reason { get; set; }
@@ -34,9 +36,9 @@ namespace Dashboard.Data
 
         public string StorageConnectionString { get; set; }
 
-        public string OutputBlobUrl { get; set; }
+        public LocalBlobDescriptor OutputBlob { get; set; }
 
-        public string ParameterLogBlobUrl { get; set; }
+        public LocalBlobDescriptor ParameterLogBlob { get; set; }
 
         public string WebSiteName { get; set; }
 

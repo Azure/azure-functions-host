@@ -33,10 +33,10 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the time the function started executing.</summary>
         public DateTimeOffset StartTime { get; set; }
 
-        /// <summary>Gets or sets the URL of the blob containing console output from the function.</summary>
-        public string OutputBlobUrl { get; set; }
+        /// <summary>Gets or sets the path of the blob containing console output from the function.</summary>
+        public LocalBlobDescriptor OutputBlob { get; set; }
 
-        /// <summary>Gets or sets the URL of the blob containing per-parameter logging data.</summary>
-        public string ParameterLogBlobUrl { get; set; }
+        /// <summary>Gets or sets the path of the blob containing per-parameter logging data.</summary>
+        public LocalBlobDescriptor ParameterLogBlob { get; set; }
     }
 }

@@ -36,13 +36,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(request,
                 context.StorageAccount, context.ServiceBusConnectionString);
+            IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
             FunctionCompletedMessage completedMessage = null;
 
             ExceptionDispatchInfo exceptionInfo = null;
 
             try
             {
-                ExecuteWithLogMessage(request, context, startedMessage);
+                ExecuteWithLogMessage(request, context, startedMessage, parameterLogCollector);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception e)
@@ -62,6 +63,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
             finally
             {
+                completedMessage.ParameterLogs = parameterLogCollector;
                 completedMessage.EndTime = DateTimeOffset.UtcNow;
                 _sharedContext.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
             }
@@ -74,7 +76,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private void ExecuteWithLogMessage(FunctionInvokeRequest request, RuntimeBindingProviderContext context, FunctionStartedMessage message)
+        private void ExecuteWithLogMessage(FunctionInvokeRequest request, RuntimeBindingProviderContext context,
+            FunctionStartedMessage message, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             // Create the console output writer
             FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(request);
@@ -90,7 +93,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 try
                 {
-                    ExecuteWithOutputLogs(request, parameters, consoleOutput, functionOutput.ParameterLogBlob);
+                    ExecuteWithOutputLogs(request, parameters, consoleOutput, functionOutput.ParameterLogBlob,
+                        parameterLogCollector);
                 }
                 catch (Exception exception)
                 {
@@ -110,22 +114,37 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             // Finish populating the function started snapshot.
-            message.OutputBlobUrl = functionOutput.Uri;
+            message.OutputBlob = GetBlobDescriptor(functionOutput.Blob);
             CloudBlobDescriptor parameterLogger = functionOutput.ParameterLogBlob;
-            message.ParameterLogBlobUrl = parameterLogger == null ? null : parameterLogger.GetBlockBlob().Uri.AbsoluteUri;
+            message.ParameterLogBlob = parameterLogger == null ? null : GetBlobDescriptor(parameterLogger.GetBlockBlob());
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
             _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
         }
 
+        private static LocalBlobDescriptor GetBlobDescriptor(ICloudBlob blob)
+        {
+            if (blob == null)
+            {
+                return null;
+            }
+
+            return new LocalBlobDescriptor
+            {
+                ContainerName = blob.Container.Name,
+                BlobName = blob.Name
+            };
+        }
+
         private void ExecuteWithOutputLogs(FunctionInvokeRequest request,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
-            CloudBlobDescriptor parameterLogger)
+            CloudBlobDescriptor parameterLogger, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             MethodInfo method = request.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
-            SelfWatch selfWatch = CreateSelfWatch(parameterLogger, parameterInfos, parameters, consoleOutput);
+            IReadOnlyDictionary<string, ISelfWatch> watches = CreateWatches(parameters);
+            SelfWatch selfWatch = CreateSelfWatch(watches, parameterLogger, consoleOutput);
 
             try
             {
@@ -141,17 +160,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 {
                     selfWatch.Stop();
                 }
+
+                SelfWatch.AddLogs(watches, parameterLogCollector);
             }
         }
 
-        private static SelfWatch CreateSelfWatch(CloudBlobDescriptor parameterLogger, ParameterInfo[] parameterInfos,
-            IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput)
+        private static IReadOnlyDictionary<string, ISelfWatch> CreateWatches(
+            IReadOnlyDictionary<string, IValueProvider> parameters)
         {
-            if (parameterLogger == null)
-            {
-                return null;
-            }
-
             Dictionary<string, ISelfWatch> watches = new Dictionary<string, ISelfWatch>();
 
             foreach (KeyValuePair<string, IValueProvider> item in parameters)
@@ -162,6 +178,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 {
                     watches.Add(item.Key, watchable.Watcher);
                 }
+            }
+
+            return watches;
+        }
+
+        private static SelfWatch CreateSelfWatch(IReadOnlyDictionary<string, ISelfWatch> watches,
+            CloudBlobDescriptor parameterLogger, TextWriter consoleOutput)
+        {
+            if (parameterLogger == null)
+            {
+                return null;
             }
 
             CloudBlockBlob parameterBlob = parameterLogger.GetBlockBlob();
@@ -280,7 +307,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             {
                 HostInstanceId = _sharedContext.HostOutputMessage.HostInstanceId,
                 HostDisplayName = _sharedContext.HostOutputMessage.HostDisplayName,
-                SharedQueueName = _sharedContext.HostOutputMessage .SharedQueueName,
+                SharedQueueName = _sharedContext.HostOutputMessage.SharedQueueName,
                 InstanceQueueName = _sharedContext.HostOutputMessage.InstanceQueueName,
                 Heartbeat = _sharedContext.HostOutputMessage.Heartbeat,
                 Credentials = _sharedContext.HostOutputMessage.Credentials,
@@ -311,8 +338,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 ParentId = startedMessage.ParentId,
                 Reason = startedMessage.Reason,
                 StartTime = startedMessage.StartTime,
-                OutputBlobUrl = startedMessage.OutputBlobUrl,
-                ParameterLogBlobUrl = startedMessage.ParameterLogBlobUrl
+                OutputBlob = startedMessage.OutputBlob,
+                ParameterLogBlob = startedMessage.ParameterLogBlob
             };
         }
 

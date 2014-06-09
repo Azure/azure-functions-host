@@ -1,11 +1,12 @@
 ﻿using System;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Web.Http;
 using Dashboard.Data;
+using Dashboard.HostMessaging;
+using Dashboard.Results;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -24,38 +25,31 @@ namespace Dashboard.ApiControllers
         }
 
         [HttpGet]
-        public HttpResponseMessage Output(string id, int start = 0)
+        public IHttpActionResult Output(string id, int start = 0)
         {
             // Parse the ID
             Guid funcId;
             if (!Guid.TryParse(id, out funcId))
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest);
+                return BadRequest();
             }
 
             // Get the invocation log
             var instance = _functionInstanceLookup.Lookup(funcId);
             if (instance == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
+                return NotFound();
             }
 
-            // Load the blob
-            ICloudBlob blob;
-            try
+            LocalBlobDescriptor outputBlobDescriptor = instance.OutputBlob;
+
+            if (outputBlobDescriptor == null)
             {
-                blob = _account.CreateCloudBlobClient().GetBlobReferenceFromServer(new Uri(instance.OutputBlobUrl));
-            }
-            catch (Exception)
-            {
-                blob = null;
+                return NotFound();
             }
 
-            if (blob == null)
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-
+            CloudBlockBlob blob = outputBlobDescriptor.GetBlockBlob(_account);
+            
             var sb = new StringBuilder();
             using (var stream = blob.OpenRead())
             {
@@ -72,28 +66,22 @@ namespace Dashboard.ApiControllers
                 }
             }
 
-            // Redirect to it
-            var resp = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(sb.ToString())
-            };
-
-            return resp;
+            return new TextResult(sb.ToString(), Request);
         }
 
         [HttpGet]
-        public HttpResponseMessage Blob(string path)
+        public IHttpActionResult Blob(string path)
         {
             if (String.IsNullOrEmpty(path))
             {
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                return Unauthorized();
             }
 
             var p = new CloudBlobPath(path);
 
             if (_account == null)
             {
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                return Unauthorized();
             }
 
             var blob = p.Resolve(_account);
@@ -106,9 +94,7 @@ namespace Dashboard.ApiControllers
             });
 
             // Redirect to it
-            var resp = new HttpResponseMessage(HttpStatusCode.Found);
-            resp.Headers.Location = new Uri(blob.Uri.AbsoluteUri + sas);
-            return resp;            
+            return Redirect(blob.Uri.AbsoluteUri + sas);
         }
     }
 }

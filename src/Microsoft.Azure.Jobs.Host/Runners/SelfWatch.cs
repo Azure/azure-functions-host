@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
@@ -26,6 +27,29 @@ namespace Microsoft.Azure.Jobs
             _command = new SelfWatchCommand(watches, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
             _timer.Start(executeFirst: false);
+        }
+
+        public static void AddLogs(IReadOnlyDictionary<string, ISelfWatch> watches,
+            IDictionary<string, ParameterLog> collector)
+        {
+            foreach (KeyValuePair<string, ISelfWatch> item in watches)
+            {
+                ISelfWatch watch = item.Value;
+
+                if (watch == null)
+                {
+                    continue;
+                }
+
+                string status = watch.GetStatus();
+
+                if (status == null)
+                {
+                    continue;
+                }
+
+                collector.Add(item.Key, new StringParameterLog { Value = status });
+            }
         }
 
         private class SelfWatchCommand : IIntervalSeparationCommand
@@ -66,28 +90,9 @@ namespace Microsoft.Azure.Jobs
                     return;
                 }
 
-                IDictionary<string, string> statusDictionary = new Dictionary<string, string>();
-
-                foreach (KeyValuePair<string, ISelfWatch> item in _watches)
-                {
-                    ISelfWatch watch = item.Value;
-
-                    if (watch == null)
-                    {
-                        continue;
-                    }
-
-                    string status = watch.GetStatus();
-
-                    if (status == null)
-                    {
-                        continue;
-                    }
-
-                    statusDictionary.Add(item.Key, status);
-                }
-
-                string content = JsonConvert.SerializeObject(statusDictionary);
+                Dictionary<string, ParameterLog> logs = new Dictionary<string, ParameterLog>();
+                AddLogs(_watches, logs);
+                string content = JsonConvert.SerializeObject(logs);
 
                 try
                 {

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs
 
         public TextWriter Output { get; set; }
         public Action CloseOutput { get; set; }
-        public string Uri { get; set; } // Uri to refer to output 
+        public ICloudBlob Blob { get; set; }
 
         // Separate channel for logging structured (and updating) information about parameters
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.Jobs
                 {
                     x.Close();
                 },
-                Uri = blob.Uri.ToString(),
+                Blob = blob,
                 Output = tw,
                 ParameterLogBlob = new CloudBlobDescriptor
                 {

@@ -154,11 +154,17 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonTypeNameAttribute.cs">
       <Link>Protocols\JsonTypeNameAttribute.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\LocalBlobDescriptor.cs">
+      <Link>Protocols\LocalBlobDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\NullHeartbeatCommand.cs">
       <Link>Protocols\NullHeartbeatCommand.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterDescriptor.cs">
       <Link>Protocols\ParameterDescriptor.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterLog.cs">
+      <Link>Protocols\ParameterLog.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueue.cs">
       <Link>Protocols\PersistentQueue.cs</Link>
@@ -192,6 +198,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageExceptionExtensions.cs">
       <Link>Protocols\StorageExceptionExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StringParameterLog.cs">
+      <Link>Protocols\StringParameterLog.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>

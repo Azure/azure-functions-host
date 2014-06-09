@@ -63,6 +63,9 @@
     <Compile Include="HostOutputMessage.cs" />
     <Compile Include="HeartbeatMonitor.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
+    <Compile Include="LocalBlobDescriptor.cs" />
+    <Compile Include="StringParameterLog.cs" />
+    <Compile Include="ParameterLog.cs" />
     <Compile Include="QueueTriggerParameterDescriptor.cs" />
     <Compile Include="RouteParameterDescriptor.cs" />
     <Compile Include="BinderParameterDescriptor.cs" />

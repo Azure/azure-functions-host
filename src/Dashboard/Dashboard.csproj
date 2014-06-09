@@ -216,9 +216,12 @@
     <Compile Include="Data\VersionedDocumentStore.cs" />
     <Compile Include="Data\WrapperEnumerable.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
+    <Compile Include="HostMessaging\CredentialsDescriptorExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />
     <Compile Include="HostMessaging\IInvoker.cs" />
     <Compile Include="HostMessaging\Invoker.cs" />
+    <Compile Include="HostMessaging\LocalBlobDescriptorExtensions.cs" />
+    <Compile Include="Results\TextResult.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />

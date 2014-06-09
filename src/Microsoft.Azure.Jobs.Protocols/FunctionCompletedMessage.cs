@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
@@ -28,5 +29,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the details of the function's failure.</summary>
         /// <remarks>If the function succeeded, this value is <see langword="null"/>.</remarks>
         public FunctionFailure Failure { get; set; }
+
+        /// <summary>Gets or sets the parameter logs.</summary>
+        public IDictionary<string, ParameterLog> ParameterLogs { get; set; }
     }
 }

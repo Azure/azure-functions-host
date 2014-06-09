@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Dashboard.Data;
+using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
@@ -166,12 +167,17 @@ namespace Dashboard
         // Get Live information from current self-watch values. 
         private static IDictionary<string, string> GetParameterSelfWatch(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
-            if (snapshot.ParameterLogBlobUrl == null)
+            if (snapshot.ParameterLogs != null)
+            {
+                return ToStringDictionary(snapshot.ParameterLogs);
+            }
+
+            if (snapshot.ParameterLogBlob == null)
             {
                 return null;
             }
 
-            CloudBlockBlob blob = new CloudBlockBlob(new Uri(snapshot.ParameterLogBlobUrl), account.Credentials);
+            CloudBlockBlob blob = snapshot.ParameterLogBlob.GetBlockBlob(snapshot.StorageConnectionString);
 
             string contents;
 
@@ -192,9 +198,11 @@ namespace Dashboard
                 }
             }
 
+            IDictionary<string, ParameterLog> logs;
+
             try
             {
-                return JsonConvert.DeserializeObject<IDictionary<string, string>>(contents);
+                logs = JsonConvert.DeserializeObject<IDictionary<string, ParameterLog>>(contents);
             }
             catch
             {
@@ -202,6 +210,25 @@ namespace Dashboard
                 // This could happen if the app wrote a corrupted log. 
                 return null;
             }
+
+            return ToStringDictionary(logs);
+        }
+
+        private static IDictionary<string, string> ToStringDictionary(IDictionary<string, ParameterLog> parameterLogs)
+        {
+            Dictionary<string, string> logs = new Dictionary<string, string>();
+
+            foreach (KeyValuePair<string, ParameterLog> status in parameterLogs)
+            {
+                StringParameterLog stringLog = status.Value as StringParameterLog;
+
+                if (stringLog != null)
+                {
+                    logs.Add(status.Key, stringLog.Value);
+                }
+            }
+
+            return logs;
         }
 
         private class BlobParameterData
