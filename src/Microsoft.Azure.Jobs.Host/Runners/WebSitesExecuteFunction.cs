@@ -264,7 +264,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
             else
             {
-                delayedBindingException = new AggregateDelayedException(new AggregateException(bindingExceptions));
+                delayedBindingException = new DelayedException(new AggregateException(bindingExceptions));
             }
 
             return reflectionParameters;

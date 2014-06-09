@@ -331,7 +331,6 @@
     <Compile Include="Queues\Triggers\QueueMessageValueProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
-    <Compile Include="Runners\AggregateDelayedException.cs" />
     <Compile Include="Runners\DelayedException.cs" />
     <Compile Include="Runners\ExceptionDispatchInfoDelayedException.cs" />
     <Compile Include="Runners\HeartbeatIntervals.cs" />
