@@ -15,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
     /// <summary>
     /// Various E2E tests that use only the public surface and the real Azure storage
     /// </summary>
-    public class EndToEndTests
+    public class AzureStorageEndToEndTests
     {
         private const string ContainerName = "e2econtainer";
         private const string BlobName = "testblob";
@@ -35,11 +35,11 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         private string _connectionString;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="EndToEndTests"/> class.
+        /// Initializes a new instance of the <see cref="AzureStorageEndToEndTests"/> class.
         /// </summary>
-        public EndToEndTests()
+        public AzureStorageEndToEndTests()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["Test"].ConnectionString;
+            _connectionString = ConfigurationManager.ConnectionStrings["AzureStorage"].ConnectionString;
 
             try
             {
@@ -124,14 +124,14 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         // Switch the Fact attribute to run
         [Fact(Skip = "Slow test with 15 minutes timeout")]
         //[Fact(Timeout = 15 * 60 * 1000)]
-        public void EndToEndSlowTrigger()
+        public void AzureStorageEndToEndSlow()
         {
             EndToEndTest(uploadBlobBeforeHostStart: false);
         }
 
         // 1 minute timeout
         [Fact(Timeout = 60 * 1000)]
-        public void EndToEndFastTrigger()
+        public void AzureStorageEndToEndFast()
         {
             EndToEndTest(uploadBlobBeforeHostStart: true);
         }

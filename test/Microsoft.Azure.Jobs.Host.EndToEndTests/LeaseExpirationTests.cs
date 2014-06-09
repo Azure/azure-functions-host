@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// </summary>
         public LeaseExpirationTests()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["Test"].ConnectionString;
+            _connectionString = ConfigurationManager.ConnectionStrings["AzureStorage"].ConnectionString;
 
             try
             {

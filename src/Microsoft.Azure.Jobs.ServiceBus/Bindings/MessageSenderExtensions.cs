@@ -35,6 +35,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 {
                 }
 
+                // Clone the message because it was already consumed before (when trying to send)
+                // otherwise, you get an exception
+                message = message.Clone();
                 sender.Send(message);
             }
         }
