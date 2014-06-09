@@ -30,6 +30,7 @@ namespace Microsoft.Azure.Jobs
     public sealed class BlobAttribute : Attribute
     {
         private readonly string _blobPath;
+        private readonly FileAccess? _access;
 
         /// <summary>Initializes a new instance of the <see cref="BlobAttribute"/> class.</summary>
         /// <param name="blobPath">The path of the blob to which to bind.</param>
@@ -38,10 +39,25 @@ namespace Microsoft.Azure.Jobs
             _blobPath = blobPath;
         }
 
+        /// <summary>Initializes a new instance of the <see cref="BlobAttribute"/> class.</summary>
+        /// <param name="blobPath">The path of the blob to which to bind.</param>
+        /// <param name="access">The kind of operations that can be performed on the blob.</param>
+        public BlobAttribute(string blobPath, FileAccess access)
+        {
+            _blobPath = blobPath;
+            _access = access;
+        }
+
         /// <summary>Gets the path of the blob to which to bind.</summary>
         public string BlobPath
         {
             get { return _blobPath; }
+        }
+
+        /// <summary>Gets the kind of operations that can be performed on the blob.</summary>
+        public FileAccess? Access
+        {
+            get { return _access; }
         }
 
         // IBinder's self watch uses an attribute's ToString as a key.

@@ -52,7 +52,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             string blobPath = context.Resolve(blobTrigger.BlobPath);
             CloudBlobPath parsedBlobPath = Parse(blobPath);
 
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter);
+            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
 
             if (argumentBinding == null)
             {

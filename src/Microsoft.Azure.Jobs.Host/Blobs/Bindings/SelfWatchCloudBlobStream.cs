@@ -12,11 +12,21 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         private volatile bool _wasExplicitlyClosed;
 
         private bool _completed; // flag to help make .Complete() idempotent;
+        private bool _committed;
+        private bool _disposed;
 
         public SelfWatchCloudBlobStream(CloudBlobStream inner, IBlobCommitedAction committedAction)
             : base(inner)
         {
             _committedAction = committedAction;
+        }
+
+        public override bool CanWrite
+        {
+            get
+            {
+                return !_disposed;
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -37,16 +47,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             {
                 return String.Format(CultureInfo.InvariantCulture, "Wrote {0:n0} bytes.", _countWritten);
             }
-            else if (_completed || !Inner.CanWrite)
+            else if (!CanWrite)
             {
-                if (_wasExplicitlyClosed)
-                {
-                    return "Wrote 0 bytes.";
-                }
-                else
-                {
-                    return "Nothing was written.";
-                }
+                return "Wrote 0 bytes.";
             }
             else if (_completed)
             {
@@ -61,7 +64,32 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         public override void Commit()
         {
             base.Commit();
-            _committedAction.Execute();
+
+            if (_committedAction != null)
+            {
+                _committedAction.Execute();
+            }
+
+            _committed = true;
+        }
+
+        public override void Close()
+        {
+            Dispose(true);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (!_committed)
+                {
+                    Commit();
+                }
+
+                _disposed = true;
+            }
+            base.Dispose(disposing);
         }
 
         /// <summary>Commits the stream as appropriate (when written to or explicitly closed).</summary>
@@ -70,9 +98,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         {
             if (!_completed)
             {
-                _wasExplicitlyClosed = !Inner.CanWrite; // inner stream has been closed
+                _wasExplicitlyClosed = !CanWrite; // inner stream has been closed
 
-                if (_wasExplicitlyClosed || _countWritten > 0)
+                if (!_wasExplicitlyClosed && _countWritten > 0 && !_committed)
                 {
                     Commit();
                 }

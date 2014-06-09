@@ -73,7 +73,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 }
             }
 
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter);
+            IBlobArgumentBinding argumentBinding = _provider.TryCreate(parameter, blob.Access);
 
             if (argumentBinding == null)
             {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             }
 
             return new BlobBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
-                parsedBlobPath.ContainerName, parsedBlobPath.BlobName, parameter.IsOut);
+                parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
         }
 
         private static CloudBlobPath Parse(string blobPath)

@@ -130,7 +130,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void GetStatus_ClosedButNotComplete_NothingWasWritten()
+        public void GetStatus_ClosedButNotComplete_WroteZeroBytes()
         {
             // Arrange
             using (var s = new MemoryCloudBlobStream())
@@ -142,7 +142,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal("Nothing was written.", result);
+                Assert.Equal("Wrote 0 bytes.", result);
             }
         }
 
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal(string.Empty, result);
+                Assert.Equal(String.Empty, result);
             }
         }
 

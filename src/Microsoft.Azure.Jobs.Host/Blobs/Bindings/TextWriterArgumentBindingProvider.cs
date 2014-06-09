@@ -9,18 +9,29 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
     internal class TextWriterArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (parameter.ParameterType != typeof(TextWriter))
             {
                 return null;
             }
 
+            if (access.HasValue && access.Value != FileAccess.Write)
+            {
+                throw new InvalidOperationException("Cannot bind blob to TextWriter using access "
+                    + access.Value.ToString() + ".");
+            }
+
             return new TextWriterArgumentBinding();
         }
 
-        private class TextWriterArgumentBinding : IArgumentBinding<ICloudBlob>
+        private class TextWriterArgumentBinding : IBlobArgumentBinding
         {
+            public FileAccess Access
+            {
+                get { return FileAccess.Write; }
+            }
+
             public Type ValueType
             {
                 get { return typeof(TextWriter); }

@@ -239,6 +239,7 @@
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Blobs\IBlobArgumentBinding.cs" />
     <Compile Include="Runners\ExceptionExtensions.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />

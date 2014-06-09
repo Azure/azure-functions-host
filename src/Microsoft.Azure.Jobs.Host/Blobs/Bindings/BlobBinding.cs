@@ -3,7 +3,6 @@ using System.IO;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
@@ -11,16 +10,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
     internal class BlobBinding : IBinding
     {
         private readonly string _parameterName;
-        private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
+        private readonly IBlobArgumentBinding _argumentBinding;
         private readonly CloudBlobClient _client;
         private readonly string _accountName;
         private readonly string _containerName;
         private readonly string _blobName;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
-        private readonly bool _outParameter;
 
-        public BlobBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding, CloudBlobClient client,
-            string containerName, string blobName, bool outParameter)
+        public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, CloudBlobClient client,
+            string containerName, string blobName)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -28,7 +26,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _accountName = BlobClient.GetAccountName(client);
             _containerName = containerName;
             _blobName = blobName;
-            _outParameter = outParameter;
             _converter = CreateConverter(_client, containerName, blobName, argumentBinding.ValueType);
         }
 
@@ -54,23 +51,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
         public FileAccess Access
         {
-            get
-            {
-                if (typeof(ICloudBlob).IsAssignableFrom(_argumentBinding.ValueType))
-                {
-                    return FileAccess.ReadWrite;
-                }
-                else if (_argumentBinding.ValueType == typeof(CloudBlobStream) ||
-                    _argumentBinding.ValueType == typeof(TextWriter) ||
-                    _outParameter)
-                {
-                    return FileAccess.Write;
-                }
-                else
-                {
-                    return FileAccess.Read;
-                }
-            }
+            get { return _argumentBinding.Access; }
         }
 
         private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
@@ -121,7 +102,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 AccountName = _accountName,
                 ContainerName = _containerName,
                 BlobName = _blobName,
-                Access = Access
+                Access = _argumentBinding.Access
             };
         }
     }

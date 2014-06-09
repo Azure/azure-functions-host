@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,17 +17,23 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _valueType = valueType;
         }
 
-        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (!parameter.IsOut || parameter.ParameterType.GetElementType() != _valueType)
             {
                 return null;
             }
 
+            if (access.HasValue && access.Value != FileAccess.Write)
+            {
+                throw new InvalidOperationException("Cannot bind blob out parameter using access "
+                    + access.Value.ToString() + ".");
+            }
+
             return new ObjectArgumentBinding(_objectBinder, _valueType);
         }
 
-        private class ObjectArgumentBinding : IArgumentBinding<ICloudBlob>
+        private class ObjectArgumentBinding : IBlobArgumentBinding
         {
             private readonly ICloudBlobStreamObjectBinder _objectBinder;
             private readonly Type _valueType;
@@ -35,6 +42,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             {
                 _valueType = valueType;
                 _objectBinder = objectBinder;
+            }
+
+            public FileAccess Access
+            {
+                get { return FileAccess.Write; }
             }
 
             public Type ValueType

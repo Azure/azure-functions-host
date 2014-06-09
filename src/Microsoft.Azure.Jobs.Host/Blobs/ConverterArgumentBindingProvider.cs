@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
@@ -15,23 +16,34 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             _converter = converter;
         }
 
-        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (parameter.ParameterType != typeof(T))
             {
                 return null;
             }
 
+            if (access.HasValue && access.Value != FileAccess.Read)
+            {
+                throw new InvalidOperationException("Cannot bind blob to " + typeof(T).Name + " using access "
+                    + access.Value.ToString() + ".");
+            }
+
             return new ConverterArgumentBinding(_converter);
         }
 
-        private class ConverterArgumentBinding : IArgumentBinding<ICloudBlob>
+        private class ConverterArgumentBinding : IBlobArgumentBinding
         {
             private readonly IConverter<ICloudBlob, T> _converter;
 
             public ConverterArgumentBinding(IConverter<ICloudBlob, T> converter)
             {
                 _converter = converter;
+            }
+
+            public FileAccess Access
+            {
+                get { return FileAccess.Read; }
             }
 
             public Type ValueType

@@ -8,18 +8,29 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
     internal class CloudBlobStreamArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (parameter.ParameterType != typeof(CloudBlobStream))
             {
                 return null;
             }
 
+            if (access.HasValue && access.Value != FileAccess.Write)
+            {
+                throw new InvalidOperationException("Cannot bind CloudBlobStream using access " +
+                    access.Value.ToString() + ".");
+            }
+
             return new CloudBlobStreamArgumentBinding();
         }
 
-        private class CloudBlobStreamArgumentBinding : IArgumentBinding<ICloudBlob>
+        private class CloudBlobStreamArgumentBinding : IBlobArgumentBinding
         {
+            public FileAccess Access
+            {
+                get { return FileAccess.Write; }
+            }
+
             public Type ValueType
             {
                 get { return typeof(CloudBlobStream); }

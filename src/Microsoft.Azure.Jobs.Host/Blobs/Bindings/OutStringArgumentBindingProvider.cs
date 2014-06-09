@@ -9,18 +9,29 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
     internal class OutStringArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IArgumentBinding<ICloudBlob> TryCreate(ParameterInfo parameter)
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(string).MakeByRefType())
             {
                 return null;
             }
 
+            if (access.HasValue && access.Value != FileAccess.Write)
+            {
+                throw new InvalidOperationException("Cannot bind blob out string using access "
+                    + access.Value.ToString() + ".");
+            }
+
             return new StringArgumentBinding();
         }
 
-        private class StringArgumentBinding : IArgumentBinding<ICloudBlob>
+        private class StringArgumentBinding : IBlobArgumentBinding
         {
+            public FileAccess Access
+            {
+                get { return FileAccess.Write; }
+            }
+
             public Type ValueType
             {
                 get { return typeof(string); }
