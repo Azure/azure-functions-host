@@ -54,27 +54,27 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
 
         [Fact]
-        public void GetOwner_IfMessageIsNotValidJsonObject_ReturnsEmptyGuid()
+        public void GetOwner_IfMessageIsNotValidJsonObject_ReturnsNull()
         {
-            TestOwner(Guid.Empty, "non-json");
+            TestOwnerReturnsNull("non-json");
         }
 
         [Fact]
-        public void GetOwner_IfMessageDoesNotHaveOwnerProperty_ReturnsEmptyGuid()
+        public void GetOwner_IfMessageDoesNotHaveOwnerProperty_ReturnsNull()
         {
-            TestOwner(Guid.Empty, "{'nonparent':null}");
+            TestOwnerReturnsNull("{'nonparent':null}");
         }
 
         [Fact]
-        public void GetOwner_IfMessageOwnerIsNotString_ReturnsEmptyGuid()
+        public void GetOwner_IfMessageOwnerIsNotString_ReturnsNull()
         {
-            TestOwner(Guid.Empty, "{'$AzureJobsParentId':null}");
+            TestOwnerReturnsNull("{'$AzureJobsParentId':null}");
         }
 
         [Fact]
-        public void GetOwner_IfMessageOwnerIsNotGuid_ReturnsEmptyGuid()
+        public void GetOwner_IfMessageOwnerIsNotGuid_ReturnsNull()
         {
-            TestOwner(Guid.Empty, "{'$AzureJobsParentId':'abc'}");
+            TestOwnerReturnsNull("{'$AzureJobsParentId':'abc'}");
         }
 
         [Fact]
@@ -89,15 +89,29 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
         private static void TestOwner(Guid expectedOwner, string message)
         {
+            Guid? owner = GetOwner(message);
+
+            // Assert
+            Assert.Equal(expectedOwner, owner);
+        }
+
+
+        private static void TestOwnerReturnsNull(string message)
+        {
+            Guid? owner = GetOwner(message);
+
+            // Assert
+            Assert.Null(owner);
+        }
+
+        private static Guid? GetOwner(string message)
+        {
             // Arrange
             QueueCausalityHelper product = new QueueCausalityHelper();
             CloudQueueMessage queueMessage = new CloudQueueMessage(message);
 
             // Act
-            Guid? owner = product.GetOwner(queueMessage);
-
-            // Assert
-            Assert.Equal(expectedOwner, owner);
+            return product.GetOwner(queueMessage);
         }
 
         public class Payload
