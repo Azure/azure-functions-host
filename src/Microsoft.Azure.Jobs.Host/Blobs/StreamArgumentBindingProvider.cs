@@ -46,7 +46,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
             {
                 Stream rawStream = blob.OpenRead();
-                using (SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream))
+                SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream);
                 return new BlobWatchableDisposableValueProvider(blob, selfWatchStream, typeof(Stream),
                     watcher: selfWatchStream, disposable: selfWatchStream);
             }
