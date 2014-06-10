@@ -7,12 +7,12 @@ namespace Microsoft.Azure.Jobs.Protocols
 namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a message to trigger a function using override values for all parameters.</summary>
-    [JsonTypeName("TriggerAndOverride")]
+    /// <summary>Represents a message to execute a function using override values for all parameters.</summary>
+    [JsonTypeName("CallAndOverride")]
 #if PUBLICPROTOCOL
-    public class TriggerAndOverrideMessage : HostMessage
+    public class CallAndOverrideMessage : HostMessage
 #else
-    internal class TriggerAndOverrideMessage : HostMessage
+    internal class CallAndOverrideMessage : HostMessage
 #endif
     {
         /// <summary>Gets or sets the ID of this request.</summary>
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         public IDictionary<string, string> Arguments { get; set; }
 
         /// <summary>Gets or sets the reason the function executed.</summary>
-        public string Reason { get; set; }
+        public ExecutionReason Reason { get; set; }
 
         /// <summary>Gets or sets the ID of the parent function, if any.</summary>
         public Guid? ParentId { get; set; }

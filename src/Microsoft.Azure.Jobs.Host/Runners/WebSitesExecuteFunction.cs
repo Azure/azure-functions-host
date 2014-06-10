@@ -25,15 +25,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         public FunctionInvocationResult Execute(FunctionInvokeRequest request, RuntimeBindingProviderContext context)
         {
-            if (request.TriggerReason == null)
-            {
-                // Having a trigger reason is important for diagnostics. 
-                // So make sure it's not accidentally null. 
-                throw new InvalidOperationException("Function instance must have a trigger reason set.");
-            }
-
-            request.TriggerReason.ChildGuid = request.Id;
-
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(request,
                 context.StorageAccount, context.ServiceBusConnectionString);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
@@ -301,8 +292,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         private FunctionStartedMessage CreateStartedMessageWithoutArguments(FunctionInvokeRequest request,
             CloudStorageAccount storageAccount, string serviceBusConnectionString)
         {
-            TriggerReason triggerReason = request.TriggerReason;
-
             return new FunctionStartedMessage
             {
                 HostInstanceId = _sharedContext.HostOutputMessage.HostInstanceId,
@@ -314,9 +303,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 WebJobRunIdentifier = _sharedContext.HostOutputMessage.WebJobRunIdentifier,
                 FunctionInstanceId = request.Id,
                 Function = request.ParametersProvider.Function.ToFunctionDescriptor(),
-                ParentId = triggerReason != null && triggerReason.ParentGuid != Guid.Empty
-                    ? (Guid?)triggerReason.ParentGuid : null,
-                Reason = triggerReason != null ? triggerReason.ToString() : null,
+                ParentId = request.ParentId,
+                Reason = request.Reason,
                 StartTime = DateTimeOffset.UtcNow
             };
         }

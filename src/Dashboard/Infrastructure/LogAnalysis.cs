@@ -125,7 +125,7 @@ namespace Dashboard
 
             try
             {
-                return BlobCausalityLogger.GetWriter(blob);
+                return BlobCausalityLogger.GetWriter(blob) ?? Guid.Empty;
             }
             catch (StorageException e)
             {

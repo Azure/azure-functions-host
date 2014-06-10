@@ -35,20 +35,21 @@ namespace Microsoft.Azure.Jobs
             blob.SetMetadata();
         }
 
-        public static Guid GetWriter(ICloudBlob blob)
+        public static Guid? GetWriter(ICloudBlob blob)
         {
-
             blob.FetchAttributes();
             if (!blob.Metadata.ContainsKey(MetadataKeyName))
             {
-                return Guid.Empty;
+                return null;
             }
             string val = blob.Metadata[MetadataKeyName];
             Guid result;
-            bool success = Guid.TryParse(val, out result);
-            // $$$, What should we do on parse failure? Ignore?
+            if (Guid.TryParse(val, out result))
+            {
+                return result;
+            }
 
-            return result;
+            return null;
         }
     }
 }

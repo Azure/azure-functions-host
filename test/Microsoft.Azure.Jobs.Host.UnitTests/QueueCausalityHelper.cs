@@ -18,8 +18,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             CloudQueueMessage msg = new CloudQueueMessage(val);
 
             var qcm = new QueueCausalityHelper();
-            Guid g = qcm.GetOwner(msg);
-            Assert.Equal(Guid.Empty, g);
+            Guid? g = qcm.GetOwner(msg);
+            Assert.Null(g);
 
             string payload = msg.AsString;
             Assert.Equal(val, payload);
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             CloudQueueMessage queueMessage = new CloudQueueMessage(message);
 
             // Act
-            Guid owner = product.GetOwner(queueMessage);
+            Guid? owner = product.GetOwner(queueMessage);
 
             // Assert
             Assert.Equal(expectedOwner, owner);

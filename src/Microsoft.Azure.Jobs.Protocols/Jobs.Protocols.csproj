@@ -56,6 +56,7 @@
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
     <Compile Include="CredentialsDescriptor.cs" />
     <Compile Include="FunctionFailure.cs" />
+    <Compile Include="FunctionStartedMessageExtensions.cs" />
     <Compile Include="JsonSerialization.cs" />
     <Compile Include="HeartbeatCommand.cs" />
     <Compile Include="HeartbeatDescriptor.cs" />
@@ -97,8 +98,8 @@
     <Compile Include="TableEntityParameterDescriptor.cs" />
     <Compile Include="TableParameterDescriptor.cs" />
     <Compile Include="AbortHostInstanceMessage.cs" />
-    <Compile Include="TriggerAndOverrideMessage.cs" />
-    <Compile Include="TriggerAndOverrideMessageReasons.cs" />
+    <Compile Include="CallAndOverrideMessage.cs" />
+    <Compile Include="ExecutionReason.cs" />
     <Compile Include="WebJobRunIdentifier.cs" />
     <Compile Include="WebJobTypes.cs" />
     <Compile Include="WebSitesKnownKeyNames.cs" />

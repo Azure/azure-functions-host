@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
@@ -26,17 +27,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                 Id = functionInstanceId,
                 Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<BrokeredMessage>(functionInstanceId, func, msg, context),
-                TriggerReason = new ServiceBusTriggerReason
-                {
-                    EntityPath = serviceBusTriggerBinding.EntityPath,
-                    MessageId = msg.MessageId,
-                    ParentGuid = GetOwnerFromMessage(msg)
-                }
+                Reason = ExecutionReason.AutomaticTrigger,
+                ParentId = ServiceBusCausalityHelper.GetOwner(msg)
             };
-        }
-        private static Guid GetOwnerFromMessage(BrokeredMessage msg)
-        {
-            return ServiceBusCausalityHelper.GetOwner(msg);
         }
 
         public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, RuntimeBindingProviderContext context)

@@ -178,6 +178,7 @@
     <Compile Include="Data\LocalTableCore.cs" />
     <Compile Include="Data\StorageExceptionExtensions.cs" />
     <Compile Include="Data\TableCore.cs" />
+    <Compile Include="Data\TriggerReason.cs" />
     <Compile Include="Data\TriggerReasonEntity.cs" />
     <Compile Include="Data\VersionedFunction.cs" />
     <Compile Include="Data\HostFunctionIndex.cs" />

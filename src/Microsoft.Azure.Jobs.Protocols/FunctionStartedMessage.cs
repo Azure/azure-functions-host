@@ -27,8 +27,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the ID of the ancestor function instance.</summary>
         public Guid? ParentId { get; set; }
 
-        /// <summary>Gets or sets a description explaining why the function executed.</summary>
-        public string Reason { get; set; }
+        /// <summary>Gets or sets the reason the function executed.</summary>
+        public ExecutionReason Reason { get; set; }
 
         /// <summary>Gets or sets the time the function started executing.</summary>
         public DateTimeOffset StartTime { get; set; }

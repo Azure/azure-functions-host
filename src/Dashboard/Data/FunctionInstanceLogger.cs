@@ -140,7 +140,7 @@ namespace Dashboard.Data
                 FunctionShortName = message.Function.ShortName,
                 Arguments = CreateArguments(message.Function.Parameters, message.Arguments),
                 ParentId = message.ParentId,
-                Reason = message.Reason,
+                Reason = message.FormatReason(),
                 QueueTime = message.StartTime,
                 StartTime = message.StartTime,
                 StorageConnectionString = storageConnectionString,

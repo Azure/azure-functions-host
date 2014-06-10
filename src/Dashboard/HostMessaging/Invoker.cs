@@ -17,11 +17,11 @@ namespace Dashboard.HostMessaging
         }
 
         public Guid TriggerAndOverride(string queueName, FunctionSnapshot function,
-            IDictionary<string, string> arguments, Guid? parentId, string reason)
+            IDictionary<string, string> arguments, Guid? parentId, ExecutionReason reason)
         {
             Guid id = Guid.NewGuid();
 
-            TriggerAndOverrideMessage message = new TriggerAndOverrideMessage
+            CallAndOverrideMessage message = new CallAndOverrideMessage
             {
                 Id = id,
                 FunctionId = function.HostFunctionId,
@@ -39,7 +39,7 @@ namespace Dashboard.HostMessaging
         }
 
         private static FunctionStartedMessage CreateFunctionStartedMessage(FunctionSnapshot function,
-            TriggerAndOverrideMessage message)
+            CallAndOverrideMessage message)
         {
             return new FunctionStartedMessage
             {

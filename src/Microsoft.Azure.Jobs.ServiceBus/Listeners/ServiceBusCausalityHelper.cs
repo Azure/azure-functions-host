@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             msg.Properties[_parentGuidFieldName] = functionOwner.ToString();
         }
 
-        public static Guid GetOwner(BrokeredMessage msg)
+        public static Guid? GetOwner(BrokeredMessage msg)
         {
             object parent;
             if (msg.Properties.TryGetValue(_parentGuidFieldName, out parent))
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                     }
                 }
             }
-            return Guid.Empty;
+            return null;
         }
     }
 }

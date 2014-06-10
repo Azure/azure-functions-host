@@ -68,7 +68,7 @@ namespace Dashboard.Controllers
         {
             FunctionSnapshot function = GetFunction(functionId);
 
-            return Invoke(queue, form, function, TriggerAndOverrideMessageReasons.RunFromDashboard, null);
+            return Invoke(queue, form, function, ExecutionReason.Dashboard, null);
         }
 
         public ActionResult Replay(string parentId)
@@ -99,7 +99,7 @@ namespace Dashboard.Controllers
             Guid parent;
             FunctionSnapshot function = GetFunctionFromInstance(parentId, out parent);
 
-            return Invoke(queue, form, function, TriggerAndOverrideMessageReasons.ReplayFromDashboard, parent);
+            return Invoke(queue, form, function, ExecutionReason.Dashboard, parent);
         }
 
         private RunFunctionViewModel CreateRunFunctionViewModel(FunctionSnapshot function, IEnumerable<FunctionParameterViewModel> parameters, string submitText, Guid? parentId)
@@ -117,7 +117,7 @@ namespace Dashboard.Controllers
             };
         }
 
-        private ActionResult Invoke(string queueName, FormCollection form, FunctionSnapshot function, string reason, Guid? parentId)
+        private ActionResult Invoke(string queueName, FormCollection form, FunctionSnapshot function, ExecutionReason reason, Guid? parentId)
         {
             if (function == null)
             {
@@ -255,7 +255,7 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            Guid guid;
+            Guid? guid;
 
             try
             {
@@ -263,10 +263,10 @@ namespace Dashboard.Controllers
             }
             catch
             {
-                guid = Guid.Empty;
+                guid = null;
             }
 
-            if (guid == Guid.Empty)
+            if (!guid.HasValue)
             {
                 TempData["Message.Text"] = "No invocation found for: " + path;
                 TempData["Message.Level"] = "warning";

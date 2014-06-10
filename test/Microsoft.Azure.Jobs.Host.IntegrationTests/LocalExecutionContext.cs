@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -158,11 +159,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
         private Guid CallInner(FunctionInvokeRequest instance, Guid parentGuid)
         {
-            instance.TriggerReason = new InvokeTriggerReason
-            {
-                Message = "Local invoke",
-                ParentGuid = parentGuid
-            };
+            instance.Reason = ExecutionReason.HostCall;
+            instance.ParentId = parentGuid != Guid.Empty ? (Guid?)parentGuid : null;
 
             var result = _executor.Execute(instance, _context);
             return result.Id;
@@ -188,14 +186,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             public FunctionInvocationResult Execute(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
             {
-                if (instance.TriggerReason == null)
-                {
-                    // Having a trigger reason is important for diagnostics. 
-                    // So make sure it's not accidentally null. 
-                    throw new InvalidOperationException("Function instance must have a trigger reason set.");
-                }
-                instance.TriggerReason.ChildGuid = instance.Id;
-
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
                 bool succeeded;

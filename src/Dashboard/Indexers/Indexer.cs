@@ -88,16 +88,11 @@ namespace Dashboard.Indexers
 
         internal static TriggerReason CreateTriggerReason(FunctionStartedMessage message)
         {
-            if (!message.ParentId.HasValue && String.IsNullOrEmpty(message.Reason))
-            {
-                return null;
-            }
-
-            return new InvokeTriggerReason
+            return new TriggerReason
             {
                 ChildGuid = message.FunctionInstanceId,
                 ParentGuid = message.ParentId.GetValueOrDefault(),
-                Message = message.Reason
+                Message = message.FormatReason()
             };
         }
 

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
         public void JsonConvertDerivedType_Roundtrips()
         {
             // Arrange
-            TriggerAndOverrideMessage expectedMessage = new TriggerAndOverrideMessage
+            CallAndOverrideMessage expectedMessage = new CallAndOverrideMessage
             {
                 Id = Guid.NewGuid()
             };
@@ -37,8 +37,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
 
             // Assert
             Assert.NotNull(message);
-            Assert.IsType<TriggerAndOverrideMessage>(message);
-            TriggerAndOverrideMessage typedMessage = (TriggerAndOverrideMessage)message;
+            Assert.IsType<CallAndOverrideMessage>(message);
+            CallAndOverrideMessage typedMessage = (CallAndOverrideMessage)message;
             Assert.Equal(expectedMessage.Id, typedMessage.Id);
         }
     }

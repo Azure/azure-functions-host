@@ -94,6 +94,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobTriggerParameterDescriptor.cs">
       <Link>Protocols\BlobTriggerParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CallAndOverrideMessage.cs">
+      <Link>Protocols\CallAndOverrideMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CancellationTokenParameterDescriptor.cs">
       <Link>Protocols\CancellationTokenParameterDescriptor.cs</Link>
     </Compile>
@@ -112,6 +115,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CredentialsDescriptor.cs">
       <Link>Protocols\CredentialsDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ExecutionReason.cs">
+      <Link>Protocols\ExecutionReason.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionCompletedMessage.cs">
       <Link>Protocols\FunctionCompletedMessage.cs</Link>
     </Compile>
@@ -123,6 +129,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessage.cs">
       <Link>Protocols\FunctionStartedMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\FunctionStartedMessageExtensions.cs">
+      <Link>Protocols\FunctionStartedMessageExtensions.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\HeartbeatCommand.cs">
       <Link>Protocols\HeartbeatCommand.cs</Link>
@@ -207,9 +216,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TextParameterLog.cs">
       <Link>Protocols\TextParameterLog.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TriggerAndOverrideMessage.cs">
-      <Link>Protocols\TriggerAndOverrideMessage.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebJobRunIdentifier.cs">
       <Link>Protocols\WebJobRunIdentifier.cs</Link>
@@ -394,7 +400,6 @@
     <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="Runners\FunctionInvocationResult.cs" />
-    <Compile Include="Runners\TriggerAndOverrideMessageExtensions.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Storage\Table\CloudTableExtensions.cs" />
     <Compile Include="Bindings\IBinderEx.cs" />
@@ -463,11 +468,7 @@
     <Compile Include="Runners\INotifyNewBlob.cs" />
     <Compile Include="Runners\IExecuteFunction.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
-    <Compile Include="Runners\BlobTriggerReason.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
-    <Compile Include="Runners\QueueMessageTriggerReason.cs" />
-    <Compile Include="Runners\InvokeTriggerReason.cs" />
-    <Compile Include="Runners\TriggerReason.cs" />
     <Compile Include="Runners\FunctionInvokeRequest.cs" />
     <Compile Include="Indexers\FunctionDefinition.cs" />
     <Compile Include="Indexers\IFunctionTable.cs" />

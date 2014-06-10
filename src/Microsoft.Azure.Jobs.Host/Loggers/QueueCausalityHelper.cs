@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         [DebuggerNonUserCode]
-        public Guid GetOwner(CloudQueueMessage msg)
+        public Guid? GetOwner(CloudQueueMessage msg)
         {
             string json = msg.AsString;
             IDictionary<string, JToken> jsonObject;
@@ -40,19 +40,22 @@ namespace Microsoft.Azure.Jobs
             }
             catch (Exception)
             {
-                return Guid.Empty;
+                return null;
             }
 
             if (!jsonObject.ContainsKey(parentGuidFieldName) || jsonObject[parentGuidFieldName].Type != JTokenType.String)
             {
-                return Guid.Empty;
+                return null;
             }
 
             string val = (string)jsonObject[parentGuidFieldName];
 
             Guid guid;
-            Guid.TryParse(val, out guid);
-            return guid;
+            if (Guid.TryParse(val, out guid))
+            {
+                return guid;
+            }
+            return null;
         }
     }
 }

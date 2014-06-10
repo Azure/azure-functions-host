@@ -160,11 +160,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 throw new InvalidOperationException("Invalid invocation message.");
             }
 
-            TriggerAndOverrideMessage triggerOverrideModel = model as TriggerAndOverrideMessage;
+            CallAndOverrideMessage callAndOverrideModel = model as CallAndOverrideMessage;
 
-            if (triggerOverrideModel != null)
+            if (callAndOverrideModel != null)
             {
-                ProcessTriggerAndOverrideMessage(triggerOverrideModel, message.InsertionTime.Value, context);
+                ProcessCallAndOverrideMessage(callAndOverrideModel, message.InsertionTime.Value, context);
                 return;
             }
 
@@ -181,8 +181,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             throw new NotSupportedException(error);
         }
 
-        private void ProcessTriggerAndOverrideMessage(TriggerAndOverrideMessage message,
-            DateTimeOffset insertionTime, RuntimeBindingProviderContext context)
+        private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,
+            RuntimeBindingProviderContext context)
         {
             FunctionInvokeRequest request = CreateInvokeRequest(message, context);
 
@@ -206,7 +206,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         // This snapshot won't contain full normal data for Function.FullName, Function.ShortName and Function.Parameters.
         // (All we know is an unavailable function ID; which function location method info to use is a mystery.)
-        private static FunctionCompletedMessage CreateFailedMessage(TriggerAndOverrideMessage message, DateTimeOffset insertionType)
+        private static FunctionCompletedMessage CreateFailedMessage(CallAndOverrideMessage message, DateTimeOffset insertionType)
         {
             DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
 
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private FunctionInvokeRequest CreateInvokeRequest(TriggerAndOverrideMessage message, RuntimeBindingProviderContext context)
+        private FunctionInvokeRequest CreateInvokeRequest(CallAndOverrideMessage message, RuntimeBindingProviderContext context)
         {
             FunctionDefinition function = _functionTable.Lookup(message.FunctionId);
 
@@ -257,7 +257,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Id = message.Id,
                 Method = function.Method,
                 ParametersProvider = new InvokeParametersProvider(message.Id, function, objectParameters, context),
-                TriggerReason = message.GetTriggerReason(),
+                Reason = message.Reason,
+                ParentId = message.ParentId
             };
         }
 
@@ -272,12 +273,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        private static Guid GetBlobWriterGuid(ICloudBlob blob)
+        private static Guid? GetBlobWriterGuid(ICloudBlob blob)
         {
             return BlobCausalityLogger.GetWriter(blob);
         }
 
-        private static Guid GetOwnerFromMessage(CloudQueueMessage msg)
+        private static Guid? GetOwnerFromMessage(CloudQueueMessage msg)
         {
             QueueCausalityHelper qcm = new QueueCausalityHelper();
             return qcm.GetOwner(msg);
@@ -293,10 +294,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Id = functionInstanceId,
                 Method = func.Method,
                 ParametersProvider = new InvokeParametersProvider(functionInstanceId, func, parameters, context),
-                TriggerReason = new InvokeTriggerReason
-                {
-                    Message = "This was function was programmatically called via the host APIs."
-                }
+                Reason = ExecutionReason.HostCall
             };
         }
 
@@ -310,12 +308,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Id = functionInstanceId,
                 Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<CloudQueueMessage>(functionInstanceId, func, msg, context),
-                TriggerReason = new QueueMessageTriggerReason
-                {
-                    QueueName = queueTriggerBinding.QueueName,
-                    MessageId = msg.Id,
-                    ParentGuid = GetOwnerFromMessage(msg)
-                }
+                Reason = ExecutionReason.AutomaticTrigger,
+                ParentId = GetOwnerFromMessage(msg)
             };
         }
 
@@ -328,11 +322,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Id = functionInstanceId,
                 Method = func.Method,
                 ParametersProvider = new TriggerParametersProvider<ICloudBlob>(functionInstanceId, func, blobInput, context),
-                TriggerReason = new BlobTriggerReason
-                {
-                    BlobPath = new CloudBlobPath(blobInput),
-                    ParentGuid = GetBlobWriterGuid(blobInput)
-                }
+                Reason = ExecutionReason.AutomaticTrigger,
+                ParentId = GetBlobWriterGuid(blobInput)
             };
         }
 
