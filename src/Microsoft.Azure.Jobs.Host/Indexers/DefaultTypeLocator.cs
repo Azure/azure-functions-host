@@ -8,6 +8,7 @@ namespace Microsoft.Azure.Jobs
     internal class DefaultTypeLocator : ITypeLocator
     {
         private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
+        private static readonly string _asureJobsServiceBusAssemblyName = "Microsoft.Azure.Jobs.ServiceBus";
 
         private static Type[] EmptyTypeArray = new Type[0];
 
@@ -28,6 +29,11 @@ namespace Microsoft.Azure.Jobs
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
                 if (String.Equals(referencedAssemblyName.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (String.Equals(referencedAssemblyName.Name, _asureJobsServiceBusAssemblyName, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
