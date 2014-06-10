@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 
         public BlobValueProvider(ICloudBlob blob, object value, Type valueType)
         {
-            if (!valueType.IsAssignableFrom(value.GetType()))
+            if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }

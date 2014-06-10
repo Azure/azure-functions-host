@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
 
         public ObjectValueProvider(object value, Type valueType)
         {
-            if (!valueType.IsAssignableFrom(value.GetType()))
+            if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
 
         public string ToInvokeString()
         {
-            return _value.ToString();
+            return _value != null ? _value.ToString() : null;
         }
     }
 }

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
         public BrokeredMessageValueProvider(BrokeredMessage clone, object value, Type valueType)
         {
-            if (!valueType.IsAssignableFrom(value.GetType()))
+            if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }
@@ -45,6 +45,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             {
                 using (Stream inputStream = message.GetBody<Stream>())
                 {
+                    if (inputStream == null)
+                    {
+                        return null;
+                    }
+
                     inputStream.CopyTo(outputStream);
 
                     try

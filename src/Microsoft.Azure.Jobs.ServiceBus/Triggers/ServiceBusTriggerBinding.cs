@@ -105,9 +105,16 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             string contents;
 
             using (Stream stream = message.GetBody<Stream>())
-            using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
             {
-                contents = reader.ReadToEnd();
+                if (stream == null)
+                {
+                    return null;
+                }
+
+                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                {
+                    contents = reader.ReadToEnd();
+                }
             }
 
             return BindingData.GetBindingData(contents, BindingDataContract);

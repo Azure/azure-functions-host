@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
         public BlobWatchableDisposableValueProvider(ICloudBlob blob, object value, Type valueType, ISelfWatch watcher,
             IDisposable disposable)
         {
-            if (!valueType.IsAssignableFrom(value.GetType()))
+            if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }

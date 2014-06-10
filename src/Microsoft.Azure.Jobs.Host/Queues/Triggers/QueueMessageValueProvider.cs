@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 
         public QueueMessageValueProvider(CloudQueueMessage message, object value, Type valueType)
         {
-            if (!valueType.IsAssignableFrom(value.GetType()))
+            if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
                 throw new InvalidOperationException("value is not of the correct type.");
             }

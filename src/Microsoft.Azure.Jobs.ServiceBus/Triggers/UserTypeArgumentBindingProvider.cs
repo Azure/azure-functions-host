@@ -36,9 +36,16 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 string contents;
 
                 using (Stream stream = value.GetBody<Stream>())
-                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
                 {
-                    contents = reader.ReadToEnd();
+                    if (stream == null)
+                    {
+                        return new BrokeredMessageValueProvider(clone, null, _valueType);
+                    }
+
+                    using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                    {
+                        contents = reader.ReadToEnd();
+                    }
                 }
 
                 object convertedValue;
@@ -57,6 +64,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 ", _valueType.Name, e.Message);
                     throw new InvalidOperationException(msg);
                 }
+
 
                 return new BrokeredMessageValueProvider(clone, convertedValue, _valueType);
             }
