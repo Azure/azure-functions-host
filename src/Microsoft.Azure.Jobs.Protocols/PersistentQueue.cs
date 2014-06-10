@@ -24,6 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         private const string NextVisibleTimeKey = "NextVisibleTime";
         private const string CreatedKey = "Created";
+        private const string MessageTypeKey = "MessageType";
 
         private readonly CloudBlobContainer _blobContainer;
 
@@ -234,10 +235,19 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         {
             _blobContainer.CreateIfNotExists();
 
-            Guid messageId = Guid.NewGuid();
-            CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId.ToString("N"));
+            string blobName = GetBlobName(DateTimeOffset.UtcNow, Guid.NewGuid());
+            CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(blobName);
+            message.AddMetadata(blob.Metadata);
             string messageBody = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
             blob.UploadText(messageBody);
+        }
+
+        private static string GetBlobName(DateTimeOffset timestamp, Guid messageId)
+        {
+            // DateTimeOffset.MaxValue.Ticks.ToString().Length = 19
+            // Subtract from DateTimeOffset.MaxValue.Ticks to have newer times sort at the top.
+            return String.Format(CultureInfo.InvariantCulture, "{0:D19}_{1:N}",
+                DateTimeOffset.MaxValue.Ticks - timestamp.Ticks, messageId);
         }
 
         /// <inheritdoc />

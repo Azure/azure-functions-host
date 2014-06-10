@@ -13,6 +13,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal abstract class HostOutputMessage : PersistentQueueMessage
 #endif
     {
+        /// <summary>The name of the key used to store the message type in metadata.</summary>
+        protected const string MessageTypeKeyName = "MessageType";
+
         /// <summary>Gets or sets the host instance ID.</summary>
         public Guid HostInstanceId { get; set; }
 

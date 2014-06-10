@@ -15,6 +15,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class FunctionStartedMessage : HostOutputMessage
 #endif
     {
+        /// <summary>The name of the key used to store the function instance ID in metadata.</summary>
+        protected const string FunctionInstanceIdKey = "FunctionInstanceId";
+
         /// <summary>Gets or sets the function instance ID.</summary>
         public Guid FunctionInstanceId { get; set; }
 
@@ -38,5 +41,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         /// <summary>Gets or sets the path of the blob containing per-parameter logging data.</summary>
         public LocalBlobDescriptor ParameterLogBlob { get; set; }
+
+        internal override void AddMetadata(IDictionary<string, string> metadata)
+        {
+            metadata.Add(MessageTypeKeyName, "FunctionStarted");
+            metadata.Add(FunctionInstanceIdKey, FunctionInstanceId.ToString("N"));
+        }
     }
 }

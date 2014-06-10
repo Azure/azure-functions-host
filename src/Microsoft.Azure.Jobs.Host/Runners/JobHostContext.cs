@@ -304,6 +304,10 @@ namespace Microsoft.Azure.Jobs
 
         private class DataOnlyHostOutputMessage : HostOutputMessage
         {
+            internal override void AddMetadata(IDictionary<string, string> metadata)
+            {
+                throw new NotSupportedException();
+            }
         }
     }
 }

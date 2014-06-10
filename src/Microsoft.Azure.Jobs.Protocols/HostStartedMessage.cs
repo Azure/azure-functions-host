@@ -14,7 +14,15 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal class HostStartedMessage : HostOutputMessage
 #endif
     {
+        private const string HostIdKeyName = "HostId";
+
         /// <summary>Gets or sets the functions the host instance contains.</summary>
         public IEnumerable<FunctionDescriptor> Functions { get; set; }
+
+        internal override void AddMetadata(IDictionary<string, string> metadata)
+        {
+            metadata.Add(MessageTypeKeyName, "HostStarted");
+            metadata.Add(HostIdKeyName, SharedQueueName);
+        }
     }
 }

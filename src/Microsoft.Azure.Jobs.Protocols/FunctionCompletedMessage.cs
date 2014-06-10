@@ -32,5 +32,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         /// <summary>Gets or sets the parameter logs.</summary>
         public IDictionary<string, ParameterLog> ParameterLogs { get; set; }
+
+        internal override void AddMetadata(IDictionary<string, string> metadata)
+        {
+            metadata.Add(MessageTypeKeyName, "FunctionCompleted");
+            metadata.Add(FunctionInstanceIdKey, FunctionInstanceId.ToString("N"));
+        }
     }
 }

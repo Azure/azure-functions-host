@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
@@ -10,9 +11,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// <summary>Represents a message in a persistent queue.</summary>
     [JsonConverter(typeof(PersistentQueueMessageConverter))]
 #if PUBLICPROTOCOL
-    public class PersistentQueueMessage
+    public abstract class PersistentQueueMessage
 #else
-    internal class PersistentQueueMessage
+    internal abstract class PersistentQueueMessage
 #endif
     {
         /// <summary>Gets or sets the message type.</summary>
@@ -33,5 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             {
             }
         }
+
+        internal abstract void AddMetadata(IDictionary<string, string> metadata);
     }
 }
