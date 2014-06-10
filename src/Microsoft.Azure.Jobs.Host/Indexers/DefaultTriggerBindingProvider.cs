@@ -14,13 +14,13 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             innerProviders.Add(new QueueTriggerAttributeBindingProvider());
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
 
-            Type serviceBusProviverType = ServiceBusExtensionTypeLoader.Get(
+            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
 
-            if (serviceBusProviverType != null)
+            if (serviceBusProviderType != null)
             {
                 ITriggerBindingProvider serviceBusAttributeBindingProvider =
-                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviverType);
+                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviderType);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
 
