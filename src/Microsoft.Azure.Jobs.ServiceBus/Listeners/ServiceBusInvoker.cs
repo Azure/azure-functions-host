@@ -16,7 +16,13 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _worker = worker;
         }
 
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
+        public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, RuntimeBindingProviderContext context)
+        {
+            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, context, msg);
+            _worker.OnNewInvokeableItem(instance, context);
+        }
+
+        private static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
             RuntimeBindingProviderContext context, BrokeredMessage msg)
         {
             ServiceBusTriggerBinding serviceBusTriggerBinding = (ServiceBusTriggerBinding)func.TriggerBinding;
@@ -30,12 +36,6 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                 Reason = ExecutionReason.AutomaticTrigger,
                 ParentId = ServiceBusCausalityHelper.GetOwner(msg)
             };
-        }
-
-        public void OnNewServiceBusMessage(ServiceBusTrigger trigger, BrokeredMessage msg, RuntimeBindingProviderContext context)
-        {
-            var instance = GetFunctionInvocation((FunctionDefinition)trigger.Tag, context, msg);
-            _worker.OnNewInvokeableItem(instance, context);
         }
     }
 }

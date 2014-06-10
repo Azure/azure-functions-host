@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Microsoft.Azure.Jobs
 {
     // Base class for triggers that client can listen on. 
     internal abstract class Trigger
     {
-        // Not serialized. For in-memory cases.(This is kind of exclusive with CallbackPath)
         public object Tag { get; set; }
 
         // $$$ Need abstraction here, may get via Azure Web Sites instead. 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             [ServiceBusTrigger(StartQueueName)] string start,
             [ServiceBus(QueueNamePrefix + "1")] out string message)
         {
-            message = "SBQueue2SBQueue-" + start;
+            message = start + "-SBQueue2SBQueue";
         }
 
         // Passes a service bus message from a queue to topic using a brokered message
@@ -69,15 +70,22 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             [ServiceBusTrigger(QueueNamePrefix + "1")] string message,
             [ServiceBus(TopicName)] out BrokeredMessage output)
         {
-            message = "SBQueue2SBTopic-" + message;
-            output = new BrokeredMessage(message);
+            message = message + "-SBQueue2SBTopic";
+
+            Stream stream = new MemoryStream();
+            TextWriter writer = new StreamWriter(stream);
+            writer.Write(message);
+            writer.Flush();
+            stream.Position = 0;
+
+            output = new BrokeredMessage(stream);
         }
 
         // First listener for the topic
         public static void SBTopicListener1(
             [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-1")] string message)
         {
-            _resultMessage1 = message + "topic-1";
+            _resultMessage1 = message + "-topic-1";
             _topicSubscriptionCalled1.Set();
         }
 
@@ -85,10 +93,16 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         public static void SBTopicListener2(
             [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2")] BrokeredMessage message)
         {
-            _resultMessage2 = message +"topic-2";
+            using (Stream stream = message.GetBody<Stream>())
+            using (TextReader reader = new StreamReader(stream))
+            {
+                _resultMessage2 = reader.ReadToEnd() + "-topic-2";
+            }
+
             _topicSubscriptionCalled2.Set();
         }
 
+        [Fact]
         public void ServiceBusEndToEnd()
         {
             try
@@ -145,8 +159,8 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             // Stop the host
             tokenSource.Cancel();
 
-            Assert.Equal("SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
-            Assert.Equal("SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
+            Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
+            Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
         }
 
         private void CreateStartMessage()
@@ -158,7 +172,17 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             }
 
             QueueClient queueClient = QueueClient.CreateFromConnectionString(_servicesBusConnectionString, queueName);
-            queueClient.Send(new BrokeredMessage("E2E"));
+
+            using (Stream stream = new MemoryStream())
+            using (TextWriter writer = new StreamWriter(stream))
+            {
+                writer.Write("E2E");
+                writer.Flush();
+                stream.Position = 0;
+
+                queueClient.Send(new BrokeredMessage(stream));
+            }
+
             queueClient.Close();
         }
 

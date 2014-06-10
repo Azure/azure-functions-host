@@ -52,7 +52,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             public void SetValue(object value)
             {
                 string text = (string)value;
-                byte[] bytes = Encoding.UTF8.GetBytes(text);
+                byte[] bytes = StrictEncodings.Utf8.GetBytes(text);
 
                 using (MemoryStream stream = new MemoryStream(bytes, writable: false))
                 using (BrokeredMessage message = new BrokeredMessage(stream))

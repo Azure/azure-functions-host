@@ -32,10 +32,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             public IValueProvider Bind(BrokeredMessage value, ArgumentBindingContext context)
             {
+                BrokeredMessage clone = value.Clone();
                 string contents;
 
                 using (Stream stream = value.GetBody<Stream>())
-                using (TextReader reader = new StreamReader(stream))
+                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
                 {
                     contents = reader.ReadToEnd();
                 }
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-                return new BrokeredMessageValueProvider(value, convertedValue, _valueType);
+                return new BrokeredMessageValueProvider(clone, convertedValue, _valueType);
             }
         }
     }

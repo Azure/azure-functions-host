@@ -98,6 +98,7 @@
     <Compile Include="Bindings\OutputConverter.cs" />
     <Compile Include="Bindings\ServiceBusBinding.cs" />
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
+    <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
     <Compile Include="ServiceBusAccount.cs" />
     <Compile Include="Bindings\ServiceBusEntity.cs" />
     <Compile Include="Bindings\StringToServiceBusEntityConverter.cs" />
@@ -107,6 +108,7 @@
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
+    <Compile Include="StrictEncodings.cs" />
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />
     <Compile Include="Triggers\CalculateServiceBusTriggers.cs" />
     <Compile Include="Triggers\BrokeredMessageToByteArrayConverter.cs" />
@@ -114,7 +116,6 @@
     <Compile Include="Triggers\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="Triggers\CompositeArgumentBindingProvider.cs" />
     <Compile Include="Triggers\ConverterArgumentBindingProvider.cs" />
-    <Compile Include="Listeners\MessageReceiverComparer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Triggers\IQueueTriggerArgumentBindingProvider.cs" />
     <Compile Include="Triggers\OutputConverter.cs" />

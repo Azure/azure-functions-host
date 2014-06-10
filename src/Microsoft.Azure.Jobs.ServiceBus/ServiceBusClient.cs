@@ -22,8 +22,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus
                 return null;
             }
 
-            Uri address = factory.Address;
+            return GetNamespaceName(factory.Address);
+        }
 
+        internal static string GetNamespaceName(Uri address)
+        {
             if (address == null && !address.IsAbsoluteUri && address.HostNameType != UriHostNameType.Dns)
             {
                 return null;

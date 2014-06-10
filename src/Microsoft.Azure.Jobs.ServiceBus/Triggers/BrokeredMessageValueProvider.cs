@@ -8,14 +8,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class BrokeredMessageValueProvider : IValueProvider
     {
-        private static readonly UTF8Encoding _strictUtf8Encoding =
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: true, throwOnInvalidBytes: true);
-
         private readonly object _value;
         private readonly Type _valueType;
         private readonly string _invokeString;
 
-        public BrokeredMessageValueProvider(BrokeredMessage message, object value, Type valueType)
+        public BrokeredMessageValueProvider(BrokeredMessage clone, object value, Type valueType)
         {
             if (!valueType.IsAssignableFrom(value.GetType()))
             {
@@ -24,7 +21,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             _value = value;
             _valueType = valueType;
-            _invokeString = CreateInvokeString(message);
+            _invokeString = CreateInvokeString(clone);
         }
 
         public Type Type
@@ -52,7 +49,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
                     try
                     {
-                        return _strictUtf8Encoding.GetString(outputStream.ToArray());
+                        return StrictEncodings.Utf8.GetString(outputStream.ToArray());
                     }
                     catch (DecoderFallbackException)
                     {

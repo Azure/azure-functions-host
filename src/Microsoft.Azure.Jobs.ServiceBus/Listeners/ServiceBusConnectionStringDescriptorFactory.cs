@@ -1,5 +1,8 @@
-﻿using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.ServiceBus.Messaging;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.ServiceBus;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
@@ -23,18 +26,23 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 
         private static string GetNamespaceName(string connectionString)
         {
-            MessagingFactory factory;
+            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
 
-            try
-            {
-                factory = MessagingFactory.CreateFromConnectionString(connectionString);
-            }
-            catch
+            HashSet<Uri> endpoints = builder.Endpoints;
+
+            if (endpoints == null || endpoints.Count == 0)
             {
                 return null;
             }
 
-            return ServiceBusClient.GetNamespaceName(factory);
+            Uri endpoint = endpoints.First();
+
+            if (endpoint == null)
+            {
+                return null;
+            }
+
+            return ServiceBusClient.GetNamespaceName(endpoint);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         public string Convert(BrokeredMessage input)
         {
             using (Stream stream = input.GetBody<Stream>())
-            using (TextReader reader = new StreamReader(stream))
+            using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
             {
                 return reader.ReadToEnd();
             }
