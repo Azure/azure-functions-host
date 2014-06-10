@@ -117,18 +117,6 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk = sdk;
             }
 
-            public TElement Retrieve<TElement>(string partitionKey, string rowKey) where TElement : class, ITableEntity
-            {
-                TableResult outerResult = _sdk.Execute(TableOperation.Retrieve<TElement>(partitionKey, rowKey));
-
-                if (outerResult == null)
-                {
-                    return null;
-                }
-
-                return outerResult.Result as TElement;
-            }
-
             public void Insert(ITableEntity entity)
             {
                 if (entity == null)
@@ -136,79 +124,22 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                     throw new ArgumentNullException("entity");
                 }
 
-                _sdk.Execute(TableOperation.Insert(entity));
-            }
+                TableOperation insert = TableOperation.Insert(entity);
 
-            public void Insert(IEnumerable<ITableEntity> entities)
-            {
-                if (entities == null)
+                try
                 {
-                    throw new ArgumentNullException("entities");
+                    _sdk.Execute(insert);
                 }
-
-                TableBatchOperation batch = new TableBatchOperation();
-
-                foreach (ITableEntity entity in entities)
+                catch (StorageException exception)
                 {
-                    batch.Insert(entity);
+                    if (!exception.IsNotFound())
+                    {
+                        throw;
+                    }
+
+                    _sdk.CreateIfNotExists();
+                    _sdk.Execute(insert);
                 }
-
-                _sdk.ExecuteBatch(batch);
-            }
-
-            public void InsertOrReplace(ITableEntity entity)
-            {
-                if (entity == null)
-                {
-                    throw new ArgumentNullException("entity");
-                }
-
-                _sdk.CreateIfNotExists();
-                _sdk.Execute(TableOperation.InsertOrReplace(entity));
-            }
-
-            public void InsertOrReplace(IEnumerable<ITableEntity> entities)
-            {
-                if (entities == null)
-                {
-                    throw new ArgumentNullException("entities");
-                }
-
-                TableBatchOperation batch = new TableBatchOperation();
-
-                foreach (ITableEntity entity in entities)
-                {
-                    batch.InsertOrReplace(entity);
-                }
-
-                _sdk.ExecuteBatch(batch);
-            }
-
-            public void Replace(ITableEntity entity)
-            {
-                if (entity == null)
-                {
-                    throw new ArgumentNullException("entity");
-                }
-
-                _sdk.Execute(TableOperation.Replace(entity));
-            }
-
-            public void Replace(IEnumerable<ITableEntity> entities)
-            {
-                if (entities == null)
-                {
-                    throw new ArgumentNullException("entities");
-                }
-
-                TableBatchOperation batch = new TableBatchOperation();
-
-                foreach (ITableEntity entity in entities)
-                {
-                    batch.Replace(entity);
-                }
-
-                _sdk.ExecuteBatch(batch);
             }
 
             public IEnumerable<TElement> Query<TElement>(int? limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new()
@@ -235,19 +166,10 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                     {
                         throw;
                     }
-                    try
+                    else
                     {
-                        _sdk.Create();
+                        return Enumerable.Empty<TElement>();
                     }
-                    catch (StorageException createException)
-                    {
-                        // a possible race condition on table creation
-                        if (!createException.IsConflict())
-                        {
-                            throw;
-                        }
-                    }
-                    return q.ToArray();
                 }
             }
 
