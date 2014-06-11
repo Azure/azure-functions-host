@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
@@ -84,7 +85,12 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         {
             _messageFoundAgain = false;
 
-            JobHost host = new JobHost(new JobHostConfiguration(_connectionString));
+            JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString)
+            {
+                TypeLocator = new SimpleTypeLocator(this.GetType())
+            };
+
+            JobHost host = new JobHost(hostConfig);
 
             CancellationTokenSource tokenSource = new CancellationTokenSource();
 

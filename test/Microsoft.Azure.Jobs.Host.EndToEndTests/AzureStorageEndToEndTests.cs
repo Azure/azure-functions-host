@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -144,8 +145,15 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 UploadTestObject();
             }
 
+            JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString)
+            {
+                TypeLocator = new SimpleTypeLocator(
+                    this.GetType(), 
+                    typeof(BlobToCustomObjectBinder))
+            };
+
             // The jobs host is started
-            JobHost host = new JobHost(new JobHostConfiguration(_connectionString));
+            JobHost host = new JobHost(hostConfig);
 
             CancellationTokenSource tokenSource = new CancellationTokenSource();
 
@@ -174,7 +182,6 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 hostThread.Abort();
             }
         }
-
 
         private void UploadTestObject()
         {
