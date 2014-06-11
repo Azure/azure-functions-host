@@ -1,0 +1,19 @@
+﻿#if PUBLICPROTOCOL
+namespace Microsoft.Azure.Jobs.Protocols
+#else
+namespace Microsoft.Azure.Jobs.Host.Protocols
+#endif
+{
+    /// <summary>Defines a persistent queue writer.</summary>
+    /// <typeparam name="T">The type of messages in the queue.</typeparam>
+#if PUBLICPROTOCOL
+    public interface IPersistentQueueWriter<T>
+#else
+    internal interface IPersistentQueueWriter<T>
+#endif
+    {
+        /// <summary>Adds a message to the queue.</summary>
+        /// <param name="message">The message to enqueue.</param>
+        void Enqueue(T message);
+    }
+}

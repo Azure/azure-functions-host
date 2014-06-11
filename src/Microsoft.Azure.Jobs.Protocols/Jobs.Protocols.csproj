@@ -57,6 +57,7 @@
     <Compile Include="CredentialsDescriptor.cs" />
     <Compile Include="FunctionFailure.cs" />
     <Compile Include="FunctionStartedMessageExtensions.cs" />
+    <Compile Include="IPersistentQueueReader.cs" />
     <Compile Include="JsonSerialization.cs" />
     <Compile Include="HeartbeatCommand.cs" />
     <Compile Include="HeartbeatDescriptor.cs" />
@@ -65,6 +66,7 @@
     <Compile Include="HeartbeatMonitor.cs" />
     <Compile Include="InvokeParameterDescriptor.cs" />
     <Compile Include="LocalBlobDescriptor.cs" />
+    <Compile Include="PersistentQueueReader.cs" />
     <Compile Include="TextParameterLog.cs" />
     <Compile Include="ParameterLog.cs" />
     <Compile Include="QueueTriggerParameterDescriptor.cs" />
@@ -80,13 +82,13 @@
     <Compile Include="HostMessage.cs" />
     <Compile Include="HostStartedMessage.cs" />
     <Compile Include="IHostMessageSender.cs" />
-    <Compile Include="IPersistentQueue.cs" />
+    <Compile Include="IPersistentQueueWriter.cs" />
     <Compile Include="IHeartbeatMonitor.cs" />
     <Compile Include="IHeartbeatCommand.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
     <Compile Include="NullHeartbeatCommand.cs" />
     <Compile Include="ParameterDescriptor.cs" />
-    <Compile Include="PersistentQueue.cs" />
+    <Compile Include="PersistentQueueWriter.cs" />
     <Compile Include="PersistentQueueMessage.cs" />
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />

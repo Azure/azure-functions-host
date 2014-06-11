@@ -5,9 +5,9 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal class PersistentQueueFunctionInstanceLogger : IFunctionInstanceLogger
     {
-        private readonly IPersistentQueue<PersistentQueueMessage> _queue;
+        private readonly IPersistentQueueWriter<PersistentQueueMessage> _queue;
 
-        public PersistentQueueFunctionInstanceLogger(IPersistentQueue<PersistentQueueMessage> queue)
+        public PersistentQueueFunctionInstanceLogger(IPersistentQueueWriter<PersistentQueueMessage> queue)
         {
             if (queue == null)
             {

@@ -99,16 +99,18 @@ namespace Microsoft.Azure.Jobs
                     WebJobRunIdentifier = WebJobRunIdentifier.Current,
                 };
 
-                IPersistentQueue<PersistentQueueMessage> persistentQueue = new PersistentQueue<PersistentQueueMessage>(blobClient);
+                IPersistentQueueWriter<PersistentQueueMessage> persistentQueueWriter =
+                    new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
-                    persistentQueue);
+                    persistentQueueWriter);
 
                 var logger = new WebExecutionLogger(_hostOutputMessage, account);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
-                    new PersistentQueueFunctionInstanceLogger(persistentQueue), new ConsoleFunctionInstanceLogger());
+                    new PersistentQueueFunctionInstanceLogger(persistentQueueWriter),
+                    new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
                 _heartbeatCommand = new HeartbeatCommand(account, heartbeatDescriptor.SharedContainerName,
@@ -240,7 +242,7 @@ namespace Microsoft.Azure.Jobs
         // Publish functions to the cloud
         // This lets another site go view them. 
         private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string storageConnectionString,
-            string serviceBusConnectionString, IPersistentQueue<PersistentQueueMessage> logger)
+            string serviceBusConnectionString, IPersistentQueueWriter<PersistentQueueMessage> logger)
         {
             FunctionDefinition[] functions = functionTableLookup.ReadAll();
 

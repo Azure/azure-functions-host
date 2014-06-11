@@ -8,17 +8,17 @@ namespace Dashboard.Indexers
 {
     internal class Indexer : IIndexer
     {
-        private readonly IPersistentQueue<PersistentQueueMessage> _queue;
+        private readonly IPersistentQueueReader<PersistentQueueMessage> _queueReader;
         private readonly IHostInstanceLogger _hostInstanceLogger;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly ICausalityLogger _causalityLogger;
         private readonly IFunctionsInJobIndexer _functionsInJobIndexer;
 
-        public Indexer(IPersistentQueue<PersistentQueueMessage> queue, IHostInstanceLogger hostInstanceLogger,
-            IFunctionInstanceLogger functionInstanceLogger, ICausalityLogger causalityLogger,
-            IFunctionsInJobIndexer functionsInJobIndexer)
+        public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
+            IHostInstanceLogger hostInstanceLogger, IFunctionInstanceLogger functionInstanceLogger,
+            ICausalityLogger causalityLogger, IFunctionsInJobIndexer functionsInJobIndexer)
         {
-            _queue = queue;
+            _queueReader = queueReader;
             _hostInstanceLogger = hostInstanceLogger;
             _functionInstanceLogger = functionInstanceLogger;
             _causalityLogger = causalityLogger;
@@ -27,14 +27,14 @@ namespace Dashboard.Indexers
 
         public void Update()
         {
-            PersistentQueueMessage message = _queue.Dequeue();
+            PersistentQueueMessage message = _queueReader.Dequeue();
 
             while (message != null)
             {
                 Process(message);
-                _queue.Delete(message);
+                _queueReader.Delete(message);
 
-                message = _queue.Dequeue();
+                message = _queueReader.Dequeue();
             }
         }
 

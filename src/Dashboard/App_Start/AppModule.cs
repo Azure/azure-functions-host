@@ -46,7 +46,7 @@ namespace Dashboard
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
-            Bind<IPersistentQueue<PersistentQueueMessage>>().To<PersistentQueue<PersistentQueueMessage>>();
+            Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
             Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();

@@ -154,8 +154,8 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\InvokeParameterDescriptor.cs">
       <Link>Protocols\InvokeParameterDescriptor.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IPersistentQueue.cs">
-      <Link>Protocols\IPersistentQueue.cs</Link>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IPersistentQueueWriter.cs">
+      <Link>Protocols\IPersistentQueueWriter.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\JsonSerialization.cs">
       <Link>Protocols\JsonSerialization.cs</Link>
@@ -175,11 +175,11 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ParameterLog.cs">
       <Link>Protocols\ParameterLog.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueue.cs">
-      <Link>Protocols\PersistentQueue.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueMessage.cs">
       <Link>Protocols\PersistentQueueMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PersistentQueueWriter.cs">
+      <Link>Protocols\PersistentQueueWriter.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\PolymorphicJsonConverter.cs">
       <Link>Protocols\PolymorphicJsonConverter.cs</Link>
