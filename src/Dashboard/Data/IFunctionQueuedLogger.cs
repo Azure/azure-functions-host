@@ -1,10 +1,12 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
     public interface IFunctionQueuedLogger
     {
-        // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
-        void LogFunctionQueued(FunctionStartedMessage message);
+        void LogFunctionQueued(Guid id, IDictionary<string, string> arguments, Guid? parentId, DateTimeOffset queueTime,
+            string functionId, string functionFullName, string functionShortName);
     }
 }

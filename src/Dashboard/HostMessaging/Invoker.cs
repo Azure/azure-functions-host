@@ -30,31 +30,13 @@ namespace Dashboard.HostMessaging
                 Reason = reason
             };
 
-            FunctionStartedMessage queuedMessage = CreateFunctionStartedMessage(function, message);
-            _logger.LogFunctionQueued(queuedMessage);
+            string functionId = new FunctionIdentifier(function.QueueName, function.HostFunctionId).ToString();
+            _logger.LogFunctionQueued(id, arguments, parentId, DateTimeOffset.UtcNow, functionId, function.FullName,
+                function.ShortName);
 
             _sender.Enqueue(queueName, message);
 
             return id;
-        }
-
-        private static FunctionStartedMessage CreateFunctionStartedMessage(FunctionSnapshot function,
-            CallAndOverrideMessage message)
-        {
-            return new FunctionStartedMessage
-            {
-                FunctionInstanceId = message.Id,
-                Function = new FunctionDescriptor
-                {
-                    Id = message.FunctionId,
-                    FullName = function.FullName,
-                    ShortName = function.ShortName
-                },
-                Arguments = message.Arguments,
-                ParentId = message.ParentId,
-                Reason = message.Reason,
-                StartTime = DateTimeOffset.UtcNow
-            };
         }
     }
 }

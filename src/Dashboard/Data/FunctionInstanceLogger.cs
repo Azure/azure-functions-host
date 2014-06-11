@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs.Protocols;
@@ -27,18 +28,38 @@ namespace Dashboard.Data
             _client = client;
         }
 
-        // Using FunctionStartedSnapshot is a slight abuse; StartTime here is really QueueTime.
-        public void LogFunctionQueued(FunctionStartedMessage message)
+        public void LogFunctionQueued(Guid id, IDictionary<string, string> arguments, Guid? parentId,
+            DateTimeOffset queueTime, string functionId, string functionFullName, string functionShortName)
         {
-            FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
-            // Fix the abuse of FunctionStartedSnapshot.
-            snapshot.StartTime = null;
+            FunctionInstanceSnapshot snapshot = new FunctionInstanceSnapshot
+            {
+                Id = id,
+                FunctionId = functionId,
+                FunctionFullName = functionFullName,
+                FunctionShortName = functionShortName,
+                Arguments = CreateArguments(arguments),
+                ParentId = parentId,
+                Reason = parentId.HasValue ? "Replayed from Dashboard." : "Ran from Dashboard.",
+                QueueTime = queueTime
+            };
 
             // Ignore the return result. Only the dashboard calls this method, and it does so before enqueuing the
             // message to the host to run the function. So realistically the blob can't already exist. And even if the
             // host did see the message before this call, an existing blob just means something more recent than
             // "queued" status, so there's nothing to do here in that case anyway.
-            _store.TryCreate(GetId(message), snapshot);
+            _store.TryCreate(GetId(id), snapshot);
+        }
+
+        private static IDictionary<string, FunctionInstanceArgument> CreateArguments(IDictionary<string, string> values)
+        {
+            Dictionary<string, FunctionInstanceArgument> arguments = new Dictionary<string, FunctionInstanceArgument>();
+
+            foreach (KeyValuePair<string, string> value in values)
+            {
+                arguments.Add(value.Key, new FunctionInstanceArgument { Value = value.Value });
+            }
+
+            return arguments;
         }
 
         public void LogFunctionStarted(FunctionStartedMessage message)
@@ -191,12 +212,17 @@ namespace Dashboard.Data
 
         private static string GetId(FunctionInstanceSnapshot snapshot)
         {
-            return snapshot.Id.ToString("N");
+            return GetId(snapshot.Id);
         }
 
         private static string GetId(FunctionStartedMessage message)
         {
-            return message.FunctionInstanceId.ToString("N");
+            return GetId(message.FunctionInstanceId);
+        }
+
+        private static string GetId(Guid guid)
+        {
+            return guid.ToString("N");
         }
     }
 }
