@@ -1,6 +1,4 @@
-﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
-
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs.Host
 {

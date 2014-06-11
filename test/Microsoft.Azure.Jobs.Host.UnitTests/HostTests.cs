@@ -12,7 +12,20 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     public class HostUnitTests
     {
         [Fact]
-        public void SimpleInvoke()
+        public void SimpleInvoke_WithDictionary()
+        {
+            var host = new TestJobHost<ProgramSimple>(null);
+
+            var x = "abc";
+            ProgramSimple._value = null;
+            host.Call("Test", new Dictionary<string, object> { { "value", x } });
+
+            // Ensure test method was invoked properly.
+            Assert.Equal(x, ProgramSimple._value);
+        }
+
+        [Fact]
+        public void SimpleInvoke_WithObject()
         {
             var host = new TestJobHost<ProgramSimple>(null);
 
