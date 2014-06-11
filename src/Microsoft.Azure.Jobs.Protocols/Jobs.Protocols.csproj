@@ -55,6 +55,7 @@
     <Compile Include="ConnectionStringDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
     <Compile Include="CredentialsDescriptor.cs" />
+    <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="FunctionFailure.cs" />
     <Compile Include="FunctionStartedMessageExtensions.cs" />
     <Compile Include="IPersistentQueueReader.cs" />

@@ -18,5 +18,10 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
         /// <summary>The name of the container where protocol messages from the host are stored.</summary>
         public const string HostOutputContainerName = Prefix + "host-output";
+
+        /// <summary>
+        /// The name of the container where protocol messages from the host are archived after processing.
+        /// </summary>
+        public const string HostArchiveContainerName = Prefix + "host-archive";
     }
 }

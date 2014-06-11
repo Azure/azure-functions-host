@@ -25,22 +25,28 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         private const string NextVisibleTimeKey = "NextVisibleTime";
         private const string CreatedKey = "Created";
 
-        private readonly CloudBlobContainer _blobContainer;
+        private readonly CloudBlobContainer _outputContainer;
+        private readonly CloudBlobContainer _archiveContainer;
 
         /// <summary>Initializes a new instance of the <see cref="PersistentQueueReader{T}"/> class.</summary>
         /// <param name="client">
         /// A blob client for the storage account into which host output messages are written.
         /// </param>
         public PersistentQueueReader(CloudBlobClient client)
-            : this(client.GetContainerReference(ContainerNames.HostOutputContainerName))
+            : this(client.GetContainerReference(ContainerNames.HostOutputContainerName),
+            client.GetContainerReference(ContainerNames.HostArchiveContainerName))
         {
         }
 
         /// <summary>Initializes a new instance of the <see cref="PersistentQueueReader{T}"/> class.</summary>
-        /// <param name="container">The container into which host output messages are written.</param>
-        public PersistentQueueReader(CloudBlobContainer container)
+        /// <param name="outputContainer">The container into which output messages are written by the host.</param>
+        /// <param name="archiveContainer">
+        /// The container into which host output messages are archived after processing.
+        /// </param>
+        public PersistentQueueReader(CloudBlobContainer outputContainer, CloudBlobContainer archiveContainer)
         {
-            _blobContainer = container;
+            _outputContainer = outputContainer;
+            _archiveContainer = archiveContainer;
         }
 
         /// <inheritdoc />
@@ -92,7 +98,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
             try
             {
-                return _blobContainer.ListBlobsSegmented(prefix: null,
+                return _outputContainer.ListBlobsSegmented(prefix: null,
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.Metadata,
                     maxResults: batchSize,
@@ -232,8 +238,80 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <inheritdoc />
         public void Delete(T message)
         {
-            ICloudBlob blob = _blobContainer.GetBlockBlobReference(message.PopReceipt);
-            blob.DeleteIfExists();
+            string blobName = message.PopReceipt;
+            CloudBlockBlob outputBlob = _outputContainer.GetBlockBlobReference(message.PopReceipt);
+            Stream outputStream;
+
+            try
+            {
+                outputStream = outputBlob.OpenRead();
+            }
+            catch (StorageException exception)
+            {
+                if (!exception.IsNotFound())
+                {
+                    throw;
+                }
+                else
+                {
+                    // The output blob no longer exists; someone else finished processing it.
+                    return;
+                }
+            }
+
+            // Before archiving the blob, remove the metadata containing the processing virtual lock.
+            // Calling SetMetadata afterwards is not required since we're doing a client-side blob copy.
+            outputBlob.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
+
+            // Do a client-side blob copy. Note that StartCopyFromBlob is another option, but that would require polling to
+            // wait for completion.
+            CloudBlockBlob archiveBlob = _archiveContainer.GetBlockBlobReference(message.PopReceipt);
+            CopyProperties(outputBlob, archiveBlob);
+            CopyMetadata(outputBlob, archiveBlob);
+
+            try
+            {
+                archiveBlob.UploadFromStream(outputStream);
+            }
+            catch (StorageException exception)
+            {
+                if (!exception.IsNotFound())
+                {
+                    throw;
+                }
+                else
+                {
+                    _archiveContainer.CreateIfNotExists();
+                    outputStream.Position = 0;
+                    archiveBlob.UploadFromStream(outputStream);
+                }
+            }
+
+            outputBlob.DeleteIfExists();
+        }
+
+        private static void CopyProperties(ICloudBlob source, ICloudBlob destination)
+        {
+            BlobProperties sourceProperties = source.Properties;
+            BlobProperties destinationProperties = destination.Properties;
+
+            destinationProperties.CacheControl = sourceProperties.CacheControl;
+            destinationProperties.ContentDisposition = sourceProperties.ContentDisposition;
+            destinationProperties.ContentEncoding = sourceProperties.ContentEncoding;
+            destinationProperties.ContentLanguage = sourceProperties.ContentLanguage;
+            destinationProperties.ContentMD5 = sourceProperties.ContentMD5;
+            destinationProperties.ContentType = sourceProperties.ContentType;
+        }
+
+        private static void CopyMetadata(ICloudBlob source, ICloudBlob destination)
+        {
+            IDictionary<string, string> sourceMetadata = source.Metadata;
+            IDictionary<string, string> destinationMetadata = destination.Metadata;
+
+            foreach (KeyValuePair<string, string> metadata in sourceMetadata)
+            {
+                destinationMetadata.Add(metadata.Key, metadata.Value);
+            }
         }
     }
 }
