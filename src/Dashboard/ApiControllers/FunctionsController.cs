@@ -1,18 +1,18 @@
-﻿using AzureTables;
-using Dashboard.Controllers;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web.Http;
+using AzureTables;
 using Dashboard.Data;
+using Dashboard.HostMessaging;
 using Dashboard.InvocationLog;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web.Http;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
-using Dashboard.HostMessaging;
 
 namespace Dashboard.ApiControllers
 {
@@ -25,6 +25,8 @@ namespace Dashboard.ApiControllers
         private readonly IHeartbeatMonitor _heartbeatMonitor;
         private readonly IAborter _aborter;
         private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
+        private readonly ConcurrentDictionary<string, bool?> _cachedHostHeartbeats =
+            new ConcurrentDictionary<string, bool?>();
 
         internal FunctionsController(
             CloudStorageAccount account,
@@ -273,7 +275,18 @@ namespace Dashboard.ApiControllers
 
         private bool? HostHasHeartbeat(FunctionSnapshot snapshot)
         {
-            return HostHasHeartbeat(_heartbeatMonitor, snapshot);
+            string hostId = snapshot.HeartbeatSharedContainerName + "/" + snapshot.HeartbeatSharedDirectoryName;
+
+            if (_cachedHostHeartbeats.ContainsKey(hostId))
+            {
+                return _cachedHostHeartbeats[hostId];
+            }
+            else
+            {
+                bool? heartbeat = HostHasHeartbeat(_heartbeatMonitor, snapshot);
+                _cachedHostHeartbeats.AddOrUpdate(hostId, heartbeat, (ignore1, ignore2) => heartbeat);
+                return heartbeat;
+            }
         }
 
         internal static bool? HostHasHeartbeat(IHeartbeatMonitor heartbeatMonitor, FunctionSnapshot snapshot)
