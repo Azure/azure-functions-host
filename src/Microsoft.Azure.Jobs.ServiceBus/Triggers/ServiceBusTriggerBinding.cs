@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -101,20 +102,27 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(BrokeredMessage message)
+        private IReadOnlyDictionary<string, object> CreateBindingData(BrokeredMessage clonedMessage)
         {
             string contents;
 
-            using (Stream stream = message.GetBody<Stream>())
+            using (Stream stream = clonedMessage.GetBody<Stream>())
             {
                 if (stream == null)
                 {
                     return null;
                 }
 
-                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                try
                 {
-                    contents = reader.ReadToEnd();
+                    using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                    {
+                        contents = reader.ReadToEnd();
+                    }
+                }
+                catch (DecoderFallbackException)
+                {
+                    return null;
                 }
             }
 
