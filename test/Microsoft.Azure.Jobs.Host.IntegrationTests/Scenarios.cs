@@ -1,7 +1,10 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
@@ -20,10 +23,17 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             string container = @"daas-test-input";
             TestBlobClient.DeleteContainer(account, container);
             QueueClient.DeleteQueue(account, "queuetest");
-                        
+
             TestBlobClient.WriteBlob(account, container, "foo.csv", "15");
 
-            host.Host.RunOneIteration();
+            using (CancellationTokenSource source = new CancellationTokenSource())
+            {
+                source.CancelAfter(3000);
+                ICloudBlob blob = account.CreateCloudBlobClient()
+                    .GetContainerReference(container).GetBlockBlobReference("foo.output");
+                Action updateTokenSource = () => CancelWhenBlobExists(source, blob);
+                host.Host.RunAndBlock(source.Token, updateTokenSource);
+            }
 
             string output = TestBlobClient.ReadBlob(account, container, "foo.output");
             // Ensure blob output has been written
@@ -31,6 +41,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.Equal("16", output);
 
             QueueClient.DeleteQueue(account, "queuetest");
+        }
+
+        private static void CancelWhenBlobExists(CancellationTokenSource source, ICloudBlob blob)
+        {
+            if (blob.Exists())
+            {
+                source.Cancel();
+            }
         }
 
         // Test basic propagation between blobs. 
@@ -52,9 +70,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             };
 
             JobHost host = new JobHost(configuration);
-            
+
             string container = @"daas-test-input";
-            TestBlobClient.DeleteContainer(account, container);                       
+            TestBlobClient.DeleteContainer(account, container);
 
             // Nothing written yet, so polling shouldn't execute anything
             host.RunOneIteration();
@@ -117,7 +135,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     Value = 123
                 }));
 
-                host.Host.RunOneIteration();
+                using (CancellationTokenSource source = new CancellationTokenSource())
+                {
+                    source.CancelAfter(2000);
+                    Action updateTokenSource = () => CancelWhenRowUpdated<SimpleEntity>(source, table, partitionKey, rowKey,
+                        (current) => current.Value == 456);
+                    host.Host.RunAndBlock(source.Token, updateTokenSource);
+                }
 
                 SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()
                                        where item.PartitionKey == partitionKey && item.RowKey == rowKey
@@ -133,9 +157,20 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 table.DeleteIfExists();
             }
         }
+
+        private static void CancelWhenRowUpdated<TElement>(CancellationTokenSource source, CloudTable table,
+            string partitionKey, string rowKey, Func<TElement, bool> watcher) where TElement : ITableEntity
+        {
+            TableOperation retrieve = TableOperation.Retrieve<TElement>(partitionKey, rowKey);
+            TableResult result = table.Execute(retrieve);
+            if (watcher.Invoke((TElement)result.Result))
+            {
+                source.Cancel();
+            }
+        }
     }
 
- // Blob --> queue message --> Blob
+    // Blob --> queue message --> Blob
     class ProgramQueues
     {
         public class Payload
@@ -146,12 +181,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void AddToQueue(
-            [BlobTrigger(@"daas-test-input/{name}.csv")] TextReader values, 
+            [BlobTrigger(@"daas-test-input/{name}.csv")] TextReader values,
             [Queue("queueTest")] out Payload queueTest)
         {
             string content = values.ReadToEnd();
             int val = int.Parse(content);
-            queueTest = new Payload { 
+            queueTest = new Payload
+            {
                 Value = val + 1,
                 Output = "foo.output"
             };
@@ -160,7 +196,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         // Triggered on queue. 
         // Route parameters are bound from queue values
         public static void GetFromQueue(
-            [QueueTrigger("queueTest")] Payload queueTest, 
+            [QueueTrigger("queueTest")] Payload queueTest,
             [Blob(@"daas-test-input/{Output}")] TextWriter output,
             int Value // bound from queueTest.Value
             )
@@ -201,7 +237,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         public static void Func2(
-            [BlobTrigger(@"daas-test-input/{name}.2")] TextReader values,            
+            [BlobTrigger(@"daas-test-input/{name}.2")] TextReader values,
             [Blob(@"daas-test-input/{name}.3")] TextWriter output)
         {
             var content = values.ReadToEnd();
