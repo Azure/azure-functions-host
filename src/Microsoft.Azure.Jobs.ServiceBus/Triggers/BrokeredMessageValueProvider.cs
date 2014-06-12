@@ -51,14 +51,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     }
 
                     inputStream.CopyTo(outputStream);
+                    byte[] bytes = outputStream.ToArray();
 
                     try
                     {
-                        return StrictEncodings.Utf8.GetString(outputStream.ToArray());
+                        return StrictEncodings.Utf8.GetString(bytes);
                     }
                     catch (DecoderFallbackException)
                     {
-                        return "byte[" + message.Size + "]";
+                        return "byte[" + bytes.Length + "]";
                     }
                 }
             }
