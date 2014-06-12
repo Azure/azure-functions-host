@@ -68,14 +68,21 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 }
             }
 
+            List<Trigger> globalTriggers = new List<Trigger>();
+
             if (_sharedTrigger != null)
             {
-                map.AddTriggers(String.Empty, _sharedTrigger);
+                globalTriggers.Add(_sharedTrigger);
             }
 
             if (_instanceTrigger != null)
             {
-                map.AddTriggers(String.Empty, _instanceTrigger);
+                globalTriggers.Add(_instanceTrigger);
+            }
+
+            if (globalTriggers.Count > 0)
+            {
+                map.AddTriggers(String.Empty, globalTriggers.ToArray());
             }
 
             _listener = new Listener(map, new MyInvoker(this), this);
