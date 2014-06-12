@@ -47,30 +47,47 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
                 return null;
             }
 
+            JObject obj;
+
             try
             {
-                Dictionary<string, object> d = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-                JObject obj = JObject.Parse(json);
-
-                foreach (var param in contract)
-                {
-                    JToken token;
-                    if (obj.TryGetValue(param.Key, out token))
-                    {
-                        // Only include simple types (ints, strings, etc).
-                        JValue value = token as JValue;
-                        if (value != null)
-                        {
-                            d.Add(param.Key, Convert.ChangeType(value.Value, param.Value));
-                        }
-                    }
-                }
-                return d;
+                obj = JObject.Parse(json);
             }
-            catch (JsonException)
+            catch
             {
                 return null;
             }
+
+            Dictionary<string, object> d = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            foreach (var param in contract)
+            {
+                JToken token;
+                if (obj.TryGetValue(param.Key, out token))
+                {
+                    // Only include simple types (ints, strings, etc).
+                    JValue value = token as JValue;
+                    if (value != null)
+                    {
+                        object unconvertedValue = value.Value;
+                        Type expectedType = param.Value;
+                        object convertedValue;
+
+                        try
+                        {
+                            convertedValue = Convert.ChangeType(unconvertedValue, expectedType);
+                        }
+                        catch
+                        {
+                            // Skip values that can't be converted to the correct type.
+                            continue;
+                        }
+
+                        d.Add(param.Key, convertedValue);
+                    }
+                }
+            }
+
+            return d;
         }
     }
 }
