@@ -29,6 +29,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 
         public void StartPollingServiceBus(RuntimeBindingProviderContext context)
         {
+            if (_serviceBusTriggers.Count == 0)
+            {
+                return;
+            }
+
             CancellationToken cancellationToken = context.CancellationToken;
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(context.ServiceBusConnectionString);
 
