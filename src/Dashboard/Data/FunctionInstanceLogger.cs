@@ -196,7 +196,7 @@ namespace Dashboard.Data
 
         private static ParameterDescriptor GetParameterDescriptor(IEnumerable<ParameterDescriptor> parameters, string name)
         {
-            return parameters.FirstOrDefault(p => p != null && p.Name == name);
+            return parameters != null ? parameters.FirstOrDefault(p => p != null && p.Name == name) : null;
         }
 
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionCompletedMessage message)

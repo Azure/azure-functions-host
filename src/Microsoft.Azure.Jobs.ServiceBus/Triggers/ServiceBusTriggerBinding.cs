@@ -32,9 +32,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             _entityPath = queueName;
         }
 
-        public ServiceBusTriggerBinding(IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
+        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
             string topicName, string subscriptionName)
         {
+            _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _topicName = topicName;

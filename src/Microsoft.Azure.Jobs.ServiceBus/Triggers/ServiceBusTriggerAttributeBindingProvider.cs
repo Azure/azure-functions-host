@@ -56,7 +56,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             }
             else
             {
-                return new ServiceBusTriggerBinding(argumentBinding, account, topicName, subscriptionName);
+                return new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName);
             }
         }
     }
