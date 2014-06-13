@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 return null;
             }
 
-            Type itemType = genericTypeDefinition.GetGenericArguments()[0];
+            Type itemType = parameterType.GetGenericArguments()[0];
 
             IArgumentBinding<ServiceBusEntity> itemBinding;
 

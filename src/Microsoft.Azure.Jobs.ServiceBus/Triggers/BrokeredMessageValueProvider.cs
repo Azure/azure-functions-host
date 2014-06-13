@@ -39,11 +39,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return _invokeString;
         }
 
-        private static string CreateInvokeString(BrokeredMessage message)
+        private static string CreateInvokeString(BrokeredMessage clonedMessage)
         {
             using (MemoryStream outputStream = new MemoryStream())
             {
-                using (Stream inputStream = message.GetBody<Stream>())
+                using (Stream inputStream = clonedMessage.GetBody<Stream>())
                 {
                     if (inputStream == null)
                     {
