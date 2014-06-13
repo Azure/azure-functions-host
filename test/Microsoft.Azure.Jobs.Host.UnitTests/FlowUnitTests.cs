@@ -167,7 +167,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.Equal(1, flows.Count);
 
             Assert.True(flows.ContainsKey("bound"));
-            Assert.IsType<StructDataBinding<string, int>>(flows["bound"]);
+            Assert.IsType<ClassDataBinding<string>>(flows["bound"]);
         }
     }
 }

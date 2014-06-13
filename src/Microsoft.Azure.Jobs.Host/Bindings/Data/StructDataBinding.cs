@@ -1,15 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 {
-    internal class StructDataBinding<TBindingData, TValue> : IBinding
-        where TValue : struct
+    internal class StructDataBinding<TBindingData> : IBinding
+        where TBindingData : struct
     {
-        private static readonly IObjectToTypeConverter<TValue> _converter = new CompositeObjectToTypeConverter<TValue>(
-            new StructOutputConverter<TValue, TValue>(new IdentityConverter<TValue>()),
-            new ClassOutputConverter<string, TValue>(new StringToTConverter<TValue>()));
+        private static readonly IObjectToTypeConverter<TBindingData> _converter =
+            new StructOutputConverter<TBindingData, TBindingData>(new IdentityConverter<TBindingData>());
 
         private readonly string _parameterName;
         private readonly IArgumentBinding<TBindingData> _argumentBinding;
@@ -25,18 +25,18 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             get { return false; }
         }
 
-        private IValueProvider Bind(TValue value, ArgumentBindingContext context)
+        private IValueProvider Bind(TBindingData bindingDataItem, ArgumentBindingContext context)
         {
-            return new ObjectValueProvider(value, typeof(TValue));
+            return _argumentBinding.Bind(bindingDataItem, context);
         }
 
         public IValueProvider Bind(object value, ArgumentBindingContext context)
         {
-            TValue typedValue = default(TValue);
+            TBindingData typedValue;
 
             if (!_converter.TryConvert(value, out typedValue))
             {
-                throw new InvalidOperationException("Unable to convert value to " + typeof(TValue).Name + ".");
+                throw new InvalidOperationException("Unable to convert value to " + typeof(TBindingData).Name + ".");
             }
 
             return Bind(typedValue, context);
@@ -44,7 +44,24 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(context.BindingData[_parameterName], context);
+            IReadOnlyDictionary<string, object> bindingData = context.BindingData;
+
+            if (!bindingData.ContainsKey(_parameterName))
+            {
+                throw new InvalidOperationException(
+                    "Binding data does not contain expected value '" + _parameterName + "'.");
+            }
+
+            object untypedValue = bindingData[_parameterName];
+
+            if (!(untypedValue is TBindingData))
+            {
+                throw new InvalidOperationException("Binding data for '" + _parameterName +
+                    "' is not of expected type " + typeof(TBindingData).Name + ".");
+            }
+
+            TBindingData typedValue = (TBindingData)untypedValue;
+            return Bind(typedValue, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

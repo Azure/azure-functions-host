@@ -234,6 +234,8 @@
     <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBinding.cs" />
     <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBindingProvider.cs" />
     <Compile Include="Bindings\ConsoleOutput\ConsoleOutputValueProvider.cs" />
+    <Compile Include="Bindings\Data\StructDataBindingProvider.cs" />
+    <Compile Include="Bindings\Data\ClassDataBindingProvider.cs" />
     <Compile Include="Bindings\Data\CompositeArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Data\ConverterArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Data\ClassDataBinding.cs" />
