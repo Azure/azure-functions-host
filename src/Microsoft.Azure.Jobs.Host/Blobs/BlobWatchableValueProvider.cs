@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 
         public Type Type
         {
-            get { return typeof(Stream); }
+            get { return _valueType; }
         }
 
         public object GetValue()

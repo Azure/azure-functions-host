@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 
             public Type Type
             {
-                get { return typeof(ServiceBusEntity); }
+                get { return typeof(BrokeredMessage); }
             }
 
             public object GetValue()
