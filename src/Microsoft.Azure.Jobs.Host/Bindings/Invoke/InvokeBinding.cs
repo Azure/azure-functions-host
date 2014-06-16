@@ -6,6 +6,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
     {
         public static IBinding Create(string parameterName, Type parameterType)
         {
+            if (parameterType.IsByRef)
+            {
+                return null;
+            }
+
             Type genericTypeDefinition;
 
             if (!parameterType.IsValueType)

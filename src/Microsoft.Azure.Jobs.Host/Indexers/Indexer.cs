@@ -140,6 +140,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             }
 
             bool hasParameterBindingAttribute = false;
+            Exception invalidInvokeBindingException = null;
 
             foreach (ParameterInfo parameter in parameters)
             {
@@ -166,7 +167,19 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                     else
                     {
                         // Host.Call-only parameter
-                        binding = InvokeBinding.Create(parameter.Name, parameter.ParameterType);
+                        string parameterName = parameter.Name;
+                        Type parameterType = parameter.ParameterType;
+
+                        binding = InvokeBinding.Create(parameterName, parameterType);
+
+                        if (binding == null && invalidInvokeBindingException == null)
+                        {
+                            // This function might not have any attribute, in which case we shouldn't throw an
+                            // exception when we can't bind it. Instead, save this exception for later once we determine
+                            // whether or not it is an Azure Jobs function.
+                            invalidInvokeBindingException = new InvalidOperationException("Cannot bind parameter '" +
+                                parameterName + "' to type " + parameterType + ".");
+                        }
                     }
                 }
                 else if (!hasParameterBindingAttribute)
@@ -187,6 +200,11 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                 {
                     return null;
                 }
+            }
+
+            if (invalidInvokeBindingException != null)
+            {
+                throw invalidInvokeBindingException;
             }
 
             // Validation: prevent multiple ConsoleOutputs
