@@ -38,49 +38,7 @@ namespace Dashboard
     // $$$ Analysis can be expensive. Use a cache?
     public class LogAnalysis
     {
-        // Gets static information
-        internal static ParamModel[] GetParamInfo(FunctionSnapshot function)
-        {
-            var parameters = function.Parameters;
-
-            ParamModel[] ps = new ParamModel[parameters.Count];
-            int index = 0;
-
-            foreach (KeyValuePair<string, ParameterSnapshot> parameter in parameters)
-            {
-                ps[index] = new ParamModel
-                {
-                    Name = parameter.Key,
-                    Description = parameter.Value.Description
-                };
-                index++;
-            }
-            return ps;
-        }
-
-        internal static void ApplyRuntimeInfo(FunctionInstanceSnapshot snapshot, ParamModel[] parameterModels)
-        {
-            foreach (KeyValuePair<string, FunctionInstanceArgument> pair in snapshot.Arguments)
-            {
-                ParamModel parameterModel = parameterModels.FirstOrDefault(p => p.Name == pair.Key);
-
-                if (parameterModel == null)
-                {
-                    continue;
-                }
-
-                FunctionInstanceArgument argument = pair.Value;
-                parameterModel.ArgInvokeString = argument.Value;
-
-                // If arg is a blob, provide a blob-aware link to explore that further.
-                if (argument.IsBlob)
-                {
-                    parameterModel.ExtendedBlobModel = CreateExtendedBlobModel(snapshot, argument);
-                }
-            }
-        }
-
-        private static BlobBoundParamModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
+        internal static BlobBoundParamModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
         {
             string[] components = argument.Value.Split(new char[] { '/' });
 
@@ -141,31 +99,8 @@ namespace Dashboard
             }
         }
 
-        internal static void ApplySelfWatchInfo(CloudStorageAccount account, FunctionInstanceSnapshot snapshot, ParamModel[] parameterModels)
-        {
-            // Get selfwatch information
-            IDictionary<string, string> selfwatch = GetParameterSelfWatch(account, snapshot);
-
-            if (selfwatch == null)
-            {
-                return;
-            }
-
-            foreach (KeyValuePair<string, string> pair in selfwatch)
-            {
-                ParamModel parameterModel = parameterModels.FirstOrDefault(p => p.Name == pair.Key);
-
-                if (parameterModel == null)
-                {
-                    continue;
-                }
-
-                parameterModel.SelfWatch = pair.Value;
-            }
-        }
-
         // Get Live information from current self-watch values. 
-        private static IDictionary<string, string> GetParameterSelfWatch(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
+        internal static IDictionary<string, string> GetParameterSelfWatch(FunctionInstanceSnapshot snapshot)
         {
             if (snapshot.ParameterLogs != null)
             {

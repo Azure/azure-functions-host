@@ -162,17 +162,7 @@ namespace Dashboard.ApiControllers
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running
                 && _aborter.HasRequestedHostInstanceAbort(func.InstanceQueueName);
-
-            // Do some analysis to find inputs, outputs, 
-
-            var functionSnapshot = _functionLookup.Read(func.FunctionId);
-
-            if (functionSnapshot != null)
-            {
-                model.Parameters = LogAnalysis.GetParamInfo(functionSnapshot);
-                LogAnalysis.ApplyRuntimeInfo(func, model.Parameters);
-                LogAnalysis.ApplySelfWatchInfo(_account, func, model.Parameters);
-            }
+            model.Parameters = CreateParameterModels(func);
 
             // fetch ancestor
             var parentGuid = func.ParentId;
@@ -194,6 +184,40 @@ namespace Dashboard.ApiControllers
             }
 
             return Ok(model);
+        }
+
+        private static ParamModel[] CreateParameterModels(FunctionInstanceSnapshot snapshot)
+        {
+            List<ParamModel> models = new List<ParamModel>();
+
+            IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
+            IDictionary<string, string> selfWatch = LogAnalysis.GetParameterSelfWatch(snapshot);
+
+            foreach (KeyValuePair<string, FunctionInstanceArgument> parameter in parameters)
+            {
+                string name = parameter.Key;
+                FunctionInstanceArgument argument = parameter.Value;
+
+                ParamModel model = new ParamModel
+                {
+                    Name = name,
+                    ArgInvokeString = argument.Value
+                };
+
+                if (selfWatch.ContainsKey(name))
+                {
+                    model.SelfWatch = selfWatch[name];
+                }
+
+                if (argument.IsBlob)
+                {
+                    model.ExtendedBlobModel = LogAnalysis.CreateExtendedBlobModel(snapshot, argument);
+                }
+
+                models.Add(model);
+            }
+
+            return models.ToArray();
         }
 
         [Route("api/functions/definitions")]
