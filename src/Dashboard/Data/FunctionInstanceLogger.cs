@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs.Protocols;
@@ -184,10 +185,12 @@ namespace Dashboard.Data
             {
                 string name = item.Key;
                 ParameterDescriptor descriptor = GetParameterDescriptor(parameters, name);
+                BlobParameterDescriptor blobDescriptor = descriptor as BlobParameterDescriptor;
                 arguments.Add(name, new FunctionInstanceArgument
                 {
                     Value = item.Value,
-                    IsBlob = descriptor is BlobParameterDescriptor || descriptor is BlobTriggerParameterDescriptor,
+                    IsBlob = blobDescriptor != null || descriptor is BlobTriggerParameterDescriptor,
+                    IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write
                 });
             }
 

@@ -52,6 +52,7 @@ namespace Dashboard
                 components[0]).GetBlockBlobReference(components[1]);
 
             var blobParam = new BlobBoundParamModel();
+            blobParam.IsOutput = argument.IsBlobOutput;
 
             Guid? blobWriter = GetBlobWriter(blob);
 
