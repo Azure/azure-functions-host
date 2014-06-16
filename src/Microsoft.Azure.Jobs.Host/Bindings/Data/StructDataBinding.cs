@@ -9,7 +9,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
         where TBindingData : struct
     {
         private static readonly IObjectToTypeConverter<TBindingData> _converter =
-            new StructOutputConverter<TBindingData, TBindingData>(new IdentityConverter<TBindingData>());
+            new CompositeObjectToTypeConverter<TBindingData>(
+                new StructOutputConverter<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
+                new ClassOutputConverter<string, TBindingData>(new StringToTConverter<TBindingData>()));
 
         private readonly string _parameterName;
         private readonly IArgumentBinding<TBindingData> _argumentBinding;
