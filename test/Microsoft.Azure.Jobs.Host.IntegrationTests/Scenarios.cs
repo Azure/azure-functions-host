@@ -137,7 +137,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
                 using (CancellationTokenSource source = new CancellationTokenSource())
                 {
-                    source.CancelAfter(2000);
+                    source.CancelAfter(3000);
                     Action updateTokenSource = () => CancelWhenRowUpdated<SimpleEntity>(source, table, partitionKey, rowKey,
                         (current) => current.Value == 456);
                     host.Host.RunAndBlock(source.Token, updateTokenSource);
