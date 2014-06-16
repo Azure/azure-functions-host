@@ -65,7 +65,6 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-
                 return new BrokeredMessageValueProvider(clone, convertedValue, _valueType);
             }
         }
