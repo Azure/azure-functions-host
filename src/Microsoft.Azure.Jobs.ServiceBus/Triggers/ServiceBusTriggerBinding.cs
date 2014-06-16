@@ -13,7 +13,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
     internal class ServiceBusTriggerBinding : ITriggerBinding<BrokeredMessage>
     {
         private static readonly IObjectToTypeConverter<BrokeredMessage> _converter =
-            new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>());
+            new CompositeObjectToTypeConverter<BrokeredMessage>(
+                new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
+                new OutputConverter<string>(new StringToBrokeredMessageConverter()));
 
         private readonly string _parameterName;
         private readonly IArgumentBinding<BrokeredMessage> _argumentBinding;
