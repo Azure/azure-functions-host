@@ -68,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 
         public ParameterDescriptor ToParameterDescriptor()
         {
-            return new RouteParameterDescriptor
+            return new BindingDataParameterDescriptor
             {
                 Name = _parameterName
             };

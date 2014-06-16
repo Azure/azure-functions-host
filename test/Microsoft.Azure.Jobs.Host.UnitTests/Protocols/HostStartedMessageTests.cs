@@ -20,8 +20,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
                     {
                         Parameters = new ParameterDescriptor[]
                         {
-                            new InvokeParameterDescriptor { Name = "A" },
-                            new InvokeParameterDescriptor { Name = "B" }
+                            new CallerSuppliedParameterDescriptor { Name = "A" },
+                            new CallerSuppliedParameterDescriptor { Name = "B" }
                         }
                     }
                 }
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
             Assert.IsType<HostStartedMessage>(message);
             HostStartedMessage typedMessage = (HostStartedMessage)message;
             ParameterDescriptor secondChildItem = typedMessage.Functions.Single().Parameters.FirstOrDefault(p => p.Name == "B");
-            Assert.IsType<InvokeParameterDescriptor>(secondChildItem);
+            Assert.IsType<CallerSuppliedParameterDescriptor>(secondChildItem);
         }
     }
 }

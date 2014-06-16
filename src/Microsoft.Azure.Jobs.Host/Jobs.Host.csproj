@@ -88,6 +88,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterDescriptor.cs">
       <Link>Protocols\BinderParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BindingDataParameterDescriptor.cs">
+      <Link>Protocols\BindingDataParameterDescriptor.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobParameterDescriptor.cs">
       <Link>Protocols\BlobParameterDescriptor.cs</Link>
     </Compile>
@@ -96,6 +99,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CallAndOverrideMessage.cs">
       <Link>Protocols\CallAndOverrideMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CallerSuppliedParameterDescriptor.cs">
+      <Link>Protocols\CallerSuppliedParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CancellationTokenParameterDescriptor.cs">
       <Link>Protocols\CancellationTokenParameterDescriptor.cs</Link>
@@ -151,9 +157,6 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IHeartbeatCommand.cs">
       <Link>Protocols\IHeartbeatCommand.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\InvokeParameterDescriptor.cs">
-      <Link>Protocols\InvokeParameterDescriptor.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\IPersistentQueueWriter.cs">
       <Link>Protocols\IPersistentQueueWriter.cs</Link>
     </Compile>
@@ -189,9 +192,6 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueTriggerParameterDescriptor.cs">
       <Link>Protocols\QueueTriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\RouteParameterDescriptor.cs">
-      <Link>Protocols\RouteParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusConnectionStringDescriptor.cs">
       <Link>Protocols\ServiceBusConnectionStringDescriptor.cs</Link>

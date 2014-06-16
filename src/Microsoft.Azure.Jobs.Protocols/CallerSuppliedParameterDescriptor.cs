@@ -5,11 +5,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
 {
     /// <summary>Represents a parameter bound to a caller-supplied value.</summary>
-    [JsonTypeName("Invoke")]
+    [JsonTypeName("CallerSupplied")]
 #if PUBLICPROTOCOL
-    public class InvokeParameterDescriptor : ParameterDescriptor
+    public class CallerSuppliedParameterDescriptor : ParameterDescriptor
 #else
-    internal class InvokeParameterDescriptor : ParameterDescriptor
+    internal class CallerSuppliedParameterDescriptor : ParameterDescriptor
 #endif
     {
     }

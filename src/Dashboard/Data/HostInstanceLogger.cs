@@ -167,8 +167,8 @@ namespace Dashboard.Data
                             serviceBusTriggerParameter.TopicName + "/Subscriptions/" + serviceBusTriggerParameter.SubscriptionName,
                         IsInput = true
                     };
-                case "Invoke":
-                case "Route":
+                case "CallerSupplied":
+                case "BindingData":
                     return new InvokeParameterSnapshot();
                 default:
                     // Don't convert parameters that aren't used for invoke purposes.
