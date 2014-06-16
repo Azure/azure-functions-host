@@ -118,18 +118,12 @@ namespace Dashboard
             var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
             var tableMruByFunction = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
-            var tableMruByFunctionSucceeded = CreateIndexTable(account,
-                DashboardTableNames.FunctionInvokeLogIndexMruFunctionSucceeded);
-            var tableMruFunctionFailed = CreateIndexTable(account,
-                DashboardTableNames.FunctionInvokeLogIndexMruFunctionFailed);
 
             IFunctionInstanceLogger statsAggregator = new ExecutionStatsAggregator(
                 instanceLookup,
                 tableStatsSummary,
                 tableMru,
-                tableMruByFunction,
-                tableMruByFunctionSucceeded,
-                tableMruFunctionFailed);
+                tableMruByFunction);
 
             return new CompositeFunctionInstanceLogger(instanceLogger, statsAggregator);
         }

@@ -21,8 +21,6 @@ namespace Dashboard.Data
         // These are all sorted by time stamp.
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRU;
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunction;
-        private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionSucceed;
-        private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunctionFailed;
 
         // Lookup in primary index
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
@@ -32,23 +30,17 @@ namespace Dashboard.Data
             IFunctionInstanceLookup functionInstanceLookup,
             IAzureTable<FunctionStatsEntity> tableStatsSummary,
             IAzureTable<FunctionInstanceGuid> tableMru,
-            IAzureTable<FunctionInstanceGuid> tableMruByFunction,
-            IAzureTable<FunctionInstanceGuid> tableMruByFunctionSucceeded,
-            IAzureTable<FunctionInstanceGuid> tableMruFunctionFailed)
+            IAzureTable<FunctionInstanceGuid> tableMruByFunction)
         {
             NotNull(functionInstanceLookup, "functionInstanceLookup");
             NotNull(tableStatsSummary, "tableStatsSummary");
             NotNull(tableMru, "tableMru");
             NotNull(tableMruByFunction, "tableMruByFunction");
-            NotNull(tableMruByFunctionSucceeded, "tableMruByFunctionSucceeded");
-            NotNull(tableMruFunctionFailed, "tableMruFunctionFailed");
 
             _functionInstanceLookup = functionInstanceLookup;
             _table = tableStatsSummary;
             _tableMRU = tableMru;
             _tableMRUByFunction = tableMruByFunction;
-            _tableMRUByFunctionSucceed = tableMruByFunctionSucceeded;
-            _tableMRUByFunctionFailed = tableMruFunctionFailed;
         }
 
         private static void NotNull(object o, string paramName)
@@ -63,8 +55,6 @@ namespace Dashboard.Data
         {
             _tableMRU.Flush();
             _tableMRUByFunction.Flush();
-            _tableMRUByFunctionSucceed.Flush();
-            _tableMRUByFunctionFailed.Flush();
 
             foreach (var kv in _funcs)
             {
@@ -107,15 +97,6 @@ namespace Dashboard.Data
 
             string funcId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
-
-            if (message.Succeeded)
-            {
-                _tableMRUByFunctionSucceed.Write(funcId, rowKey, ptr);
-            }
-            else
-            {
-                _tableMRUByFunctionFailed.Write(funcId, rowKey, ptr);
-            }
         }
 
         private void DeleteIndex(string rowKey, string functionId)

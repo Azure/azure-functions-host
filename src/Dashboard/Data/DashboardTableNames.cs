@@ -11,8 +11,6 @@
 
         public const string FunctionInvokeLogIndexMru = Prefix + "FunctionlogsIndexMRU";
         public const string FunctionInvokeLogIndexMruFunction = Prefix + "FunctionlogsIndexMRUByFunction";
-        public const string FunctionInvokeLogIndexMruFunctionSucceeded = Prefix + "FunctionlogsIndexMRUByFunctionSucceeded";
-        public const string FunctionInvokeLogIndexMruFunctionFailed = Prefix + "FunctionlogsIndexMRUByFunctionFailed";
 
         public const string FunctionInvokeStatsTableName = Prefix + "FunctionInvokeStats";
 
