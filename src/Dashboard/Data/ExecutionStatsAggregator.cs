@@ -10,12 +10,7 @@ namespace Dashboard.Data
     {
         private const string PartitionKey = "1";
 
-        // in-memory cache of function entries.
-        // This corresponds to the azure table.
-        private Dictionary<string, FunctionStatsEntity> _funcs =
-            new Dictionary<string, FunctionStatsEntity>();
-
-        private readonly IAzureTable<FunctionStatsEntity> _table;
+        private readonly IFunctionStatisticsWriter _statisticsWriter;
 
         // 2nd index for most-recently used functions.
         // These are all sorted by time stamp.
@@ -28,17 +23,17 @@ namespace Dashboard.Data
         // Pass in table names for the various indices.
         public ExecutionStatsAggregator(
             IFunctionInstanceLookup functionInstanceLookup,
-            IAzureTable<FunctionStatsEntity> tableStatsSummary,
+            IFunctionStatisticsWriter statisticsWriter,
             IAzureTable<FunctionInstanceGuid> tableMru,
             IAzureTable<FunctionInstanceGuid> tableMruByFunction)
         {
             NotNull(functionInstanceLookup, "functionInstanceLookup");
-            NotNull(tableStatsSummary, "tableStatsSummary");
+            NotNull(statisticsWriter, "statisticsWriter");
             NotNull(tableMru, "tableMru");
             NotNull(tableMruByFunction, "tableMruByFunction");
 
             _functionInstanceLookup = functionInstanceLookup;
-            _table = tableStatsSummary;
+            _statisticsWriter = statisticsWriter;
             _tableMRU = tableMru;
             _tableMRUByFunction = tableMruByFunction;
         }
@@ -55,14 +50,6 @@ namespace Dashboard.Data
         {
             _tableMRU.Flush();
             _tableMRUByFunction.Flush();
-
-            foreach (var kv in _funcs)
-            {
-                _table.Write("1", kv.Key, kv.Value);
-            }
-            _table.Flush();
-
-            _funcs.Clear(); // cause it to be reloaded
         }
 
         private void LogMru(FunctionStartedMessage message)
@@ -144,27 +131,16 @@ namespace Dashboard.Data
             DeleteFunctionStartedIfExists(message);
 
             string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
-            FunctionStatsEntity stats;
-            if (!_funcs.TryGetValue(functionId, out stats))
-            {
-                stats = _table.Lookup("1", functionId);
-                if (stats == null)
-                {
-                    stats = new FunctionStatsEntity();
-                }
-                _funcs[functionId] = stats;
-            }
 
+            // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
+            // occur multiple times.
             if (message.Succeeded)
             {
-                stats.CountCompleted++;
-                TimeSpan duration = message.EndTime - message.StartTime;
-                stats.Runtime += duration;
-                stats.LastWriteTime = DateTime.UtcNow;
+                _statisticsWriter.IncrementSuccess(functionId);
             }
             else
             {
-                stats.CountErrors++;
+                _statisticsWriter.IncrementFailure(functionId);
             }
 
             Flush();

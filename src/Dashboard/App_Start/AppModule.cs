@@ -12,6 +12,7 @@ using Microsoft.Azure.Jobs.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Ninject.Modules;
 using Ninject.Syntax;
 
@@ -27,12 +28,15 @@ namespace Dashboard
                 return;
             }
 
-            ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
-            ICloudTableClient tableClient = account.CreateCloudTableClient();
             CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
             CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
+            CloudTableClient sdkTableClient = sdkAccount.CreateCloudTableClient();
+
+            ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
+            ICloudTableClient tableClient = account.CreateCloudTableClient();
 
             Bind<CloudStorageAccount>().ToConstant(sdkAccount);
+            Bind<CloudTableClient>().ToConstant(sdkTableClient);
             Bind<CloudQueueClient>().ToConstant(queueClient);
             Bind<ICloudTableClient>().ToConstant(tableClient);
             Bind<CloudBlobClient>().ToConstant(blobClient);
@@ -41,13 +45,13 @@ namespace Dashboard
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
-            Bind<AzureTable<string, FunctionStatsEntity>>().ToMethod(() => CreateInvokeStatsTable(sdkAccount));
+            Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkTableClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IInvoker>().To<Invoker>();
@@ -109,19 +113,20 @@ namespace Dashboard
             return new CausalityLogger(table, logger);
         }
 
-        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudBlobClient blobClient, CloudStorageAccount account)
+        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudBlobClient blobClient,
+            CloudTableClient tableClient, CloudStorageAccount account)
         {
             IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(blobClient);
             IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(blobClient);
 
-            var tableStatsSummary = new AzureTable<FunctionStatsEntity>(account, DashboardTableNames.FunctionInvokeStatsTableName);
+            IFunctionStatisticsWriter statisticsWriter = new FunctionStatisticsWriter(tableClient);
             var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
             var tableMruByFunction = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
 
             IFunctionInstanceLogger statsAggregator = new ExecutionStatsAggregator(
                 instanceLookup,
-                tableStatsSummary,
+                statisticsWriter,
                 tableMru,
                 tableMruByFunction);
 
@@ -131,16 +136,6 @@ namespace Dashboard
         private static IAzureTable<FunctionInstanceGuid> CreateIndexTable(CloudStorageAccount account, string tableName)
         {
             return new AzureTable<FunctionInstanceGuid>(account, tableName);
-        }
-
-        // Table that maps function types to summary statistics. 
-        // Table is populated by the ExecutionStatsAggregator
-        private static AzureTable<string, FunctionStatsEntity> CreateInvokeStatsTable(CloudStorageAccount account)
-        {
-            return new AzureTable<string, FunctionStatsEntity>(
-                account,
-                DashboardTableNames.FunctionInvokeStatsTableName,
-                 row => Tuple.Create("1", row));
         }
 
         private static string GetDashboardConnectionString()

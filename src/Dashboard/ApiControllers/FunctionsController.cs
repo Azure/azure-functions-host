@@ -24,9 +24,11 @@ namespace Dashboard.ApiControllers
         private readonly IFunctionLookup _functionLookup;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
         private readonly IAborter _aborter;
-        private readonly AzureTable<string, FunctionStatsEntity> _invokeStatsTable;
+        private readonly IFunctionStatisticsReader _statisticsReader;
         private readonly ConcurrentDictionary<string, bool?> _cachedHostHeartbeats =
             new ConcurrentDictionary<string, bool?>();
+        private readonly ConcurrentDictionary<string, Tuple<int, int>> _cachedStatistics =
+            new ConcurrentDictionary<string, Tuple<int, int>>();
 
         internal FunctionsController(
             CloudStorageAccount account,
@@ -35,7 +37,7 @@ namespace Dashboard.ApiControllers
             IFunctionLookup functionLookup,
             IHeartbeatMonitor heartbeatMonitor,
             IAborter aborter,
-            AzureTable<string, FunctionStatsEntity> invokeStatsTable)
+            IFunctionStatisticsReader statisticsReader)
         {
             _account = account;
             _invocationLogLoader = invocationLogLoader;
@@ -43,7 +45,7 @@ namespace Dashboard.ApiControllers
             _functionLookup = functionLookup;
             _heartbeatMonitor = heartbeatMonitor;
             _aborter = aborter;
-            _invokeStatsTable = invokeStatsTable;
+            _statisticsReader = statisticsReader;
         }
 
         [Route("api/jobs/triggered/{jobName}/runs/{runId}/functions")]
@@ -272,21 +274,46 @@ namespace Dashboard.ApiControllers
                 model.IsOldHost = OldHostExists(true);
             }
 
-            var all = _invokeStatsTable.Enumerate();
-            foreach (var item in all)
+            foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)
             {
-                var statsModel = model.Entries.FirstOrDefault(x =>
-                    x.FunctionId.Equals(item["RowKey"]));
-
-                if (statsModel != null)
+                if (statisticsModel == null)
                 {
-                    var stats = ObjectBinderHelpers.ConvertDictToObject<FunctionStatsEntity>(item);
-                    statsModel.FailedCount = stats.CountErrors;
-                    statsModel.SuccessCount = stats.CountCompleted;
+                    continue;
                 }
+
+                Tuple<int, int> counts = GetStatistics(statisticsModel.FunctionId);
+                statisticsModel.SuccessCount = counts.Item1;
+                statisticsModel.FailedCount = counts.Item2;
             }
 
             return Ok(model);
+        }
+
+        private Tuple<int, int> GetStatistics(string functionId)
+        {
+            if (_cachedStatistics.ContainsKey(functionId))
+            {
+                return _cachedStatistics[functionId];
+            }
+
+            FunctionStatisticsEntity entity = _statisticsReader.Lookup(functionId);
+            int succeededCount;
+            int failedCount;
+
+            if (entity == null)
+            {
+                succeededCount = 0;
+                failedCount = 0;
+            }
+            else
+            {
+                succeededCount = entity.SucceededCount;
+                failedCount = entity.FailedCount;
+            }
+
+            Tuple<int, int> results = new Tuple<int, int>(succeededCount, failedCount);
+            _cachedStatistics.AddOrUpdate(functionId, (_) => results, (ignore1, ignore2) => results);
+            return results;
         }
 
         [Route("api/hostInstances/{instanceQueueName}/abort")]
