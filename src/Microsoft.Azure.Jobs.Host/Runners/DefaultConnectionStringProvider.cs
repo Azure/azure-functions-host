@@ -17,7 +17,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// </summary>
         public DefaultConnectionStringProvider()
             : this(_ambientConnectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName),
-            false, _ambientConnectionStringProvider.GetConnectionString(JobHost.StorageConnectionStringName))
+            false, _ambientConnectionStringProvider.GetConnectionString(JobHost.StorageConnectionStringName),
+            _ambientConnectionStringProvider.GetConnectionString(JobHost.ServiceBusConnectionStringName))
         {
         }
 
@@ -29,16 +30,17 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
         public DefaultConnectionStringProvider(string dashboardAndStorageConnectionString)
-            : this(dashboardAndStorageConnectionString, true, dashboardAndStorageConnectionString)
+            : this(dashboardAndStorageConnectionString, true, dashboardAndStorageConnectionString, null)
         {
         }
 
         private DefaultConnectionStringProvider(string dashboardConnectionString,
-            bool dashboardConnectionStringMayBeNullOrEmpty, string storageConnectionString)
+            bool dashboardConnectionStringMayBeNullOrEmpty, string storageConnectionString, string serviceBusConnectionString)
         {
             _dashboardConnectionString = dashboardConnectionString;
             _dashboardConnectionStringMayBeNullOrEmpty = dashboardConnectionStringMayBeNullOrEmpty;
             _storageConnectionString = storageConnectionString;
+            _serviceBusConnectionString = serviceBusConnectionString;
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
