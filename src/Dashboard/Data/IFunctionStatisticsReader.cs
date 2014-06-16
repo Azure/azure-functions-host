@@ -5,6 +5,6 @@ namespace Dashboard.Data
     [CLSCompliant(false)]
     public interface IFunctionStatisticsReader
     {
-        FunctionStatisticsEntity Lookup(string functionId);
+        FunctionStatistics Lookup(string functionId);
     }
 }

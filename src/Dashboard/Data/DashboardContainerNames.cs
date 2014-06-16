@@ -9,6 +9,8 @@
 
         public const string FunctionLogContainer = Prefix + "function-logs";
 
+        public const string FunctionStatisticsContainer = Prefix + "function-stats";
+
         public const string HostContainer = Prefix + "hosts";
 
         /// <summary>The name of the container where version compatibility warnings are stored.</summary>

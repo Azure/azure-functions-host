@@ -12,8 +12,6 @@
         public const string FunctionInvokeLogIndexMru = Prefix + "FunctionlogsIndexMRU";
         public const string FunctionInvokeLogIndexMruFunction = Prefix + "FunctionlogsIndexMRUByFunction";
 
-        public const string FunctionInvokeStatsTableName = Prefix + "FunctionInvokeStats";
-
         // NOTE: these exist to give proper legacy data warnings in newer versions. They are not required by current.
         public const string OldFunctionInJobsIndex = "AzureJobsFunctionIndex5";
     }

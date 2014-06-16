@@ -1,47 +1,33 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Storage;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
     public class FunctionStatisticsReader :  IFunctionStatisticsReader
     {
-        private const string PartitionKey = "1";
-
-        private readonly CloudTable _table;
+        private readonly IVersionedDocumentStore<FunctionStatistics> _store;
 
         [CLSCompliant(false)]
-        public FunctionStatisticsReader(CloudTableClient client)
-            : this(client.GetTableReference(DashboardTableNames.FunctionInvokeStatsTableName))
+        public FunctionStatisticsReader(CloudBlobClient client)
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionStatisticsContainer))
         {
         }
 
-        private FunctionStatisticsReader(CloudTable table)
+        private FunctionStatisticsReader(CloudBlobContainer container)
         {
-            _table = table;
+            _store = new VersionedDocumentStore<FunctionStatistics>(container);
         }
 
-        [CLSCompliant(false)]
-        public FunctionStatisticsEntity Lookup(string functionId)
+        public FunctionStatistics Lookup(string functionId)
         {
-            TableOperation retrieve = TableOperation.Retrieve<FunctionStatisticsEntity>(PartitionKey, functionId);
+            VersionedDocument<FunctionStatistics> result = _store.Read(functionId);
 
-            try
+            if (result == null)
             {
-                return (FunctionStatisticsEntity)_table.Execute(retrieve).Result;
+                return null;
             }
-            catch (StorageException exception)
-            {
-                if (exception.IsNotFound())
-                {
-                    return null;
-                }
-                else
-                {
-                    throw;
-                }
-            }
+
+            return result.Document;
         }
     }
 }

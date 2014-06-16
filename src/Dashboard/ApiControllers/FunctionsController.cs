@@ -296,7 +296,7 @@ namespace Dashboard.ApiControllers
                 return _cachedStatistics[functionId];
             }
 
-            FunctionStatisticsEntity entity = _statisticsReader.Lookup(functionId);
+            FunctionStatistics entity = _statisticsReader.Lookup(functionId);
             int succeededCount;
             int failedCount;
 

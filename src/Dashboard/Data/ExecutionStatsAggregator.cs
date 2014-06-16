@@ -52,30 +52,13 @@ namespace Dashboard.Data
             _tableMRUByFunction.Flush();
         }
 
-        private void LogMru(FunctionStartedMessage message)
+        private void LogMru(FunctionStartedMessage message, DateTimeOffset timestamp)
         {
             Guid instance = message.FunctionInstanceId;
 
-            DateTime rowKeyTimestamp = message.StartTime.UtcDateTime;
+            DateTime rowKeyTimestamp = timestamp.UtcDateTime;
 
-            // Use function's actual end time (so we can reindex)
-            // and append with the function instance ID just in case there are ties. 
-            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instance);
-
-            var ptr = new FunctionInstanceGuid(instance);
-            _tableMRU.Write(PartitionKey, rowKey, ptr);
-
-            string funcId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString(); // valid row key
-            _tableMRUByFunction.Write(funcId, rowKey, ptr);
-        }
-
-        private void LogMru(FunctionCompletedMessage message)
-        {
-            Guid instance = message.FunctionInstanceId;
-
-            DateTime rowKeyTimestamp = message.EndTime.UtcDateTime;
-
-            // Use function's actual end time (so we can reindex)
+            // Use function's actual start,end time (so we can reindex)
             // and append with the function instance ID just in case there are ties. 
             string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instance);
 
@@ -92,16 +75,16 @@ namespace Dashboard.Data
             _tableMRUByFunction.Delete(TableClient.GetAsTableKey(functionId), rowKey);
         }
 
-        public void LogFunctionStarted(FunctionStartedMessage mesage)
+        public void LogFunctionStarted(FunctionStartedMessage message)
         {
             // This method may be called concurrently with LogFunctionCompleted.
             // Don't log a function running after it has been logged as completed.
-            if (HasLoggedFunctionCompleted(mesage.FunctionInstanceId))
+            if (HasLoggedFunctionCompleted(message.FunctionInstanceId))
             {
                 return;
             }
 
-            LogMru(mesage);
+            LogMru(message, message.StartTime);
             Flush();
         }
 
@@ -124,7 +107,7 @@ namespace Dashboard.Data
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            LogMru(message);
+            LogMru(message, message.EndTime);
 
             // This method may be called concurrently with LogFunctionStarted.
             // Remove the function running log after logging as completed.

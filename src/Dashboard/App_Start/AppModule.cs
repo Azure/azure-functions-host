@@ -51,7 +51,7 @@ namespace Dashboard
             Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkTableClient, sdkAccount));
+            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IInvoker>().To<Invoker>();
@@ -114,12 +114,12 @@ namespace Dashboard
         }
 
         private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudBlobClient blobClient,
-            CloudTableClient tableClient, CloudStorageAccount account)
+            CloudStorageAccount account)
         {
             IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(blobClient);
             IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(blobClient);
 
-            IFunctionStatisticsWriter statisticsWriter = new FunctionStatisticsWriter(tableClient);
+            IFunctionStatisticsWriter statisticsWriter = new FunctionStatisticsWriter(blobClient);
             var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
             var tableMruByFunction = CreateIndexTable(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);

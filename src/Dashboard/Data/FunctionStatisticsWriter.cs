@@ -1,25 +1,21 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Storage;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
     public class FunctionStatisticsWriter :  IFunctionStatisticsWriter
     {
-        private const string PartitionKey = "1";
-
-        private readonly CloudTable _table;
+        private readonly IVersionedDocumentStore<FunctionStatistics> _store;
 
         [CLSCompliant(false)]
-        public FunctionStatisticsWriter(CloudTableClient client)
-            : this(client.GetTableReference(DashboardTableNames.FunctionInvokeStatsTableName))
+        public FunctionStatisticsWriter(CloudBlobClient client)
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionStatisticsContainer))
         {
         }
 
-        private FunctionStatisticsWriter(CloudTable table)
+        private FunctionStatisticsWriter(CloudBlobContainer container)
         {
-            _table = table;
+            _store = new VersionedDocumentStore<FunctionStatistics>(container);
         }
 
         public void IncrementSuccess(string functionId)
@@ -32,87 +28,27 @@ namespace Dashboard.Data
             UpdateEntity(functionId, (e) => e.FailedCount++);
         }
 
-        private void UpdateEntity(string functionId, Action<FunctionStatisticsEntity> modifier)
+        private void UpdateEntity(string functionId, Action<FunctionStatistics> modifier)
         {
             // Keep racing to update the entity until it succeeds.
             while (!TryUpdateEntity(functionId, modifier));
         }
 
-        private bool TryUpdateEntity(string functionId, Action<FunctionStatisticsEntity> modifier)
+        private bool TryUpdateEntity(string functionId, Action<FunctionStatistics> modifier)
         {
-            TableOperation retrieve = TableOperation.Retrieve<FunctionStatisticsEntity>(PartitionKey, functionId);
-            FunctionStatisticsEntity existingEntity;
+            VersionedDocument<FunctionStatistics> result = _store.Read(functionId);
 
-            try
+            if (result == null || result.Document == null)
             {
-                existingEntity = (FunctionStatisticsEntity)_table.Execute(retrieve).Result;
-            }
-            catch (StorageException exception)
-            {
-                if (exception.IsNotFound())
-                {
-                    existingEntity = null;
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            TableOperation operation;
-
-            if (existingEntity == null)
-            {
-                FunctionStatisticsEntity entity = new FunctionStatisticsEntity
-                {
-                    PartitionKey = PartitionKey,
-                    RowKey = functionId,
-                };
-                modifier.Invoke(entity);
-                operation = TableOperation.Insert(entity);
+                FunctionStatistics statistics = new FunctionStatistics();
+                modifier.Invoke(statistics);
+                return _store.TryCreate(functionId, statistics);
             }
             else
             {
-                modifier.Invoke(existingEntity);
-                operation = TableOperation.Replace(existingEntity);
-            }
-
-            try
-            {
-                _table.Execute(operation);
-                return true;
-            }
-            catch (StorageException exception)
-            {
-                if (exception.IsNotFound())
-                {
-                    _table.CreateIfNotExists();
-
-                    try
-                    {
-                        _table.Execute(operation);
-                        return true;
-                    }
-                    catch (StorageException retryException)
-                    {
-                        if (retryException.IsPreconditionFailed() || retryException.IsConflict())
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
-                }
-                else if (exception.IsPreconditionFailed() || existingEntity == null && exception.IsConflict())
-                {
-                    return false;
-                }
-                else
-                {
-                    throw;
-                }
+                FunctionStatistics statistics = result.Document;
+                modifier.Invoke(statistics);
+                return _store.TryUpdate(functionId, statistics, result.ETag);
             }
         }
     }
