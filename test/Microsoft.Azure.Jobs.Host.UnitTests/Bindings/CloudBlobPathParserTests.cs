@@ -22,22 +22,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
             Assert.NotEqual(path1.GetHashCode(), path3.GetHashCode()); // statement about hashcode quality. 
         }
 
-        [Fact]
-        public void TestJsonSerialization()
-        {
-            CloudBlobPath path = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
-
-            string json = JsonConvert.SerializeObject(path);
-
-            string d1 = JsonConvert.DeserializeObject<string>(json);
-
-            CloudBlobPath d2 = JsonConvert.DeserializeObject<CloudBlobPath>(json);
-
-            Assert.Equal(path, d2);
-            Assert.Equal(d1, d2.ToString());
-            Assert.Equal(path, new CloudBlobPath(d1));
-        }
-
         private static IDictionary<string, string> Match(string a, string b)
         {
             var pa = new CloudBlobPath(a);

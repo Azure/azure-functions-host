@@ -11,19 +11,6 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             _list.Add(func);
         }
 
-        void IFunctionTable.Delete(FunctionDefinition func)
-        {
-            string id = func.Id;
-            foreach (var x in _list)
-            {
-                if (x.Id == id)
-                {
-                    _list.Remove(x);
-                    return;
-                }
-            }
-        }
-
         public FunctionDefinition Lookup(string functionId)
         {
             // $$$ Not linear :(

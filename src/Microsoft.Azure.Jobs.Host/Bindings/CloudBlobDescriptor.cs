@@ -62,31 +62,6 @@ namespace Microsoft.Azure.Jobs
             return c;
         }
 
-        public ICloudBlob GetBlob()
-        {
-            if (String.IsNullOrEmpty(blobName))
-            {
-                throw new InvalidOperationException("The blob name must not be null or empty.");
-            }
-
-            var c = GetContainer();
-            c.CreateIfNotExists();
-            ICloudBlob blob;
-            try
-            {
-                blob = c.GetBlobReferenceFromServer(BlobName);
-            }
-            catch (StorageException exception)
-            {
-                if (exception.RequestInformation.HttpStatusCode != 404)
-                {
-                    throw;
-                }
-                blob = c.GetBlockBlobReference(BlobName);
-            }
-            return blob;
-        }
-
         public CloudBlockBlob GetBlockBlob()
         {
             if (String.IsNullOrEmpty(blobName))
@@ -98,18 +73,6 @@ namespace Microsoft.Azure.Jobs
             c.CreateIfNotExists();
             var blob = c.GetBlockBlobReference(BlobName);
             return blob;
-        }
-
-        public CloudBlockBlob TryGetBlockBlob()
-        {
-            if (String.IsNullOrEmpty(containerName) || String.IsNullOrEmpty(blobName))
-            {
-                return null;
-            }
-
-            CloudBlobClient client = CreateClient();
-            CloudBlobContainer container = client.GetContainerReference(containerName);
-            return container.GetBlockBlobReference(blobName);
         }
 
         public string GetId()

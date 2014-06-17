@@ -3,7 +3,7 @@
 namespace Microsoft.Azure.Jobs
 {
     // Dispensers loggers that write to a blob. 
-    internal class FunctionOutputLogDispenser : IFunctionOuputLogDispenser
+    internal class FunctionOutputLogDispenser : IFunctionOutputLogDispenser
     {
         private readonly CloudStorageAccount _account;
         private readonly string _containerName;

@@ -4,6 +4,5 @@
     internal interface IFunctionTable : IFunctionTableLookup
     {
         void Add(FunctionDefinition func);
-        void Delete(FunctionDefinition func);
     }
 }

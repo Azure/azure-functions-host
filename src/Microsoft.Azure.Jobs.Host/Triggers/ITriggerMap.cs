@@ -10,7 +10,5 @@ namespace Microsoft.Azure.Jobs
         void AddTriggers(string scope, params Trigger[] triggers);
 
         IEnumerable<string> GetScopes();
-
-        void ClearTriggers(string scope);
     }
 }

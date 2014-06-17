@@ -35,18 +35,6 @@ namespace Microsoft.Azure.Jobs
 
         public static JsonSerializerSettings _settings = NewSettings();
 
-        public static string SaveJson(ITriggerMap map)
-        {
-            string content = JsonConvert.SerializeObject(map, _settings);
-            return content;
-        }
-
-        public static TriggerMap LoadJson(string json)
-        {
-            var result = JsonConvert.DeserializeObject<TriggerMap>(json, _settings);
-            return result;
-        }
-
         public Trigger[] GetTriggers(string scope)
         {
             if (scope == null)
@@ -71,11 +59,6 @@ namespace Microsoft.Azure.Jobs
         public IEnumerable<string> GetScopes()
         {
             return _storage.Keys;
-        }
-
-        public void ClearTriggers(string scope)
-        {
-            _storage.Remove(scope);
         }
 
         public override string ToString()

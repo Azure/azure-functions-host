@@ -1,36 +1,11 @@
 ﻿using System;
-using System.Diagnostics;
 using Microsoft.Azure.Jobs.Host;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs
 {
     internal static class QueueClient
     {
-        [DebuggerNonUserCode]
-        public static void DeleteQueue(CloudStorageAccount account, string queueName)
-        {
-            ValidateQueueName(queueName);
-
-            var client = account.CreateCloudQueueClient();
-            var q = client.GetQueueReference(queueName);
-
-            DeleteQueue(q);
-        }
-
-        [DebuggerNonUserCode]
-        public static void DeleteQueue(CloudQueue queue)
-        {
-            try
-            {
-                queue.Delete();
-            }
-            catch (StorageException)
-            {
-            }
-        }
-
         public static string GetAccountName(CloudQueueClient client)
         {
             if (client == null)

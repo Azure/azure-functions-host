@@ -7,7 +7,7 @@ namespace Microsoft.Azure.Jobs
     {
         public HostOutputMessage HostOutputMessage { get; set; }
 
-        public IFunctionOuputLogDispenser OutputLogDispenser { get; set; }
+        public IFunctionOutputLogDispenser OutputLogDispenser { get; set; }
 
         public IFunctionInstanceLogger FunctionInstanceLogger { get; set; }
     }

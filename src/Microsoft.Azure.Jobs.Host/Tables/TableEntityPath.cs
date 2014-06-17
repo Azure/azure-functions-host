@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Tables
 {
-    internal class CloudTableEntityDescriptor
+    internal class TableEntityPath
     {
         public string TableName { get; set; }
 
@@ -10,41 +10,34 @@ namespace Microsoft.Azure.Jobs
 
         public string RowKey { get; set; }
 
-        public void Validate()
+        public static TableEntityPath Parse(string value)
         {
-            TableClient.ValidateAzureTableName(TableName);
-            TableClient.ValidateAzureTableKeyValue(PartitionKey);
-            TableClient.ValidateAzureTableKeyValue(RowKey);
-        }
+            TableEntityPath path;
 
-        public static CloudTableEntityDescriptor Parse(string value)
-        {
-            CloudTableEntityDescriptor entityDescriptor;
-
-            if (!TryParse(value, out entityDescriptor))
+            if (!TryParse(value, out path))
             {
                 throw new InvalidOperationException("Table entity identifiers must be in the format TableName/PartitionKey/RowKey.");
             }
 
-            return entityDescriptor;
+            return path;
         }
 
-        public static bool TryParse(string value, out CloudTableEntityDescriptor entityDescriptor)
+        public static bool TryParse(string value, out TableEntityPath path)
         {
             if (value == null)
             {
-                entityDescriptor = null;
+                path = null;
                 return false;
             }
 
             string[] components = value.Split(new char[] { '/' });
             if (components.Length != 3)
             {
-                entityDescriptor = null;
+                path = null;
                 return false;
             }
 
-            entityDescriptor = new CloudTableEntityDescriptor
+            path = new TableEntityPath
             {
                 TableName = components[0],
                 PartitionKey = components[1],

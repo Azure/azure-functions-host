@@ -166,12 +166,5 @@ namespace Dashboard
 
             return logs;
         }
-
-        private class BlobParameterData
-        {
-            public bool IsInput { get; set; }
-
-            public CloudBlockBlob Blob { get; set; }
-        }
     }
 }

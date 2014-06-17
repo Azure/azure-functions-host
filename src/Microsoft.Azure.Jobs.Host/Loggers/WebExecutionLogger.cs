@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.Azure.Jobs.Host;
+﻿using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 

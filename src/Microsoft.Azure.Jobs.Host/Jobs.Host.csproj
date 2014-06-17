@@ -431,7 +431,7 @@
     <Compile Include="DefaultNameResolver.cs" />
     <Compile Include="NameResolverExtensions.cs" />
     <Compile Include="WebJobsShutdownWatcher.cs" />
-    <Compile Include="Bindings\CloudTableEntityDescriptor.cs" />
+    <Compile Include="Tables\TableEntityPath.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
     <Compile Include="Bindings\RouteParser.cs" />
     <Compile Include="HostContainerNames.cs" />
@@ -442,7 +442,6 @@
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
-    <Compile Include="Bindings\IBinderEx.cs" />
     <Compile Include="Runners\IConfiguration.cs" />
     <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
@@ -467,7 +466,6 @@
     <Compile Include="Runners\Worker.cs" />
     <Compile Include="Runners\Configuration.cs" />
     <Compile Include="Runners\SelfWatch.cs" />
-    <Compile Include="Runners\WatchableEnumerable.cs" />
     <Compile Include="Blobs\DelegatingStream.cs" />
     <Compile Include="Timers\IntervalSeparationTimer.cs" />
     <Compile Include="Timers\IIntervalSeparationCommand.cs" />
@@ -476,12 +474,9 @@
     <Compile Include="Loggers\ConsoleFunctionOutputLogDispenser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BlobClient.cs" />
-    <Compile Include="Bindings\CloudBlobPathConverter.cs" />
     <Compile Include="Triggers\CloudContainerComparer.cs" />
     <Compile Include="Runners\DefaultStorageValidator.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
-    <Compile Include="Bindings\CloudQueueDescriptor.cs" />
-    <Compile Include="Bindings\CloudTableDescriptor.cs" />
     <Compile Include="Bindings\CloudBlobDescriptor.cs" />
     <Compile Include="Runners\IStorageValidator.cs" />
     <Compile Include="ITypeLocator.cs" />

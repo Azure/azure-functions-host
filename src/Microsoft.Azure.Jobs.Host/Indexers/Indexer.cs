@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
-using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
-using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 

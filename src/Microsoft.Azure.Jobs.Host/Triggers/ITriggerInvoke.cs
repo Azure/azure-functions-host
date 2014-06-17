@@ -1,5 +1,4 @@
-﻿using System.Threading;
-using Microsoft.Azure.Jobs.Host.Bindings;
+﻿using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 

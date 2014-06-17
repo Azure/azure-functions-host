@@ -254,6 +254,7 @@
     <Compile Include="HostMessaging\IInvoker.cs" />
     <Compile Include="HostMessaging\Invoker.cs" />
     <Compile Include="HostMessaging\LocalBlobDescriptorExtensions.cs" />
+    <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
@@ -276,11 +277,9 @@
     </Compile>
     <Compile Include="Indexers\IIndexer.cs" />
     <Compile Include="Indexers\Indexer.cs" />
-    <Compile Include="Infrastructure\CloudStorageAccountTypeConverter.cs" />
     <Compile Include="Infrastructure\HostVersionConfigWrapper.cs" />
     <Compile Include="Infrastructure\LogAnalysis.cs" />
     <Compile Include="Infrastructure\ModelBinders.cs" />
-    <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Infrastructure\NinjectDependencyResolver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ViewModels\DashboardIndexViewModel.cs" />
@@ -338,8 +337,6 @@
     <Content Include="Scripts\angular-route.min.js" />
     <Content Include="Scripts\angular.js" />
     <Content Include="Scripts\angular.min.js" />
-    <Content Include="Scripts\bootstrap.js" />
-    <Content Include="Scripts\bootstrap.min.js" />
     <None Include="..\Common\PublicKey.snk">
       <Link>Properties\PublicKey.snk</Link>
     </None>
@@ -348,15 +345,6 @@
     <None Include="Scripts\jquery-1.9.1.intellisense.js" />
     <Content Include="Scripts\jquery-1.9.1.js" />
     <Content Include="Scripts\jquery-1.9.1.min.js" />
-    <Content Include="Scripts\jquery-ui-1.8.20.js" />
-    <Content Include="Scripts\jquery-ui-1.8.20.min.js" />
-    <Content Include="Scripts\jquery.unobtrusive-ajax.js" />
-    <Content Include="Scripts\jquery.unobtrusive-ajax.min.js" />
-    <None Include="Scripts\jquery.validate-vsdoc.js" />
-    <Content Include="Scripts\jquery.validate.js" />
-    <Content Include="Scripts\jquery.validate.min.js" />
-    <Content Include="Scripts\jquery.validate.unobtrusive.js" />
-    <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <None Include="Scripts\_references.js" />
     <Content Include="Web.config" />
     <Content Include="Web.Debug.config">

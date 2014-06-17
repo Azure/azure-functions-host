@@ -135,7 +135,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var account = TestStorage.GetAccount();
 
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
-            QueueClient.DeleteQueue(queue);
+            TestQueueClient.DeleteQueue(queue);
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncEnqueue");
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var account = TestStorage.GetAccount();
 
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
-            QueueClient.DeleteQueue(queue);
+            TestQueueClient.DeleteQueue(queue);
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncMultiEnqueueICollection");
@@ -234,7 +234,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var account = TestStorage.GetAccount();
 
             CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
-            QueueClient.DeleteQueue(queue);
+            TestQueueClient.DeleteQueue(queue);
 
             var lc = TestStorage.New<Program>(account);
             lc.Call("FuncCloudQueueEnqueue");

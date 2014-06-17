@@ -35,14 +35,16 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 };
             }
 
-            CloudTableEntityDescriptor descriptor = CloudTableEntityDescriptor.Parse(input);
-            TableClient.ValidateAzureTableName(descriptor.TableName);
+            TableEntityPath path = TableEntityPath.Parse(input);
+            TableClient.ValidateAzureTableName(path.TableName);
+            TableClient.ValidateAzureTableKeyValue(path.PartitionKey);
+            TableClient.ValidateAzureTableKeyValue(path.RowKey);
 
             return new TableEntityContext
             {
-                Table = _client.GetTableReference(descriptor.TableName),
-                PartitionKey = descriptor.PartitionKey,
-                RowKey = descriptor.RowKey
+                Table = _client.GetTableReference(path.TableName),
+                PartitionKey = path.PartitionKey,
+                RowKey = path.RowKey
             };
         }
     }

@@ -4,9 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
 using Microsoft.Azure.Jobs.Host;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs
@@ -56,31 +54,6 @@ namespace Microsoft.Azure.Jobs
             return invalidCharacters.ToArray();
         }
 
-        // Convert key into something that can be used as a row or partition key. Removes invalid chars.
-        public static string GetAsTableKey(string key)
-        {
-            return key.Replace('\\', '.').Replace('/', '.');
-        }
-
-        // Helper to get a row key based on time stamp. 
-        // Where recent time is sorted first. 
-        public static string GetTickRowKey(DateTime time, Guid id)
-        {
-            string rowKey = Ticks(time) + "." + id.ToString("N");
-            return rowKey;
-        }
-
-        public static string GetTickRowKey()
-        {
-            string rowKey = Ticks(DateTime.UtcNow);
-            return rowKey;
-        }
-
-        private static string Ticks(DateTime time)
-        {
-            return string.Format("{0:D19}", DateTime.MaxValue.Ticks - time.Ticks);
-        }
-
         public static bool ImplementsITableEntity(Type entityType)
         {
             Debug.Assert(entityType != null);
@@ -124,105 +97,6 @@ namespace Microsoft.Azure.Jobs
             }
 
             return false;
-        }
-
-        public static void DeleteTableRow(CloudStorageAccount account, string tableName, string partitionKey, string rowKey)
-        {
-            // http://www.windowsazure.com/en-us/develop/net/how-to-guides/table-services/#delete-entity
-
-            // Retrieve storage account from connection-string
-
-            // Create the table client
-            CloudTableClient tableClient = account.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(tableName);
-
-            TableEntity specificEntity = new TableEntity(partitionKey, rowKey);
-            specificEntity.ETag = "*";
-
-            try
-            {
-                table.Execute(TableOperation.Delete(specificEntity));
-            }
-            catch (StorageException exception)
-            {
-                RequestResult result = exception.RequestInformation;
-
-                // Ignore if entry doesn't exist.
-                if (result == null || result.HttpStatusCode != 404)
-                {
-                    throw;
-                }
-            }
-        }
-
-        // Delete an entire partition
-        public static void DeleteTablePartition(CloudStorageAccount account, string tableName, string partitionKey)
-        {
-            // No shortcut for deleting a partition
-            // http://stackoverflow.com/questions/7393651/can-i-delete-an-entire-partition-in-windows-azure-table-storage
-
-            // http://www.windowsazure.com/en-us/develop/net/how-to-guides/table-services/#delete-entity
-
-            CloudTableClient tableClient = account.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(tableName);
-
-            // Loop and delete in batches
-            while (true)
-            {
-                IQueryable<DynamicTableEntity> list;
-
-                const int batchLimit = 100;
-
-                try
-                {
-                    list = (from e in table.CreateQuery<DynamicTableEntity>()
-                           where e.PartitionKey == partitionKey
-                           select e).Take(batchLimit);
-                }
-                catch
-                {
-                    // Azure sometimes throws an exception when enumerating an empty table.
-                    return;
-                }
-
-                TableBatchOperation batch = new TableBatchOperation();
-                foreach (var item in list)
-                {
-                    // Delete the entity
-                    batch.Delete(item);
-                }
-                if (batch.Count == 0)
-                {
-                    return;
-                }
-
-                // Submit the operation to the table service
-                table.ExecuteBatch(batch);
-            }
-        }
-
-        // Beware! Delete could take a very long time. 
-        [DebuggerNonUserCode] // Hide first chance exceptions from delete polling.
-        public static void DeleteTable(CloudStorageAccount account, string tableName)
-        {
-            CloudTableClient tableClient = account.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(tableName);
-            table.DeleteIfExists();
-
-            // Delete returns synchronously even though table is not yet deleted. Losers!!
-            // So poll here until we're in a known good state.
-            while (true)
-            {
-                try
-                {
-                    table.CreateIfNotExists();
-                    break;
-                }
-                catch (StorageException)
-                {
-                    Thread.Sleep(1 * 1000);
-                }
-            }
         }
 
         // Azure table names are very restrictive, so sanity check upfront to give a useful error.

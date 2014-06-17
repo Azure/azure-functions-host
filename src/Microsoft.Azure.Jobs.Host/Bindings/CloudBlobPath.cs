@@ -1,20 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs
 {
-    // Class for describing a container and blob (no account info)
-    // - Encapsulate path with {name} wildcards to cloud blob. (which is why this isn't just a CloudBlob)
-    // - Can also refer to just a container. Or to just a CloudBlobDirectory.
-    // - Standardized parser
-    // - ToString should be suitable rowkey to coopreate with table indices.    
-    // - Serialize to JSON as a single string. 
-    [JsonConverter(typeof(CloudBlobPathConverter))]
     internal class CloudBlobPath
     {
         private readonly string _containerName;
@@ -63,18 +54,6 @@ namespace Microsoft.Azure.Jobs
         {
             _containerName = blobInput.Container.Name;
             _blobName = blobInput.Name;
-        }
-
-        public CloudBlobPath(CloudBlobDescriptor descriptor)
-        {
-            _containerName = descriptor.ContainerName;
-            _blobName = descriptor.BlobName;
-        }
-
-        public static bool TryParse(string input, out CloudBlobPath path)
-        {
-            path = new CloudBlobPath(input);
-            return true;
         }
 
         public override string ToString()
@@ -139,31 +118,6 @@ namespace Microsoft.Azure.Jobs
             var container = client.GetContainerReference(this.ContainerName);
             var blob = container.GetBlockBlobReference(this.BlobName);
             return blob;
-        }
-
-        // List all blobs that match the pattern. 
-        public IEnumerable<ICloudBlob> ListBlobs(CloudStorageAccount account)
-        {
-            CloudBlobContainer container = this.GetContainer(account);
-
-            foreach (ICloudBlob blobItem in container.ListBlobs(useFlatBlobListing: true))
-            {
-                var path = blobItem.Uri.ToString();
-
-                var subPath = new CloudBlobPath(blobItem);
-                var p = this.Match(subPath);
-                if (p != null)
-                {
-                    yield return blobItem;
-                }
-            }
-        }
-
-        public CloudBlobContainer GetContainer(CloudStorageAccount account)
-        {
-            var client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(this.ContainerName);
-            return container;
         }
 
         private static class Parser

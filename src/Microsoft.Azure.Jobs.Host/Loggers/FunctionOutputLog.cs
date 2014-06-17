@@ -24,7 +24,6 @@ namespace Microsoft.Azure.Jobs
         // Separate channel for logging structured (and updating) information about parameters
         public CloudBlobDescriptor ParameterLogBlob { get; set; }
 
-
         // Get a default instance of 
         public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, string accountConnectionString, string containerName)
         {            

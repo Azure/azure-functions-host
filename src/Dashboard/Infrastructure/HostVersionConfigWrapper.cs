@@ -25,7 +25,6 @@ namespace Dashboard
 
             public string Label { get; private set; }
             public string Link { get; private set; }
-
         }
     }
 }

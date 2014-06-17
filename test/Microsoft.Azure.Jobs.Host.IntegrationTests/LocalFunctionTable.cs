@@ -41,19 +41,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             _funcs.Add(func);
         }
 
-        void IFunctionTable.Delete(FunctionDefinition func)
-        {
-            string funcString = func.ToString();
-            foreach (var x in _funcs)
-            {
-                if (x.ToString() == funcString)
-                {
-                    _funcs.Remove(x);
-                    return;
-                }
-            }
-        }
-
         FunctionDefinition[] IFunctionTableLookup.ReadAll()
         {
             return _funcs.ToArray();

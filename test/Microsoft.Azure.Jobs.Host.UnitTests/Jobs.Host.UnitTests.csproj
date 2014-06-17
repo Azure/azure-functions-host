@@ -108,7 +108,6 @@
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
-    <Compile Include="TriggerMapSerializationTests.cs" />
     <Compile Include="Blobs\SelfWatchReadStreamTests.cs" />
   </ItemGroup>
   <ItemGroup>

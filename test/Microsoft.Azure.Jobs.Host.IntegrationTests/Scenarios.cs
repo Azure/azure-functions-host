@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
             TestBlobClient.DeleteContainer(account, container);
-            QueueClient.DeleteQueue(account, "queuetest");
+            TestQueueClient.DeleteQueue(account, "queuetest");
 
             TestBlobClient.WriteBlob(account, container, "foo.csv", "15");
 
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.NotNull(output);
             Assert.Equal("16", output);
 
-            QueueClient.DeleteQueue(account, "queuetest");
+            TestQueueClient.DeleteQueue(account, "queuetest");
         }
 
         private static void CancelWhenBlobExists(CancellationTokenSource source, ICloudBlob blob)

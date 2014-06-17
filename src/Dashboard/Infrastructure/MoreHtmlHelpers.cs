@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
@@ -64,89 +63,6 @@ namespace Dashboard.Controllers
                 .Select(pair => pair.Key);
             var mismatches = routeValueDictionary.Keys.Except(matches);
             return !mismatches.Any();
-        }
-
-
-        // Renders a relative DateTime string representation
-        public static string DateTimeRelative(this HtmlHelper htmlHelper, DateTime dateTimeUtc)
-        {
-            return DateTimeRelative(dateTimeUtc);
-        }
-        // Renders a relative TimeSpan string representation
-        public static string TimeSpanRelative(this HtmlHelper htmlHelper, TimeSpan timeSpan)
-        {
-            return TimeSpanRelative(timeSpan);
-        }
-
-        public static string DateTimeRelative(DateTime dateTimeUtc)
-        {
-            var time = DateTime.UtcNow - dateTimeUtc;
-
-            if (time.TotalDays > 7 || time.TotalDays < -7)
-                return ConvertToTimeZone(dateTimeUtc).ToString("'on' MMM d yyyy 'at' h:mm tt");
-
-            if (time.TotalHours > 24)
-                return Plural("1 day ago", "{0} days ago", time.Days);
-            if (time.TotalHours < -24)
-                return Plural("in 1 day", "in {0} days", -time.Days);
-
-            if (time.TotalMinutes > 60)
-                return Plural("1 hour ago", "{0} hours ago", time.Hours);
-            if (time.TotalMinutes < -60)
-                return Plural("in 1 hour", "in {0} hours", -time.Hours);
-
-            if (time.TotalSeconds > 60)
-                return Plural("1 minute ago", "{0} minutes ago", time.Minutes);
-            if (time.TotalSeconds < -60)
-                return Plural("in 1 minute", "in {0} minutes", -time.Minutes);
-
-            if (time.TotalSeconds > 10)
-                return Plural("1 second ago", "{0} seconds ago", time.Seconds); //aware that the singular won't be used
-            if (time.TotalSeconds < -10)
-                return Plural("in 1 second", "in {0} seconds", -time.Seconds);
-
-            return time.TotalMilliseconds > 0
-                       ? "a moment ago"
-                       : "in a moment";
-        }
-
-        public static string TimeSpanRelative(TimeSpan timeSpan)
-        {
-            if (timeSpan.TotalDays > 7)
-                return timeSpan.ToString(Plural("1 week", "{0} weeks", timeSpan.Days));
-
-            if (timeSpan.TotalHours > 24)
-                return Plural("1 day", "{0} days", timeSpan.Days);
-
-            if (timeSpan.TotalMinutes > 60)
-                return Plural("1 hour", "{0} hours", timeSpan.Hours);
-
-            if (timeSpan.TotalSeconds > 60)
-                return Plural("1 minute", "{0} minutes", timeSpan.Minutes);
-
-            if (timeSpan.TotalSeconds > 10)
-                return Plural("1 second", "{0} seconds", timeSpan.Seconds);
-
-            if (timeSpan.TotalMilliseconds > 1000)
-                return Plural("1 s", "{0} s", timeSpan.Seconds);
-
-            if (timeSpan.TotalMilliseconds > 0)
-                return Plural("1 ms", "{0} ms", (int)timeSpan.TotalMilliseconds);
-
-            return "less than 1ms";
-        }
-
-        private static string Plural(string singular, string plural, int count, params object[] args)
-        {
-            return String.Format(count == 1 ? singular : plural, new object[] { count }.Concat(args).ToArray());
-        }
-
-        private static DateTime ConvertToTimeZone(DateTime dateTimeUtc)
-        {
-            // using UTC as the default time zone for displaying times
-            // this code is useless for now
-            var timeZone = TimeZoneInfo.Utc;
-            return TimeZoneInfo.ConvertTimeFromUtc(dateTimeUtc, timeZone);
         }
     }
 }

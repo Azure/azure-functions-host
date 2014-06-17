@@ -108,6 +108,7 @@
     <Compile Include="Scenarios.cs" />
     <Compile Include="Storage\SdkCloudStorageAccountTests.cs" />
     <Compile Include="TestBlobClient.cs" />
+    <Compile Include="TestQueueClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">
