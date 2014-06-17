@@ -373,6 +373,10 @@
       <Project>{7b396753-f2d9-4655-929b-be7e665a4c7e}</Project>
       <Name>Jobs.ServiceBus</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Microsoft.Azure.Jobs.Storage\Jobs.Storage.csproj">
+      <Project>{543edc53-3b68-49a8-9c3f-fc2ed27515aa}</Project>
+      <Name>Jobs.Storage</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>Jobs</Name>

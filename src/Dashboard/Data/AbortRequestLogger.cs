@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 

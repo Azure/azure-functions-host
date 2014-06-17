@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.Azure.Jobs.Storage.Table;
 
 namespace Dashboard.Data
 {
@@ -25,19 +25,19 @@ namespace Dashboard.Data
         public FunctionInvocationIndexEntity[] Query(string partitionKey, string olderThan, string olderThanOrEqual, string newerThan, int? limit)
         {
             var modifiers = new List<IQueryModifier>();
-            modifiers.Add(new PartitionKeyEquals(partitionKey));
+            modifiers.Add(new PartitionKeyEqualsQueryModifier(partitionKey));
             if (newerThan != null)
             {
-                modifiers.Add(new RowKeyLessThan(newerThan));
+                modifiers.Add(new RowKeyLessThanQueryModifier(newerThan));
             }
             if (olderThan != null)
             {
-                modifiers.Add(new RowKeyGreaterThan(olderThan));
+                modifiers.Add(new RowKeyGreaterThanQueryModifier(olderThan));
             }
 
             if (olderThanOrEqual != null)
             {
-                modifiers.Add(new RowKeyGreaterThanOrEqual(olderThanOrEqual));
+                modifiers.Add(new RowKeyGreaterThanOrEqualQueryModifier(olderThanOrEqual));
             }
 
             var stuff = _table.Query<FunctionInvocationIndexEntity>(limit.GetValueOrDefault(10), modifiers.ToArray());

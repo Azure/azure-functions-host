@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;

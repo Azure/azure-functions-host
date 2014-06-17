@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
                 ICloudQueue queue = client.GetQueueReference(queueName);
                 Assert.NotNull(queue); // Guard
 
-                ICloudQueueMessage message = queue.CreateMessage(expectedContent);
+                CloudQueueMessage message = new CloudQueueMessage(expectedContent);
                 Assert.NotNull(message); // Guard
 
                 // Act

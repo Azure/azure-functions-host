@@ -1,6 +1,6 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.Jobs.Storage.Table;
 
 namespace Dashboard.Data
 {

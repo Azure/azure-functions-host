@@ -1,14 +1,14 @@
 ﻿using System;
 using Microsoft.WindowsAzure.Storage;
 
-#if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+#if PUBLICSTORAGE
+namespace Microsoft.Azure.Jobs.Storage
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.Jobs.Host.Storage
 #endif
 {
     /// <summary>Provides extension methods for the <see cref="StorageException"/> class.</summary>
-#if PUBLICPROTOCOL
+#if PUBLICSTORAGE
     [CLSCompliant(false)]
     public static class StorageExceptionExtensions
 #else

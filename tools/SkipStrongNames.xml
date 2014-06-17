@@ -6,6 +6,7 @@
   <assembly name="Microsoft.Azure.Jobs.Host"/>
   <assembly name="Microsoft.Azure.Jobs.Protocols"/>
   <assembly name="Microsoft.Azure.Jobs.ServiceBus"/>
+  <assembly name="Microsoft.Azure.Jobs.Storage"/>
 
   <!-- Unit test assemblies -->
   <assembly name="Dashboard.UnitTests"/>

@@ -205,9 +205,6 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageConnectionStringDescriptor.cs">
       <Link>Protocols\StorageConnectionStringDescriptor.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageExceptionExtensions.cs">
-      <Link>Protocols\StorageExceptionExtensions.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>
     </Compile>
@@ -225,6 +222,48 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\ICloudStorageAccount.cs">
+      <Link>Storage\ICloudStorageAccount.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Queue\ICloudQueue.cs">
+      <Link>Storage\Queue\ICloudQueue.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Queue\ICloudQueueClient.cs">
+      <Link>Storage\Queue\ICloudQueueClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\SdkCloudStorageAccount.cs">
+      <Link>Storage\SdkCloudStorageAccount.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\StorageExceptionExtensions.cs">
+      <Link>Storage\StorageExceptionExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\CloudTableExtensions.cs">
+      <Link>Storage\Table\CloudTableExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\ICloudTable.cs">
+      <Link>Storage\Table\ICloudTable.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\ICloudTableClient.cs">
+      <Link>Storage\Table\ICloudTableClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\IQueryModifier.cs">
+      <Link>Storage\Table\IQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\PartitionKeyEqualsQueryModifier.cs">
+      <Link>Storage\Table\PartitionKeyEqualsQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\ResolverQueryModifier.cs">
+      <Link>Storage\Table\ResolverQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyGreaterThanOrEqualQueryModifier.cs">
+      <Link>Storage\Table\RowKeyGreaterThanOrEqualQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyGreaterThanQueryModifier.cs">
+      <Link>Storage\Table\RowKeyGreaterThanQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyLessThanQueryModifier.cs">
+      <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
     <Compile Include="Bindings\AttributeBinding.cs" />
     <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
@@ -403,24 +442,15 @@
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
-    <Compile Include="Storage\Table\CloudTableExtensions.cs" />
     <Compile Include="Bindings\IBinderEx.cs" />
     <Compile Include="Runners\IConfiguration.cs" />
     <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="HostTableNames.cs" />
-    <Compile Include="Storage\Table\IQueryModifier.cs" />
     <Compile Include="Runners\HostEntity.cs" />
     <Compile Include="Runners\HostTable.cs" />
     <Compile Include="Runners\IHostTable.cs" />
-    <Compile Include="Storage\ICloudStorageAccount.cs" />
-    <Compile Include="Storage\Queue\ICloudQueue.cs" />
-    <Compile Include="Storage\Queue\ICloudQueueClient.cs" />
-    <Compile Include="Storage\Queue\ICloudQueueMessage.cs" />
-    <Compile Include="Storage\SdkCloudStorageAccount.cs" />
-    <Compile Include="Storage\Table\ICloudTable.cs" />
-    <Compile Include="Storage\Table\ICloudTableClient.cs" />
     <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Loggers\WebExecutionLogger.cs" />

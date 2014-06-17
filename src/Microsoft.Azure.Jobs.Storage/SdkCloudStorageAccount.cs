@@ -2,30 +2,48 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Microsoft.Azure.Jobs.Host.Protocols;
+#if PUBLICSTORAGE
+using Microsoft.Azure.Jobs.Storage.Queue;
+using Microsoft.Azure.Jobs.Storage.Table;
+#else
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
+#endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 
+#if PUBLICSTORAGE
+namespace Microsoft.Azure.Jobs.Storage
+#else
 namespace Microsoft.Azure.Jobs.Host.Storage
+#endif
 {
+    /// <summary>Represents a cloud storage account.</summary>
+#if PUBLICSTORAGE
+    [CLSCompliant(false)]
+    public class SdkCloudStorageAccount : ICloudStorageAccount
+#else
     internal class SdkCloudStorageAccount : ICloudStorageAccount
+#endif
     {
         private readonly CloudStorageAccount _sdkAccount;
 
+        /// <summary>Initializes a new instance of the <see cref="SdkCloudStorageAccount"/> class.</summary>
+        /// <param name="sdkAccount">The underlying SDK cloud storage account.</param>
         public SdkCloudStorageAccount(CloudStorageAccount sdkAccount)
         {
             _sdkAccount = sdkAccount;
         }
 
+        /// <inheritdoc />
         public ICloudQueueClient CreateCloudQueueClient()
         {
             CloudQueueClient sdkClient = _sdkAccount.CreateCloudQueueClient();
             return new QueueClient(sdkClient);
         }
 
+        /// <inheritdoc />
         public ICloudTableClient CreateCloudTableClient()
         {
             CloudTableClient sdkClient = _sdkAccount.CreateCloudTableClient();
@@ -57,38 +75,14 @@ namespace Microsoft.Azure.Jobs.Host.Storage
                 _sdk = sdk;
             }
 
-            public void AddMessage(ICloudQueueMessage message)
+            public void AddMessage(CloudQueueMessage message)
             {
-                QueueMessage sdkWrapper = (QueueMessage)message;
-                CloudQueueMessage sdkMessage = sdkWrapper.SdkObject;
-
-                _sdk.AddMessage(sdkMessage);
+                _sdk.AddMessage(message);
             }
 
             public void CreateIfNotExists()
             {
                 _sdk.CreateIfNotExists();
-            }
-
-            public ICloudQueueMessage CreateMessage(string content)
-            {
-                CloudQueueMessage sdkMessage = new CloudQueueMessage(content);
-                return new QueueMessage(sdkMessage);
-            }
-        }
-
-        private class QueueMessage : ICloudQueueMessage
-        {
-            private readonly CloudQueueMessage _sdk;
-
-            public QueueMessage(CloudQueueMessage sdk)
-            {
-                _sdk = sdk;
-            }
-
-            public CloudQueueMessage SdkObject
-            {
-                get { return _sdk; }
             }
         }
 

@@ -1,4 +1,9 @@
 ﻿using System;
+#if PUBLICPROTOCOL
+using Microsoft.Azure.Jobs.Storage;
+#else
+using Microsoft.Azure.Jobs.Host.Storage;
+#endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
