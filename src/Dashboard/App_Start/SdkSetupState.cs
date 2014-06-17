@@ -1,7 +1,4 @@
-﻿using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Runners;
-
-namespace Dashboard
+﻿namespace Dashboard
 {
     public class SdkSetupState
     {
@@ -16,7 +13,7 @@ namespace Dashboard
 
         public static string DashboardConnectionStringName
         {
-            get { return AmbientConnectionStringProvider.GetPrefixedConnectionStringName(JobHost.DashboardConnectionStringName); }
+            get { return "AzureJobsDashboard"; }
         }
 
         public enum ConnectionStringStates

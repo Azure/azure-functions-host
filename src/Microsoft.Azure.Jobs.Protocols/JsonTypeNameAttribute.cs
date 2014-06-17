@@ -10,10 +10,16 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// Provides a key to use in place of the .NET type name when deserializing polymophic objects using
     /// <see cref="PolymorphicJsonConverter"/>.
     /// </summary>
+#if PUBLICPROTOCOL
+    public class JsonTypeNameAttribute : Attribute
+#else
     internal class JsonTypeNameAttribute : Attribute
+#endif
     {
         private readonly string _typeName;
 
+        /// <summary>Initializes a new instance of the <see cref="JsonTypeNameAttribute"/> class.</summary>
+        /// <param name="typeName">The type name to use for serialization.</param>
         public JsonTypeNameAttribute(string typeName)
         {
             if (typeName == null)
@@ -24,6 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             _typeName = typeName;
         }
 
+        /// <summary>Gets the type name to use for serialization.</summary>
         public string TypeName
         {
             get { return _typeName; }

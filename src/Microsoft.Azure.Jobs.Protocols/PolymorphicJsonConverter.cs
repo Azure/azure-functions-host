@@ -16,17 +16,26 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// Unlike $type in JSON.NET, this converter decouples the message data from the .NET class and assembly names.
     /// It also allows emitting a type on the root object.
     /// </remarks>
+#if PUBLICPROTOCOL
+    public class PolymorphicJsonConverter : JsonConverter
+#else
     internal class PolymorphicJsonConverter : JsonConverter
+#endif
     {
         private readonly string _typePropertyName;
         private readonly IDictionary<string, Type> _nameToTypeMap;
         private readonly IDictionary<Type, string> _typeToNameMap;
 
+        /// <summary>Initializes a new instance of the <see cref="PolymorphicJsonConverter"/> class.</summary>
+        /// <param name="typeMapping">The type names to use when serializing types.</param>
         public PolymorphicJsonConverter(IDictionary<string, Type> typeMapping)
             : this("$$type", typeMapping)
         {
         }
 
+        /// <summary>Initializes a new instance of the <see cref="PolymorphicJsonConverter"/> class.</summary>
+        /// <param name="typePropertyName">The name of the property in which to serialize the type name.</param>
+        /// <param name="typeMapping">The type names to use when serializing types.</param>
         public PolymorphicJsonConverter(string typePropertyName, IDictionary<string, Type> typeMapping)
         {
             if (typePropertyName == null)
@@ -50,16 +59,19 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
         }
 
+        /// <summary>Gets the name of the property in which to serialize the type name.</summary>
         public string TypePropertyName
         {
             get { return _typePropertyName; }
         }
-
+        
+        /// <inheritdoc />
         public override bool CanConvert(Type objectType)
         {
             return _typeToNameMap.ContainsKey(objectType);
         }
 
+        /// <inheritdoc />
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             if (reader == null)
@@ -92,6 +104,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             return target;
         }
 
+        /// <inheritdoc />
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
             if (writer == null)
@@ -137,6 +150,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             serializer.ContractResolver = originalContractResolver;
         }
 
+        /// <summary>Gets all type name mappings in a type hierarchy.</summary>
+        /// <typeparam name="T">The root type of the type hierarchy.</typeparam>
+        /// <returns>All type name mappings in the type hierarchy.</returns>
         public static IDictionary<string, Type> GetTypeMapping<T>()
         {
             IDictionary<string, Type> typeMapping = new Dictionary<string, Type>();

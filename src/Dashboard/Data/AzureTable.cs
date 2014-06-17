@@ -12,7 +12,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AzureTables
 {
-    internal class AzureTable : IAzureTable, ISelfWatch
+    internal class AzureTable : IAzureTable
     {
         private Stopwatch _timeWrite = new Stopwatch();
         private Stopwatch _timeRead = new Stopwatch();

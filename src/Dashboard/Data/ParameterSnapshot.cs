@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.Jobs.Host.Protocols;
+﻿using Microsoft.Azure.Jobs.Protocols;
 using Newtonsoft.Json;
 
 namespace Dashboard.Data
