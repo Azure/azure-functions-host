@@ -12,22 +12,18 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         private readonly IArgumentBinding<TableEntityContext> _argumentBinding;
         private readonly CloudTableClient _client;
         private readonly string _accountName;
-        private readonly string _tableName;
-        private readonly string _partitionKey;
-        private readonly string _rowKey;
+        private readonly IBindableTableEntityPath _path;
         private readonly IObjectToTypeConverter<TableEntityContext> _converter;
 
         public TableEntityBinding(string parameterName, IArgumentBinding<TableEntityContext> argumentBinding,
-            CloudTableClient client, string tableName, string partitionKey, string rowKey)
+            CloudTableClient client, IBindableTableEntityPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = TableClient.GetAccountName(client);
-            _tableName = tableName;
-            _partitionKey = partitionKey;
-            _rowKey = rowKey;
-            _converter = CreateConverter(client, tableName, partitionKey, rowKey);
+            _path = path;
+            _converter = CreateConverter(client, path);
         }
 
         public bool FromAttribute
@@ -37,45 +33,37 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
         public string TableName
         {
-            get { return _tableName; }
+            get { return _path.TableNamePattern; }
         }
 
         public string PartitionKey
         {
-            get { return _partitionKey; }
+            get { return _path.PartitionKeyPattern; }
         }
 
         public string RowKey
         {
-            get { return _rowKey; }
+            get { return _path.RowKeyPattern; }
         }
 
         private static IObjectToTypeConverter<TableEntityContext> CreateConverter(CloudTableClient client,
-            string tableName, string partitionKey, string rowKey)
+            IBindableTableEntityPath path)
         {
             return new CompositeObjectToTypeConverter<TableEntityContext>(
                 new EntityOutputConverter<TableEntityContext>(new IdentityConverter<TableEntityContext>()),
-                new EntityOutputConverter<string>(new StringToTableEntityContextConverter(client, tableName,
-                    partitionKey, rowKey)));
+                new EntityOutputConverter<string>(new StringToTableEntityContextConverter(client, path)));
         }
 
         public IValueProvider Bind(BindingContext context)
         {
-            string resolvedTableName = RouteParser.ApplyBindingData(_tableName, context.BindingData);
-            TableClient.ValidateAzureTableName(resolvedTableName);
-            CloudTable table = _client.GetTableReference(resolvedTableName);
-
-            string resolvedPartitionKey = RouteParser.ApplyBindingData(_partitionKey, context.BindingData);
-            TableClient.ValidateAzureTableKeyValue(resolvedPartitionKey);
-
-            string resolvedRowKey = RouteParser.ApplyBindingData(_rowKey, context.BindingData);
-            TableClient.ValidateAzureTableKeyValue(resolvedRowKey);
+            TableEntityPath boundPath = _path.Bind(context.BindingData);
+            CloudTable table = _client.GetTableReference(boundPath.TableName);
 
             TableEntityContext entityContext = new TableEntityContext
             {
                 Table = table,
-                PartitionKey = resolvedPartitionKey,
-                RowKey = resolvedRowKey
+                PartitionKey = boundPath.PartitionKey,
+                RowKey = boundPath.RowKey
             };
 
             return Bind(entityContext, context);
@@ -107,9 +95,9 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             {
                 Name = _parameterName,
                 AccountName = _accountName,
-                TableName = _tableName,
-                PartitionKey = _partitionKey,
-                RowKey = _rowKey
+                TableName = _path.TableNamePattern,
+                PartitionKey = _path.PartitionKeyPattern,
+                RowKey = _path.RowKeyPattern
             };
         }
     }

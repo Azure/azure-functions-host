@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
 
         public ICloudBlob Convert(string input)
         {
-            CloudBlobPath path = new CloudBlobPath(input);
+            BlobPath path = BlobPath.ParseAndValidate(input);
             CloudBlobContainer container = _client.GetContainerReference(path.ContainerName);
             return container.GetBlobReferenceFromServer(path.BlobName);
         }

@@ -7,12 +7,17 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
     {
         public static string GetBlobPath(this ICloudBlob blob)
         {
+            return ToBlobPath(blob).ToString();
+        }
+
+        public static BlobPath ToBlobPath(this ICloudBlob blob)
+        {
             if (blob == null)
             {
                 throw new ArgumentNullException("blob");
             }
 
-            return blob.Container.Name + "/" + blob.Name;
+            return new BlobPath(blob.Container.Name, blob.Name);
         }
     }
 }

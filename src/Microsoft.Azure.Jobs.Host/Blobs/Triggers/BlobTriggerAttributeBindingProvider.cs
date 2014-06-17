@@ -49,8 +49,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 return null;
             }
 
-            string blobPath = context.Resolve(blobTrigger.BlobPath);
-            CloudBlobPath parsedBlobPath = Parse(blobPath);
+            string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
+            IBlobPathSource path = BlobPathSource.Create(resolvedCombinedPath);
 
             IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
 
@@ -60,12 +60,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             }
 
             return new BlobTriggerBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateCloudBlobClient(), parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
-        }
-
-        private static CloudBlobPath Parse(string blobPath)
-        {
-            return new CloudBlobPath(blobPath);
+                context.StorageAccount.CreateCloudBlobClient(), path);
         }
     }
 }

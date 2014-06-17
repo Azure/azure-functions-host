@@ -106,8 +106,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             // Finish populating the function started snapshot.
             message.OutputBlob = GetBlobDescriptor(functionOutput.Blob);
-            CloudBlobDescriptor parameterLogger = functionOutput.ParameterLogBlob;
-            message.ParameterLogBlob = parameterLogger == null ? null : GetBlobDescriptor(parameterLogger.GetBlockBlob());
+            message.ParameterLogBlob = GetBlobDescriptor(functionOutput.ParameterLogBlob);
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
@@ -130,12 +129,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         private void ExecuteWithOutputLogs(FunctionInvokeRequest request,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
-            CloudBlobDescriptor parameterLogger, IDictionary<string, ParameterLog> parameterLogCollector)
+            CloudBlockBlob parameterLogBlob, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             MethodInfo method = request.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
             IReadOnlyDictionary<string, ISelfWatch> watches = CreateWatches(parameters);
-            SelfWatch selfWatch = CreateSelfWatch(watches, parameterLogger, consoleOutput);
+            SelfWatch selfWatch = CreateSelfWatch(watches, parameterLogBlob, consoleOutput);
 
             try
             {
@@ -175,15 +174,14 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         private static SelfWatch CreateSelfWatch(IReadOnlyDictionary<string, ISelfWatch> watches,
-            CloudBlobDescriptor parameterLogger, TextWriter consoleOutput)
+            CloudBlockBlob parameterLogBlob, TextWriter consoleOutput)
         {
-            if (parameterLogger == null)
+            if (parameterLogBlob == null)
             {
                 return null;
             }
 
-            CloudBlockBlob parameterBlob = parameterLogger.GetBlockBlob();
-            return new SelfWatch(watches, parameterBlob, consoleOutput);
+            return new SelfWatch(watches, parameterLogBlob, consoleOutput);
         }
 
         internal static void ExecuteWithSelfWatch(MethodInfo method, ParameterInfo[] parameterInfos,

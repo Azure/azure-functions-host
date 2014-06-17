@@ -6,13 +6,14 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Results;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.ApiControllers
 {
-    [Route("api/log/{action}/{id?}", Name="LogControllerRoute")]
+    [Route("api/log/{action}/{id?}", Name = "LogControllerRoute")]
     public class LogController : ApiController
     {
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
@@ -49,7 +50,7 @@ namespace Dashboard.ApiControllers
             }
 
             CloudBlockBlob blob = outputBlobDescriptor.GetBlockBlob(_account);
-            
+
             var sb = new StringBuilder();
             using (var stream = blob.OpenRead())
             {
@@ -82,7 +83,12 @@ namespace Dashboard.ApiControllers
                 return Unauthorized();
             }
 
-            LocalBlobDescriptor descriptor = BlobPathParser.Parse(path);
+            BlobPath parsed = BlobPath.Parse(path);
+            LocalBlobDescriptor descriptor = new LocalBlobDescriptor
+            {
+                ContainerName = parsed.ContainerName,
+                BlobName = parsed.BlobName
+            };
             var blob = descriptor.GetBlockBlob(_account);
 
             // Get a SAS for the next 10 mins

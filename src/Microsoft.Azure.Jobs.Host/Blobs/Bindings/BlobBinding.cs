@@ -13,20 +13,18 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         private readonly IBlobArgumentBinding _argumentBinding;
         private readonly CloudBlobClient _client;
         private readonly string _accountName;
-        private readonly string _containerName;
-        private readonly string _blobName;
+        private readonly IBindableBlobPath _path;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
 
         public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, CloudBlobClient client,
-            string containerName, string blobName)
+            IBindableBlobPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = BlobClient.GetAccountName(client);
-            _containerName = containerName;
-            _blobName = blobName;
-            _converter = CreateConverter(_client, containerName, blobName, argumentBinding.ValueType);
+            _path = path;
+            _converter = CreateConverter(_client, path, argumentBinding.ValueType);
         }
 
         public bool FromAttribute
@@ -36,17 +34,17 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
         public string ContainerName
         {
-            get { return _containerName; }
+            get { return _path.ContainerNamePattern; }
         }
 
         public string BlobName
         {
-            get { return _containerName; }
+            get { return _path.BlobNamePattern; }
         }
 
         public string BlobPath
         {
-            get { return _containerName + "/" + _blobName; }
+            get { return _path.ToString(); }
         }
 
         public FileAccess Access
@@ -54,13 +52,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             get { return _argumentBinding.Access; }
         }
 
-        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client, string containerName,
-            string blobName, Type argumentType)
+        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client,
+            IBindableBlobPath path, Type argumentType)
         {
             return new CompositeObjectToTypeConverter<ICloudBlob>(
                 new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(client, containerName, blobName,
-                    argumentType)));
+                new OutputConverter<string>(new StringToCloudBlobConverter(client, path, argumentType)));
         }
 
         private IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
@@ -70,13 +67,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
         public IValueProvider Bind(BindingContext context)
         {
-            string resolvedPath = RouteParser.ApplyBindingData(BlobPath, context.BindingData);
-            CloudBlobPath parsedResolvedPath = new CloudBlobPath(resolvedPath);
-            CloudBlobContainer container = _client.GetContainerReference(parsedResolvedPath.ContainerName);
+            BlobPath boundPath = _path.Bind(context.BindingData);
+            CloudBlobContainer container = _client.GetContainerReference(boundPath.ContainerName);
             container.CreateIfNotExists();
 
             Type argumentType = _argumentBinding.ValueType;
-            string blobName = parsedResolvedPath.BlobName;
+            string blobName = boundPath.BlobName;
             ICloudBlob blob = container.GetBlobReferenceForArgumentType(blobName, argumentType);
 
             return Bind(blob, context);
@@ -100,8 +96,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             {
                 Name = _parameterName,
                 AccountName = _accountName,
-                ContainerName = _containerName,
-                BlobName = _blobName,
+                ContainerName = _path.ContainerNamePattern,
+                BlobName = _path.BlobNamePattern,
                 Access = _argumentBinding.Access
             };
         }

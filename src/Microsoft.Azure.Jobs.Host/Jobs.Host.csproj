@@ -266,6 +266,7 @@
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
     <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\BindingDataPath.cs" />
     <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
@@ -283,10 +284,22 @@
     <Compile Include="Bindings\Data\StructDataBinding.cs" />
     <Compile Include="Bindings\Data\DataBindingProvider.cs" />
     <Compile Include="Bindings\Data\TToStringConverter.cs" />
+    <Compile Include="Bindings\BindablePathExtensions.cs" />
+    <Compile Include="Bindings\IBindablePath.cs" />
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Blobs\Bindings\BindableBlobPath.cs" />
+    <Compile Include="Blobs\Bindings\BoundBlobPath.cs" />
+    <Compile Include="Blobs\Bindings\IBindableBlobPath.cs" />
     <Compile Include="Blobs\IBlobArgumentBinding.cs" />
+    <Compile Include="Blobs\Bindings\ParameterizedBlobPath.cs" />
+    <Compile Include="Blobs\BlobPath.cs" />
+    <Compile Include="Blobs\Triggers\BlobPathSource.cs" />
+    <Compile Include="Blobs\Triggers\BlobPathSourceExtensions.cs" />
+    <Compile Include="Blobs\Triggers\FixedBlobPathSource.cs" />
+    <Compile Include="Blobs\Triggers\IBlobPathSource.cs" />
+    <Compile Include="Blobs\Triggers\ParameterizedBlobPathSource.cs" />
     <Compile Include="Runners\ExceptionExtensions.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />
@@ -401,9 +414,14 @@
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
     <Compile Include="Runners\IParametersProvider.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
+    <Compile Include="Tables\IBindableTablePath.cs" />
+    <Compile Include="Tables\IBindableTableEntityPath.cs" />
     <Compile Include="Tables\NullEntityValueProvider.cs" />
     <Compile Include="Tables\OutputConverter.cs" />
+    <Compile Include="Tables\ParameterizedTablePath.cs" />
+    <Compile Include="Tables\ParameterizedTableEntityPath.cs" />
     <Compile Include="Tables\PocoTableEntity.cs" />
+    <Compile Include="Tables\BindableTablePath.cs" />
     <Compile Include="Tables\StringToTableEntityContextConverter.cs" />
     <Compile Include="Tables\StringToCloudTableConverter.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProvider.cs" />
@@ -417,6 +435,9 @@
     <Compile Include="Tables\ITableEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\ITableArgumentBindingProvider.cs" />
     <Compile Include="Tables\TableEntityContext.cs" />
+    <Compile Include="Tables\BindableTableEntityPath.cs" />
+    <Compile Include="Tables\BoundTableEntityPath.cs" />
+    <Compile Include="Tables\BoundTablePath.cs" />
     <Compile Include="Tables\TableValueProvider.cs" />
     <Compile Include="Tables\TableAttributeBindingProvider.cs" />
     <Compile Include="Timers\NullTimerCommand.cs" />
@@ -433,7 +454,6 @@
     <Compile Include="WebJobsShutdownWatcher.cs" />
     <Compile Include="Tables\TableEntityPath.cs" />
     <Compile Include="Bindings\ServiceBusExtensionTypeLoader.cs" />
-    <Compile Include="Bindings\RouteParser.cs" />
     <Compile Include="HostContainerNames.cs" />
     <Compile Include="INameResolver.cs" />
     <Compile Include="JobHostConfiguration.cs" />
@@ -477,13 +497,11 @@
     <Compile Include="Triggers\CloudContainerComparer.cs" />
     <Compile Include="Runners\DefaultStorageValidator.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
-    <Compile Include="Bindings\CloudBlobDescriptor.cs" />
     <Compile Include="Runners\IStorageValidator.cs" />
     <Compile Include="ITypeLocator.cs" />
     <Compile Include="StringConverter.cs" />
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Loggers\BlobIncrementalTextWriter.cs" />
-    <Compile Include="Bindings\CloudBlobPath.cs" />
     <Compile Include="Runners\FunctionExecutionContext.cs" />
     <Compile Include="Loggers\IFunctionOutputLogDispenser.cs" />
     <Compile Include="Runners\BlobWrittenMessage.cs" />

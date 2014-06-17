@@ -47,7 +47,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             FunctionDefinition func = Get("NameResolver", nameResolver);
             var bindings = func.NonTriggerBindings;
 
-            Assert.Equal(@"input/VALUE", ((BlobBinding)bindings["inputs"]).BlobPath);
+            Assert.Equal(@"input", ((BlobBinding)bindings["inputs"]).ContainerName);
+            Assert.Equal(@"VALUE", ((BlobBinding)bindings["inputs"]).BlobName);
         }
 
         public static void AutoTrigger1([BlobTrigger(@"daas-test-input/{name}.csv")] TextReader inputs) { }

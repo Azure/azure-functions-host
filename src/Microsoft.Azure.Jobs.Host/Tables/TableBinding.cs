@@ -13,18 +13,18 @@ namespace Microsoft.Azure.Jobs.Host.Tables
         private readonly IArgumentBinding<CloudTable> _argumentBinding;
         private readonly CloudTableClient _client;
         private readonly string _accountName;
-        private readonly string _tableName;
+        private readonly IBindableTablePath _path;
         private readonly IObjectToTypeConverter<CloudTable> _converter;
 
         public TableBinding(string parameterName, IArgumentBinding<CloudTable> argumentBinding, CloudTableClient client,
-            string tableName)
+            IBindableTablePath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = TableClient.GetAccountName(client);
-            _tableName = tableName;
-            _converter = CreateConverter(client, tableName);
+            _path = path;
+            _converter = CreateConverter(client, path);
         }
 
         public bool FromAttribute
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
         public string TableName
         {
-            get { return _tableName; }
+            get { return _path.TableNamePattern; }
         }
 
         private FileAccess Access
@@ -46,18 +46,18 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             }
         }
 
-        private static IObjectToTypeConverter<CloudTable> CreateConverter(CloudTableClient client, string tableName)
+        private static IObjectToTypeConverter<CloudTable> CreateConverter(CloudTableClient client,
+            IBindableTablePath path)
         {
             return new CompositeObjectToTypeConverter<CloudTable>(
                 new OutputConverter<CloudTable>(new IdentityConverter<CloudTable>()),
-                new OutputConverter<string>(new StringToCloudTableConverter(client, tableName)));
+                new OutputConverter<string>(new StringToCloudTableConverter(client, path)));
         }
 
         public IValueProvider Bind(BindingContext context)
         {
-            string resolvedTableName = RouteParser.ApplyBindingData(_tableName, context.BindingData);
-            TableClient.ValidateAzureTableName(resolvedTableName);
-            CloudTable table = _client.GetTableReference(resolvedTableName);
+            string boundTableName = _path.Bind(context.BindingData);
+            CloudTable table = _client.GetTableReference(boundTableName);
 
             return Bind(table, context);
         }
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             {
                 Name = _parameterName,
                 AccountName = _accountName,
-                TableName = _tableName,
+                TableName = _path.TableNamePattern,
                 Access = Access
             };
         }

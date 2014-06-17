@@ -164,6 +164,12 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\BlobClient.cs">
+      <Link>Data\BlobClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobPath.cs">
+      <Link>Data\BlobPath.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Host\Loggers\BlobCausalityLogger.cs">
       <Link>Data\BlobCausalityLogger.cs</Link>
     </Compile>
@@ -248,7 +254,6 @@
     <Compile Include="Data\VersionedDocumentStore.cs" />
     <Compile Include="Data\WrapperEnumerable.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
-    <Compile Include="HostMessaging\BlobPathParser.cs" />
     <Compile Include="HostMessaging\CredentialsDescriptorExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />
     <Compile Include="HostMessaging\IInvoker.cs" />

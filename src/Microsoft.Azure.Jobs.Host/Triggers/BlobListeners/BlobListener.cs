@@ -140,7 +140,7 @@ namespace Microsoft.Azure.Jobs
                         continue;
                     }
 
-                    var blob = path.Resolve(client.Client);
+                    var blob = client.Client.GetContainerReference(path.ContainerName).GetBlockBlobReference(path.BlobName);
 
                     callback(blob, context);
                 }

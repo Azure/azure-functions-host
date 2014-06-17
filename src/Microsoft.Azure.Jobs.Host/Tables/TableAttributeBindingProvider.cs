@@ -27,18 +27,16 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             }
 
             string tableName = context.Resolve(tableAttribute.TableName);
-            if (!RouteParser.HasParameterNames(tableName))
-            {
-                TableClient.ValidateAzureTableName(tableName);
-            }
-
             CloudTableClient client = context.StorageAccount.CreateCloudTableClient();
-
             Type parameterType = parameter.ParameterType;
+
             bool bindsToEntireTable = tableAttribute.RowKey == null;
 
             if (bindsToEntireTable)
             {
+                IBindableTablePath path = BindableTablePath.Create(tableName);
+                path.ValidateContractCompatibility(context.BindingDataContract);
+
                 IArgumentBinding<CloudTable> argumentBinding = _tableProvider.TryCreate(parameterType);
 
                 if (argumentBinding == null)
@@ -46,23 +44,14 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table to type '" + parameterType + "'.");
                 }
 
-                return new TableBinding(parameter.Name, argumentBinding, client, tableName);
+                return new TableBinding(parameter.Name, argumentBinding, client, path);
             }
             else
             {
                 string partitionKey = context.Resolve(tableAttribute.PartitionKey);
-
-                if (!RouteParser.HasParameterNames(partitionKey))
-                {
-                    TableClient.ValidateAzureTableKeyValue(partitionKey);
-                }
-
                 string rowKey = context.Resolve(tableAttribute.RowKey);
-
-                if (!RouteParser.HasParameterNames(rowKey))
-                {
-                    TableClient.ValidateAzureTableKeyValue(rowKey);
-                }
+                IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);
+                path.ValidateContractCompatibility(context.BindingDataContract);
 
                 IArgumentBinding<TableEntityContext> argumentBinding = _entityProvider.TryCreate(parameterType);
 
@@ -71,7 +60,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table entity to type '" + parameterType + "'.");
                 }
 
-                return new TableEntityBinding(parameter.Name, argumentBinding, client, tableName, partitionKey, rowKey);
+                return new TableEntityBinding(parameter.Name, argumentBinding, client, path);
             }
         }
     }

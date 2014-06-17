@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -15,10 +18,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void NoOutputs()
         {
             var trigger = new BlobTrigger {
-                 BlobInput = new CloudBlobPath("container", "skip")                  
+                 BlobInput = CreateBlobPathSource("container", "skip")
             };
 
-            var nvc = new Dictionary<string,string>();
+            var nvc = new Dictionary<string,object>();
             bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
             Assert.True(invoke);
         }
@@ -28,11 +31,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             var trigger = new BlobTrigger
             {
-                BlobInput = new CloudBlobPath("container", "skip"),
-                BlobOutputs = new CloudBlobPath[0]
+                BlobInput = CreateBlobPathSource("container", "skip"),
+                BlobOutputs = new IBindableBlobPath[0]
             };
 
-            var nvc = new Dictionary<string, string>();
+            var nvc = new Dictionary<string, object>();
             bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
             Assert.True(invoke);
         }
@@ -42,9 +45,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             var trigger = new BlobTrigger
             {
-                BlobInput = new CloudBlobPath("container", "new"),
-                BlobOutputs = new CloudBlobPath[] {
-                    new CloudBlobPath("container", "old")
+                BlobInput = CreateBlobPathSource("container", "new"),
+                BlobOutputs = new IBindableBlobPath[] {
+                    new BoundBlobPath(new BlobPath("container", "old"))
                 }
             };
 
@@ -58,9 +61,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             var trigger = new BlobTrigger
             {
-                BlobInput = new CloudBlobPath("container", "old"),
-                BlobOutputs = new CloudBlobPath[] {
-                    new CloudBlobPath("container", "missing")
+                BlobInput = CreateBlobPathSource("container", "old"),
+                BlobOutputs = new IBindableBlobPath[] {
+                    CreateBindableBlobPath("container", "missing")
                 }
             };
 
@@ -74,9 +77,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             var trigger = new BlobTrigger
             {
-                BlobInput = new CloudBlobPath("container", "old"),
-                BlobOutputs = new CloudBlobPath[] {
-                    new CloudBlobPath("container", "new")
+                BlobInput = CreateBlobPathSource("container", "old"),
+                BlobOutputs = new IBindableBlobPath[] {
+                    CreateBindableBlobPath("container", "new")
                 }
             };
 
@@ -91,10 +94,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             // Input is new than one of the outputs
             var trigger = new BlobTrigger
             {
-                BlobInput = new CloudBlobPath("container", "middle"),
-                BlobOutputs = new CloudBlobPath[] {
-                    new CloudBlobPath("container", "old"),
-                    new CloudBlobPath("container", "new")
+                BlobInput = CreateBlobPathSource("container", "middle"),
+                BlobOutputs = new IBindableBlobPath[] {
+                    CreateBindableBlobPath("container", "old"),
+                    CreateBindableBlobPath("container", "new")
                 }
             };
 
@@ -103,10 +106,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             Assert.True(invoke);
         }
 
-
         bool ShouldInvokeTrigger(BlobTrigger trigger)
         {
-            var nvc = new Dictionary<string, string>();
+            var nvc = new Dictionary<string, object>();
             var inputTime = LookupTime(trigger.BlobInput);
             Assert.True(inputTime.HasValue);
 
@@ -114,7 +116,22 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             return invoke;
         }
 
-        internal static DateTime? LookupTime(CloudBlobPath path)
+        private static IBindableBlobPath CreateBindableBlobPath(string containerName, string blobName)
+        {
+            return new BoundBlobPath(new BlobPath(containerName, blobName));
+        }
+
+        private static IBlobPathSource CreateBlobPathSource(string containerName, string blobName)
+        {
+            return new FixedBlobPathSource(new BlobPath(containerName, blobName));
+        }
+
+        internal static DateTime? LookupTime(IBlobPathSource path)
+        {
+            return LookupTime(new BlobPath(path.ContainerNamePattern, path.BlobNamePattern));
+        }
+
+        internal static DateTime? LookupTime(BlobPath path)
         {
             if (path.BlobName.EndsWith("missing"))
             {

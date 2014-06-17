@@ -103,10 +103,15 @@ namespace Microsoft.Azure.Jobs
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
         public static void ValidateAzureTableName(string tableName)
         {
-            if (!Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$"))
+            if (!IsValidAzureTableName(tableName))
             {
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
             }
+        }
+
+        public static bool IsValidAzureTableName(string tableName)
+        {
+            return Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$");
         }
 
         // Azure table partition key and row key values are restrictive, so sanity check upfront to give a useful error.
@@ -119,7 +124,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static bool IsValidAzureTableKeyValue(string value)
+        public static bool IsValidAzureTableKeyValue(string value)
         {
             // Empty strings and whitespace are valid partition keys and row keys, but null is invalid.
             if (value == null)

@@ -7,24 +7,29 @@ namespace Microsoft.Azure.Jobs.Host.Tables
     internal class StringToCloudTableConverter : IConverter<string, CloudTable>
     {
         private readonly CloudTableClient _client;
-        private readonly string _defaultTableName;
+        private readonly IBindableTablePath _defaultPath;
 
-        public StringToCloudTableConverter(CloudTableClient client, string defaultTableName)
+        public StringToCloudTableConverter(CloudTableClient client, IBindableTablePath defaultPath)
         {
             _client = client;
-            _defaultTableName = defaultTableName;
+            _defaultPath = defaultPath;
         }
 
         public CloudTable Convert(string input)
         {
+            string tableName;
+
             // For convenience, treat an an empty string as a request for the default value (when valid).
-            if (String.IsNullOrEmpty(input) && !RouteParser.HasParameterNames(_defaultTableName))
+            if (String.IsNullOrEmpty(input) && _defaultPath.IsBound)
             {
-                return _client.GetTableReference(_defaultTableName);
+                tableName = _defaultPath.Bind(null);
+            }
+            else
+            {
+                tableName = BoundTablePath.Validate(input);
             }
 
-            TableClient.ValidateAzureTableName(input);
-            return _client.GetTableReference(input);
+            return _client.GetTableReference(tableName);
         }
     }
 }

@@ -85,8 +85,8 @@
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
-    <Compile Include="Bindings\CloudBlobPathParserTests.cs" />
-    <Compile Include="Bindings\CloudBlobPathTests.cs" />
+    <Compile Include="Blobs\Triggers\BlobPathSourceTests.cs" />
+    <Compile Include="Blobs\BlobPathTests.cs" />
     <Compile Include="Bindings\BindingDataTests.cs" />
     <Compile Include="BlobIncrementalTextWriterUnitTest.cs" />
     <Compile Include="FlowUnitTestErrors.cs" />

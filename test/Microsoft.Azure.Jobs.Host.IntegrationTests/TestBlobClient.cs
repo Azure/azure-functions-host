@@ -54,7 +54,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var c = client.GetContainerReference(containerName);
             var blob = c.GetBlockBlobReference(blobName);
 
-            return BlobClient.DoesBlobExist(blob);
+            return blob.Exists();
         }
     }
 }

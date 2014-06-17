@@ -314,9 +314,7 @@ namespace Microsoft.Azure.Jobs
             return TableClient.IsDefaultTableType(t) ||
                 (t == typeof(char)) ||
                 (t.IsEnum) || // ensures Enums are represented as string values instead of numerical.
-                (t == typeof(TimeSpan)) ||
-                (t == typeof(CloudBlobPath)
-
+                (t == typeof(TimeSpan)
                 );
         }
     }

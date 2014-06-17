@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
@@ -81,11 +83,11 @@ namespace Microsoft.Azure.Jobs
                 var blobTrigger = func as BlobTrigger;
                 if (blobTrigger != null)
                 {
-                    CloudBlobPath path = blobTrigger.BlobInput;
+                    IBlobPathSource path = blobTrigger.BlobInput;
 
                     CloudStorageAccount account = GetAccount(scope, func);
                     CloudBlobClient clientBlob = account.CreateCloudBlobClient();
-                    string containerName = path.ContainerName;
+                    string containerName = path.ContainerNamePattern;
                     CloudBlobContainer container = clientBlob.GetContainerReference(containerName);
 
                     _map.GetOrCreate(container).Add(blobTrigger);
@@ -189,7 +191,6 @@ namespace Microsoft.Azure.Jobs
         {
             var client = blob.ServiceClient;
 
-            var blobPathActual = new CloudBlobPath(blob);
             var container = blob.Container;
 
             DateTime inputTime;
@@ -204,7 +205,7 @@ namespace Microsoft.Azure.Jobs
                 inputTime = inputTimeCheck.Value;
             }
 
-            Func<CloudBlobPath, DateTime?> fpGetModifiedTime = path => GetModifiedTime(client, path);
+            Func<BlobPath, DateTime?> fpGetModifiedTime = path => GetModifiedTime(client, path);
 
             List<BlobTrigger> list;
             if (_map.TryGetValue(container, out list))
@@ -212,8 +213,8 @@ namespace Microsoft.Azure.Jobs
                 // Invoke all these functions
                 foreach (BlobTrigger func in list)
                 {
-                    CloudBlobPath blobPathPattern = func.BlobInput;
-                    var nvc = blobPathPattern.Match(blobPathActual);
+                    IBlobPathSource blobPathPattern = func.BlobInput;
+                    var nvc = blobPathPattern.CreateBindingData(blob.ToBlobPath());
 
                     if (nvc == null)
                     {
@@ -235,7 +236,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Helper to get the last modified time for a given (resolved) blob path. 
-        private static DateTime? GetModifiedTime(CloudBlobClient client, CloudBlobPath path)
+        private static DateTime? GetModifiedTime(CloudBlobClient client, BlobPath path)
         {
             var container = client.GetContainerReference(path.ContainerName);
             var blob = container.GetBlockBlobReference(path.BlobName);
@@ -249,7 +250,7 @@ namespace Microsoft.Azure.Jobs
         // nvc - route parameters from the input blob. These are used to resolve the output blobs
         // inputTime - last modified time for the input blob
         // fpGetModifiedTime - function to resolve times of the outputs (returns null if no output found)
-        public static bool ShouldInvokeTrigger(BlobTrigger trigger, IDictionary<string, string> nvc, DateTime inputTime, Func<CloudBlobPath, DateTime?> fpGetModifiedTime)
+        public static bool ShouldInvokeTrigger(BlobTrigger trigger, IReadOnlyDictionary<string, object> nvc, DateTime inputTime, Func<BlobPath, DateTime?> fpGetModifiedTime)
         {
             if (trigger.BlobOutputs == null)
             {
@@ -262,7 +263,7 @@ namespace Microsoft.Azure.Jobs
 
             foreach (var outputPath in trigger.BlobOutputs)
             {
-                CloudBlobPath outputPathResolved = outputPath.ApplyNames(nvc);
+                BlobPath outputPathResolved = outputPath.Bind(nvc);
 
                 var outputTime = fpGetModifiedTime(outputPathResolved);
 

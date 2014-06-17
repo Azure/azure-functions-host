@@ -4,25 +4,51 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 {
     internal class TableEntityPath
     {
-        public string TableName { get; set; }
+        private readonly string _tableName;
+        private readonly string _partitionKey;
+        private readonly string _rowKey;
 
-        public string PartitionKey { get; set; }
+        public TableEntityPath(string tableName, string partitionKey, string rowKey)
+        {
+            _tableName = tableName;
+            _partitionKey = partitionKey;
+            _rowKey = rowKey;
+        }
 
-        public string RowKey { get; set; }
+        public string TableName
+        {
+            get { return _tableName; }
+        }
 
-        public static TableEntityPath Parse(string value)
+        public string PartitionKey
+        {
+            get { return _partitionKey; }
+        }
+
+        public string RowKey
+        {
+            get { return _rowKey; }
+        }
+
+        public override string ToString()
+        {
+            return _tableName + "/" + _partitionKey + "/" + _rowKey;
+        }
+
+        public static TableEntityPath ParseAndValidate(string value)
         {
             TableEntityPath path;
 
-            if (!TryParse(value, out path))
+            if (!TryParseAndValidate(value, out path))
             {
-                throw new InvalidOperationException("Table entity identifiers must be in the format TableName/PartitionKey/RowKey.");
+                throw new InvalidOperationException("Table entity identifiers must be in the format " +
+                    "TableName/PartitionKey/RowKey and must meet table naming requirements.");
             }
 
             return path;
         }
 
-        public static bool TryParse(string value, out TableEntityPath path)
+        public static bool TryParseAndValidate(string value, out TableEntityPath path)
         {
             if (value == null)
             {
@@ -37,12 +63,29 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return false;
             }
 
-            path = new TableEntityPath
+            string tableName = components[0];
+            string partitionKey = components[1];
+            string rowKey = components[2];
+
+            if (!TableClient.IsValidAzureTableName(tableName))
             {
-                TableName = components[0],
-                PartitionKey = components[1],
-                RowKey = components[2]
-            };
+                path = null;
+                return false;
+            }
+
+            if (!TableClient.IsValidAzureTableKeyValue(partitionKey))
+            {
+                path = null;
+                return false;
+            }
+
+            if (!TableClient.IsValidAzureTableKeyValue(rowKey))
+            {
+                path = null;
+                return false;
+            }
+
+            path = new TableEntityPath(tableName, partitionKey, rowKey);
             return true;
         }
     }

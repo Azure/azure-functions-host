@@ -1,38 +1,52 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
+using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
 {
-    public class CloudBlobPathParserTests
+    public class BlobPathSourceTests
     {
         [Fact]
-        public void TestEquals()
+        public void TestToString()
         {
-            CloudBlobPath path1 = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
-            CloudBlobPath path2 = new CloudBlobPath(@"container/dir/subdir/{name}.csv");
-            CloudBlobPath path3 = new CloudBlobPath(@"container/dir/subdir/other.csv");
+            IBlobPathSource path1 = BlobPathSource.Create(@"container/dir/subdir/{name}.csv");
+            IBlobPathSource path2 = BlobPathSource.Create(@"container/dir/subdir/{name}.csv");
+            IBlobPathSource path3 = BlobPathSource.Create(@"container/dir/subdir/other.csv");
 
-            Assert.Equal(path1, path2);
-            Assert.NotEqual(path2, path3);
-
-            Assert.Equal(path1.GetHashCode(), path2.GetHashCode());
-            Assert.NotEqual(path1.GetHashCode(), path3.GetHashCode()); // statement about hashcode quality. 
+            Assert.Equal(path1.ToString(), path2.ToString());
+            Assert.NotEqual(path2.ToString(), path3.ToString());
         }
 
         private static IDictionary<string, string> Match(string a, string b)
         {
-            var pa = new CloudBlobPath(a);
-            var pb = new CloudBlobPath(b);
-            return pa.Match(pb);
+            var pathA = BlobPathSource.Create(a);
+            var pathB = BlobPath.Parse(b);
+
+            IReadOnlyDictionary<string, object> bindingData = pathA.CreateBindingData(pathB);
+
+            if (bindingData == null)
+            {
+                return null;
+            }
+
+            IDictionary<string, string> matches = new Dictionary<string, string>();
+
+            foreach (KeyValuePair<string, object> item in bindingData)
+            {
+                matches.Add(item.Key, item.Value.ToString());
+            }
+
+            return matches;
         }
 
         [Fact]
         public void TestMethod1()
         {
-            var d = Match("container", "container");
+            var d = Match("container", "container/item");
             Assert.NotNull(d);
             Assert.Equal(0, d.Count);
         }
@@ -109,8 +123,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
         [Fact]
         public void GetNames()
         {
-            var path = new CloudBlobPath(@"container/{name}-{date}.csv");
-            var d = path.GetParameterNames();
+            var path = BlobPathSource.Create(@"container/{name}-{date}.csv");
+            var d = path.ParameterNames;
             var names = d.ToArray();
 
             Assert.Equal(2, names.Length);
@@ -119,33 +133,33 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
         }
 
         [Fact]
-        public void Apply1()
+        public void Resolve1()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-            string result = new CloudBlobPath("container").ApplyNames(d).ToString();
+            string result = BindingDataPath.Resolve("container", d);
             Assert.Equal("container", result);
         }
 
         [Fact]
-        public void Apply2()
+        public void Resolve2()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-            string result = new CloudBlobPath(@"container/{name}").ApplyNames(d).ToString();
+            string result = BindingDataPath.Resolve(@"container/{name}", d);
             Assert.Equal(@"container/value", result);
         }
 
         [Fact]
-        public void Apply3()
+        public void Resolve3()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-            Assert.Throws<InvalidOperationException>(() => new CloudBlobPath(@"container/{missing}").ApplyNames(d).ToString());
+            Assert.Throws<InvalidOperationException>(() => BindingDataPath.Resolve(@"container/{missing}", d));
         }
 
         [Fact]
-        public void Apply4()
+        public void Resolve4()
         {
             var d = new Dictionary<string, string> {{"name", "value"}};
-            Assert.Throws<InvalidOperationException>(() => new CloudBlobPath(@"container/{missing").ApplyNames(d).ToString());
+            Assert.Throws<InvalidOperationException>(() => BindingDataPath.Resolve(@"container/{missing", d));
         }
     }
 }

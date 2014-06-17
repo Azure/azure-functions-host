@@ -14,49 +14,37 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         private readonly string _parameterName;
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
         private readonly string _accountName;
-        private readonly string _containerName;
-        private readonly string _blobName;
+        private readonly IBlobPathSource _path;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
 
         public BlobTriggerBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding,
-            CloudBlobClient client, string containerName, string blobName)
+            CloudBlobClient client, IBlobPathSource path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _accountName = BlobClient.GetAccountName(client);
-            _containerName = containerName;
-            _blobName = blobName;
+            _path = path;
             _converter = CreateConverter(client);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
         {
-            get
-            {
-                Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-
-                foreach (string parameterName in new CloudBlobPath(_containerName, _blobName).GetParameterNames())
-                {
-                    contract.Add(parameterName, typeof(string));
-                }
-
-                return contract;
-            }
+            get { return _path.CreateBindingDataContract(); }
         }
 
         public string ContainerName
         {
-            get { return _containerName; }
+            get { return _path.ContainerNamePattern; }
         }
 
         public string BlobName
         {
-            get { return _blobName; }
+            get { return _path.BlobNamePattern; }
         }
 
         public string BlobPath
         {
-            get { return _containerName + "/" + _blobName; }
+            get { return _path.ToString(); }
         }
 
         private FileAccess Access
@@ -101,29 +89,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             {
                 Name = _parameterName,
                 AccountName = _accountName,
-                ContainerName = _containerName,
-                BlobName = _blobName,
+                ContainerName = _path.ContainerNamePattern,
+                BlobName = _path.BlobNamePattern,
                 Access = Access
             };
         }
 
         private IReadOnlyDictionary<string, object> CreateBindingData(ICloudBlob value)
         {
-            IDictionary<string, string> matches = new CloudBlobPath(_containerName, _blobName).Match(new CloudBlobPath(value));
-
-            if (matches == null)
-            {
-                return null; // No match
-            }
-
-            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.Ordinal);
-
-            foreach (KeyValuePair<string, string> match in matches)
-            {
-                bindingData.Add(match.Key, match.Value);
-            }
-
-            return bindingData;
+            return _path.CreateBindingData(value.ToBlobPath());
         }
     }
 }

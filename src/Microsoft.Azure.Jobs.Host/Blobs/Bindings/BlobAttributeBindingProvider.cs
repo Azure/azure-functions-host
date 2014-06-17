@@ -56,22 +56,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 return null;
             }
 
-            string blobPath = context.Resolve(blob.BlobPath);
-            CloudBlobPath parsedBlobPath = Parse(blobPath);
-
-            if (!parsedBlobPath.HasParameters())
-            {
-                BlobClient.ValidateContainerName(parsedBlobPath.ContainerName);
-                BlobClient.ValidateBlobName(parsedBlobPath.BlobName);
-            }
-
-            foreach (string parameterName in parsedBlobPath.GetParameterNames())
-            {
-                if (context.BindingDataContract != null && !context.BindingDataContract.ContainsKey(parameterName))
-                {
-                    throw new InvalidOperationException("No binding parameter exists for '" + parameterName + "'.");
-                }
-            }
+            string resolvedCombinedPath = context.Resolve(blob.BlobPath);
+            IBindableBlobPath path = BindableBlobPath.Create(resolvedCombinedPath);
+            path.ValidateContractCompatibility(context.BindingDataContract);
 
             IBlobArgumentBinding argumentBinding = _provider.TryCreate(parameter, blob.Access);
 
@@ -81,12 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             }
 
             return new BlobBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
-                parsedBlobPath.ContainerName, parsedBlobPath.BlobName);
-        }
-
-        private static CloudBlobPath Parse(string blobPath)
-        {
-            return new CloudBlobPath(blobPath);
+                path);
         }
     }
 }

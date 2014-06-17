@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         // Instance method has caching on it. 
-        public IEnumerable<CloudBlobPath> GetRecentBlobWrites(int hoursWindow = 2)
+        public IEnumerable<BlobPath> GetRecentBlobWrites(int hoursWindow = 2)
         {
             var time = DateTime.UtcNow; // will scan back 2 hours, which is enough to deal with clock sqew
             foreach (var blob in ListRecentLogFiles(_blobClient, time, hoursWindow))
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.Jobs
             return isBlobWrite;
         }
 
-        public static IEnumerable<CloudBlobPath> GetRecentBlobWrites(CloudBlobClient blobClient, int hoursWindow = 2)
+        public static IEnumerable<BlobPath> GetRecentBlobWrites(CloudBlobClient blobClient, int hoursWindow = 2)
         {
             var time = DateTime.UtcNow; // will scan back 2 hours, which is enough to deal with clock sqew
             foreach (var blob in ListRecentLogFiles(blobClient, time, hoursWindow))

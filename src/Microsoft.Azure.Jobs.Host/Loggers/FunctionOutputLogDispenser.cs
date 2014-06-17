@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs
 
         public FunctionOutputLog CreateLogStream(FunctionInvokeRequest request)
         {
-            return FunctionOutputLog.GetLogStream(request, _account.ToString(exportSecrets: true), _containerName);
+            return FunctionOutputLog.GetLogStream(request, _account, _containerName);
         }
     }
 }

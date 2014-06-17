@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
@@ -22,14 +23,16 @@ namespace Microsoft.Azure.Jobs
         public ICloudBlob Blob { get; set; }
 
         // Separate channel for logging structured (and updating) information about parameters
-        public CloudBlobDescriptor ParameterLogBlob { get; set; }
+        public CloudBlockBlob ParameterLogBlob { get; set; }
 
         // Get a default instance of 
-        public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, string accountConnectionString, string containerName)
+        public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, CloudStorageAccount account, string containerName)
         {            
             string name = f.Id.ToString("N") + ".txt";
 
-            var c = BlobClient.GetContainer(accountConnectionString, containerName);
+            CloudBlobClient client = account.CreateCloudBlobClient();
+
+            var c = client.GetContainerReference(containerName);
             if (c.CreateIfNotExists())
             {
                 c.SetPermissions(new BlobContainerPermissions() { PublicAccess = BlobContainerPublicAccessType.Off });
@@ -50,12 +53,7 @@ namespace Microsoft.Azure.Jobs
                 },
                 Blob = blob,
                 Output = tw,
-                ParameterLogBlob = new CloudBlobDescriptor
-                {
-                     AccountConnectionString = accountConnectionString,
-                     ContainerName = containerName,
-                     BlobName = f.Id.ToString("N") + ".params.txt"
-                }
+                ParameterLogBlob = c.GetBlockBlobReference(f.Id.ToString("N") + ".params.txt")
             };
         }
     }

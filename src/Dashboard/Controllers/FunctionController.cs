@@ -8,6 +8,7 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -234,7 +235,12 @@ namespace Dashboard.Controllers
 
             try
             {
-                LocalBlobDescriptor descriptor = BlobPathParser.Parse(path);
+                BlobPath parsed = BlobPath.Parse(path);
+                LocalBlobDescriptor descriptor = new LocalBlobDescriptor
+                {
+                    ContainerName = parsed.ContainerName,
+                    BlobName = parsed.BlobName
+                };
                 blob = descriptor.GetBlockBlob(_account);
             }
             catch (FormatException e)

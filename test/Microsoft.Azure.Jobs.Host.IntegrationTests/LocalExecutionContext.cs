@@ -4,6 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
@@ -62,8 +63,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             // These resolution functions are "open". We lazily resolve to any method on the scope type. 
             _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
             _fpResolveFuncDefinition = method => Resolve(_account, _config, method); // MethodInfo-->FunctionDefinition
+            CloudBlobClient client = _account.CreateCloudBlobClient();
 
-            _fpResolveBlobs = blobPath => (CloudBlockBlob)new CloudBlobPath(blobPath).Resolve(_account);
+            _fpResolveBlobs = blobPath =>
+            {
+                BlobPath parsed = BlobPath.Parse(blobPath);
+                CloudBlobContainer container = client.GetContainerReference(parsed.ContainerName);
+                return container.GetBlockBlobReference(parsed.BlobName);
+            };
 
             {
                 var x = new LocalFunctionLogger();

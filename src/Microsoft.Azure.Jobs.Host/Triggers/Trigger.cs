@@ -1,4 +1,6 @@
 ﻿using System;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -20,12 +22,12 @@ namespace Microsoft.Azure.Jobs
                     var trigger = new BlobTrigger
                     {
                         StorageConnectionString = credentials.StorageConnectionString,
-                        BlobInput = new CloudBlobPath(raw.BlobInput)
+                        BlobInput = BlobPathSource.Create(raw.BlobInput)
                     };
                     if (raw.BlobOutput != null)
                     {
                         string[] parts = raw.BlobOutput.Split(';');
-                        trigger.BlobOutputs = Array.ConvertAll(parts, part => new CloudBlobPath(part.Trim()));
+                        trigger.BlobOutputs = Array.ConvertAll(parts, part => BindableBlobPath.Create(part.Trim()));
                     }
                     return trigger;
                 case TriggerType.Queue:

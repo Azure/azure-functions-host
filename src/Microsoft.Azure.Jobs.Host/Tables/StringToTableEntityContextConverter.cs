@@ -7,38 +7,27 @@ namespace Microsoft.Azure.Jobs.Host.Tables
     internal class StringToTableEntityContextConverter : IConverter<string, TableEntityContext>
     {
         private readonly CloudTableClient _client;
-        private readonly string _defaultTableName;
-        private readonly string _defaultPartitionKey;
-        private readonly string _defaultRowKey;
+        private readonly IBindableTableEntityPath _defaultPath;
 
-        public StringToTableEntityContextConverter(CloudTableClient client, string defaultTableName, string defaultPartitionKey,
-            string defaultRowKey)
+        public StringToTableEntityContextConverter(CloudTableClient client, IBindableTableEntityPath defaultPath)
         {
             _client = client;
-            _defaultTableName = defaultTableName;
-            _defaultPartitionKey = defaultPartitionKey;
-            _defaultRowKey = defaultRowKey;
+            _defaultPath = defaultPath;
         }
 
         public TableEntityContext Convert(string input)
         {
-            // For convenience, treat an an empty string as a request for the default value (when valid).
-            if (String.IsNullOrEmpty(input) && !RouteParser.HasParameterNames(_defaultTableName)
-                && !RouteParser.HasParameterNames(_defaultPartitionKey)
-                && !RouteParser.HasParameterNames(_defaultRowKey))
-            {
-                return new TableEntityContext
-                {
-                    Table = _client.GetTableReference(_defaultTableName),
-                    PartitionKey = _defaultPartitionKey,
-                    RowKey = _defaultRowKey
-                };
-            }
+            TableEntityPath path;
 
-            TableEntityPath path = TableEntityPath.Parse(input);
-            TableClient.ValidateAzureTableName(path.TableName);
-            TableClient.ValidateAzureTableKeyValue(path.PartitionKey);
-            TableClient.ValidateAzureTableKeyValue(path.RowKey);
+            // For convenience, treat an an empty string as a request for the default value (when valid).
+            if (String.IsNullOrEmpty(input) && _defaultPath.IsBound)
+            {
+                path = _defaultPath.Bind(null);
+            }
+            else
+            {
+                path = TableEntityPath.ParseAndValidate(input);
+            }
 
             return new TableEntityContext
             {

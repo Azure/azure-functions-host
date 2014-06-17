@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using Microsoft.Azure.Jobs.Host.Blobs;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.Jobs
         public string RequestedObjectKey { get; set; }
 
         // Null if not a blob. 
-        public CloudBlobPath ToPath()
+        public BlobPath ToPath()
         {
             if (ServiceType != ServiceType.Blob)
             {
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.Jobs
             {
                 int start = x + 1;
                 string path = key.Substring(start, key.Length - start - 1); // -1 for closing quote
-                return new CloudBlobPath(path);
+                return BlobPath.Parse(path);
             }
             return null;
         }

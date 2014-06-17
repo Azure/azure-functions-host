@@ -1,4 +1,8 @@
-﻿using System.Text;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -9,11 +13,11 @@ namespace Microsoft.Azure.Jobs
             this.Type = TriggerType.Blob;
         }
 
-        public CloudBlobPath BlobInput { get; set; }
+        public IBlobPathSource BlobInput { get; set; }
 
         // list of output blobs. Null if no outputs. 
         // Don't fire trigger if all ouptuts are newer than the input. 
-        public CloudBlobPath[] BlobOutputs { get; set; }
+        public IBindableBlobPath[] BlobOutputs { get; set; }
 
         public override string ToString()
         {
@@ -21,7 +25,7 @@ namespace Microsoft.Azure.Jobs
             sb.AppendFormat("Trigger on {0}", BlobInput);
             if (BlobOutputs != null)
             {
-                sb.AppendFormat(" unless {0} is newer", string.Join<CloudBlobPath>(";", BlobOutputs));
+                sb.AppendFormat(" unless {0} is newer", string.Join<IBindableBlobPath>(";", BlobOutputs));
             }
             return sb.ToString();
         }
