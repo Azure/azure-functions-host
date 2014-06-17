@@ -234,8 +234,8 @@ namespace Dashboard.Controllers
 
             try
             {
-                var p = new CloudBlobPath(path.Trim());
-                blob = p.Resolve(_account);
+                LocalBlobDescriptor descriptor = BlobPathParser.Parse(path);
+                blob = descriptor.GetBlockBlob(_account);
             }
             catch (FormatException e)
             {

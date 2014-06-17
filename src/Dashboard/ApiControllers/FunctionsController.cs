@@ -86,7 +86,7 @@ namespace Dashboard.ApiControllers
                 return BadRequest("limit should be an positive, non-zero integer.");
             }
 
-            var runIdentifier = new Microsoft.Azure.Jobs.Protocols.WebJobRunIdentifier(Environment.GetEnvironmentVariable(Microsoft.Azure.Jobs.Host.WebSitesKnownKeyNames.WebSiteNameKey), (InternalWebJobTypes)webJobType, jobName, runId);
+            var runIdentifier = new Microsoft.Azure.Jobs.Protocols.WebJobRunIdentifier(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"), (InternalWebJobTypes)webJobType, jobName, runId);
 
             var invocations = _invocationLogLoader.GetInvocationsInJob(runIdentifier.GetKey(), pagingInfo);
 

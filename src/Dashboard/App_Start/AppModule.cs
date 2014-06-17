@@ -145,7 +145,7 @@ namespace Dashboard
 
         private static string GetDashboardConnectionString()
         {
-            var val = new AmbientConnectionStringProvider().GetConnectionString(JobHost.DashboardConnectionStringName);
+            var val = new AmbientConnectionStringProvider().GetConnectionString("Dashboard");
 
             if (String.IsNullOrEmpty(val))
             {

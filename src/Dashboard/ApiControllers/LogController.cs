@@ -77,14 +77,13 @@ namespace Dashboard.ApiControllers
                 return Unauthorized();
             }
 
-            var p = new CloudBlobPath(path);
-
             if (_account == null)
             {
                 return Unauthorized();
             }
 
-            var blob = p.Resolve(_account);
+            LocalBlobDescriptor descriptor = BlobPathParser.Parse(path);
+            var blob = descriptor.GetBlockBlob(_account);
 
             // Get a SAS for the next 10 mins
             string sas = blob.GetSharedAccessSignature(new SharedAccessBlobPolicy

@@ -153,6 +153,21 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Loggers\BlobCausalityLogger.cs">
+      <Link>Data\BlobCausalityLogger.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\AmbientConnectionStringProvider.cs">
+      <Link>Data\AmbientConnectionStringProvider.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\DefaultStorageValidator.cs">
+      <Link>Data\DefaultStorageValidator.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\IConnectionStringProvider.cs">
+      <Link>Data\IConnectionStringProvider.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\IStorageValidator.cs">
+      <Link>Data\IStorageValidator.cs</Link>
+    </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\AzureTable.cs" />
     <Compile Include="Data\AzureTableOfTPartRowKeyTValue.cs" />
@@ -174,8 +189,14 @@
     <Compile Include="Data\IAzureTableWriter.cs" />
     <Compile Include="Data\IHostVersionReader.cs" />
     <Compile Include="Data\ITableCorePartitionWriter.cs" />
+    <Compile Include="Data\JsonCustom.cs" />
     <Compile Include="Data\LiveTableCore.cs" />
     <Compile Include="Data\LocalTableCore.cs" />
+    <Compile Include="Data\ObjectBinderHelpers.cs" />
+    <Compile Include="Data\StorageClient.cs" />
+    <Compile Include="Data\StorageConverter.cs" />
+    <Compile Include="Data\StringConverter.cs" />
+    <Compile Include="Data\TableClient.cs" />
     <Compile Include="Data\TableCore.cs" />
     <Compile Include="Data\TriggerReason.cs" />
     <Compile Include="Data\TriggerReasonEntity.cs" />
@@ -216,6 +237,7 @@
     <Compile Include="Data\VersionedDocumentStore.cs" />
     <Compile Include="Data\WrapperEnumerable.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
+    <Compile Include="HostMessaging\BlobPathParser.cs" />
     <Compile Include="HostMessaging\CredentialsDescriptorExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />
     <Compile Include="HostMessaging\IInvoker.cs" />
@@ -361,10 +383,6 @@
     <Content Include="Views\_ViewStart.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
-      <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
-      <Name>Jobs.Host</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
       <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
       <Name>Jobs.Protocols</Name>
