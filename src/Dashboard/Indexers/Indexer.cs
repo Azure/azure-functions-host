@@ -11,18 +11,28 @@ namespace Dashboard.Indexers
         private readonly IPersistentQueueReader<PersistentQueueMessage> _queueReader;
         private readonly IHostInstanceLogger _hostInstanceLogger;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
+        private readonly IFunctionInstanceLookup _functionInstanceLookup;
+        private readonly IFunctionStatisticsWriter _statisticsWriter;
+        private readonly IRecentFunctionWriter _indexWriter;
         private readonly ICausalityLogger _causalityLogger;
         private readonly IFunctionsInJobIndexer _functionsInJobIndexer;
+        private readonly IExecutionStatsAggregator _executionStatsAggregator;
 
         public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
             IHostInstanceLogger hostInstanceLogger, IFunctionInstanceLogger functionInstanceLogger,
-            ICausalityLogger causalityLogger, IFunctionsInJobIndexer functionsInJobIndexer)
+            IFunctionInstanceLookup functionInstanceLookup, IFunctionStatisticsWriter statisticsWriter,
+            IRecentFunctionWriter indexWriter, ICausalityLogger causalityLogger,
+            IFunctionsInJobIndexer functionsInJobIndexer, IExecutionStatsAggregator executionStatsAggregator)
         {
             _queueReader = queueReader;
             _hostInstanceLogger = hostInstanceLogger;
             _functionInstanceLogger = functionInstanceLogger;
+            _functionInstanceLookup = functionInstanceLookup;
+            _statisticsWriter = statisticsWriter;
+            _indexWriter = indexWriter;
             _causalityLogger = causalityLogger;
             _functionsInJobIndexer = functionsInJobIndexer;
+            _executionStatsAggregator = executionStatsAggregator;
         }
 
         public void Update()
@@ -79,11 +89,29 @@ namespace Dashboard.Indexers
             _functionInstanceLogger.LogFunctionStarted(message);
             _causalityLogger.LogTriggerReason(CreateTriggerReason(message));
 
+            Guid functionInstanceId = message.FunctionInstanceId;
+
+            if (!HasLoggedFunctionCompleted(functionInstanceId))
+            {
+                _indexWriter.CreateOrUpdate(message.StartTime, functionInstanceId);
+            }
+
             if (message.WebJobRunIdentifier != null)
             {
-                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(message.FunctionInstanceId,
+                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(functionInstanceId,
                     message.StartTime.UtcDateTime, message.WebJobRunIdentifier);
             }
+
+            _executionStatsAggregator.LogFunctionStarted(message);
+        }
+
+        private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
+        {
+            FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
+
+            DateTimeOffset? completedTime = primaryLog != null ? primaryLog.EndTime : null;
+
+            return completedTime.HasValue;
         }
 
         internal static TriggerReason CreateTriggerReason(FunctionStartedMessage message)
@@ -99,6 +127,28 @@ namespace Dashboard.Indexers
         private void Process(FunctionCompletedMessage message)
         {
             _functionInstanceLogger.LogFunctionCompleted(message);
+
+            if (message.StartTime.Ticks != message.EndTime.Ticks)
+            {
+                _indexWriter.DeleteIfExists(message.StartTime, message.FunctionInstanceId);
+            }
+
+            _indexWriter.CreateOrUpdate(message.EndTime, message.FunctionInstanceId);
+
+            _executionStatsAggregator.LogFunctionCompleted(message);
+
+            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
+
+            // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
+            // occur multiple times.
+            if (message.Succeeded)
+            {
+                _statisticsWriter.IncrementSuccess(functionId);
+            }
+            else
+            {
+                _statisticsWriter.IncrementFailure(functionId);
+            }
         }
     }
 }

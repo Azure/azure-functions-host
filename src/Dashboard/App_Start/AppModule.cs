@@ -42,17 +42,21 @@ namespace Dashboard
             Bind<CloudBlobClient>().ToConstant(blobClient);
             Bind<IHostVersionReader>().To<HostVersionReader>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
+            Bind<IFunctionInstanceLogger>().To<FunctionInstanceLogger>();
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
             Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
+            Bind<IFunctionStatisticsWriter>().To<FunctionStatisticsWriter>();
+            Bind<IRecentFunctionReader>().To<RecentFunctionReader>();
+            Bind<IRecentFunctionWriter>().To<RecentFunctionWriter>();
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
-            Bind<IFunctionInstanceLogger>().ToMethod(() => CreateFunctionInstanceLogger(blobClient, sdkAccount));
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
+            Bind<IExecutionStatsAggregator>().ToMethod(() => CreateExecutionStatsAggregator(blobClient, sdkAccount));
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
@@ -61,7 +65,6 @@ namespace Dashboard
             BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
             BindFunctionInvocationIndexReader("invocationsInFunctionReader",
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
-            BindFunctionInvocationIndexReader("recentInvocationsReader", DashboardTableNames.FunctionInvokeLogIndexMru);
             BindFunctionInvocationIndexReader("invocationChildrenReader", DashboardTableNames.FunctionCausalityLog);
         }
 
@@ -113,29 +116,17 @@ namespace Dashboard
             return new CausalityLogger(table, logger);
         }
 
-        private static IFunctionInstanceLogger CreateFunctionInstanceLogger(CloudBlobClient blobClient,
+        private static IExecutionStatsAggregator CreateExecutionStatsAggregator(CloudBlobClient blobClient,
             CloudStorageAccount account)
         {
-            IFunctionInstanceLogger instanceLogger = new FunctionInstanceLogger(blobClient);
             IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(blobClient);
 
-            IFunctionStatisticsWriter statisticsWriter = new FunctionStatisticsWriter(blobClient);
-            var tableMru = CreateIndexTable(account, DashboardTableNames.FunctionInvokeLogIndexMru);
-            var tableMruByFunction = CreateIndexTable(account,
+            var tableMruByFunction = new AzureTable<FunctionInstanceGuid>(account,
                 DashboardTableNames.FunctionInvokeLogIndexMruFunction);
 
-            IFunctionInstanceLogger statsAggregator = new ExecutionStatsAggregator(
+            return new ExecutionStatsAggregator(
                 instanceLookup,
-                statisticsWriter,
-                tableMru,
                 tableMruByFunction);
-
-            return new CompositeFunctionInstanceLogger(instanceLogger, statsAggregator);
-        }
-
-        private static IAzureTable<FunctionInstanceGuid> CreateIndexTable(CloudStorageAccount account, string tableName)
-        {
-            return new AzureTable<FunctionInstanceGuid>(account, tableName);
         }
 
         private static string GetDashboardConnectionString()

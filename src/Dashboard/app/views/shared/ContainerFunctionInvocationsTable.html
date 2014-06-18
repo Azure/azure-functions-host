@@ -1,0 +1,47 @@
+﻿<section ng-controller="ContainerInvocationsTableController">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th class="col-md-3">Function
+                    <span href=""
+                       class="label label-default"
+                       style="margin-left: 15px;"
+                       ng-show="invocations.hasNew && invocations.firstPage"
+                       ng-click="invocations.reloadFirstPage()"
+                       title="New invocations were detected, click here to reload the table">Show new invocations</span>
+                </th>
+                <th class="col-md-1">Status</th>
+                <th class="col-md-2">Status Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-if="invocations.initializing">
+                <td colspan="3">Loading...</td>
+            </tr>
+            <tr ng-if="invocations.page.length === 0">
+                <td colspan="3">No functions have run recently.</td>
+            </tr>
+            <tr ng-repeat="entry in invocations.page">
+                <td>
+                    <a title="Invocation details" href="{{_urls.functionInvocation(entry.id)}}">
+                        <span>{{entry.functionDisplayTitle}}</span>
+                    </a>
+                </td>
+                <td>
+                    <span ng-class="entry.getLabelClass()" class="label">{{entry.getLabelText()}}</span>
+                </td>
+                <td>
+                    <span>{{entry.statusTimeString}}</span> <small>({{entry.durationString}} running time)</small>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <ul class="pager" ng-class="invocations.disablePager ? 'disabled' : ''">
+        <li class="previous" ng-if="!invocations.firstPage" ng-click="invocations.loadPreviousPage()">
+            <a href="">← Newer</a>
+        </li>
+        <li class="next" ng-if="invocations.hasMore" ng-click="invocations.loadNextPage()">
+            <a href="">Older →</a>
+        </li>
+    </ul>
+</section>

@@ -9,13 +9,14 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public FunctionStatisticsWriter(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionStatisticsContainer))
+            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
+                client, DashboardContainerNames.FunctionStatisticsContainerName))
         {
         }
 
-        private FunctionStatisticsWriter(CloudBlobContainer container)
+        private FunctionStatisticsWriter(IVersionedDocumentStore<FunctionStatistics> store)
         {
-            _store = new VersionedDocumentStore<FunctionStatistics>(container);
+            _store = store;
         }
 
         public void IncrementSuccess(string functionId)

@@ -9,12 +9,12 @@ namespace Dashboard.Data
     internal class FunctionInstanceLookup : IFunctionInstanceLookup
     {
         private static readonly JsonSerializerSettings _settings =
-            VersionedDocumentStore<FunctionInstanceSnapshot>.JsonSerializerSettings;
+            JsonVersionedDocumentStore<FunctionInstanceSnapshot>.JsonSerializerSettings;
 
         private readonly CloudBlobContainer _container;
 
         public FunctionInstanceLookup(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer))
+            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainerName))
         {
         }
 

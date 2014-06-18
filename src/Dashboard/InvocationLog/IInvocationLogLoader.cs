@@ -8,8 +8,6 @@ namespace Dashboard.InvocationLog
     {
         InvocationLogPage GetInvocationChildren(Guid invocationId, PagingInfo pagingInfo);
 
-        InvocationLogPage GetRecentInvocations(PagingInfo pagingInfo);
-
         InvocationLogPage GetInvocationsInFunction(string functionId, PagingInfo pagingInfo);
 
         InvocationLogPage GetInvocationsInJob(string jobKey, PagingInfo pagingInfo);

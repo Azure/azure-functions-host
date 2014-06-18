@@ -17,7 +17,6 @@ namespace Dashboard.InvocationLog
     {
         private readonly IFunctionInvocationIndexReader _invocationsInJobReader;
         private readonly IFunctionInvocationIndexReader _invocationsInFunctionReader;
-        private readonly IFunctionInvocationIndexReader _recentInvocationsReader;
         private readonly IFunctionInvocationIndexReader _invocationChildrenReader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
@@ -25,14 +24,12 @@ namespace Dashboard.InvocationLog
         public InvocationLogLoader(
             IFunctionInvocationIndexReader invocationsInJobReader,
             IFunctionInvocationIndexReader invocationsInFunctionReader,
-            IFunctionInvocationIndexReader recentInvocationsReader,
             IFunctionInvocationIndexReader invocationChildrenReader, 
             IFunctionInstanceLookup functionInstanceLookup,
             IHeartbeatMonitor heartbeatMonitor)
         {
             _invocationsInJobReader = invocationsInJobReader;
             _invocationsInFunctionReader = invocationsInFunctionReader;
-            _recentInvocationsReader = recentInvocationsReader;
             _invocationChildrenReader = invocationChildrenReader;
             _functionInstanceLookup = functionInstanceLookup;
             _heartbeatMonitor = heartbeatMonitor;
@@ -41,11 +38,6 @@ namespace Dashboard.InvocationLog
         public InvocationLogPage GetInvocationChildren(Guid invocationId, PagingInfo pagingInfo)
         {
             return GetPage(_invocationChildrenReader, invocationId.ToString(), pagingInfo);
-        }
-
-        public InvocationLogPage GetRecentInvocations(PagingInfo pagingInfo)
-        {
-            return GetPage(_recentInvocationsReader, "1", pagingInfo);
         }
 
         public InvocationLogPage GetInvocationsInFunction(string functionId, PagingInfo pagingInfo)
@@ -87,7 +79,13 @@ namespace Dashboard.InvocationLog
             };
         }
 
-        InvocationLogViewModel GetInvocationLogViewModel(Guid invocationId)
+        private InvocationLogViewModel GetInvocationLogViewModel(Guid invocationId)
+        {
+            return GetInvocationLogViewModel(_functionInstanceLookup, _heartbeatMonitor, invocationId);
+        }
+
+        internal static InvocationLogViewModel GetInvocationLogViewModel(IFunctionInstanceLookup functionInstanceLookup,
+            IHeartbeatMonitor heartbeatMonitor, Guid invocationId)
         {
             InvocationLogViewModel invocationModel = null;
             string cacheKey = "INVOCATION_MODEL_" + invocationId;
@@ -96,10 +94,10 @@ namespace Dashboard.InvocationLog
                 invocationModel = HttpRuntime.Cache.Get(cacheKey) as InvocationLogViewModel;
                 if (invocationModel == null)
                 {
-                    var invocation = _functionInstanceLookup.Lookup(invocationId);
+                    var invocation = functionInstanceLookup.Lookup(invocationId);
                     if (invocation != null)
                     {
-                        invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(invocation));
+                        invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(heartbeatMonitor, invocation));
                         if (invocationModel.IsFinal())
                         {
                             HttpRuntime.Cache.Insert(cacheKey, invocationModel, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(30));
@@ -109,17 +107,17 @@ namespace Dashboard.InvocationLog
             }
             else
             {
-                var invocation = _functionInstanceLookup.Lookup(invocationId);
+                var invocation = functionInstanceLookup.Lookup(invocationId);
                 if (invocation != null)
                 {
-                    invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(invocation));
+                    invocationModel = new InvocationLogViewModel(invocation, HasValidHeartbeat(heartbeatMonitor, invocation));
                 }
             }
 
             return invocationModel;
         }
 
-        private bool? HasValidHeartbeat(FunctionInstanceSnapshot snapshot)
+        private static bool? HasValidHeartbeat(IHeartbeatMonitor heartbeatMonitor, FunctionInstanceSnapshot snapshot)
         {
             HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
 
@@ -128,7 +126,7 @@ namespace Dashboard.InvocationLog
                 return null;
             }
 
-            return _heartbeatMonitor.IsInstanceHeartbeatValid(heartbeat.SharedContainerName,
+            return heartbeatMonitor.IsInstanceHeartbeatValid(heartbeat.SharedContainerName,
                 heartbeat.SharedDirectoryName, heartbeat.InstanceBlobName, heartbeat.ExpirationInSeconds);
         }
     }

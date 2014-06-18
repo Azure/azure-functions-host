@@ -5,13 +5,15 @@
     {
         private const string Prefix = "azure-jobs-dashboard-";
 
-        public const string AbortRequestLogContainer = Prefix + "aborts";
+        public const string AbortRequestLogContainerName = Prefix + "aborts";
 
-        public const string FunctionLogContainer = Prefix + "function-logs";
+        public const string FunctionLogContainerName = Prefix + "function-logs";
 
-        public const string FunctionStatisticsContainer = Prefix + "function-stats";
+        public const string RecentFunctionsContainerName = "recent-functions";
 
-        public const string HostContainer = Prefix + "hosts";
+        public const string FunctionStatisticsContainerName = Prefix + "function-stats";
+
+        public const string HostContainerName = Prefix + "hosts";
 
         /// <summary>The name of the container where version compatibility warnings are stored.</summary>
         public const string VersionContainerName = Prefix + "versions";

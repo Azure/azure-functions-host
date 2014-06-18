@@ -12,7 +12,7 @@ namespace Dashboard.Data
         private readonly CloudBlobContainer _container;
 
         public FunctionLookup(CloudBlobClient blobClient)
-            : this(blobClient.GetContainerReference(DashboardContainerNames.HostContainer))
+            : this(blobClient.GetContainerReference(DashboardContainerNames.HostContainerName))
         {
         }
 
@@ -95,7 +95,7 @@ namespace Dashboard.Data
                 }
             }
 
-            return JsonConvert.DeserializeObject<T>(contents, VersionedDocumentStore<T>.JsonSerializerSettings);
+            return JsonConvert.DeserializeObject<T>(contents, JsonVersionedDocumentStore<T>.JsonSerializerSettings);
         }
     }
 }

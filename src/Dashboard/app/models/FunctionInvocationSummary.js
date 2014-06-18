@@ -11,6 +11,7 @@
         func.functionDisplayTitle = item.functionDisplayTitle;
         func.status = item.status;
         func.when = item.whenUtc ? stringUtils.toDateTime(item.whenUtc) : null;
+        func.whenUtc = item.whenUtc;
         func.duration = item.duration;
         func.exceptionType = item.exceptionType;
         func.exceptionMessage = item.exceptionMessage;

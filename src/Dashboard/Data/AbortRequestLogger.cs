@@ -11,7 +11,7 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public AbortRequestLogger(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.AbortRequestLogContainer))
+            : this(client.GetContainerReference(DashboardContainerNames.AbortRequestLogContainerName))
         {
         }
 

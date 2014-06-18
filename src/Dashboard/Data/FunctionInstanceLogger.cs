@@ -11,22 +11,16 @@ namespace Dashboard.Data
     internal class FunctionInstanceLogger : IFunctionInstanceLogger, IFunctionQueuedLogger
     {
         private readonly IVersionedDocumentStore<FunctionInstanceSnapshot> _store;
-        private readonly CloudBlobClient _client;
 
         public FunctionInstanceLogger(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainer), client)
+            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionInstanceSnapshot>(
+                client, DashboardContainerNames.FunctionLogContainerName))
         {
         }
 
-        private FunctionInstanceLogger(CloudBlobContainer container, CloudBlobClient client)
-            : this(new VersionedDocumentStore<FunctionInstanceSnapshot>(container), client)
-        {
-        }
-
-        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store, CloudBlobClient client)
+        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store)
         {
             _store = store;
-            _client = client;
         }
 
         public void LogFunctionQueued(Guid id, IDictionary<string, string> arguments, Guid? parentId,

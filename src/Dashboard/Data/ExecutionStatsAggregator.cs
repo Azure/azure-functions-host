@@ -1,20 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
-    // Includes both reading and writing the secondary indices together. 
-    internal class ExecutionStatsAggregator : IFunctionInstanceLogger
+    internal class ExecutionStatsAggregator : IExecutionStatsAggregator
     {
-        private const string PartitionKey = "1";
-
-        private readonly IFunctionStatisticsWriter _statisticsWriter;
-
         // 2nd index for most-recently used functions.
         // These are all sorted by time stamp.
-        private readonly IAzureTable<FunctionInstanceGuid> _tableMRU;
         private readonly IAzureTable<FunctionInstanceGuid> _tableMRUByFunction;
 
         // Lookup in primary index
@@ -23,18 +16,12 @@ namespace Dashboard.Data
         // Pass in table names for the various indices.
         public ExecutionStatsAggregator(
             IFunctionInstanceLookup functionInstanceLookup,
-            IFunctionStatisticsWriter statisticsWriter,
-            IAzureTable<FunctionInstanceGuid> tableMru,
             IAzureTable<FunctionInstanceGuid> tableMruByFunction)
         {
             NotNull(functionInstanceLookup, "functionInstanceLookup");
-            NotNull(statisticsWriter, "statisticsWriter");
-            NotNull(tableMru, "tableMru");
             NotNull(tableMruByFunction, "tableMruByFunction");
 
             _functionInstanceLookup = functionInstanceLookup;
-            _statisticsWriter = statisticsWriter;
-            _tableMRU = tableMru;
             _tableMRUByFunction = tableMruByFunction;
         }
 
@@ -48,22 +35,20 @@ namespace Dashboard.Data
 
         public void Flush()
         {
-            _tableMRU.Flush();
             _tableMRUByFunction.Flush();
         }
 
         private void LogMru(FunctionStartedMessage message, DateTimeOffset timestamp)
         {
-            Guid instance = message.FunctionInstanceId;
+            Guid instanceId = message.FunctionInstanceId;
 
             DateTime rowKeyTimestamp = timestamp.UtcDateTime;
 
             // Use function's actual start,end time (so we can reindex)
             // and append with the function instance ID just in case there are ties. 
-            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instance);
+            string rowKey = TableClient.GetTickRowKey(rowKeyTimestamp, instanceId);
 
-            var ptr = new FunctionInstanceGuid(instance);
-            _tableMRU.Write(PartitionKey, rowKey, ptr);
+            var ptr = new FunctionInstanceGuid(instanceId);
 
             string funcId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString(); // valid row key
             _tableMRUByFunction.Write(funcId, rowKey, ptr);
@@ -71,7 +56,6 @@ namespace Dashboard.Data
 
         private void DeleteIndex(string rowKey, string functionId)
         {
-            _tableMRU.Delete(PartitionKey, rowKey);
             _tableMRUByFunction.Delete(TableClient.GetAsTableKey(functionId), rowKey);
         }
 
@@ -94,15 +78,7 @@ namespace Dashboard.Data
 
             DateTimeOffset? completedTime = primaryLog != null ? primaryLog.EndTime : null;
 
-            if (!completedTime.HasValue)
-            {
-                return false;
-            }
-
-            string completedRowKey = TableClient.GetTickRowKey(completedTime.Value.UtcDateTime, functionInstanceId);
-            FunctionInstanceGuid completedRow = _tableMRU.Lookup(PartitionKey, completedRowKey);
-
-            return !object.ReferenceEquals(completedRow, null);
+            return completedTime.HasValue;
         }
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)
@@ -112,19 +88,6 @@ namespace Dashboard.Data
             // This method may be called concurrently with LogFunctionStarted.
             // Remove the function running log after logging as completed.
             DeleteFunctionStartedIfExists(message);
-
-            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
-
-            // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
-            // occur multiple times.
-            if (message.Succeeded)
-            {
-                _statisticsWriter.IncrementSuccess(functionId);
-            }
-            else
-            {
-                _statisticsWriter.IncrementFailure(functionId);
-            }
 
             Flush();
         }

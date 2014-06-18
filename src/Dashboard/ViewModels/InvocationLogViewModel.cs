@@ -3,30 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Dashboard.Data;
-using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Dashboard.ViewModels
 {
-    public class WebJobRunIdentifierViewModel
-    {
-        internal WebJobRunIdentifierViewModel(WebJobTypes jobType, string jobName, string jobRunId)
-        {
-            JobType = jobType;
-            JobName = jobName;
-            RunId = jobRunId;
-        }
-
-        [JsonConverter(typeof(StringEnumConverter))]
-        public WebJobTypes JobType { get; set; }
-
-        public string JobName { get; set; }
-
-        public string RunId { get; set; }
-    }
-
     public class InvocationLogViewModel
     {
         internal InvocationLogViewModel(FunctionInstanceSnapshot snapshot, bool? heartbeatIsValid)
@@ -115,35 +96,6 @@ namespace Dashboard.ViewModels
         public bool IsFinal()
         {
             return Status == FunctionInstanceStatus.CompletedFailed || Status == FunctionInstanceStatus.CompletedSuccess;
-        }
-    }
-
-    public class FunctionStatisticsViewModel
-    {
-        public string FunctionId { get; set; }
-        public string FunctionFullName { get; set; }
-        public string FunctionName { get; set; }
-        public int SuccessCount { get; set; }
-        public int FailedCount { get; set; }
-        public bool IsRunning { get; set; }
-    }
-
-    public class DurationAsMillisecondsJsonConverter : JsonConverter
-    {
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-        {
-            var timespan = (TimeSpan)value;
-            writer.WriteValue(timespan.TotalMilliseconds);
-        }
-
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override bool CanConvert(Type objectType)
-        {
-            return objectType == typeof(TimeSpan);
         }
     }
 }

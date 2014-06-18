@@ -13,8 +13,8 @@ namespace Dashboard
             bundles.Add(new ScriptBundle("~/bundles/js").Include(
                 "~/Scripts/jquery-{version}.js",
                 "~/Content/bootstrap/js/bootstrap.js",
-                "~/Scripts/angular.min.js",
-                "~/Scripts/angular-route.min.js"));
+                "~/Scripts/angular.js",
+                "~/Scripts/angular-route.js"));
 
             bundles.Add(new ScriptBundle("~/bundles/app") { Orderer = new PriorityFirstOrderer("main.js")}
                 .IncludeDirectory("~/app", "*.js")

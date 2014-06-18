@@ -9,13 +9,14 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public FunctionStatisticsReader(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionStatisticsContainer))
+            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
+                client, DashboardContainerNames.FunctionStatisticsContainerName))
         {
         }
 
-        private FunctionStatisticsReader(CloudBlobContainer container)
+        private FunctionStatisticsReader(IVersionedDocumentStore<FunctionStatistics> store)
         {
-            _store = new VersionedDocumentStore<FunctionStatistics>(container);
+            _store = store;
         }
 
         public FunctionStatistics Lookup(string functionId)

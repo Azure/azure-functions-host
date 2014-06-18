@@ -11,14 +11,15 @@ namespace Dashboard.Data
     {
         private readonly IVersionedDocumentStore<HostSnapshot> _store;
 
-        public HostInstanceLogger(CloudBlobClient blobClient)
-            : this(blobClient.GetContainerReference(DashboardContainerNames.HostContainer))
+        public HostInstanceLogger(CloudBlobClient client)
+            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(
+                client, DashboardContainerNames.HostContainerName))
         {
         }
 
-        private HostInstanceLogger(CloudBlobContainer container)
+        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store)
         {
-            _store = new VersionedDocumentStore<HostSnapshot>(container);
+            _store = store;
         }
 
         public void LogHostStarted(HostStartedMessage message)
