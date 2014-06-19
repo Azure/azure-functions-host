@@ -5,8 +5,8 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
     public partial class PerfTest
     {
-        private const string HostStartMetric = "FunctionChainingScenario;HostStart;Time";
-        private const string QueueFunctionChainMetric = "FunctionChainingScenario;QueueChain;Time";
+        private const string HostStartMetric = "HostStart";
+        private const string QueueFunctionChainMetric = "QueueChain";
 
         public const string PerfQueuePrefix = "perfqueue";
         public const string FirstQueueName = PerfQueuePrefix + "start";
