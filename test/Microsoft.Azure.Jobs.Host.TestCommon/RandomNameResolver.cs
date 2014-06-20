@@ -16,5 +16,10 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
 
             throw new NotSupportedException("Cannot resolve name: " + name);
         }
+
+        public string ResolveInString(string input)
+        {
+            return input.Replace("%rnd%", _randomString);
+        }
     }
 }

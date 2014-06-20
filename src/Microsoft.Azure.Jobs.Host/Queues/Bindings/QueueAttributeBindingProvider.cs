@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             }
 
             string queueName = context.Resolve(queueAttribute.QueueName);
-            queueName = NormalizeAndValidate(queueAttribute.QueueName);
+            queueName = NormalizeAndValidate(queueName);
 
             IArgumentBinding<CloudQueue> argumentBinding = _innerProvider.TryCreate(parameter);
 

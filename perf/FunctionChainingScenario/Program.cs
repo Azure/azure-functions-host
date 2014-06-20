@@ -45,7 +45,7 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 
             try
             {
-                CloudQueue firstQueue = queueClient.GetQueueReference(PerfTest.FirstQueueName);
+                CloudQueue firstQueue = queueClient.GetQueueReference(PerfTest.NameResolver.ResolveInString(PerfTest.FirstQueueName));
                 firstQueue.AddMessage(new CloudQueueMessage("Test"));
 
                 PerfTest.Run(connectionString);
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 
         private static void CreateQueueOrClearIfExists(string queueName, CloudQueueClient queueClient)
         {
-            CloudQueue queue = queueClient.GetQueueReference(queueName);
+            CloudQueue queue = queueClient.GetQueueReference(PerfTest.NameResolver.ResolveInString(queueName));
 
             bool wasCreatedNow = queue.CreateIfNotExists();
             if (!wasCreatedNow)
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 
         private static void DeleteQueueIfExists(string queueName, CloudQueueClient queueClient)
         {
-            CloudQueue queue = queueClient.GetQueueReference(queueName);
+            CloudQueue queue = queueClient.GetQueueReference(PerfTest.NameResolver.ResolveInString(queueName));
 
             if (queue.Exists())
             {

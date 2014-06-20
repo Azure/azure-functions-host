@@ -102,6 +102,10 @@
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
       <Name>Jobs</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\test\Microsoft.Azure.Jobs.Host.TestCommon\Jobs.Host.TestCommon.csproj">
+      <Project>{4a832c21-66ea-4de4-8124-f27f8900cba9}</Project>
+      <Name>Jobs.Host.TestCommon</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

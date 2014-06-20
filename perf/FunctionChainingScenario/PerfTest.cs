@@ -1,14 +1,15 @@
 ﻿using System.Threading;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 
 namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
 {
-    public partial class PerfTest
+    public static partial class PerfTest
     {
         private const string HostStartMetric = "HostStart";
         private const string QueueFunctionChainMetric = "QueueChain";
 
-        public const string PerfQueuePrefix = "perfqueue";
+        public const string PerfQueuePrefix = "%rnd%perfqueue";
         public const string FirstQueueName = PerfQueuePrefix + "start";
         public const string LastQueueName = PerfQueuePrefix + "final";
 
@@ -26,6 +27,16 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
         /// </summary>
         private static MeasurementBlock _functionsExecutionBlock;
 
+        private static RandomNameResolver _nameResolver = new RandomNameResolver();
+
+        public static RandomNameResolver NameResolver
+        {
+            get
+            {
+                return _nameResolver;
+            }
+        }
+
         public static void Run(string connectionString)
         {
             _cancelToken = new CancellationTokenSource();
@@ -33,6 +44,9 @@ namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
             _startBlock = MeasurementBlock.BeginNew(0, HostStartMetric);
 
             JobHostConfiguration hostConfig = new JobHostConfiguration(connectionString);
+            hostConfig.NameResolver = NameResolver;
+            hostConfig.TypeLocator = new SimpleTypeLocator(typeof(PerfTest));
+
             JobHost host = new JobHost(hostConfig);
             host.RunAndBlock(_cancelToken.Token);
         }
