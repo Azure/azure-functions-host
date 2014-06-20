@@ -109,9 +109,7 @@ namespace Dashboard.Indexers
         {
             FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
 
-            DateTimeOffset? completedTime = primaryLog != null ? primaryLog.EndTime : null;
-
-            return completedTime.HasValue;
+            return primaryLog != null && primaryLog.EndTime.HasValue;
         }
 
         internal static TriggerReason CreateTriggerReason(FunctionStartedMessage message)
