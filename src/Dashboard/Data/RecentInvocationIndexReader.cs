@@ -6,23 +6,29 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    public class RecentFunctionReader : IRecentFunctionReader
+    public class RecentInvocationIndexReader : IRecentInvocationIndexReader
     {
         private readonly CloudBlobContainer _container;
 
         [CLSCompliant(false)]
-        public RecentFunctionReader(CloudBlobClient client)
+        public RecentInvocationIndexReader(CloudBlobClient client)
             : this (client.GetContainerReference(DashboardContainerNames.RecentFunctionsContainerName))
         {
         }
 
         [CLSCompliant(false)]
-        public RecentFunctionReader(CloudBlobContainer container)
+        public RecentInvocationIndexReader(CloudBlobContainer container)
         {
             _container = container;
         }
 
-        public IResultSegment<RecentFunctionInstance> Read(int maximumResults, string continuationToken)
+        public IResultSegment<RecentInvocationEntry> Read(int maximumResults, string continuationToken)
+        {
+            return Read(_container, DashboardBlobPrefixes.Flat, maximumResults, continuationToken);
+        }
+
+        internal static IResultSegment<RecentInvocationEntry> Read(CloudBlobContainer container, string prefix,
+            int maximumResults, string continuationToken)
         {
             BlobContinuationToken blobContinuationToken = BlobContinuationTokenSerializer.Deserialize(continuationToken);
 
@@ -30,8 +36,8 @@ namespace Dashboard.Data
 
             try
             {
-                blobSegment = _container.ListBlobsSegmented(
-                    prefix: null,
+                blobSegment = container.ListBlobsSegmented(
+                    prefix: prefix,
                     useFlatBlobListing: true,
                     blobListingDetails: BlobListingDetails.None,
                     maxResults: maximumResults,
@@ -56,17 +62,18 @@ namespace Dashboard.Data
                 return null;
             }
 
-            List<RecentFunctionInstance> results = new List<RecentFunctionInstance>();
+            List<RecentInvocationEntry> results = new List<RecentInvocationEntry>();
 
             // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true above.
             foreach (ICloudBlob blob in blobSegment.Results)
             {
-                results.Add(RecentFunctionInstance.Parse(blob.Name));
+                string nameWithoutPrefix = blob.Name.Substring(prefix.Length);
+                results.Add(RecentInvocationEntry.Parse(nameWithoutPrefix));
             }
 
             string nextContinuationToken = BlobContinuationTokenSerializer.Serialize(blobSegment.ContinuationToken);
 
-            return new ResultSegment<RecentFunctionInstance>(results, nextContinuationToken);
+            return new ResultSegment<RecentInvocationEntry>(results, nextContinuationToken);
         }
     }
 }

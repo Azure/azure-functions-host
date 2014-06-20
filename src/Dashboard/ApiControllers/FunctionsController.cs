@@ -24,7 +24,8 @@ namespace Dashboard.ApiControllers
         private readonly IFunctionLookup _functionLookup;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
         private readonly IAborter _aborter;
-        private readonly IRecentFunctionReader _recentFunctionReader;
+        private readonly IRecentInvocationIndexReader _recentInvocationsReader;
+        private readonly IRecentInvocationIndexByFunctionReader _recentInvocationsByFunctionReader;
         private readonly IFunctionStatisticsReader _statisticsReader;
         private readonly ConcurrentDictionary<string, bool?> _cachedHostHeartbeats =
             new ConcurrentDictionary<string, bool?>();
@@ -38,7 +39,8 @@ namespace Dashboard.ApiControllers
             IFunctionLookup functionLookup,
             IHeartbeatMonitor heartbeatMonitor,
             IAborter aborter,
-            IRecentFunctionReader recentFunctionReader,
+            IRecentInvocationIndexReader recentInvocationsReader,
+            IRecentInvocationIndexByFunctionReader recentInvocationsByFunctionReader,
             IFunctionStatisticsReader statisticsReader)
         {
             _account = account;
@@ -47,7 +49,8 @@ namespace Dashboard.ApiControllers
             _functionLookup = functionLookup;
             _heartbeatMonitor = heartbeatMonitor;
             _aborter = aborter;
-            _recentFunctionReader = recentFunctionReader;
+            _recentInvocationsReader = recentInvocationsReader;
+            _recentInvocationsByFunctionReader = recentInvocationsByFunctionReader;
             _statisticsReader = statisticsReader;
         }
 
@@ -117,7 +120,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions/{functionId}/invocations")]
-        public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]ContainerPagingInfo pagingInfo)
         {
             var func = _functionLookup.Read(functionId);
 
@@ -126,8 +129,9 @@ namespace Dashboard.ApiControllers
                 return NotFound();
             }
 
-            var invocations = _invocationLogLoader.GetInvocationsInFunction(func.Id, pagingInfo);
-            return Ok(invocations);
+            IResultSegment<RecentInvocationEntry> indexSegment = _recentInvocationsByFunctionReader.Read(func.Id,
+                pagingInfo.Limit, pagingInfo.ContinuationToken);
+            return Invocations(indexSegment);
         }
 
         [Route("api/functions/invocations/recent")]
@@ -138,9 +142,13 @@ namespace Dashboard.ApiControllers
                 return BadRequest();
             }
 
-            IResultSegment<RecentFunctionInstance> indexSegment =
-                _recentFunctionReader.Read(pagingInfo.Limit, pagingInfo.ContinuationToken);
+            IResultSegment<RecentInvocationEntry> indexSegment =
+                _recentInvocationsReader.Read(pagingInfo.Limit, pagingInfo.ContinuationToken);
+            return Invocations(indexSegment);
+        }
 
+        private IHttpActionResult Invocations(IResultSegment<RecentInvocationEntry> indexSegment)
+        {
             if (indexSegment == null)
             {
                 return Ok();
@@ -148,18 +156,18 @@ namespace Dashboard.ApiControllers
 
             InvocationLogSegment results = new InvocationLogSegment
             {
-                Entries = CreateEntries(indexSegment.Results),
+                Entries = CreateInvocationEntries(indexSegment.Results),
                 ContinuationToken = indexSegment.ContinuationToken
             };
-            
+
             return Ok(results);
         }
 
-        private IEnumerable<InvocationLogViewModel> CreateEntries(IEnumerable<RecentFunctionInstance> indexEntries)
+        private IEnumerable<InvocationLogViewModel> CreateInvocationEntries(IEnumerable<RecentInvocationEntry> indexEntries)
         {
             List<InvocationLogViewModel> entries = new List<InvocationLogViewModel>();
 
-            foreach (RecentFunctionInstance indexEntry in indexEntries)
+            foreach (RecentInvocationEntry indexEntry in indexEntries)
             {
                 InvocationLogViewModel entry = InvocationLogLoader.GetInvocationLogViewModel(_functionInstanceLookup,
                     _heartbeatMonitor, indexEntry.Id);

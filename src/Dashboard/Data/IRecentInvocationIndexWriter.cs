@@ -2,7 +2,7 @@
 
 namespace Dashboard.Data
 {
-    public interface IRecentFunctionWriter
+    public interface IRecentInvocationIndexWriter
     {
         void CreateOrUpdate(DateTimeOffset timestamp, Guid id);
 

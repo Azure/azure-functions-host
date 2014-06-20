@@ -3,17 +3,17 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    public class RecentFunctionWriter : IRecentFunctionWriter
+    public class RecentInvocationIndexWriter : IRecentInvocationIndexWriter
     {
         private readonly IVersionedTextStore _store;
 
         [CLSCompliant(false)]
-        public RecentFunctionWriter(CloudBlobClient client)
+        public RecentInvocationIndexWriter(CloudBlobClient client)
             : this(VersionedTextStore.CreateBlobStore(client, DashboardContainerNames.RecentFunctionsContainerName))
         {
         }
 
-        private RecentFunctionWriter(IVersionedTextStore store)
+        private RecentInvocationIndexWriter(IVersionedTextStore store)
         {
             _store = store;
         }
@@ -32,7 +32,7 @@ namespace Dashboard.Data
 
         private static string CreateInnerId(DateTimeOffset timestamp, Guid id)
         {
-            return RecentFunctionInstance.Format(timestamp, id);
+            return DashboardBlobPrefixes.Flat + RecentInvocationEntry.Format(timestamp, id);
         }
     }
 }

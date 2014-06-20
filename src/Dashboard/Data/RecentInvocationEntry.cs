@@ -3,12 +3,12 @@ using System.Globalization;
 
 namespace Dashboard.Data
 {
-    public class RecentFunctionInstance
+    public class RecentInvocationEntry
     {
         private readonly DateTimeOffset _timestamp;
         private readonly Guid _id;
 
-        public RecentFunctionInstance(DateTimeOffset timestamp, Guid id)
+        public RecentInvocationEntry(DateTimeOffset timestamp, Guid id)
         {
             _timestamp = timestamp;
             _id = id;
@@ -39,9 +39,9 @@ namespace Dashboard.Data
             return String.Format(CultureInfo.InvariantCulture, "{0:D19}_{1:N}", reverseTicks, id);
         }
 
-        public static RecentFunctionInstance Parse(string input)
+        public static RecentInvocationEntry Parse(string input)
         {
-            RecentFunctionInstance parsed;
+            RecentInvocationEntry parsed;
 
             if (!TryParse(input, out parsed))
             {
@@ -51,7 +51,7 @@ namespace Dashboard.Data
             return parsed;
         }
 
-        private static bool TryParse(string input, out RecentFunctionInstance parsed)
+        private static bool TryParse(string input, out RecentInvocationEntry parsed)
         {
             if (input == null)
             {
@@ -90,7 +90,7 @@ namespace Dashboard.Data
             long ticks = DateTimeOffset.MaxValue.Ticks - reverseTicks; // Recompute the original ticks.
             DateTimeOffset timestamp = new DateTimeOffset(reverseTicks, TimeSpan.Zero); // Ticks must be UTC-relative.
 
-            parsed = new RecentFunctionInstance(timestamp, id);
+            parsed = new RecentInvocationEntry(timestamp, id);
             return true;
         }
     }

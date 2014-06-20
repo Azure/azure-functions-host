@@ -9,8 +9,6 @@
 
         public const string FunctionsInJobIndex = Prefix + "FunctionsInJobIndex";
 
-        public const string FunctionInvokeLogIndexMruFunction = Prefix + "FunctionlogsIndexMRUByFunction";
-
         // NOTE: these exist to give proper legacy data warnings in newer versions. They are not required by current.
         public const string OldFunctionInJobsIndex = "AzureJobsFunctionIndex5";
     }

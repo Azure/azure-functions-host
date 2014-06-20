@@ -13,26 +13,27 @@ namespace Dashboard.Indexers
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionStatisticsWriter _statisticsWriter;
-        private readonly IRecentFunctionWriter _indexWriter;
+        private readonly IRecentInvocationIndexWriter _recentInvocationsWriter;
+        private readonly IRecentInvocationIndexByFunctionWriter _recentInvocationsByFunctionWriter;
         private readonly ICausalityLogger _causalityLogger;
         private readonly IFunctionsInJobIndexer _functionsInJobIndexer;
-        private readonly IExecutionStatsAggregator _executionStatsAggregator;
 
         public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
             IHostInstanceLogger hostInstanceLogger, IFunctionInstanceLogger functionInstanceLogger,
             IFunctionInstanceLookup functionInstanceLookup, IFunctionStatisticsWriter statisticsWriter,
-            IRecentFunctionWriter indexWriter, ICausalityLogger causalityLogger,
-            IFunctionsInJobIndexer functionsInJobIndexer, IExecutionStatsAggregator executionStatsAggregator)
+            IRecentInvocationIndexWriter recentInvocationsWriter,
+            IRecentInvocationIndexByFunctionWriter recentInvocationsByFunctionWriter, ICausalityLogger causalityLogger,
+            IFunctionsInJobIndexer functionsInJobIndexer)
         {
             _queueReader = queueReader;
             _hostInstanceLogger = hostInstanceLogger;
             _functionInstanceLogger = functionInstanceLogger;
             _functionInstanceLookup = functionInstanceLookup;
             _statisticsWriter = statisticsWriter;
-            _indexWriter = indexWriter;
+            _recentInvocationsWriter = recentInvocationsWriter;
+            _recentInvocationsByFunctionWriter = recentInvocationsByFunctionWriter;
             _causalityLogger = causalityLogger;
             _functionsInJobIndexer = functionsInJobIndexer;
-            _executionStatsAggregator = executionStatsAggregator;
         }
 
         public void Update()
@@ -89,20 +90,21 @@ namespace Dashboard.Indexers
             _functionInstanceLogger.LogFunctionStarted(message);
             _causalityLogger.LogTriggerReason(CreateTriggerReason(message));
 
+            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
             Guid functionInstanceId = message.FunctionInstanceId;
+            DateTimeOffset startTime = message.StartTime;
 
             if (!HasLoggedFunctionCompleted(functionInstanceId))
             {
-                _indexWriter.CreateOrUpdate(message.StartTime, functionInstanceId);
+                _recentInvocationsWriter.CreateOrUpdate(startTime, functionInstanceId);
+                _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, startTime, functionInstanceId);
             }
 
             if (message.WebJobRunIdentifier != null)
             {
-                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(functionInstanceId,
-                    message.StartTime.UtcDateTime, message.WebJobRunIdentifier);
+                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(functionInstanceId, startTime.UtcDateTime,
+                    message.WebJobRunIdentifier);
             }
-
-            _executionStatsAggregator.LogFunctionStarted(message);
         }
 
         private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
@@ -126,16 +128,19 @@ namespace Dashboard.Indexers
         {
             _functionInstanceLogger.LogFunctionCompleted(message);
 
-            if (message.StartTime.Ticks != message.EndTime.Ticks)
+            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
+            Guid functionInstanceId = message.FunctionInstanceId;
+            DateTimeOffset startTime = message.StartTime;
+            DateTimeOffset endTime = message.EndTime;
+
+            if (startTime.Ticks != endTime.Ticks)
             {
-                _indexWriter.DeleteIfExists(message.StartTime, message.FunctionInstanceId);
+                _recentInvocationsWriter.DeleteIfExists(startTime, functionInstanceId);
+                _recentInvocationsByFunctionWriter.DeleteIfExists(functionId, startTime, functionInstanceId);
             }
 
-            _indexWriter.CreateOrUpdate(message.EndTime, message.FunctionInstanceId);
-
-            _executionStatsAggregator.LogFunctionCompleted(message);
-
-            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
+            _recentInvocationsWriter.CreateOrUpdate(endTime, functionInstanceId);
+            _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, endTime, functionInstanceId);
 
             // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
             // occur multiple times.

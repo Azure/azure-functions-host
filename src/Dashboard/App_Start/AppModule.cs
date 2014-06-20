@@ -48,23 +48,22 @@ namespace Dashboard
             Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
             Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
             Bind<IFunctionStatisticsWriter>().To<FunctionStatisticsWriter>();
-            Bind<IRecentFunctionReader>().To<RecentFunctionReader>();
-            Bind<IRecentFunctionWriter>().To<RecentFunctionWriter>();
+            Bind<IRecentInvocationIndexReader>().To<RecentInvocationIndexReader>();
+            Bind<IRecentInvocationIndexWriter>().To<RecentInvocationIndexWriter>();
+            Bind<IRecentInvocationIndexByFunctionReader>().To<RecentInvocationIndexByFunctionReader>();
+            Bind<IRecentInvocationIndexByFunctionWriter>().To<RecentInvocationIndexByFunctionWriter>();
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IHostMessageSender>().To<HostMessageSender>();
             Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
-            Bind<IExecutionStatsAggregator>().ToMethod(() => CreateExecutionStatsAggregator(blobClient, sdkAccount));
             Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
             Bind<IAborter>().To<Aborter>();
             Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
             BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
-            BindFunctionInvocationIndexReader("invocationsInFunctionReader",
-                DashboardTableNames.FunctionInvokeLogIndexMruFunction);
             BindFunctionInvocationIndexReader("invocationChildrenReader", DashboardTableNames.FunctionCausalityLog);
         }
 
@@ -114,19 +113,6 @@ namespace Dashboard
             IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
             IFunctionInstanceLookup logger = null; // write-only mode
             return new CausalityLogger(table, logger);
-        }
-
-        private static IExecutionStatsAggregator CreateExecutionStatsAggregator(CloudBlobClient blobClient,
-            CloudStorageAccount account)
-        {
-            IFunctionInstanceLookup instanceLookup = new FunctionInstanceLookup(blobClient);
-
-            var tableMruByFunction = new AzureTable<FunctionInstanceGuid>(account,
-                DashboardTableNames.FunctionInvokeLogIndexMruFunction);
-
-            return new ExecutionStatsAggregator(
-                instanceLookup,
-                tableMruByFunction);
         }
 
         private static string GetDashboardConnectionString()
