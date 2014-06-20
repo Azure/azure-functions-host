@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
+using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.Azure.Jobs.Storage;
@@ -11,30 +12,6 @@ using Newtonsoft.Json;
 
 namespace Dashboard
 {
-    public class ParamModel
-    {
-        // Static info
-        public string Name { get; set; }
-        public string Description { get; set; }
-
-        // human-readably string version of runtime information.
-        // Links provide optional runtime information for further linking to explore arg.
-        public string ArgInvokeString { get; set; }
-
-        public BlobBoundParamModel ExtendedBlobModel { get; set; }
-
-        // Runtime info. This can be structured to provide rich hyperlinks.
-        public string SelfWatch { get; set; }
-    }
-
-    public class BlobBoundParamModel
-    {
-        public bool IsBlobOwnedByCurrentFunctionInstance { get; set; }
-        public bool IsBlobMissing { get; set; }
-        public Guid OwnerId { get; set; }
-        public bool IsOutput { get; set; }
-    }
-
     // $$$ Analysis can be expensive. Use a cache?
     public class LogAnalysis
     {

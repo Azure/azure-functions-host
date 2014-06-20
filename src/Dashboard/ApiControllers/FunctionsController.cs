@@ -2,13 +2,15 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Web;
+using System.Web.Caching;
 using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
-using Dashboard.InvocationLog;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
@@ -17,7 +19,7 @@ namespace Dashboard.ApiControllers
     public class FunctionsController : ApiController
     {
         private readonly CloudStorageAccount _account;
-        private readonly IInvocationLogLoader _invocationLogLoader;
+        private readonly CloudTableClient _tableClient;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionLookup _functionLookup;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
@@ -25,6 +27,7 @@ namespace Dashboard.ApiControllers
         private readonly IRecentInvocationIndexReader _recentInvocationsReader;
         private readonly IRecentInvocationIndexByFunctionReader _recentInvocationsByFunctionReader;
         private readonly IRecentInvocationIndexByJobRunReader _recentInvocationsByJobRunReader;
+        private readonly IRecentInvocationIndexByParentReader _recentInvocationsByParentReader;
         private readonly IFunctionStatisticsReader _statisticsReader;
         private readonly ConcurrentDictionary<string, bool?> _cachedHostHeartbeats =
             new ConcurrentDictionary<string, bool?>();
@@ -33,7 +36,7 @@ namespace Dashboard.ApiControllers
 
         internal FunctionsController(
             CloudStorageAccount account,
-            IInvocationLogLoader invocationLogLoader,
+            CloudTableClient tableClient,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionLookup functionLookup,
             IHeartbeatMonitor heartbeatMonitor,
@@ -41,10 +44,11 @@ namespace Dashboard.ApiControllers
             IRecentInvocationIndexReader recentInvocationsReader,
             IRecentInvocationIndexByFunctionReader recentInvocationsByFunctionReader,
             IRecentInvocationIndexByJobRunReader recentInvocationsByJobRunReader,
+            IRecentInvocationIndexByParentReader recentInvocationsByParentReader,
             IFunctionStatisticsReader statisticsReader)
         {
             _account = account;
-            _invocationLogLoader = invocationLogLoader;
+            _tableClient = tableClient;
             _functionInstanceLookup = functionInstanceLookup;
             _functionLookup = functionLookup;
             _heartbeatMonitor = heartbeatMonitor;
@@ -52,6 +56,7 @@ namespace Dashboard.ApiControllers
             _recentInvocationsReader = recentInvocationsReader;
             _recentInvocationsByFunctionReader = recentInvocationsByFunctionReader;
             _recentInvocationsByJobRunReader = recentInvocationsByJobRunReader;
+            _recentInvocationsByParentReader = recentInvocationsByParentReader;
             _statisticsReader = statisticsReader;
         }
 
@@ -80,8 +85,7 @@ namespace Dashboard.ApiControllers
 
             try
             {
-                return _account.CreateCloudTableClient()
-                    .GetTableReference(Alpha2TableName).Exists() &&
+                return _tableClient.GetTableReference(Alpha2TableName).Exists() &&
                     (alreadyFoundNoNewerEntries || _functionLookup.ReadAll().Count == 0);
             }
             catch (Exception)
@@ -202,30 +206,73 @@ namespace Dashboard.ApiControllers
 
         private IEnumerable<InvocationLogViewModel> CreateInvocationEntries(IEnumerable<RecentInvocationEntry> indexEntries)
         {
-            List<InvocationLogViewModel> entries = new List<InvocationLogViewModel>();
+            return CreateInvocationEntries(indexEntries.Select(e => e.Id));
+        }
 
-            foreach (RecentInvocationEntry indexEntry in indexEntries)
+        private IEnumerable<InvocationLogViewModel> CreateInvocationEntries(IEnumerable<Guid> ids)
+        {
+            IEnumerable<InvocationLogViewModel> enumerable = from Guid id in ids
+                                                             let model = CreateInvocationEntry(id)
+                                                             where model != null
+                                                             select model;
+
+            return enumerable.ToList();
+        }
+
+        private InvocationLogViewModel CreateInvocationEntry(Guid id)
+        {
+            InvocationLogViewModel invocationModel = null;
+            string cacheKey = "INVOCATION_MODEL_" + id;
+            if (HttpRuntime.Cache != null)
             {
-                InvocationLogViewModel entry = InvocationLogLoader.GetInvocationLogViewModel(_functionInstanceLookup,
-                    _heartbeatMonitor, indexEntry.Id);
-                entries.Add(entry);
+                invocationModel = HttpRuntime.Cache.Get(cacheKey) as InvocationLogViewModel;
+                if (invocationModel == null)
+                {
+                    var invocation = _functionInstanceLookup.Lookup(id);
+                    if (invocation != null)
+                    {
+                        invocationModel = new InvocationLogViewModel(invocation, HostInstanceHasHeartbeat(invocation));
+                        if (invocationModel.IsFinal())
+                        {
+                            HttpRuntime.Cache.Insert(cacheKey, invocationModel, null, Cache.NoAbsoluteExpiration, TimeSpan.FromMinutes(30));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var invocation = _functionInstanceLookup.Lookup(id);
+                if (invocation != null)
+                {
+                    invocationModel = new InvocationLogViewModel(invocation, HostInstanceHasHeartbeat(invocation));
+                }
             }
 
-            return entries;
+            return invocationModel;
         }
 
         [Route("api/functions/invocationsByIds")]
         public IHttpActionResult PostInvocationsByIds(Guid[] ids)
         {
-            var items = _invocationLogLoader.GetInvocationsByIds(ids);
-            return Ok(items.ToArray());
+            return Ok(CreateInvocationEntries(ids));
         }
 
         [Route("api/functions/invocations/{functionInvocationId}/children")]
-        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, [FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, [FromUri]ContainerPagingInfo pagingInfo)
         {
-            var invocations = _invocationLogLoader.GetInvocationChildren(functionInvocationId, pagingInfo);
-            return Ok(invocations);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (pagingInfo == null)
+            {
+                return BadRequest();
+            }
+
+            IResultSegment<RecentInvocationEntry> indexSegment = _recentInvocationsByParentReader.Read(
+                functionInvocationId, pagingInfo.Limit, pagingInfo.ContinuationToken);
+            return Invocations(indexSegment);
         }
 
         [Route("api/functions/invocations/{functionInvocationId}")]
@@ -444,6 +491,19 @@ namespace Dashboard.ApiControllers
 
             return _heartbeatMonitor.IsSharedHeartbeatValid(heartbeat.SharedContainerName,
                 heartbeat.SharedDirectoryName, heartbeat.ExpirationInSeconds);
+        }
+
+        private bool? HostInstanceHasHeartbeat(FunctionInstanceSnapshot snapshot)
+        {
+            HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
+
+            if (heartbeat == null)
+            {
+                return null;
+            }
+
+            return _heartbeatMonitor.IsInstanceHeartbeatValid(heartbeat.SharedContainerName,
+                heartbeat.SharedDirectoryName, heartbeat.InstanceBlobName, heartbeat.ExpirationInSeconds);
         }
     }
 }

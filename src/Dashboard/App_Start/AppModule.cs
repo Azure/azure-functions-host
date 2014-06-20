@@ -1,20 +1,15 @@
 ﻿using System;
-using AzureTables;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
-using Dashboard.InvocationLog;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.Azure.Jobs.Protocols;
-using Microsoft.Azure.Jobs.Storage;
-using Microsoft.Azure.Jobs.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Ninject.Modules;
-using Ninject.Syntax;
 
 namespace Dashboard
 {
@@ -23,23 +18,21 @@ namespace Dashboard
         public override void Load()
         {
             CloudStorageAccount sdkAccount = TryCreateAccount();
+
             if (sdkAccount == null)
             {
                 return;
             }
 
-            CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
             CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
-            CloudTableClient sdkTableClient = sdkAccount.CreateCloudTableClient();
-
-            ICloudStorageAccount account = new SdkCloudStorageAccount(sdkAccount);
-            ICloudTableClient tableClient = account.CreateCloudTableClient();
+            CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
+            CloudTableClient tableClient = sdkAccount.CreateCloudTableClient();
 
             Bind<CloudStorageAccount>().ToConstant(sdkAccount);
-            Bind<CloudTableClient>().ToConstant(sdkTableClient);
-            Bind<CloudQueueClient>().ToConstant(queueClient);
-            Bind<ICloudTableClient>().ToConstant(tableClient);
             Bind<CloudBlobClient>().ToConstant(blobClient);
+            Bind<CloudQueueClient>().ToConstant(queueClient);
+            Bind<CloudTableClient>().ToConstant(tableClient);
+
             Bind<IHostVersionReader>().To<HostVersionReader>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
             Bind<IFunctionInstanceLogger>().To<FunctionInstanceLogger>();
@@ -54,18 +47,15 @@ namespace Dashboard
             Bind<IRecentInvocationIndexByFunctionWriter>().To<RecentInvocationIndexByFunctionWriter>();
             Bind<IRecentInvocationIndexByJobRunReader>().To<RecentInvocationIndexByJobRunReader>();
             Bind<IRecentInvocationIndexByJobRunWriter>().To<RecentInvocationIndexByJobRunWriter>();
-            Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
-            Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
+            Bind<IRecentInvocationIndexByParentReader>().To<RecentInvocationIndexByParentReader>();
+            Bind<IRecentInvocationIndexByParentWriter>().To<RecentInvocationIndexByParentWriter>();
             Bind<IHostMessageSender>().To<HostMessageSender>();
-            Bind<IInvocationLogLoader>().To<InvocationLogLoader>();
             Bind<IPersistentQueueReader<PersistentQueueMessage>>().To<PersistentQueueReader<PersistentQueueMessage>>();
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
-            Bind<IIndexer>().To<Dashboard.Indexers.Indexer>();
+            Bind<IIndexer>().To<Indexer>();
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
             Bind<IAborter>().To<Aborter>();
-            Bind<IFunctionInvocationIndexReader>().To<FunctionInvocationIndexReader>()
-                .WithConstructorArgument("tableName", DashboardTableNames.FunctionCausalityLog);
         }
 
         private static CloudStorageAccount TryCreateAccount()
@@ -90,25 +80,6 @@ namespace Dashboard
             return null;
         }
 
-        private static IAzureTable<TriggerReasonEntity> CreateCausalityTable(CloudStorageAccount account)
-        {
-            return new AzureTable<TriggerReasonEntity>(account, DashboardTableNames.FunctionCausalityLog);
-        }
-
-        private static ICausalityReader CreateCausalityReader(CloudBlobClient blobClient, CloudStorageAccount account)
-        {
-            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
-            IFunctionInstanceLookup lookup = new FunctionInstanceLookup(blobClient);
-            return new CausalityLogger(table, lookup);
-        }
-
-        private static ICausalityLogger CreateCausalityLogger(CloudStorageAccount account)
-        {
-            IAzureTable<TriggerReasonEntity> table = CreateCausalityTable(account);
-            IFunctionInstanceLookup logger = null; // write-only mode
-            return new CausalityLogger(table, logger);
-        }
-
         private static string GetDashboardConnectionString()
         {
             var val = new AmbientConnectionStringProvider().GetConnectionString("Dashboard");
@@ -124,14 +95,6 @@ namespace Dashboard
                 throw new InvalidOperationException(validationErrorMessage);
             }
             return val;
-        }
-    }
-
-    internal static class NinjectBindingExtensions
-    {
-        public static IBindingWhenInNamedWithOrOnSyntax<T> ToMethod<T>(this IBindingToSyntax<T> binding, Func<T> factoryMethod)
-        {
-            return binding.ToMethod(_ => factoryMethod());
         }
     }
 }

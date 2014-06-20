@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
+﻿using System;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
@@ -6,8 +7,8 @@ namespace Dashboard.Data
     internal static class DashboardBlobPrefixes
     {
         private const string ByFunction = "by-function/";
-
         private const string ByJobRun = "by-job-run/";
+        private const string ByParent = "by-parent/";
 
         public const string Flat = "flat/";
 
@@ -19,6 +20,11 @@ namespace Dashboard.Data
         public static string CreateByJobRunPrefix(WebJobRunIdentifier webJobRunId)
         {
             return ByJobRun + webJobRunId.GetKey() + "/";
+        }
+
+        public static string CreateByParentPrefix(Guid parentId)
+        {
+            return ByParent + parentId.ToString("N") + "/";
         }
     }
 }

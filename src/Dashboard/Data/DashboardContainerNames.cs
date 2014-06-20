@@ -9,7 +9,7 @@
 
         public const string FunctionLogContainerName = Prefix + "function-logs";
 
-        public const string RecentFunctionsContainerName = "recent-functions";
+        public const string RecentFunctionsContainerName = Prefix + "recent-functions";
 
         public const string FunctionStatisticsContainerName = Prefix + "function-stats";
 

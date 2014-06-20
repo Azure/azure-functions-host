@@ -21,8 +21,8 @@ namespace Dashboard.Data
         /// </summary>
         /// <param name="account">The cloud storage account.</param>
         [CLSCompliant(false)]
-        public HostVersionReader(CloudStorageAccount account)
-            : this(account.CreateCloudBlobClient().GetContainerReference(DashboardContainerNames.VersionContainerName))
+        public HostVersionReader(CloudBlobClient client)
+            : this(client.GetContainerReference(DashboardContainerNames.VersionContainerName))
         {
         }
 

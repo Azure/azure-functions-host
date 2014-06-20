@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Globalization;
 using Dashboard.Data;
-using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Indexers
@@ -16,14 +15,17 @@ namespace Dashboard.Indexers
         private readonly IRecentInvocationIndexWriter _recentInvocationsWriter;
         private readonly IRecentInvocationIndexByFunctionWriter _recentInvocationsByFunctionWriter;
         private readonly IRecentInvocationIndexByJobRunWriter _recentInvocationsByJobRunWriter;
-        private readonly ICausalityLogger _causalityLogger;
+        private readonly IRecentInvocationIndexByParentWriter _recentInvocationsByParentWriter;
 
         public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
-            IHostInstanceLogger hostInstanceLogger, IFunctionInstanceLogger functionInstanceLogger,
-            IFunctionInstanceLookup functionInstanceLookup, IFunctionStatisticsWriter statisticsWriter,
+            IHostInstanceLogger hostInstanceLogger,
+            IFunctionInstanceLogger functionInstanceLogger,
+            IFunctionInstanceLookup functionInstanceLookup,
+            IFunctionStatisticsWriter statisticsWriter,
             IRecentInvocationIndexWriter recentInvocationsWriter,
             IRecentInvocationIndexByFunctionWriter recentInvocationsByFunctionWriter,
-            IRecentInvocationIndexByJobRunWriter recentInvocationsByJobRunWriter, ICausalityLogger causalityLogger)
+            IRecentInvocationIndexByJobRunWriter recentInvocationsByJobRunWriter,
+            IRecentInvocationIndexByParentWriter recentInvocationsByParentWriter)
         {
             _queueReader = queueReader;
             _hostInstanceLogger = hostInstanceLogger;
@@ -33,7 +35,7 @@ namespace Dashboard.Indexers
             _recentInvocationsWriter = recentInvocationsWriter;
             _recentInvocationsByFunctionWriter = recentInvocationsByFunctionWriter;
             _recentInvocationsByJobRunWriter = recentInvocationsByJobRunWriter;
-            _causalityLogger = causalityLogger;
+            _recentInvocationsByParentWriter = recentInvocationsByParentWriter;
         }
 
         public void Update()
@@ -88,7 +90,6 @@ namespace Dashboard.Indexers
         private void Process(FunctionStartedMessage message)
         {
             _functionInstanceLogger.LogFunctionStarted(message);
-            _causalityLogger.LogTriggerReason(CreateTriggerReason(message));
 
             string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
             Guid functionInstanceId = message.FunctionInstanceId;
@@ -106,6 +107,13 @@ namespace Dashboard.Indexers
             {
                 _recentInvocationsByJobRunWriter.CreateOrUpdate(webJobRunId, startTime, functionInstanceId);
             }
+
+            Guid? parentId = message.ParentId;
+
+            if (parentId.HasValue)
+            {
+                _recentInvocationsByParentWriter.CreateOrUpdate(parentId.Value, startTime, functionInstanceId);
+            }
         }
 
         private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
@@ -113,16 +121,6 @@ namespace Dashboard.Indexers
             FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
 
             return primaryLog != null && primaryLog.EndTime.HasValue;
-        }
-
-        internal static TriggerReason CreateTriggerReason(FunctionStartedMessage message)
-        {
-            return new TriggerReason
-            {
-                ChildGuid = message.FunctionInstanceId,
-                ParentGuid = message.ParentId.GetValueOrDefault(),
-                Message = message.FormatReason()
-            };
         }
 
         private void Process(FunctionCompletedMessage message)

@@ -7,7 +7,7 @@
                        class="label label-default"
                        style="margin-left: 15px;"
                        ng-show="invocations.hasNew && invocations.firstPage"
-                       ng-click="invocations.loadFirstPage()"
+                       ng-click="invocations.reloadFirstPage()"
                        title="New invocations were detected, click here to reload the table">Show new invocations</span>
                 </th>
                 <th class="col-md-1">Status</th>
@@ -15,23 +15,23 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-if="!invocations.entries">
+            <tr ng-if="invocations.initializing">
                 <td colspan="3">Loading...</td>
             </tr>
-            <tr ng-if="invocations.entries.length === 0">
+            <tr ng-if="invocations.page.length === 0">
                 <td colspan="3">No functions have run recently.</td>
             </tr>
-            <tr ng-repeat="entry in invocations.entries">
+            <tr ng-repeat="entry in invocations.page">
                 <td>
-                    <a title="Invocation details" href="{{_urls.functionInvocation(entry.invocation.id)}}">
-                        <span>{{entry.invocation.functionDisplayTitle}}</span>
+                    <a title="Invocation details" href="{{_urls.functionInvocation(entry.id)}}">
+                        <span>{{entry.functionDisplayTitle}}</span>
                     </a>
                 </td>
                 <td>
-                    <span ng-class="entry.invocation.getLabelClass()" class="label">{{entry.invocation.getLabelText()}}</span>
+                    <span ng-class="entry.getLabelClass()" class="label">{{entry.getLabelText()}}</span>
                 </td>
                 <td>
-                    <span>{{entry.invocation.statusTimeString}}</span> <small>({{entry.invocation.durationString}} running time)</small>
+                    <span>{{entry.statusTimeString}}</span> <small>({{entry.durationString}} running time)</small>
                 </td>
             </tr>
         </tbody>

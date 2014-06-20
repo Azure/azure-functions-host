@@ -7,16 +7,18 @@
 
         $scope.invocations.firstPage = true;
         $scope.invocations.initializing = true;
-        $scope.invocations.newestInPageStack = [];
-        $scope.invocations.nonFinalInvocations = {};
-        $scope.invocations.loadPreviousPage = function () {
-            loadPreviousPage();
+        $scope.invocations.downloaded = [];
+        $scope.invocations.indexOfPageIntoDownloaded = 0;
+        $scope.invocations.continuationToken = null;
+        $scope.invocations.nonFinalItemsInPage = {};
+        $scope.invocations.reloadFirstPage = function () {
+            reloadFirstPage();
         };
         $scope.invocations.loadNextPage = function () {
             loadNextPage();
         };
-        $scope.invocations.loadFirstPage = function () {
-            loadFirstPage();
+        $scope.invocations.loadPreviousPage = function () {
+            loadPreviousPage();
         };
 
         $scope.$on('invocations:poll', function () {
@@ -27,84 +29,210 @@
             onUpdateTiming();
         });
 
-        function onPoll() {
-            if ($scope.invocations.initializing) {
-                loadFirstPage();
-                return;
-            }
-            if ($scope.invocations.firstPage && !$scope.invocations.hasNew) {
-                hasNewInvocations();
-            }
-            updateNonFinalInvocations();
+
+        function reloadFirstPage() {
+            var invocations = $scope.invocations;
+
+            // Drop all downloaded data.
+            invocations.downloaded = [];
+            invocations.continuationToken = null;
+            invocations.downloadCompleted = false;
+            invocations.pageIndex = 0;
+
+            // Request one more than the page size to know whether to show a next page link.
+            // Subsequent requests will get the next page size chunk and still know whether to show a next page link.
+            // First request: items 1-11
+            // Second request: items 12-21
+            // etc.
+            downloadSegment({ limit: 11 }, function () {
+                invocations.hasNew = false;
+                bindPage();
+            })
+                ['finally'](function () {
+                    invocations.initializing = false;
+                    invocations.hasNew = false;
+                });
         }
 
-        function onUpdateTiming() {
-            if (!$scope.invocations.entries) {
-                return;
+        function loadNextPage() {
+            var invocations = $scope.invocations;
+            var downloaded = invocations.downloaded;
+
+            ++invocations.pageIndex;
+
+            if (invocations.downloadCompleted || (downloaded != null
+                && downloaded.length > ((invocations.pageIndex * 10) + 1))) {
+                bindPage();
+            } else {
+                downloadSegment({ limit: 10, continuationToken: invocations.continuationToken }, function () {
+                    bindPage();
+                });
             }
-            var ix, len = $scope.invocations.entries.length;
-            for (ix = 0; ix !== len; ++ix) {
-                $scope.invocations.entries[ix].invocation.updateTimingStrings();
+        }
+
+        function loadPreviousPage() {
+            --$scope.invocations.pageIndex;
+            bindPage();
+        }
+
+        function bindPage() {
+            var invocations = $scope.invocations,
+                downloaded = invocations.downloaded,
+                downloadedLength = downloaded.length,
+                nonFinalInvocationsInPage = invocations.nonFinalInvocationsInPage,
+                page,
+                pageIndex = invocations.pageIndex,
+                length = Math.min(downloadedLength, (pageIndex + 1) * 10),
+                index,
+                item;
+
+            invocations.initializing = false;
+            invocations.page = [];
+            page = invocations.page;
+            invocations.nonFinalInvocationsInPage = {};
+            invocations.firstPage = pageIndex == 0;
+
+            for (index = pageIndex * 10; index < length; ++index) {
+                item = downloaded[index];
+
+                if (!item.isFinal()) {
+                    nonFinalInvocationsInPage[item.id] = item;
+                }
+
+                page.push(item);
             }
+
+            invocations.hasMore = downloadedLength > index;
         }
 
         function getFunctionInvocations(params) {
             return $http.get($scope.invocations.endpoint, { params: params });
         }
 
-        function hasNewInvocations() {
-            if (!$scope.invocations.entries) {
-                return;
-            }
-            if ($scope.invocations.hasNew || !$scope.invocations.firstPage) {
-                return;
-            }
-            if ($scope.invocations.skipHasNewPolling) {
-                return;
-            }
-            var params = {
-                limit: 1
-            };
-            if ($scope.invocations.entries.length !== 0) {
-                params.newerThan = $scope.invocations.entries[0].key;
-            }
-            getFunctionInvocations(params).success(function (data) {
-                if (data.entries.length > 0) {
-                    $scope.invocations.hasNew = true;
-                } else {
-                    $scope.invocations.hasNew = false;
-                }
-            });
-        }
-
-        function loadPage(params, sucess) {
+        function downloadSegment(params, success) {
             $scope.invocations.disablePager = true;
             return getFunctionInvocations(params)
-                .success(function() {
-                    handleInvocationsPage.apply(this, arguments);
-                    if (typeof sucess === 'function') {
-                        sucess.apply(this, arguments);
+                .success(function () {
+                    handleDownloadSegment.apply(this, arguments);
+                    if (typeof success === 'function') {
+                        success.apply(this, arguments);
                     }
                 })
-                .error(handleInvocationsPageError)
+                .error(handleDownloadSegmentError)
                 ['finally'](function () {
                     $scope.invocations.disablePager = false;
                 });
         }
 
-        function updateNonFinalInvocations() {
-            var nonFinalIds = Object.getOwnPropertyNames($scope.invocations.nonFinalInvocations);
+        function handleDownloadSegment(data) {
+            var entries = data.entries,
+                length = entries != null ? entries.length : 0,
+                invocations = $scope.invocations,
+                downloaded = invocations.downloaded,
+                index,
+                entry,
+                item,
+                continuationToken;
+
+            if (data.isOldHost !== undefined) {
+                $rootScope.isOldHost = data.isOldHost;
+            }
+
+            if (length > 0) {
+                for (index = 0; index !== length; ++index) {
+                    entry = data.entries[index];
+                    item = FunctionInvocationSummary.fromJson(entry);
+                    downloaded.push(item);
+                }
+            }
+
+            continuationToken = data.continuationToken;
+            invocations.continuationToken = continuationToken;
+
+            if (continuationToken == null) {
+                invocations.downloadCompleted = true;
+            }
+        }
+
+        function handleDownloadSegmentError() {
+        }
+
+        function onPoll() {
+            var invocations = $scope.invocations;
+
+            if (invocations.initializing && !invocations.loading) {
+                invocations.loading = true;
+                reloadFirstPage();
+                return;
+            }
+
+            if (invocations.firstPage && !invocations.hasNew) {
+                updateHasNew();
+            }
+
+            updateNonFinalItemsInPage();
+        }
+
+        function onUpdateTiming() {
+            var invocations = $scope.invocations;
+
+            if (!invocations.page) {
+                return;
+            }
+
+            var page = invocations.page,
+                length = page.length,
+                index;
+
+            for (index = 0; index !== length; ++index) {
+                page[index].updateTimingStrings();
+            }
+        }
+
+        function updateHasNew() {
+            var invocations = $scope.invocations;
+
+            if (!invocations.page) {
+                return;
+            }
+
+            if (!invocations.firstPage || invocations.hasNew) {
+                return;
+            }
+
+            if (invocations.skipHasNewPolling) {
+                return;
+            }
+
+            var params = {
+                limit: 1
+            };
+
+            getFunctionInvocations(params).success(function (data) {
+                var entries = data.entries;
+
+                if (entries != null && entries.length > 0 && entries[0].whenUtc > invocations.page[0].whenUtc) {
+                    invocations.hasNew = true;
+                }
+            });
+        }
+
+        function updateNonFinalItemsInPage() {
+            var nonFinalIds = Object.getOwnPropertyNames($scope.invocations.nonFinalItemsInPage);
             if (nonFinalIds.length === 0) {
                 return;
             }
             $http.post(api.sdk.invocationByIds(), JSON.stringify(nonFinalIds)).success(function (data) {
-                var len = data.length,
-                    ix,
-                    item,
-                    invocation;
-                for (ix = 0; ix !== len; ++ix) {
-                    item = data[ix];
-                    invocation = $scope.invocations.nonFinalInvocations[item.id];
+                var invocations = $scope.invocations,
+                    nonFinalItemsInPage = invocations.nonFinalItemsInPage,
+                    length = data.length,
+                    index,
+                    invocation,
+                    item;
+
+                for (index = 0; index !== length; ++index) {
+                    item = data[index];
+                    invocation = nonFinalItemsInPage[item.id];
                     if (invocation) {
                         invocation.functionDisplayTitle = item.functionDisplayTitle;
                         invocation.status = item.status;
@@ -113,74 +241,11 @@
                         invocation.exceptionMessage = item.exceptionMessage;
                         invocation.updateTimingStrings();
                         if (invocation.isFinal()) {
-                            delete $scope.invocations.nonFinalInvocations[invocation.id];
+                            delete nonFinalItemsInPage[invocation.id];
                         }
                     }
                 }
             });
         }
-
-        function handleInvocationsPageError() {
-        }
-
-        function loadNextPage() {
-            if ($scope.invocations.entries.length === 0) {
-                return;
-            }
-            var oldestOnPage = $scope.invocations.entries[$scope.invocations.entries.length - 1].key;
-            loadPage({ limit: 10, olderThan: oldestOnPage });
-        }
-
-        function loadPreviousPage() {
-            // pop the current page's head out
-            $scope.invocations.newestInPageStack.pop();
-            // pop the previous page's head out
-            var previous = $scope.invocations.newestInPageStack.pop();
-            if (!previous) {
-                return;
-            }
-            loadPage({ limit: 10, olderThanOrEqual: previous });
-        }
-
-        function loadFirstPage() {
-            // empty the stack
-            while ($scope.invocations.newestInPageStack.pop());
-            loadPage({ limit: 10 }, function () {
-                    $scope.invocations.hasNew = false;
-                })
-                ['finally'](function () {
-                    $scope.invocations.initializing = false;
-                    $scope.invocations.hasNew = false;
-                });
-        }
-
-        function handleInvocationsPage(data) {
-            var len = data.entries.length,
-                ix,
-                item,
-                invocation;
-
-            if (data.isOldHost !== undefined) {
-                $rootScope.isOldHost = data.isOldHost;
-            }
-
-            $scope.invocations.initializing = false;
-            $scope.invocations.entries = [];
-            $scope.invocations.nonFinalInvocations = {};
-            if (len > 0) {
-                for (ix = 0; ix !== len; ++ix) {
-                    item = data.entries[ix];
-                    invocation = FunctionInvocationSummary.fromJson(item.invocation);
-                    if (!invocation.isFinal()) {
-                        $scope.invocations.nonFinalInvocations[invocation.id] = invocation;
-                    }
-                    $scope.invocations.entries.push({ invocation: invocation, key: item.key });
-                }
-                $scope.invocations.newestInPageStack.push($scope.invocations.entries[0].key);
-                $scope.invocations.firstPage = $scope.invocations.newestInPageStack.length === 1;
-            }
-            $scope.invocations.hasMore = data.hasMore;
-        }
-
     }
 );
