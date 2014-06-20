@@ -6,6 +6,9 @@ namespace Dashboard.ViewModels
     public class InvocationLogSegment
     {
         public IEnumerable<InvocationLogViewModel> Entries { get; set; }
+
         public string ContinuationToken { get; set; }
+
+        public bool IsOldHost { get; set; }
     }
 }

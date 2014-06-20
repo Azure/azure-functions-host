@@ -15,15 +15,15 @@ namespace Dashboard.Indexers
         private readonly IFunctionStatisticsWriter _statisticsWriter;
         private readonly IRecentInvocationIndexWriter _recentInvocationsWriter;
         private readonly IRecentInvocationIndexByFunctionWriter _recentInvocationsByFunctionWriter;
+        private readonly IRecentInvocationIndexByJobRunWriter _recentInvocationsByJobRunWriter;
         private readonly ICausalityLogger _causalityLogger;
-        private readonly IFunctionsInJobIndexer _functionsInJobIndexer;
 
         public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
             IHostInstanceLogger hostInstanceLogger, IFunctionInstanceLogger functionInstanceLogger,
             IFunctionInstanceLookup functionInstanceLookup, IFunctionStatisticsWriter statisticsWriter,
             IRecentInvocationIndexWriter recentInvocationsWriter,
-            IRecentInvocationIndexByFunctionWriter recentInvocationsByFunctionWriter, ICausalityLogger causalityLogger,
-            IFunctionsInJobIndexer functionsInJobIndexer)
+            IRecentInvocationIndexByFunctionWriter recentInvocationsByFunctionWriter,
+            IRecentInvocationIndexByJobRunWriter recentInvocationsByJobRunWriter, ICausalityLogger causalityLogger)
         {
             _queueReader = queueReader;
             _hostInstanceLogger = hostInstanceLogger;
@@ -32,8 +32,8 @@ namespace Dashboard.Indexers
             _statisticsWriter = statisticsWriter;
             _recentInvocationsWriter = recentInvocationsWriter;
             _recentInvocationsByFunctionWriter = recentInvocationsByFunctionWriter;
+            _recentInvocationsByJobRunWriter = recentInvocationsByJobRunWriter;
             _causalityLogger = causalityLogger;
-            _functionsInJobIndexer = functionsInJobIndexer;
         }
 
         public void Update()
@@ -100,10 +100,11 @@ namespace Dashboard.Indexers
                 _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, startTime, functionInstanceId);
             }
 
-            if (message.WebJobRunIdentifier != null)
+            WebJobRunIdentifier webJobRunId = message.WebJobRunIdentifier;
+
+            if (webJobRunId != null)
             {
-                _functionsInJobIndexer.RecordFunctionInvocationForJobRun(functionInstanceId, startTime.UtcDateTime,
-                    message.WebJobRunIdentifier);
+                _recentInvocationsByJobRunWriter.CreateOrUpdate(webJobRunId, startTime, functionInstanceId);
             }
         }
 

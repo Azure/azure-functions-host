@@ -32,7 +32,8 @@ namespace Dashboard.Data
 
         private static string CreateInnerId(string functionId, DateTimeOffset timestamp, Guid id)
         {
-            return DashboardBlobPrefixes.CreateByFunctionPrefix(functionId) + RecentInvocationEntry.Format(timestamp, id);
+            return DashboardBlobPrefixes.CreateByFunctionPrefix(functionId) +
+                RecentInvocationEntry.Format(timestamp, id);
         }
     }
 }

@@ -3,12 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Http;
-using AzureTables;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.InvocationLog;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
@@ -26,6 +24,7 @@ namespace Dashboard.ApiControllers
         private readonly IAborter _aborter;
         private readonly IRecentInvocationIndexReader _recentInvocationsReader;
         private readonly IRecentInvocationIndexByFunctionReader _recentInvocationsByFunctionReader;
+        private readonly IRecentInvocationIndexByJobRunReader _recentInvocationsByJobRunReader;
         private readonly IFunctionStatisticsReader _statisticsReader;
         private readonly ConcurrentDictionary<string, bool?> _cachedHostHeartbeats =
             new ConcurrentDictionary<string, bool?>();
@@ -41,6 +40,7 @@ namespace Dashboard.ApiControllers
             IAborter aborter,
             IRecentInvocationIndexReader recentInvocationsReader,
             IRecentInvocationIndexByFunctionReader recentInvocationsByFunctionReader,
+            IRecentInvocationIndexByJobRunReader recentInvocationsByJobRunReader,
             IFunctionStatisticsReader statisticsReader)
         {
             _account = account;
@@ -51,35 +51,38 @@ namespace Dashboard.ApiControllers
             _aborter = aborter;
             _recentInvocationsReader = recentInvocationsReader;
             _recentInvocationsByFunctionReader = recentInvocationsByFunctionReader;
+            _recentInvocationsByJobRunReader = recentInvocationsByJobRunReader;
             _statisticsReader = statisticsReader;
         }
 
         [Route("api/jobs/triggered/{jobName}/runs/{runId}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, [FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, [FromUri]ContainerPagingInfo pagingInfo)
         {
             return GetFunctionsInJob(WebJobTypes.Triggered, jobName, runId, pagingInfo);
         }
 
         [Route("api/jobs/continuous/{jobName}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, [FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionsInJob(string jobName, [FromUri]ContainerPagingInfo pagingInfo)
         {
             return GetFunctionsInJob(WebJobTypes.Continuous, jobName, null, pagingInfo);
         }
 
         /// <summary>
-        /// This method determines if a warning should be shown in the dashboard by
-        /// checking if there are old data model tables and, if so, check if there are already
-        /// new records (in which case the warning would not be shown).
+        /// This method determines if a warning should be shown in the dashboard that only older hosts exist.
         /// </summary>
-        /// <param name="noNewRecords">true if it is known that there are new records; false if unknown</param>
+        /// <param name="alreadyFoundNoNewerEntries">
+        /// true if it is known that there are no records from a new host; false if unknown
+        /// </param>
         /// <returns>True if warning should be shown; false otherwise</returns>
-        private bool OldHostExists(bool noNewRecords)
+        private bool OnlyAlpha2HostExists(bool alreadyFoundNoNewerEntries)
         {
+            const string Alpha2TableName = "AzureJobsFunctionIndex5";
+
             try
             {
                 return _account.CreateCloudTableClient()
-                    .GetTableReference(DashboardTableNames.OldFunctionInJobsIndex).Exists() &&
-                    (noNewRecords || _functionLookup.ReadAll().Count == 0);
+                    .GetTableReference(Alpha2TableName).Exists() &&
+                    (alreadyFoundNoNewerEntries || _functionLookup.ReadAll().Count == 0);
             }
             catch (Exception)
             {
@@ -87,23 +90,42 @@ namespace Dashboard.ApiControllers
             }
         }
 
-        private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] PagingInfo pagingInfo)
+        private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] ContainerPagingInfo pagingInfo)
         {
-            if (pagingInfo.Limit <= 0)
+            if (!ModelState.IsValid)
             {
-                return BadRequest("limit should be an positive, non-zero integer.");
+                return BadRequest(ModelState);
             }
 
-            var runIdentifier = new Microsoft.Azure.Jobs.Protocols.WebJobRunIdentifier(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"), (InternalWebJobTypes)webJobType, jobName, runId);
-
-            var invocations = _invocationLogLoader.GetInvocationsInJob(runIdentifier.GetKey(), pagingInfo);
-
-            if (invocations.Entries.Length == 0)
+            if (pagingInfo == null)
             {
-                invocations.IsOldHost = OldHostExists(false);
+                return BadRequest();
             }
 
-            return Ok(invocations);
+            var runIdentifier = new WebJobRunIdentifier(Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME"),
+                (InternalWebJobTypes)webJobType, jobName, runId);
+
+            IResultSegment<RecentInvocationEntry> indexSegment = _recentInvocationsByJobRunReader.Read(runIdentifier,
+                pagingInfo.Limit, pagingInfo.ContinuationToken);
+            InvocationLogSegment results;
+
+            if (indexSegment != null)
+            {
+                results = new InvocationLogSegment
+                {
+                    Entries = CreateInvocationEntries(indexSegment.Results),
+                    ContinuationToken = indexSegment.ContinuationToken
+                };
+            }
+            else
+            {
+                results = new InvocationLogSegment
+                {
+                    IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: false)
+                };
+            }
+
+            return Ok(results);
         }
 
         [Route("api/functions/definitions/{functionId}")]
@@ -122,6 +144,16 @@ namespace Dashboard.ApiControllers
         [Route("api/functions/definitions/{functionId}/invocations")]
         public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]ContainerPagingInfo pagingInfo)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (pagingInfo == null)
+            {
+                return BadRequest();
+            }
+
             var func = _functionLookup.Read(functionId);
 
             if (func == null)
@@ -137,6 +169,11 @@ namespace Dashboard.ApiControllers
         [Route("api/functions/invocations/recent")]
         public IHttpActionResult GetRecentInvocations([FromUri]ContainerPagingInfo pagingInfo)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             if (pagingInfo == null)
             {
                 return BadRequest();
@@ -314,7 +351,7 @@ namespace Dashboard.ApiControllers
 
             if (lastElement == null)
             {
-                model.IsOldHost = OldHostExists(true);
+                model.IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: true);
             }
 
             foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)

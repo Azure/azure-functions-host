@@ -52,6 +52,8 @@ namespace Dashboard
             Bind<IRecentInvocationIndexWriter>().To<RecentInvocationIndexWriter>();
             Bind<IRecentInvocationIndexByFunctionReader>().To<RecentInvocationIndexByFunctionReader>();
             Bind<IRecentInvocationIndexByFunctionWriter>().To<RecentInvocationIndexByFunctionWriter>();
+            Bind<IRecentInvocationIndexByJobRunReader>().To<RecentInvocationIndexByJobRunReader>();
+            Bind<IRecentInvocationIndexByJobRunWriter>().To<RecentInvocationIndexByJobRunWriter>();
             Bind<ICausalityReader>().ToMethod(() => CreateCausalityReader(blobClient, sdkAccount));
             Bind<ICausalityLogger>().ToMethod(() => CreateCausalityLogger(sdkAccount));
             Bind<IHostMessageSender>().To<HostMessageSender>();
@@ -62,16 +64,8 @@ namespace Dashboard
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
             Bind<IAborter>().To<Aborter>();
-            Bind<IFunctionsInJobIndexer>().To<FunctionsInJobIndexer>();
-            BindFunctionInvocationIndexReader("invocationsInJobReader", DashboardTableNames.FunctionsInJobIndex);
-            BindFunctionInvocationIndexReader("invocationChildrenReader", DashboardTableNames.FunctionCausalityLog);
-        }
-
-        private void BindFunctionInvocationIndexReader(string argName, string tableName)
-        {
             Bind<IFunctionInvocationIndexReader>().To<FunctionInvocationIndexReader>()
-                .When(r => r.Target.Name == argName)
-                .WithConstructorArgument("tableName", tableName);
+                .WithConstructorArgument("tableName", DashboardTableNames.FunctionCausalityLog);
         }
 
         private static CloudStorageAccount TryCreateAccount()

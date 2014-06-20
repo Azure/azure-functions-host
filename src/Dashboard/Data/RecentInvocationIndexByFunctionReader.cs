@@ -5,24 +5,24 @@ namespace Dashboard.Data
 {
     public class RecentInvocationIndexByFunctionReader : IRecentInvocationIndexByFunctionReader
     {
-        private readonly CloudBlobContainer _container;
+        private readonly IBlobRecentInvocationIndexReader _innerReader;
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByFunctionReader(CloudBlobClient client)
-            : this (client.GetContainerReference(DashboardContainerNames.RecentFunctionsContainerName))
+            : this (new BlobRecentInvocationIndexReader(client))
         {
         }
 
-        [CLSCompliant(false)]
-        public RecentInvocationIndexByFunctionReader(CloudBlobContainer container)
+        private RecentInvocationIndexByFunctionReader(IBlobRecentInvocationIndexReader innerReader)
         {
-            _container = container;
+            _innerReader = innerReader;
         }
 
-        public IResultSegment<RecentInvocationEntry> Read(string functionId, int maximumResults, string continuationToken)
+        public IResultSegment<RecentInvocationEntry> Read(string functionId, int maximumResults,
+            string continuationToken)
         {
             string prefix = DashboardBlobPrefixes.CreateByFunctionPrefix(functionId);
-            return RecentInvocationIndexReader.Read(_container, prefix, maximumResults, continuationToken);
+            return _innerReader.Read(prefix, maximumResults, continuationToken);
         }
     }
 }

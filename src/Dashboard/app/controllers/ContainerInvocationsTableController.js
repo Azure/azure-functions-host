@@ -134,6 +134,10 @@
                 item,
                 continuationToken;
 
+            if (data.isOldHost !== undefined) {
+                $rootScope.isOldHost = data.isOldHost;
+            }
+
             if (length > 0) {
                 for (index = 0; index !== length; ++index) {
                     entry = data.entries[index];

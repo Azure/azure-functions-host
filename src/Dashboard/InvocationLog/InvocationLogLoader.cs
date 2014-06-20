@@ -15,18 +15,15 @@ namespace Dashboard.InvocationLog
     /// </summary>
     internal class InvocationLogLoader : IInvocationLogLoader
     {
-        private readonly IFunctionInvocationIndexReader _invocationsInJobReader;
         private readonly IFunctionInvocationIndexReader _invocationChildrenReader;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
 
         public InvocationLogLoader(
-            IFunctionInvocationIndexReader invocationsInJobReader,
             IFunctionInvocationIndexReader invocationChildrenReader, 
             IFunctionInstanceLookup functionInstanceLookup,
             IHeartbeatMonitor heartbeatMonitor)
         {
-            _invocationsInJobReader = invocationsInJobReader;
             _invocationChildrenReader = invocationChildrenReader;
             _functionInstanceLookup = functionInstanceLookup;
             _heartbeatMonitor = heartbeatMonitor;
@@ -35,11 +32,6 @@ namespace Dashboard.InvocationLog
         public InvocationLogPage GetInvocationChildren(Guid invocationId, PagingInfo pagingInfo)
         {
             return GetPage(_invocationChildrenReader, invocationId.ToString(), pagingInfo);
-        }
-
-        public InvocationLogPage GetInvocationsInJob(string jobKey, PagingInfo pagingInfo)
-        {
-            return GetPage(_invocationsInJobReader, jobKey, pagingInfo);
         }
 
         public InvocationLogViewModel[] GetInvocationsByIds(IEnumerable<Guid> invocationIds)

@@ -194,8 +194,12 @@
     <Compile Include="Data\CausalityLogger.cs" />
     <Compile Include="Data\DashboardBlobPrefixes.cs" />
     <Compile Include="Data\DashboardContainerNames.cs" />
+    <Compile Include="Data\DashboardTableNames.cs" />
     <Compile Include="Data\FunctionIdentifier.cs" />
     <Compile Include="Data\FunctionInstanceGuid.cs" />
+    <Compile Include="Data\IBlobRecentInvocationIndexReader.cs" />
+    <Compile Include="Data\IRecentInvocationIndexByJobRunWriter.cs" />
+    <Compile Include="Data\IRecentInvocationIndexByJobRunReader.cs" />
     <Compile Include="Data\IRecentInvocationIndexByFunctionWriter.cs" />
     <Compile Include="Data\IRecentInvocationIndexByFunctionReader.cs" />
     <Compile Include="Data\RecentInvocationEntry.cs" />
@@ -211,8 +215,11 @@
     <Compile Include="Data\IAzureTableReader.cs" />
     <Compile Include="Data\IAzureTableReaderOfT.cs" />
     <Compile Include="Data\IAzureTableWriter.cs" />
+    <Compile Include="Data\RecentInvocationIndexByJobRunReader.cs" />
+    <Compile Include="Data\RecentInvocationIndexByJobRunWriter.cs" />
     <Compile Include="Data\RecentInvocationIndexByFunctionWriter.cs" />
     <Compile Include="Data\RecentInvocationIndexByFunctionReader.cs" />
+    <Compile Include="Data\BlobRecentInvocationIndexReader.cs" />
     <Compile Include="Data\RecentInvocationIndexWriter.cs" />
     <Compile Include="Data\RecentInvocationIndexReader.cs" />
     <Compile Include="Data\IRecentInvocationIndexReader.cs" />
@@ -247,10 +254,8 @@
     <Compile Include="Data\FunctionInstanceLookup.cs" />
     <Compile Include="Data\FunctionInstanceSnapshot.cs" />
     <Compile Include="Data\FunctionInvocationIndexEntity.cs" />
-    <Compile Include="Data\FunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionSnapshot.cs" />
     <Compile Include="Data\FunctionStatsEntity.cs" />
-    <Compile Include="Data\DashboardTableNames.cs" />
     <Compile Include="Data\FunctionInstanceLogger.cs" />
     <Compile Include="Data\HostSnapshot.cs" />
     <Compile Include="Data\ICausalityLogger.cs" />
@@ -261,7 +266,6 @@
     <Compile Include="Data\IFunctionInstanceLogger.cs" />
     <Compile Include="Data\IFunctionQueuedLogger.cs" />
     <Compile Include="Data\IFunctionInstanceLookup.cs" />
-    <Compile Include="Data\IFunctionsInJobIndexer.cs" />
     <Compile Include="Data\FunctionInvocationIndexReader.cs" />
     <Compile Include="Data\IFunctionInvocationIndexReader.cs" />
     <Compile Include="Data\InvokeParameterSnapshot.cs" />
