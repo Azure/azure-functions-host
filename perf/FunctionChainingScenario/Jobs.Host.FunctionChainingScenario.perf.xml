@@ -6,12 +6,12 @@
       description="Queue function chaining">
 
     <trackingVariation name="HostStart">
-      <metric name="MedianTotalElapsedTime" selection="Median" units="Milliseconds">
+      <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
         <target value="5000" labConfig="default" priority = "1" />
       </metric>
     </trackingVariation>
     <trackingVariation name="QueueChain">
-      <metric name="MedianTotalElapsedTime" selection="Median" units="Milliseconds">
+      <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
         <target value="37000" labConfig="default" priority = "1" />
       </metric>
     </trackingVariation>
