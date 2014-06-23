@@ -466,10 +466,9 @@
     <Compile Include="Runners\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
-    <Compile Include="HostTableNames.cs" />
     <Compile Include="Runners\HostEntity.cs" />
-    <Compile Include="Runners\HostTable.cs" />
-    <Compile Include="Runners\IHostTable.cs" />
+    <Compile Include="Runners\HostIdManager.cs" />
+    <Compile Include="Runners\IHostIdManager.cs" />
     <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Runners\DefaultConnectionStringProvider.cs" />
     <Compile Include="Loggers\WebExecutionLogger.cs" />

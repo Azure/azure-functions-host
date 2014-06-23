@@ -11,5 +11,7 @@ namespace Microsoft.Azure.Jobs.Host
         public const string ConsoleOutputLogContainerName = ContainerNames.Prefix + "invoke-log";
 
         public const string HeartbeatContainerName = ContainerNames.Prefix + "host-heartbeats";
+
+        public const string IdContainerName = ContainerNames.Prefix + "host-ids";
     }
 }

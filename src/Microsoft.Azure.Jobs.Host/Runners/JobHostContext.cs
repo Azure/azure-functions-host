@@ -69,11 +69,12 @@ namespace Microsoft.Azure.Jobs
                 CloudStorageAccount account = CloudStorageAccount.Parse(dashboardConnectionString);
                 CloudBlobClient blobClient = account.CreateCloudBlobClient();
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
-                IHostTable hostTable = new HostTable(tableClient);
+                IHostIdManager hostIdManager = new HostIdManager(blobClient);
                 Assembly hostAssembly = GetHostAssembly(functions);
 
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                Guid hostId = hostTable.GetOrCreateHostId(hostName);
+                string sharedHostName = account.Credentials.AccountName + "/" + hostName;
+                Guid hostId = hostIdManager.GetOrCreateHostId(sharedHostName);
                 _sharedQueueName = QueueNames.GetHostQueueName(hostId);
                 _instanceQueueName = QueueNames.GetHostQueueName(id);
                 string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
