@@ -10,7 +10,8 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByJobRunWriter(CloudBlobClient client)
-            : this(VersionedTextStore.CreateBlobStore(client, DashboardContainerNames.RecentFunctionsContainerName))
+            : this(VersionedTextStore.CreateBlobStore(
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.RecentFunctionsByJobRun))
         {
         }
 
@@ -33,7 +34,7 @@ namespace Dashboard.Data
 
         private static string CreateInnerId(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id)
         {
-            return DashboardBlobPrefixes.CreateByJobRunPrefix(webJobRunId) +
+            return DashboardBlobPrefixes.CreateByJobRunRelativePrefix(webJobRunId) +
                 RecentInvocationEntry.Format(timestamp, id);
         }
     }

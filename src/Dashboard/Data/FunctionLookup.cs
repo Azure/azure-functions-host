@@ -9,27 +9,29 @@ namespace Dashboard.Data
 {
     internal class FunctionLookup : IFunctionLookup
     {
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         public FunctionLookup(CloudBlobClient blobClient)
-            : this(blobClient.GetContainerReference(DashboardContainerNames.HostContainerName))
+            : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard)
+                .GetDirectoryReference(DashboardDirectoryNames.Hosts))
         {
         }
 
-        public FunctionLookup(CloudBlobContainer container)
+        public FunctionLookup(CloudBlobDirectory directory)
         {
-            if (container == null)
+            if (directory == null)
             {
-                throw new ArgumentNullException("container");
+                throw new ArgumentNullException("directory");
             }
 
-            _container = container;
+            _directory = directory;
         }
 
         public FunctionSnapshot Read(string functionId)
         {
             FunctionIdentifier functionIdentifier = FunctionIdentifier.Parse(functionId);
-            HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(_container, functionIdentifier.HostId.ToString());
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(functionIdentifier.HostId.ToString());
+            HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(blob);
 
             if (hostSnapshot == null)
             {
@@ -45,9 +47,16 @@ namespace Dashboard.Data
 
             try
             {
-                foreach (ICloudBlob blob in _container.ListBlobs(useFlatBlobListing: true))
+                foreach (ICloudBlob blob in _directory.ListBlobs(useFlatBlobListing: true))
                 {
-                    HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(_container, blob.Name);
+                    CloudBlockBlob blockBlob = blob as CloudBlockBlob;
+
+                    if (blockBlob == null)
+                    {
+                        continue;
+                    }
+
+                    HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(blockBlob);
 
                     if (hostSnapshot != null)
                     {
@@ -72,9 +81,8 @@ namespace Dashboard.Data
             return snapshots;
         }
 
-        private static T ReadJson<T>(CloudBlobContainer container, string blobName)
+        private static T ReadJson<T>(CloudBlockBlob blob)
         {
-            CloudBlockBlob blob = container.GetBlockBlobReference(blobName);
             string contents;
 
             try

@@ -14,7 +14,7 @@ namespace Dashboard.Data
 
         public FunctionInstanceLogger(CloudBlobClient client)
             : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionInstanceSnapshot>(
-                client, DashboardContainerNames.FunctionLogContainerName))
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionInstances))
         {
         }
 

@@ -7,22 +7,23 @@ namespace Dashboard.Data
 {
     public class AbortRequestLogger : IAbortRequestLogger
     {
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         [CLSCompliant(false)]
         public AbortRequestLogger(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.AbortRequestLogContainerName))
+            : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
+                .GetDirectoryReference(DashboardDirectoryNames.AbortRequestLogs))
         {
         }
 
-        private AbortRequestLogger(CloudBlobContainer container)
+        private AbortRequestLogger(CloudBlobDirectory directory)
         {
-            _container = container;
+            _directory = directory;
         }
 
         public void LogAbortRequest(string queueName)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(queueName);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(queueName);
 
             try
             {
@@ -32,7 +33,7 @@ namespace Dashboard.Data
             {
                 if (exception.IsNotFound())
                 {
-                    _container.CreateIfNotExists();
+                    blob.Container.CreateIfNotExists();
                     blob.UploadText(String.Empty);
                 }
                 else
@@ -44,7 +45,7 @@ namespace Dashboard.Data
 
         public bool HasRequestedAbort(string queueName)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(queueName);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(queueName);
 
             try
             {

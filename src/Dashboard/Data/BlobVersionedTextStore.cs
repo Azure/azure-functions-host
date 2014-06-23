@@ -5,20 +5,20 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    // An IVersionedTextStore implemented using a blob container in Azure Storage.
+    // An IVersionedTextStore implemented using a blob directory in Azure Storage.
     public class BlobVersionedTextStore : IVersionedTextStore
     {
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         [CLSCompliant(false)]
-        public BlobVersionedTextStore(CloudBlobContainer container)
+        public BlobVersionedTextStore(CloudBlobDirectory directory)
         {
-            _container = container;
+            _directory = directory;
         }
 
         public VersionedText Read(string id)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
             string text;
 
             try
@@ -43,7 +43,7 @@ namespace Dashboard.Data
 
         public void CreateOrUpdate(string id, string text)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
 
             try
             {
@@ -53,7 +53,7 @@ namespace Dashboard.Data
             {
                 if (exception.IsNotFound())
                 {
-                    _container.CreateIfNotExists();
+                    blob.Container.CreateIfNotExists();
                     blob.UploadText(text);
                 }
                 else
@@ -65,29 +65,28 @@ namespace Dashboard.Data
 
         public void DeleteIfExists(string id)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
 
             blob.DeleteIfExists();
         }
 
         public bool TryCreate(string id, string text)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
-            _container.CreateIfNotExists();
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
 
             return TryUploadTextAndCreateContainerIfNotExists(blob, text, new AccessCondition { IfNoneMatchETag = "*" });
         }
 
         public bool TryUpdate(string id, string text, string eTag)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
 
             return TryUploadTextAndCreateContainerIfNotExists(blob, text, new AccessCondition { IfMatchETag = eTag });
         }
 
         public bool TryDelete(string id, string eTag)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
 
             try
             {
@@ -125,7 +124,7 @@ namespace Dashboard.Data
                 }
                 else if (exception.IsNotFound())
                 {
-                    _container.CreateIfNotExists();
+                    blob.Container.CreateIfNotExists();
 
                     try
                     {

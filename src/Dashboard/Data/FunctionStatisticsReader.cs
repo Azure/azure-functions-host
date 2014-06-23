@@ -10,7 +10,7 @@ namespace Dashboard.Data
         [CLSCompliant(false)]
         public FunctionStatisticsReader(CloudBlobClient client)
             : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
-                client, DashboardContainerNames.FunctionStatisticsContainerName))
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionStatistics))
         {
         }
 

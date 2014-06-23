@@ -2,6 +2,6 @@
 {
     interface IBlobRecentInvocationIndexReader
     {
-        IResultSegment<RecentInvocationEntry> Read(string prefix, int maximumResults, string continuationToken);
+        IResultSegment<RecentInvocationEntry> Read(string relativePrefix, int maximumResults, string continuationToken);
     }
 }

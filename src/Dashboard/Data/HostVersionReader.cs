@@ -14,7 +14,7 @@ namespace Dashboard.Data
     /// <summary>Represents a reader that provides host version information.</summary>
     public class HostVersionReader : IHostVersionReader
     {
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         /// <summary>
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
@@ -22,18 +22,19 @@ namespace Dashboard.Data
         /// <param name="account">The cloud storage account.</param>
         [CLSCompliant(false)]
         public HostVersionReader(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.VersionContainerName))
+            : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
+            .GetDirectoryReference(DashboardDirectoryNames.Versions))
         {
         }
 
-        private HostVersionReader(CloudBlobContainer container)
+        private HostVersionReader(CloudBlobDirectory directory)
         {
-            if (container == null)
+            if (directory == null)
             {
-                throw new ArgumentNullException("container");
+                throw new ArgumentNullException("directory");
             }
 
-            _container = container;
+            _directory = directory;
         }
 
         /// <inheritdoc />
@@ -42,7 +43,7 @@ namespace Dashboard.Data
         {
             List<HostVersion> versions = new List<HostVersion>();
                         
-            IEnumerable<IListBlobItem> lazyItems = _container.ListBlobs(
+            IEnumerable<IListBlobItem> lazyItems = _directory.ListBlobs(
                 useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata);
             IListBlobItem[] items;
 

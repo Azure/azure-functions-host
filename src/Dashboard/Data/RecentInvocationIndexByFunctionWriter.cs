@@ -9,7 +9,8 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByFunctionWriter(CloudBlobClient client)
-            : this(VersionedTextStore.CreateBlobStore(client, DashboardContainerNames.RecentFunctionsContainerName))
+            : this(VersionedTextStore.CreateBlobStore(
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.RecentFunctionsByFunction))
         {
         }
 
@@ -32,7 +33,7 @@ namespace Dashboard.Data
 
         private static string CreateInnerId(string functionId, DateTimeOffset timestamp, Guid id)
         {
-            return DashboardBlobPrefixes.CreateByFunctionPrefix(functionId) +
+            return DashboardBlobPrefixes.CreateByFunctionRelativePrefix(functionId) +
                 RecentInvocationEntry.Format(timestamp, id);
         }
     }

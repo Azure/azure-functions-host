@@ -9,23 +9,27 @@ namespace Dashboard.Data
     public class BlobRecentInvocationIndexReader : IBlobRecentInvocationIndexReader
     {
         private readonly CloudBlobContainer _container;
+        private readonly string _directoryPrefix;
 
         [CLSCompliant(false)]
-        public BlobRecentInvocationIndexReader(CloudBlobClient client)
-            : this (client.GetContainerReference(DashboardContainerNames.RecentFunctionsContainerName))
+        public BlobRecentInvocationIndexReader(CloudBlobClient client, string directoryName)
+            : this (client.GetContainerReference(DashboardContainerNames.Dashboard)
+                .GetDirectoryReference(directoryName))
         {
         }
 
-        private BlobRecentInvocationIndexReader(CloudBlobContainer container)
+        private BlobRecentInvocationIndexReader(CloudBlobDirectory directory)
         {
-            _container = container;
+            _container = directory.Container;
+            _directoryPrefix = directory.Prefix;
         }
 
-        public IResultSegment<RecentInvocationEntry> Read(string prefix, int maximumResults, string continuationToken)
+        public IResultSegment<RecentInvocationEntry> Read(string relativePrefix, int maximumResults, string continuationToken)
         {
             BlobContinuationToken blobContinuationToken = BlobContinuationTokenSerializer.Deserialize(continuationToken);
 
             BlobResultSegment blobSegment;
+            string prefix = _directoryPrefix + relativePrefix;
 
             try
             {

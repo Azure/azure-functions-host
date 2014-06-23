@@ -189,6 +189,7 @@
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
     <Compile Include="Data\DashboardBlobPrefixes.cs" />
+    <Compile Include="Data\DashboardDirectoryNames.cs" />
     <Compile Include="Data\DashboardContainerNames.cs" />
     <Compile Include="Data\FunctionIdentifier.cs" />
     <Compile Include="Data\IBlobRecentInvocationIndexReader.cs" />

@@ -9,7 +9,7 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByParentReader(CloudBlobClient client)
-            : this (new BlobRecentInvocationIndexReader(client))
+            : this (new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByParent))
         {
         }
 
@@ -20,8 +20,8 @@ namespace Dashboard.Data
 
         public IResultSegment<RecentInvocationEntry> Read(Guid parentId, int maximumResults, string continuationToken)
         {
-            string prefix = DashboardBlobPrefixes.CreateByParentPrefix(parentId);
-            return _innerReader.Read(prefix, maximumResults, continuationToken);
+            string relativePrefix = DashboardBlobPrefixes.CreateByParentRelativePrefix(parentId);
+            return _innerReader.Read(relativePrefix, maximumResults, continuationToken);
         }
     }
 }

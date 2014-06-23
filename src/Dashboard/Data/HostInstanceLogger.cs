@@ -13,7 +13,7 @@ namespace Dashboard.Data
 
         public HostInstanceLogger(CloudBlobClient client)
             : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(
-                client, DashboardContainerNames.HostContainerName))
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts))
         {
         }
 

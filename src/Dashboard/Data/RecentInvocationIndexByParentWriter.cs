@@ -9,7 +9,8 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByParentWriter(CloudBlobClient client)
-            : this(VersionedTextStore.CreateBlobStore(client, DashboardContainerNames.RecentFunctionsContainerName))
+            : this(VersionedTextStore.CreateBlobStore(
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.RecentFunctionsByParent))
         {
         }
 
@@ -32,7 +33,8 @@ namespace Dashboard.Data
 
         private static string CreateInnerId(Guid parentId, DateTimeOffset timestamp, Guid id)
         {
-            return DashboardBlobPrefixes.CreateByParentPrefix(parentId) + RecentInvocationEntry.Format(timestamp, id);
+            return DashboardBlobPrefixes.CreateByParentRelativePrefix(parentId) +
+                RecentInvocationEntry.Format(timestamp, id);
         }
     }
 }

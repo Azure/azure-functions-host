@@ -3,28 +3,22 @@ using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
-    // Names of directories used only by the dashboard (not part of the protocol with the host).
+    // Names of directory prefixes used only by the dashboard (not part of the protocol with hosts).
     internal static class DashboardBlobPrefixes
     {
-        private const string ByFunction = "by-function/";
-        private const string ByJobRun = "by-job-run/";
-        private const string ByParent = "by-parent/";
-
-        public const string Flat = "flat/";
-
-        public static string CreateByFunctionPrefix(string functionId)
+        public static string CreateByFunctionRelativePrefix(string functionId)
         {
-            return ByFunction + functionId + "/";
+            return functionId + "/";
         }
 
-        public static string CreateByJobRunPrefix(WebJobRunIdentifier webJobRunId)
+        public static string CreateByJobRunRelativePrefix(WebJobRunIdentifier webJobRunId)
         {
-            return ByJobRun + webJobRunId.GetKey() + "/";
+            return webJobRunId.GetKey() + "/";
         }
 
-        public static string CreateByParentPrefix(Guid parentId)
+        public static string CreateByParentRelativePrefix(Guid parentId)
         {
-            return ByParent + parentId.ToString("N") + "/";
+            return parentId.ToString("N") + "/";
         }
     }
 }

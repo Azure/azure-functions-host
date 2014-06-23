@@ -11,26 +11,27 @@ namespace Dashboard.Data
         private static readonly JsonSerializerSettings _settings =
             JsonVersionedDocumentStore<FunctionInstanceSnapshot>.JsonSerializerSettings;
 
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         public FunctionInstanceLookup(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.FunctionLogContainerName))
+            : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
+            .GetDirectoryReference(DashboardDirectoryNames.FunctionInstances))
         {
         }
 
-        public FunctionInstanceLookup(CloudBlobContainer container)
+        public FunctionInstanceLookup(CloudBlobDirectory directory)
         {
-            if (container == null)
+            if (directory == null)
             {
-                throw new ArgumentNullException("container");
+                throw new ArgumentNullException("directory");
             }
 
-            _container = container;
+            _directory = directory;
         }
 
         FunctionInstanceSnapshot IFunctionInstanceLookup.Lookup(Guid id)
         {
-            CloudBlockBlob blob = _container.GetBlockBlobReference(id.ToString("N"));
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(id.ToString("N"));
             string contents;
 
             try
