@@ -300,6 +300,7 @@
     <Compile Include="Blobs\Triggers\FixedBlobPathSource.cs" />
     <Compile Include="Blobs\Triggers\IBlobPathSource.cs" />
     <Compile Include="Blobs\Triggers\ParameterizedBlobPathSource.cs" />
+    <Compile Include="HostDirectoryNames.cs" />
     <Compile Include="Runners\ExceptionExtensions.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />

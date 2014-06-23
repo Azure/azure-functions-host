@@ -11,14 +11,14 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     internal static class ContainerNames
 #endif
     {
-        internal const string Prefix = "azure-jobs-";
+        private const string Prefix = "azure-jobs-";
 
         /// <summary>The name of the container where protocol messages from the host are stored.</summary>
-        public const string HostOutputContainerName = Prefix + "host-output";
+        public const string HostOutput = Prefix + "host-output";
 
         /// <summary>
         /// The name of the container where protocol messages from the host are archived after processing.
         /// </summary>
-        public const string HostArchiveContainerName = Prefix + "host-archive";
+        public const string HostArchive = Prefix + "host-archive";
     }
 }

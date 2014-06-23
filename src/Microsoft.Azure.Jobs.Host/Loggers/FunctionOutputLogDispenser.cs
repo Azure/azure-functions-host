@@ -1,22 +1,21 @@
 ﻿using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
     // Dispensers loggers that write to a blob. 
     internal class FunctionOutputLogDispenser : IFunctionOutputLogDispenser
     {
-        private readonly CloudStorageAccount _account;
-        private readonly string _containerName;
+        private readonly CloudBlobDirectory _outputLogDirectory;
 
-        public FunctionOutputLogDispenser(CloudStorageAccount account, string containerName)
+        public FunctionOutputLogDispenser(CloudBlobDirectory outputLogDirectory)
         {
-            _account = account;
-            _containerName = containerName;
+            _outputLogDirectory = outputLogDirectory;
         }
 
         public FunctionOutputLog CreateLogStream(FunctionInvokeRequest request)
         {
-            return FunctionOutputLog.GetLogStream(request, _account, _containerName);
+            return FunctionOutputLog.GetLogStream(request, _outputLogDirectory);
         }
     }
 }

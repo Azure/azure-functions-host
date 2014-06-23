@@ -8,33 +8,34 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 {
     internal class HostIdManager : IHostIdManager
     {
-        private readonly CloudBlobContainer _container;
+        private readonly CloudBlobDirectory _directory;
 
         public HostIdManager(CloudBlobClient client)
-            : this(VerifyNotNull(client).GetContainerReference(HostContainerNames.IdContainerName))
+            : this(VerifyNotNull(client).GetContainerReference(HostContainerNames.Hosts).GetDirectoryReference(
+            HostDirectoryNames.Ids))
         {
         }
 
-        public HostIdManager(CloudBlobContainer container)
+        public HostIdManager(CloudBlobDirectory directory)
         {
-            if (container == null)
+            if (directory == null)
             {
-                throw new ArgumentNullException("container");
+                throw new ArgumentNullException("directory");
             }
 
-            _container = container;
+            _directory = directory;
         }
 
-        public CloudBlobContainer Container
+        public CloudBlobDirectory Directory
         {
-            get { return _container; }
+            get { return _directory; }
         }
 
         public Guid GetOrCreateHostId(string sharedHostName)
         {
-            Debug.Assert(_container != null);
+            Debug.Assert(_directory != null);
 
-            CloudBlockBlob blob = _container.GetBlockBlobReference(sharedHostName);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(sharedHostName);
             Guid hostId;
 
             if (TryGetExistingId(blob, out hostId))

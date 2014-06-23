@@ -34,8 +34,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// A blob client for the storage account into which host output messages are written.
         /// </param>
         public PersistentQueueReader(CloudBlobClient client)
-            : this(client.GetContainerReference(ContainerNames.HostOutputContainerName),
-            client.GetContainerReference(ContainerNames.HostArchiveContainerName))
+            : this(client.GetContainerReference(ContainerNames.HostOutput),
+            client.GetContainerReference(ContainerNames.HostArchive))
         {
         }
 

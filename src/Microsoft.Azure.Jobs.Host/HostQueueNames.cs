@@ -2,7 +2,7 @@
 
 namespace Microsoft.Azure.Jobs.Host
 {
-    internal static class QueueNames
+    internal static class HostQueueNames
     {
         private const string Prefix = "azure-jobs-";
 

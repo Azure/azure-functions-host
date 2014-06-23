@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
 {
-    public class QueueNamesTest
+    public class HostQueueNamesTest
     {
         [Fact]
         public void GetHostQueueName_ReturnsExpectedValue()
@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
             Guid hostId = CreateGuid();
 
             // Act
-            string queueName = QueueNames.GetHostQueueName(hostId);
+            string queueName = HostQueueNames.GetHostQueueName(hostId);
 
             // Assert
             string expectedQueueName = "azure-jobs-host-" + hostId.ToString("N");

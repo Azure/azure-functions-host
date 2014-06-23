@@ -26,19 +26,13 @@ namespace Microsoft.Azure.Jobs
         public CloudBlockBlob ParameterLogBlob { get; set; }
 
         // Get a default instance of 
-        public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, CloudStorageAccount account, string containerName)
+        public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, CloudBlobDirectory directory)
         {            
             string name = f.Id.ToString("N") + ".txt";
 
-            CloudBlobClient client = account.CreateCloudBlobClient();
+            directory.Container.CreateIfNotExists();
 
-            var c = client.GetContainerReference(containerName);
-            if (c.CreateIfNotExists())
-            {
-                c.SetPermissions(new BlobContainerPermissions() { PublicAccess = BlobContainerPublicAccessType.Off });
-            }
-
-            CloudBlockBlob blob = c.GetBlockBlobReference(name);            
+            CloudBlockBlob blob = directory.GetBlockBlobReference(name);            
             
             var period = TimeSpan.FromMinutes(1); // frequency to refresh
             var x = new BlobIncrementalTextWriter(blob, period);
@@ -53,7 +47,7 @@ namespace Microsoft.Azure.Jobs
                 },
                 Blob = blob,
                 Output = tw,
-                ParameterLogBlob = c.GetBlockBlobReference(f.Id.ToString("N") + ".params.txt")
+                ParameterLogBlob = directory.GetBlockBlobReference(f.Id.ToString("N") + ".params.txt")
             };
         }
     }

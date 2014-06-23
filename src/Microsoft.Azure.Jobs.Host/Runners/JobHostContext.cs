@@ -75,14 +75,14 @@ namespace Microsoft.Azure.Jobs
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
                 string sharedHostName = account.Credentials.AccountName + "/" + hostName;
                 Guid hostId = hostIdManager.GetOrCreateHostId(sharedHostName);
-                _sharedQueueName = QueueNames.GetHostQueueName(hostId);
-                _instanceQueueName = QueueNames.GetHostQueueName(id);
+                _sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
+                _instanceQueueName = HostQueueNames.GetHostQueueName(id);
                 string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
 
                 HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                 {
-                    SharedContainerName = HostContainerNames.HeartbeatContainerName,
-                    SharedDirectoryName = hostId.ToString("N"),
+                    SharedContainerName = HostContainerNames.Hosts,
+                    SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId.ToString("N"),
                     InstanceBlobName = id.ToString("N"),
                     ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                 };
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.Jobs
                 PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
                     persistentQueueWriter);
 
-                var logger = new WebExecutionLogger(_hostOutputMessage, account);
+                var logger = new WebExecutionLogger(blobClient, _hostOutputMessage);
                 ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueueWriter),

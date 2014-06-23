@@ -100,7 +100,7 @@
     <Compile Include="PolymorphicJsonConverterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />
-    <Compile Include="Protocols\QueueNamesTest.cs" />
+    <Compile Include="Protocols\HostQueueNamesTest.cs" />
     <Compile Include="Protocols\HostMessageTests.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
     <Compile Include="TestConfiguration.cs" />

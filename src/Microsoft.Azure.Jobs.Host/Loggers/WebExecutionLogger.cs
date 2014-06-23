@@ -1,6 +1,7 @@
 ﻿using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -8,15 +9,15 @@ namespace Microsoft.Azure.Jobs
     {
         private readonly FunctionExecutionContext _ctx;
 
-        public WebExecutionLogger(HostOutputMessage hostOutputMessage, CloudStorageAccount account)
+        public WebExecutionLogger(CloudBlobClient blobClient, HostOutputMessage hostOutputMessage)
         {
+            CloudBlobContainer hostsContainer = blobClient.GetContainerReference(HostContainerNames.Hosts);
+            CloudBlobDirectory outputLogDirectory = hostsContainer.GetDirectoryReference(HostDirectoryNames.OutputLogs);
+
             _ctx = new FunctionExecutionContext
             {
                 HostOutputMessage = hostOutputMessage,
-                OutputLogDispenser = new FunctionOutputLogDispenser(
-                    account,
-                    HostContainerNames.ConsoleOutputLogContainerName
-                )
+                OutputLogDispenser = new FunctionOutputLogDispenser(outputLogDirectory)
             };
         }
 
