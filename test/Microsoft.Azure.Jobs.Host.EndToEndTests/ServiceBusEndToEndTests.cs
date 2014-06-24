@@ -29,33 +29,9 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         private static string _resultMessage1;
         private static string _resultMessage2;
 
-        private readonly string _storageConnectionString;
-        private readonly string _servicesBusConnectionString;
+        private NamespaceManager _namespaceManager;
 
-        private readonly NamespaceManager _namespaceManager;
-
-        private readonly RandomNameResolver _nameResolver = new RandomNameResolver();
-
-        public ServiceBusEndToEndTests()
-        {
-            _storageConnectionString = ConfigurationManager.ConnectionStrings["AzureStorage"].ConnectionString;
-            _servicesBusConnectionString = ConfigurationManager.ConnectionStrings["ServiceBus"].ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(_storageConnectionString) ||
-                string.IsNullOrWhiteSpace(_servicesBusConnectionString))
-            {
-                throw new InvalidOperationException("Cannot run this test because some connection strings are missing from App.config");
-            }
-
-            try
-            {
-                _namespaceManager = NamespaceManager.CreateFromConnectionString(_servicesBusConnectionString);
-            }
-            catch (Exception ex)
-            {
-                throw new FormatException("The connection string in App.config is invalid", ex);
-            }
-        }
+        private RandomNameResolver _nameResolver;
 
         // Passes  service bus message from a queue to another queue
         public static void SBQueue2SBQueue(
@@ -134,14 +110,18 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private void ServiceBusEndToEndInternal()
         {
-            CreateStartMessage();
+            // Reinitialize the name resolver to avoid naming conflicts
+            _nameResolver = new RandomNameResolver();
 
-            JobHostConfiguration config = new JobHostConfiguration(_storageConnectionString)
+            JobHostConfiguration config = new JobHostConfiguration()
             {
-                ServiceBusConnectionString = _servicesBusConnectionString,
                 NameResolver = _nameResolver,
                 TypeLocator = new SimpleTypeLocator(this.GetType())
             };
+
+            _namespaceManager = NamespaceManager.CreateFromConnectionString(config.ServiceBusConnectionString);
+
+            CreateStartMessage(config.ServiceBusConnectionString);
 
             JobHost host = new JobHost(config);
 
@@ -163,7 +143,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
         }
 
-        private void CreateStartMessage()
+        private void CreateStartMessage(string serviceBusConnectionString)
         {
             string queueName = ResolveName(StartQueueName);
             if (!_namespaceManager.QueueExists(queueName))
@@ -171,7 +151,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 _namespaceManager.CreateQueue(queueName);
             }
 
-            QueueClient queueClient = QueueClient.CreateFromConnectionString(_servicesBusConnectionString, queueName);
+            QueueClient queueClient = QueueClient.CreateFromConnectionString(serviceBusConnectionString, queueName);
 
             using (Stream stream = new MemoryStream())
             using (TextWriter writer = new StreamWriter(stream))

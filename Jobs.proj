@@ -130,6 +130,20 @@
     <xunit Assembly="@(UnitTestAssemblies)"/>
   </Target>
 
+  <Target Name="FunctionalTest" DependsOnTargets="UnitTest">
+    <ItemGroup>
+      <FunctionalTestProjects Include="test\Microsoft.Azure.Jobs.Host.EndToEndTests\Jobs.Host.EndToEndTests.csproj"/>
+    </ItemGroup>
+
+    <MSBuild Projects="@(FunctionalTestProjects)"
+             Properties="$(SetConfiguration); $(SetPlatform)"
+             BuildInParallel="$(BuildInParallel)">
+      <Output TaskParameter="TargetOutputs" ItemName="FunctionalTestAssemblies"/>
+    </MSBuild>
+
+    <xunit Assembly="@(FunctionalTestAssemblies)"/>
+  </Target>
+
   <Target Name="Clean" DependsOnTargets="GetBinplace">
     <MSBuild Projects="@(Binplace)"
              Targets="Clean"

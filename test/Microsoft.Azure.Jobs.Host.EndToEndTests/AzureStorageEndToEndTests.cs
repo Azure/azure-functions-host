@@ -18,14 +18,14 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
     /// </summary>
     public class AzureStorageEndToEndTests
     {
-        private const string ContainerName = "e2econtainer";
+        private const string ContainerName = "e2econtainer%rnd%";
         private const string BlobName = "testblob";
 
-        private const string TableName = "e2etable";
+        private const string TableName = "e2etable%rnd%";
 
-        private const string HostStartQueueName = "e2estart";
-        private const string TestQueueName = "e2equeue";
-        private const string DoneQueueName = "e2edone";
+        private const string HostStartQueueName = "e2estart%rnd%";
+        private const string TestQueueName = "e2equeue%rnd%";
+        private const string DoneQueueName = "e2edone%rnd%";
 
         private static EventWaitHandle _startWaitHandle;
 
@@ -33,28 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private CloudStorageAccount _storageAccount;
 
-        private string _connectionString;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AzureStorageEndToEndTests"/> class.
-        /// </summary>
-        public AzureStorageEndToEndTests()
-        {
-            _connectionString = ConfigurationManager.ConnectionStrings["AzureStorage"].ConnectionString;
-
-            try
-            {
-                _storageAccount = CloudStorageAccount.Parse(_connectionString);
-            }
-            catch (Exception ex)
-            {
-                throw new FormatException("The connection string in App.config is invalid", ex);
-            }
-
-            CleanupBlob();
-            CleanupQueue();
-            CleanupTable();
-        }
+        private RandomNameResolver _resolver;
 
         /// <summary>
         /// Used to syncronize the application start and blob creation
@@ -117,13 +96,12 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// Notifies the completion of the scenario
         /// </summary>
         public static void NotifyCompletion(
-            [QueueTrigger("e2edone")] string e2edone)
+            [QueueTrigger(DoneQueueName)] string e2edone)
         {
             _functionChainWaitHandle.Set();
         }
 
-        // Switch the Fact attribute to run
-        [Fact(Skip = "Slow test with 15 minutes timeout")]
+        // Uncomment the Fact attribute to run
         //[Fact(Timeout = 15 * 60 * 1000)]
         public void AzureStorageEndToEndSlow()
         {
@@ -139,18 +117,40 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private void EndToEndTest(bool uploadBlobBeforeHostStart)
         {
+            try
+            {
+                EndToEndTestInternal(uploadBlobBeforeHostStart);
+            }
+            finally
+            {
+                CleanupBlob();
+                CleanupQueue();
+                CleanupTable();
+            }
+        }
+
+        private void EndToEndTestInternal(bool uploadBlobBeforeHostStart)
+        {
+            // Reinitialize the name resolver to avoid conflicts
+            _resolver = new RandomNameResolver();
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration()
+            {
+                NameResolver = _resolver,
+                TypeLocator = new SimpleTypeLocator(
+                    this.GetType(),
+                    typeof(BlobToCustomObjectBinder))
+            };
+
+            _storageAccount = CloudStorageAccount.Parse(hostConfig.StorageConnectionString);
+
             if (uploadBlobBeforeHostStart)
             {
                 // The function will be triggered fast because the blob is already there
                 UploadTestObject();
             }
 
-            JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString)
-            {
-                TypeLocator = new SimpleTypeLocator(
-                    this.GetType(), 
-                    typeof(BlobToCustomObjectBinder))
-            };
+            
 
             // The jobs host is started
             JobHost host = new JobHost(hostConfig);
@@ -185,7 +185,9 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private void UploadTestObject()
         {
-            CloudBlobContainer container = _storageAccount.CreateCloudBlobClient().GetContainerReference(ContainerName);
+            string testContainerName = _resolver.ResolveInString(ContainerName);
+
+            CloudBlobContainer container = _storageAccount.CreateCloudBlobClient().GetContainerReference(testContainerName);
             container.CreateIfNotExists();
 
             // The test blob
@@ -203,8 +205,10 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         {
             _startWaitHandle = new ManualResetEvent(initialState: false);
 
+            string startQueueName = _resolver.ResolveInString(HostStartQueueName);
+
             CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(HostStartQueueName);
+            CloudQueue queue = queueClient.GetQueueReference(startQueueName);
             queue.CreateIfNotExists();
             queue.AddMessage(new CloudQueueMessage(String.Empty));
 
@@ -213,70 +217,37 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private void CleanupBlob()
         {
+            string testContainerName = _resolver.ResolveInString(ContainerName);
+
             CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-
-            // Cleanup the items in container, queue and table rather than deleting and recreating because
-            // it is faster and there are no creation conflicts.
-
-            // Cleanup the blob storage
-            CloudBlobContainer container = blobClient.GetContainerReference(ContainerName);
-            if (container.Exists())
-            {
-                // Remove all the blobs from the container (if any)
-                IEnumerable<IListBlobItem> blobs = container.ListBlobs();
-                if (blobs != null)
-                {
-                    foreach (ICloudBlob blob in blobs.OfType<ICloudBlob>())
-                    {
-                        blob.Delete();
-                    }
-                }
-            }
-            else
-            {
-                container.Create();
-            }
+            CloudBlobContainer container = blobClient.GetContainerReference(testContainerName);
+            container.DeleteIfExists();
         }
 
         private void CleanupQueue()
         {
+            string testQueueName = _resolver.ResolveInString(TestQueueName);
+
             CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(TestQueueName);
-            if (queue.Exists())
-            {
-                queue.Clear();
-            }
-            queue = queueClient.GetQueueReference(DoneQueueName);
-            if (queue.Exists())
-            {
-                queue.Clear();
-            }
+            CloudQueue queue = queueClient.GetQueueReference(testQueueName);
+            queue.DeleteIfExists();
         }
 
         private void CleanupTable()
         {
+            string testTableName = _resolver.ResolveInString(TableName);
+
             CloudTableClient tableClient = _storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(TableName);
-
-            if (table.Exists())
-            {
-                TableQuery query = new TableQuery();
-                var result = table.ExecuteQuery(query);
-
-                if (result != null)
-                {
-                    foreach (var entity in result)
-                    {
-                        table.Execute(TableOperation.Delete(entity));
-                    }
-                }
-            }
+            CloudTable table = tableClient.GetTableReference(testTableName);
+            table.DeleteIfExists();
         }
 
         private void VerifyTableResults()
         {
+            string testTableName = _resolver.ResolveInString(TableName);
+
             CloudTableClient tableClient = _storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(TableName);
+            CloudTable table = tableClient.GetTableReference(testTableName);
 
             Assert.True(table.Exists(), "Result table not found");
 

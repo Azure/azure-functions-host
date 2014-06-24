@@ -13,42 +13,11 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
     /// </summary>
     public class LeaseExpirationTests
     {
-        private const string TestQueueName = "queueleaserenew";
+        private const string TestQueueName = "queueleaserenew%rnd%";
 
         private static bool _messageFoundAgain;
 
         private static CancellationTokenSource _tokenSource;
-
-        private string _connectionString;
-
-        private CloudStorageAccount _storageAccount;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="LeaseExpirationTests"/> class.
-        /// </summary>
-        public LeaseExpirationTests()
-        {
-            _connectionString = ConfigurationManager.ConnectionStrings["AzureStorage"].ConnectionString;
-
-            try
-            {
-                _storageAccount = CloudStorageAccount.Parse(_connectionString);
-            }
-            catch (Exception ex)
-            {
-                throw new FormatException("The connection string in App.config is invalid", ex);
-            }
-
-            // Make sure there are no messages in the queue before running the test
-            CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(TestQueueName);
-            if (queue.Exists())
-            {
-                queue.Clear();
-            }
-
-            _tokenSource = new CancellationTokenSource();
-        }
 
         /// <summary>
         /// The function used to test the renewal. Whenever it is invoked, a counter increases
@@ -78,30 +47,40 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         /// There is a function that takes > 10 minutes and listens to a queue.
         /// </summary>
         /// <remarks>Ignored because it takes a long time. Can be enabled on demand</remarks>
-        // Switch the Fact attribute to run
-        [Fact(Skip = "Slow test with 20 minutes timeout")]
+        // Uncomment the Fact attribute to run
         //[Fact(Timeout = 20 * 60 * 1000)]
         public void QueueMessageLeaseRenew()
         {
             _messageFoundAgain = false;
 
-            JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString)
+            RandomNameResolver nameResolver = new RandomNameResolver();
+
+            JobHostConfiguration hostConfig = new JobHostConfiguration()
             {
-                TypeLocator = new SimpleTypeLocator(this.GetType())
+                NameResolver = nameResolver,
+                TypeLocator = new SimpleTypeLocator(typeof(LeaseExpirationTests))
             };
 
-            JobHost host = new JobHost(hostConfig);
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfig.StorageConnectionString);
+            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+            CloudQueue queue = queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
 
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            try
+            {
+                queue.CreateIfNotExists();
+                queue.AddMessage(new CloudQueueMessage("Test"));
 
-            CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(TestQueueName);
-            queue.CreateIfNotExists();
-            queue.AddMessage(new CloudQueueMessage("Test"));
+                _tokenSource = new CancellationTokenSource();
 
-            host.RunAndBlock(_tokenSource.Token);
+                JobHost host = new JobHost(hostConfig);
+                host.RunAndBlock(_tokenSource.Token);
 
-            Assert.False(_messageFoundAgain);
+                Assert.False(_messageFoundAgain);
+            }
+            finally
+            {
+                queue.DeleteIfExists();
+            }
         }
     }
 }
