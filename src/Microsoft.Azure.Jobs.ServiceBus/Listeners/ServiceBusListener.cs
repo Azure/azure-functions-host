@@ -1,73 +1,103 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.ServiceBus;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Listeners;
+using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
 {
-    internal class ServiceBusListener
+    internal sealed class ServiceBusListener : IListener
     {
-        private readonly List<ServiceBusTrigger> _serviceBusTriggers = new List<ServiceBusTrigger>();
-        private readonly List<MessageReceiver> _receivers = new List<MessageReceiver>();
-        private readonly ServiceBusInvoker _invoker;
+        private readonly MessagingFactory _factory;
+        private readonly string _entityPath;
+        private readonly ITriggeredFunctionBinding<BrokeredMessage> _functionBinding;
+        private readonly FunctionDescriptor _functionDescriptor;
+        private readonly MethodInfo _method;
+        private readonly IFunctionExecutor _executor;
+        private readonly RuntimeBindingProviderContext _context;
 
-        public ServiceBusListener(Worker worker)
+        private MessageReceiver _receiver;
+        private CancellationTokenRegistration _cancellationRegistration;
+        private bool _disposed;
+
+        public ServiceBusListener(MessagingFactory factory, string entityPath,
+            ITriggeredFunctionBinding<BrokeredMessage> functionBinding, FunctionDescriptor functionDescriptor,
+            MethodInfo method, IFunctionExecutor executor, RuntimeBindingProviderContext context)
         {
-            _invoker = new ServiceBusInvoker(worker);
+            _factory = factory;
+            _entityPath = entityPath;
+            _functionBinding = functionBinding;
+            _functionDescriptor = functionDescriptor;
+            _method = method;
+            _executor = executor;
+            _context = context;
         }
 
-        public void Map(ServiceBusTrigger serviceBusTrigger)
+        public void Start()
         {
-            if (serviceBusTrigger != null)
+            ThrowIfDisposed();
+
+            if (_receiver != null)
             {
-                _serviceBusTriggers.Add(serviceBusTrigger);
+                throw new InvalidOperationException("The listener has already been started.");
             }
-        }
 
-        public void StartPollingServiceBus(RuntimeBindingProviderContext context)
-        {
-            if (_serviceBusTriggers.Count == 0)
+            CancellationToken cancellationToken = _context.CancellationToken;
+
+            if (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
 
-            CancellationToken cancellationToken = context.CancellationToken;
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(context.ServiceBusConnectionString);
+            _receiver = _factory.CreateMessageReceiver(_entityPath);
 
-            foreach (ServiceBusTrigger trigger in _serviceBusTriggers)
+            if (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                // Must create all messaging entities before creating message receivers and calling OnMessage.
-                // Otherwise, some function could start to execute and try to output messages to entities that don't yet
-                // exist.
-                CreateMessagingEntityIfNotExists(account, trigger.SourcePath);
+                _receiver.Abort();
+                return;
             }
 
-            foreach (ServiceBusTrigger trigger in _serviceBusTriggers)
+            _cancellationRegistration = cancellationToken.Register(_receiver.Close);
+            _receiver.OnMessage(ProcessMessage, new OnMessageOptions());
+        }
+
+        public void Stop()
+        {
+            ThrowIfDisposed();
+
+            if (_receiver == null)
             {
-                if (cancellationToken.IsCancellationRequested)
+                throw new InvalidOperationException("The listener has not yet been started or has already been stopped.");
+            }
+
+            _cancellationRegistration.Dispose();
+            _receiver.Close();
+            _receiver = null;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _cancellationRegistration.Dispose();
+
+                if (_receiver != null)
                 {
-                    return;
+                    _receiver.Abort();
+                    _receiver = null;
                 }
 
-                MessageReceiver receiver = account.MessagingFactory.CreateMessageReceiver(trigger.SourcePath);
-                _receivers.Add(receiver); // Prevent the receiver from being garbage collected.
-
-                cancellationToken.Register(receiver.Close);
-                receiver.OnMessage(m => Process(m, trigger, context), new OnMessageOptions());
+                _disposed = true;
             }
         }
 
-        private void Process(BrokeredMessage message, ServiceBusTrigger trigger, RuntimeBindingProviderContext context)
+        private void ProcessMessage(BrokeredMessage message)
         {
-            CancellationToken cancellationToken = context.CancellationToken;
+            CancellationToken cancellationToken = _context.CancellationToken;
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -75,35 +105,23 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
                 return;
             }
 
-            _invoker.OnNewServiceBusMessage(trigger, message, context);
+            Guid functionInstanceId = Guid.NewGuid();
+            IBindCommand bindCommand = new TriggerBindCommand<BrokeredMessage>(_functionBinding, _context, functionInstanceId, message);
+            Guid? parentId = ServiceBusCausalityHelper.GetOwner(message);
+            IFunctionInstance instance = new FunctionInstance(functionInstanceId, parentId,
+                ExecutionReason.AutomaticTrigger, bindCommand, _functionDescriptor, _method);
 
-            // The preceding OnNewServiceBusMessage call may have returned without throwing an exception because the
-            // cancellation token was triggered. We're not sure. To be safe, don't treat the message as successfully
-            // processed unless we're positive that it has been (to guarantee our at-least-once semantics). If the
-            // cancellation token is signaled now, assume the previous call terminated early.
-
-            if (cancellationToken.IsCancellationRequested)
+            if (!_executor.Execute(instance))
             {
                 message.Abandon();
-                return;
             }
         }
 
-        private static void CreateMessagingEntityIfNotExists(ServiceBusAccount account, string entityPath)
+        private void ThrowIfDisposed()
         {
-            NamespaceManager manager = account.NamespaceManager;
-
-            if (entityPath.Contains("/Subscriptions/"))
+            if (_disposed)
             {
-                var parts = entityPath.Split(new[] { "/Subscriptions/" }, StringSplitOptions.None);
-                var topic = parts[0];
-                var subscription = parts[1];
-                manager.CreateTopicIfNotExists(topic);
-                manager.CreateSubscriptionIfNotExists(topic, subscription);
-            }
-            else
-            {
-                manager.CreateQueueIfNotExists(entityPath);
+                throw new ObjectDisposedException(null);
             }
         }
     }

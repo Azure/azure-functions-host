@@ -91,11 +91,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        public void StartPolling(RuntimeBindingProviderContext context)
-        {
-            _listener.StartPolling(context);
-        }
-
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
         void PollNotifyNewBlobs(RuntimeBindingProviderContext context)

@@ -12,11 +12,6 @@ namespace Microsoft.Azure.Jobs
         /// <summary>
         /// Blob trigger, invoked when an input blob is detected. 
         /// </summary>
-        Blob = 1,
-
-        /// <summary>
-        /// Service Bus trigger, on a message in a subscription or queue.
-        /// </summary>
-        ServiceBus = 3
+        Blob = 1
     }
 }

@@ -30,12 +30,6 @@ namespace Microsoft.Azure.Jobs
                         trigger.BlobOutputs = Array.ConvertAll(parts, part => BindableBlobPath.Create(part.Trim()));
                     }
                     return trigger;
-                case TriggerType.ServiceBus:
-                    return new ServiceBusTrigger
-                    {
-                        StorageConnectionString = credentials.ServiceBusConnectionString,
-                        SourcePath = raw.EntityName
-                    };
                 default:
                     throw new InvalidOperationException("Unknown Trigger type:" + raw.Type);
             }

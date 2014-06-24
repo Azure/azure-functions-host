@@ -19,16 +19,11 @@ namespace Microsoft.Azure.Jobs
         private readonly ITriggerInvoke _invoker;
 
         private Dictionary<CloudBlobContainer, List<BlobTrigger>> _map;
-        private readonly IList<IntervalSeparationTimer> _queueListeners = new List<IntervalSeparationTimer>();
 
         private IBlobListener _blobListener;
 
-        private Action<RuntimeBindingProviderContext> startPollingServiceBus = _ => { };
-        private Action<ServiceBusTrigger> mapServiceBusTrigger = _ => { };
-
         public Listener(ITriggerMap map, ITriggerInvoke invoker, Worker worker)
         {
-            InitServiceBusListener(worker);
             _invoker = invoker;
 
             _map = new Dictionary<CloudBlobContainer, List<BlobTrigger>>(new CloudContainerComparer());
@@ -58,23 +53,6 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private void InitServiceBusListener(Worker worker)
-        {
-            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.Listeners.ServiceBusListener");
-            if (type == null)
-            {
-                return;
-            }
-
-            var serviceBusListener = Activator.CreateInstance(type, new object[] { worker });
-
-            var serviceBusPollMethod = type.GetMethod("StartPollingServiceBus", new Type[] { typeof(RuntimeBindingProviderContext) });
-            startPollingServiceBus = context => serviceBusPollMethod.Invoke(serviceBusListener, new object[] { context });
-
-            var serviceBusMapMethod = type.GetMethod("Map", new Type[] { typeof(ServiceBusTrigger) });
-            mapServiceBusTrigger = trigger => serviceBusMapMethod.Invoke(serviceBusListener, new object[] { trigger });
-        }
-
         private void AddTriggers(string scope, Trigger[] funcs)
         {
             foreach (Trigger func in funcs)
@@ -91,9 +69,6 @@ namespace Microsoft.Azure.Jobs
 
                     _map.GetOrCreate(container).Add(blobTrigger);
                 }
-
-                var serviceBusTrigger = func as ServiceBusTrigger;
-                mapServiceBusTrigger(serviceBusTrigger);
             }
         }
 
@@ -114,11 +89,6 @@ namespace Microsoft.Azure.Jobs
             {
                 // Storage exceptions can happen naturally and intermittently from network connectivity issues. Just ignore. 
             }
-        }
-
-        public void StartPolling(RuntimeBindingProviderContext context)
-        {
-            startPollingServiceBus(context);
         }
 
         private void PollBlobs(RuntimeBindingProviderContext context)

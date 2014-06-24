@@ -30,12 +30,6 @@ namespace Microsoft.Azure.Jobs
         public string BlobOutput { get; set; }
 
         /// <summary>
-        /// For Service Bus. The name of the entity (queue or topic/subscription).
-        /// </summary>
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public string EntityName { get; set; }
-
-        /// <summary>
         /// Create a new trigger on blobs. This fires the callback if a new input blob is detected. The http content is the string name of the blob path that was detected. 
         /// For example, if input is 'container/{name}.txt', and output is 'container/outputs/{nane}.txt;
         /// </summary>
@@ -50,15 +44,6 @@ namespace Microsoft.Azure.Jobs
                 Type = TriggerType.Blob,
                 BlobInput = blobInput,
                 BlobOutput = blobOutput
-            };
-        }
-
-        public static TriggerRaw NewServiceBus(string entityName)
-        {
-            return new TriggerRaw
-            {
-                Type = TriggerType.ServiceBus,
-                EntityName = entityName
             };
         }
     }

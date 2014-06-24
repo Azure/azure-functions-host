@@ -13,20 +13,6 @@ namespace Microsoft.Azure.Jobs
 {
     internal class CalculateTriggers
     {
-        private static readonly Func<ITriggerBinding, TriggerRaw> _tryGetServiceBusTriggerRaw = _ => null;
-
-        static CalculateTriggers()
-        {
-            var type = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.Triggers.CalculateServiceBusTriggers");
-            if (type == null)
-            {
-                return;
-            }
-
-            var getTriggerMethod = type.GetMethod("GetTriggerRaw", new Type[] { typeof(ITriggerBinding) });
-            _tryGetServiceBusTriggerRaw = binding => getTriggerMethod.Invoke(null, new object[] { binding }) as TriggerRaw;
-        }
-
         public static Trigger GetTrigger(FunctionDefinition func, Credentials credentials)
         {
             var raw = GetTriggerRaw(func);
@@ -47,12 +33,6 @@ namespace Microsoft.Azure.Jobs
             if (blobTriggerBinding != null)
             {
                 return TriggerRaw.NewBlob(blobTriggerBinding.BlobPath, GetOutputPath(func));
-            }
-
-            var serviceBusTrigger = _tryGetServiceBusTriggerRaw(func.TriggerBinding);
-            if (serviceBusTrigger != null)
-            {
-                return serviceBusTrigger;
             }
 
             return null; // No triggers

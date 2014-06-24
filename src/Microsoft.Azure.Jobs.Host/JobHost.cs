@@ -208,29 +208,23 @@ namespace Microsoft.Azure.Jobs
                         instanceQueueListener = null;
                     }
 
-                    IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
-                        _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener);
-
-                    Credentials credentials = new Credentials
-                    {
-                        StorageConnectionString = _storageConnectionString,
-                        ServiceBusConnectionString = _serviceBusConnectionString
-                    };
+                    Credentials credentials = new Credentials { StorageConnectionString = _storageConnectionString };
 
                     if (token.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    listener.Start();
-
                     Worker worker = new Worker(_hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
                         _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify, credentials);
 
-                    worker.StartPolling(context);
+                    IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
+                        _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener);
 
                     try
                     {
+                        listener.Start();
+
                         while (!token.IsCancellationRequested)
                         {
                             worker.Poll(context);

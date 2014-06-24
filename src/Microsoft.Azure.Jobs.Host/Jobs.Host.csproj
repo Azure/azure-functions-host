@@ -501,7 +501,6 @@
     <Compile Include="Timers\ICanFailCommand.cs" />
     <Compile Include="Runners\IConnectionStringProvider.cs" />
     <Compile Include="Timers\LinearSpeedupTimerCommand.cs" />
-    <Compile Include="Triggers\ServiceBusTrigger.cs" />
     <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
