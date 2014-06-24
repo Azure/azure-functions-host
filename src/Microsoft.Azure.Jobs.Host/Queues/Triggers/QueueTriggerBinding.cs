@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues.Listeners;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -17,6 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 
         private readonly string _parameterName;
         private readonly IArgumentBinding<CloudQueueMessage> _argumentBinding;
+        private readonly CloudStorageAccount _account;
         private readonly string _accountName;
         private readonly string _queueName;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
@@ -26,6 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
+            _account = account;
             _accountName = StorageClient.GetAccountName(account);
             _queueName = queueName;
             _bindingDataContract = CreateBindingDataContract(argumentBinding.ValueType);
@@ -83,6 +88,18 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             }
 
             return Bind(message, context);
+        }
+
+        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor)
+        {
+            ITriggeredFunctionBinding<CloudQueueMessage> functionBinding =
+                new TriggeredFunctionBinding<CloudQueueMessage>(method, _parameterName, this, nonTriggerBindings);
+            CloudQueueClient client = _account.CreateCloudQueueClient();
+            CloudQueue queue = client.GetQueueReference(_queueName);
+            IListenerFactory listenerFactory = new QueueListenerFactory(queue, functionBinding, functionDescriptor,
+                method);
+            return new TriggerClient<CloudQueueMessage>(functionBinding, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

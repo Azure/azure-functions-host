@@ -5,6 +5,8 @@ using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
+using Microsoft.Azure.Jobs.Host.Listeners;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -62,7 +64,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 
             foreach (FunctionDefinition func in _functionTable.ReadAll())
             {
-                var locationKey = func.Id;
+                var locationKey = func.Descriptor.Id;
                 if (!locations.Add(locationKey))
                 {
                     // Dup found!
@@ -212,16 +214,57 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             }
 
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
+            FunctionDescriptor functionDescriptor = CreateFunctionDescriptor(method, triggerParameterName,
+                triggerBinding, nonTriggerBindings);
+            IFunctionBinding functionBinding;
+            IListenerFactory listenerFactory;
 
-            return new FunctionDefinition
+            if (triggerBinding != null)
+            {
+                ITriggerClient triggerClient = triggerBinding.CreateClient(method, nonTriggerBindings,
+                    functionDescriptor);
+                functionBinding = triggerClient.FunctionBinding;
+                listenerFactory = triggerClient.ListenerFactory;
+            }
+            else
+            {
+                functionBinding = new FunctionBinding(method, nonTriggerBindings);
+                listenerFactory = null;
+            }
+
+            return new FunctionDefinition(functionDescriptor, functionBinding, listenerFactory, method)
+            {
+                TriggerParameterName = triggerParameterName,
+                TriggerBinding = triggerBinding,
+                NonTriggerBindings = nonTriggerBindings
+            };
+        }
+
+        private static FunctionDescriptor CreateFunctionDescriptor(MethodInfo method, string triggerParameterName,
+            ITriggerBinding triggerBinding, IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
+        {
+            List<ParameterDescriptor> parameters = new List<ParameterDescriptor>();
+
+            foreach (ParameterInfo parameter in method.GetParameters())
+            {
+                string name = parameter.Name;
+
+                if (name == triggerParameterName)
+                {
+                    parameters.Add(triggerBinding.ToParameterDescriptor());
+                }
+                else
+                {
+                    parameters.Add(nonTriggerBindings[name].ToParameterDescriptor());
+                }
+            }
+
+            return new FunctionDescriptor
             {
                 Id = method.GetFullName(),
                 FullName = method.GetFullName(),
                 ShortName = method.GetShortName(),
-                Method = method,
-                TriggerParameterName = triggerParameterName,
-                TriggerBinding = triggerBinding,
-                NonTriggerBindings = nonTriggerBindings
+                Parameters = parameters
             };
         }
     }

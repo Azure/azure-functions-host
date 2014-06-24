@@ -30,12 +30,6 @@ namespace Microsoft.Azure.Jobs
                         trigger.BlobOutputs = Array.ConvertAll(parts, part => BindableBlobPath.Create(part.Trim()));
                     }
                     return trigger;
-                case TriggerType.Queue:
-                    return new QueueTrigger
-                    {
-                        StorageConnectionString = credentials.StorageConnectionString,
-                        QueueName = raw.QueueName
-                    };
                 case TriggerType.ServiceBus:
                     return new ServiceBusTrigger
                     {

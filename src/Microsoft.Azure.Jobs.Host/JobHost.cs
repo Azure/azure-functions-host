@@ -5,9 +5,14 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues.Listeners;
 using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -166,37 +171,7 @@ namespace Microsoft.Azure.Jobs
                 try
                 {
                     NotifyNewBlobViaInMemory fastpathNotify = new NotifyNewBlobViaInMemory();
-                    QueueTrigger sharedTrigger;
-                    QueueTrigger instanceTrigger;
-
-                    if (_dashboardConnectionString != null)
-                    {
-                        sharedTrigger = new QueueTrigger
-                        {
-                            QueueName = _hostContext.SharedQueueName,
-                            StorageConnectionString = _dashboardConnectionString
-                        };
-                        instanceTrigger = new QueueTrigger
-                        {
-                            QueueName = _hostContext.InstanceQueueName,
-                            StorageConnectionString = _dashboardConnectionString
-                        };
-                    }
-                    else
-                    {
-                        sharedTrigger = null;
-                        instanceTrigger = null;
-                    }
-
-                    Credentials credentials = new Credentials
-                    {
-                        StorageConnectionString = _storageConnectionString,
-                        ServiceBusConnectionString = _serviceBusConnectionString
-                    };
-
-                    Worker worker = new Worker(sharedTrigger, instanceTrigger, _hostContext.FunctionTableLookup,
-                        _hostContext.ExecuteFunction, _hostContext.FunctionInstanceLogger, fastpathNotify,
-                        fastpathNotify, credentials);
+                    CloudStorageAccount account = CloudStorageAccount.Parse(_storageConnectionString);
 
                     RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
                     {
@@ -204,7 +179,41 @@ namespace Microsoft.Azure.Jobs
                         NotifyNewBlob = fastpathNotify,
                         CancellationToken = token,
                         NameResolver = _hostContext.NameResolver,
-                        StorageAccount = CloudStorageAccount.Parse(_storageConnectionString),
+                        StorageAccount = account,
+                        ServiceBusConnectionString = _serviceBusConnectionString
+                    };
+
+                    CloudQueueClient queueClient = account.CreateCloudQueueClient();
+                    IListener sharedQueueListener;
+                    IListener instanceQueueListener;
+
+                    if (_dashboardConnectionString != null)
+                    {
+                        sharedQueueListener = HostMessageListener.Create(
+                            queueClient.GetQueueReference(_hostContext.SharedQueueName),
+                            _hostContext.ExecuteFunction,
+                            _hostContext.FunctionTableLookup,
+                            _hostContext.FunctionInstanceLogger,
+                            context);
+                        instanceQueueListener = HostMessageListener.Create(
+                            queueClient.GetQueueReference(_hostContext.InstanceQueueName),
+                            _hostContext.ExecuteFunction,
+                            _hostContext.FunctionTableLookup,
+                            _hostContext.FunctionInstanceLogger,
+                            context);
+                    }
+                    else
+                    {
+                        sharedQueueListener = null;
+                        instanceQueueListener = null;
+                    }
+
+                    IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
+                        _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener);
+
+                    Credentials credentials = new Credentials
+                    {
+                        StorageConnectionString = _storageConnectionString,
                         ServiceBusConnectionString = _serviceBusConnectionString
                     };
 
@@ -212,6 +221,11 @@ namespace Microsoft.Azure.Jobs
                     {
                         return;
                     }
+
+                    listener.Start();
+
+                    Worker worker = new Worker(_hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
+                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify, credentials);
 
                     worker.StartPolling(context);
 
@@ -231,7 +245,7 @@ namespace Microsoft.Azure.Jobs
                     }
                     finally
                     {
-                        worker.StopPolling();
+                        listener.Stop();
                     }
                 }
                 finally
@@ -297,7 +311,7 @@ namespace Microsoft.Azure.Jobs
                 StorageAccount = _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
                 ServiceBusConnectionString = _serviceBusConnectionString
             };
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, arguments, context);
+            IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
 
             FunctionInvocationResult result;
 
@@ -318,6 +332,15 @@ namespace Microsoft.Azure.Jobs
             }
 
             VerifySuccess(result);
+        }
+
+        private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
+            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
+        {
+            Guid functionInstanceId = Guid.NewGuid();
+
+            return new FunctionInstance(functionInstanceId, null, ExecutionReason.HostCall,
+                new InvokeBindCommand(functionInstanceId, func, parameters, context), func.Descriptor, func.Method);
         }
 
         private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
@@ -343,6 +366,40 @@ namespace Microsoft.Azure.Jobs
             {
                 return CreateUpdateHostHeartbeatCommand();
             }
+        }
+
+        private static IListener CreateListener(IExecuteFunction executeFunction, RuntimeBindingProviderContext context,
+            IEnumerable<FunctionDefinition> functionDefinitions, IListener sharedQueueListener,
+            IListener instanceQueueListener)
+        {
+            IFunctionExecutor executor = new ExecuteFunctionExecutor(executeFunction, context);
+
+            List<IListener> listeners = new List<IListener>();
+
+            foreach (FunctionDefinition functionDefinition in functionDefinitions)
+            {
+                IListenerFactory listenerFactory = functionDefinition.ListenerFactory;
+
+                if (listenerFactory == null)
+                {
+                    continue;
+                }
+
+                IListener listener = listenerFactory.Create(executor, context);
+                listeners.Add(listener);
+            }
+
+            if (sharedQueueListener != null)
+            {
+                listeners.Add(sharedQueueListener);
+            }
+
+            if (instanceQueueListener != null)
+            {
+                listeners.Add(instanceQueueListener);
+            }
+
+            return new CompositeListener(listeners);
         }
 
         private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand()

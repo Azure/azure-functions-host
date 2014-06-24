@@ -1,24 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
 {
     internal class Worker
     {
-        // Settings is for wiring up Azure endpoints for the distributed app.
         private readonly IFunctionTableLookup _functionTable;
         private readonly IExecuteFunction _executor;
-        private readonly QueueTrigger _sharedTrigger;
-        private readonly QueueTrigger _instanceTrigger;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly INotifyNewBlob _notifyNewBlob;
         // Fast-path blob listener. 
@@ -27,13 +22,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         // General purpose listener for blobs, queues. 
         private Listener _listener;
 
-        public Worker(QueueTrigger sharedTrigger, QueueTrigger instanceTrigger, IFunctionTableLookup functionTable,
-            IExecuteFunction execute, IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob,
+        public Worker(IFunctionTableLookup functionTable, IExecuteFunction execute,
+            IFunctionInstanceLogger functionInstanceLogger, INotifyNewBlob notifyNewBlob,
             INotifyNewBlobListener blobListener, Credentials credentials)
         {
-            _sharedTrigger = sharedTrigger;
-            _instanceTrigger = instanceTrigger;
-
             if (functionTable == null)
             {
                 throw new ArgumentNullException("functionTable");
@@ -64,25 +56,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 var ts = CalculateTriggers.GetTrigger(func, credentials);
                 if (ts != null)
                 {
-                    map.AddTriggers(func.Id, ts);
+                    map.AddTriggers(func.Descriptor.Id, ts);
                 }
-            }
-
-            List<Trigger> globalTriggers = new List<Trigger>();
-
-            if (_sharedTrigger != null)
-            {
-                globalTriggers.Add(_sharedTrigger);
-            }
-
-            if (_instanceTrigger != null)
-            {
-                globalTriggers.Add(_instanceTrigger);
-            }
-
-            if (globalTriggers.Count > 0)
-            {
-                map.AddTriggers(String.Empty, globalTriggers.ToArray());
             }
 
             _listener = new Listener(map, new MyInvoker(this), this);
@@ -121,11 +96,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _listener.StartPolling(context);
         }
 
-        public void StopPolling()
-        {
-            _listener.StopPolling();
-        }
-
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
         void PollNotifyNewBlobs(RuntimeBindingProviderContext context)
@@ -142,14 +112,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName, context);
         }
 
-        private void OnNewQueueItem(CloudQueueMessage msg, FunctionDefinition func, RuntimeBindingProviderContext context)
-        {
-            var instance = GetFunctionInvocation(func, context, msg);
-
-            OnNewInvokeableItem(instance, context);
-        }
-
-        public void OnNewInvokeableItem(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
+        public void OnNewInvokeableItem(IFunctionInstance instance, RuntimeBindingProviderContext context)
         {
             if (instance != null)
             {
@@ -158,121 +121,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             }
         }
 
-        private void ProcessHostMessage(CloudQueueMessage message, RuntimeBindingProviderContext context)
-        {
-            HostMessage model = JsonCustom.DeserializeObject<HostMessage>(message.AsString);
-
-            if (model == null)
-            {
-                throw new InvalidOperationException("Invalid invocation message.");
-            }
-
-            CallAndOverrideMessage callAndOverrideModel = model as CallAndOverrideMessage;
-
-            if (callAndOverrideModel != null)
-            {
-                ProcessCallAndOverrideMessage(callAndOverrideModel, message.InsertionTime.Value, context);
-                return;
-            }
-
-            AbortHostInstanceMessage abortModel = model as AbortHostInstanceMessage;
-
-            if (abortModel != null)
-            {
-                ProcessAbortHostInstanceMessage();
-                return;
-            }
-
-            string error = String.Format(CultureInfo.InvariantCulture,
-                "Unsupported invocation type '{0}'.", model.Type);
-            throw new NotSupportedException(error);
-        }
-
-        private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,
-            RuntimeBindingProviderContext context)
-        {
-            FunctionInvokeRequest request = CreateInvokeRequest(message, context);
-
-            if (request != null)
-            {
-                _executor.Execute(request, context);
-            }
-            else
-            {
-                // Log that the function failed.
-                FunctionCompletedMessage failedMessage = CreateFailedMessage(message, insertionTime);
-                _functionInstanceLogger.LogFunctionCompleted(failedMessage);
-            }
-        }
-
-        private void ProcessAbortHostInstanceMessage()
-        {
-            bool terminated = NativeMethods.TerminateProcess(NativeMethods.GetCurrentProcess(), 1);
-            Debug.Assert(terminated);
-        }
-
-        // This snapshot won't contain full normal data for Function.FullName, Function.ShortName and Function.Parameters.
-        // (All we know is an unavailable function ID; which function location method info to use is a mystery.)
-        private static FunctionCompletedMessage CreateFailedMessage(CallAndOverrideMessage message, DateTimeOffset insertionType)
-        {
-            DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
-
-            // In theory, we could also set HostId, HostInstanceId and WebJobRunId; we'd just have to expose that data
-            // directly to this Worker class.
-            return new FunctionCompletedMessage
-            {
-                FunctionInstanceId = message.Id,
-                Function = new FunctionDescriptor
-                {
-                    Id = message.FunctionId
-                },
-                Arguments = message.Arguments,
-                ParentId = message.ParentId,
-                Reason = message.Reason,
-                StartTime = startAndEndTime,
-                EndTime = startAndEndTime,
-                Failure = new FunctionFailure
-                {
-                    ExceptionType = typeof(InvalidOperationException).FullName,
-                    ExceptionDetails = String.Format(CultureInfo.CurrentCulture,
-                        "No function '{0}' currently exists.", message.FunctionId)
-                }
-            };
-        }
-
-        private FunctionInvokeRequest CreateInvokeRequest(CallAndOverrideMessage message, RuntimeBindingProviderContext context)
-        {
-            FunctionDefinition function = _functionTable.Lookup(message.FunctionId);
-
-            if (function == null)
-            {
-                return null;
-            }
-
-            IDictionary<string, object> objectParameters = new Dictionary<string, object>();
-
-            if (message.Arguments != null)
-            {
-                foreach (KeyValuePair<string, string> item in message.Arguments)
-                {
-                    objectParameters.Add(item.Key, item.Value);
-                }
-            }
-
-            return new FunctionInvokeRequest
-            {
-                Id = message.Id,
-                Method = function.Method,
-                ParametersProvider = new InvokeParametersProvider(message.Id, function, objectParameters, context),
-                Reason = message.Reason,
-                ParentId = message.ParentId
-            };
-        }
-
         // Supports explicitly invoking any functions associated with this blob. 
         private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, RuntimeBindingProviderContext context)
         {
-            FunctionInvokeRequest instance = GetFunctionInvocation(func, context, blob);
+            IFunctionInstance instance = CreateFunctionInstance(func, context, blob);
             if (instance != null)
             {
                 Interlocked.Increment(ref _triggerCount);
@@ -285,53 +137,16 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return BlobCausalityLogger.GetWriter(blob);
         }
 
-        private static Guid? GetOwnerFromMessage(CloudQueueMessage msg)
-        {
-            QueueCausalityHelper qcm = new QueueCausalityHelper();
-            return qcm.GetOwner(msg);
-        }
-
-        public static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func,
-            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
+        internal static IFunctionInstance CreateFunctionInstance(FunctionDefinition func, RuntimeBindingProviderContext context, ICloudBlob blobInput)
         {
             Guid functionInstanceId = Guid.NewGuid();
 
-            return new FunctionInvokeRequest
-            {
-                Id = functionInstanceId,
-                Method = func.Method,
-                ParametersProvider = new InvokeParametersProvider(functionInstanceId, func, parameters, context),
-                Reason = ExecutionReason.HostCall
-            };
-        }
-
-        private FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, CloudQueueMessage msg)
-        {
-            QueueTriggerBinding queueTriggerBinding = (QueueTriggerBinding)func.TriggerBinding;
-            Guid functionInstanceId = Guid.NewGuid();
-
-            return new FunctionInvokeRequest
-            {
-                Id = functionInstanceId,
-                Method = func.Method,
-                ParametersProvider = new TriggerParametersProvider<CloudQueueMessage>(functionInstanceId, func, msg, context),
-                Reason = ExecutionReason.AutomaticTrigger,
-                ParentId = GetOwnerFromMessage(msg)
-            };
-        }
-
-        internal static FunctionInvokeRequest GetFunctionInvocation(FunctionDefinition func, RuntimeBindingProviderContext context, ICloudBlob blobInput)
-        {
-            Guid functionInstanceId = Guid.NewGuid();
-
-            return new FunctionInvokeRequest
-            {
-                Id = functionInstanceId,
-                Method = func.Method,
-                ParametersProvider = new TriggerParametersProvider<ICloudBlob>(functionInstanceId, func, blobInput, context),
-                Reason = ExecutionReason.AutomaticTrigger,
-                ParentId = GetBlobWriterGuid(blobInput)
-            };
+            return new FunctionInstance(functionInstanceId,
+                GetBlobWriterGuid(blobInput),
+                ExecutionReason.AutomaticTrigger,
+                new TriggerBindCommand<ICloudBlob>(functionInstanceId, func, blobInput, context),
+                func.Descriptor,
+                func.Method);
         }
 
         // plug into Trigger Service to queue invocations on triggers. 
@@ -341,20 +156,6 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             public MyInvoker(Worker parent)
             {
                 _parent = parent;
-            }
-
-            void ITriggerInvoke.OnNewQueueItem(CloudQueueMessage msg, QueueTrigger trigger, RuntimeBindingProviderContext context)
-            {
-                FunctionDefinition func = (FunctionDefinition)trigger.Tag;
-
-                if (func == null)
-                {
-                    _parent.ProcessHostMessage(msg, context);
-                }
-                else
-                {
-                    _parent.OnNewQueueItem(msg, func, context);
-                }
             }
 
             void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, RuntimeBindingProviderContext context)

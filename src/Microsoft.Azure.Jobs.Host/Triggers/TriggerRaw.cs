@@ -30,12 +30,6 @@ namespace Microsoft.Azure.Jobs
         public string BlobOutput { get; set; }
 
         /// <summary>
-        /// For Queues. The name of the azure queue. Be sure to follow azure queue naming rules, including all lowercase.
-        /// </summary>
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public string QueueName { get; set; }
-
-        /// <summary>
         /// For Service Bus. The name of the entity (queue or topic/subscription).
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -56,21 +50,6 @@ namespace Microsoft.Azure.Jobs
                 Type = TriggerType.Blob,
                 BlobInput = blobInput,
                 BlobOutput = blobOutput
-            };
-        }
-
-        /// <summary>
-        /// Create a new trigger on queue message. This fires the callback when a new queue message is detected, where the http request contents are the azure queue message contents. 
-        /// The azure message is deleted if the callback is invoked. 
-        /// </summary>
-        /// <param name="queueName">The azure queue to listen on. Be sure to adhere to azure queue naming rules, including being all lowercase.</param>
-        /// <returns>A trigger object.</returns>
-        public static TriggerRaw NewQueue(string queueName)
-        {
-            return new TriggerRaw
-            {
-                Type = TriggerType.Queue,
-                QueueName = queueName
             };
         }
 

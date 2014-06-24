@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
@@ -154,20 +155,33 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, objectParameters, _context);
+            IFunctionInstance instance = CreateFunctionInstance(func, objectParameters, _context);
 
             Guid guidThis = CallUtil.GetParentGuid(parameters);
             return CallInner(instance, guidThis);
         }
 
-        private void CallInner(FunctionInvokeRequest instance)
+        private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
+            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
+        {
+            Guid functionInstanceId = Guid.NewGuid();
+
+            return new FunctionInstance(functionInstanceId, null, ExecutionReason.HostCall,
+                new InvokeBindCommand(functionInstanceId, func, parameters, context), func.Descriptor, func.Method);
+        }
+
+        private void CallInner(IFunctionInstance instance)
         {
             CallInner(instance, Guid.Empty);
         }
-        private Guid CallInner(FunctionInvokeRequest instance, Guid parentGuid)
+        private Guid CallInner(IFunctionInstance instance, Guid parentGuid)
         {
-            instance.Reason = ExecutionReason.HostCall;
-            instance.ParentId = parentGuid != Guid.Empty ? (Guid?)parentGuid : null;
+            instance = new FunctionInstance(instance.Id,
+                parentGuid != Guid.Empty ? (Guid?)parentGuid : null,
+                ExecutionReason.HostCall,
+                instance.BindCommand,
+                instance.FunctionDescriptor,
+                instance.Method);
 
             var result = _executor.Execute(instance, _context);
             return result.Id;
@@ -177,7 +191,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            FunctionInvokeRequest instance = Worker.GetFunctionInvocation(func, _context, blobInput);
+            IFunctionInstance instance = Worker.CreateFunctionInstance(func, _context, blobInput);
 
             CallInner(instance);
         }
@@ -191,7 +205,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            public FunctionInvocationResult Execute(FunctionInvokeRequest instance, RuntimeBindingProviderContext context)
+            public FunctionInvocationResult Execute(IFunctionInstance instance, RuntimeBindingProviderContext context)
             {
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
@@ -203,7 +217,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(), instance.ParametersProvider.Bind(), TextWriter.Null);
+                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(), instance.BindCommand.Execute(), TextWriter.Null);
                     succeeded = true;
                 }
                 catch (Exception e)

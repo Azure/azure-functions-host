@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Triggers;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
 {
-    internal class TriggerParametersProvider<TTriggerValue> : IParametersProvider
+    internal class TriggerBindCommand<TTriggerValue> : IBindCommand
     {
         private readonly Guid _functionInstanceId;
         private readonly FunctionDefinition _function;
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         private readonly TTriggerValue _triggerValue;
         private readonly RuntimeBindingProviderContext _context;
 
-        public TriggerParametersProvider(Guid functionInstanceId, FunctionDefinition function,
+        public TriggerBindCommand(Guid functionInstanceId, FunctionDefinition function,
             TTriggerValue triggerValue, RuntimeBindingProviderContext context)
         {
             _functionInstanceId = functionInstanceId;
@@ -24,12 +25,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _context = context;
         }
 
-        public FunctionDefinition Function
-        {
-            get { return _function ; }
-        }
-
-        public IReadOnlyDictionary<string, IValueProvider> Bind()
+        public IReadOnlyDictionary<string, IValueProvider> Execute()
         {
             Dictionary<string, IValueProvider> parameters = new Dictionary<string, IValueProvider>();
 

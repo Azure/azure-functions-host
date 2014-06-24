@@ -1,39 +1,43 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal class PollQueueCommand : ICanFailCommand
+    internal sealed class PollQueueCommand : IIntervalSeparationCommand
     {
-        private readonly CloudQueue _queue;
-        private readonly QueueTrigger _trigger;
-        private readonly ITriggerInvoke _invoker;
-        private readonly RuntimeBindingProviderContext _context;
+        private static TimeSpan _normalSeparationInterval = TimeSpan.FromSeconds(2);
 
-        public PollQueueCommand(CloudQueue queue, QueueTrigger trigger, ITriggerInvoke invoker, RuntimeBindingProviderContext context)
+        private readonly CloudQueue _queue;
+        private readonly ITriggerExecutor<CloudQueueMessage> _triggerExecutor;
+
+        private TimeSpan _separationInterval;
+        
+        public PollQueueCommand(CloudQueue queue, ITriggerExecutor<CloudQueueMessage> triggerExecutor)
         {
             _queue = queue;
-            _trigger = trigger;
-            _invoker = invoker;
-            _context = context;
+            _triggerExecutor = triggerExecutor;
+            _separationInterval = TimeSpan.Zero; // Start polling immediately
         }
 
-        public bool TryExecute()
+        public TimeSpan SeparationInterval
         {
-            if (_context.CancellationToken.IsCancellationRequested)
-            {
-                return true;
-            }
+            get { return _separationInterval; }
+        }
+
+        public void Execute()
+        {
+            // After starting up, wait two seconds after Execute returns before polling again.
+            _separationInterval = _normalSeparationInterval;
 
             if (!_queue.Exists())
             {
-                return true;
+                return;
             }
 
             // What if job takes longer. Call CloudQueue.UpdateMessage
-            var visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
+            TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
             CloudQueueMessage message;
 
             do
@@ -49,37 +53,35 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 
                     // Storage exceptions can happen naturally and intermittently from network connectivity issues.
                     // Just ignore.
-                    return false;
+                    return;
                 }
 
                 if (message != null)
                 {
+                    bool succeeded;
+
                     using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout))
                     {
                         timer.Start(executeFirst: false);
 
-                        if (_context.CancellationToken.IsCancellationRequested)
+                        succeeded = _triggerExecutor.Execute(message);
+                    }
+
+                    // Need to call Delete message only if function succeeded.
+                    if (succeeded)
+                    {
+                        try
                         {
-                            return true;
+                            _queue.DeleteMessage(message);
                         }
-
-                        _invoker.OnNewQueueItem(message, _trigger, _context);
-                    }
-
-                    try
-                    {
-                        // Need to call Delete message only if function succeeded.
-                        _queue.DeleteMessage(message);
-                    }
-                    catch (StorageException)
-                    {
-                        // TODO: Consider a more specific check here.
-                        return false;
+                        catch (StorageException)
+                        {
+                            // TODO: Consider a more specific check here.
+                            return;
+                        }
                     }
                 }
             } while (message != null);
-
-            return true;
         }
 
         private static IntervalSeparationTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,

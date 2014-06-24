@@ -10,6 +10,7 @@ using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System.Runtime.ExceptionServices;
+using Microsoft.Azure.Jobs.Host.Executors;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
 {
@@ -23,9 +24,9 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _sharedContext = sharedContext;
         }
 
-        public FunctionInvocationResult Execute(FunctionInvokeRequest request, RuntimeBindingProviderContext context)
+        public FunctionInvocationResult Execute(IFunctionInstance instance, RuntimeBindingProviderContext context)
         {
-            FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(request,
+            FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance,
                 context.StorageAccount, context.ServiceBusConnectionString);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
             FunctionCompletedMessage completedMessage = null;
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             try
             {
-                ExecuteWithLogMessage(request, context, startedMessage, parameterLogCollector);
+                ExecuteWithLogMessage(instance, context, startedMessage, parameterLogCollector);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception e)
@@ -67,16 +68,16 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private void ExecuteWithLogMessage(FunctionInvokeRequest request, RuntimeBindingProviderContext context,
+        private void ExecuteWithLogMessage(IFunctionInstance instance, RuntimeBindingProviderContext context,
             FunctionStartedMessage message, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             // Create the console output writer
-            FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(request);
+            FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(instance);
             TextWriter consoleOutput = functionOutput.Output;
             context.ConsoleOutput = consoleOutput;
 
             // Must bind before logging (bound invoke string is included in log message).
-            IReadOnlyDictionary<string, IValueProvider> parameters = request.ParametersProvider.Bind();
+            IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindCommand.Execute();
 
             using (ValueProviderDisposable.Create(parameters))
             {
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
                 try
                 {
-                    ExecuteWithOutputLogs(request, parameters, consoleOutput, functionOutput.ParameterLogBlob,
+                    ExecuteWithOutputLogs(instance, parameters, consoleOutput, functionOutput.ParameterLogBlob,
                         parameterLogCollector);
                 }
                 catch (Exception exception)
@@ -127,11 +128,11 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private void ExecuteWithOutputLogs(FunctionInvokeRequest request,
+        private void ExecuteWithOutputLogs(IFunctionInstance instance,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
             CloudBlockBlob parameterLogBlob, IDictionary<string, ParameterLog> parameterLogCollector)
         {
-            MethodInfo method = request.Method;
+            MethodInfo method = instance.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
             IReadOnlyDictionary<string, ISelfWatch> watches = CreateWatches(parameters);
             SelfWatch selfWatch = CreateSelfWatch(watches, parameterLogBlob, consoleOutput);
@@ -287,7 +288,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return reflectionParameters;
         }
 
-        private FunctionStartedMessage CreateStartedMessageWithoutArguments(FunctionInvokeRequest request,
+        private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance,
             CloudStorageAccount storageAccount, string serviceBusConnectionString)
         {
             return new FunctionStartedMessage
@@ -299,10 +300,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 Heartbeat = _sharedContext.HostOutputMessage.Heartbeat,
                 Credentials = _sharedContext.HostOutputMessage.Credentials,
                 WebJobRunIdentifier = _sharedContext.HostOutputMessage.WebJobRunIdentifier,
-                FunctionInstanceId = request.Id,
-                Function = request.ParametersProvider.Function.ToFunctionDescriptor(),
-                ParentId = request.ParentId,
-                Reason = request.Reason,
+                FunctionInstanceId = instance.Id,
+                Function = instance.FunctionDescriptor,
+                ParentId = instance.ParentId,
+                Reason = instance.Reason,
                 StartTime = DateTimeOffset.UtcNow
             };
         }

@@ -286,9 +286,24 @@
     <Compile Include="Bindings\Data\TToStringConverter.cs" />
     <Compile Include="Bindings\BindablePathExtensions.cs" />
     <Compile Include="Bindings\IBindablePath.cs" />
+    <Compile Include="Bindings\IFunctionBinding.cs" />
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Executors\ExecuteFunctionExecutor.cs" />
+    <Compile Include="Executors\HostMessageExecutor.cs" />
+    <Compile Include="Executors\IBindingCommand.cs" />
+    <Compile Include="Executors\FunctionInstance.cs" />
+    <Compile Include="Executors\IFunctionInstance.cs" />
+    <Compile Include="Listeners\CompositeListener.cs" />
+    <Compile Include="Queues\Listeners\HostMessageListenerFactory.cs" />
+    <Compile Include="Queues\Triggers\QueueTriggerExecutor.cs" />
+    <Compile Include="Triggers\TriggerBindCommand.cs" />
+    <Compile Include="Queues\Listeners\QueueListenerFactory.cs" />
+    <Compile Include="Triggers\ITriggerClient.cs" />
+    <Compile Include="Triggers\TriggerClient.cs" />
+    <Compile Include="Triggers\TriggeredFunctionBinding.cs" />
+    <Compile Include="Bindings\FunctionBinding.cs" />
     <Compile Include="Blobs\Bindings\BindableBlobPath.cs" />
     <Compile Include="Blobs\Bindings\BoundBlobPath.cs" />
     <Compile Include="Blobs\Bindings\IBindableBlobPath.cs" />
@@ -301,7 +316,13 @@
     <Compile Include="Blobs\Triggers\IBlobPathSource.cs" />
     <Compile Include="Blobs\Triggers\ParameterizedBlobPathSource.cs" />
     <Compile Include="HostDirectoryNames.cs" />
+    <Compile Include="Indexers\IFunctionDefinition.cs" />
+    <Compile Include="Listeners\IListener.cs" />
+    <Compile Include="Listeners\IListenerFactory.cs" />
+    <Compile Include="Queues\Listeners\PollQueueCommand.cs" />
+    <Compile Include="Listeners\TimerListener.cs" />
     <Compile Include="Runners\ExceptionExtensions.cs" />
+    <Compile Include="Executors\IFunctionExecutor.cs" />
     <Compile Include="StorageClient.cs" />
     <Compile Include="Bindings\StringToTConverter.cs" />
     <Compile Include="Bindings\StructOutputConverter.cs" />
@@ -411,7 +432,7 @@
     <Compile Include="Runners\HeartbeatIntervals.cs" />
     <Compile Include="Runners\IDelayedException.cs" />
     <Compile Include="Runners\InvokeParametersProvider.cs" />
-    <Compile Include="Runners\TriggerParametersProvider.cs" />
+    <Compile Include="Runners\TriggerBindCommand.cs" />
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
     <Compile Include="Runners\IParametersProvider.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
@@ -447,7 +468,8 @@
     <Compile Include="Triggers\ITriggerBinding.cs" />
     <Compile Include="Triggers\ITriggerBindingProvider.cs" />
     <Compile Include="Triggers\ITriggerData.cs" />
-    <Compile Include="Triggers\PollQueueCommand.cs" />
+    <Compile Include="Triggers\ITriggeredFunctionBinding.cs" />
+    <Compile Include="Triggers\ITriggerExecutor.cs" />
     <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
     <Compile Include="Triggers\TriggerData.cs" />
     <Compile Include="DefaultNameResolver.cs" />
@@ -480,7 +502,7 @@
     <Compile Include="Runners\IConnectionStringProvider.cs" />
     <Compile Include="Timers\LinearSpeedupTimerCommand.cs" />
     <Compile Include="Triggers\ServiceBusTrigger.cs" />
-    <Compile Include="Triggers\UpdateQueueMessageVisibilityCommand.cs" />
+    <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
     <Compile Include="Runners\Worker.cs" />
@@ -547,7 +569,6 @@
     <Compile Include="Triggers\BlobTrigger.cs" />
     <Compile Include="Triggers\TriggerType.cs" />
     <Compile Include="Triggers\TriggerRaw.cs" />
-    <Compile Include="Triggers\QueueTrigger.cs" />
     <Compile Include="WebSitesKnownKeyNames.cs" />
   </ItemGroup>
   <ItemGroup>

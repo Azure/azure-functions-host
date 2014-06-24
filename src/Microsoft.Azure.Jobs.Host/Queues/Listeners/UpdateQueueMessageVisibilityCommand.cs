@@ -2,7 +2,7 @@
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
     internal class UpdateQueueMessageVisibilityCommand : ICanFailCommand
     {

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
@@ -90,6 +92,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             }
 
             return Bind(message, context);
+        }
+
+        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor descriptor)
+        {
+            ITriggeredFunctionBinding<BrokeredMessage> functionBinding = new TriggeredFunctionBinding<BrokeredMessage>(
+                method, _parameterName, this, nonTriggerBindings);
+            IListenerFactory listenerFactory = null;
+            return new TriggerClient<BrokeredMessage>(functionBinding, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

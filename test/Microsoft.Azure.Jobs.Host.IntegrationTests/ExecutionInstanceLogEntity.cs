@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.IntegrationTests
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         // rowKey = FunctionInstance.Guid?  uniquely identify the instance. 
         // Instance provides both the RowKey, as well as the invocation request information (like args)
-        public FunctionInvokeRequest FunctionInstance { get; set; }
+        public IFunctionInstance FunctionInstance { get; set; }
 
         // If function threw an exception, set to type.fullname of that exception.
         // It's important that this is top-level and queryable because it's a key scenario to find failures. 

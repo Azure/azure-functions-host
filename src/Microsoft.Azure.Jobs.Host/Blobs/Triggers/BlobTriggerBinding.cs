@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -81,6 +83,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             }
 
             return Bind(blob, context);
+        }
+
+        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor)
+        {
+            ITriggeredFunctionBinding<ICloudBlob> functionBinding = new TriggeredFunctionBinding<ICloudBlob>(method,
+                _parameterName, this, nonTriggerBindings);
+            IListenerFactory listenerFactory = null;
+            return new TriggerClient<ICloudBlob>(functionBinding, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

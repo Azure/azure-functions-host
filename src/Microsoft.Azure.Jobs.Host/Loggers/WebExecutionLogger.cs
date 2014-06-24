@@ -1,9 +1,7 @@
-﻿using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage;
+﻿using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal class WebExecutionLogger : IExecutionLogger
     {

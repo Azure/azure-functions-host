@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -41,13 +42,6 @@ namespace Microsoft.Azure.Jobs
         // Given a function definition, get the set of Triggers from it. 
         public static TriggerRaw GetTriggerRaw(FunctionDefinition func)
         {
-            QueueTriggerBinding queueTriggerBinding = func.TriggerBinding as QueueTriggerBinding;
-
-            if (queueTriggerBinding != null)
-            {
-                return TriggerRaw.NewQueue(queueTriggerBinding.QueueName);
-            }
-
             BlobTriggerBinding blobTriggerBinding = func.TriggerBinding as BlobTriggerBinding;
 
             if (blobTriggerBinding != null)

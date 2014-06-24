@@ -251,7 +251,7 @@ namespace Microsoft.Azure.Jobs
 
             for (int index = 0; index < functions.Length; index++)
             {
-                functionDescriptors[index] = functions[index].ToFunctionDescriptor();
+                functionDescriptors[index] = functions[index].Descriptor;
             }
 
             HostStartedMessage message = new HostStartedMessage

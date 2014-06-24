@@ -19,7 +19,6 @@ namespace Microsoft.Azure.Jobs
         private readonly ITriggerInvoke _invoker;
 
         private Dictionary<CloudBlobContainer, List<BlobTrigger>> _map;
-        private readonly IList<Tuple<CloudQueue, QueueTrigger>> _queueTriggers = new List<Tuple<CloudQueue, QueueTrigger>>();
         private readonly IList<IntervalSeparationTimer> _queueListeners = new List<IntervalSeparationTimer>();
 
         private IBlobListener _blobListener;
@@ -93,20 +92,6 @@ namespace Microsoft.Azure.Jobs
                     _map.GetOrCreate(container).Add(blobTrigger);
                 }
 
-                var queueTrigger = func as QueueTrigger;
-                if (queueTrigger != null)
-                {
-                    CloudStorageAccount account = GetAccount(scope, func);
-                    CloudQueueClient clientQueue = account.CreateCloudQueueClient();
-
-                    // Queuenames must be all lowercase. Normalize for convenience. 
-                    string queueName = queueTrigger.QueueName;
-
-                    CloudQueue queue = clientQueue.GetQueueReference(queueName);
-
-                    _queueTriggers.Add(new Tuple<CloudQueue, QueueTrigger>(queue, queueTrigger));
-                }
-
                 var serviceBusTrigger = func as ServiceBusTrigger;
                 mapServiceBusTrigger(serviceBusTrigger);
             }
@@ -133,35 +118,7 @@ namespace Microsoft.Azure.Jobs
 
         public void StartPolling(RuntimeBindingProviderContext context)
         {
-            StartPollingQueues(context);
             startPollingServiceBus(context);
-        }
-
-        private void StartPollingQueues(RuntimeBindingProviderContext context)
-        {
-            foreach (Tuple<CloudQueue, QueueTrigger> item in _queueTriggers)
-            {
-                ICanFailCommand pollCommand = new PollQueueCommand(item.Item1, item.Item2, _invoker, context);
-                // TODO: Replace with exponential backoff range.
-                IIntervalSeparationCommand timingCommand = new LinearSpeedupTimerCommand(pollCommand,
-                    normalInterval: TimeSpan.FromSeconds(2), minimumInterval: TimeSpan.FromSeconds(2));
-                IntervalSeparationTimer listener = new IntervalSeparationTimer(timingCommand);
-                listener.Start(executeFirst: false);
-                _queueListeners.Add(listener);
-            }
-        }
-
-        public void StopPolling()
-        {
-            StopPollingQueues();
-        }
-
-        private void StopPollingQueues()
-        {
-            foreach (IntervalSeparationTimer listener in _queueListeners)
-            {
-                listener.Stop();
-            }
         }
 
         private void PollBlobs(RuntimeBindingProviderContext context)

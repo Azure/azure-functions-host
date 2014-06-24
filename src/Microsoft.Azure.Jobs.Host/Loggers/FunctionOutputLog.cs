@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -26,9 +27,9 @@ namespace Microsoft.Azure.Jobs
         public CloudBlockBlob ParameterLogBlob { get; set; }
 
         // Get a default instance of 
-        public static FunctionOutputLog GetLogStream(FunctionInvokeRequest f, CloudBlobDirectory directory)
+        public static FunctionOutputLog GetLogStream(IFunctionInstance instance, CloudBlobDirectory directory)
         {            
-            string name = f.Id.ToString("N") + ".txt";
+            string name = instance.Id.ToString("N") + ".txt";
 
             directory.Container.CreateIfNotExists();
 
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.Jobs
                 },
                 Blob = blob,
                 Output = tw,
-                ParameterLogBlob = directory.GetBlockBlobReference(f.Id.ToString("N") + ".params.txt")
+                ParameterLogBlob = directory.GetBlockBlobReference(instance.Id.ToString("N") + ".params.txt")
             };
         }
     }

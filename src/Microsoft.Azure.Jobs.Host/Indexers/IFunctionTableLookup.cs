@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs
+﻿namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     internal interface IFunctionTableLookup
     {

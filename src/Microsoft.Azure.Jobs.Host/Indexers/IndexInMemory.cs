@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             // $$$ Not linear :(
             foreach (var x in _list)
             {
-                if (x.Id == functionId)
+                if (x.Descriptor.Id == functionId)
                 {
                     return x;
                 }
