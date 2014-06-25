@@ -4,11 +4,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 {
     internal static class FunctionInstanceLookupExtensions
     {
-        public static ExecutionInstanceLogEntity Lookup(this IFunctionInstanceLookup lookup, FunctionInvokeRequest instance)
-        {
-            return lookup.Lookup(instance.Id);
-        }
-
         public static ExecutionInstanceLogEntity LookupOrThrow(this IFunctionInstanceLookup lookup, Guid rowKey)
         {
             var logItem = lookup.Lookup(rowKey);

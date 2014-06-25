@@ -1,8 +1,5 @@
-﻿using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Executors;
+﻿using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -11,23 +8,18 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
     internal class QueueListenerFactory : IListenerFactory
     {
         private readonly CloudQueue _queue;
-        private readonly ITriggeredFunctionBinding<CloudQueueMessage> _functionBinding;
-        private readonly FunctionDescriptor _functionDescriptor;
-        private readonly MethodInfo _method;
+        private readonly ITriggeredFunctionInstanceFactory<CloudQueueMessage> _instanceFactory;
 
-        public QueueListenerFactory(CloudQueue queue, ITriggeredFunctionBinding<CloudQueueMessage> functionBinding,
-            FunctionDescriptor functionDescriptor, MethodInfo method)
+        public QueueListenerFactory(CloudQueue queue,
+            ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory)
         {
             _queue = queue;
-            _functionBinding = functionBinding;
-            _functionDescriptor = functionDescriptor;
-            _method = method;
+            _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, RuntimeBindingProviderContext context)
+        public IListener Create(IFunctionExecutor executor)
         {
-            QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(executor, _functionBinding, context,
-                _functionDescriptor, _method);
+            QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
             PollQueueCommand command = new PollQueueCommand(_queue, triggerExecutor);
             IntervalSeparationTimer timer = new IntervalSeparationTimer(command);
             return new TimerListener(timer);

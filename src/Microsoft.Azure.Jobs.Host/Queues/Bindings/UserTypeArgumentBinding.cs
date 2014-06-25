@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
+        public IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
         {
             return new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
         }

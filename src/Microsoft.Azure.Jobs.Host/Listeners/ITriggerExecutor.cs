@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Triggers
+﻿namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal interface ITriggerExecutor<TTriggerValue>
     {

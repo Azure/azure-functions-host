@@ -23,12 +23,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
             get { return false; }
         }
 
-        private IValueProvider Bind(TValue value, ArgumentBindingContext context)
+        private IValueProvider Bind(TValue value, FunctionBindingContext context)
         {
             return new ObjectValueProvider(value, typeof(TValue));
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             TValue typedValue = null;
 

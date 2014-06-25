@@ -8,6 +8,6 @@ namespace Microsoft.Azure.Jobs
     {
         // Scan the container
         // Callbacks may fire multiple times. Or out of order relative to creation date. 
-        void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context);
+        void Poll(Action<ICloudBlob, HostBindingContext> callback, HostBindingContext context);
     }
 }

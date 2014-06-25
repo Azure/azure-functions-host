@@ -77,7 +77,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             get { return _entityPath; }
         }
 
-        public ITriggerData Bind(BrokeredMessage value, ArgumentBindingContext context)
+        public ITriggerData Bind(BrokeredMessage value, FunctionBindingContext context)
         {
             BrokeredMessage clonedMessage = value.Clone();
             IValueProvider valueProvider = _argumentBinding.Bind(value, context);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, ArgumentBindingContext context)
+        public ITriggerData Bind(object value, FunctionBindingContext context)
         {
             BrokeredMessage message = null;
 
@@ -98,22 +98,23 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return Bind(message, context);
         }
 
-        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            FunctionDescriptor functionDescriptor)
+        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor, MethodInfo method)
         {
-            ITriggeredFunctionBinding<BrokeredMessage> functionBinding = new TriggeredFunctionBinding<BrokeredMessage>(
-                method, _parameterName, this, nonTriggerBindings);
+            ITriggeredFunctionBinding<BrokeredMessage> functionBinding =
+                new TriggeredFunctionBinding<BrokeredMessage>(_parameterName, this, nonTriggerBindings);
+            ITriggeredFunctionInstanceFactory<BrokeredMessage> instanceFactory =
+                new TriggeredFunctionInstanceFactory<BrokeredMessage>(functionBinding, functionDescriptor, method);
             IListenerFactory listenerFactory;
 
             if (_queueName != null)
             {
-                listenerFactory = new ServiceBusQueueListenerFactory(_account, _queueName, functionBinding,
-                    functionDescriptor, method);
+                listenerFactory = new ServiceBusQueueListenerFactory(_account, _queueName, instanceFactory);
             }
             else
             {
                 listenerFactory = new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName,
-                    functionBinding, functionDescriptor, method);
+                    instanceFactory);
             }
 
             return new TriggerClient<BrokeredMessage>(functionBinding, listenerFactory);

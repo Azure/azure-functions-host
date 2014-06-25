@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(TBindingData value, ArgumentBindingContext context)
+            public IValueProvider Bind(TBindingData value, FunctionBindingContext context)
             {
                 object converted = _converter.Convert(value);
                 return new ObjectValueProvider(converted, typeof(T));

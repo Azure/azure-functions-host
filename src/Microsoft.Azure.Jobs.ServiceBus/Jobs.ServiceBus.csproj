@@ -115,6 +115,7 @@
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />
     <Compile Include="Triggers\BrokeredMessageToByteArrayConverter.cs" />
     <Compile Include="Triggers\BrokeredMessageToStringConverter.cs" />
+    <Compile Include="Listeners\ServiceBusTriggerExecutor.cs" />
     <Compile Include="Triggers\StringToBrokeredMessageConverter.cs" />
     <Compile Include="Triggers\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="Triggers\CompositeArgumentBindingProvider.cs" />

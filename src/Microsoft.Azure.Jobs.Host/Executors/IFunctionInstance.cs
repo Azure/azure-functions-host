@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
         ExecutionReason Reason { get; }
 
-        IBindCommand BindCommand { get; }
+        IBindingSource BindingSource { get; }
 
         FunctionDescriptor FunctionDescriptor { get; }
 

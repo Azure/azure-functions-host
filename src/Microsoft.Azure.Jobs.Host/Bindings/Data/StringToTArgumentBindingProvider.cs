@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(TBindingData value, ArgumentBindingContext context)
+            public IValueProvider Bind(TBindingData value, FunctionBindingContext context)
             {
                 string text = value.ToString(); // Really (string)input, but the compiler can't verify that's possible.
                 object converted = ObjectBinderHelpers.BindFromString(text, _valueType);

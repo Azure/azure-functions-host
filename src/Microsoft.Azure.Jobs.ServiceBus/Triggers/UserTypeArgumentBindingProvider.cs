@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(BrokeredMessage value, ArgumentBindingContext context)
+            public IValueProvider Bind(BrokeredMessage value, FunctionBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 string contents;

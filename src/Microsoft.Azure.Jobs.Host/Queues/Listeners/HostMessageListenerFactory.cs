@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
     internal static class HostMessageListener
     {
         public static IListener Create(CloudQueue queue, IExecuteFunction executor, IFunctionTableLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger, RuntimeBindingProviderContext context)
+            IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, functionLookup, functionInstanceLogger, context);
             IIntervalSeparationCommand command = new PollQueueCommand(queue, triggerExecutor);

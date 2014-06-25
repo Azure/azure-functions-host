@@ -9,6 +9,6 @@ namespace Microsoft.Azure.Jobs
     // ### Can this be merged with the other general blob listener or IBlobListener?     
     internal interface INotifyNewBlobListener
     {
-        void ProcessMessages(Action<BlobWrittenMessage, RuntimeBindingProviderContext> fpOnNewBlob, RuntimeBindingProviderContext context);
+        void ProcessMessages(Action<BlobWrittenMessage, HostBindingContext> fpOnNewBlob, HostBindingContext context);
     }
 }

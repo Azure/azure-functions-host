@@ -19,12 +19,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
             get { return false; }
         }
 
-        private IValueProvider Bind(TextWriter writer, ArgumentBindingContext context)
+        private IValueProvider Bind(TextWriter writer, FunctionBindingContext context)
         {
             return new ConsoleOutputValueProvider(writer);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             TextWriter writer = value as TextWriter;
 
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(context.ConsoleOutput, context);
+            return Bind(context.ConsoleOutput, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

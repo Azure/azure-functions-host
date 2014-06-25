@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Jobs
             _queue.Enqueue(msg);
         }
 
-        public void ProcessMessages(Action<BlobWrittenMessage, RuntimeBindingProviderContext> fpOnNewBlob, RuntimeBindingProviderContext context)
+        public void ProcessMessages(Action<BlobWrittenMessage, HostBindingContext> fpOnNewBlob, HostBindingContext context)
         {
             BlobWrittenMessage msg;
             while (!context.CancellationToken.IsCancellationRequested && _queue.TryDequeue(out msg))

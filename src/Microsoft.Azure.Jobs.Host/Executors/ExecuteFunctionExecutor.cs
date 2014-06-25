@@ -6,9 +6,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
     internal class ExecuteFunctionExecutor : IFunctionExecutor
     {
         private readonly IExecuteFunction _executeFunction;
-        private readonly RuntimeBindingProviderContext _context;
+        private readonly HostBindingContext _context;
 
-        public ExecuteFunctionExecutor(IExecuteFunction executeFunction, RuntimeBindingProviderContext context)
+        public ExecuteFunctionExecutor(IExecuteFunction executeFunction, HostBindingContext context)
         {
             _executeFunction = executeFunction;
             _context = context;

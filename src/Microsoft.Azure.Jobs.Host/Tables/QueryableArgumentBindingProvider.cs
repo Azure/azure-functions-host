@@ -47,7 +47,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(IQueryable<TElement>); }
             }
 
-            public IValueProvider Bind(CloudTable value, ArgumentBindingContext context)
+            public IValueProvider Bind(CloudTable value, FunctionBindingContext context)
             {
                 IQueryable<TElement> queryable;
 

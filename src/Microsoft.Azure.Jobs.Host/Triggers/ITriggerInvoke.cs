@@ -6,6 +6,6 @@ namespace Microsoft.Azure.Jobs
     // Callback interface for invoking triggers.
     internal interface ITriggerInvoke
     {
-        void OnNewBlob(ICloudBlob blob, BlobTrigger func, RuntimeBindingProviderContext context);
+        void OnNewBlob(ICloudBlob blob, BlobTrigger func, HostBindingContext context);
     }
 }

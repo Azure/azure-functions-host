@@ -10,10 +10,10 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
     {
         IReadOnlyDictionary<string, Type> BindingDataContract { get; }
 
-        ITriggerData Bind(object value, ArgumentBindingContext context);
+        ITriggerData Bind(object value, FunctionBindingContext context);
 
-        ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            FunctionDescriptor functionDescriptor);
+        ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor, MethodInfo method);
 
         ParameterDescriptor ToParameterDescriptor();
     }

@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 Stream rawStream = blob.OpenRead();
                 SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream);
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 

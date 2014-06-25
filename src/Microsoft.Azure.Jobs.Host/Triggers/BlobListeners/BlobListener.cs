@@ -99,7 +99,7 @@ namespace Microsoft.Azure.Jobs
         // Blob could have been deleted by the time the callback is invoked. 
         // - race where it was explicitly deleted
         // - if we detected blob via a log, then there's a long window (possibly hours) where it could have easily been deleted. 
-        public void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context)
+        public void Poll(Action<ICloudBlob, HostBindingContext> callback, HostBindingContext context)
         {
             if (!_completedFullScanOnStartup)
             {

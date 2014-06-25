@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
+        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
         {
             return new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
         }

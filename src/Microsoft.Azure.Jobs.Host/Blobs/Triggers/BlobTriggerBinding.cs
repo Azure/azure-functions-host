@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 new OutputConverter<string>(new StringToCloudBlobConverter(client)));
         }
 
-        public ITriggerData Bind(ICloudBlob value, ArgumentBindingContext context)
+        public ITriggerData Bind(ICloudBlob value, FunctionBindingContext context)
         {
             IValueProvider valueProvider = _argumentBinding.Bind(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, ArgumentBindingContext context)
+        public ITriggerData Bind(object value, FunctionBindingContext context)
         {
             ICloudBlob blob = null;
 
@@ -85,11 +85,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return Bind(blob, context);
         }
 
-        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            FunctionDescriptor functionDescriptor)
+        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor, MethodInfo method)
         {
-            ITriggeredFunctionBinding<ICloudBlob> functionBinding = new TriggeredFunctionBinding<ICloudBlob>(method,
-                _parameterName, this, nonTriggerBindings);
+            ITriggeredFunctionBinding<ICloudBlob> functionBinding =
+                new TriggeredFunctionBinding<ICloudBlob>(_parameterName, this, nonTriggerBindings);
             IListenerFactory listenerFactory = null;
             return new TriggerClient<ICloudBlob>(functionBinding, listenerFactory);
         }

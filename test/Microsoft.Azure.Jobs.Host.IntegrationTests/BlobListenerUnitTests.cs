@@ -18,10 +18,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             CloudBlobClient client = account.CreateCloudBlobClient();
             var container = client.GetContainerReference(containerName);
             IBlobListener l = new ContainerScannerBlobListener(new CloudBlobContainer[] { container });
-            RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
-            {
-                CancellationToken = CancellationToken.None
-            };
+            HostBindingContext context = new HostBindingContext(
+                bindingProvider: null,
+                notifyNewBlob: null,
+                cancellationToken: CancellationToken.None,
+                nameResolver: null,
+                storageAccount: null,
+                serviceBusConnectionString: null);
 
             l.Poll((blob, ignore) =>
                 {
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             l.Poll((blob, ignore) =>
             {
                 Assert.True(false, "shouldn't retrigger the same blob");
-            }, context);            
+            }, context);
         }
 
         // Set dev storage. These are well known values.

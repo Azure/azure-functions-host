@@ -6,7 +6,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         bool FromAttribute { get; }
 
-        IValueProvider Bind(object value, ArgumentBindingContext context);
+        IValueProvider Bind(object value, FunctionBindingContext context);
 
         IValueProvider Bind(BindingContext context);
 

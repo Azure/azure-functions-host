@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs
         // Does one iteration and then returns.
         // Poll containers, invoke callback for any new ones added.
         // $$$ Switch to queuing instead of just invoking callback
-        public void Poll(Action<ICloudBlob, RuntimeBindingProviderContext> callback, RuntimeBindingProviderContext context)
+        public void Poll(Action<ICloudBlob, HostBindingContext> callback, HostBindingContext context)
         {
             for (int i = 0; !context.CancellationToken.IsCancellationRequested && i < _containers.Length; i++)
             {

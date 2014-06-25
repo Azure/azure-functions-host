@@ -9,17 +9,17 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private readonly Guid _id;
         private readonly Guid? _parentId;
         private readonly ExecutionReason _reason;
-        private readonly IBindCommand _bindCommand;
+        private readonly IBindingSource _bindingSource;
         private readonly FunctionDescriptor _functionDescriptor;
         private readonly MethodInfo _method;
 
-        public FunctionInstance(Guid id, Guid? parentId, ExecutionReason reason, IBindCommand bindCommand,
+        public FunctionInstance(Guid id, Guid? parentId, ExecutionReason reason, IBindingSource bindingSource,
             FunctionDescriptor functionDescriptor, MethodInfo method)
         {
             _id = id;
             _parentId = parentId;
             _reason = reason;
-            _bindCommand = bindCommand;
+            _bindingSource = bindingSource;
             _functionDescriptor = functionDescriptor;
             _method = method;
         }
@@ -39,9 +39,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             get { return _reason; }
         }
 
-        public IBindCommand BindCommand
+        public IBindingSource BindingSource
         {
-            get { return _bindCommand; }
+            get { return _bindingSource; }
         }
 
         public FunctionDescriptor FunctionDescriptor

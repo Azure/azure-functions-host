@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Protocols;
+﻿using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
     internal interface IFunctionBinding
     {
-        IReadOnlyDictionary<string, IValueProvider> Bind(RuntimeBindingProviderContext context, Guid functionInstanceId,
+        IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context,
             IDictionary<string, object> parameters);
     }
 }

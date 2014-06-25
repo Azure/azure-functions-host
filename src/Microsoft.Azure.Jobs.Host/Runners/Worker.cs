@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Runners
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         private int _triggerCount = 0;
 
-        public void Poll(RuntimeBindingProviderContext context)
+        public void Poll(HostBindingContext context)
         {
             while (!context.CancellationToken.IsCancellationRequested)
             {
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
         // Poll blob notifications from the fast path that may be detected ahead of our
         // normal listeners. 
-        void PollNotifyNewBlobs(RuntimeBindingProviderContext context)
+        void PollNotifyNewBlobs(HostBindingContext context)
         {
             if (_blobListener != null)
             {
@@ -102,12 +102,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         // Called if the external system thinks we may have a new blob. 
-        public void NewBlob(BlobWrittenMessage msg, RuntimeBindingProviderContext context)
+        public void NewBlob(BlobWrittenMessage msg, HostBindingContext context)
         {
             _listener.InvokeTriggersForBlob(msg.AccountName, msg.ContainerName, msg.BlobName, context);
         }
 
-        public void OnNewInvokeableItem(IFunctionInstance instance, RuntimeBindingProviderContext context)
+        public void OnNewInvokeableItem(IFunctionInstance instance, HostBindingContext context)
         {
             if (instance != null)
             {
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         }
 
         // Supports explicitly invoking any functions associated with this blob. 
-        private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, RuntimeBindingProviderContext context)
+        private void OnNewBlob(FunctionDefinition func, ICloudBlob blob, HostBindingContext context)
         {
             IFunctionInstance instance = CreateFunctionInstance(func, context, blob);
             if (instance != null)
@@ -132,14 +132,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return BlobCausalityLogger.GetWriter(blob);
         }
 
-        internal static IFunctionInstance CreateFunctionInstance(FunctionDefinition func, RuntimeBindingProviderContext context, ICloudBlob blobInput)
+        internal static IFunctionInstance CreateFunctionInstance(FunctionDefinition func, HostBindingContext context, ICloudBlob blobInput)
         {
-            Guid functionInstanceId = Guid.NewGuid();
-
-            return new FunctionInstance(functionInstanceId,
+            return new FunctionInstance(Guid.NewGuid(),
                 GetBlobWriterGuid(blobInput),
                 ExecutionReason.AutomaticTrigger,
-                new TriggerBindCommand<ICloudBlob>(functionInstanceId, func, blobInput, context),
+                new TriggerBindingSource<ICloudBlob>((ITriggeredFunctionBinding<ICloudBlob>)func.Binding, blobInput),
                 func.Descriptor,
                 func.Method);
         }
@@ -153,7 +151,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 _parent = parent;
             }
 
-            void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, RuntimeBindingProviderContext context)
+            void ITriggerInvoke.OnNewBlob(ICloudBlob blob, BlobTrigger trigger, HostBindingContext context)
             {
                 FunctionDefinition func = (FunctionDefinition)trigger.Tag;
                 _parent.OnNewBlob(func, blob, context);

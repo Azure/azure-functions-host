@@ -43,15 +43,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 Account = _account,
                 MessageSender = _account.MessagingFactory.CreateMessageSender(_queueOrTopicName),
             };
-            return Bind(entity, context);
+            return Bind(entity, context.FunctionContext);
         }
 
-        private IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
+        private IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
         {
             return _argumentBinding.Bind(value, context);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             ServiceBusEntity entity = null;
 

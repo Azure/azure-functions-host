@@ -173,15 +173,13 @@ namespace Microsoft.Azure.Jobs
                     NotifyNewBlobViaInMemory fastpathNotify = new NotifyNewBlobViaInMemory();
                     CloudStorageAccount account = CloudStorageAccount.Parse(_storageConnectionString);
 
-                    RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
-                    {
-                        BindingProvider = _hostContext.BindingProvider,
-                        NotifyNewBlob = fastpathNotify,
-                        CancellationToken = token,
-                        NameResolver = _hostContext.NameResolver,
-                        StorageAccount = account,
-                        ServiceBusConnectionString = _serviceBusConnectionString
-                    };
+                    HostBindingContext context = new HostBindingContext(
+                        bindingProvider: _hostContext.BindingProvider,
+                        notifyNewBlob: fastpathNotify,
+                        cancellationToken: token,
+                        nameResolver: _hostContext.NameResolver,
+                        storageAccount: account,
+                        serviceBusConnectionString: _serviceBusConnectionString);
 
                     CloudQueueClient queueClient = account.CreateCloudQueueClient();
                     IListener sharedQueueListener;
@@ -297,14 +295,13 @@ namespace Microsoft.Azure.Jobs
             }
 
             FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionTableLookup);
-            RuntimeBindingProviderContext context = new RuntimeBindingProviderContext
-            {
-                BindingProvider = _hostContext.BindingProvider,
-                CancellationToken = cancellationToken,
-                NameResolver = _hostContext.NameResolver,
-                StorageAccount = _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
-                ServiceBusConnectionString = _serviceBusConnectionString
-            };
+            HostBindingContext context = new HostBindingContext(
+                bindingProvider: _hostContext.BindingProvider,
+                notifyNewBlob: null,
+                cancellationToken: cancellationToken,
+                nameResolver: _hostContext.NameResolver,
+                storageAccount: _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
+                serviceBusConnectionString: _serviceBusConnectionString);
             IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
 
             FunctionInvocationResult result;
@@ -329,12 +326,10 @@ namespace Microsoft.Azure.Jobs
         }
 
         private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
-            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
+            IDictionary<string, object> parameters, HostBindingContext context)
         {
-            Guid functionInstanceId = Guid.NewGuid();
-
-            return new FunctionInstance(functionInstanceId, null, ExecutionReason.HostCall,
-                new InvokeBindCommand(functionInstanceId, func, parameters, context), func.Descriptor, func.Method);
+            return new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.HostCall,
+                new InvokeBindingSource(func.Binding, parameters), func.Descriptor, func.Method);
         }
 
         private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
@@ -362,7 +357,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static IListener CreateListener(IExecuteFunction executeFunction, RuntimeBindingProviderContext context,
+        private static IListener CreateListener(IExecuteFunction executeFunction, HostBindingContext context,
             IEnumerable<FunctionDefinition> functionDefinitions, IListener sharedQueueListener,
             IListener instanceQueueListener)
         {
@@ -379,7 +374,7 @@ namespace Microsoft.Azure.Jobs
                     continue;
                 }
 
-                IListener listener = listenerFactory.Create(executor, context);
+                IListener listener = listenerFactory.Create(executor);
                 listeners.Add(listener);
             }
 

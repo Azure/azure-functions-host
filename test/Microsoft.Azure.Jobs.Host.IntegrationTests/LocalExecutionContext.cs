@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private readonly IExecuteFunction _executor;
         private readonly IFunctionInstanceLookup _lookup;
         private readonly IFunctionUpdatedLogger _functionUpdate;
-        private readonly RuntimeBindingProviderContext _context;
+        private readonly HostBindingContext _context;
 
         private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
         private readonly Func<string, MethodInfo> _fpResolveMethod;
@@ -82,12 +82,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var y = new LocalExecute(this);
             _executor = y;
 
-            _context = new RuntimeBindingProviderContext
-            {
-                CancellationToken = CancellationToken.None,
-                StorageAccount = _account,
-                BindingProvider = DefaultBindingProvider.Create(null)
-            };
+            _context = new HostBindingContext(
+                bindingProvider: DefaultBindingProvider.Create(null),
+                notifyNewBlob: null,
+                cancellationToken: CancellationToken.None,
+                nameResolver: null,
+                storageAccount: _account,
+                serviceBusConnectionString: null);
         }
 
         private static MethodInfo Resolve(Type scope, string functionShortName)
@@ -162,12 +163,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
-            IDictionary<string, object> parameters, RuntimeBindingProviderContext context)
+            IDictionary<string, object> parameters, HostBindingContext context)
         {
-            Guid functionInstanceId = Guid.NewGuid();
-
-            return new FunctionInstance(functionInstanceId, null, ExecutionReason.HostCall,
-                new InvokeBindCommand(functionInstanceId, func, parameters, context), func.Descriptor, func.Method);
+            return new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.HostCall,
+                new InvokeBindingSource(func.Binding, parameters), func.Descriptor, func.Method);
         }
 
         private void CallInner(IFunctionInstance instance)
@@ -179,7 +178,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             instance = new FunctionInstance(instance.Id,
                 parentGuid != Guid.Empty ? (Guid?)parentGuid : null,
                 ExecutionReason.HostCall,
-                instance.BindCommand,
+                instance.BindingSource,
                 instance.FunctionDescriptor,
                 instance.Method);
 
@@ -205,7 +204,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 _parent = parent;
             }
 
-            public FunctionInvocationResult Execute(IFunctionInstance instance, RuntimeBindingProviderContext context)
+            public FunctionInvocationResult Execute(IFunctionInstance instance, HostBindingContext context)
             {
                 var logItem = new ExecutionInstanceLogEntity();
                 logItem.FunctionInstance = instance;
@@ -213,11 +212,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
                 MethodInfo method = instance.Method;
 
+                FunctionBindingContext functionContext = new FunctionBindingContext(context, instance.Id, TextWriter.Null);
+
                 // Run the function. 
                 // The config is what will have the ICall binder that ultimately points back to this object. 
                 try
                 {
-                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(), instance.BindCommand.Execute(), TextWriter.Null);
+                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(),
+                        instance.BindingSource.Bind(functionContext), TextWriter.Null);
                     succeeded = true;
                 }
                 catch (Exception e)

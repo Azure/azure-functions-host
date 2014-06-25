@@ -6,6 +6,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         Type ValueType { get; }
 
-        IValueProvider Bind(TArgument value, ArgumentBindingContext context);
+        IValueProvider Bind(TArgument value, FunctionBindingContext context);
     }
 }

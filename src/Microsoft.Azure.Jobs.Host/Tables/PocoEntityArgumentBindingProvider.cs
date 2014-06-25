@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(TElement); }
             }
 
-            public IValueProvider Bind(TableEntityContext value, ArgumentBindingContext context)
+            public IValueProvider Bind(TableEntityContext value, FunctionBindingContext context)
             {
                 TableOperation retrieve = TableOperation.Retrieve<DynamicTableEntity>(value.PartitionKey, value.RowKey);
                 TableResult result = value.Table.Execute(retrieve);

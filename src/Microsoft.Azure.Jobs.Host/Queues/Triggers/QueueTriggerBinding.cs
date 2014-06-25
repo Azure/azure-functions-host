@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return contract;
         }
 
-        public ITriggerData Bind(CloudQueueMessage value, ArgumentBindingContext context)
+        public ITriggerData Bind(CloudQueueMessage value, FunctionBindingContext context)
         {
             IValueProvider valueProvider = _argumentBinding.Bind(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, ArgumentBindingContext context)
+        public ITriggerData Bind(object value, FunctionBindingContext context)
         {
             CloudQueueMessage message = null;
 
@@ -90,15 +90,16 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return Bind(message, context);
         }
 
-        public ITriggerClient CreateClient(MethodInfo method, IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            FunctionDescriptor functionDescriptor)
+        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+            FunctionDescriptor functionDescriptor, MethodInfo method)
         {
             ITriggeredFunctionBinding<CloudQueueMessage> functionBinding =
-                new TriggeredFunctionBinding<CloudQueueMessage>(method, _parameterName, this, nonTriggerBindings);
+                new TriggeredFunctionBinding<CloudQueueMessage>(_parameterName, this, nonTriggerBindings);
             CloudQueueClient client = _account.CreateCloudQueueClient();
             CloudQueue queue = client.GetQueueReference(_queueName);
-            IListenerFactory listenerFactory = new QueueListenerFactory(queue, functionBinding, functionDescriptor,
-                method);
+            ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory =
+                new TriggeredFunctionInstanceFactory<CloudQueueMessage>(functionBinding, functionDescriptor, method);
+            IListenerFactory listenerFactory = new QueueListenerFactory(queue, instanceFactory);
             return new TriggerClient<CloudQueueMessage>(functionBinding, listenerFactory);
         }
 

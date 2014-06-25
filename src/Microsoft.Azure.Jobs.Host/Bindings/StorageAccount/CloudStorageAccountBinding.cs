@@ -26,12 +26,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
             get { return false; }
         }
 
-        private IValueProvider Bind(CloudStorageAccount account, ArgumentBindingContext context)
+        private IValueProvider Bind(CloudStorageAccount account, FunctionBindingContext context)
         {
             return new CloudStorageAccountValueProvider(account);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             CloudStorageAccount account = null;
 
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
 
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(context.StorageAccount, context);
+            return Bind(context.StorageAccount, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

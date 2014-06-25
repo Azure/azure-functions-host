@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(CloudTable); }
             }
 
-            public IValueProvider Bind(CloudTable value, ArgumentBindingContext context)
+            public IValueProvider Bind(CloudTable value, FunctionBindingContext context)
             {
                 value.CreateIfNotExists();
                 return new TableValueProvider(value, value, typeof(CloudTable));

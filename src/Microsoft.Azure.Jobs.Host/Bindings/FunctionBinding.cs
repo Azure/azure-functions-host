@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
@@ -16,24 +15,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             _bindings = bindings;
         }
 
-        public IReadOnlyDictionary<string, IValueProvider> Bind(RuntimeBindingProviderContext context,
-            Guid functionInstanceId, IDictionary<string, object> parameters)
+        public IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context, IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
             IReadOnlyDictionary<string, object> bindingData = null;
 
-            BindingContext bindingContext = new BindingContext
-            {
-                FunctionInstanceId = functionInstanceId,
-                NotifyNewBlob = context.NotifyNewBlob,
-                CancellationToken = context.CancellationToken,
-                ConsoleOutput = context.ConsoleOutput,
-                NameResolver = context.NameResolver,
-                StorageAccount = context.StorageAccount,
-                ServiceBusConnectionString = context.ServiceBusConnectionString,
-                BindingData = bindingData,
-                BindingProvider = context.BindingProvider
-            };
+            BindingContext bindingContext = new BindingContext(context, bindingData);
 
             foreach (KeyValuePair<string, IBinding> item in _bindings)
             {
@@ -45,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
                 {
                     if (parameters != null && parameters.ContainsKey(name))
                     {
-                        valueProvider = binding.Bind(parameters[name], bindingContext);
+                        valueProvider = binding.Bind(parameters[name], context);
                     }
                     else
                     {

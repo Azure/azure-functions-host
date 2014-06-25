@@ -79,7 +79,7 @@ namespace Microsoft.Azure.Jobs
             return account;
         }
 
-        public void Poll(RuntimeBindingProviderContext context)
+        public void Poll(HostBindingContext context)
         {
             try
             {
@@ -91,14 +91,14 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private void PollBlobs(RuntimeBindingProviderContext context)
+        private void PollBlobs(HostBindingContext context)
         {
             _blobListener.Poll(OnNewBlobWorker, context);
         }
 
         // Called as a hint if an external source knows we have a new blob. Will invoke triggers. 
         // This will invoke back any associated triggers
-        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName, RuntimeBindingProviderContext context)
+        public void InvokeTriggersForBlob(string accountName, string containerName, string blobName, HostBindingContext context)
         {
             foreach (var container in _map.Keys)
             {
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private void OnNewBlobWorker(ICloudBlob blob, RuntimeBindingProviderContext context)
+        private void OnNewBlobWorker(ICloudBlob blob, HostBindingContext context)
         {
             var client = blob.ServiceClient;
 

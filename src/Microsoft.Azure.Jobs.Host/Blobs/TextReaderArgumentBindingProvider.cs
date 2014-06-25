@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(TextReader); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 Stream rawStream = blob.OpenRead();
                 SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(blob.OpenRead());

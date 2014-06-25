@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(CloudQueueMessage value, ArgumentBindingContext context)
+            public IValueProvider Bind(CloudQueueMessage value, FunctionBindingContext context)
             {
                 object convertedValue;
 

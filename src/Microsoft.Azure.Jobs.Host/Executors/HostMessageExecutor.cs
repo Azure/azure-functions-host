@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
@@ -17,10 +17,10 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private readonly IExecuteFunction _innerExecutor;
         private readonly IFunctionTableLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
-        private readonly RuntimeBindingProviderContext _context;
+        private readonly HostBindingContext _context;
 
         public HostMessageExecutor(IExecuteFunction innerExecutor, IFunctionTableLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger, RuntimeBindingProviderContext context)
+            IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             _innerExecutor = innerExecutor;
             _functionLookup = functionLookup;
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             };
         }
 
-        private IFunctionInstance CreateFunctionInstance(CallAndOverrideMessage message, RuntimeBindingProviderContext context)
+        private IFunctionInstance CreateFunctionInstance(CallAndOverrideMessage message, HostBindingContext context)
         {
             FunctionDefinition function = _functionLookup.Lookup(message.FunctionId);
 
@@ -106,12 +106,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 }
             }
 
-            return new FunctionInstance(message.Id, message.ParentId, message.Reason, new InvokeBindCommand(message.Id,
-                function, objectParameters, context), function.Descriptor, function.Method);
+            return new FunctionInstance(message.Id, message.ParentId, message.Reason,
+                new InvokeBindingSource(function.Binding, objectParameters), function.Descriptor, function.Method);
         }
 
         private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,
-            RuntimeBindingProviderContext context)
+            HostBindingContext context)
         {
             IFunctionInstance instance = CreateFunctionInstance(message, context);
 

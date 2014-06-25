@@ -221,8 +221,8 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 
             if (triggerBinding != null)
             {
-                ITriggerClient triggerClient = triggerBinding.CreateClient(method, nonTriggerBindings,
-                    functionDescriptor);
+                ITriggerClient triggerClient = triggerBinding.CreateClient(nonTriggerBindings, functionDescriptor,
+                    method);
                 functionBinding = triggerClient.FunctionBinding;
                 listenerFactory = triggerClient.ListenerFactory;
             }

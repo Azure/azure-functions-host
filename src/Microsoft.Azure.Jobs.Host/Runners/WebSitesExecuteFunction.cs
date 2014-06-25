@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             _sharedContext = sharedContext;
         }
 
-        public FunctionInvocationResult Execute(IFunctionInstance instance, RuntimeBindingProviderContext context)
+        public FunctionInvocationResult Execute(IFunctionInstance instance, HostBindingContext context)
         {
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance,
                 context.StorageAccount, context.ServiceBusConnectionString);
@@ -68,16 +68,16 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             };
         }
 
-        private void ExecuteWithLogMessage(IFunctionInstance instance, RuntimeBindingProviderContext context,
+        private void ExecuteWithLogMessage(IFunctionInstance instance, HostBindingContext context,
             FunctionStartedMessage message, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             // Create the console output writer
             FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(instance);
             TextWriter consoleOutput = functionOutput.Output;
-            context.ConsoleOutput = consoleOutput;
+            FunctionBindingContext functionContext = new FunctionBindingContext(context, instance.Id, consoleOutput);
 
             // Must bind before logging (bound invoke string is included in log message).
-            IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindCommand.Execute();
+            IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindingSource.Bind(functionContext);
 
             using (ValueProviderDisposable.Create(parameters))
             {

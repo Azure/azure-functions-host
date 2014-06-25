@@ -54,7 +54,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 

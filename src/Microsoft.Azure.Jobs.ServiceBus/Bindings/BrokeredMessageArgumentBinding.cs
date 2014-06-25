@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return typeof(BrokeredMessage); }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
+        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
         {
             return new MessageValueBinder(value, context.FunctionInstanceId);
         }

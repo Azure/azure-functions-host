@@ -17,7 +17,7 @@
         OwnerAccountName = 9,
         ServiceType = 10, // matches ServiceType
         RequestUrl = 11,
-        RequestedObjectKey = 12, // This is the CloudBlobPath, specifies the blob name! eg, /Account/Container/Blob
+        RequestedObjectKey = 12, // This is the BlobPath, specifies the blob name! eg, /Account/Container/Blob
         RequestIdHeader = 13, // a GUID
         OperationCount = 14,
 

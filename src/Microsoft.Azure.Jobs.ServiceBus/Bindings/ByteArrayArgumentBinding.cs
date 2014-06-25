@@ -12,7 +12,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return typeof(byte[]); }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, ArgumentBindingContext context)
+        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
         {
             return new ByteArrayValueBinder(value, context.FunctionInstanceId);
         }

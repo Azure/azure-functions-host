@@ -66,15 +66,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 RowKey = boundPath.RowKey
             };
 
-            return Bind(entityContext, context);
+            return Bind(entityContext, context.FunctionContext);
         }
 
-        private IValueProvider Bind(TableEntityContext entityContext, ArgumentBindingContext context)
+        private IValueProvider Bind(TableEntityContext entityContext, FunctionBindingContext context)
         {
             return _argumentBinding.Bind(entityContext, context);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             TableEntityContext entityContext = null;
 

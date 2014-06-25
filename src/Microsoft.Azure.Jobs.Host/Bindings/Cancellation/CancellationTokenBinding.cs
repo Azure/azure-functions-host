@@ -18,12 +18,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
             get { return false; }
         }
 
-        private IValueProvider Bind(CancellationToken token, ArgumentBindingContext context)
+        private IValueProvider Bind(CancellationToken token, FunctionBindingContext context)
         {
             return new CancellationTokenValueProvider(token);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             if (value is CancellationToken)
             {
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(context.CancellationToken, context);
+            return Bind(context.CancellationToken, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

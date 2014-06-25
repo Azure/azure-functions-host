@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(BrokeredMessage value, ArgumentBindingContext context)
+            public IValueProvider Bind(BrokeredMessage value, FunctionBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 object converted = _converter.Convert(value);

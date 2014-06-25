@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, ArgumentBindingContext context)
+            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 object value;
                 string status;

@@ -291,14 +291,16 @@
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
     <Compile Include="Executors\ExecuteFunctionExecutor.cs" />
+    <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />
-    <Compile Include="Executors\IBindingCommand.cs" />
+    <Compile Include="Executors\IBindingSource.cs" />
     <Compile Include="Executors\FunctionInstance.cs" />
     <Compile Include="Executors\IFunctionInstance.cs" />
+    <Compile Include="Triggers\ITriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Listeners\CompositeListener.cs" />
     <Compile Include="Queues\Listeners\HostMessageListenerFactory.cs" />
-    <Compile Include="Queues\Triggers\QueueTriggerExecutor.cs" />
-    <Compile Include="Triggers\TriggerBindCommand.cs" />
+    <Compile Include="Queues\Listeners\QueueTriggerExecutor.cs" />
+    <Compile Include="Triggers\TriggerBindingSource.cs" />
     <Compile Include="Queues\Listeners\QueueListenerFactory.cs" />
     <Compile Include="Triggers\ITriggerClient.cs" />
     <Compile Include="Triggers\TriggerClient.cs" />
@@ -338,7 +340,7 @@
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBinding.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBindingProvider.cs" />
     <Compile Include="Bindings\IAttributeBinding.cs" />
-    <Compile Include="Bindings\ArgumentBindingContext.cs" />
+    <Compile Include="Bindings\FunctionBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />
     <Compile Include="Bindings\BindingProviderContext.cs" />
@@ -352,7 +354,7 @@
     <Compile Include="Bindings\IWatchable.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBinding.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
-    <Compile Include="Bindings\RuntimeBindingProviderContext.cs" />
+    <Compile Include="Bindings\HostBindingContext.cs" />
     <Compile Include="Bindings\StaticSelfWatch.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
     <Compile Include="Bindings\ValueProviderDisposable.cs" />
@@ -431,10 +433,8 @@
     <Compile Include="Runners\ExceptionDispatchInfoDelayedException.cs" />
     <Compile Include="Runners\HeartbeatIntervals.cs" />
     <Compile Include="Runners\IDelayedException.cs" />
-    <Compile Include="Runners\InvokeParametersProvider.cs" />
-    <Compile Include="Runners\TriggerBindCommand.cs" />
+    <Compile Include="Runners\InvokeBindingSource.cs" />
     <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
-    <Compile Include="Runners\IParametersProvider.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
     <Compile Include="Tables\IBindableTablePath.cs" />
     <Compile Include="Tables\IBindableTableEntityPath.cs" />
@@ -469,7 +469,7 @@
     <Compile Include="Triggers\ITriggerBindingProvider.cs" />
     <Compile Include="Triggers\ITriggerData.cs" />
     <Compile Include="Triggers\ITriggeredFunctionBinding.cs" />
-    <Compile Include="Triggers\ITriggerExecutor.cs" />
+    <Compile Include="Listeners\ITriggerExecutor.cs" />
     <Compile Include="Triggers\TriggerBindingProviderContext.cs" />
     <Compile Include="Triggers\TriggerData.cs" />
     <Compile Include="DefaultNameResolver.cs" />
@@ -535,7 +535,6 @@
     <Compile Include="Runners\IExecuteFunction.cs" />
     <Compile Include="Indexers\IFunctionTableLookup.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
-    <Compile Include="Runners\FunctionInvokeRequest.cs" />
     <Compile Include="Indexers\FunctionDefinition.cs" />
     <Compile Include="Indexers\IFunctionTable.cs" />
     <Compile Include="Indexers\IndexException.cs" />

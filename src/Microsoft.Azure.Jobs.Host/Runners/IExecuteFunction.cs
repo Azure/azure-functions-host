@@ -7,6 +7,6 @@ namespace Microsoft.Azure.Jobs
     // Execute a function as well as updating all associated logging. 
     internal interface IExecuteFunction
     {
-        FunctionInvocationResult Execute(IFunctionInstance instance, RuntimeBindingProviderContext context);
+        FunctionInvocationResult Execute(IFunctionInstance instance, HostBindingContext context);
     }
 }

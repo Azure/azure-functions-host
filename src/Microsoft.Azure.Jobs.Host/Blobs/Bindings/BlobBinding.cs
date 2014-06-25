@@ -60,7 +60,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 new OutputConverter<string>(new StringToCloudBlobConverter(client, path, argumentType)));
         }
 
-        private IValueProvider Bind(ICloudBlob value, ArgumentBindingContext context)
+        private IValueProvider Bind(ICloudBlob value, FunctionBindingContext context)
         {
             return _argumentBinding.Bind(value, context);
         }
@@ -75,10 +75,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             string blobName = boundPath.BlobName;
             ICloudBlob blob = container.GetBlobReferenceForArgumentType(blobName, argumentType);
 
-            return Bind(blob, context);
+            return Bind(blob, context.FunctionContext);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             ICloudBlob blob = null;
 

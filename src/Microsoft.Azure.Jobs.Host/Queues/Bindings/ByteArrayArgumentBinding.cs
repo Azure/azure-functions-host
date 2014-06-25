@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return typeof(byte[]); }
         }
 
-        public IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
+        public IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
         {
             return new ByteArrayValueBinder(value);
         }

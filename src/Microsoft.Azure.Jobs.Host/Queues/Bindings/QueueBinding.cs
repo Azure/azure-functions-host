@@ -56,15 +56,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         public IValueProvider Bind(BindingContext context)
         {
             CloudQueue queue = _client.GetQueueReference(_queueName);
-            return Bind(queue, context);
+            return Bind(queue, context.FunctionContext);
         }
 
-        private IValueProvider Bind(CloudQueue value, ArgumentBindingContext context)
+        private IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
         {
             return _argumentBinding.Bind(value, context);
         }
 
-        public IValueProvider Bind(object value, ArgumentBindingContext context)
+        public IValueProvider Bind(object value, FunctionBindingContext context)
         {
             CloudQueue queue = null;
 

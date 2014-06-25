@@ -21,47 +21,30 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
         private readonly MessagingFactory _messagingFactory;
         private readonly string _topicName;
         private readonly string _subscriptionName;
-        private readonly ITriggeredFunctionBinding<BrokeredMessage> _functionBinding;
-        private readonly FunctionDescriptor _functionDescriptor;
-        private readonly MethodInfo _method;
+        private readonly ITriggeredFunctionInstanceFactory<BrokeredMessage> _instanceFactory;
 
-        public ServiceBusSubscriptionListenerFactory(ServiceBusAccount account, string topicName, string subscriptionName,
-            ITriggeredFunctionBinding<BrokeredMessage> functionBinding, FunctionDescriptor functionDescriptor,
-            MethodInfo method)
+        public ServiceBusSubscriptionListenerFactory(ServiceBusAccount account, string topicName,
+            string subscriptionName, ITriggeredFunctionInstanceFactory<BrokeredMessage> instanceFactory)
         {
             _namespaceManager = account.NamespaceManager;
             _messagingFactory = account.MessagingFactory;
             _topicName = topicName;
             _subscriptionName = subscriptionName;
-            _functionBinding = functionBinding;
-            _functionDescriptor = functionDescriptor;
-            _method = method;
+            _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, RuntimeBindingProviderContext context)
+        public IListener Create(IFunctionExecutor executor)
         {
-            CancellationToken cancellationToken = context.CancellationToken;
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return null;
-            }
-
             // Must create all messaging entities before creating message receivers and calling OnMessage.
             // Otherwise, some function could start to execute and try to output messages to entities that don't yet
             // exist.
             _namespaceManager.CreateTopicIfNotExists(_topicName);
             _namespaceManager.CreateSubscriptionIfNotExists(_topicName, _subscriptionName);
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return null;
-            }
-
             string entityPath = SubscriptionClient.FormatSubscriptionPath(_topicName, _subscriptionName);
 
-            return new ServiceBusListener(_messagingFactory, entityPath, _functionBinding, _functionDescriptor, _method,
-                executor, context);
+            ITriggerExecutor<BrokeredMessage> triggerExecutor = new ServiceBusTriggerExecutor(_instanceFactory, executor);
+            return new ServiceBusListener(_messagingFactory, entityPath, triggerExecutor);
         }
     }
 }

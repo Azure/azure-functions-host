@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
