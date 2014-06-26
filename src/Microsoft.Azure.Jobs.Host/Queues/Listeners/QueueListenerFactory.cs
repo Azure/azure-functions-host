@@ -17,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor)
+        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
             PollQueueCommand command = new PollQueueCommand(_queue, triggerExecutor);

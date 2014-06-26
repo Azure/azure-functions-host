@@ -7,13 +7,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
     {
         private readonly ICloudBlob _blob;
         private readonly Guid _functionInstanceId;
-        private readonly INotifyNewBlob _notify;
+        private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
-        public BlobCommittedAction(ICloudBlob blob, Guid functionInstanceId, INotifyNewBlob notify)
+        public BlobCommittedAction(ICloudBlob blob, Guid functionInstanceId, IBlobWrittenWatcher blobWrittenWatcher)
         {
             _blob = blob;
             _functionInstanceId = functionInstanceId;
-            _notify = notify;
+            _blobWrittenWatcher = blobWrittenWatcher;
         }
 
         public void Execute()
@@ -23,10 +23,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             BlobCausalityLogger.SetWriter(_blob, _functionInstanceId);
 
             // Notify that blob is available. 
-            if (_notify != null)
+            if (_blobWrittenWatcher != null)
             {
-                string accountName = _blob.ServiceClient.Credentials.AccountName;
-                _notify.Notify(accountName, _blob.Container.Name, _blob.Name);
+                _blobWrittenWatcher.Notify(_blob);
             }
         }
     }

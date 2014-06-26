@@ -4,6 +4,6 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal interface IListenerFactory
     {
-        IListener Create(IFunctionExecutor executor);
+        IListener Create(IFunctionExecutor executor, ListenerFactoryContext context);
     }
 }

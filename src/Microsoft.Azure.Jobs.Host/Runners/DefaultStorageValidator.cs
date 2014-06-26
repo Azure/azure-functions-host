@@ -53,7 +53,7 @@ namespace Microsoft.Azure.Jobs
             return true;
         }
 
-        private static bool IsDevelopmentStorageAccount(CloudStorageAccount account)
+        internal static bool IsDevelopmentStorageAccount(CloudStorageAccount account)
         {
             // see the section "Addressing local storage resources" in http://msdn.microsoft.com/en-us/library/windowsazure/hh403989.aspx 
             return account.BlobEndpoint.PathAndQuery.TrimStart('/') == account.Credentials.AccountName;

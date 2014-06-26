@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -15,6 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
     {
         private readonly string _parameterName;
         private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
+        private readonly CloudBlobClient _client;
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
         private readonly IObjectToTypeConverter<ICloudBlob> _converter;
@@ -24,6 +28,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
+            _client = client;
             _accountName = BlobClient.GetAccountName(client);
             _path = path;
             _converter = CreateConverter(client);
@@ -90,7 +95,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         {
             ITriggeredFunctionBinding<ICloudBlob> functionBinding =
                 new TriggeredFunctionBinding<ICloudBlob>(_parameterName, this, nonTriggerBindings);
-            IListenerFactory listenerFactory = null;
+            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory =
+                new TriggeredFunctionInstanceFactory<ICloudBlob>(functionBinding, functionDescriptor, method);
+            CloudBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
+            IEnumerable<IBindableBlobPath> blobOutputs = GetBlobOutputs(nonTriggerBindings.Values);
+            IListenerFactory listenerFactory = new BlobListenerFactory(container, _path, blobOutputs, instanceFactory);
             return new TriggerClient<ICloudBlob>(functionBinding, listenerFactory);
         }
 
@@ -109,6 +118,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         private IReadOnlyDictionary<string, object> CreateBindingData(ICloudBlob value)
         {
             return _path.CreateBindingData(value.ToBlobPath());
+        }
+
+        private IEnumerable<IBindableBlobPath> GetBlobOutputs(IEnumerable<IBinding> nonTriggerBindingValues)
+        {
+            return nonTriggerBindingValues
+                .OfType<BlobBinding>()
+                .Where(b => b.Access == FileAccess.Write)
+                .Select(b => b.Path);
         }
     }
 }

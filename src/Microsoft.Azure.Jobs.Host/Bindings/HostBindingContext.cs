@@ -1,5 +1,5 @@
-﻿using System.IO;
-using System.Threading;
+﻿using System.Threading;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
@@ -7,7 +7,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     internal class HostBindingContext
     {
         private readonly IBindingProvider _bindingProvider;
-        private readonly INotifyNewBlob _notifyNewBlob;
         private readonly CancellationToken _cancellationToken;
         private readonly INameResolver _nameResolver;
         private readonly CloudStorageAccount _storageAccount;
@@ -15,14 +14,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
 
         public HostBindingContext(
             IBindingProvider bindingProvider,
-            INotifyNewBlob notifyNewBlob,
             CancellationToken cancellationToken,
             INameResolver nameResolver,
             CloudStorageAccount storageAccount,
             string serviceBusConnectionString)
         {
             _bindingProvider = bindingProvider;
-            _notifyNewBlob = notifyNewBlob;
             _cancellationToken = cancellationToken;
             _nameResolver = nameResolver;
             _storageAccount = storageAccount;
@@ -32,11 +29,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public IBindingProvider BindingProvider
         {
             get { return _bindingProvider; }
-        }
-
-        public INotifyNewBlob NotifyNewBlob
-        {
-            get { return _notifyNewBlob; }
         }
 
         public CancellationToken CancellationToken
@@ -58,5 +50,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         {
             get { return _serviceBusConnectionString; }
         }
+
+        public IBlobWrittenWatcher BlobWrittenWatcher { get; set; }
     }
 }

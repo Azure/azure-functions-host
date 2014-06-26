@@ -9,6 +9,7 @@ using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -84,7 +85,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             _context = new HostBindingContext(
                 bindingProvider: DefaultBindingProvider.Create(null),
-                notifyNewBlob: null,
                 cancellationToken: CancellationToken.None,
                 nameResolver: null,
                 storageAccount: _account,
@@ -190,7 +190,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
             FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            IFunctionInstance instance = Worker.CreateFunctionInstance(func, _context, blobInput);
+            IBindingSource bindingSource = new TriggerBindingSource<ICloudBlob>((ITriggeredFunctionBinding<ICloudBlob>)func.Binding, blobInput);
+            IFunctionInstance instance = new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.AutomaticTrigger,
+                bindingSource, func.Descriptor, func.Method);
 
             CallInner(instance);
         }

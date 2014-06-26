@@ -163,87 +163,69 @@ namespace Microsoft.Azure.Jobs
         internal void RunAndBlock(CancellationToken token, Action pauseAction)
         {
             using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
-            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: true))
+            using (IntervalSeparationTimer timer = CreateHeartbeatTimer())
             {
-                token = CancellationTokenSource.CreateLinkedTokenSource(token, watcher.Token).Token;
                 timer.Start(executeFirst: true);
 
-                try
+                CloudStorageAccount account = CloudStorageAccount.Parse(_storageConnectionString);
+                token = CancellationTokenSource.CreateLinkedTokenSource(token, watcher.Token).Token;
+
+                HostBindingContext context = new HostBindingContext(
+                    bindingProvider: _hostContext.BindingProvider,
+                    cancellationToken: token,
+                    nameResolver: _hostContext.NameResolver,
+                    storageAccount: account,
+                    serviceBusConnectionString: _serviceBusConnectionString);
+
+                CloudQueueClient queueClient = account.CreateCloudQueueClient();
+                IListener sharedQueueListener;
+                IListener instanceQueueListener;
+
+                if (_dashboardConnectionString != null)
                 {
-                    NotifyNewBlobViaInMemory fastpathNotify = new NotifyNewBlobViaInMemory();
-                    CloudStorageAccount account = CloudStorageAccount.Parse(_storageConnectionString);
+                    sharedQueueListener = HostMessageListener.Create(
+                        queueClient.GetQueueReference(_hostContext.SharedQueueName),
+                        _hostContext.ExecuteFunction,
+                        _hostContext.FunctionTableLookup,
+                        _hostContext.FunctionInstanceLogger,
+                        context);
+                    instanceQueueListener = HostMessageListener.Create(
+                        queueClient.GetQueueReference(_hostContext.InstanceQueueName),
+                        _hostContext.ExecuteFunction,
+                        _hostContext.FunctionTableLookup,
+                        _hostContext.FunctionInstanceLogger,
+                        context);
+                }
+                else
+                {
+                    sharedQueueListener = null;
+                    instanceQueueListener = null;
+                }
 
-                    HostBindingContext context = new HostBindingContext(
-                        bindingProvider: _hostContext.BindingProvider,
-                        notifyNewBlob: fastpathNotify,
-                        cancellationToken: token,
-                        nameResolver: _hostContext.NameResolver,
-                        storageAccount: account,
-                        serviceBusConnectionString: _serviceBusConnectionString);
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
 
-                    CloudQueueClient queueClient = account.CreateCloudQueueClient();
-                    IListener sharedQueueListener;
-                    IListener instanceQueueListener;
-
-                    if (_dashboardConnectionString != null)
-                    {
-                        sharedQueueListener = HostMessageListener.Create(
-                            queueClient.GetQueueReference(_hostContext.SharedQueueName),
-                            _hostContext.ExecuteFunction,
-                            _hostContext.FunctionTableLookup,
-                            _hostContext.FunctionInstanceLogger,
-                            context);
-                        instanceQueueListener = HostMessageListener.Create(
-                            queueClient.GetQueueReference(_hostContext.InstanceQueueName),
-                            _hostContext.ExecuteFunction,
-                            _hostContext.FunctionTableLookup,
-                            _hostContext.FunctionInstanceLogger,
-                            context);
-                    }
-                    else
-                    {
-                        sharedQueueListener = null;
-                        instanceQueueListener = null;
-                    }
-
-                    Credentials credentials = new Credentials { StorageConnectionString = _storageConnectionString };
-
+                using (IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
+                    _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener))
+                {
                     if (token.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    Worker worker = new Worker(_hostContext.FunctionTableLookup, _hostContext.ExecuteFunction,
-                        _hostContext.FunctionInstanceLogger, fastpathNotify, fastpathNotify, credentials);
+                    listener.Start();
 
-                    IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
-                        _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener);
-
-                    try
+                    while (!token.IsCancellationRequested)
                     {
-                        listener.Start();
-
-                        while (!token.IsCancellationRequested)
-                        {
-                            worker.Poll(context);
-
-                            if (token.IsCancellationRequested)
-                            {
-                                return;
-                            }
-
-                            pauseAction();
-                        }
+                        pauseAction();
                     }
-                    finally
-                    {
-                        listener.Stop();
-                    }
+
+                    listener.Stop();
                 }
-                finally
-                {
-                    timer.Stop();
-                }
+
+                timer.Stop();
             }
         }
 
@@ -295,34 +277,26 @@ namespace Microsoft.Azure.Jobs
             }
 
             FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionTableLookup);
-            HostBindingContext context = new HostBindingContext(
-                bindingProvider: _hostContext.BindingProvider,
-                notifyNewBlob: null,
-                cancellationToken: cancellationToken,
-                nameResolver: _hostContext.NameResolver,
-                storageAccount: _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
-                serviceBusConnectionString: _serviceBusConnectionString);
-            IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
-
             FunctionInvocationResult result;
 
             using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
-            using (IntervalSeparationTimer timer = CreateHeartbeatTimer(hostIsRunning: false))
             {
                 cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token).Token;
-                timer.Start(executeFirst: true);
+                HostBindingContext context = new HostBindingContext(
+                    bindingProvider: _hostContext.BindingProvider,
+                    cancellationToken: cancellationToken,
+                    nameResolver: _hostContext.NameResolver,
+                    storageAccount: _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
+                    serviceBusConnectionString: _serviceBusConnectionString);
+                IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
 
-                try
-                {
-                    result = _hostContext.ExecuteFunction.Execute(instance, context);
-                }
-                finally
-                {
-                    timer.Stop();
-                }
+                result = _hostContext.ExecuteFunction.Execute(instance, context);
             }
 
-            VerifySuccess(result);
+            if (!result.Succeeded)
+            {
+                result.ExceptionInfo.Throw();
+            }
         }
 
         private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
@@ -332,29 +306,11 @@ namespace Microsoft.Azure.Jobs
                 new InvokeBindingSource(func.Binding, parameters), func.Descriptor, func.Method);
         }
 
-        private IntervalSeparationTimer CreateHeartbeatTimer(bool hostIsRunning)
+        private IntervalSeparationTimer CreateHeartbeatTimer()
         {
-            ICanFailCommand heartbeat = CreateHeartbeat(hostIsRunning);
-
-            if (heartbeat == null)
-            {
-                return new IntervalSeparationTimer(new NullTimerCommand());
-            }
-
-            return LinearSpeedupTimerCommand.CreateTimer(heartbeat,
+            ICanFailCommand heartbeatCommand = new UpdateHostHeartbeatCommand(_hostContext.HeartbeatCommand);
+            return LinearSpeedupTimerCommand.CreateTimer(heartbeatCommand,
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
-        }
-
-        private ICanFailCommand CreateHeartbeat(bool hostIsRunning)
-        {
-            if (!hostIsRunning)
-            {
-                return null;
-            }
-            else
-            {
-                return CreateUpdateHostHeartbeatCommand();
-            }
         }
 
         private static IListener CreateListener(IExecuteFunction executeFunction, HostBindingContext context,
@@ -364,6 +320,7 @@ namespace Microsoft.Azure.Jobs
             IFunctionExecutor executor = new ExecuteFunctionExecutor(executeFunction, context);
 
             List<IListener> listeners = new List<IListener>();
+            ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer());
 
             foreach (FunctionDefinition functionDefinition in functionDefinitions)
             {
@@ -374,7 +331,7 @@ namespace Microsoft.Azure.Jobs
                     continue;
                 }
 
-                IListener listener = listenerFactory.Create(executor);
+                IListener listener = listenerFactory.Create(executor, listenerContext);
                 listeners.Add(listener);
             }
 
@@ -389,20 +346,6 @@ namespace Microsoft.Azure.Jobs
             }
 
             return new CompositeListener(listeners);
-        }
-
-        private UpdateHostHeartbeatCommand CreateUpdateHostHeartbeatCommand()
-        {
-            return new UpdateHostHeartbeatCommand(_hostContext.HeartbeatCommand);
-        }
-
-        // Throw if the function failed. 
-        private static void VerifySuccess(FunctionInvocationResult result)
-        {
-            if (!result.Succeeded)
-            {
-                result.ExceptionInfo.Throw();
-            }
         }
 
         private static JobHostConfiguration ThrowIfNull(JobHostConfiguration configuration)

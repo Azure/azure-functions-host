@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -17,41 +19,35 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void NoOutputs()
         {
-            var trigger = new BlobTrigger {
-                 BlobInput = CreateBlobPathSource("container", "skip")
-            };
+            var input = CreateInput("container", "skip");
+            IEnumerable<IBindableBlobPath> outputs = null;
 
-            var nvc = new Dictionary<string,object>();
-            bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
+
             Assert.True(invoke);
         }
 
         [Fact]
         public void NoOutputsEmptyArray()
         {
-            var trigger = new BlobTrigger
-            {
-                BlobInput = CreateBlobPathSource("container", "skip"),
-                BlobOutputs = new IBindableBlobPath[0]
-            };
+            var input = CreateInput("container", "skip");
+            var outputs = new IBindableBlobPath[0];
 
-            var nvc = new Dictionary<string, object>();
-            bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, TimeOld, LookupTime);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
+
             Assert.True(invoke);
         }
-         
+
         [Fact]
         public void NewerInput()
         {
-            var trigger = new BlobTrigger
+            var input = CreateInput("container", "new");
+            var outputs = new IBindableBlobPath[]
             {
-                BlobInput = CreateBlobPathSource("container", "new"),
-                BlobOutputs = new IBindableBlobPath[] {
-                    new BoundBlobPath(new BlobPath("container", "old"))
-                }
+                CreateOutput("container", "old")
             };
 
-            bool invoke = ShouldInvokeTrigger(trigger);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
 
             Assert.True(invoke);
         }
@@ -59,15 +55,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void MissingOutput()
         {
-            var trigger = new BlobTrigger
+            var input = CreateInput("container", "old");
+            var outputs = new IBindableBlobPath[]
             {
-                BlobInput = CreateBlobPathSource("container", "old"),
-                BlobOutputs = new IBindableBlobPath[] {
-                    CreateBindableBlobPath("container", "missing")
-                }
+                CreateOutput("container", "missing")
             };
 
-            bool invoke = ShouldInvokeTrigger(trigger);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
 
             Assert.True(invoke);
         }
@@ -75,15 +69,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void OlderInput()
         {
-            var trigger = new BlobTrigger
+            var input = CreateInput("container", "old");
+            var outputs = new IBindableBlobPath[]
             {
-                BlobInput = CreateBlobPathSource("container", "old"),
-                BlobOutputs = new IBindableBlobPath[] {
-                    CreateBindableBlobPath("container", "new")
-                }
+                CreateOutput("container", "new")
             };
 
-            bool invoke = ShouldInvokeTrigger(trigger);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
 
             Assert.False(invoke);
         }
@@ -91,47 +83,48 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void StrippedInput()
         {
-            // Input is new than one of the outputs
-            var trigger = new BlobTrigger
+            // Input is newer than one of the outputs
+            var input = CreateInput("container", "middle");
+            var outputs = new IBindableBlobPath[]
             {
-                BlobInput = CreateBlobPathSource("container", "middle"),
-                BlobOutputs = new IBindableBlobPath[] {
-                    CreateBindableBlobPath("container", "old"),
-                    CreateBindableBlobPath("container", "new")
-                }
+                CreateOutput("container", "old"),
+                CreateOutput("container", "new")
             };
 
-            bool invoke = ShouldInvokeTrigger(trigger);
+            bool invoke = ShouldInvokeTrigger(input, outputs);
 
             Assert.True(invoke);
         }
 
-        bool ShouldInvokeTrigger(BlobTrigger trigger)
+        bool ShouldInvokeTrigger(BlobPath input, IEnumerable<IBindableBlobPath> outputs)
         {
             var nvc = new Dictionary<string, object>();
-            var inputTime = LookupTime(trigger.BlobInput);
+            var inputTime = LookupTime(input);
             Assert.True(inputTime.HasValue);
+            CloudBlobClient client = new CloudBlobClient(new Uri("http://ignore"));
+            CloudBlobContainer inputContainer = client.GetContainerReference(input.ContainerName);
+            ICloudBlob possibleTrigger = inputContainer.GetBlockBlobReference(input.BlobName);
 
-            bool invoke = Listener.ShouldInvokeTrigger(trigger, nvc, inputTime.Value, LookupTime);
-            return invoke;
+            return BlobTriggerExecutor.ShouldExecuteTrigger(possibleTrigger, new FixedBlobPathSource(input), outputs,
+                new LambdaTimestampReader(LookupTime));
         }
 
-        private static IBindableBlobPath CreateBindableBlobPath(string containerName, string blobName)
+        private static BlobPath CreateInput(string containerName, string blobName)
+        {
+            return new BlobPath(containerName, blobName);
+        }
+
+        private static IBindableBlobPath CreateOutput(string containerName, string blobName)
         {
             return new BoundBlobPath(new BlobPath(containerName, blobName));
         }
 
-        private static IBlobPathSource CreateBlobPathSource(string containerName, string blobName)
+        private static DateTime? LookupTime(ICloudBlob blob)
         {
-            return new FixedBlobPathSource(new BlobPath(containerName, blobName));
+            return LookupTime(new BlobPath(blob.Container.Name, blob.Name));
         }
 
-        internal static DateTime? LookupTime(IBlobPathSource path)
-        {
-            return LookupTime(new BlobPath(path.ContainerNamePattern, path.BlobNamePattern));
-        }
-
-        internal static DateTime? LookupTime(BlobPath path)
+        private static DateTime? LookupTime(BlobPath path)
         {
             if (path.BlobName.EndsWith("missing"))
             {
@@ -139,11 +132,27 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             }
             switch (path.BlobName)
             {
+                case "skip": return TimeOld;
                 case "old": return TimeOld;
                 case "middle": return TimeMiddle;
                 case "new": return TimeNew;
             }
             throw new InvalidOperationException("Unexpected blob name: " + path.ToString());
+        }
+
+        private class LambdaTimestampReader : IBlobTimestampReader
+        {
+            private readonly Func<ICloudBlob, DateTime?> _getLastModifiedTimestamp;
+
+            public LambdaTimestampReader(Func<ICloudBlob, DateTime?> getLastModifiedTimestamp)
+            {
+                _getLastModifiedTimestamp = getLastModifiedTimestamp;
+            }
+
+            public DateTime? GetLastModifiedTimestamp(ICloudBlob blob)
+            {
+                return _getLastModifiedTimestamp.Invoke(blob);
+            }
         }
     }
 }

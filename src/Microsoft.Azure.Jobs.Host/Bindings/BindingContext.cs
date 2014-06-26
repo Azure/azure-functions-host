@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
@@ -27,11 +28,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _functionContext.BindingProvider; }
         }
 
-        public INotifyNewBlob NotifyNewBlob
-        {
-            get { return _functionContext.NotifyNewBlob; }
-        }
-
         public CancellationToken CancellationToken
         {
             get { return _functionContext.CancellationToken; }
@@ -50,6 +46,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public string ServiceBusConnectionString
         {
             get { return _functionContext.ServiceBusConnectionString; }
+        }
+
+        public IBlobWrittenWatcher BlobWrittenWatcher
+        {
+            get { return _functionContext.BlobWrittenWatcher; }
         }
 
         public Guid FunctionInstanceId

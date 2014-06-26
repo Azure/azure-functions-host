@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
                 CloudBlobStream rawStream = blockBlob.OpenWrite();
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
-                    context.NotifyNewBlob);
+                    context.BlobWrittenWatcher);
                 SelfWatchCloudBlobStream selfWatchStream = new SelfWatchCloudBlobStream(rawStream, committedAction);
                 return new ObjectValueBinder(blob, selfWatchStream, _objectBinder, _valueType);
             }

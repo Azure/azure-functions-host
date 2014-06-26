@@ -1,7 +1,5 @@
-﻿using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Executors;
+﻿using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
@@ -24,7 +22,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor)
+        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             // Must create all messaging entities before creating message receivers and calling OnMessage.
             // Otherwise, some function could start to execute and try to output messages to entities that don't yet

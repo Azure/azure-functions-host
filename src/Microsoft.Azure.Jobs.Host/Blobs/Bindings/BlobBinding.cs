@@ -42,9 +42,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             get { return _path.BlobNamePattern; }
         }
 
-        public string BlobPath
+        public IBindableBlobPath Path
         {
-            get { return _path.ToString(); }
+            get { return _path; }
         }
 
         public FileAccess Access

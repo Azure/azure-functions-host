@@ -48,7 +48,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
                 CloudBlobStream rawStream = blockBlob.OpenWrite();
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
-                    context.NotifyNewBlob);
+                    context.BlobWrittenWatcher);
                 SelfWatchCloudBlobStream selfWatchStream = new SelfWatchCloudBlobStream(rawStream, committedAction);
                 const int defaultBufferSize = 1024;
                 TextWriter writer = new StreamWriter(selfWatchStream, Encoding.UTF8, defaultBufferSize,
