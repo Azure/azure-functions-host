@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 

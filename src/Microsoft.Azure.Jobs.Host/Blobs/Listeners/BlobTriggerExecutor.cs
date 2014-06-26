@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                 return true;
             }
 
-            Guid? parentId = BlobCausalityLogger.GetWriter(value);
+            Guid? parentId = BlobCausalityManager.GetWriter(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
             return _innerExecutor.Execute(instance);
         }

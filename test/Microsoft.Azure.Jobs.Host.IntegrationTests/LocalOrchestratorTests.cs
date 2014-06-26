@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 // $$$ Put this in its own unit test?
                 var blob = account.CreateCloudBlobClient().GetContainerReference("daas-test-input").GetBlockBlobReference("note.csv");
-                var guid = BlobCausalityLogger.GetWriter(blob);
+                var guid = BlobCausalityManager.GetWriter(blob);
 
                 Assert.True(guid != Guid.Empty, "Blob is missing causality information");
             }

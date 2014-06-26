@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 return null;
             }
-            return BlobClient.ReadBlob(blob);
+            return ReadBlob(blob);
         }
 
         public static bool DoesBlobExist(CloudStorageAccount account, string containerName, string blobName)
@@ -55,6 +56,26 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var blob = c.GetBlockBlobReference(blobName);
 
             return blob.Exists();
+        }
+
+        // Return Null if doesn't exist
+        [DebuggerNonUserCode]
+        private static string ReadBlob(ICloudBlob blob)
+        {
+            // Beware! Blob.DownloadText does not strip the BOM! 
+            try
+            {
+                using (var stream = blob.OpenRead())
+                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
+                {
+                    string data = sr.ReadToEnd();
+                    return data;
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 
         public bool Execute(CloudQueueMessage value)
         {
-            Guid? parentId = new QueueCausalityHelper().GetOwner(value);
+            Guid? parentId = QueueCausalityManager.GetOwner(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
             return _innerExecutor.Execute(instance);
         }

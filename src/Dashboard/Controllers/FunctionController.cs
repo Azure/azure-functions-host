@@ -265,7 +265,7 @@ namespace Dashboard.Controllers
 
             try
             {
-                guid = BlobCausalityLogger.GetWriter(blob);
+                guid = BlobCausalityManager.GetWriter(blob);
             }
             catch
             {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -27,7 +28,7 @@ namespace Microsoft.Azure.Jobs
             : this(content => blob.UploadText(content))
         {
             // Prepend existing 
-            string existingContent = BlobClient.ReadBlob(blob); // null if no exist            
+            string existingContent = ReadBlob(blob); // null if no exist            
             if (existingContent != null)
             {
                 // This can happen if the function was running previously and the 
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.Jobs
                 _inner.WriteLine("Previous execution information:");
                 _inner.WriteLine(existingContent);
 
-                var lastTime = BlobClient.GetBlobModifiedUtcTime(blob);
+                var lastTime = GetBlobModifiedUtcTime(blob);
                 if (lastTime.HasValue)
                 {
                     var delta = DateTime.UtcNow - lastTime.Value;
@@ -91,6 +92,38 @@ namespace Microsoft.Azure.Jobs
             {
             }
             Callback(null);
+        }
+
+        private static DateTime? GetBlobModifiedUtcTime(ICloudBlob blob)
+        {
+            if (!blob.Exists())
+            {
+                return null; // no blob, no time.
+            }
+
+            var props = blob.Properties;
+            var time = props.LastModified;
+            return time.HasValue ? (DateTime?)time.Value.UtcDateTime : null;
+        }
+
+        // Return Null if doesn't exist
+        [DebuggerNonUserCode]
+        private static string ReadBlob(ICloudBlob blob)
+        {
+            // Beware! Blob.DownloadText does not strip the BOM! 
+            try
+            {
+                using (var stream = blob.OpenRead())
+                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
+                {
+                    string data = sr.ReadToEnd();
+                    return data;
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

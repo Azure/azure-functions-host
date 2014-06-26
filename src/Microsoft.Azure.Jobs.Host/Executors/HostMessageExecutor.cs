@@ -132,6 +132,5 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             bool terminated = NativeMethods.TerminateProcess(NativeMethods.GetCurrentProcess(), 1);
             Debug.Assert(terminated);
         }
-
     }
 }

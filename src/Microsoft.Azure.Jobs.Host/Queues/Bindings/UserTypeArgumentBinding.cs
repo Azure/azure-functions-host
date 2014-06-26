@@ -58,8 +58,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
             public void SetValue(object value)
             {
-                QueueCausalityHelper causality = new QueueCausalityHelper();
-                CloudQueueMessage message = causality.EncodePayload(_functionInstanceId, value);
+                CloudQueueMessage message = QueueCausalityManager.EncodePayload(_functionInstanceId, value);
 
                 _queue.AddMessageAndCreateIfNotExists(message);
             }

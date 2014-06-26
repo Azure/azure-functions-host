@@ -4,10 +4,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Tables
 {
     // Functions for working with azure tables.
     // See http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
@@ -66,37 +65,6 @@ namespace Microsoft.Azure.Jobs
             {
                 throw new InvalidOperationException("Table entity types must provide a default constructor.");
             }
-        }
-
-        // Is this a type that is already serialized by default?
-        // See list of types here: http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
-        public static bool IsDefaultTableType(Type t)
-        {
-            if ((t == typeof(byte[])) ||
-                (t == typeof(bool)) ||
-                (t == typeof(DateTime)) ||
-                (t == typeof(double)) ||
-                (t == typeof(Guid)) ||
-                (t == typeof(Int32)) ||
-                (t == typeof(Int64)) ||
-                (t == typeof(string))
-                )
-            {
-                return true;
-            }
-
-            // Nullables are written too. 
-            if (t.IsGenericType)
-            {
-                var tOpen = t.GetGenericTypeDefinition();
-                if (tOpen == typeof(Nullable<>))
-                {
-                    var tArg = t.GetGenericArguments()[0];
-                    return IsDefaultTableType(tArg);
-                }
-            }
-
-            return false;
         }
 
         // Azure table names are very restrictive, so sanity check upfront to give a useful error.

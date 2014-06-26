@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal interface IAttributeBinding
     {

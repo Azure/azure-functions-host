@@ -4,20 +4,20 @@ using System.Diagnostics;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Queues
 {
     // This tracks causality via the queue message payload. 
     // Important that this can interoperate with external queue messages, so be resilient to a missing guid marker. 
     // Can we switch to some auxillary table? Beware, CloudQueueMessage.Id is not 
     // filled out until after the message is queued, but then there's a race between updating 
     // the aux storage and another function picking up the message.
-    internal class QueueCausalityHelper
+    internal static class QueueCausalityManager
     {
         // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
         const string parentGuidFieldName = "$AzureJobsParentId";
 
         // When we enqueue, add the 
-        public CloudQueueMessage EncodePayload(Guid functionOwner, object payload)
+        public static CloudQueueMessage EncodePayload(Guid functionOwner, object payload)
         {
             JToken token = JToken.FromObject(payload);
             token[parentGuidFieldName] = functionOwner.ToString();
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         [DebuggerNonUserCode]
-        public Guid? GetOwner(CloudQueueMessage msg)
+        public static Guid? GetOwner(CloudQueueMessage msg)
         {
             string json = msg.AsString;
             IDictionary<string, JToken> jsonObject;

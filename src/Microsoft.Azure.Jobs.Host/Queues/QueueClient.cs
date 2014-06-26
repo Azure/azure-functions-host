@@ -2,7 +2,7 @@
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Queues
 {
     internal static class QueueClient
     {

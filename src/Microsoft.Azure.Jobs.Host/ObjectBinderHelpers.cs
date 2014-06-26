@@ -311,11 +311,42 @@ namespace Microsoft.Azure.Jobs
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 
             // That gives them higher compatibily with just regular strings. 
-            return TableClient.IsDefaultTableType(t) ||
+            return IsDefaultTableType(t) ||
                 (t == typeof(char)) ||
                 (t.IsEnum) || // ensures Enums are represented as string values instead of numerical.
                 (t == typeof(TimeSpan)
                 );
+        }
+
+        // Is this a type that is already serialized by default?
+        // See list of types here: http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx
+        private static bool IsDefaultTableType(Type t)
+        {
+            if ((t == typeof(byte[])) ||
+                (t == typeof(bool)) ||
+                (t == typeof(DateTime)) ||
+                (t == typeof(double)) ||
+                (t == typeof(Guid)) ||
+                (t == typeof(Int32)) ||
+                (t == typeof(Int64)) ||
+                (t == typeof(string))
+                )
+            {
+                return true;
+            }
+
+            // Nullables are written too. 
+            if (t.IsGenericType)
+            {
+                var tOpen = t.GetGenericTypeDefinition();
+                if (tOpen == typeof(Nullable<>))
+                {
+                    var tArg = t.GetGenericArguments()[0];
+                    return IsDefaultTableType(tArg);
+                }
+            }
+
+            return false;
         }
     }
 }

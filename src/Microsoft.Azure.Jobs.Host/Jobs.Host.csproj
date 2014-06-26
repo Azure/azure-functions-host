@@ -265,7 +265,7 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyLessThanQueryModifier.cs">
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
-    <Compile Include="Bindings\AttributeBinding.cs" />
+    <Compile Include="Bindings\Runtime\AttributeBinding.cs" />
     <Compile Include="Bindings\BindingDataPath.cs" />
     <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
@@ -354,7 +354,7 @@
     <Compile Include="Bindings\StorageAccount\OutputConverter.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBinding.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBindingProvider.cs" />
-    <Compile Include="Bindings\IAttributeBinding.cs" />
+    <Compile Include="Bindings\Runtime\IAttributeBinding.cs" />
     <Compile Include="Bindings\FunctionBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />
@@ -477,7 +477,6 @@
     <Compile Include="Tables\BoundTablePath.cs" />
     <Compile Include="Tables\TableValueProvider.cs" />
     <Compile Include="Tables\TableAttributeBindingProvider.cs" />
-    <Compile Include="Timers\NullTimerCommand.cs" />
     <Compile Include="Triggers\CompositeTriggerBindingProvider.cs" />
     <Compile Include="Triggers\ITriggerBindingOfT.cs" />
     <Compile Include="Triggers\ITriggerBinding.cs" />
@@ -501,7 +500,7 @@
     <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Runners\IConfiguration.cs" />
-    <Compile Include="Runners\ISelfWatch.cs" />
+    <Compile Include="Bindings\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Runners\HostEntity.cs" />
@@ -527,7 +526,7 @@
     <Compile Include="Runners\JobHostContext.cs" />
     <Compile Include="Loggers\ConsoleFunctionOutputLogDispenser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="BlobClient.cs" />
+    <Compile Include="Blobs\BlobClient.cs" />
     <Compile Include="Blobs\Listeners\CloudBlobContainerComparer.cs" />
     <Compile Include="Runners\DefaultStorageValidator.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
@@ -547,12 +546,11 @@
     <Compile Include="Indexers\IFunctionTable.cs" />
     <Compile Include="Indexers\IndexException.cs" />
     <Compile Include="StorageConverter.cs" />
-    <Compile Include="Loggers\BlobCausalityLogger.cs" />
-    <Compile Include="Loggers\QueueCausalityHelper.cs" />
+    <Compile Include="Blobs\BlobCausalityManager.cs" />
+    <Compile Include="Queues\QueueCausalityManager.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
-    <Compile Include="Utility.cs" />
-    <Compile Include="QueueClient.cs" />
-    <Compile Include="TableClient.cs" />
+    <Compile Include="Queues\QueueClient.cs" />
+    <Compile Include="Tables\TableClient.cs" />
     <Compile Include="Runners\WebSitesExecuteFunction.cs" />
     <Compile Include="Indexers\IndexInMemory.cs" />
     <Compile Include="Indexers\FunctionStore.cs" />

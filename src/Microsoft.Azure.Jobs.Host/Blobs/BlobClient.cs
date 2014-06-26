@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal static class BlobClient
     {
@@ -18,38 +14,6 @@ namespace Microsoft.Azure.Jobs
             }
 
             return StorageClient.GetAccountName(client.Credentials);
-        }
-
-        public static DateTime? GetBlobModifiedUtcTime(ICloudBlob blob)
-        {
-            if (!blob.Exists())
-            {
-                return null; // no blob, no time.
-            }
-
-            var props = blob.Properties;
-            var time = props.LastModified;
-            return time.HasValue ? (DateTime?)time.Value.UtcDateTime : null;
-        }
-
-        // Return Null if doesn't exist
-        [DebuggerNonUserCode]
-        public static string ReadBlob(ICloudBlob blob)
-        {
-            // Beware! Blob.DownloadText does not strip the BOM! 
-            try
-            {
-                using (var stream = blob.OpenRead())
-                using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
-                {
-                    string data = sr.ReadToEnd();
-                    return data;
-                }
-            }
-            catch
-            {
-                return null;
-            }
         }
 
         // Naming rules are here: http://msdn.microsoft.com/en-us/library/dd135715.aspx

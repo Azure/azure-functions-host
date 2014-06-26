@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -17,8 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             string val = "abc"; // not even valid JSON. 
             CloudQueueMessage msg = new CloudQueueMessage(val);
 
-            var qcm = new QueueCausalityHelper();
-            Guid? g = qcm.GetOwner(msg);
+            Guid? g = QueueCausalityManager.GetOwner(msg);
             Assert.Null(g);
 
             string payload = msg.AsString;
@@ -29,8 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void InternalProducerExternalConsumer()
         {
             // Queue from inside of SimpleBatch, consume outside of SimpleBatch
-            var qcm = new QueueCausalityHelper();
-            var msg = qcm.EncodePayload(Guid.Empty, new Payload { Val = 123 });
+            var msg = QueueCausalityManager.EncodePayload(Guid.Empty, new Payload { Val = 123 });
 
             var json = msg.AsString;
             var obj = JsonConvert.DeserializeObject<Payload>(json);
@@ -41,15 +40,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void InternalProducerInternalConsumer()
         {
             // Test that we can 
-            var qcm = new QueueCausalityHelper();
             Guid g = Guid.NewGuid();
-            var msg = qcm.EncodePayload(g, new Payload { Val = 123 });
+            var msg = QueueCausalityManager.EncodePayload(g, new Payload { Val = 123 });
 
             var payload = msg.AsString;
             var result = JsonCustom.DeserializeObject<Payload>(payload);
             Assert.Equal(result.Val, 123);
 
-            var owner = qcm.GetOwner(msg);
+            var owner = QueueCausalityManager.GetOwner(msg);
             Assert.Equal(g, owner);
         }
 
@@ -107,11 +105,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         private static Guid? GetOwner(string message)
         {
             // Arrange
-            QueueCausalityHelper product = new QueueCausalityHelper();
             CloudQueueMessage queueMessage = new CloudQueueMessage(message);
 
             // Act
-            return product.GetOwner(queueMessage);
+            return QueueCausalityManager.GetOwner(queueMessage);
         }
 
         public class Payload

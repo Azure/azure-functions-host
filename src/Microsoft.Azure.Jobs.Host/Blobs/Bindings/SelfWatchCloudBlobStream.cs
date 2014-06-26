@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings

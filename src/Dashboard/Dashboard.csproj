@@ -164,14 +164,14 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\BlobClient.cs">
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobCausalityManager.cs">
+      <Link>Data\BlobCausalityManager.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobClient.cs">
       <Link>Data\BlobClient.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobPath.cs">
       <Link>Data\BlobPath.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Loggers\BlobCausalityLogger.cs">
-      <Link>Data\BlobCausalityLogger.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\AmbientConnectionStringProvider.cs">
       <Link>Data\AmbientConnectionStringProvider.cs</Link>

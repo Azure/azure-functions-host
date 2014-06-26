@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
@@ -61,7 +61,7 @@ namespace Dashboard
 
             try
             {
-                return BlobCausalityLogger.GetWriter(blob) ?? Guid.Empty;
+                return BlobCausalityManager.GetWriter(blob) ?? Guid.Empty;
             }
             catch (StorageException e)
             {
