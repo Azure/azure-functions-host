@@ -1,26 +1,43 @@
 ﻿using System.Reflection;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Triggers
 {
     internal class TriggerBindingProviderContext
     {
-        public ParameterInfo Parameter { get; set; }
+        private readonly FunctionIndexerContext _indexerContext;
+        private readonly ParameterInfo _parameter;
 
-        public INameResolver NameResolver { get; set; }
+        public TriggerBindingProviderContext(FunctionIndexerContext indexerContext, ParameterInfo parameter)
+        {
+            _indexerContext = indexerContext;
+            _parameter = parameter;
+        }
 
-        public CloudStorageAccount StorageAccount { get; set; }
+        public INameResolver NameResolver
+        {
+            get { return _indexerContext.NameResolver; }
+        }
 
-        public string ServiceBusConnectionString { get; set; }
+        public CloudStorageAccount StorageAccount
+        {
+            get { return _indexerContext.StorageAccount; }
+        }
+
+        public string ServiceBusConnectionString
+        {
+            get { return _indexerContext.ServiceBusConnectionString; }
+        }
+
+        public ParameterInfo Parameter
+        {
+            get { return _parameter; }
+        }
 
         public string Resolve(string input)
         {
-            if (NameResolver == null)
-            {
-                return input;
-            }
-
-            return NameResolver.ResolveWholeString(input);
+            return _indexerContext.Resolve(input);
         }
     }
 }

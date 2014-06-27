@@ -29,6 +29,5 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
             }
         }
-
     }
 }

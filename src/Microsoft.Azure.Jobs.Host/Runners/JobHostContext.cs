@@ -23,26 +23,19 @@ namespace Microsoft.Azure.Jobs
         private static readonly Func<string, ConnectionStringDescriptor> _serviceBusConnectionStringDescriptorFactory =
             CreateServiceBusConnectionStringDescriptorFactory();
 
+        private readonly INameResolver _nameResolver;
         private readonly IExecuteFunction _executeFunction;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
-        private readonly IFunctionTableLookup _functionTableLookup;
+        private readonly FunctionIndex _functionIndex;
         private readonly string _sharedQueueName;
         private readonly string _instanceQueueName;
         private readonly HostOutputMessage _hostOutputMessage;
         private readonly IHeartbeatCommand _heartbeatCommand;
-        private readonly FunctionStore _functionStore;
 
         public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
+            _nameResolver = nameResolver;
             Guid id = Guid.NewGuid();
-            IConfiguration config = new Configuration();
-            config.NameResolver = nameResolver;
-
-            IFunctionTableLookup functionTableLookup;
-
-            var types = typeLocator.GetTypes().ToArray();
-            AddCustomerBinders(config, types);
-
             CloudStorageAccount storageAccount;
 
             if (storageConnectionString == null)
@@ -54,11 +47,8 @@ namespace Microsoft.Azure.Jobs
                 storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             }
 
-            _functionStore = new FunctionStore(storageAccount, serviceBusConnectionString, config, types);
-            functionTableLookup = _functionStore;
-
-            // Determine the host name from the function list
-            FunctionDefinition[] functions = functionTableLookup.ReadAll();
+            _functionIndex = FunctionIndex.Create(new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
+                serviceBusConnectionString));
 
             FunctionExecutionContext ctx;
 
@@ -70,7 +60,8 @@ namespace Microsoft.Azure.Jobs
                 CloudBlobClient blobClient = account.CreateCloudBlobClient();
                 ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
                 IHostIdManager hostIdManager = new HostIdManager(blobClient);
-                Assembly hostAssembly = GetHostAssembly(functions);
+                // Determine the host name from the method list
+                Assembly hostAssembly = GetHostAssembly(_functionIndex.ReadAllMethods());
 
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
                 string sharedHostName = account.Credentials.AccountName + "/" + hostName;
@@ -104,7 +95,7 @@ namespace Microsoft.Azure.Jobs
                     new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(functionTableLookup, storageConnectionString, serviceBusConnectionString,
+                PublishFunctionTable(_functionIndex, storageConnectionString, serviceBusConnectionString,
                     persistentQueueWriter);
 
                 var logger = new WebExecutionLogger(blobClient, _hostOutputMessage);
@@ -133,7 +124,6 @@ namespace Microsoft.Azure.Jobs
 
             // This is direct execution, doesn't queue up. 
             _executeFunction = new WebSitesExecuteFunction(ctx);
-            _functionTableLookup = functionTableLookup;
         }
 
         public IExecuteFunction ExecuteFunction
@@ -146,9 +136,14 @@ namespace Microsoft.Azure.Jobs
             get { return _functionInstanceLogger; }
         }
 
-        public IFunctionTableLookup FunctionTableLookup
+        public IFunctionIndexLookup FunctionLookup
         {
-            get { return _functionTableLookup; }
+            get { return _functionIndex; }
+        }
+
+        public IFunctionIndex Functions
+        {
+            get { return _functionIndex; }
         }
 
         public string SharedQueueName
@@ -168,12 +163,12 @@ namespace Microsoft.Azure.Jobs
 
         public IBindingProvider BindingProvider
         {
-            get { return _functionStore.BindingProvider; }
+            get { return _functionIndex.BindingProvider; }
         }
 
         public INameResolver NameResolver
         {
-            get { return _functionStore.NameResolver; }
+            get { return _nameResolver; }
         }
 
         private static Func<string, ConnectionStringDescriptor> CreateServiceBusConnectionStringDescriptorFactory()
@@ -191,41 +186,14 @@ namespace Microsoft.Azure.Jobs
                 typeof(Func<string, ConnectionStringDescriptor>), method);
         }
 
-        // Search for any types that implement ICloudBlobStreamBinder<T>
-        // When found, automatically add them as binders to our config. 
-        internal static void AddCustomerBinders(IConfiguration config, IEnumerable<Type> types)
+        private static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
         {
-            // Scan for any binders
-            foreach (var type in types)
-            {
-                try
-                {
-                    foreach (var ti in type.GetInterfaces())
-                    {
-                        if (ti.IsGenericType)
-                        {
-                            var ti2 = ti.GetGenericTypeDefinition();
-                            if (ti2 == typeof(ICloudBlobStreamBinder<>))
-                            {
-                                config.CloudBlobStreamBinderTypes.Add(type);
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                }
-            }
-        }
+            // 1. Try to get the assembly name from the first method.
+            MethodInfo firstMethod = methods.FirstOrDefault();
 
-        private static Assembly GetHostAssembly(FunctionDefinition[] functions)
-        {
-            // 1. Try to get the assembly name from the first function definition.
-            FunctionDefinition firstFunction = functions.FirstOrDefault();
-
-            if (firstFunction != null)
+            if (firstMethod != null)
             {
-                return firstFunction.Method.DeclaringType.Assembly;
+                return firstMethod.DeclaringType.Assembly;
             }
 
             // 2. If there are no function definitions, try to use the entry assembly.
@@ -242,17 +210,10 @@ namespace Microsoft.Azure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionTableLookup functionTableLookup, string storageConnectionString,
+        private void PublishFunctionTable(IFunctionIndex functionIndex, string storageConnectionString,
             string serviceBusConnectionString, IPersistentQueueWriter<PersistentQueueMessage> logger)
         {
-            FunctionDefinition[] functions = functionTableLookup.ReadAll();
-
-            FunctionDescriptor[] functionDescriptors = new FunctionDescriptor[functions.Length];
-
-            for (int index = 0; index < functions.Length; index++)
-            {
-                functionDescriptors[index] = functions[index].Descriptor;
-            }
+            IEnumerable<FunctionDescriptor> functions = functionIndex.ReadAllDescriptors();
 
             HostStartedMessage message = new HostStartedMessage
             {
@@ -263,7 +224,7 @@ namespace Microsoft.Azure.Jobs
                 Heartbeat = _hostOutputMessage.Heartbeat,
                 Credentials = _hostOutputMessage.Credentials,
                 WebJobRunIdentifier = _hostOutputMessage.WebJobRunIdentifier,
-                Functions = functionDescriptors
+                Functions = functions
             };
 
             logger.Enqueue(message);

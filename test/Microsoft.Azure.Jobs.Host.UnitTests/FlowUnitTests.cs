@@ -1,15 +1,20 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings.Data;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Queues.Bindings;
 using Microsoft.Azure.Jobs.Host.Queues.Triggers;
 using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -18,14 +23,29 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
     public class FlowUnitTests
     {
         // Helper to do the indexing.
-        private static FunctionDefinition Get(string methodName, INameResolver nameResolver = null)
+        private static FunctionDescriptor Get(string methodName, INameResolver nameResolver = null)
         {
-            MethodInfo m = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            Assert.NotNull(m);
+            MethodInfo method = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            Assert.NotNull(method);
 
-            Indexer idx = new Indexer(null, nameResolver, null, CloudStorageAccount.DevelopmentStorageAccount, null);
-            FunctionDefinition func = idx.CreateFunctionDefinition(m);
-            return func;
+            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(
+                new FunctionIndexContext(null, nameResolver, CloudStorageAccount.DevelopmentStorageAccount, null), null);
+
+            FunctionIndexer indexer = new FunctionIndexer(context);
+
+            FunctionDescriptor descriptor = null;
+            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>(MockBehavior.Strict);
+            indexMock
+                .Setup((i) => i.Add(
+                    It.IsAny<IFunctionDefinition>(),
+                    It.IsAny<FunctionDescriptor>(),
+                    It.IsAny<MethodInfo>()))
+                .Callback<IFunctionDefinition, FunctionDescriptor, MethodInfo>((i1, d, i2) => descriptor = d);
+            IFunctionIndex index = indexMock.Object;
+
+            indexer.IndexMethod(method, index);
+
+            return descriptor;
         }
 
         private static void NoAutoTrigger1([Blob(@"daas-test-input/{name}.csv")] TextReader inputs) { }
@@ -33,8 +53,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestNoAutoTrigger1()
         {
-            FunctionDefinition func = Get("NoAutoTrigger1");
-            Assert.Null(func.TriggerBinding);
+            FunctionDescriptor func = Get("NoAutoTrigger1");
+
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
+            Assert.IsType<BlobParameterDescriptor>(parameters.First());
         }
 
         private static void NameResolver([Blob(@"input/%name%")] TextReader inputs) { }
@@ -44,11 +68,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         {
             DictNameResolver nameResolver = new DictNameResolver();
             nameResolver.Add("name", "VALUE");
-            FunctionDefinition func = Get("NameResolver", nameResolver);
-            var bindings = func.NonTriggerBindings;
 
-            Assert.Equal(@"input", ((BlobBinding)bindings["inputs"]).ContainerName);
-            Assert.Equal(@"VALUE", ((BlobBinding)bindings["inputs"]).BlobName);
+            FunctionDescriptor func = Get("NameResolver", nameResolver);
+
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
+            ParameterDescriptor firstParameter = parameters.First();
+            Assert.Equal("inputs", firstParameter.Name);
+            Assert.IsType<BlobParameterDescriptor>(firstParameter);
+            BlobParameterDescriptor blobParameter = (BlobParameterDescriptor)firstParameter;
+            Assert.Equal(@"input", blobParameter.ContainerName);
+            Assert.Equal(@"VALUE", blobParameter.BlobName);
         }
 
         public static void AutoTrigger1([BlobTrigger(@"daas-test-input/{name}.csv")] TextReader inputs) { }
@@ -56,8 +87,12 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestAutoTrigger1()
         {
-            FunctionDefinition func = Get("AutoTrigger1");
-            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding);
+            FunctionDescriptor func = Get("AutoTrigger1");
+
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
+            Assert.IsType<BlobTriggerParameterDescriptor>(parameters.First());
         }
 
         [NoAutomaticTrigger]
@@ -66,8 +101,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestNoAutoTrigger2()
         {
-            FunctionDefinition func = Get("NoAutoTrigger2");
-            Assert.Null(func.TriggerBinding);
+            FunctionDescriptor func = Get("NoAutoTrigger2");
+
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(2, parameters.Count());
+            Assert.IsType<CallerSuppliedParameterDescriptor>(parameters.ElementAt(0));
+            Assert.IsType<CallerSuppliedParameterDescriptor>(parameters.ElementAt(1));
         }
 
         // Nothing about this method that is indexable.
@@ -77,7 +117,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestNoIndex()
         {
-            FunctionDefinition func = Get("NoIndex");
+            FunctionDescriptor func = Get("NoIndex");
+
             Assert.Null(func);
         }
 
@@ -86,14 +127,18 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestTable()
         {
-            FunctionDefinition func = Get("Table");
+            FunctionDescriptor func = Get("Table");
 
-            var flows = func.NonTriggerBindings;
-            Assert.Equal(1, flows.Count);
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
 
-            Assert.True(flows.ContainsKey("table"));
-            var t = (TableBinding)flows["table"];
-            Assert.Equal("TableName", t.TableName);
+            ParameterDescriptor firstParameter = parameters.First();
+            Assert.NotNull(firstParameter);
+            Assert.Equal("table", firstParameter.Name);
+            Assert.IsType<TableParameterDescriptor>(firstParameter);
+            TableParameterDescriptor typedTableParameter = (TableParameterDescriptor)firstParameter;
+            Assert.Equal("TableName", typedTableParameter.TableName);
         }
 
         public static void QueueTrigger([QueueTrigger("inputQueue")] int queueValue) { }
@@ -101,15 +146,17 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestQueueTrigger()
         {
-            FunctionDefinition func = Get("QueueTrigger");
+            FunctionDescriptor func = Get("QueueTrigger");
 
             Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
 
-            QueueTriggerBinding binding = func.TriggerBinding as QueueTriggerBinding;
-
-            Assert.NotNull(binding);
-            Assert.Equal("inputqueue", binding.QueueName); // queue name gets normalized. 
-            Assert.Equal("queueValue", func.TriggerParameterName); // parameter name does not.
+            ParameterDescriptor firstParameter = parameters.First();
+            Assert.IsType<QueueTriggerParameterDescriptor>(firstParameter);
+            QueueTriggerParameterDescriptor queueParameter = (QueueTriggerParameterDescriptor)firstParameter;
+            Assert.Equal("inputqueue", queueParameter.QueueName); // queue name gets normalized. 
+            Assert.Equal("queueValue", firstParameter.Name); // parameter name does not.
         }
 
         // Queue inputs with implicit names.
@@ -121,14 +168,16 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestQueueOutput()
         {
-            FunctionDefinition func = Get("QueueOutput");
+            FunctionDescriptor func = Get("QueueOutput");
 
-            var bindings = func.NonTriggerBindings;
-            Assert.Equal(1, bindings.Count);
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(1, parameters.Count());
 
-            Assert.True(bindings.ContainsKey("inputQueue")); // parameter name does not.
-            var t = (QueueBinding)bindings["inputQueue"];
-            Assert.Equal("inputqueue", t.QueueName);
+            ParameterDescriptor firstParameter = parameters.First();
+            QueueParameterDescriptor queueParameter = (QueueParameterDescriptor)firstParameter;
+            Assert.Equal("inputqueue", queueParameter.QueueName); // queue name gets normalized.
+            Assert.Equal("inputQueue", firstParameter.Name); // parameter name does not.
         }
 
         // Has an unbound parameter, so this will require an explicit invoke.  
@@ -140,16 +189,21 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         public void TestHasBlobAndUnboundParameter()
         {
 
-            FunctionDefinition func = Get("HasBlobAndUnboundParameter");
+            FunctionDescriptor func = Get("HasBlobAndUnboundParameter");
 
-            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // no blobs
-            Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(2, parameters.Count());
 
-            var flows = func.NonTriggerBindings;
-            Assert.Equal(1, flows.Count);
+            ParameterDescriptor firstParameter = parameters.ElementAt(0);
+            Assert.Equal("input", firstParameter.Name);
+            Assert.IsType<BlobTriggerParameterDescriptor>(firstParameter);
+            BlobTriggerParameterDescriptor blobParameter = (BlobTriggerParameterDescriptor)firstParameter;
+            Assert.Equal("container", blobParameter.ContainerName);
 
-            Assert.True(flows.ContainsKey("unbound"));
-            Assert.IsType<StructInvokeBinding<int>>(flows["unbound"]);
+            ParameterDescriptor secondParameter = parameters.ElementAt(1);
+            Assert.Equal("unbound", secondParameter.Name);
+            Assert.IsType<CallerSuppliedParameterDescriptor>(secondParameter);
         }
 
         // Both parameters are bound. 
@@ -159,16 +213,21 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestHasBlobAndBoundParameter()
         {
-            FunctionDefinition func = Get("HasBlobAndBoundParameter");
+            FunctionDescriptor func = Get("HasBlobAndBoundParameter");
 
-            Assert.IsType<BlobTriggerBinding>(func.TriggerBinding); // all parameters are bound
-            Assert.Equal("container", ((BlobTriggerBinding)func.TriggerBinding).ContainerName);
+            Assert.NotNull(func);
+            var parameters = func.Parameters;
+            Assert.Equal(2, parameters.Count());
 
-            var flows = func.NonTriggerBindings;
-            Assert.Equal(1, flows.Count);
+            ParameterDescriptor firstParameter = parameters.ElementAt(0);
+            Assert.Equal("input", firstParameter.Name);
+            Assert.IsType<BlobTriggerParameterDescriptor>(firstParameter);
+            BlobTriggerParameterDescriptor blobParameter = (BlobTriggerParameterDescriptor)firstParameter;
+            Assert.Equal("container", blobParameter.ContainerName);
 
-            Assert.True(flows.ContainsKey("bound"));
-            Assert.IsType<ClassDataBinding<string>>(flows["bound"]);
+            ParameterDescriptor secondParameter = parameters.ElementAt(1);
+            Assert.Equal("bound", secondParameter.Name);
+            Assert.IsType<BindingDataParameterDescriptor>(secondParameter);
         }
     }
 }

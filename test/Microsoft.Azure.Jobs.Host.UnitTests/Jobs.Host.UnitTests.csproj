@@ -103,7 +103,6 @@
     <Compile Include="Protocols\HostQueueNamesTest.cs" />
     <Compile Include="Protocols\HostMessageTests.cs" />
     <Compile Include="QueueCausalityHelper.cs" />
-    <Compile Include="TestConfiguration.cs" />
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />

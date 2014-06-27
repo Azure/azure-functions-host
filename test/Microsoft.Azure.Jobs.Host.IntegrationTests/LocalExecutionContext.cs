@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs;
@@ -19,229 +17,60 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     // Exposes some of the logging objects so that callers can monitor what happened. 
     internal class LocalExecutionContext
     {
-        private readonly CloudStorageAccount _account;
-        private readonly IConfiguration _config;
-        private readonly IExecuteFunction _executor;
-        private readonly IFunctionInstanceLookup _lookup;
-        private readonly IFunctionUpdatedLogger _functionUpdate;
+        private readonly Type _type;
+        private readonly IFunctionIndexLookup _index;
+        private readonly CloudBlobClient _blobClient;
         private readonly HostBindingContext _context;
 
-        private readonly Func<MethodInfo, FunctionDefinition> _fpResolveFuncDefinition;
-        private readonly Func<string, MethodInfo> _fpResolveMethod;
-        private readonly Func<string, CloudBlockBlob> _fpResolveBlobs;
-
-        public IFunctionInstanceLookup FunctionInstanceLookup
-        {
-            get
-            {
-                return _lookup;
-            }
-        }
-
         // Expose to allow callers to hook in new binders. 
-        public IConfiguration Configuration
+        public LocalExecutionContext(Type type, CloudStorageAccount account, Type[] cloudBlobStreamBinderTypes)
         {
-            get
-            {
-                return _config;
-            }
-        }
+            _type = type;
+            FunctionIndex index = FunctionIndex.Create(new FunctionIndexContext(null, null, account, null),
+                new Type[] { type }, cloudBlobStreamBinderTypes);
+            _index = index;
 
-        private static IConfiguration CreateConfig(Type scope)
-        {
-            IConfiguration config = new Configuration();
-
-            JobHostContext.AddCustomerBinders(config, new Type[] { scope });
-
-            return config;
-        }
-
-        public LocalExecutionContext(string accountConnectionString, Type scope)
-        {
-            _account = CloudStorageAccount.Parse(accountConnectionString);
-
-            _config = CreateConfig(scope);
-
-            // These resolution functions are "open". We lazily resolve to any method on the scope type. 
-            _fpResolveMethod = name => Resolve(scope, name); // string-->MethodInfo
-            _fpResolveFuncDefinition = method => Resolve(_account, _config, method); // MethodInfo-->FunctionDefinition
-            CloudBlobClient client = _account.CreateCloudBlobClient();
-
-            _fpResolveBlobs = blobPath =>
-            {
-                BlobPath parsed = BlobPath.Parse(blobPath);
-                CloudBlobContainer container = client.GetContainerReference(parsed.ContainerName);
-                return container.GetBlockBlobReference(parsed.BlobName);
-            };
-
-            {
-                var x = new LocalFunctionLogger();
-                _functionUpdate = x;
-                _lookup = x;
-            }
-
-            var y = new LocalExecute(this);
-            _executor = y;
-
+            _blobClient = account.CreateCloudBlobClient();
             _context = new HostBindingContext(
-                bindingProvider: DefaultBindingProvider.Create(null),
+                bindingProvider: index.BindingProvider,
                 cancellationToken: CancellationToken.None,
                 nameResolver: null,
-                storageAccount: _account,
+                storageAccount: account,
                 serviceBusConnectionString: null);
         }
 
-        private static MethodInfo Resolve(Type scope, string functionShortName)
+        public void Call(string functionName, object arguments = null)
         {
-            MethodInfo method = scope.GetMethod(functionShortName, BindingFlags.Static | BindingFlags.Public);
-            if (method == null)
-            {
-                string msg = string.Format("Can't resolve function '{0}' in type '{1}", functionShortName, scope.FullName);
-                throw new InvalidOperationException(msg);
-            }
-            return method;
-        }
-
-        private static FunctionDefinition Resolve(CloudStorageAccount account, IConfiguration config, MethodInfo method)
-        {
-            LocalFunctionTable store = new LocalFunctionTable(account);
-            Indexer i = new Indexer(store, config.NameResolver, config.CloudBlobStreamBinderTypes, account, null);
-
-            i.IndexMethod(method);
-
-            IFunctionTable functionTable = store;
-            var funcs = functionTable.ReadAll();
-
-            if (funcs.Length == 0)
-            {
-                string msg = string.Format("Function '{0}' is not found. Is it missing Azure Jobs attributes?", method);
-                throw new InvalidOperationException(msg);
-            }
-
-            FunctionDefinition func = funcs[0];
-            return func;
-        }
-
-        private FunctionDefinition ResolveFunctionDefinition(string functionName)
-        {
-            var methodInfo = _fpResolveMethod(functionName);
-            return ResolveFunctionDefinition(methodInfo);
-        }
-
-        private FunctionDefinition ResolveFunctionDefinition(MethodInfo methodInfo)
-        {
-            return _fpResolveFuncDefinition(methodInfo);
-        }
-
-        public Guid Call(string functionName, object arguments = null)
-        {
-            var args2 = ObjectBinderHelpers.ConvertObjectToDict(arguments);
-            MethodInfo method = _fpResolveMethod(functionName);
-
-            var guid = Call(method, args2);
-            return guid;
-        }
-
-        // If no prereqs, can run immediately. 
-        public Guid Call(MethodInfo method, IDictionary<string, string> parameters = null)
-        {
-            FunctionDefinition func = ResolveFunctionDefinition(method);
-            IDictionary<string, object> objectParameters = new Dictionary<string, object>();
-
-            if (parameters != null)
-            {
-                foreach (KeyValuePair<string, string> item in parameters)
-                {
-                    objectParameters.Add(item.Key, item.Value);
-                }
-            }
-
-            IFunctionInstance instance = CreateFunctionInstance(func, objectParameters, _context);
-
-            Guid guidThis = CallUtil.GetParentGuid(parameters);
-            return CallInner(instance, guidThis);
-        }
-
-        private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
-            IDictionary<string, object> parameters, HostBindingContext context)
-        {
-            return new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.HostCall,
-                new InvokeBindingSource(func.Binding, parameters), func.Descriptor, func.Method);
-        }
-
-        private void CallInner(IFunctionInstance instance)
-        {
-            CallInner(instance, Guid.Empty);
-        }
-        private Guid CallInner(IFunctionInstance instance, Guid parentGuid)
-        {
-            instance = new FunctionInstance(instance.Id,
-                parentGuid != Guid.Empty ? (Guid?)parentGuid : null,
-                ExecutionReason.HostCall,
-                instance.BindingSource,
-                instance.FunctionDescriptor,
-                instance.Method);
-
-            var result = _executor.Execute(instance, _context);
-            return result.Id;
+            IFunctionDefinition function = Lookup(functionName);
+            var parametersDictionary = ObjectDictionaryConverter.AsDictionary(arguments);
+            IFunctionInstance instance = function.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall,
+                parametersDictionary);
+            Execute(instance);
         }
 
         public void CallOnBlob(string functionName, string blobPath)
         {
-            CloudBlockBlob blobInput = _fpResolveBlobs(blobPath);
-            FunctionDefinition func = ResolveFunctionDefinition(functionName);
-            IBindingSource bindingSource = new TriggerBindingSource<ICloudBlob>((ITriggeredFunctionBinding<ICloudBlob>)func.Binding, blobInput);
-            IFunctionInstance instance = new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.AutomaticTrigger,
-                bindingSource, func.Descriptor, func.Method);
+            IFunctionDefinition function = Lookup(functionName);
 
-            CallInner(instance);
+            BlobPath parsed = BlobPath.Parse(blobPath);
+            CloudBlobContainer container = _blobClient.GetContainerReference(parsed.ContainerName);
+            CloudBlockBlob blobInput = container.GetBlockBlobReference(parsed.BlobName);
+
+            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory = (ITriggeredFunctionInstanceFactory<ICloudBlob>)function.InstanceFactory;
+            IFunctionInstance instance = instanceFactory.Create(blobInput, null);
+            Execute(instance);
         }
 
-        class LocalExecute : IExecuteFunction
+        private IFunctionDefinition Lookup(string functionName)
         {
-            private readonly LocalExecutionContext _parent;
+            return _index.Lookup(_type.FullName + "." + functionName);
+        }
 
-            public LocalExecute(LocalExecutionContext parent)
-            {
-                _parent = parent;
-            }
-
-            public FunctionInvocationResult Execute(IFunctionInstance instance, HostBindingContext context)
-            {
-                var logItem = new ExecutionInstanceLogEntity();
-                logItem.FunctionInstance = instance;
-                bool succeeded;
-
-                MethodInfo method = instance.Method;
-
-                FunctionBindingContext functionContext = new FunctionBindingContext(context, instance.Id, TextWriter.Null);
-
-                // Run the function. 
-                // The config is what will have the ICall binder that ultimately points back to this object. 
-                try
-                {
-                    WebSitesExecuteFunction.ExecuteWithSelfWatch(method, method.GetParameters(),
-                        instance.BindingSource.Bind(functionContext), TextWriter.Null);
-                    succeeded = true;
-                }
-                catch (Exception e)
-                {
-                    logItem.ExceptionType = e.GetType().FullName;
-                    logItem.ExceptionMessage = e.Message;
-                    succeeded = false;
-                }
-
-                // Mark this function as done executing. $$$ Merge with ExecutionBase?
-                logItem.EndTime = DateTime.UtcNow;
-                _parent._functionUpdate.Log(logItem);
-
-                return new FunctionInvocationResult
-                {
-                    Id = instance.Id,
-                    Succeeded = succeeded,
-                    ExceptionInfo = new DelayedException(new Exception(logItem.ExceptionMessage))
-                };
-            }
+        private void Execute(IFunctionInstance instance)
+        {
+            FunctionBindingContext context = new FunctionBindingContext(_context, instance.Id, TextWriter.Null);
+            WebSitesExecuteFunction.ExecuteWithSelfWatch(instance.Method, instance.Method.GetParameters(),
+                instance.BindingSource.Bind(context), TextWriter.Null);
         }
     }
 }

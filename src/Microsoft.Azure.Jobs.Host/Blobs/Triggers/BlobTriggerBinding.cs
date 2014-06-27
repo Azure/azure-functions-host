@@ -7,6 +7,8 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -90,7 +92,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return Bind(blob, context);
         }
 
-        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+        public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             FunctionDescriptor functionDescriptor, MethodInfo method)
         {
             ITriggeredFunctionBinding<ICloudBlob> functionBinding =
@@ -100,7 +102,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             CloudBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
             IEnumerable<IBindableBlobPath> blobOutputs = GetBlobOutputs(nonTriggerBindings.Values);
             IListenerFactory listenerFactory = new BlobListenerFactory(container, _path, blobOutputs, instanceFactory);
-            return new TriggerClient<ICloudBlob>(functionBinding, listenerFactory);
+            return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

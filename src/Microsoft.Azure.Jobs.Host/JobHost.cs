@@ -186,13 +186,13 @@ namespace Microsoft.Azure.Jobs
                     sharedQueueListener = HostMessageListener.Create(
                         queueClient.GetQueueReference(_hostContext.SharedQueueName),
                         _hostContext.ExecuteFunction,
-                        _hostContext.FunctionTableLookup,
+                        _hostContext.FunctionLookup,
                         _hostContext.FunctionInstanceLogger,
                         context);
                     instanceQueueListener = HostMessageListener.Create(
                         queueClient.GetQueueReference(_hostContext.InstanceQueueName),
                         _hostContext.ExecuteFunction,
-                        _hostContext.FunctionTableLookup,
+                        _hostContext.FunctionLookup,
                         _hostContext.FunctionInstanceLogger,
                         context);
                 }
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.Jobs
                 }
 
                 using (IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
-                    _hostContext.FunctionTableLookup.ReadAll(), sharedQueueListener, instanceQueueListener))
+                    _hostContext.Functions.ReadAll(), sharedQueueListener, instanceQueueListener))
                 {
                     if (token.IsCancellationRequested)
                     {
@@ -276,7 +276,7 @@ namespace Microsoft.Azure.Jobs
                 throw new ArgumentNullException("method");
             }
 
-            FunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionTableLookup);
+            IFunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionLookup);
             FunctionInvocationResult result;
 
             using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
@@ -299,11 +299,10 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        private static IFunctionInstance CreateFunctionInstance(FunctionDefinition func,
+        private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func,
             IDictionary<string, object> parameters, HostBindingContext context)
         {
-            return new FunctionInstance(Guid.NewGuid(), null, ExecutionReason.HostCall,
-                new InvokeBindingSource(func.Binding, parameters), func.Descriptor, func.Method);
+            return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
         }
 
         private IntervalSeparationTimer CreateHeartbeatTimer()
@@ -314,7 +313,7 @@ namespace Microsoft.Azure.Jobs
         }
 
         private static IListener CreateListener(IExecuteFunction executeFunction, HostBindingContext context,
-            IEnumerable<FunctionDefinition> functionDefinitions, IListener sharedQueueListener,
+            IEnumerable<IFunctionDefinition> functionDefinitions, IListener sharedQueueListener,
             IListener instanceQueueListener)
         {
             IFunctionExecutor executor = new ExecuteFunctionExecutor(executeFunction, context);
@@ -322,7 +321,7 @@ namespace Microsoft.Azure.Jobs
             List<IListener> listeners = new List<IListener>();
             ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer());
 
-            foreach (FunctionDefinition functionDefinition in functionDefinitions)
+            foreach (IFunctionDefinition functionDefinition in functionDefinitions)
             {
                 IListenerFactory listenerFactory = functionDefinition.ListenerFactory;
 
@@ -358,18 +357,17 @@ namespace Microsoft.Azure.Jobs
             return configuration;
         }
 
-        private FunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionTableLookup functionTableLookup)
+        private IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
         {
-            foreach (FunctionDefinition func in functionTableLookup.ReadAll())
+            IFunctionDefinition function = functionLookup.Lookup(method);
+
+            if (function == null)
             {
-                if (func.Method.Equals(method))
-                {
-                    return func;
-                }
+                string msg = String.Format("'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
+                throw new InvalidOperationException(msg);
             }
 
-            string msg = String.Format("'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
-            throw new InvalidOperationException(msg);
+            return function;
         }
     }
 }

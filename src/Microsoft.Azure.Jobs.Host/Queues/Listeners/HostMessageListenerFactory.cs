@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
     internal static class HostMessageListener
     {
-        public static IListener Create(CloudQueue queue, IExecuteFunction executor, IFunctionTableLookup functionLookup,
+        public static IListener Create(CloudQueue queue, IExecuteFunction executor, IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, functionLookup, functionInstanceLogger, context);

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Queues.Listeners;
@@ -90,17 +92,17 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return Bind(message, context);
         }
 
-        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+        public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             FunctionDescriptor functionDescriptor, MethodInfo method)
         {
             ITriggeredFunctionBinding<CloudQueueMessage> functionBinding =
                 new TriggeredFunctionBinding<CloudQueueMessage>(_parameterName, this, nonTriggerBindings);
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            CloudQueue queue = client.GetQueueReference(_queueName);
             ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory =
                 new TriggeredFunctionInstanceFactory<CloudQueueMessage>(functionBinding, functionDescriptor, method);
+            CloudQueueClient client = _account.CreateCloudQueueClient();
+            CloudQueue queue = client.GetQueueReference(_queueName);
             IListenerFactory listenerFactory = new QueueListenerFactory(queue, instanceFactory);
-            return new TriggerClient<CloudQueueMessage>(functionBinding, listenerFactory);
+            return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -98,7 +99,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return Bind(message, context);
         }
 
-        public ITriggerClient CreateClient(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
+        public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             FunctionDescriptor functionDescriptor, MethodInfo method)
         {
             ITriggeredFunctionBinding<BrokeredMessage> functionBinding =
@@ -117,7 +118,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     instanceFactory);
             }
 
-            return new TriggerClient<BrokeredMessage>(functionBinding, listenerFactory);
+            return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

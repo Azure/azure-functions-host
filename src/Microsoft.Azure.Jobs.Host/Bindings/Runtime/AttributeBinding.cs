@@ -20,13 +20,8 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
         public IValueProvider Bind<TValue>(Attribute attribute)
         {
-            IBinding binding = _context.BindingProvider.TryCreate(new BindingProviderContext
-            {
-                Parameter = new FakeParameterInfo(typeof(TValue), attribute),
-                NameResolver = _context.NameResolver,
-                StorageAccount = _context.StorageAccount,
-                ServiceBusConnectionString = _context.ServiceBusConnectionString
-            });
+            IBinding binding = _context.BindingProvider.TryCreate(BindingProviderContext.Create(
+                _context, new FakeParameterInfo(typeof(TValue), attribute), bindingDataContract: null));
 
             if (binding == null)
             {

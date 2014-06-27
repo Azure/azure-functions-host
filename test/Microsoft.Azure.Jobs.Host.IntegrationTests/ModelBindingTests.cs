@@ -1,7 +1,5 @@
 ﻿using System;
 using System.IO;
-using Microsoft.Azure.Jobs;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.IntegrationTests
@@ -33,9 +31,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestBlobClient.DeleteContainer(account, "daas-test-input");
             TestBlobClient.WriteBlob(account, "daas-test-input", "input.txt", "abc");
 
-            var lc = TestStorage.New<Program>(account);
-            IConfiguration config = lc.Configuration;
-            config.CloudBlobStreamBinderTypes.Add(typeof(ModelCloudBlobStreamBinder));
+            var lc = TestStorage.New<Program>(account, new Type[] { typeof(ModelCloudBlobStreamBinder) });
             lc.CallOnBlob("Func", @"daas-test-input/input.txt");
 
             string content = TestBlobClient.ReadBlob(account, "daas-test-input", "output.txt");

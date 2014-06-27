@@ -5,97 +5,50 @@ using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     // Go down and build an index
-    internal class Indexer
+    internal class FunctionIndexer
     {
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
 
-        private readonly IFunctionTable _functionTable;
-        private readonly INameResolver _nameResolver;
+        private readonly FunctionIndexerContext _context;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
-        private readonly CloudStorageAccount _storageAccount;
-        private readonly string _serviceBusConnectionString;
 
-        // Account for where index lives
-        public Indexer(IFunctionTable functionTable, INameResolver nameResolver, IEnumerable<Type> cloudBlobStreamBinderTypes,
-            CloudStorageAccount storageAccount, string serviceBusConnectionString)
+        public FunctionIndexer(FunctionIndexerContext context)
         {
-            _functionTable = functionTable;
-            _nameResolver = nameResolver;
-            _triggerBindingProvider = DefaultTriggerBindingProvider.Create(cloudBlobStreamBinderTypes);
-            _bindingProvider = DefaultBindingProvider.Create(cloudBlobStreamBinderTypes);
-            _storageAccount = storageAccount;
-            _serviceBusConnectionString = serviceBusConnectionString;
+            _context = context;
+            _triggerBindingProvider = context.TriggerBindingProvider;
+            _bindingProvider = context.BindingProvider;
         }
 
-        public IBindingProvider BindingProvider
+        public void IndexType(Type type, IFunctionIndex index)
         {
-            get { return _bindingProvider; }
-        }
-
-        public INameResolver NameResolver
-        {
-            get { return _nameResolver; }
-        }
-
-        public void IndexType(Type type)
-        {
-            // Now register any declaritive methods
             foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags))
             {
-                IndexMethod(method);
-            }
-
-            EnsureNoDuplicateFunctions();
-        }
-
-        // Check for duplicate names. Indexing doesn't support overloads.
-        private void EnsureNoDuplicateFunctions()
-        {
-            HashSet<string> locations = new HashSet<string>();
-
-            foreach (FunctionDefinition func in _functionTable.ReadAll())
-            {
-                var locationKey = func.Descriptor.Id;
-                if (!locations.Add(locationKey))
-                {
-                    // Dup found!
-                    string msg = string.Format("Method overloads are not supported. There are multiple methods with the name '{0}'.", locationKey);
-                    throw new InvalidOperationException(msg);
-                }
+                IndexMethod(method, index);
             }
         }
 
-        public void IndexMethod(MethodInfo method)
-        {
-            FunctionDefinition index = CreateFunctionDefinition(method);
-            if (index != null)
-            {
-                _functionTable.Add(index);
-            }
-        }
-
-        public FunctionDefinition CreateFunctionDefinition(MethodInfo method)
+        public void IndexMethod(MethodInfo method, IFunctionIndex index)
         {
             try
             {
-                return CreateFunctionDefinitionInternal(method);
+                IndexMethodCore(method, index);
             }
             catch (Exception exception)
             {
-                throw IndexException.NewMethod(method.Name, exception);
+                throw new FunctionIndexingException(method.Name, exception);
             }
         }
 
-        private FunctionDefinition CreateFunctionDefinitionInternal(MethodInfo method)
+        private void IndexMethodCore(MethodInfo method, IFunctionIndex index)
         {
             bool hasNoAutomaticTrigger = method.GetCustomAttribute<NoAutomaticTriggerAttribute>() != null;
 
@@ -104,13 +57,8 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             ParameterInfo[] parameters = method.GetParameters();
             foreach (ParameterInfo parameter in parameters)
             {
-                ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(new TriggerBindingProviderContext
-                {
-                    Parameter = parameter,
-                    NameResolver = _nameResolver,
-                    StorageAccount = _storageAccount,
-                    ServiceBusConnectionString = _serviceBusConnectionString
-                });
+                ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(
+                    new TriggerBindingProviderContext(_context, parameter));
 
                 if (possibleTriggerBinding != null)
                 {
@@ -148,14 +96,8 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                     continue;
                 }
 
-                IBinding binding = _bindingProvider.TryCreate(new BindingProviderContext
-                {
-                    Parameter = parameter,
-                    NameResolver = _nameResolver,
-                    BindingDataContract = bindingDataContract,
-                    StorageAccount = _storageAccount,
-                    ServiceBusConnectionString = _serviceBusConnectionString
-                });
+                IBinding binding = _bindingProvider.TryCreate(
+                    BindingProviderContext.Create(_context, parameter, bindingDataContract));
 
                 if (binding == null)
                 {
@@ -197,7 +139,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                 // 3. There's an attribute on the method itself (NoAutomaticTrigger).
                 if (method.GetCustomAttribute<NoAutomaticTriggerAttribute>() == null)
                 {
-                    return null;
+                    return;
                 }
             }
 
@@ -216,28 +158,21 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
             FunctionDescriptor functionDescriptor = CreateFunctionDescriptor(method, triggerParameterName,
                 triggerBinding, nonTriggerBindings);
-            IFunctionBinding functionBinding;
-            IListenerFactory listenerFactory;
+            IFunctionDefinition functionDefinition;
 
             if (triggerBinding != null)
             {
-                ITriggerClient triggerClient = triggerBinding.CreateClient(nonTriggerBindings, functionDescriptor,
-                    method);
-                functionBinding = triggerClient.FunctionBinding;
-                listenerFactory = triggerClient.ListenerFactory;
+                functionDefinition = triggerBinding.CreateFunctionDefinition(nonTriggerBindings,
+                    functionDescriptor, method);
             }
             else
             {
-                functionBinding = new FunctionBinding(method, nonTriggerBindings);
-                listenerFactory = null;
+                IFunctionInstanceFactory instanceFactory = new FunctionInstanceFactory(
+                    new FunctionBinding(method, nonTriggerBindings), functionDescriptor, method);
+                functionDefinition = new FunctionDefinition(instanceFactory, listenerFactory: null);
             }
 
-            return new FunctionDefinition(functionDescriptor, functionBinding, listenerFactory, method)
-            {
-                TriggerParameterName = triggerParameterName,
-                TriggerBinding = triggerBinding,
-                NonTriggerBindings = nonTriggerBindings
-            };
+            index.Add(functionDefinition, functionDescriptor, method);
         }
 
         private static FunctionDescriptor CreateFunctionDescriptor(MethodInfo method, string triggerParameterName,

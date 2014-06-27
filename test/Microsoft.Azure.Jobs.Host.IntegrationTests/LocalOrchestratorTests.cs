@@ -219,15 +219,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         static void CallError<T>(LocalExecutionContext lc, string functionName) where T : Exception
         {
-            var guid = lc.Call("FuncQueueOutputIEnumerableOfObject");
-
-            var lookup = lc.FunctionInstanceLookup;
-
-            var log1 = lookup.LookupOrThrow(guid);
-            Assert.Equal(FunctionInstanceStatus.CompletedFailed, log1.GetStatusWithoutHeartbeat());
-            Assert.Equal(typeof(T).FullName, log1.ExceptionType);
+            Assert.Throws<T>(() => lc.Call("FuncQueueOutputIEnumerableOfObject"));
         }
-
 
         [Fact]
         public void TestEnqueueMessage_UsingCloudQueue()

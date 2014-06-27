@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     internal static class MethodInfoExtensions
     {
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host
                 throw new ArgumentNullException("methodInfo");
             }
 
-            return String.Format(CultureInfo.InvariantCulture, "{0}.{1}", methodInfo.DeclaringType.FullName, methodInfo.Name);
+            return String.Format(CultureInfo.InvariantCulture, "{0}.{1}", methodInfo.DeclaringType.Name, methodInfo.Name);
         }
     }
 }

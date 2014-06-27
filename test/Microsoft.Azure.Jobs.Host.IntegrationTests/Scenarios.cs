@@ -250,11 +250,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
     // Set dev storage. These are well known values.
     class TestStorage
     {
-        public static LocalExecutionContext New<T>(CloudStorageAccount account)
+        public static LocalExecutionContext New<T>(CloudStorageAccount account, Type[] cloudBlobStreamBinderTypes = null)
         {
-            var acs = account.ToString(true);
-            var lc = new LocalExecutionContext(acs, typeof(T));
-            return lc;
+            return new LocalExecutionContext(typeof(T), account, cloudBlobStreamBinderTypes);
         }
 
         public static CloudStorageAccount GetAccount()

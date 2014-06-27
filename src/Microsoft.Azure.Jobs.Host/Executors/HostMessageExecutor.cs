@@ -7,7 +7,6 @@ using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Runners;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
@@ -15,11 +14,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
     internal class HostMessageExecutor : ITriggerExecutor<CloudQueueMessage>
     {
         private readonly IExecuteFunction _innerExecutor;
-        private readonly IFunctionTableLookup _functionLookup;
+        private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly HostBindingContext _context;
 
-        public HostMessageExecutor(IExecuteFunction innerExecutor, IFunctionTableLookup functionLookup,
+        public HostMessageExecutor(IExecuteFunction innerExecutor, IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             _innerExecutor = innerExecutor;
@@ -89,7 +88,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
         private IFunctionInstance CreateFunctionInstance(CallAndOverrideMessage message, HostBindingContext context)
         {
-            FunctionDefinition function = _functionLookup.Lookup(message.FunctionId);
+            IFunctionDefinition function = _functionLookup.Lookup(message.FunctionId);
 
             if (function == null)
             {
@@ -106,8 +105,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 }
             }
 
-            return new FunctionInstance(message.Id, message.ParentId, message.Reason,
-                new InvokeBindingSource(function.Binding, objectParameters), function.Descriptor, function.Method);
+            return function.InstanceFactory.Create(message.Id, message.ParentId, message.Reason, objectParameters);
         }
 
         private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,

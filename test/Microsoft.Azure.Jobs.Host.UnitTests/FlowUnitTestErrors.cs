@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -12,10 +13,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void TestFails()
         {
+            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(
+                new FunctionIndexContext(null, null, null, null), null);
+
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
-                Indexer indexer = new Indexer(null, null, null, null, null);
-                Assert.Throws<IndexException>(() => indexer.CreateFunctionDefinition(method));
+                IFunctionIndex stubIndex = new Mock<IFunctionIndex>().Object;
+                FunctionIndexer indexer = new FunctionIndexer(context);
+                Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethod(method, stubIndex));
             }
         }
 

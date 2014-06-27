@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.Jobs;
+using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestQueueBadName()
         {
             // indexer should notice bad queue name and fail immediately
-            Assert.Throws<IndexException>(() => new TestJobHost<ProgramBadQueueName>(null));
+            Assert.Throws<FunctionIndexingException>(() => new TestJobHost<ProgramBadQueueName>(null));
         }
 
         public void TestTable()
