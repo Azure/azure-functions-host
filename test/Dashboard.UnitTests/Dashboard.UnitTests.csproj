@@ -42,6 +42,10 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Indexers\FakeFunctionIndexManager.cs" />
+    <Compile Include="Indexers\FakeFunctionIndexVersionManager.cs" />
+    <Compile Include="Indexers\FakeHostIndexManager.cs" />
+    <Compile Include="Indexers\HostIndexerTests.cs" />
     <Compile Include="Infrastructure\LogAnalysisTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Data\VersionedMetadataTextStoreTests.cs" />

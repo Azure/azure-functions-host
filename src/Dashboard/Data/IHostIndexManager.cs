@@ -3,8 +3,10 @@
 
 namespace Dashboard.Data
 {
-    internal interface IHostIndexManager
+    public interface IHostIndexManager
     {
+        HostSnapshot Read(string id);
+
         bool UpdateOrCreateIfLatest(string id, HostSnapshot snapshot);
     }
 }

@@ -8,10 +8,11 @@ namespace Dashboard.Data
     {
         public const string AbortRequestLogs = "aborts";
 
+        public const string Functions = "functions";
+        public const string FunctionsFlat = "functions/flat";
         public const string FunctionStatistics = "functions/stats";
         public const string FunctionInstances = "functions/instances";
 
-        public const string Functions = "functions";
         public const string Hosts = "hosts";
 
         public const string RecentFunctionsByFunction = "functions/recent/by-function";

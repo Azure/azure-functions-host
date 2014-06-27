@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -17,7 +15,7 @@ namespace Dashboard.Data
 
         public FunctionLookup(CloudBlobClient blobClient)
             : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard)
-                .GetDirectoryReference(DashboardDirectoryNames.Hosts))
+                .GetDirectoryReference(DashboardDirectoryNames.FunctionsFlat))
         {
         }
 
@@ -33,16 +31,8 @@ namespace Dashboard.Data
 
         public FunctionSnapshot Read(string functionId)
         {
-            FunctionIdentifier functionIdentifier = FunctionIdentifier.Parse(functionId);
-            CloudBlockBlob blob = _directory.GetBlockBlobReference(functionIdentifier.HostId);
-            HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(blob);
-
-            if (hostSnapshot == null)
-            {
-                return null;
-            }
-
-            return hostSnapshot.Functions.FirstOrDefault(f => f.Id == functionId);
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(functionId);
+            return ReadJson<FunctionSnapshot>(blob);
         }
 
         internal static T ReadJson<T>(CloudBlockBlob blob)

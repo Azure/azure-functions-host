@@ -20,6 +20,18 @@ namespace Dashboard.Data
             _store = store;
         }
 
+        public HostSnapshot Read(string id)
+        {
+            VersionedMetadataDocument<HostSnapshot> versionedDocument = _store.Read(id);
+
+            if (versionedDocument == null)
+            {
+                return null;
+            }
+
+            return versionedDocument.Document;
+        }
+
         public bool UpdateOrCreateIfLatest(string id, HostSnapshot snapshot)
         {
             return _store.UpdateOrCreateIfLatest(id, snapshot.HostVersion, otherMetadata: null, document: snapshot);

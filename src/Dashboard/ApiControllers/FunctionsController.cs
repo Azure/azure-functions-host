@@ -391,7 +391,7 @@ namespace Dashboard.ApiControllers
                 return BadRequest(ModelState);
             }
 
-            IResultSegment<FunctionSnapshot> indexSegment = _functionIndexReader.Read(pagingInfo.Limit,
+            IResultSegment<FunctionIndexEntry> indexSegment = _functionIndexReader.Read(pagingInfo.Limit,
                 pagingInfo.ContinuationToken);
 
             var model = new FunctionStatisticsSegment();
@@ -400,12 +400,12 @@ namespace Dashboard.ApiControllers
             if (indexSegment != null && indexSegment.Results != null)
             {
                 IEnumerable<FunctionStatisticsViewModel> query = indexSegment.Results
-                    .Select(function => new FunctionStatisticsViewModel
+                    .Select(entry => new FunctionStatisticsViewModel
                     {
-                        FunctionId = function.Id,
-                        FunctionFullName = function.FullName,
-                        FunctionName = function.ShortName,
-                        IsRunning = HostHasHeartbeat(function).GetValueOrDefault(true),
+                        FunctionId = entry.Id,
+                        FunctionFullName = entry.FullName,
+                        FunctionName = entry.ShortName,
+                        IsRunning = HostHasHeartbeat(entry).GetValueOrDefault(true),
                         FailedCount = 0,
                         SuccessCount = 0
                     });
@@ -493,7 +493,7 @@ namespace Dashboard.ApiControllers
             return Ok();
         }
 
-        private bool? HostHasHeartbeat(FunctionSnapshot function)
+        private bool? HostHasHeartbeat(FunctionIndexEntry function)
         {
             if (!function.HeartbeatExpirationInSeconds.HasValue)
             {
@@ -506,28 +506,19 @@ namespace Dashboard.ApiControllers
 
         internal static bool? HostHasHeartbeat(IHeartbeatValidityMonitor heartbeatMonitor, FunctionSnapshot snapshot)
         {
-            int? expiration = snapshot.HeartbeatExpirationInSeconds;
-
-            if (!expiration.HasValue)
-            {
-                return null;
-            }
-
-            return heartbeatMonitor.IsSharedHeartbeatValid(snapshot.HeartbeatSharedContainerName,
-                snapshot.HeartbeatSharedDirectoryName, expiration.Value);
+            return HostHasHeartbeat(heartbeatMonitor, snapshot.HeartbeatExpirationInSeconds,
+                snapshot.HeartbeatSharedContainerName, snapshot.HeartbeatSharedDirectoryName);
         }
 
-        private bool? HostHasHeartbeat(FunctionInstanceSnapshot snapshot)
+        private static bool? HostHasHeartbeat(IHeartbeatValidityMonitor heartbeatMonitor, int? expirationInSeconds,
+            string containerName, string directoryName)
         {
-            HeartbeatDescriptor heartbeat = snapshot.Heartbeat;
-
-            if (heartbeat == null)
+            if (!expirationInSeconds.HasValue)
             {
                 return null;
             }
 
-            return HostHasHeartbeat(heartbeat.SharedContainerName, heartbeat.SharedDirectoryName,
-                heartbeat.ExpirationInSeconds);
+            return heartbeatMonitor.IsSharedHeartbeatValid(containerName, directoryName, expirationInSeconds.Value);
         }
 
         private bool? HostHasHeartbeat(string sharedContainerName, string sharedDirectoryName, int expirationInSeconds)

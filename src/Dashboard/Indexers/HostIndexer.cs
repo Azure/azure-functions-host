@@ -1,9 +1,11 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Web.Caching;
+using System.Linq;
 using Dashboard.Data;
 using Microsoft.Azure.WebJobs.Protocols;
 
@@ -12,15 +14,15 @@ namespace Dashboard.Indexers
     internal class HostIndexer : IHostIndexer
     {
         private readonly IHostIndexManager _hostIndexManager;
+        private readonly IFunctionIndexManager _functionIndexManager;
         private readonly IFunctionIndexVersionManager _functionIndexVersionManager;
-        private readonly Cache _cache;
 
-        public HostIndexer(IHostIndexManager hostIndexManager, IFunctionIndexVersionManager functionIndexVersionManager,
-            Cache cache)
+        public HostIndexer(IHostIndexManager hostIndexManager, IFunctionIndexManager functionIndexManager,
+            IFunctionIndexVersionManager functionIndexVersionManager)
         {
             _hostIndexManager = hostIndexManager;
+            _functionIndexManager = functionIndexManager;
             _functionIndexVersionManager = functionIndexVersionManager;
-            _cache = cache;
         }
 
         // This method runs concurrently with other index processing.
@@ -28,42 +30,119 @@ namespace Dashboard.Indexers
         public void ProcessHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
-            HostSnapshot snapshot = CreateSnapshot(message);
+            DateTimeOffset hostVersion = message.EnqueuedOn;
+            DateTime hostVersionUtc = hostVersion.UtcDateTime;
+            IEnumerable<FunctionDescriptor> messageFunctions = message.Functions ?? Enumerable.Empty<FunctionDescriptor>();
 
-            if (_hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot))
+            HostSnapshot newSnapshot = new HostSnapshot
             {
-                _cache.Remove(FunctionIndexReader.CacheKey);
+                HostVersion = hostVersion,
+                FunctionIds = CreateFunctionIds(messageFunctions)
+            };
+
+            if (_hostIndexManager.UpdateOrCreateIfLatest(hostId, newSnapshot))
+            {
+                IEnumerable<VersionedMetadata> existingFunctions = _functionIndexManager.List(hostId);
+
+                IEnumerable<VersionedMetadata> removedFunctions = existingFunctions
+                    .Where((f) => !newSnapshot.FunctionIds.Any(i => f.Id == i));
+
+                foreach (VersionedMetadata removedFunction in removedFunctions)
+                {
+                    // Remove all functions no longer in our list (unless they exist with a later host version than
+                    // ours).
+                    string fullId = new FunctionIdentifier(hostId, removedFunction.Id).ToString();
+                    _functionIndexManager.DeleteIfLatest(fullId, hostVersion, removedFunction.ETag,
+                        removedFunction.Version);
+                }
+
+                HeartbeatDescriptor heartbeat = message.Heartbeat;
+
+                IEnumerable<FunctionDescriptor> addedFunctions = messageFunctions
+                    .Where((d) => !existingFunctions.Any(f => d.Id == f.Id));
+
+                foreach (FunctionDescriptor addedFunction in addedFunctions)
+                {
+                    // Create any functions just appearing in our list (or update existing ones if they're earlier than
+                    // ours).
+                    FunctionSnapshot snapshot = CreateFunctionSnapshot(hostId, heartbeat, addedFunction, hostVersion);
+                    _functionIndexManager.CreateOrUpdateIfLatest(snapshot);
+                }
+
+                // Update any functions appearing in both lists provided they're still earlier than ours (or create them
+                // if they've since been deleted).
+                var possiblyUpdatedFunctions = existingFunctions
+                    .Join(messageFunctions, (f) => f.Id, (d) => d.Id, (f, d) => new
+                    {
+                        Descriptor = d,
+                        HostVersion = f.Version,
+                        ETag = f.ETag
+                    });
+
+                foreach (var possiblyUpdatedFunction in possiblyUpdatedFunctions)
+                {
+                    FunctionSnapshot snapshot = CreateFunctionSnapshot(hostId, heartbeat,
+                        possiblyUpdatedFunction.Descriptor, hostVersion);
+                    _functionIndexManager.UpdateOrCreateIfLatest(snapshot, possiblyUpdatedFunction.ETag,
+                        possiblyUpdatedFunction.HostVersion);
+                }
             }
 
-            _functionIndexVersionManager.UpdateOrCreateIfLatest(snapshot.HostVersion);
-        }
+            // Delete any functions we may have added or updated that are no longer in the index.
 
-        private static HostSnapshot CreateSnapshot(HostStartedMessage message)
-        {
-            return new HostSnapshot
+            // The create and update calls above may have occured after another instance started processing a later
+            // version of this host. If that instance had already read the existing function list before we added the
+            // function, it would think the function had already been deleted. In the end, we can't leave a function
+            // around unless it's still in the host index after we've added or updated it.
+
+            HostSnapshot finalSnapshot = _hostIndexManager.Read(hostId);
+            IEnumerable<FunctionDescriptor> functionsRemovedAfterThisHostVersion;
+
+            if (finalSnapshot == null)
             {
-                HostVersion = message.EnqueuedOn,
-                Functions = CreateFunctionSnapshots(message.SharedQueueName, message.Heartbeat, message.Functions)
-            };
+                functionsRemovedAfterThisHostVersion = messageFunctions;
+            }
+            else if (finalSnapshot.HostVersion.UtcDateTime > hostVersionUtc)
+            {
+                // Note that we base the list of functions to delete on what's in the HostStartedMessage, not what's in
+                // the addedFunctions and possibleUpdatedFunctions variables, as this instance could have been aborted
+                // and resumed and could lose state like those local variables.
+                functionsRemovedAfterThisHostVersion = messageFunctions.Where(
+                    f => !finalSnapshot.FunctionIds.Any((i) => f.Id == i));
+            }
+            else
+            {
+                functionsRemovedAfterThisHostVersion = Enumerable.Empty<FunctionDescriptor>();
+            }
+
+            foreach (FunctionDescriptor functionNoLongerInSnapshot in functionsRemovedAfterThisHostVersion)
+            {
+                string fullId = new FunctionIdentifier(hostId, functionNoLongerInSnapshot.Id).ToString();
+                _functionIndexManager.DeleteIfLatest(fullId, hostVersionUtc);
+            }
+
+            _functionIndexVersionManager.UpdateOrCreateIfLatest(newSnapshot.HostVersion);
         }
 
-        private static IEnumerable<FunctionSnapshot> CreateFunctionSnapshots(string queueName,
-            HeartbeatDescriptor heartbeat, IEnumerable<FunctionDescriptor> functions)
+        private static IEnumerable<string> CreateFunctionIds(IEnumerable<FunctionDescriptor> functions)
         {
-            List<FunctionSnapshot> snapshots = new List<FunctionSnapshot>();
+            Debug.Assert(functions != null);
+            List<string> ids = new List<string>();
 
             foreach (FunctionDescriptor function in functions)
             {
-                snapshots.Add(CreateFunctionSnapshot(queueName, heartbeat, function));
+                ids.Add(function.Id);
             }
 
-            return snapshots;
+            return ids;
         }
 
-        private static FunctionSnapshot CreateFunctionSnapshot(string queueName, HeartbeatDescriptor heartbeat, FunctionDescriptor function)
+        private static FunctionSnapshot CreateFunctionSnapshot(string queueName, HeartbeatDescriptor heartbeat,
+            FunctionDescriptor function, DateTimeOffset hostVersion)
         {
             return new FunctionSnapshot
             {
+                HostVersion = hostVersion,
                 Id = new FunctionIdentifier(queueName, function.Id).ToString(),
                 QueueName = queueName,
                 HeartbeatSharedContainerName = heartbeat != null ? heartbeat.SharedContainerName : null,
@@ -81,13 +160,16 @@ namespace Dashboard.Indexers
         {
             IDictionary<string, ParameterSnapshot> snapshots = new Dictionary<string, ParameterSnapshot>();
 
-            foreach (ParameterDescriptor parameter in parameters)
+            if (parameters != null)
             {
-                ParameterSnapshot snapshot = CreateParameterSnapshot(parameter);
-
-                if (snapshot != null)
+                foreach (ParameterDescriptor parameter in parameters)
                 {
-                    snapshots.Add(parameter.Name, snapshot);
+                    ParameterSnapshot snapshot = CreateParameterSnapshot(parameter);
+
+                    if (snapshot != null)
+                    {
+                        snapshots.Add(parameter.Name, snapshot);
+                    }
                 }
             }
 

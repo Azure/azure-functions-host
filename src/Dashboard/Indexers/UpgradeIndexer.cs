@@ -32,7 +32,7 @@ namespace Dashboard.Indexers
         {
             _dashboardVersionManager = dashboardVersionReader;
             _client = client;
-            _functionsStore = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Functions);
+            _functionsStore = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionsFlat);
             _logsStore = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Logs);
 
             // From archive back to output

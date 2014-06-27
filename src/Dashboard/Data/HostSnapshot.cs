@@ -10,6 +10,6 @@ namespace Dashboard.Data
     {
         public DateTimeOffset HostVersion { get; set; }
 
-        public IEnumerable<FunctionSnapshot> Functions { get; set; }
+        public IEnumerable<string> FunctionIds { get; set; }
     }
 }

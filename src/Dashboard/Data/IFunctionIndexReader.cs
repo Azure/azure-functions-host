@@ -9,6 +9,6 @@ namespace Dashboard.Data
     {
         DateTimeOffset GetCurrentVersion();
 
-        IResultSegment<FunctionSnapshot> Read(int maximumResults, string continuationToken);
+        IResultSegment<FunctionIndexEntry> Read(int maximumResults, string continuationToken);
     }
 }

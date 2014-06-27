@@ -5,7 +5,7 @@ using System;
 
 namespace Dashboard.Data
 {
-    internal interface IFunctionIndexVersionManager
+    public interface IFunctionIndexVersionManager
     {
         void UpdateOrCreateIfLatest(DateTimeOffset version);
     }

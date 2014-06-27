@@ -3,9 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Web.Caching;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -14,48 +11,44 @@ namespace Dashboard.Data
 {
     public class FunctionIndexReader : IFunctionIndexReader
     {
-        internal static string CacheKey = "Functions";
-
-        private readonly CloudBlobDirectory _hostsDirectory;
-        private readonly Cache _cache;
-        private readonly CloudBlobDirectory _functionsDirectory;
+        private readonly CloudBlobContainer _functionsContainer;
+        private readonly string _functionsPrefix;
+        private readonly CloudBlobDirectory _versionDirectory;
         private readonly IVersionMetadataMapper _versionMapper;
 
         [CLSCompliant(false)]
-        public FunctionIndexReader(CloudBlobClient blobClient, Cache cache)
-            : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
-                DashboardDirectoryNames.Hosts), cache, blobClient.GetContainerReference(
-                DashboardContainerNames.Dashboard).GetDirectoryReference(DashboardDirectoryNames.Functions),
-                VersionMetadataMapper.Instance)
+        public FunctionIndexReader(CloudBlobClient client)
+            : this (client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
+                DashboardDirectoryNames.FunctionsFlat), client.GetContainerReference(DashboardContainerNames.Dashboard)
+                .GetDirectoryReference(DashboardDirectoryNames.Functions), VersionMetadataMapper.Instance)
         {
         }
 
-        private FunctionIndexReader(CloudBlobDirectory hostsDirectory, Cache cache,
-            CloudBlobDirectory functionsDirectory, IVersionMetadataMapper versionMapper)
+        private FunctionIndexReader(CloudBlobDirectory functionsDirectory, CloudBlobDirectory versionDirectory,
+            IVersionMetadataMapper versionMapper)
         {
-            if (hostsDirectory == null)
-            {
-                throw new ArgumentNullException("hostsDirectory");
-            }
-            else if (functionsDirectory == null)
+            if (functionsDirectory == null)
             {
                 throw new ArgumentNullException("functionsDirectory");
+            }
+            else if (versionDirectory == null)
+            {
+                throw new ArgumentNullException("versionDirectory");
             }
             else if (versionMapper == null)
             {
                 throw new ArgumentNullException("versionMapper");
             }
 
-            _hostsDirectory = hostsDirectory;
-            _cache = cache;
-            _functionsDirectory = functionsDirectory;
+            _functionsContainer = functionsDirectory.Container;
+            _functionsPrefix = functionsDirectory.Prefix;
+            _versionDirectory = versionDirectory;
             _versionMapper = versionMapper;
         }
 
         public DateTimeOffset GetCurrentVersion()
         {
-            CloudBlockBlob blob = _functionsDirectory.GetBlockBlobReference(
-                FunctionIndexVersionManager.VersionBlobName);
+            CloudBlockBlob blob = _versionDirectory.GetBlockBlobReference(FunctionIndexVersionManager.VersionBlobName);
 
             try
             {
@@ -76,119 +69,22 @@ namespace Dashboard.Data
             return _versionMapper.GetVersion(blob.Metadata);
         }
 
-        public IResultSegment<FunctionSnapshot> Read(int maximumResults, string continuationToken)
+        public IResultSegment<FunctionIndexEntry> Read(int maximumResults, string continuationToken)
         {
-            int startIndex;
+            BlobContinuationToken blobContinuationToken = BlobContinuationTokenSerializer.Deserialize(continuationToken);
 
-            if (continuationToken == null)
-            {
-                startIndex = 0;
-            }
-            else
-            {
-                int parsed;
-
-                // Currently not doing server-side blob paging. Continuation token is just the start index.
-                if (!Int32.TryParse(continuationToken, NumberStyles.None, CultureInfo.InvariantCulture, out parsed))
-                {
-                    // Invalid continuation token
-                    return null;
-                }
-
-                if (parsed <= 0)
-                {
-                    // Invalid continuation token
-                    return null;
-                }
-
-                startIndex = parsed;
-            }
-
-            List<FunctionSnapshot> functions = ReadAllFunctions();
-
-            if (functions == null)
-            {
-                return null;
-            }
-
-            List<FunctionSnapshot> results = functions.Skip(startIndex).Take(maximumResults).ToList();
-            int resultsCount = results.Count;
-
-            string nextContinuationToken;
-
-            if (resultsCount < maximumResults)
-            {
-                nextContinuationToken = null;
-            }
-            else
-            {
-                nextContinuationToken = (startIndex + resultsCount).ToString(CultureInfo.InvariantCulture);
-            }
-
-            return new ResultSegment<FunctionSnapshot>(results, nextContinuationToken);
-        }
-
-        private List<FunctionSnapshot> ReadAllFunctions()
-        {
-            if (_cache != null)
-            {
-                List<FunctionSnapshot> cached = _cache.Get(CacheKey) as List<FunctionSnapshot>;
-
-                if (cached != null)
-                {
-                    return cached;
-                }
-            }
-
-            List<FunctionSnapshot> results = ReadAllFunctionsUncached();
-
-            if (results == null)
-            {
-                return null;
-            }
-
-            if (_cache != null)
-            {
-                _cache.Insert(CacheKey, results);
-            }
-
-            return results;
-        }
-
-        private List<FunctionSnapshot> ReadAllFunctionsUncached()
-        {
-            List<HostSnapshot> hosts = ReadAllHosts();
-
-            List<FunctionSnapshot> functions = new List<FunctionSnapshot>();
-
-            if (hosts == null)
-            {
-                return null;
-            }
-
-            foreach (HostSnapshot host in hosts)
-            {
-                if (host == null || host.Functions == null)
-                {
-                    continue;
-                }
-
-                foreach (FunctionSnapshot function in host.Functions)
-                {
-                    functions.Add(function);
-                }
-            }
-
-            return functions;
-        }
-
-        private List<HostSnapshot> ReadAllHosts()
-        {
-            IEnumerable<IListBlobItem> blobs;
+            BlobResultSegment blobSegment;
 
             try
             {
-                blobs = _hostsDirectory.ListBlobs(useFlatBlobListing: true).ToList();
+                blobSegment = _functionsContainer.ListBlobsSegmented(
+                    prefix: _functionsPrefix,
+                    useFlatBlobListing: true,
+                    blobListingDetails: BlobListingDetails.Metadata,
+                    maxResults: maximumResults,
+                    currentToken: blobContinuationToken,
+                    options: null,
+                    operationContext: null);
             }
             catch (StorageException exception)
             {
@@ -202,24 +98,25 @@ namespace Dashboard.Data
                 }
             }
 
-            List<HostSnapshot> hosts = new List<HostSnapshot>();
-
-            // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true above.
-            foreach (ICloudBlob blob in blobs)
+            if (blobSegment == null)
             {
-                CloudBlockBlob blockBlob = blob as CloudBlockBlob;
-
-                if (blockBlob == null)
-                {
-                    continue;
-                }
-
-                HostSnapshot host = FunctionLookup.ReadJson<HostSnapshot>(blockBlob);
-
-                hosts.Add(host);
+                return null;
             }
 
-            return hosts;
+            List<FunctionIndexEntry> results = new List<FunctionIndexEntry>();
+
+            // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true above.
+            foreach (ICloudBlob blob in blobSegment.Results)
+            {
+                IDictionary<string, string> metadata = blob.Metadata;
+                DateTimeOffset version = _versionMapper.GetVersion(metadata);
+                FunctionIndexEntry result = FunctionIndexEntry.Create(metadata, version);
+                results.Add(result);
+            }
+
+            string nextContinuationToken = BlobContinuationTokenSerializer.Serialize(blobSegment.ContinuationToken);
+
+            return new ResultSegment<FunctionIndexEntry>(results, nextContinuationToken);
         }
     }
 }
