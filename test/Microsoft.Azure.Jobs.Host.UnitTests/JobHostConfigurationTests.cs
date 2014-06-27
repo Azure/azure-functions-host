@@ -10,17 +10,29 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void ConnectionStringProvider_NoDashboardConnectionString_Throw()
         {
-            JobHostConfiguration configuration = new JobHostConfiguration
-            {
-                StorageConnectionString = "SOME_DATA_CONNECTION_STRING",
-            };
-            Assert.Null(configuration.DashboardConnectionString); // Guard
-            IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
+            const string DashboardConnectionEnvironmentVariable = "AzureJobsDashboard";
+            string previousConnectionString = Environment.GetEnvironmentVariable(DashboardConnectionEnvironmentVariable);
 
-            // Act & Assert
-            ExceptionAssert.ThrowsInvalidOperation(() => 
-                connectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName), 
-                "Failed to validate Microsoft Azure Jobs dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsDashboard', or by using a constructor for JobHostConfiguration that accepts connection strings.");
+            try
+            {
+                Environment.SetEnvironmentVariable(DashboardConnectionEnvironmentVariable, null);
+
+                JobHostConfiguration configuration = new JobHostConfiguration
+                {
+                    StorageConnectionString = "SOME_DATA_CONNECTION_STRING",
+                };
+                Assert.Null(configuration.DashboardConnectionString); // Guard
+                IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
+
+                // Act & Assert
+                ExceptionAssert.ThrowsInvalidOperation(() =>
+                    connectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName),
+                    "Failed to validate Microsoft Azure Jobs dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsDashboard', or by using a constructor for JobHostConfiguration that accepts connection strings.");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(DashboardConnectionEnvironmentVariable, previousConnectionString);
+            }
         }
 
         /// <summary>
