@@ -7,8 +7,8 @@
     <ProjectGuid>{34D23554-5482-4B3D-B65F-46DFF5AF1684}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.Host.FunctionChainingScenario</RootNamespace>
-    <AssemblyName>Microsoft.Azure.Jobs.Host.FunctionChainingScenario</AssemblyName>
+    <RootNamespace>Microsoft.Azure.Jobs.Perf</RootNamespace>
+    <AssemblyName>Microsoft.Azure.Jobs.Perf</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -69,28 +69,33 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="PerfTestGenerator.generated.cs">
+    <Compile Include="BlobOverheadPerfTest.cs" />
+    <Compile Include="FunctionChainingPerfTestGenerator.generated.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
-      <DependentUpon>PerfTestGenerator.tt</DependentUpon>
+      <DependentUpon>FunctionChainingPerfTestGenerator.tt</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
-    <Compile Include="PerfTest.cs" />
+    <Compile Include="FunctionChainingPerfTest.cs" />
+    <Compile Include="TimeBlock.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="PerfTestGenerator.tt">
+    <None Include="FunctionChainingPerfTestGenerator.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>PerfTestGenerator.generated.cs</LastGenOutput>
+      <LastGenOutput>FunctionChainingPerfTestGenerator.generated.cs</LastGenOutput>
     </None>
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Jobs.Host.FunctionChainingScenario.perf.xml">
+    <Content Include="FunctionChaining.perf.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>
+    </Content>
+    <Content Include="BlobOverhead.perf.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>

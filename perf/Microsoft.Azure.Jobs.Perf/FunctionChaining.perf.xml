@@ -7,19 +7,19 @@
 
     <trackingVariation name="HostStart">
       <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
-        <target value="5000" labConfig="default" priority = "1" />
+        <target value="1500" labConfig="default" priority = "1" />
       </metric>
     </trackingVariation>
     <trackingVariation name="QueueChain">
       <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
-        <target value="37000" labConfig="default" priority = "1" />
+        <target value="41000" labConfig="default" priority = "1" />
       </metric>
     </trackingVariation>
   </metadata>
 
   <commands>
     <command name="RunTest" wait="Exit">
-      Microsoft.Azure.Jobs.Host.FunctionChainingScenario.exe /CS={ConnectionString}
+      Microsoft.Azure.Jobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=FunctionChaining
     </command>
   </commands>
 

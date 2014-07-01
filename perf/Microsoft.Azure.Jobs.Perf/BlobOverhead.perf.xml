@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.microsoft.com/2011/12/aaptperffun#1">
+  <metadata
+      testName ="BlobOverhead"
+      teamName ="SimpleBatch"
+      description="Host.Call scenarios">
+
+    <trackingVariation name="Overhead">
+      <metric name="Ratio" selection="Median" units="Percent">
+        <target value="290" labConfig="default" priority = "1" />
+      </metric>
+    </trackingVariation>
+  </metadata>
+
+  <commands>
+    <command name="RunTest" wait="Exit">
+      Microsoft.Azure.Jobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=BlobOverhead
+    </command>
+  </commands>
+
+  <plan>
+    <run command="RunTest" role="client" output="true" measure="StartAndStop"  />
+  </plan>
+</config>

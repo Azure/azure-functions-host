@@ -1,6 +1,6 @@
-﻿namespace Microsoft.Azure.Jobs.Host.FunctionChainingScenario
+﻿namespace Microsoft.Azure.Jobs.Perf
 {
-	public static partial class PerfTest
+	public static partial class FunctionChainingPerfTest
 	{
 		public const int NumberOfGeneratedMethods = 20;
 

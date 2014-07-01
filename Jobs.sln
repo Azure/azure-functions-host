@@ -39,7 +39,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Protocols", "src\Micro
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PerformanceTests", "PerformanceTests", "{FA608267-1272-4BD5-B230-0F41A48D18C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Host.FunctionChainingScenario", "perf\FunctionChainingScenario\Jobs.Host.FunctionChainingScenario.csproj", "{34D23554-5482-4B3D-B65F-46DFF5AF1684}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Perf", "perf\Microsoft.Azure.Jobs.Perf\Jobs.Perf.csproj", "{34D23554-5482-4B3D-B65F-46DFF5AF1684}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jobs.Storage", "src\Microsoft.Azure.Jobs.Storage\Jobs.Storage.csproj", "{543EDC53-3B68-49A8-9C3F-FC2ED27515AA}"
 EndProject
