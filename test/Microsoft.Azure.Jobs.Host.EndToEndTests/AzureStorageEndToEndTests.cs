@@ -102,7 +102,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
         }
 
         // Uncomment the Fact attribute to run
-        //[Fact(Timeout = 15 * 60 * 1000)]
+        // [Fact(Timeout = 20 * 60 * 1000)]
         public void AzureStorageEndToEndSlow()
         {
             EndToEndTest(uploadBlobBeforeHostStart: false);
@@ -150,8 +150,6 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 UploadTestObject();
             }
 
-            
-
             // The jobs host is started
             JobHost host = new JobHost(hostConfig);
 
@@ -168,19 +166,16 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 UploadTestObject();
             }
 
-            _functionChainWaitHandle.WaitOne();
+            bool signaled = _functionChainWaitHandle.WaitOne(15 * 60 * 1000);
 
-            // Stop the host
+            // Stop the host and wait for it to finish
             tokenSource.Cancel();
+            hostThread.Join();
+
+            Assert.True(signaled);
 
             // Verify
             VerifyTableResults();
-
-            // Kill the host thread if it is still running
-            if (hostThread.IsAlive)
-            {
-                hostThread.Abort();
-            }
         }
 
         private void UploadTestObject()

@@ -78,7 +78,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             _topicSubscriptionCalled2.Set();
         }
 
-        [Fact]
+        [Fact(Timeout = 3 * 60 * 1000)]
         public void ServiceBusEndToEnd()
         {
             try
@@ -133,11 +133,15 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             Thread hostThread = new Thread(() => host.RunAndBlock(tokenSource.Token));
             hostThread.Start();
 
-            _topicSubscriptionCalled1.WaitOne();
-            _topicSubscriptionCalled2.WaitOne();
+            bool signaled = WaitHandle.WaitAll(
+                new WaitHandle[] { _topicSubscriptionCalled1, _topicSubscriptionCalled2 },
+                2 * 60 * 1000);
 
-            // Stop the host
+            // Wait for the host to terminate
             tokenSource.Cancel();
+            hostThread.Join();
+
+            Assert.True(signaled);
 
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
