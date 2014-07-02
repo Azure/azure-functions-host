@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Dashboard.Data
 {
-    public interface IVersionedMetadataDocumentStore<TDocument>
+    public interface IVersionedDocumentStore<TDocument>
     {
         IEnumerable<VersionedMetadata> List(string prefix);
 

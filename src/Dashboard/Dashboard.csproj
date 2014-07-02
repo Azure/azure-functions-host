@@ -192,7 +192,7 @@
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />
     <Compile Include="Data\VersionedDocumentStore.cs" />
-    <Compile Include="Data\IVersionedMetadataDocumentStore.cs" />
+    <Compile Include="Data\IVersionedDocumentStore.cs" />
     <Compile Include="Data\JsonVersionedDocumentStore.cs" />
     <Compile Include="Data\VersionMetadataMapper.cs" />
     <Compile Include="Data\IVersionMetadataMapper.cs" />

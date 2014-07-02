@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace Dashboard.Data
 {
-    public class JsonVersionedDocumentStore<TDocument> : IVersionedMetadataDocumentStore<TDocument>
+    public class JsonVersionedDocumentStore<TDocument> : IVersionedDocumentStore<TDocument>
     {
         private static readonly JsonSerializerSettings _settings =
             JsonConcurrentDocumentStore<TDocument>.JsonSerializerSettings;
@@ -41,26 +41,28 @@ namespace Dashboard.Data
                 document);
         }
 
-        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadata, TDocument document)
+        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
+            TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.CreateOrUpdateIfLatest(id, metadata, text);
+            return _innerStore.CreateOrUpdateIfLatest(id, metadataWithVersion, text);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document)
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
+            TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.UpdateOrCreateIfLatest(id, metadata, text);
+            return _innerStore.UpdateOrCreateIfLatest(id, metadataWithVersion, text);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document,
-            string currentETag, DateTimeOffset currentVersion)
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
+            TDocument document, string currentETag, DateTimeOffset currentVersion)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.UpdateOrCreateIfLatest(id, metadata, text, currentETag, currentVersion);
+            return _innerStore.UpdateOrCreateIfLatest(id, metadataWithVersion, text, currentETag, currentVersion);
         }
 
         public bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion)

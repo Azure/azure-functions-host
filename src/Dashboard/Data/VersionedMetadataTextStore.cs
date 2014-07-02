@@ -58,21 +58,22 @@ namespace Dashboard.Data
             return new VersionedMetadataText(innerItem.ETag, innerItem.Metadata, version, innerItem.Text);
         }
 
-        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadata, string text)
+        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text)
         {
-            return PersistIfLatest(id, metadata, text, startingItem: null);
+            return PersistIfLatest(id, metadataWithVersion, text, startingItem: null);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, string text)
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text)
         {
             VersionedItem startingItem = ReadMetadata(id);
-            return PersistIfLatest(id, metadata, text, startingItem);
+            return PersistIfLatest(id, metadataWithVersion, text, startingItem);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, string text,
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
             string currentETag, DateTimeOffset currentVersion)
         {
-            return PersistIfLatest(id, metadata, text, startingItem: new VersionedItem(currentETag, currentVersion));
+            return PersistIfLatest(id, metadataWithVersion, text,
+                startingItem: new VersionedItem(currentETag, currentVersion));
         }
 
         public bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion)
@@ -127,14 +128,14 @@ namespace Dashboard.Data
             return GetVersion(item.Metadata);
         }
 
-        private DateTimeOffset GetVersion(IDictionary<string, string> metadata)
+        private DateTimeOffset GetVersion(IDictionary<string, string> metadataWithVersion)
         {
-            if (metadata == null)
+            if (metadataWithVersion == null)
             {
                 return DateTimeOffset.MinValue;
             }
 
-            return _versionMapper.GetVersion(metadata);
+            return _versionMapper.GetVersion(metadataWithVersion);
         }
 
         private DateTimeOffset GetVersion(VersionedItem item)
@@ -147,10 +148,10 @@ namespace Dashboard.Data
             return item.Version;
         }
 
-        private bool PersistIfLatest(string id, IDictionary<string, string> metadata, string text,
+        private bool PersistIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
             VersionedItem startingItem)
         {
-            DateTimeOffset targetVersion = GetVersion(metadata);
+            DateTimeOffset targetVersion = GetVersion(metadataWithVersion);
             bool persisted = false;
             string previousETag = null;
             int createAttempt = 0;
@@ -174,7 +175,7 @@ namespace Dashboard.Data
                     }
 
                     previousETag = null;
-                    persisted = _innerStore.TryCreate(id, metadata, text);
+                    persisted = _innerStore.TryCreate(id, metadataWithVersion, text);
                 }
                 else
                 {
@@ -189,7 +190,7 @@ namespace Dashboard.Data
                     }
 
                     previousETag = currentETag;
-                    persisted = _innerStore.TryUpdate(id, currentETag, metadata, text);
+                    persisted = _innerStore.TryUpdate(id, currentETag, metadataWithVersion, text);
                 }
             }
 

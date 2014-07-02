@@ -6,7 +6,7 @@ namespace Dashboard.Data
     public static class VersionedDocumentStore
     {
         [CLSCompliant(false)]
-        public static IVersionedMetadataDocumentStore<TDocument> CreateJsonBlobStore<TDocument>(CloudBlobClient client,
+        public static IVersionedDocumentStore<TDocument> CreateJsonBlobStore<TDocument>(CloudBlobClient client,
             string containerName, string directoryName, IVersionMetadataMapper versionMapper)
         {
             IVersionedMetadataTextStore innerStore =

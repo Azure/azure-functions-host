@@ -9,7 +9,7 @@ namespace Dashboard.Data
 {
     internal class HostInstanceLogger : IHostInstanceLogger
     {
-        private readonly IVersionedMetadataDocumentStore<HostSnapshot> _store;
+        private readonly IVersionedDocumentStore<HostSnapshot> _store;
         private readonly IVersionMetadataMapper _versionMapper;
 
         public HostInstanceLogger(CloudBlobClient client)
@@ -19,7 +19,7 @@ namespace Dashboard.Data
         {
         }
 
-        private HostInstanceLogger(IVersionedMetadataDocumentStore<HostSnapshot> store,
+        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store,
             IVersionMetadataMapper versionMapper)
         {
             _store = store;

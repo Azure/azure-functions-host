@@ -9,11 +9,11 @@ namespace Dashboard.Data
 
         VersionedMetadataText Read(string id);
 
-        bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadata, string text);
+        bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, string text);
+        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, string text,
+        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
             string currentETag, DateTimeOffset currentVersion);
 
         bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion);
