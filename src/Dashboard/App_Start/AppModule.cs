@@ -38,6 +38,7 @@ namespace Dashboard
             Bind<IFunctionInstanceLogger>().To<FunctionInstanceLogger>();
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
+            Bind<IFunctionIndexReader>().To<FunctionIndexReader>();
             Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
             Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
             Bind<IFunctionStatisticsWriter>().To<FunctionStatisticsWriter>();

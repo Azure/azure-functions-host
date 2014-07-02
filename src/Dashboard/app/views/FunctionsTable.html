@@ -7,27 +7,27 @@
                           class="label label-default"
                           style="margin-left: 15px;"
                           ng-show="functionDefinitions.hasNew && functionDefinitions.firstPage"
-                          ng-click="functionDefinitions.loadFirstPage()"
+                          ng-click="functionDefinitions.reloadFirstPage()"
                           title="New functions were detected, click here to reload the table">Show new functions</span>
                 </th>
                 <th class="col-md-1">Statistics</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-if="!functionDefinitions.entries">
+            <tr ng-if="functionDefinitions.initializing">
                 <td colspan="2">Loading...</td>
             </tr>
-            <tr ng-if="functionDefinitions.entries.length === 0">
+            <tr ng-if="functionDefinitions.page.length === 0">
                 <td colspan="2">No functions are present.</td>
             </tr>
-            <tr ng-repeat="entry in functionDefinitions.entries">
+            <tr ng-repeat="entry in functionDefinitions.page">
                 <td>
-                    <span ng-if="!entry.functionDefinition.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
-                    <a title="Invocations" href="{{_urls.functionDefinition(entry.functionDefinition.functionId)}}">{{entry.functionDefinition.functionName}}</a>
+                    <span ng-if="!entry.isRunning" title="Host not running" class="glyphicon glyphicon-exclamation-sign not-running"></span>
+                    <a title="Invocations" href="{{_urls.functionDefinition(entry.functionId)}}">{{entry.functionName}}</a>
                 </td>
                 <td>
-                    <span class="label label-success">{{entry.functionDefinition.successCount}}</span>
-                    <span class="label label-danger">{{entry.functionDefinition.failedCount}}</span>
+                    <span class="label label-success">{{entry.successCount}}</span>
+                    <span class="label label-danger">{{entry.failedCount}}</span>
                 </td>
             </tr>
         </tbody>

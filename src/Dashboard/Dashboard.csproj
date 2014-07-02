@@ -188,6 +188,8 @@
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
+    <Compile Include="Data\FunctionIndexReader.cs" />
+    <Compile Include="Data\IFunctionIndexReader.cs" />
     <Compile Include="Data\VersionedMetadataDocument.cs" />
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />
@@ -282,7 +284,7 @@
     <Compile Include="ViewModels\InvocationLogSegment.cs" />
     <Compile Include="ViewModels\InvocationLogViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
-    <Compile Include="ViewModels\FunctionStatisticsPageViewModel.cs" />
+    <Compile Include="ViewModels\FunctionStatisticsSegment.cs" />
     <Compile Include="ViewModels\ContainerPagingInfo.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="ApiControllers\LogController.cs" />

@@ -22,6 +22,7 @@ namespace Dashboard.ApiControllers
         private readonly CloudTableClient _tableClient;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionLookup _functionLookup;
+        private readonly IFunctionIndexReader _functionIndexReader;
         private readonly IHeartbeatMonitor _heartbeatMonitor;
         private readonly IAborter _aborter;
         private readonly IRecentInvocationIndexReader _recentInvocationsReader;
@@ -39,6 +40,7 @@ namespace Dashboard.ApiControllers
             CloudTableClient tableClient,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionLookup functionLookup,
+            IFunctionIndexReader functionIndexReader,
             IHeartbeatMonitor heartbeatMonitor,
             IAborter aborter,
             IRecentInvocationIndexReader recentInvocationsReader,
@@ -51,6 +53,7 @@ namespace Dashboard.ApiControllers
             _tableClient = tableClient;
             _functionInstanceLookup = functionInstanceLookup;
             _functionLookup = functionLookup;
+            _functionIndexReader = functionIndexReader;
             _heartbeatMonitor = heartbeatMonitor;
             _aborter = aborter;
             _recentInvocationsReader = recentInvocationsReader;
@@ -86,12 +89,31 @@ namespace Dashboard.ApiControllers
             try
             {
                 return _tableClient.GetTableReference(Alpha2TableName).Exists() &&
-                    (alreadyFoundNoNewerEntries || _functionLookup.ReadAll().Count == 0);
+                    (alreadyFoundNoNewerEntries || !FunctionIndexHasEntry());
             }
             catch (Exception)
             {
                 return false;
             }
+        }
+
+        private bool FunctionIndexHasEntry()
+        {
+            var results = _functionIndexReader.Read(1, null);
+
+            if (results == null)
+            {
+                return false;
+            }
+
+            var resultsList = results.Results;
+
+            if (resultsList == null)
+            {
+                return false;
+            }
+
+            return resultsList.Any();
         }
 
         private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] ContainerPagingInfo pagingInfo)
@@ -350,53 +372,45 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionDefinitions([FromUri]ContainerPagingInfo pagingInfo)
         {
-            var model = new FunctionStatisticsPageViewModel();
-            IEnumerable<FunctionStatisticsViewModel> query = _functionLookup
-                .ReadAll()
-                .Select(f => new FunctionStatisticsViewModel
-                {
-                    FunctionId = f.Id,
-                    FunctionFullName = f.FullName,
-                    FunctionName = f.ShortName,
-                    IsRunning = HostHasHeartbeat(f).GetValueOrDefault(true),
-                    FailedCount = 0,
-                    SuccessCount = 0
-                })
-                .OrderBy(f => f.FunctionId);
-
-            var lastElement = query.LastOrDefault();
-            if (lastElement != null)
+            if (!ModelState.IsValid)
             {
-                if (!String.IsNullOrEmpty(pagingInfo.NewerThan))
-                {
-                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.NewerThan) < 0);
-                }
-
-                if (!String.IsNullOrEmpty(pagingInfo.OlderThan))
-                {
-                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThan) > 0);
-                }
-
-                if (!String.IsNullOrEmpty(pagingInfo.OlderThanOrEqual))
-                {
-                    query = query.Where(f => f.FunctionId.CompareTo(pagingInfo.OlderThanOrEqual) >= 0);
-                }
-
-                if (pagingInfo.Limit != null)
-                {
-                    query = query.Take((int)pagingInfo.Limit);
-                }
+                return BadRequest(ModelState);
             }
 
-            model.Entries = query.ToArray();
-            model.HasMore = lastElement != null ?
-                !model.Entries.Any(f => f.FunctionId.Equals(lastElement.FunctionId)) :
-                false;
+            IResultSegment<FunctionSnapshot> indexSegment = _functionIndexReader.Read(pagingInfo.Limit,
+                pagingInfo.ContinuationToken);
+
+            var model = new FunctionStatisticsSegment();
+            bool foundItem;
+
+            if (indexSegment != null && indexSegment.Results != null)
+            {
+                IEnumerable<FunctionStatisticsViewModel> query = indexSegment.Results
+                    .Select(function => new FunctionStatisticsViewModel
+                    {
+                        FunctionId = function.Id,
+                        FunctionFullName = function.FullName,
+                        FunctionName = function.ShortName,
+                        IsRunning = HostHasHeartbeat(function).GetValueOrDefault(true),
+                        FailedCount = 0,
+                        SuccessCount = 0,
+                        WhenUtc = function.HostVersion.UtcDateTime
+                    });
+
+                model.Entries = query.ToArray();
+                foundItem = query.Any();
+                model.ContinuationToken = indexSegment.ContinuationToken;
+            }
+            else
+            {
+                foundItem = false;
+            }
+
             model.StorageAccountName = _account.Credentials.AccountName;
 
-            if (lastElement == null)
+            if (foundItem)
             {
                 model.IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: true);
             }
@@ -451,9 +465,9 @@ namespace Dashboard.ApiControllers
             return Ok();
         }
 
-        private bool? HostHasHeartbeat(FunctionSnapshot snapshot)
+        private bool? HostHasHeartbeat(FunctionSnapshot function)
         {
-            string hostId = snapshot.HeartbeatSharedContainerName + "/" + snapshot.HeartbeatSharedDirectoryName;
+            string hostId = function.HeartbeatSharedContainerName + "/" + function.HeartbeatSharedDirectoryName;
 
             if (_cachedHostHeartbeats.ContainsKey(hostId))
             {
@@ -461,7 +475,7 @@ namespace Dashboard.ApiControllers
             }
             else
             {
-                bool? heartbeat = HostHasHeartbeat(_heartbeatMonitor, snapshot);
+                bool? heartbeat = HostHasHeartbeat(_heartbeatMonitor, function);
                 _cachedHostHeartbeats.AddOrUpdate(hostId, heartbeat, (ignore1, ignore2) => heartbeat);
                 return heartbeat;
             }

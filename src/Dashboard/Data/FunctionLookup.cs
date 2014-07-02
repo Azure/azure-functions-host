@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
@@ -38,50 +39,19 @@ namespace Dashboard.Data
                 return null;
             }
 
-            return hostSnapshot.Functions.FirstOrDefault(f => f.Id == functionId);
-        }
+            FunctionSnapshot snapshot = hostSnapshot.Functions.FirstOrDefault(f => f.Id == functionId);
 
-        public IReadOnlyList<FunctionSnapshot> ReadAll()
-        {
-            List<FunctionSnapshot> snapshots = new List<FunctionSnapshot>();
-
-            try
+            if (snapshot == null)
             {
-                foreach (ICloudBlob blob in _directory.ListBlobs(useFlatBlobListing: true))
-                {
-                    CloudBlockBlob blockBlob = blob as CloudBlockBlob;
-
-                    if (blockBlob == null)
-                    {
-                        continue;
-                    }
-
-                    HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(blockBlob);
-
-                    if (hostSnapshot != null)
-                    {
-                        snapshots.AddRange(hostSnapshot.Functions);
-                    }
-                }
-            }
-            catch (StorageException exception)
-            {
-                RequestResult result = exception.RequestInformation;
-
-                if (result != null && result.HttpStatusCode == 404)
-                {
-                    return snapshots;
-                }
-                else
-                {
-                    throw;
-                }
+                return null;
             }
 
-            return snapshots;
+            // Add the HostVersion (not part of the JSON-serialized blob).
+            snapshot.HostVersion = hostSnapshot.HostVersion;
+            return snapshot;
         }
 
-        private static T ReadJson<T>(CloudBlockBlob blob)
+        internal static T ReadJson<T>(CloudBlockBlob blob)
         {
             string contents;
 
@@ -91,9 +61,7 @@ namespace Dashboard.Data
             }
             catch (StorageException exception)
             {
-                RequestResult result = exception.RequestInformation;
-
-                if (result != null && result.HttpStatusCode == 404)
+                if (exception.IsNotFoundBlobOrContainerNotFound())
                 {
                     return default(T);
                 }

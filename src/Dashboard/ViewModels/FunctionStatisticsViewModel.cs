@@ -1,4 +1,6 @@
-﻿namespace Dashboard.ViewModels
+﻿using System;
+
+namespace Dashboard.ViewModels
 {
     public class FunctionStatisticsViewModel
     {
@@ -8,5 +10,6 @@
         public int SuccessCount { get; set; }
         public int FailedCount { get; set; }
         public bool IsRunning { get; set; }
+        public DateTime? WhenUtc { get; set; }
     }
 }
