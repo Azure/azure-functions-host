@@ -5,16 +5,16 @@ namespace Dashboard.Data
 {
     public class RecentInvocationIndexByFunctionWriter : IRecentInvocationIndexByFunctionWriter
     {
-        private readonly IVersionedTextStore _store;
+        private readonly IConcurrentTextStore _store;
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByFunctionWriter(CloudBlobClient client)
-            : this(VersionedTextStore.CreateBlobStore(
+            : this(ConcurrentTextStore.CreateBlobStore(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.RecentFunctionsByFunction))
         {
         }
 
-        private RecentInvocationIndexByFunctionWriter(IVersionedTextStore store)
+        private RecentInvocationIndexByFunctionWriter(IConcurrentTextStore store)
         {
             _store = store;
         }

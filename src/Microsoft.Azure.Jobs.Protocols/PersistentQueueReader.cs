@@ -155,7 +155,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
             if (!item.Metadata.ContainsKey(CreatedKey))
             {
-                item.Metadata.Add(CreatedKey, DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture));
+                item.Metadata.Add(CreatedKey, item.Properties.LastModified.GetValueOrDefault(DateTimeOffset.UtcNow).ToString("o", CultureInfo.InvariantCulture));
             }
 
             try

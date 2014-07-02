@@ -1,18 +1,17 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Dashboard.Data
 {
-    public class JsonVersionedDocumentStore<TDocument> : IVersionedDocumentStore<TDocument>
+    public class JsonVersionedDocumentStore<TDocument> : IVersionedMetadataDocumentStore<TDocument>
     {
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented
-        };
+        private static readonly JsonSerializerSettings _settings =
+            JsonConcurrentDocumentStore<TDocument>.JsonSerializerSettings;
 
-        private readonly IVersionedTextStore _innerStore;
+        private readonly IVersionedMetadataTextStore _innerStore;
 
-        public JsonVersionedDocumentStore(IVersionedTextStore innerStore)
+        public JsonVersionedDocumentStore(IVersionedMetadataTextStore innerStore)
         {
             _innerStore = innerStore;
         }
@@ -22,45 +21,57 @@ namespace Dashboard.Data
             get { return _settings; }
         }
 
-        public VersionedDocument<TDocument> Read(string id)
+        public IEnumerable<VersionedMetadata> List(string prefix)
         {
-            VersionedText innerResult = _innerStore.Read(id);
+            return _innerStore.List(prefix);
+        }
 
-            if (innerResult == null)
+        public VersionedMetadataDocument<TDocument> Read(string id)
+        {
+            VersionedMetadataText textItem = _innerStore.Read(id);
+
+            if (textItem == null)
             {
                 return null;
             }
 
+            TDocument document = JsonConvert.DeserializeObject<TDocument>(textItem.Text);
 
-            TDocument document = JsonConvert.DeserializeObject<TDocument>(innerResult.Text, _settings);
-            string eTag = innerResult.ETag;
-            return new VersionedDocument<TDocument>(document, eTag);
+            return new VersionedMetadataDocument<TDocument>(textItem.ETag, textItem.Metadata, textItem.Version,
+                document);
         }
 
-        public void CreateOrUpdate(string id, TDocument document)
+        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadata, TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            _innerStore.CreateOrUpdate(id, text);
+            return _innerStore.CreateOrUpdateIfLatest(id, metadata, text);
         }
 
-        public bool TryCreate(string id, TDocument document)
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.TryCreate(id, text);
+            return _innerStore.UpdateOrCreateIfLatest(id, metadata, text);
         }
 
-        public bool TryUpdate(string id, TDocument document, string eTag)
+        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document,
+            string currentETag, DateTimeOffset currentVersion)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.TryUpdate(id, text, eTag);
+            return _innerStore.UpdateOrCreateIfLatest(id, metadata, text, currentETag, currentVersion);
         }
 
-        public bool TryDelete(string id, string eTag)
+        public bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion)
         {
-            return _innerStore.TryDelete(id, eTag);
+            return _innerStore.DeleteIfLatest(id, deleteThroughVersion);
+        }
+
+        public bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion, string currentETag,
+            DateTimeOffset currentVersion)
+        {
+            return _innerStore.DeleteIfLatest(id, deleteThroughVersion, currentETag, currentVersion);
         }
     }
 }

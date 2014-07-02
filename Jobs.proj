@@ -119,6 +119,7 @@
   <Target Name="UnitTest" DependsOnTargets="Build">
     <ItemGroup>
         <UnitTestProjects Include="test\Microsoft.Azure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj"/>
+        <UnitTestProjects Include="test\Dashboard.UnitTests\Dashboard.UnitTests.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(UnitTestProjects)"
@@ -127,7 +128,7 @@
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
     </MSBuild>
 
-    <xunit Assembly="@(UnitTestAssemblies)"/>
+    <xunit Assemblies="@(UnitTestAssemblies)"/>
   </Target>
 
   <Target Name="FunctionalTest" DependsOnTargets="UnitTest">

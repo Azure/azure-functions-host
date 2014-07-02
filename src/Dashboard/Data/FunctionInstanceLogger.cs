@@ -10,15 +10,15 @@ namespace Dashboard.Data
 {
     internal class FunctionInstanceLogger : IFunctionInstanceLogger, IFunctionQueuedLogger
     {
-        private readonly IVersionedDocumentStore<FunctionInstanceSnapshot> _store;
+        private readonly IConcurrentDocumentStore<FunctionInstanceSnapshot> _store;
 
         public FunctionInstanceLogger(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionInstanceSnapshot>(
+            : this(ConcurrentDocumentStore.CreateJsonBlobStore<FunctionInstanceSnapshot>(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionInstances))
         {
         }
 
-        private FunctionInstanceLogger(IVersionedDocumentStore<FunctionInstanceSnapshot> store)
+        private FunctionInstanceLogger(IConcurrentDocumentStore<FunctionInstanceSnapshot> store)
         {
             _store = store;
         }
@@ -62,7 +62,7 @@ namespace Dashboard.Data
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
 
             // Which operation to run depends on whether or not the entity currently exists in the "queued" status.
-            VersionedDocument<FunctionInstanceSnapshot> existingSnapshot = _store.Read(GetId(message));
+            IConcurrentDocument<FunctionInstanceSnapshot> existingSnapshot = _store.Read(GetId(message));
 
             bool previouslyQueued;
 
@@ -105,7 +105,7 @@ namespace Dashboard.Data
             // LogFunctionStarted (or Queued) record, if any.
             // Ignore the return value: if the ETag doesn't match, LogFunctionCompleted already ran, so there's no work
             // to do here.
-            _store.TryUpdate(GetId(snapshot), snapshot, etag);
+            _store.TryUpdate(GetId(snapshot), etag, snapshot);
         }
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)

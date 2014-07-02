@@ -37,6 +37,43 @@ namespace Microsoft.Azure.Jobs.Host.Storage
             return result.HttpStatusCode == 409;
         }
 
+        /// <summary>
+        /// Determines whether the exception is due to a 409 Conflict error with the error code BlobAlreadyExists.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 409 Conflict error with the error code
+        /// BlobAlreadyExists; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsConflictBlobAlreadyExists(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 409)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "BlobAlreadyExists";
+        }
+
         /// <summary>Determines whether the exception is due to a 404 Not Found error.</summary>
         /// <param name="exception">The storage exception.</param>
         /// <returns>
@@ -57,6 +94,82 @@ namespace Microsoft.Azure.Jobs.Host.Storage
             }
 
             return result.HttpStatusCode == 404;
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 404 Not Found error with the error code ContainerNotFound.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 404 Not Found error with the error code
+        /// ContainerNotFound; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsNotFoundContainerNotFound(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 404)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "ContainerNotFound";
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 404 Not Found error with the error code BlobNotFound or
+        /// ContainerNotFound.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 404 Not Found error with the error code BlobNotFound or
+        /// ContainerNotFound; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsNotFoundBlobOrContainerNotFound(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 404)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            string errorCode = extendedInformation.ErrorCode;
+            return errorCode == "BlobNotFound" || errorCode == "ContainerNotFound";
         }
 
         /// <summary>Determines whether the exception is due to a 412 Precondition Failed error.</summary>
@@ -80,6 +193,44 @@ namespace Microsoft.Azure.Jobs.Host.Storage
             }
 
             return result.HttpStatusCode == 412;
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 412 Precondition Failed error with the error code
+        /// ConditionNotMet.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 412 Precondition Failed error with the error code
+        /// ConditionNotMet; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsPreconditionFailedConditionNotMet(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 412)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "ConditionNotMet";
         }
     }
 }

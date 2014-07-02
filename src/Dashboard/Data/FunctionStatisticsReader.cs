@@ -5,23 +5,23 @@ namespace Dashboard.Data
 {
     public class FunctionStatisticsReader :  IFunctionStatisticsReader
     {
-        private readonly IVersionedDocumentStore<FunctionStatistics> _store;
+        private readonly IConcurrentDocumentStore<FunctionStatistics> _store;
 
         [CLSCompliant(false)]
         public FunctionStatisticsReader(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
+            : this(ConcurrentDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionStatistics))
         {
         }
 
-        private FunctionStatisticsReader(IVersionedDocumentStore<FunctionStatistics> store)
+        private FunctionStatisticsReader(IConcurrentDocumentStore<FunctionStatistics> store)
         {
             _store = store;
         }
 
         public FunctionStatistics Lookup(string functionId)
         {
-            VersionedDocument<FunctionStatistics> result = _store.Read(functionId);
+            IConcurrentDocument<FunctionStatistics> result = _store.Read(functionId);
 
             if (result == null)
             {

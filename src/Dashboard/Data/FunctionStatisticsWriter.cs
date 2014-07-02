@@ -5,16 +5,16 @@ namespace Dashboard.Data
 {
     public class FunctionStatisticsWriter :  IFunctionStatisticsWriter
     {
-        private readonly IVersionedDocumentStore<FunctionStatistics> _store;
+        private readonly IConcurrentDocumentStore<FunctionStatistics> _store;
 
         [CLSCompliant(false)]
         public FunctionStatisticsWriter(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
+            : this(ConcurrentDocumentStore.CreateJsonBlobStore<FunctionStatistics>(
                 client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.FunctionStatistics))
         {
         }
 
-        private FunctionStatisticsWriter(IVersionedDocumentStore<FunctionStatistics> store)
+        private FunctionStatisticsWriter(IConcurrentDocumentStore<FunctionStatistics> store)
         {
             _store = store;
         }
@@ -37,7 +37,7 @@ namespace Dashboard.Data
 
         private bool TryUpdateEntity(string functionId, Action<FunctionStatistics> modifier)
         {
-            VersionedDocument<FunctionStatistics> result = _store.Read(functionId);
+            IConcurrentDocument<FunctionStatistics> result = _store.Read(functionId);
 
             if (result == null || result.Document == null)
             {
@@ -49,7 +49,7 @@ namespace Dashboard.Data
             {
                 FunctionStatistics statistics = result.Document;
                 modifier.Invoke(statistics);
-                return _store.TryUpdate(functionId, statistics, result.ETag);
+                return _store.TryUpdate(functionId, result.ETag, statistics);
             }
         }
     }

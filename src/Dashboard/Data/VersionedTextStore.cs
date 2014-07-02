@@ -6,12 +6,12 @@ namespace Dashboard.Data
     public static class VersionedTextStore
     {
         [CLSCompliant(false)]
-        public static IVersionedTextStore CreateBlobStore(CloudBlobClient client, string containerName,
-            string directoryName)
+        public static IVersionedMetadataTextStore CreateBlobStore(CloudBlobClient client, string containerName,
+            string directoryName, IVersionMetadataMapper versionMapper)
         {
-            CloudBlobContainer container = client.GetContainerReference(containerName);
-            CloudBlobDirectory directory = container.GetDirectoryReference(directoryName);
-            return new BlobVersionedTextStore(directory);
+            IConcurrentMetadataTextStore innerStore = ConcurrentTextStore.CreateBlobStore(client, containerName,
+                directoryName);
+            return new VersionedMetadataTextStore(innerStore, versionMapper);
         }
     }
 }

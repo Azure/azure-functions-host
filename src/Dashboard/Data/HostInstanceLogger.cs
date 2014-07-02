@@ -9,43 +9,28 @@ namespace Dashboard.Data
 {
     internal class HostInstanceLogger : IHostInstanceLogger
     {
-        private readonly IVersionedDocumentStore<HostSnapshot> _store;
+        private readonly IVersionedMetadataDocumentStore<HostSnapshot> _store;
+        private readonly IVersionMetadataMapper _versionMapper;
 
         public HostInstanceLogger(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(
-                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts))
+            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(client,
+                DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts, VersionMetadataMapper.Instance),
+                VersionMetadataMapper.Instance)
         {
         }
 
-        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store)
+        private HostInstanceLogger(IVersionedMetadataDocumentStore<HostSnapshot> store,
+            IVersionMetadataMapper versionMapper)
         {
             _store = store;
+            _versionMapper = versionMapper;
         }
 
         public void LogHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
             HostSnapshot newSnapshot = CreateSnapshot(message);
-
-            VersionedDocument<HostSnapshot> existingVersionedSnapshot = _store.Read(hostId);
-
-            if (existingVersionedSnapshot == null)
-            {
-                if (_store.TryCreate(hostId, newSnapshot))
-                {
-                    return;
-                }
-            }
-
-            while (existingVersionedSnapshot.Document.HostVersion < message.EnqueuedOn)
-            {
-                if (_store.TryUpdate(hostId, newSnapshot, existingVersionedSnapshot.ETag))
-                {
-                    return;
-                }
-
-                existingVersionedSnapshot = _store.Read(hostId);
-            }
+            _store.UpdateOrCreateIfLatest(hostId, CreateMetadata(newSnapshot.HostVersion), newSnapshot);
         }
 
         private static HostSnapshot CreateSnapshot(HostStartedMessage message)
@@ -84,6 +69,13 @@ namespace Dashboard.Data
                 ShortName = function.ShortName,
                 Parameters = CreateParameterSnapshots(function.Parameters)
             };
+        }
+
+        private IDictionary<string, string> CreateMetadata(DateTimeOffset version)
+        {
+            Dictionary<string, string> metadata = new Dictionary<string, string>();
+            _versionMapper.SetVersion(version, metadata);
+            return metadata;
         }
 
         private static IDictionary<string, ParameterSnapshot> CreateParameterSnapshots(
