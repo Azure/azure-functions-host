@@ -117,7 +117,8 @@ namespace Dashboard.UnitTests.Data
 
             Mock<IConcurrentMetadataTextStore> innerStoreMock =
                 new Mock<IConcurrentMetadataTextStore>(MockBehavior.Strict);
-            innerStoreMock.Setup(s => s.Read(expectedId)).Returns(new ConcurrentMetadataText(expectedETag, expectedMetadata, expectedText));
+            innerStoreMock.Setup(s => s.Read(expectedId)).Returns(new ConcurrentMetadataText(expectedETag,
+                expectedMetadata, expectedText));
             IConcurrentMetadataTextStore innerStore = innerStoreMock.Object;
             IVersionMetadataMapper versionMapper = CreateMapper(expectedMetadata, expectedVersion);
 
@@ -142,18 +143,45 @@ namespace Dashboard.UnitTests.Data
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
             string id = "Id";
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.Now;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "Text";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
             Assert.NotNull(storedItem);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", expectedMetadata, newText);
+            AssertEqual(expectedItem, storedItem);
+        }
+
+        [Fact]
+        public void CreateOrUpdateIfLatest_Creates_IfNotYetCreatedAndOtherMetadataIsNull()
+        {
+            // Arrange
+            IConcurrentMetadataTextStore innerStore = CreateInnerStore();
+            IVersionMetadataMapper versionMapper = CreateMapper();
+
+            IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
+
+            string id = "Id";
+            DateTimeOffset newVersion = DateTimeOffset.Now;
+            IDictionary<string, string> newOtherMetadata = null;
+            string newText = "Text";
+
+            // Act
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
+
+            // Assert
+            Assert.True(isLatest);
+            ConcurrentMetadataText storedItem = innerStore.Read(id);
+            Assert.NotNull(storedItem);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -170,12 +198,12 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.Now;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.False(isLatest);
@@ -196,17 +224,46 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", expectedMetadata, newText);
+            AssertEqual(expectedItem, storedItem);
+        }
+
+        [Fact]
+        public void CreateOrUpdateIfLatest_Updates_IfOlderExistsAndOtherMetadataIsNull()
+        {
+            // Arrange
+            IVersionMetadataMapper versionMapper = CreateMapper();
+            string id = "Id";
+
+            IConcurrentMetadataTextStore innerStore = CreateInnerStore(id, new ConcurrentMetadataText("1",
+                CreateMetadata(DateTimeOffset.Now, versionMapper, "ExistingKey", "ExistingValue"),
+                "ExistingText"));
+
+            IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
+
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = null;
+            string newText = "NewText";
+
+            // Act
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
+
+            // Assert
+            Assert.True(isLatest);
+            ConcurrentMetadataText storedItem = innerStore.Read(id);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -217,16 +274,19 @@ namespace Dashboard.UnitTests.Data
             IVersionMetadataMapper versionMapper = CreateMapper();
             string id = "Id";
 
-            IDictionary<string, string> existingMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper,
-                "ExistingKey", "ExistingValue");
+            DateTimeOffset existingVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> existingOtherMetadata = CreateMetadata("ExistingKey", "ExistingValue");
+            IDictionary<string, string> existingCombinedMetadata = CreateMetadata(existingVersion, versionMapper,
+                existingOtherMetadata);
             string existingText = "ExstingText";
-            ConcurrentMetadataText existingItem = new ConcurrentMetadataText("1", existingMetadata, existingText);
+            ConcurrentMetadataText existingItem = new ConcurrentMetadataText("1", existingCombinedMetadata,
+                existingText);
             IConcurrentMetadataTextStore innerStore = CreateInnerStore(id, existingItem);
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, existingMetadata, existingText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, existingVersion, existingOtherMetadata, existingText);
 
             // Assert
             Assert.True(isLatest);
@@ -254,17 +314,18 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -279,7 +340,8 @@ namespace Dashboard.UnitTests.Data
                 CreateMetadata(DateTimeOffset.MinValue, versionMapper, "ExistingKey", "ExistingValue"),
                 "ExistingText"));
 
-            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "UpdatedKey", "UpdatedValue");
+            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper,
+                "UpdatedKey", "UpdatedValue");
             string updatedText = "UpdatedText";
 
             innerStore.OnReadMetadata += (calls) =>
@@ -292,12 +354,12 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.Now;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.False(isLatest);
@@ -317,7 +379,8 @@ namespace Dashboard.UnitTests.Data
                 CreateMetadata(DateTimeOffset.Now, versionMapper, "ExistingKey", "ExistingValue"),
                 "ExistingText"));
 
-            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "UpdatedKey", "UpdatedValue");
+            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper,
+                "UpdatedKey", "UpdatedValue");
             string updatedText = "UpdatedText";
 
             innerStore.OnReadMetadata += (calls) =>
@@ -330,17 +393,18 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.CreateOrUpdateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("3", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("3", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -379,12 +443,13 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act & Assert
-            ExceptionAssert.ThrowsInvalidOperation(() => product.CreateOrUpdateIfLatest(id, newMetadata, newText),
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText),
                 "The operation stopped making progress.");
         }
 
@@ -399,7 +464,8 @@ namespace Dashboard.UnitTests.Data
                 CreateMetadata(DateTimeOffset.MinValue, versionMapper, "ExistingKey", "ExistingValue"),
                 "ExistingText"));
 
-            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "UpdatedKey", "UpdatedValue");
+            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper,
+                "UpdatedKey", "UpdatedValue");
             string updatedText = "UpdatedText";
 
             // Simulate an erroneous inner store that returns false from TryCreate but null from Read even though the
@@ -415,13 +481,35 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act & Assert
-            ExceptionAssert.ThrowsInvalidOperation(() => product.CreateOrUpdateIfLatest(id, newMetadata, newText),
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText),
                 "The operation gave up due to repeated failed creation attempts.");
+        }
+
+        [Fact]
+        public void CreateOrUpdateIfLatest_Throws_IfTargetVersionIsMinValue()
+        {
+            // Arrange
+            IVersionMetadataMapper versionMapper = CreateMapper();
+            string id = "Id";
+
+            IConcurrentMetadataTextStore innerStore = CreateDummyInnerStore();
+
+            IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
+
+            DateTimeOffset newVersion = DateTimeOffset.MinValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
+            string newText = "NewText";
+
+            // Act & Assert
+            ExceptionAssert.ThrowsArgument(
+                () => product.CreateOrUpdateIfLatest(id, newVersion, newOtherMetadata, newText),
+                "targetVersion", "targetVersion must be greater than DateTimeOffset.MinValue.");
         }
 
         [Fact]
@@ -438,18 +526,19 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.UpdateOrCreateIfLatest(id, newMetadata, newText, existingItem.ETag,
+            bool isLatest = product.UpdateOrCreateIfLatest(id, newVersion, newOtherMetadata, newText, existingItem.ETag,
                 existingVersion);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -467,12 +556,12 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.Now;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.UpdateOrCreateIfLatest(id, newMetadata, newText, existingItem.ETag,
+            bool isLatest = product.UpdateOrCreateIfLatest(id, newVersion, newOtherMetadata, newText, existingItem.ETag,
                 existingVersion);
 
             // Assert
@@ -491,18 +580,20 @@ namespace Dashboard.UnitTests.Data
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
             string id = "Id";
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "Text";
 
             // Act
-            bool isLatest = product.UpdateOrCreateIfLatest(id, newMetadata, newText, "Z", DateTimeOffset.Now);
+            bool isLatest = product.UpdateOrCreateIfLatest(id, newVersion, newOtherMetadata, newText, "Z",
+                DateTimeOffset.Now);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
             Assert.NotNull(storedItem);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("1", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -519,17 +610,18 @@ namespace Dashboard.UnitTests.Data
 
             IVersionedMetadataTextStore product = CreateProductUnderTest(innerStore, versionMapper);
 
-            IDictionary<string, string> newMetadata = CreateMetadata(DateTimeOffset.MaxValue, versionMapper, "NewKey",
-                "NewValue");
+            DateTimeOffset newVersion = DateTimeOffset.MaxValue;
+            IDictionary<string, string> newOtherMetadata = CreateMetadata("NewKey", "NewValue");
             string newText = "NewText";
 
             // Act
-            bool isLatest = product.UpdateOrCreateIfLatest(id, newMetadata, newText);
+            bool isLatest = product.UpdateOrCreateIfLatest(id, newVersion, newOtherMetadata, newText);
 
             // Assert
             Assert.True(isLatest);
             ConcurrentMetadataText storedItem = innerStore.Read(id);
-            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", newMetadata, newText);
+            IDictionary<string, string> expectedMetadata = CreateMetadata(newVersion, versionMapper, newOtherMetadata);
+            ConcurrentMetadataText expectedItem = new ConcurrentMetadataText("2", expectedMetadata, newText);
             AssertEqual(expectedItem, storedItem);
         }
 
@@ -591,7 +683,8 @@ namespace Dashboard.UnitTests.Data
                 "ExistingText"));
 
             DateTimeOffset updatedVersion = DateTimeOffset.Now;
-            IDictionary<string, string> updatedMetadata = CreateMetadata(updatedVersion, versionMapper, "UpdatedKey", "UpdatedValue");
+            IDictionary<string, string> updatedMetadata = CreateMetadata(updatedVersion, versionMapper, "UpdatedKey",
+                "UpdatedValue");
             string updatedText = "UpdatedText";
 
             innerStore.OnReadingMetadata += (calls) =>
@@ -732,7 +825,8 @@ namespace Dashboard.UnitTests.Data
                 CreateMetadata(DateTimeOffset.MinValue, versionMapper, "ExistingKey", "ExistingValue"),
                 "ExistingText"));
 
-            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper, "UpdatedKey", "UpdatedValue");
+            IDictionary<string, string> updatedMetadata = CreateMetadata(DateTimeOffset.Now, versionMapper,
+                "UpdatedKey", "UpdatedValue");
             string updatedText = "UpdatedText";
 
             // Simulate an erroneous inner store that returns false from TryDelete even though the ETag has not changed.
@@ -854,6 +948,26 @@ namespace Dashboard.UnitTests.Data
             Mock<IVersionMetadataMapper> mock = new Mock<IVersionMetadataMapper>(MockBehavior.Strict);
             mock.Setup(m => m.GetVersion(expectedMetadata)).Returns(version);
             return mock.Object;
+        }
+
+        private static IDictionary<string, string> CreateMetadata(string key, string value)
+        {
+            return new Dictionary<string, string> { { key, value } };
+        }
+
+        private static IDictionary<string, string> CreateMetadata(DateTimeOffset version, IVersionMetadataMapper mapper)
+        {
+            Dictionary<string, string> metadata = new Dictionary<string, string>();
+            mapper.SetVersion(version, metadata);
+            return metadata;
+        }
+
+        private static IDictionary<string, string> CreateMetadata(DateTimeOffset version, IVersionMetadataMapper mapper,
+            IDictionary<string, string> otherMetadata)
+        {
+            Dictionary<string, string> combinedMetadata = new Dictionary<string, string>(otherMetadata);
+            mapper.SetVersion(version, combinedMetadata);
+            return combinedMetadata;
         }
 
         private static IDictionary<string, string> CreateMetadata(DateTimeOffset version, IVersionMetadataMapper mapper,

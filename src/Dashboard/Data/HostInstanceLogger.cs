@@ -10,27 +10,23 @@ namespace Dashboard.Data
     internal class HostInstanceLogger : IHostInstanceLogger
     {
         private readonly IVersionedDocumentStore<HostSnapshot> _store;
-        private readonly IVersionMetadataMapper _versionMapper;
 
         public HostInstanceLogger(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(client,
-                DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts, VersionMetadataMapper.Instance),
-                VersionMetadataMapper.Instance)
+            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(
+                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts))
         {
         }
 
-        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store,
-            IVersionMetadataMapper versionMapper)
+        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store)
         {
             _store = store;
-            _versionMapper = versionMapper;
         }
 
         public void LogHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
             HostSnapshot newSnapshot = CreateSnapshot(message);
-            _store.UpdateOrCreateIfLatest(hostId, CreateMetadata(newSnapshot.HostVersion), newSnapshot);
+            _store.UpdateOrCreateIfLatest(hostId, newSnapshot.HostVersion, otherMetadata: null, document:newSnapshot);
         }
 
         private static HostSnapshot CreateSnapshot(HostStartedMessage message)
@@ -69,13 +65,6 @@ namespace Dashboard.Data
                 ShortName = function.ShortName,
                 Parameters = CreateParameterSnapshots(function.Parameters)
             };
-        }
-
-        private IDictionary<string, string> CreateMetadata(DateTimeOffset version)
-        {
-            Dictionary<string, string> metadata = new Dictionary<string, string>();
-            _versionMapper.SetVersion(version, metadata);
-            return metadata;
         }
 
         private static IDictionary<string, ParameterSnapshot> CreateParameterSnapshots(

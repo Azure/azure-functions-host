@@ -58,21 +58,23 @@ namespace Dashboard.Data
             return new VersionedMetadataText(innerItem.ETag, innerItem.Metadata, version, innerItem.Text);
         }
 
-        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text)
+        public bool CreateOrUpdateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, string text)
         {
-            return PersistIfLatest(id, metadataWithVersion, text, startingItem: null);
+            return PersistIfLatest(id, targetVersion, otherMetadata, text, startingItem: null);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text)
+        public bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, string text)
         {
             VersionedItem startingItem = ReadMetadata(id);
-            return PersistIfLatest(id, metadataWithVersion, text, startingItem);
+            return PersistIfLatest(id, targetVersion, otherMetadata, text, startingItem);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
-            string currentETag, DateTimeOffset currentVersion)
+        public bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, string text, string currentETag, DateTimeOffset currentVersion)
         {
-            return PersistIfLatest(id, metadataWithVersion, text,
+            return PersistIfLatest(id, targetVersion, otherMetadata, text,
                 startingItem: new VersionedItem(currentETag, currentVersion));
         }
 
@@ -118,6 +120,23 @@ namespace Dashboard.Data
             return deleted || currentItem == null;
         }
 
+        private IDictionary<string, string> Combine(IDictionary<string, string> otherMetadata, DateTimeOffset version)
+        {
+            IDictionary<string, string> metadata;
+
+            if (otherMetadata != null)
+            {
+                metadata = otherMetadata;
+            }
+            else
+            {
+                metadata = new Dictionary<string, string>();
+            }
+
+            _versionMapper.SetVersion(version, metadata);
+            return metadata;
+        }
+
         private DateTimeOffset GetVersion(ConcurrentMetadataText item)
         {
             if (item == null)
@@ -128,14 +147,14 @@ namespace Dashboard.Data
             return GetVersion(item.Metadata);
         }
 
-        private DateTimeOffset GetVersion(IDictionary<string, string> metadataWithVersion)
+        private DateTimeOffset GetVersion(IDictionary<string, string> metadata)
         {
-            if (metadataWithVersion == null)
+            if (metadata == null)
             {
                 return DateTimeOffset.MinValue;
             }
 
-            return _versionMapper.GetVersion(metadataWithVersion);
+            return _versionMapper.GetVersion(metadata);
         }
 
         private DateTimeOffset GetVersion(VersionedItem item)
@@ -148,10 +167,18 @@ namespace Dashboard.Data
             return item.Version;
         }
 
-        private bool PersistIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
-            VersionedItem startingItem)
+        private bool PersistIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            string text, VersionedItem startingItem)
         {
-            DateTimeOffset targetVersion = GetVersion(metadataWithVersion);
+            if (targetVersion == DateTimeOffset.MinValue)
+            {
+                // DateTimeOffset.MinValue is a sentinal value used by the implementation, so it can't be used as a
+                // targetVersion.
+                throw new ArgumentException("targetVersion must be greater than DateTimeOffset.MinValue.",
+                    "targetVersion");
+            }
+
+            IDictionary<string, string> combinedMetadata = Combine(otherMetadata, targetVersion);
             bool persisted = false;
             string previousETag = null;
             int createAttempt = 0;
@@ -175,7 +202,7 @@ namespace Dashboard.Data
                     }
 
                     previousETag = null;
-                    persisted = _innerStore.TryCreate(id, metadataWithVersion, text);
+                    persisted = _innerStore.TryCreate(id, combinedMetadata, text);
                 }
                 else
                 {
@@ -190,7 +217,7 @@ namespace Dashboard.Data
                     }
 
                     previousETag = currentETag;
-                    persisted = _innerStore.TryUpdate(id, currentETag, metadataWithVersion, text);
+                    persisted = _innerStore.TryUpdate(id, currentETag, combinedMetadata, text);
                 }
             }
 

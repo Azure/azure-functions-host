@@ -41,28 +41,30 @@ namespace Dashboard.Data
                 document);
         }
 
-        public bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
-            TDocument document)
+        public bool CreateOrUpdateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.CreateOrUpdateIfLatest(id, metadataWithVersion, text);
+            return _innerStore.CreateOrUpdateIfLatest(id, targetVersion, otherMetadata, text);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
-            TDocument document)
+        public bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, TDocument document)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.UpdateOrCreateIfLatest(id, metadataWithVersion, text);
+            return _innerStore.UpdateOrCreateIfLatest(id, targetVersion, otherMetadata, text);
         }
 
-        public bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion,
-            TDocument document, string currentETag, DateTimeOffset currentVersion)
+        public bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion,
+            IDictionary<string, string> otherMetadata, TDocument document, string currentETag,
+            DateTimeOffset currentVersion)
         {
             string text = JsonConvert.SerializeObject(document, _settings);
 
-            return _innerStore.UpdateOrCreateIfLatest(id, metadataWithVersion, text, currentETag, currentVersion);
+            return _innerStore.UpdateOrCreateIfLatest(id, targetVersion, otherMetadata, text, currentETag,
+                currentVersion);
         }
 
         public bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion)

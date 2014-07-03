@@ -9,12 +9,14 @@ namespace Dashboard.Data
 
         VersionedMetadataDocument<TDocument> Read(string id);
 
-        bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadata, TDocument document);
+        bool CreateOrUpdateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            TDocument document);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document);
+        bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            TDocument document);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadata, TDocument document,
-            string currentETag, DateTimeOffset currentVersion);
+        bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            TDocument document, string currentETag, DateTimeOffset currentVersion);
 
         bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion);
 

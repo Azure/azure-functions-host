@@ -9,12 +9,14 @@ namespace Dashboard.Data
 
         VersionedMetadataText Read(string id);
 
-        bool CreateOrUpdateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text);
+        bool CreateOrUpdateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            string text);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text);
+        bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            string text);
 
-        bool UpdateOrCreateIfLatest(string id, IDictionary<string, string> metadataWithVersion, string text,
-            string currentETag, DateTimeOffset currentVersion);
+        bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion, IDictionary<string, string> otherMetadata,
+            string text, string currentETag, DateTimeOffset currentVersion);
 
         bool DeleteIfLatest(string id, DateTimeOffset deleteThroughVersion);
 

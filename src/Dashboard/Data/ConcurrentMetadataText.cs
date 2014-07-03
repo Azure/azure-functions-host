@@ -17,7 +17,7 @@ namespace Dashboard.Data
             }
             else if (metadata == null)
             {
-                throw new ArgumentNullException("");
+                throw new ArgumentNullException("metadata");
             }
             else if (text == null)
             {

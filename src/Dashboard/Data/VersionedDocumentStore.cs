@@ -7,10 +7,10 @@ namespace Dashboard.Data
     {
         [CLSCompliant(false)]
         public static IVersionedDocumentStore<TDocument> CreateJsonBlobStore<TDocument>(CloudBlobClient client,
-            string containerName, string directoryName, IVersionMetadataMapper versionMapper)
+            string containerName, string directoryName)
         {
-            IVersionedMetadataTextStore innerStore =
-                VersionedTextStore.CreateBlobStore(client, containerName, directoryName, versionMapper);
+            IVersionedMetadataTextStore innerStore = VersionedTextStore.CreateBlobStore(
+                client, containerName, directoryName, VersionMetadataMapper.Instance);
             return new JsonVersionedDocumentStore<TDocument>(innerStore);
         }
     }
