@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Web.Caching;
 using Dashboard.Data;
 using Microsoft.Azure.Jobs.Protocols;
 
@@ -9,18 +10,26 @@ namespace Dashboard.Indexers
     {
         private readonly IHostIndexManager _hostIndexManager;
         private readonly IFunctionIndexVersionManager _functionIndexVersionManager;
+        private readonly Cache _cache;
 
-        public HostIndexer(IHostIndexManager hostIndexManager, IFunctionIndexVersionManager functionIndexVersionManager)
+        public HostIndexer(IHostIndexManager hostIndexManager, IFunctionIndexVersionManager functionIndexVersionManager,
+            Cache cache)
         {
             _hostIndexManager = hostIndexManager;
             _functionIndexVersionManager = functionIndexVersionManager;
+            _cache = cache;
         }
 
         public void ProcessHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
             HostSnapshot snapshot = CreateSnapshot(message);
-            _hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot);
+
+            if (_hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot))
+            {
+                _cache.Remove(FunctionIndexReader.CacheInvalidationKey);
+            }
+
             _functionIndexVersionManager.UpdateOrCreateIfLatest(snapshot.HostVersion);
         }
 

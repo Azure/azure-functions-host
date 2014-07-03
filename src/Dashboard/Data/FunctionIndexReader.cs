@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Web.Caching;
 using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -10,20 +11,24 @@ namespace Dashboard.Data
 {
     public class FunctionIndexReader : IFunctionIndexReader
     {
+        internal static string CacheInvalidationKey = "FunctionsValid";
+
         private readonly CloudBlobDirectory _hostsDirectory;
+        private readonly Cache _cache;
         private readonly CloudBlobDirectory _functionsDirectory;
         private readonly IVersionMetadataMapper _versionMapper;
 
         [CLSCompliant(false)]
-        public FunctionIndexReader(CloudBlobClient blobClient)
+        public FunctionIndexReader(CloudBlobClient blobClient, Cache cache)
             : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
-                DashboardDirectoryNames.Hosts), blobClient.GetContainerReference(DashboardContainerNames.Dashboard)
-                .GetDirectoryReference(DashboardDirectoryNames.Functions), VersionMetadataMapper.Instance)
+                DashboardDirectoryNames.Hosts), cache, blobClient.GetContainerReference(
+                DashboardContainerNames.Dashboard).GetDirectoryReference(DashboardDirectoryNames.Functions),
+                VersionMetadataMapper.Instance)
         {
         }
 
-        private FunctionIndexReader(CloudBlobDirectory hostsDirectory, CloudBlobDirectory functionsDirectory,
-            IVersionMetadataMapper versionMapper)
+        private FunctionIndexReader(CloudBlobDirectory hostsDirectory, Cache cache,
+            CloudBlobDirectory functionsDirectory, IVersionMetadataMapper versionMapper)
         {
             if (hostsDirectory == null)
             {
@@ -39,6 +44,7 @@ namespace Dashboard.Data
             }
 
             _hostsDirectory = hostsDirectory;
+            _cache = cache;
             _functionsDirectory = functionsDirectory;
             _versionMapper = versionMapper;
         }
@@ -120,6 +126,36 @@ namespace Dashboard.Data
         }
 
         private List<FunctionSnapshot> ReadAllFunctions()
+        {
+            const string CacheKey = "Functions";
+
+            if (_cache != null)
+            {
+                List<FunctionSnapshot> cached = _cache.Get(CacheKey) as List<FunctionSnapshot>;
+
+                if (cached != null)
+                {
+                    return cached;
+                }
+            }
+
+            List<FunctionSnapshot> results = ReadAllFunctionsUncached();
+
+            if (results == null)
+            {
+                return null;
+            }
+
+            if (_cache != null)
+            {
+                _cache.Insert(CacheInvalidationKey, true);
+                _cache.Insert(CacheKey, results, new CacheDependency(null, new string[] { CacheInvalidationKey }));
+            }
+
+            return results;
+        }
+
+        private List<FunctionSnapshot> ReadAllFunctionsUncached()
         {
             List<HostSnapshot> hosts = ReadAllHosts();
 

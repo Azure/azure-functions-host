@@ -2,6 +2,6 @@
 {
     internal interface IHostIndexManager
     {
-        void UpdateOrCreateIfLatest(string id, HostSnapshot snapshot);
+        bool UpdateOrCreateIfLatest(string id, HostSnapshot snapshot);
     }
 }

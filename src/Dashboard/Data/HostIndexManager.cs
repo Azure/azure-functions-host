@@ -17,9 +17,9 @@ namespace Dashboard.Data
             _store = store;
         }
 
-        public void UpdateOrCreateIfLatest(string id, HostSnapshot snapshot)
+        public bool UpdateOrCreateIfLatest(string id, HostSnapshot snapshot)
         {
-            _store.UpdateOrCreateIfLatest(id, snapshot.HostVersion, otherMetadata: null, document: snapshot);
+            return _store.UpdateOrCreateIfLatest(id, snapshot.HostVersion, otherMetadata: null, document: snapshot);
         }
     }
 }
