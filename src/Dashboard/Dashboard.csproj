@@ -293,7 +293,6 @@
     <Compile Include="ViewModels\InvocationLogViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsSegment.cs" />
-    <Compile Include="ViewModels\ContainerPagingInfo.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="ApiControllers\LogController.cs" />
     <Compile Include="App_Start\AppModule.cs" />

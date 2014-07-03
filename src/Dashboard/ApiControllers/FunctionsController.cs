@@ -64,13 +64,13 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/jobs/triggered/{jobName}/runs/{runId}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, [FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionsInJob(string jobName, string runId, [FromUri]PagingInfo pagingInfo)
         {
             return GetFunctionsInJob(WebJobTypes.Triggered, jobName, runId, pagingInfo);
         }
 
         [Route("api/jobs/continuous/{jobName}/functions")]
-        public IHttpActionResult GetFunctionsInJob(string jobName, [FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionsInJob(string jobName, [FromUri]PagingInfo pagingInfo)
         {
             return GetFunctionsInJob(WebJobTypes.Continuous, jobName, null, pagingInfo);
         }
@@ -116,7 +116,7 @@ namespace Dashboard.ApiControllers
             return resultsList.Any();
         }
 
-        private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] ContainerPagingInfo pagingInfo)
+        private IHttpActionResult GetFunctionsInJob(WebJobTypes webJobType, string jobName, string runId, [FromUri] PagingInfo pagingInfo)
         {
             if (!ModelState.IsValid)
             {
@@ -168,7 +168,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions/{functionId}/invocations")]
-        public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetInvocationsForFunction(string functionId, [FromUri]PagingInfo pagingInfo)
         {
             if (!ModelState.IsValid)
             {
@@ -193,7 +193,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/invocations/recent")]
-        public IHttpActionResult GetRecentInvocations([FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetRecentInvocations([FromUri]PagingInfo pagingInfo)
         {
             if (!ModelState.IsValid)
             {
@@ -280,7 +280,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/invocations/{functionInvocationId}/children")]
-        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, [FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetInvocationChildren(Guid functionInvocationId, [FromUri]PagingInfo pagingInfo)
         {
             if (!ModelState.IsValid)
             {
@@ -372,7 +372,7 @@ namespace Dashboard.ApiControllers
         }
 
         [Route("api/functions/definitions")]
-        public IHttpActionResult GetFunctionDefinitions([FromUri]ContainerPagingInfo pagingInfo)
+        public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
         {
             if (!ModelState.IsValid)
             {
