@@ -1,11 +1,9 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
-
-namespace Dashboard.Data
+﻿namespace Dashboard.Data
 {
     internal interface IFunctionInstanceLogger
     {
-        void LogFunctionStarted(FunctionStartedMessage message);
+        void LogFunctionStarted(FunctionInstanceSnapshot snapshot);
 
-        void LogFunctionCompleted(FunctionCompletedMessage message);
+        void LogFunctionCompleted(FunctionInstanceSnapshot snapshot);
     }
 }

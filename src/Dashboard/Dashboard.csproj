@@ -250,7 +250,7 @@
     <Compile Include="Data\ConcurrentTextStore.cs" />
     <Compile Include="Data\ConcurrentDocumentStore.cs" />
     <Compile Include="Data\VersionedFunction.cs" />
-    <Compile Include="Data\HostInstanceLogger.cs" />
+    <Compile Include="Data\HostIndexManager.cs" />
     <Compile Include="Data\FunctionLookup.cs" />
     <Compile Include="Data\FunctionInstanceLookup.cs" />
     <Compile Include="Data\FunctionInstanceSnapshot.cs" />
@@ -259,7 +259,7 @@
     <Compile Include="Data\HostSnapshot.cs" />
     <Compile Include="Data\FunctionInstanceArgument.cs" />
     <Compile Include="Data\IFunctionLookup.cs" />
-    <Compile Include="Data\IHostInstanceLogger.cs" />
+    <Compile Include="Data\IHostIndexManager.cs" />
     <Compile Include="Data\IFunctionInstanceLogger.cs" />
     <Compile Include="Data\IFunctionQueuedLogger.cs" />
     <Compile Include="Data\IFunctionInstanceLookup.cs" />
@@ -278,6 +278,10 @@
     <Compile Include="HostMessaging\IInvoker.cs" />
     <Compile Include="HostMessaging\Invoker.cs" />
     <Compile Include="HostMessaging\LocalBlobDescriptorExtensions.cs" />
+    <Compile Include="Indexers\IFunctionIndexer.cs" />
+    <Compile Include="Indexers\IHostIndexer.cs" />
+    <Compile Include="Indexers\HostIndexer.cs" />
+    <Compile Include="Indexers\FunctionIndexer.cs" />
     <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />
     <Compile Include="ViewModels\BlobBoundParamModel.cs" />

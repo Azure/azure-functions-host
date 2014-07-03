@@ -1,32 +1,24 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
+﻿using System.Collections.Generic;
 using System.IO;
+using Dashboard.Data;
 using Microsoft.Azure.Jobs.Protocols;
-using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Dashboard.Data
+namespace Dashboard.Indexers
 {
-    internal class HostInstanceLogger : IHostInstanceLogger
+    internal class HostIndexer : IHostIndexer
     {
-        private readonly IVersionedDocumentStore<HostSnapshot> _store;
+        private readonly HostIndexManager _hostIndexManager;
 
-        public HostInstanceLogger(CloudBlobClient client)
-            : this(VersionedDocumentStore.CreateJsonBlobStore<HostSnapshot>(
-                client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Hosts))
+        public HostIndexer(HostIndexManager hostIndexManager)
         {
+            _hostIndexManager = hostIndexManager;
         }
 
-        private HostInstanceLogger(IVersionedDocumentStore<HostSnapshot> store)
-        {
-            _store = store;
-        }
-
-        public void LogHostStarted(HostStartedMessage message)
+        public void ProcessHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
-            HostSnapshot newSnapshot = CreateSnapshot(message);
-            _store.UpdateOrCreateIfLatest(hostId, newSnapshot.HostVersion, otherMetadata: null, document:newSnapshot);
+            HostSnapshot snapshot = CreateSnapshot(message);
+            _hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot);
         }
 
         private static HostSnapshot CreateSnapshot(HostStartedMessage message)
@@ -55,7 +47,7 @@ namespace Dashboard.Data
         {
             return new FunctionSnapshot
             {
-                Id = String.Format(CultureInfo.InvariantCulture, "{0}_{1}", queueName, function.Id),
+                Id = new FunctionIdentifier(queueName, function.Id).ToString(),
                 QueueName = queueName,
                 HeartbeatSharedContainerName = heartbeat != null ? heartbeat.SharedContainerName : null,
                 HeartbeatSharedDirectoryName = heartbeat != null ? heartbeat.SharedDirectoryName : null,
