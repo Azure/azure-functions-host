@@ -214,7 +214,7 @@ namespace Dashboard.ApiControllers
         {
             if (indexSegment == null)
             {
-                return Ok();
+                return Ok(new InvocationLogSegment { Entries = new InvocationLogViewModel[0] });
             }
 
             InvocationLogSegment results = new InvocationLogSegment
@@ -420,16 +420,19 @@ namespace Dashboard.ApiControllers
                 model.IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: true);
             }
 
-            foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)
+            if (model.Entries != null)
             {
-                if (statisticsModel == null)
+                foreach (FunctionStatisticsViewModel statisticsModel in model.Entries)
                 {
-                    continue;
-                }
+                    if (statisticsModel == null)
+                    {
+                        continue;
+                    }
 
-                Tuple<int, int> counts = GetStatistics(statisticsModel.FunctionId);
-                statisticsModel.SuccessCount = counts.Item1;
-                statisticsModel.FailedCount = counts.Item2;
+                    Tuple<int, int> counts = GetStatistics(statisticsModel.FunctionId);
+                    statisticsModel.SuccessCount = counts.Item1;
+                    statisticsModel.FailedCount = counts.Item2;
+                }
             }
 
             return Ok(model);

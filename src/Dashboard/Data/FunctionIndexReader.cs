@@ -96,6 +96,12 @@ namespace Dashboard.Data
             }
 
             List<FunctionSnapshot> functions = ReadAllFunctions();
+
+            if (functions == null)
+            {
+                return null;
+            }
+
             List<FunctionSnapshot> results = functions.Skip(startIndex).Take(maximumResults).ToList();
             int resultsCount = results.Count;
 
@@ -142,7 +148,23 @@ namespace Dashboard.Data
 
         private List<HostSnapshot> ReadAllHosts()
         {
-            IEnumerable<IListBlobItem> blobs = _hostsDirectory.ListBlobs(useFlatBlobListing: true);
+            IEnumerable<IListBlobItem> blobs;
+
+            try
+            {
+                blobs = _hostsDirectory.ListBlobs(useFlatBlobListing: true).ToList();
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsNotFound())
+                {
+                    return null;
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
             List<HostSnapshot> hosts = new List<HostSnapshot>();
 
