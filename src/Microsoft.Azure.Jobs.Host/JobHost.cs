@@ -151,11 +151,14 @@ namespace Microsoft.Azure.Jobs
         /// <param name="token">The token to monitor for cancellation requests.</param>
         public void RunAndBlock(CancellationToken token)
         {
+            Console.WriteLine("Job host started");
+
             RunAndBlock(token, () =>
             {
                 Thread.Sleep(2 * 1000);
-                Console.Write(".");
             });
+
+            Console.WriteLine("Job host stopped");
         }
 
         // Run the jobs on the current thread. 
