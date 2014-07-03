@@ -37,6 +37,9 @@
             functionDefinitions: function () {
                 return "api/functions/definitions";
             },
+            functionNewerDefinitions: function(version) {
+                return "api/functions/newerDefinitions?version=" + encodeURIComponent(version);
+            },
             invocationByIds: function () {
                 return "api/functions/invocationsByIds";
             },

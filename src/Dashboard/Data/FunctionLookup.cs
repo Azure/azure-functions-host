@@ -39,16 +39,7 @@ namespace Dashboard.Data
                 return null;
             }
 
-            FunctionSnapshot snapshot = hostSnapshot.Functions.FirstOrDefault(f => f.Id == functionId);
-
-            if (snapshot == null)
-            {
-                return null;
-            }
-
-            // Add the HostVersion (not part of the JSON-serialized blob).
-            snapshot.HostVersion = hostSnapshot.HostVersion;
-            return snapshot;
+            return hostSnapshot.Functions.FirstOrDefault(f => f.Id == functionId);
         }
 
         internal static T ReadJson<T>(CloudBlockBlob blob)

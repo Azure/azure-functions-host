@@ -11,7 +11,6 @@
         model.successCount = item.successCount;
         model.failedCount = item.failedCount;
         model.isRunning = !!item.isRunning;
-        model.whenUtc = item.whenUtc;
 
         return model;
     };

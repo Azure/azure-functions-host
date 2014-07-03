@@ -395,8 +395,7 @@ namespace Dashboard.ApiControllers
                         FunctionName = function.ShortName,
                         IsRunning = HostHasHeartbeat(function).GetValueOrDefault(true),
                         FailedCount = 0,
-                        SuccessCount = 0,
-                        WhenUtc = function.HostVersion.UtcDateTime
+                        SuccessCount = 0
                     });
 
                 model.Entries = query.ToArray();
@@ -406,6 +405,12 @@ namespace Dashboard.ApiControllers
             else
             {
                 foundItem = false;
+            }
+
+            if (pagingInfo.ContinuationToken == null)
+            {
+                // For requests for the first page only, also provide a version to enable polling for updates.
+                model.VersionUtc = _functionIndexReader.GetCurrentVersion().UtcDateTime;
             }
 
             model.StorageAccountName = _account.Credentials.AccountName;
@@ -428,6 +433,14 @@ namespace Dashboard.ApiControllers
             }
 
             return Ok(model);
+        }
+
+        [Route("api/functions/newerDefinitions")]
+        public IHttpActionResult GetNewerFunctionDefinition(DateTime version)
+        {
+            DateTimeOffset latestVersion = _functionIndexReader.GetCurrentVersion();
+            bool newerExists = latestVersion.UtcDateTime > version.ToUniversalTime();
+            return Ok(newerExists);
         }
 
         private Tuple<int, int> GetStatistics(string functionId)

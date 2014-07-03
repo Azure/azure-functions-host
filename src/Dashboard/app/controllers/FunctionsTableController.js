@@ -120,6 +120,10 @@
                 item,
                 continuationToken;
 
+            if (data.versionUtc !== undefined) {
+                functionDefinitions.versionUtc = data.versionUtc;
+            }
+
             if (data.isOldHost !== undefined) {
                 $rootScope.isOldHost = data.isOldHost;
             }
@@ -168,17 +172,15 @@
                 return;
             }
 
-            var params = {
-                limit: 1
-            };
+            if (!functionDefinitions.versionUtc) {
+                return;
+            }
 
-            getFunctionDefinitions(params).success(function (data) {
-                var entries = data.entries;
-
-                if (entries != null && entries.length > 0 && entries[0].whenUtc > functionDefinitions.page[0].whenUtc) {
+            $http.get(api.sdk.functionNewerDefinitions(functionDefinitions.versionUtc)).success(function (data) {
+                if (data === "true") {
                     functionDefinitions.hasNew = true;
                 }
             });
         }
-   }
+    }
 );

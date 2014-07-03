@@ -6,9 +6,6 @@ namespace Dashboard.Data
 {
     public class FunctionSnapshot
     {
-        [JsonIgnore]
-        public DateTimeOffset HostVersion { get; set; }
-
         public string Id { get; set; }
 
         public string QueueName { get; set; }

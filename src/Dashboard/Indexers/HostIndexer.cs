@@ -7,11 +7,13 @@ namespace Dashboard.Indexers
 {
     internal class HostIndexer : IHostIndexer
     {
-        private readonly HostIndexManager _hostIndexManager;
+        private readonly IHostIndexManager _hostIndexManager;
+        private readonly IFunctionIndexVersionManager _functionIndexVersionManager;
 
-        public HostIndexer(HostIndexManager hostIndexManager)
+        public HostIndexer(IHostIndexManager hostIndexManager, IFunctionIndexVersionManager functionIndexVersionManager)
         {
             _hostIndexManager = hostIndexManager;
+            _functionIndexVersionManager = functionIndexVersionManager;
         }
 
         public void ProcessHostStarted(HostStartedMessage message)
@@ -19,6 +21,7 @@ namespace Dashboard.Indexers
             string hostId = message.SharedQueueName;
             HostSnapshot snapshot = CreateSnapshot(message);
             _hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot);
+            _functionIndexVersionManager.UpdateOrCreateIfLatest(snapshot.HostVersion);
         }
 
         private static HostSnapshot CreateSnapshot(HostStartedMessage message)

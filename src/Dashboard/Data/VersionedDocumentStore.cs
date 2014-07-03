@@ -9,8 +9,8 @@ namespace Dashboard.Data
         public static IVersionedDocumentStore<TDocument> CreateJsonBlobStore<TDocument>(CloudBlobClient client,
             string containerName, string directoryName)
         {
-            IVersionedMetadataTextStore innerStore = VersionedTextStore.CreateBlobStore(
-                client, containerName, directoryName, VersionMetadataMapper.Instance);
+            IVersionedMetadataTextStore innerStore = VersionedTextStore.CreateBlobStore(client, containerName,
+                directoryName);
             return new JsonVersionedDocumentStore<TDocument>(innerStore);
         }
     }

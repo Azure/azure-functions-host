@@ -2,29 +2,69 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Azure.Jobs.Storage;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
     public class FunctionIndexReader : IFunctionIndexReader
     {
-        private readonly CloudBlobDirectory _directory;
+        private readonly CloudBlobDirectory _hostsDirectory;
+        private readonly CloudBlobDirectory _functionsDirectory;
+        private readonly IVersionMetadataMapper _versionMapper;
 
         [CLSCompliant(false)]
         public FunctionIndexReader(CloudBlobClient blobClient)
-            : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard)
-                .GetDirectoryReference(DashboardDirectoryNames.Hosts))
+            : this(blobClient.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
+                DashboardDirectoryNames.Hosts), blobClient.GetContainerReference(DashboardContainerNames.Dashboard)
+                .GetDirectoryReference(DashboardDirectoryNames.Functions), VersionMetadataMapper.Instance)
         {
         }
 
-        private FunctionIndexReader(CloudBlobDirectory directory)
+        private FunctionIndexReader(CloudBlobDirectory hostsDirectory, CloudBlobDirectory functionsDirectory,
+            IVersionMetadataMapper versionMapper)
         {
-            if (directory == null)
+            if (hostsDirectory == null)
             {
-                throw new ArgumentNullException("directory");
+                throw new ArgumentNullException("hostsDirectory");
+            }
+            else if (functionsDirectory == null)
+            {
+                throw new ArgumentNullException("functionsDirectory");
+            }
+            else if (versionMapper == null)
+            {
+                throw new ArgumentNullException("versionMapper");
             }
 
-            _directory = directory;
+            _hostsDirectory = hostsDirectory;
+            _functionsDirectory = functionsDirectory;
+            _versionMapper = versionMapper;
+        }
+
+        public DateTimeOffset GetCurrentVersion()
+        {
+            CloudBlockBlob blob = _functionsDirectory.GetBlockBlobReference(
+                FunctionIndexVersionManager.VersionBlobName);
+
+            try
+            {
+                blob.FetchAttributes();
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsNotFound())
+                {
+                    return DateTimeOffset.MinValue;
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return _versionMapper.GetVersion(blob.Metadata);
         }
 
         public IResultSegment<FunctionSnapshot> Read(int maximumResults, string continuationToken)
@@ -79,17 +119,20 @@ namespace Dashboard.Data
 
             List<FunctionSnapshot> functions = new List<FunctionSnapshot>();
 
+            if (hosts == null)
+            {
+                return null;
+            }
+
             foreach (HostSnapshot host in hosts)
             {
+                if (host == null || host.Functions == null)
+                {
+                    continue;
+                }
+
                 foreach (FunctionSnapshot function in host.Functions)
                 {
-                    if (function == null)
-                    {
-                        continue;
-                    }
-
-                    // Add the HostVersion (not part of the JSON-serialized blob).
-                    function.HostVersion = host.HostVersion;
                     functions.Add(function);
                 }
             }
@@ -99,7 +142,7 @@ namespace Dashboard.Data
 
         private List<HostSnapshot> ReadAllHosts()
         {
-            IEnumerable<IListBlobItem> blobs = _directory.ListBlobs(useFlatBlobListing: true);
+            IEnumerable<IListBlobItem> blobs = _hostsDirectory.ListBlobs(useFlatBlobListing: true);
 
             List<HostSnapshot> hosts = new List<HostSnapshot>();
 
