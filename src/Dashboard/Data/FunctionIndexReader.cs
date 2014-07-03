@@ -11,7 +11,7 @@ namespace Dashboard.Data
 {
     public class FunctionIndexReader : IFunctionIndexReader
     {
-        internal static string CacheInvalidationKey = "FunctionsValid";
+        internal static string CacheKey = "Functions";
 
         private readonly CloudBlobDirectory _hostsDirectory;
         private readonly Cache _cache;
@@ -127,8 +127,6 @@ namespace Dashboard.Data
 
         private List<FunctionSnapshot> ReadAllFunctions()
         {
-            const string CacheKey = "Functions";
-
             if (_cache != null)
             {
                 List<FunctionSnapshot> cached = _cache.Get(CacheKey) as List<FunctionSnapshot>;
@@ -148,8 +146,7 @@ namespace Dashboard.Data
 
             if (_cache != null)
             {
-                _cache.Insert(CacheInvalidationKey, true);
-                _cache.Insert(CacheKey, results, new CacheDependency(null, new string[] { CacheInvalidationKey }));
+                _cache.Insert(CacheKey, results);
             }
 
             return results;

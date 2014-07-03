@@ -27,7 +27,7 @@ namespace Dashboard.Indexers
 
             if (_hostIndexManager.UpdateOrCreateIfLatest(hostId, snapshot))
             {
-                _cache.Remove(FunctionIndexReader.CacheInvalidationKey);
+                _cache.Remove(FunctionIndexReader.CacheKey);
             }
 
             _functionIndexVersionManager.UpdateOrCreateIfLatest(snapshot.HostVersion);
