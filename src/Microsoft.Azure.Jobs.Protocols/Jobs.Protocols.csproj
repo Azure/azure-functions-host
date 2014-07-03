@@ -58,6 +58,7 @@
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="FunctionFailure.cs" />
     <Compile Include="FunctionStartedMessageExtensions.cs" />
+    <Compile Include="IHeartbeatMonitor.cs" />
     <Compile Include="IPersistentQueueReader.cs" />
     <Compile Include="JsonSerialization.cs" />
     <Compile Include="HeartbeatCommand.cs" />
@@ -84,7 +85,6 @@
     <Compile Include="HostStartedMessage.cs" />
     <Compile Include="IHostMessageSender.cs" />
     <Compile Include="IPersistentQueueWriter.cs" />
-    <Compile Include="IHeartbeatMonitor.cs" />
     <Compile Include="IHeartbeatCommand.cs" />
     <Compile Include="JsonTypeNameAttribute.cs" />
     <Compile Include="NullHeartbeatCommand.cs" />

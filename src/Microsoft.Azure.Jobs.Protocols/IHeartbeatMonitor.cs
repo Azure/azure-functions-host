@@ -1,9 +1,14 @@
-﻿namespace Microsoft.Azure.Jobs.Protocols
+﻿using System;
+
+namespace Microsoft.Azure.Jobs.Protocols
 {
     /// <summary>Defines a monitor for running host heartbeats.</summary>
     public interface IHeartbeatMonitor
     {
-        /// <summary>Determines if at least one instance heartbeat is valid for a host.</summary>
+        /// <summary>
+        /// Gets the time at which a valid shared heartbeat may expire, or <see langword="null"/> if there is currently
+        /// no unexpired shared heartbeat.
+        /// </summary>
         /// <param name="sharedContainerName">
         /// The name of the heartbeat container shared by all instances of the host.
         /// </param>
@@ -12,12 +17,16 @@
         /// </param>
         /// <param name="expirationInSeconds">The number of seconds after the heartbeat that it expires.</param>
         /// <returns>
-        /// <see langword="true"/> if at least one instance heartbeat is valid for the host; otherwise,
-        /// <see langword="false"/>.
+        /// The time at which a valid shared heartbeat expires, if there is a valid shared heartbeat; otherwise
+        /// <see langword="null"/>.
         /// </returns>
-        bool IsSharedHeartbeatValid(string sharedContainerName, string sharedDirectoryName, int expirationInSeconds);
+        DateTimeOffset? GetSharedHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+            int expirationInSeconds);
 
-        /// <summary>Determines if a host instance has a valid heartbeat.</summary>
+        /// <summary>
+        /// Gets the time at which a valid instance heartbeat expires, or <see langword="null"/> if there is currently
+        /// no unexpired instance heartbeat.
+        /// </summary>
         /// <param name="sharedContainerName">
         /// The name of the heartbeat container shared by all instances of the host.
         /// </param>
@@ -29,9 +38,10 @@
         /// </param>
         /// <param name="expirationInSeconds">The number of seconds after the heartbeat that it expires.</param>
         /// <returns>
-        /// <see langword="true"/> if the host instance has a valid heartbeat; otherwise, <see langword="false"/>.
+        /// The time at which a valid instance heartbeat expires, if there is a valid instance heartbeat; otherwise
+        /// <see langword="null"/>.
         /// </returns>
-        bool IsInstanceHeartbeatValid(string sharedContainerName, string sharedDirectoryName, string instanceBlobName,
-            int expirationInSeconds);
+        DateTimeOffset? GetInstanceHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
+            string instanceBlobName, int expirationInSeconds);
     }
 }

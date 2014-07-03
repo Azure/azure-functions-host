@@ -67,7 +67,7 @@ namespace Dashboard.Data
             }
             else
             {
-                nextContinuationToken = (startIndex + resultsCount).ToString("g", CultureInfo.InvariantCulture);
+                nextContinuationToken = (startIndex + resultsCount).ToString(CultureInfo.InvariantCulture);
             }
 
             return new ResultSegment<FunctionSnapshot>(results, nextContinuationToken);

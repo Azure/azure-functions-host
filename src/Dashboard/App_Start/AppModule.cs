@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Web;
+using System.Web.Caching;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
@@ -39,7 +41,9 @@ namespace Dashboard
             Bind<IHostInstanceLogger>().To<HostInstanceLogger>();
             Bind<IFunctionLookup>().To<FunctionLookup>();
             Bind<IFunctionIndexReader>().To<FunctionIndexReader>();
+            Bind<IHeartbeatValidityMonitor>().To<HeartbeatValidityMonitor>();
             Bind<IHeartbeatMonitor>().To<HeartbeatMonitor>();
+            Bind<Cache>().ToConstant(HttpRuntime.Cache);
             Bind<IFunctionStatisticsReader>().To<FunctionStatisticsReader>();
             Bind<IFunctionStatisticsWriter>().To<FunctionStatisticsWriter>();
             Bind<IRecentInvocationIndexReader>().To<RecentInvocationIndexReader>();

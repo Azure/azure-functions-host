@@ -23,7 +23,7 @@ namespace Dashboard.ApiControllers
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionIndexReader _functionIndexReader;
-        private readonly IHeartbeatMonitor _heartbeatMonitor;
+        private readonly IHeartbeatValidityMonitor _heartbeatMonitor;
         private readonly IAborter _aborter;
         private readonly IRecentInvocationIndexReader _recentInvocationsReader;
         private readonly IRecentInvocationIndexByFunctionReader _recentInvocationsByFunctionReader;
@@ -41,7 +41,7 @@ namespace Dashboard.ApiControllers
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionLookup functionLookup,
             IFunctionIndexReader functionIndexReader,
-            IHeartbeatMonitor heartbeatMonitor,
+            IHeartbeatValidityMonitor heartbeatMonitor,
             IAborter aborter,
             IRecentInvocationIndexReader recentInvocationsReader,
             IRecentInvocationIndexByFunctionReader recentInvocationsByFunctionReader,
@@ -481,7 +481,7 @@ namespace Dashboard.ApiControllers
             }
         }
 
-        internal static bool? HostHasHeartbeat(IHeartbeatMonitor heartbeatMonitor, FunctionSnapshot snapshot)
+        internal static bool? HostHasHeartbeat(IHeartbeatValidityMonitor heartbeatMonitor, FunctionSnapshot snapshot)
         {
             int? expiration = snapshot.HeartbeatExpirationInSeconds;
 

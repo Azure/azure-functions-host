@@ -20,13 +20,13 @@ namespace Microsoft.Azure.Jobs.Protocols
         }
 
         /// <inheritdoc />
-        public bool IsSharedHeartbeatValid(string sharedContainerName, string sharedDirectoryName,
+        public DateTimeOffset? GetSharedHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
             int expirationInSeconds)
         {
             CloudBlobContainer container = _client.GetContainerReference(sharedContainerName);
             CloudBlobDirectory directory = container.GetDirectoryReference(sharedDirectoryName);
             BlobContinuationToken currentToken = null;
-            bool foundValidHeartbeat = false;
+            DateTimeOffset? heartbeatExpiration;
 
             do
             {
@@ -34,14 +34,14 @@ namespace Microsoft.Azure.Jobs.Protocols
 
                 if (segment == null)
                 {
-                    return false;
+                    return DateTime.MinValue;
                 }
 
                 currentToken = segment.ContinuationToken;
-                foundValidHeartbeat = HasValidHeartbeat(segment.Results, expirationInSeconds);
-            } while (foundValidHeartbeat == false && currentToken != null);
+                heartbeatExpiration = GetFirstValidHeartbeatExpiration(segment.Results, expirationInSeconds);
+            } while (heartbeatExpiration == null && currentToken != null);
 
-            return foundValidHeartbeat;
+            return heartbeatExpiration;
         }
 
         private BlobResultSegment GetNextHeartbeats(CloudBlobDirectory directory, BlobContinuationToken currentToken)
@@ -70,14 +70,17 @@ namespace Microsoft.Azure.Jobs.Protocols
             }
         }
 
-        private static bool HasValidHeartbeat(IEnumerable<IListBlobItem> heartbeats, int expirationInSeconds)
+        private static DateTimeOffset? GetFirstValidHeartbeatExpiration(IEnumerable<IListBlobItem> heartbeats,
+            int expirationInSeconds)
         {
             // We're using the flat blob listing, so the more specific ICloudBlob type here is guaranteed.
             foreach (ICloudBlob blob in heartbeats)
             {
-                if (HasValidHeartbeat(blob, expirationInSeconds))
+                DateTimeOffset expiration = GetHeartbeatExpiration(blob, expirationInSeconds);
+
+                if (IsUnexpired(expiration))
                 {
-                    return true;
+                    return expiration;
                 }
                 else
                 {
@@ -87,11 +90,11 @@ namespace Microsoft.Azure.Jobs.Protocols
                 }
             }
 
-            return false;
+            return null;
         }
 
         /// <inheritdoc />
-        public bool IsInstanceHeartbeatValid(string sharedContainerName, string sharedDirectoryName,
+        public DateTimeOffset? GetInstanceHeartbeatExpiration(string sharedContainerName, string sharedDirectoryName,
             string instanceBlobName, int expirationInSeconds)
         {
             CloudBlobContainer container = _client.GetContainerReference(sharedContainerName);
@@ -106,7 +109,7 @@ namespace Microsoft.Azure.Jobs.Protocols
             {
                 if (exception.IsNotFound())
                 {
-                    return false;
+                    return null;
                 }
                 else
                 {
@@ -114,19 +117,31 @@ namespace Microsoft.Azure.Jobs.Protocols
                 }
             }
 
-            return HasValidHeartbeat(blob, expirationInSeconds);
+            DateTimeOffset expiration = GetHeartbeatExpiration(blob, expirationInSeconds);
+
+            if (IsUnexpired(expiration))
+            {
+                return expiration;
+            }
+            else
+            {
+                // Remove any expired heartbeats so that we can answer more efficiently in the future.
+                // If the host instance wakes back up, it will just re-create the heartbeat anyway.
+                blob.DeleteIfExists();
+                return null;
+            }
         }
 
-        private static bool HasValidHeartbeat(ICloudBlob heartbeatBlob, int expirationInSeconds)
+        private static DateTimeOffset GetHeartbeatExpiration(ICloudBlob heartbeatBlob, int expirationInSeconds)
         {
             // There always should be a value at this point, but defaulting to MinValue just to be safe...
             DateTimeOffset heartbeat = heartbeatBlob.Properties.LastModified.GetValueOrDefault(DateTimeOffset.MinValue);
-            return IsValidHeartbeat(heartbeat, expirationInSeconds);
+            return heartbeat.AddSeconds(expirationInSeconds);
         }
 
-        private static bool IsValidHeartbeat(DateTimeOffset heartbeat, int expirationInSeconds)
+        private static bool IsUnexpired(DateTimeOffset heartbeatExpiration)
         {
-            return heartbeat.AddSeconds(expirationInSeconds) > DateTimeOffset.UtcNow;
+            return heartbeatExpiration.UtcDateTime > DateTimeOffset.UtcNow.UtcDateTime;
         }
     }
 }

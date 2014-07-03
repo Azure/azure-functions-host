@@ -24,7 +24,7 @@ namespace Dashboard.Controllers
         private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionQueuedLogger _functionQueuedLogger;
-        private readonly IHeartbeatMonitor _heartbeatMonitor;
+        private readonly IHeartbeatValidityMonitor _heartbeatMonitor;
         private readonly IInvoker _invoker;
 
         internal FunctionController(
@@ -32,7 +32,7 @@ namespace Dashboard.Controllers
             IFunctionLookup functionLookup,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionQueuedLogger functionQueuedLogger,
-            IHeartbeatMonitor heartbeatMonitor,
+            IHeartbeatValidityMonitor heartbeatMonitor,
             IInvoker invoker
             )
         {
