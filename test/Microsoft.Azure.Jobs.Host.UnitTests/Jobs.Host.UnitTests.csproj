@@ -82,8 +82,13 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
+    <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
+    <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
+    <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
+    <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\Triggers\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />

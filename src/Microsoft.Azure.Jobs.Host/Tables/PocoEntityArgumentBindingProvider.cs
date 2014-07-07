@@ -10,6 +10,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
     {
         public IArgumentBinding<TableEntityContext> TryCreate(Type parameterType)
         {
+            if (parameterType.IsByRef)
+            {
+                return null;
+            }
+
             TableClient.VerifyDefaultConstructor(parameterType);
 
             return CreateBinding(parameterType);

@@ -18,6 +18,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             }
 
             Type bindingDataType = bindingDataContract[parameterName];
+
+            if (bindingDataType.IsByRef)
+            {
+                return null;
+            }
+
             IBindingProvider typedProvider = CreateTypedBindingProvider(bindingDataType);
             return typedProvider.TryCreate(context);
         }

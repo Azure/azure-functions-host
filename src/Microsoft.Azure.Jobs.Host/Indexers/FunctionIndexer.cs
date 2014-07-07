@@ -119,7 +119,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                             // exception when we can't bind it. Instead, save this exception for later once we determine
                             // whether or not it is an Azure Jobs function.
                             invalidInvokeBindingException = new InvalidOperationException("Cannot bind parameter '" +
-                                parameterName + "' to type " + parameterType + ".");
+                                parameterName + "' to type " + parameterType.Name + ".");
                         }
                     }
                 }
