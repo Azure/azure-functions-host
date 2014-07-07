@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, functionLookup, functionInstanceLogger, context);
-            IIntervalSeparationCommand command = new PollQueueCommand(queue, triggerExecutor);
+            IIntervalSeparationCommand command = new PollQueueCommand(queue, poisonQueue: null, triggerExecutor: triggerExecutor);
             IntervalSeparationTimer timer = new IntervalSeparationTimer(command);
             return new TimerListener(timer);
         }

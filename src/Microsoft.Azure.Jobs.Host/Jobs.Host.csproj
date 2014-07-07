@@ -422,7 +422,7 @@
     <Compile Include="PropertyHelper.cs" />
     <Compile Include="HostQueueNames.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
-    <Compile Include="Queues\Bindings\CloudQueueExtensions.cs" />
+    <Compile Include="Queues\CloudQueueExtensions.cs" />
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\UserTypeArgumentBindingProvider.cs" />
