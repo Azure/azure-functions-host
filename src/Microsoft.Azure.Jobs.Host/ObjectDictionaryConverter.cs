@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs.Host
 {
@@ -16,6 +18,14 @@ namespace Microsoft.Azure.Jobs.Host
             if (valuesAsDictionary != null)
             {
                 return valuesAsDictionary;
+            }
+
+            IDictionary valuesAsNonGenericDictionary = values as IDictionary;
+
+            if (valuesAsNonGenericDictionary != null)
+            {
+                throw new InvalidOperationException(
+                    "Argument dictionaries must implement IDictionary<string, object>.");
             }
 
             IDictionary<string, object> dictionary = new Dictionary<string, object>();

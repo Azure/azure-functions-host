@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             TestBlobClient.DeleteContainer(account, "daas-test-input");
 
-            var lc = TestStorage.New<Program>(account);
+            var lc = TestStorage.New<Program>(account, new Type[] { typeof(ModelCloudBlobStreamBinder) });
             lc.Call("TestBinder");
 
             string content = TestBlobClient.ReadBlob(account, "daas-test-input", "directout.txt");

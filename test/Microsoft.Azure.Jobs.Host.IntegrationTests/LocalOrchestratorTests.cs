@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestBlobClient.DeleteContainer(account, "daas-test-input");
             TestBlobClient.WriteBlob(account, "daas-test-input", "note-monday.csv", "abc");
 
-            var d = new Dictionary<string, string>() {
+            var d = new Dictionary<string, object>() {
                 { "values", "daas-test-input/note-monday.csv" },
                 { "unbound", "test" },
             };
@@ -69,13 +69,34 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         [Fact]
-        public void InvokeWithMissingBlob()
+        public void InvokeWithMissingBlobBlockBlob()
         {
             CloudStorageAccount account = TestStorage.GetAccount();
             TestBlobClient.DeleteContainer(account, "daas-test-input");
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncWithMissingBlob");
+            lc.Call("FuncWithMissingBlobBlockBlob");
+        }
+
+        [Fact]
+        public void InvokeWithMissingBlobStream()
+        {
+            CloudStorageAccount account = TestStorage.GetAccount();
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
+
+            var lc = TestStorage.New<Program>(account);
+            // Not found
+            Assert.Throws<InvalidOperationException>(() => lc.Call("FuncWithMissingBlobStream"));
+        }
+
+        [Fact]
+        public void InvokeWithMissingBlobTextReader()
+        {
+            CloudStorageAccount account = TestStorage.GetAccount();
+            TestBlobClient.DeleteContainer(account, "daas-test-input");
+
+            var lc = TestStorage.New<Program>(account);
+            lc.Call("FuncWithMissingBlobTextReader");
         }
 
         [Fact]
@@ -84,7 +105,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var account = TestStorage.GetAccount();
             TestBlobClient.DeleteContainer(account, "daas-test-input");
 
-            var d = new Dictionary<string, string>() {
+            var d = new Dictionary<string, object>() {
                 { "x", "15" },
             };
 
@@ -103,7 +124,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestBlobClient.WriteBlob(account, "daas-test-input", "input.csv", "abc");
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("Func1");
+            // TODO: Remove second parameter once host.Call supports more flexibility.
+            lc.CallOnBlob("Func1", "daas-test-input/input.csv");
 
             string content = TestBlobClient.ReadBlob(account, "daas-test-input", "input.csv");
 
@@ -179,47 +201,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 var msg = queue.GetMessage();
                 Assert.Null(msg); // no more messages
             }
-        }
-
-        [Fact]
-        public void TestMultiEnqueueMessage_NestedIEnumerable_Throws()
-        {
-            var account = TestStorage.GetAccount();
-
-            var lc = TestStorage.New<Program>(account);
-            CallError<InvalidOperationException>(lc, "FuncMultiEnqueueIEnumerableNested");
-        }
-
-        [Fact]
-        public void TestQueueOutput_IList_Throws()
-        {
-            var account = TestStorage.GetAccount();
-
-            var lc = TestStorage.New<Program>(account);
-            CallError<InvalidOperationException>(lc, "FuncQueueOutputIList");
-        }
-
-        [Fact]
-        public void TestQueueOutput_Object_Throws()
-        {
-            var account = TestStorage.GetAccount();
-
-            var lc = TestStorage.New<Program>(account);
-            CallError<InvalidOperationException>(lc, "FuncQueueOutputObject");
-        }
-
-        [Fact]
-        public void TestQueueOutput_IEnumerableOfObject_Throws()
-        {
-            var account = TestStorage.GetAccount();
-
-            var lc = TestStorage.New<Program>(account);
-            CallError<InvalidOperationException>(lc, "FuncQueueOutputIEnumerableOfObject");
-        }
-
-        static void CallError<T>(LocalExecutionContext lc, string functionName) where T : Exception
-        {
-            Assert.Throws<T>(() => lc.Call("FuncQueueOutputIEnumerableOfObject"));
         }
 
         [Fact]
@@ -322,14 +303,20 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
             }
 
-            public static void FuncWithMissingBlob(
-                [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [Blob(@"daas-test-input/blob.csv")] Stream stream,
-                [Blob(@"daas-test-input/blob.csv")] TextReader reader
-                )
+            public static void FuncWithMissingBlobBlockBlob([Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob)
             {
-                Assert.Null(blob);
-                Assert.Null(stream);
+                Assert.NotNull(blob);
+                Assert.Equal("blob.csv", blob.Name);
+                Assert.Equal("daas-test-input", blob.Container.Name);
+            }
+
+            public static void FuncWithMissingBlobStream([Blob(@"daas-test-input/blob.csv")] Stream stream)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public static void FuncWithMissingBlobTextReader([Blob(@"daas-test-input/blob.csv")] TextReader reader)
+            {
                 Assert.Null(reader);
             }
 
@@ -359,34 +346,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 myoutputqueue.Add(new Payload { Value = 10 });
                 myoutputqueue.Add(new Payload { Value = 20 });
                 myoutputqueue.Add(new Payload { Value = 30 });
-            }
-
-            public static void FuncMultiEnqueueIEnumerableNested(
-                [Queue("myoutputqueue")] ICollection<IEnumerable<Payload>> myoutputqueue)
-            {
-                List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
-                myoutputqueue = payloads;
-            }
-
-            public static void FuncQueueOutputIEnumerableOfObject(
-                [Queue("myoutputqueue")] out IEnumerable<object> myoutputqueue)
-            {
-                List<object> payloads = new List<object>();
-                myoutputqueue = payloads;
-            }
-
-            public static void FuncQueueOutputObject(
-                [Queue("myoutputqueue")] out object myoutputqueue)
-            {
-                List<IEnumerable<Payload>> payloads = new List<IEnumerable<Payload>>();
-                myoutputqueue = payloads;
-            }
-
-            public static void FuncQueueOutputIList(
-                [Queue("myoutputqueue")] out IList<Payload> myoutputqueue)
-            {
-                List<Payload> payloads = new List<Payload>();
-                myoutputqueue = payloads;
             }
 
             public static void FuncCloudQueueEnqueue(

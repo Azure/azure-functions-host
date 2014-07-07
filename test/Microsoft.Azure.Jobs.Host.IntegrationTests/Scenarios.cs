@@ -51,6 +51,14 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
         }
 
+        private static void CancelWhenBlobsExists(CancellationTokenSource source, params ICloudBlob[] blobs)
+        {
+            if (blobs.All(b => b.Exists()))
+            {
+                source.Cancel();
+            }
+        }
+
         // Test basic propagation between blobs. 
         [Fact]
         public void TestAggressiveBlobChaining()
@@ -74,16 +82,23 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             string container = @"daas-test-input";
             TestBlobClient.DeleteContainer(account, container);
 
-            // Nothing written yet, so polling shouldn't execute anything
-            host.RunOneIteration();
-
-            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.2"));
-            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.3"));
+            // Nothing written yet.
+            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.2")); // Guard
+            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.3")); // Guard
 
             // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
             TestBlobClient.WriteBlob(account, container, "foo.1", "abc");
 
-            host.RunOneIteration();
+            using (CancellationTokenSource source = new CancellationTokenSource())
+            {
+                source.CancelAfter(3000);
+                CloudBlobContainer containerReference =
+                    account.CreateCloudBlobClient().GetContainerReference(container);
+                ICloudBlob middleBlob = containerReference.GetBlockBlobReference("foo.2");
+                ICloudBlob outputBlob = containerReference.GetBlockBlobReference("foo.3");
+                Action updateTokenSource = () => CancelWhenBlobsExists(source, middleBlob, outputBlob);
+                host.RunAndBlock(source.Token, updateTokenSource);
+            }
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
             string middle = TestBlobClient.ReadBlob(account, container, "foo.2");
@@ -91,7 +106,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             Assert.NotNull(middle);
             Assert.Equal("foo", middle);
 
-            // The *single* poll a few lines up will cause *both* actions to run as they are chained.
+            // The polling a few lines up waits for *both* actions to run as they are chained.
             // this makes sure that our chaining optimization works correctly!
             string output = TestBlobClient.ReadBlob(account, container, "foo.3");
             // blob should be written

@@ -15,11 +15,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return null;
             }
 
-            Type parameterType = parameter.ParameterType;
+            Type parameterType = parameter.ParameterType.GetElementType();
 
             if (typeof(IEnumerable).IsAssignableFrom(parameterType))
             {
                 throw new InvalidOperationException("Non-collection enumerable types are not supported.");
+            }
+            else if (typeof(object) == parameterType)
+            {
+                throw new InvalidOperationException("Object element types are not supported.");
             }
 
             return new UserTypeArgumentBinding(parameterType);

@@ -2,6 +2,8 @@
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
@@ -38,8 +40,25 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 
             public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
-                Stream rawStream = blob.OpenRead();
-                SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(blob.OpenRead());
+                Stream rawStream;
+
+                try
+                {
+                    rawStream = blob.OpenRead();
+                }
+                catch (StorageException exception)
+                {
+                    if (exception.IsNotFound())
+                    {
+                        return new BlobValueProvider(blob, null, typeof(TextReader));
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+
+                SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream);
                 TextReader reader = new StreamReader(selfWatchStream);
                 return new BlobWatchableDisposableValueProvider(blob, reader, typeof(TextReader),
                     watcher: selfWatchStream, disposable: reader);

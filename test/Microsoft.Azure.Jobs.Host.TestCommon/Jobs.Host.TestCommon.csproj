@@ -56,9 +56,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="DictionaryConnectionStringProvider.cs" />
     <Compile Include="ExceptionAssert.cs" />
-    <Compile Include="JobHostExtensions.cs" />
     <Compile Include="NullStorageValidator.cs" />
     <Compile Include="RandomNameResolver.cs" />
     <Compile Include="SimpleTypeLocator.cs" />
