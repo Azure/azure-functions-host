@@ -60,6 +60,11 @@ namespace Dashboard.HostMessaging
 
         private static IDictionary<string, FunctionInstanceArgument> CreateArguments(IDictionary<string, string> values)
         {
+            if (values == null)
+            {
+                return null;
+            }
+
             Dictionary<string, FunctionInstanceArgument> arguments = new Dictionary<string, FunctionInstanceArgument>();
 
             foreach (KeyValuePair<string, string> value in values)
