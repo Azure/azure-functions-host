@@ -32,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         }
 
         // Instance method has caching on it. 
-        public IEnumerable<BlobPath> GetRecentBlobWrites(int hoursWindow = 2)
+        public IEnumerable<ICloudBlob> GetRecentBlobWrites(int hoursWindow = 2)
         {
             var time = DateTime.UtcNow; // will scan back 2 hours, which is enough to deal with clock sqew
             foreach (var blob in ListRecentLogFiles(_blobClient, time, hoursWindow))
@@ -58,7 +58,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                         var path = row.ToPath();
                         if (path != null)
                         {
-                            yield return path;
+                            CloudBlobContainer container = _blobClient.GetContainerReference(path.ContainerName);
+                            yield return container.GetBlockBlobReference(path.BlobName);
                         }
                     }
                 }

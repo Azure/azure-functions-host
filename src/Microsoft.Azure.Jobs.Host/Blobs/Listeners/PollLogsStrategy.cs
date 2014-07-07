@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
 
             CloudBlobClient client = container.ServiceClient;
 
-            if (_logListeners.ContainsKey(client))
+            if (!_logListeners.ContainsKey(client))
             {
                 _logListeners.Add(client, new BlobLogListener(client));
             }
