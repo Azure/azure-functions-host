@@ -10,5 +10,5 @@
     <span ng-if="!isRunning()">
         <a target="_blank" href="{{logUrl()}}">download</a>
     </span>
-    <textarea name="output-body" rows="10" class="form-control" ng-bind="consoleText" readonly="readonly" placeholder="Loading..."></textarea>
+    <textarea name="output-body" rows="10" class="form-control" ng-bind="consoleText" ng-readonly="true" placeholder="Loading..."></textarea>
 </div>
