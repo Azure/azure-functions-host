@@ -173,7 +173,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         }
 
         [Fact]
-        public void TestMultiEnqueueMessage_IEnumerable()
+        public void TestMultiEnqueueMessage_ICollection()
         {
             var account = TestStorage.GetAccount();
 

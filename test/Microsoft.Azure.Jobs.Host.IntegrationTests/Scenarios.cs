@@ -43,6 +43,40 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             TestQueueClient.DeleteQueue(account, "queuetest");
         }
 
+        [Fact]
+        public void TestPoisonQueue()
+        {
+            // Arrange
+            var account = TestStorage.GetAccount();
+            var queue = account.CreateCloudQueueClient().GetQueueReference("bad");
+            queue.CreateIfNotExists();
+            string expectedMessageText = "fail";
+
+            try
+            {
+                queue.AddMessage(new CloudQueueMessage(expectedMessageText));
+                var host = new TestJobHost<PoisonQueueProgram>();
+
+                using (CancellationTokenSource source = new CancellationTokenSource())
+                {
+                    source.CancelAfter(3000);
+                    PoisonQueueProgram.SignalOnPoisonMessage = source;
+
+                    // Act
+                    host.Host.RunAndBlock(source.Token);
+
+                    // Assert
+                    Assert.Equal(expectedMessageText, PoisonQueueProgram.PoisonMessageText);
+                }
+            }
+            finally
+            {
+                PoisonQueueProgram.SignalOnPoisonMessage = null;
+                PoisonQueueProgram.PoisonMessageText = null;
+                queue.DeleteIfExists();
+            }
+        }
+
         private static void CancelWhenBlobExists(CancellationTokenSource source, ICloudBlob blob)
         {
             if (blob.Exists())
@@ -232,6 +266,28 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             [Table("{TableName}", "{PartitionKey}", "{RowKey}")] SimpleEntity entity)
         {
             entity.Value = 456;
+        }
+    }
+    public class PoisonQueueProgram
+    {
+        public static CancellationTokenSource SignalOnPoisonMessage { get; set; }
+
+        public static string PoisonMessageText { get; set; }
+
+        public static void PutInPoisonQueue([QueueTrigger("bad")] string message)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public static void ReceiveFromPoisonQueue([QueueTrigger("bad-poison")] string message)
+        {
+            PoisonMessageText = message;
+            CancellationTokenSource source = SignalOnPoisonMessage;
+
+            if (source != null)
+            {
+                source.Cancel();
+            }
         }
     }
 

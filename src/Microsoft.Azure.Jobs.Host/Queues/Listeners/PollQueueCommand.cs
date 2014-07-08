@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
     internal sealed class PollQueueCommand : ICanFailCommand
     {
-        private static int poisonThreshold = 5;
+        private const int PoisonThreshold = 5;
 
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                     }
                     else if (_poisonQueue != null)
                     {
-                        if (message.DequeueCount >= poisonThreshold)
+                        if (message.DequeueCount >= PoisonThreshold)
                         {
                             Console.WriteLine("Queue poison message threshold exceeded. Moving message to queue '{0}'.",
                                 _poisonQueue.Name);
