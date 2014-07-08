@@ -35,8 +35,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
-            PollQueueCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor);
-            IntervalSeparationTimer timer = new IntervalSeparationTimer(command);
+            ICanFailCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor);
+            IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command,
+                QueuePollingIntervals.Minimum, QueuePollingIntervals.Maximum);
             return new TimerListener(timer);
         }
 

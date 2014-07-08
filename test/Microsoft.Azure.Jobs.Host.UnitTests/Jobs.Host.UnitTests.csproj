@@ -89,6 +89,7 @@
     <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
+    <Compile Include="Timers\ExponentialBackoffTimerCommandTests.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\Triggers\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />
@@ -97,9 +98,9 @@
     <Compile Include="FlowUnitTestErrors.cs" />
     <Compile Include="FlowUnitTests.cs" />
     <Compile Include="HostTests.cs" />
-    <Compile Include="IntervalSeparationTimerTests.cs" />
+    <Compile Include="Timers\IntervalSeparationTimerTests.cs" />
     <Compile Include="JsonTypeNameAttributeTests.cs" />
-    <Compile Include="LinearSpeedupTimerCommandTests.cs" />
+    <Compile Include="Timers\LinearSpeedupTimerCommandTests.cs" />
     <Compile Include="NameResolverUnitTests.cs" />
     <Compile Include="ObjectBinderHelpersTest.cs" />
     <Compile Include="PolymorphicJsonConverterTests.cs" />

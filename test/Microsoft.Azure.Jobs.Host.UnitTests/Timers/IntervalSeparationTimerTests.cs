@@ -4,7 +4,7 @@ using System.Threading;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
 {
     public class IntervalSeparationTimerTests
     {

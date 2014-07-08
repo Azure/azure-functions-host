@@ -6,43 +6,34 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal sealed class PollQueueCommand : IIntervalSeparationCommand
+    internal sealed class PollQueueCommand : ICanFailCommand
     {
-        private static TimeSpan _normalSeparationInterval = TimeSpan.FromSeconds(2);
         private static int poisonThreshold = 5;
 
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly ITriggerExecutor<CloudQueueMessage> _triggerExecutor;
 
-        private TimeSpan _separationInterval;
-
-        public PollQueueCommand(CloudQueue queue, CloudQueue poisonQueue, ITriggerExecutor<CloudQueueMessage> triggerExecutor)
+        public PollQueueCommand(CloudQueue queue, CloudQueue poisonQueue,
+            ITriggerExecutor<CloudQueueMessage> triggerExecutor)
         {
             _queue = queue;
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
-            _separationInterval = TimeSpan.Zero; // Start polling immediately
         }
 
-        public TimeSpan SeparationInterval
+        public bool TryExecute()
         {
-            get { return _separationInterval; }
-        }
-
-        public void Execute()
-        {
-            // After starting up, wait two seconds after Execute returns before polling again.
-            _separationInterval = _normalSeparationInterval;
-
             if (!_queue.Exists())
             {
-                return;
+                // Back off when no message is available.
+                return false;
             }
 
             // What if job takes longer. Call CloudQueue.UpdateMessage
             TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
             CloudQueueMessage message;
+            bool foundMessage = false;
 
             do
             {
@@ -56,8 +47,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                         exception.IsConflictQueueBeingDeletedOrDisabled() ||
                         exception.IsServerSideError())
                     {
-                        // Ignore intermittent exceptions.
-                        return;
+                        // Back off when no message is available.
+                        return false;
                     }
                     else
                     {
@@ -67,9 +58,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 
                 if (message != null)
                 {
+                    foundMessage = true;
                     bool succeeded;
 
-                    using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout))
+                    using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message,
+                        visibilityTimeout))
                     {
                         timer.Start(executeFirst: false);
 
@@ -103,6 +96,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                     }
                 }
             } while (message != null);
+
+            // Back off when no message was found.
+            return foundMessage;
         }
 
         private static IntervalSeparationTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
