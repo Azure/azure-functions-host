@@ -342,7 +342,7 @@ namespace Dashboard.ApiControllers
             List<ParamModel> models = new List<ParamModel>();
 
             IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
-            IDictionary<string, string> selfWatch = LogAnalysis.GetParameterSelfWatch(snapshot);
+            IDictionary<string, string> parameterLogs = LogAnalysis.GetParameterLogs(snapshot);
 
             foreach (KeyValuePair<string, FunctionInstanceArgument> parameter in parameters)
             {
@@ -355,9 +355,9 @@ namespace Dashboard.ApiControllers
                     ArgInvokeString = argument.Value
                 };
 
-                if (selfWatch.ContainsKey(name))
+                if (parameterLogs.ContainsKey(name))
                 {
-                    model.SelfWatch = selfWatch[name];
+                    model.Status = parameterLogs[name];
                 }
 
                 if (argument.IsBlob)

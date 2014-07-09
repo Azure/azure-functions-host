@@ -8,7 +8,7 @@ using Xunit.Extensions;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 {
-    public class SelfWatchReadStreamTests
+    public class WatchableReadStreamTests
     {
         [Fact]
         public void AppendNetworkTime_ZeroTime_NoOutput()
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.Zero;
 
             // Act
-            SelfWatchReadStream.AppendNetworkTime(sb, time);
+            WatchableReadStream.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromTicks((long) (milliseconds*10000));
 
             // Act
-            SelfWatchReadStream.AppendNetworkTime(sb, time);
+            WatchableReadStream.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromSeconds(seconds);
             
             // Act
-            SelfWatchReadStream.AppendNetworkTime(sb, time);
+            WatchableReadStream.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromMinutes(minutes);
 
             // Act
-            SelfWatchReadStream.AppendNetworkTime(sb, time);
+            WatchableReadStream.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromHours(hours);
 
             // Act
-            SelfWatchReadStream.AppendNetworkTime(sb, time);
+            WatchableReadStream.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert

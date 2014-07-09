@@ -1,10 +1,11 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
-    internal class CompositeSelfWatch : ISelfWatch
+    internal class CompositeWatcher : IWatcher
     {
         private ConcurrentDictionary<string, IWatchable> _watchables =
             new ConcurrentDictionary<string, IWatchable>();
@@ -14,14 +15,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             _watchables.AddOrUpdate(name, watchable, (ignore1, ignore2) => watchable);
         }
 
-        public string GetStatus()
+        public ParameterLog GetStatus()
         {
             if (_watchables.Count == 0)
             {
                 return null;
             }
 
-            // Show selfwatch from objects we've handed out. 
+            // Show status from objects we've handed out. 
             StringBuilder builder = new StringBuilder();
             builder.AppendFormat("Created {0} object(s):", _watchables.Count);
             builder.AppendLine();
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
                 builder.AppendLine();
             }
 
-            return builder.ToString();
+            return new TextParameterLog { Value = builder.ToString() };
         }
     }
 }

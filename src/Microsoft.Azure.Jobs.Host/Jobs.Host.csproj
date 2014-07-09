@@ -265,6 +265,7 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyLessThanQueryModifier.cs">
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
+    <Compile Include="Bindings\IWatcher.cs" />
     <Compile Include="Bindings\Runtime\AttributeBinding.cs" />
     <Compile Include="Bindings\BindingDataPath.cs" />
     <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
@@ -354,7 +355,7 @@
     <Compile Include="Bindings\ObjectValueProvider.cs" />
     <Compile Include="Bindings\ClassOutputConverter.cs" />
     <Compile Include="Bindings\CompositeDisposable.cs" />
-    <Compile Include="Bindings\Runtime\CompositeSelfWatch.cs" />
+    <Compile Include="Bindings\Runtime\CompositeWatcher.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\StringToCloudStorageAccountConverter.cs" />
@@ -377,7 +378,7 @@
     <Compile Include="Bindings\Runtime\RuntimeBinding.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
     <Compile Include="Bindings\HostBindingContext.cs" />
-    <Compile Include="Bindings\StaticSelfWatch.cs" />
+    <Compile Include="Bindings\ImmutableWatcher.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
     <Compile Include="Bindings\ValueProviderDisposable.cs" />
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
@@ -387,7 +388,7 @@
     <Compile Include="Blobs\Bindings\CloudBlobStreamArgumentBinderProvider.cs" />
     <Compile Include="Blobs\Bindings\DelegatingCloudBlobStream.cs" />
     <Compile Include="Blobs\Bindings\IBlobCommitedAction.cs" />
-    <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStream.cs" />
+    <Compile Include="Blobs\Bindings\WatchableCloudBlobStream.cs" />
     <Compile Include="Blobs\Bindings\TextWriterArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\OutStringArgumentBindingProvider.cs" />
     <Compile Include="Blobs\BlobValueProvider.cs" />
@@ -411,7 +412,7 @@
     <Compile Include="Blobs\Triggers\BlobTriggerBinding.cs" />
     <Compile Include="Blobs\OutputConverter.cs" />
     <Compile Include="Blobs\Bindings\StringToCloudBlobConverter.cs" />
-    <Compile Include="Blobs\SelfWatchReadStream.cs" />
+    <Compile Include="Blobs\WatchableReadStream.cs" />
     <Compile Include="Blobs\Triggers\StringToCloudBlobConverter.cs" />
     <Compile Include="Converters\IConverter.cs" />
     <Compile Include="Converters\IdentityConverter.cs" />
@@ -506,7 +507,6 @@
     <Compile Include="Runners\AmbientConnectionStringProvider.cs" />
     <Compile Include="Runners\FunctionInvocationResult.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
-    <Compile Include="Bindings\ISelfWatch.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Runners\HostIdManager.cs" />
@@ -522,7 +522,7 @@
     <Compile Include="Queues\Listeners\UpdateQueueMessageVisibilityCommand.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Runners\UpdateHostHeartbeatCommand.cs" />
-    <Compile Include="Runners\SelfWatch.cs" />
+    <Compile Include="Runners\ValueWatcher.cs" />
     <Compile Include="Blobs\DelegatingStream.cs" />
     <Compile Include="Timers\IntervalSeparationTimer.cs" />
     <Compile Include="Timers\IIntervalSeparationCommand.cs" />

@@ -26,7 +26,7 @@
         this.name = item.name;
         this.extendedBlobModel = item.extendedBlobModel;
         this.argInvokeString = item.argInvokeString;
-        this.selfWatch = item.selfWatch;
+        this.status = item.status;
     }
 
     FunctionParameter.prototype.isParamOwnedSomeoneElse = function () {

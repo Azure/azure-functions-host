@@ -77,8 +77,8 @@ namespace Dashboard
             }
         }
 
-        // Get Live information from current self-watch values. 
-        internal static IDictionary<string, string> GetParameterSelfWatch(FunctionInstanceSnapshot snapshot)
+        // Get Live information from current watcher values. 
+        internal static IDictionary<string, string> GetParameterLogs(FunctionInstanceSnapshot snapshot)
         {
             if (snapshot.ParameterLogs != null)
             {
@@ -100,7 +100,7 @@ namespace Dashboard
             }
             catch (StorageException exception)
             {
-                // common case, no selfwatch information written.
+                // common case, no status information written.
                 if (exception.IsNotFound())
                 {
                     return null;

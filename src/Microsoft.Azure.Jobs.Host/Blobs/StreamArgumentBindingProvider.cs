@@ -46,9 +46,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 Stream rawStream = blob.OpenRead();
-                SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream);
-                return new BlobWatchableDisposableValueProvider(blob, selfWatchStream, typeof(Stream),
-                    watcher: selfWatchStream, disposable: selfWatchStream);
+                WatchableReadStream watchableStream = new WatchableReadStream(rawStream);
+                return new BlobWatchableDisposableValueProvider(blob, watchableStream, typeof(Stream),
+                    watcher: watchableStream, disposable: watchableStream);
             }
         }
 
@@ -76,8 +76,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 CloudBlobStream rawStream = blockBlob.OpenWrite();
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
-                SelfWatchCloudBlobStream selfWatchStream = new SelfWatchCloudBlobStream(rawStream, committedAction);
-                return new WriteStreamValueBinder(blob, selfWatchStream);
+                WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
+                return new WriteStreamValueBinder(blob, watchableStream);
             }
 
             // There's no way to dispose a CloudBlobStream without committing.
@@ -85,9 +85,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             private sealed class WriteStreamValueBinder : IValueBinder, IWatchable
             {
                 private readonly ICloudBlob _blob;
-                private readonly SelfWatchCloudBlobStream _stream;
+                private readonly WatchableCloudBlobStream _stream;
 
-                public WriteStreamValueBinder(ICloudBlob blob, SelfWatchCloudBlobStream stream)
+                public WriteStreamValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream)
                 {
                     _blob = blob;
                     _stream = stream;
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                     get { return typeof(Stream); }
                 }
 
-                public ISelfWatch Watcher
+                public IWatcher Watcher
                 {
                     get { return _stream; }
                 }

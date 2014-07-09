@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
     {
         private readonly IAttributeBinding _binding;
         private readonly IList<IValueBinder> _binders = new List<IValueBinder>();
-        private readonly CompositeSelfWatch _watcher = new CompositeSelfWatch();
+        private readonly CompositeWatcher _watcher = new CompositeWatcher();
         private readonly CollectingDisposable _disposable = new CollectingDisposable();
 
         private bool _disposed;
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             get { return typeof(IBinder); }
         }
 
-        public ISelfWatch Watcher
+        public IWatcher Watcher
         {
             get { return _watcher; }
         }

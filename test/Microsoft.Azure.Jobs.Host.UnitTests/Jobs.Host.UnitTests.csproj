@@ -86,7 +86,7 @@
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
-    <Compile Include="Blobs\Bindings\SelfWatchCloudBlobStreamTests.cs" />
+    <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommandTests.cs" />
@@ -112,7 +112,7 @@
     <Compile Include="TimeCheckTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
     <Compile Include="DefaultStorageValidatorTests.cs" />
-    <Compile Include="Blobs\SelfWatchReadStreamTests.cs" />
+    <Compile Include="Blobs\WatchableReadStreamTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">

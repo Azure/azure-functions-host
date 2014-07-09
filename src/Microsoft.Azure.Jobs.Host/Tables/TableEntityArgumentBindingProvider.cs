@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Tables
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return new TableEntityValueBinder(value, entity, typeof(TElement));
             }
 
-            private class TableEntityValueBinder : IValueBinder, IWatchable, ISelfWatch
+            private class TableEntityValueBinder : IValueBinder, IWatchable, IWatcher
             {
                 private readonly TableEntityContext _entityContext;
                 private readonly ITableEntity _value;
@@ -68,7 +69,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     get { return _valueType; }
                 }
 
-                public ISelfWatch Watcher
+                public IWatcher Watcher
                 {
                     get { return this; }
                 }
@@ -99,9 +100,9 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     return _entityContext.ToInvokeString();
                 }
 
-                public string GetStatus()
+                public ParameterLog GetStatus()
                 {
-                    return HasChanged ? "1 entity updated." : null;
+                    return HasChanged ? new TextParameterLog { Value = "1 entity updated." } : null;
                 }
 
                 private bool HasChanged

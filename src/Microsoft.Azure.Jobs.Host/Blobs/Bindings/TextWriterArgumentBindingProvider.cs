@@ -49,11 +49,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 CloudBlobStream rawStream = blockBlob.OpenWrite();
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
-                SelfWatchCloudBlobStream selfWatchStream = new SelfWatchCloudBlobStream(rawStream, committedAction);
+                WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
                 const int defaultBufferSize = 1024;
-                TextWriter writer = new StreamWriter(selfWatchStream, Encoding.UTF8, defaultBufferSize,
+                TextWriter writer = new StreamWriter(watchableStream, Encoding.UTF8, defaultBufferSize,
                     leaveOpen: true);
-                return new TextWriterValueBinder(blob, selfWatchStream, writer);
+                return new TextWriterValueBinder(blob, watchableStream, writer);
             }
 
             // There's no way to dispose a CloudBlobStream without committing.
@@ -61,10 +61,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             private class TextWriterValueBinder : IValueBinder, IWatchable
             {
                 private readonly ICloudBlob _blob;
-                private readonly SelfWatchCloudBlobStream _stream;
+                private readonly WatchableCloudBlobStream _stream;
                 private readonly TextWriter _value;
 
-                public TextWriterValueBinder(ICloudBlob blob, SelfWatchCloudBlobStream stream, TextWriter value)
+                public TextWriterValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream, TextWriter value)
                 {
                     _blob = blob;
                     _stream = stream;
@@ -76,7 +76,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     get { return typeof(TextWriter); }
                 }
 
-                public ISelfWatch Watcher
+                public IWatcher Watcher
                 {
                     get { return _stream; }
                 }

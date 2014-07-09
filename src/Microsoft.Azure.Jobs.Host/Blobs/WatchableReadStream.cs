@@ -4,17 +4,18 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class SelfWatchReadStream : DelegatingStream, ISelfWatch
+    internal class WatchableReadStream : DelegatingStream, IWatcher
     {
         private volatile int _countRead;
 
         private readonly Stopwatch _timeRead = new Stopwatch();
         private readonly long _totalLength;
 
-        public SelfWatchReadStream(Stream inner)
+        public WatchableReadStream(Stream inner)
             : base(inner)
         {
             _totalLength = inner.Length;
@@ -49,14 +50,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             }
         }
 
-        public string GetStatus()
+        public ParameterLog GetStatus()
         {
             StringBuilder sb = new StringBuilder();
             var x = _countRead;
             double complete = x * 100.0 / _totalLength;
             sb.AppendFormat("Read {0:n0} bytes ({1:0.00}% of total). ", x, complete);
             AppendNetworkTime(sb, _timeRead.Elapsed);
-            return sb.ToString();
+            return new TextParameterLog { Value = sb.ToString() };
         }
 
         internal static void AppendNetworkTime(StringBuilder sb, TimeSpan elapsed)

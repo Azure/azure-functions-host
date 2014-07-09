@@ -134,12 +134,12 @@ namespace Microsoft.Azure.Jobs.Host.Runners
         {
             MethodInfo method = instance.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
-            IReadOnlyDictionary<string, ISelfWatch> watches = CreateWatches(parameters);
-            SelfWatch selfWatch = CreateSelfWatch(watches, parameterLogBlob, consoleOutput);
+            IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
+            ValueWatcher valueWatcher = CreateValueWatcher(watches, parameterLogBlob, consoleOutput);
 
             try
             {
-                ExecuteWithSelfWatch(method, parameterInfos, parameters, consoleOutput);
+                ExecuteWithWatchers(method, parameterInfos, parameters, consoleOutput);
             }
             finally
             {
@@ -147,19 +147,19 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 // watches).
                 // Also, IValueBinder.SetValue could also take a long time (flushing large caches), and so it's useful
                 // to have watches still running.                
-                if (selfWatch != null)
+                if (valueWatcher != null)
                 {
-                    selfWatch.Stop();
+                    valueWatcher.Stop();
                 }
 
-                SelfWatch.AddLogs(watches, parameterLogCollector);
+                ValueWatcher.AddLogs(watches, parameterLogCollector);
             }
         }
 
-        private static IReadOnlyDictionary<string, ISelfWatch> CreateWatches(
+        private static IReadOnlyDictionary<string, IWatcher> CreateWatches(
             IReadOnlyDictionary<string, IValueProvider> parameters)
         {
-            Dictionary<string, ISelfWatch> watches = new Dictionary<string, ISelfWatch>();
+            Dictionary<string, IWatcher> watches = new Dictionary<string, IWatcher>();
 
             foreach (KeyValuePair<string, IValueProvider> item in parameters)
             {
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.Jobs.Host.Runners
             return watches;
         }
 
-        private static SelfWatch CreateSelfWatch(IReadOnlyDictionary<string, ISelfWatch> watches,
+        private static ValueWatcher CreateValueWatcher(IReadOnlyDictionary<string, IWatcher> watches,
             CloudBlockBlob parameterLogBlob, TextWriter consoleOutput)
         {
             if (parameterLogBlob == null)
@@ -182,10 +182,10 @@ namespace Microsoft.Azure.Jobs.Host.Runners
                 return null;
             }
 
-            return new SelfWatch(watches, parameterLogBlob, consoleOutput);
+            return new ValueWatcher(watches, parameterLogBlob, consoleOutput);
         }
 
-        internal static void ExecuteWithSelfWatch(MethodInfo method, ParameterInfo[] parameterInfos,
+        internal static void ExecuteWithWatchers(MethodInfo method, ParameterInfo[] parameterInfos,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput)
         {
             IDelayedException delayedBindingException;
@@ -193,8 +193,8 @@ namespace Microsoft.Azure.Jobs.Host.Runners
 
             if (delayedBindingException != null)
             {
-                // This is done inside a self watch context so that each binding error is publish next to the binding in
-                // the self watch log.
+                // This is done inside a watcher context so that each binding error is publish next to the binding in
+                // the parameter status log.
                 delayedBindingException.Throw();
             }
 

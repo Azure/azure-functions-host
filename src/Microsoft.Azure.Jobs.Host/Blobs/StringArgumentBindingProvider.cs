@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
@@ -39,17 +40,17 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
             {
                 string value;
-                string status;
+                ParameterLog status;
 
                 using (Stream rawStream = blob.OpenRead())
-                using (SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream))
-                using (TextReader reader = new StreamReader(selfWatchStream))
+                using (WatchableReadStream watchableStream = new WatchableReadStream(rawStream))
+                using (TextReader reader = new StreamReader(watchableStream))
                 {
                     value = reader.ReadToEnd();
-                    status = selfWatchStream.GetStatus();
+                    status = watchableStream.GetStatus();
                 }
 
-                return new BlobWatchableValueProvider(blob, value, typeof(string), new StaticSelfWatch(status));
+                return new BlobWatchableValueProvider(blob, value, typeof(string), new ImmutableWatcher(status));
             }
         }
     }

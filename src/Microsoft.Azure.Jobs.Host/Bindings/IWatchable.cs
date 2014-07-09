@@ -2,6 +2,6 @@
 {
     internal interface IWatchable
     {
-        ISelfWatch Watcher { get; }
+        IWatcher Watcher { get; }
     }
 }

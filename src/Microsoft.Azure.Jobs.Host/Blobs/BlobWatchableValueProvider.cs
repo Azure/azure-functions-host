@@ -10,9 +10,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
         private readonly ICloudBlob _blob;
         private readonly object _value;
         private readonly Type _valueType;
-        private readonly ISelfWatch _watcher;
+        private readonly IWatcher _watcher;
 
-        public BlobWatchableValueProvider(ICloudBlob blob, object value, Type valueType, ISelfWatch watcher)
+        public BlobWatchableValueProvider(ICloudBlob blob, object value, Type valueType, IWatcher watcher)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             return _blob.GetBlobPath();
         }
 
-        public ISelfWatch Watcher
+        public IWatcher Watcher
         {
             get { return _watcher; }
         }

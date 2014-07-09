@@ -69,7 +69,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         private void Execute(IFunctionInstance instance)
         {
             FunctionBindingContext context = new FunctionBindingContext(_context, instance.Id, TextWriter.Null);
-            WebSitesExecuteFunction.ExecuteWithSelfWatch(instance.Method, instance.Method.GetParameters(),
+            WebSitesExecuteFunction.ExecuteWithWatchers(instance.Method, instance.Method.GetParameters(),
                 instance.BindingSource.Bind(context), TextWriter.Null);
         }
     }

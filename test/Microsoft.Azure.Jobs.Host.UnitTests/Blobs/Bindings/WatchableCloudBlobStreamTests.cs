@@ -1,13 +1,14 @@
 ﻿using System;
 using System.IO;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
 {
-    public class SelfWatchCloudBlobStreamTests
+    public class WatchableCloudBlobStreamTests
     {
         [Fact]
         public void Complete_NotYetClosedAndNothingWasWritten_ReturnFalse()
@@ -15,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var memoryStream = new MemoryCloudBlobStream())
             {
-                var watchableStream = new SelfWatchCloudBlobStream(memoryStream, null);
+                var watchableStream = new WatchableCloudBlobStream(memoryStream, null);
 
                 // Act
                 var result = watchableStream.Complete();
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var memoryStream = new MemoryCloudBlobStream())
             {
-                var watchableStream = new SelfWatchCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
+                var watchableStream = new WatchableCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
                 watchableStream.Close();
 
                 // Act
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var memoryStream = new MemoryCloudBlobStream())
             {
-                var watchableStream = new SelfWatchCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
+                var watchableStream = new WatchableCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
                 watchableStream.WriteByte(1);
 
                 // Act
@@ -65,7 +66,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var memoryStream = new MemoryCloudBlobStream())
             {
-                var watchableStream = new SelfWatchCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
+                var watchableStream = new WatchableCloudBlobStream(memoryStream, NullBlobCommittedAction.Instance);
                 watchableStream.WriteByte(1);
                 watchableStream.Close();
 
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var s = new MemoryCloudBlobStream())
             {
-                var w = new SelfWatchCloudBlobStream(s, null);
+                var w = new WatchableCloudBlobStream(s, null);
                 w.Complete();
 
                 // Act
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
         {
             using (var s = new MemoryCloudBlobStream())
             {
-                var w = new SelfWatchCloudBlobStream(s, NullBlobCommittedAction.Instance);
+                var w = new WatchableCloudBlobStream(s, NullBlobCommittedAction.Instance);
                 w.Close();
                 w.Complete();
 
@@ -109,7 +110,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal("Wrote 0 bytes.", result);
+                Assert.IsType<TextParameterLog>(result);
+                Assert.Equal("Wrote 0 bytes.", ((TextParameterLog)result).Value);
             }
         }
 
@@ -118,14 +120,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
         {
             using (var s = new MemoryCloudBlobStream())
             {
-                var w = new SelfWatchCloudBlobStream(s, NullBlobCommittedAction.Instance);
+                var w = new WatchableCloudBlobStream(s, NullBlobCommittedAction.Instance);
                 w.Complete();
 
                 // Act
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal("Nothing was written.", result);
+                Assert.IsType<TextParameterLog>(result);
+                Assert.Equal("Nothing was written.", ((TextParameterLog)result).Value);
             }
         }
 
@@ -135,14 +138,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var s = new MemoryCloudBlobStream())
             {
-                var w = new SelfWatchCloudBlobStream(s, null);
+                var w = new WatchableCloudBlobStream(s, null);
                 w.Close();
 
                 // Act
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal("Wrote 0 bytes.", result);
+                Assert.IsType<TextParameterLog>(result);
+                Assert.Equal("Wrote 0 bytes.", ((TextParameterLog)result).Value);
             }
         }
 
@@ -152,13 +156,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             // Arrange
             using (var s = new MemoryCloudBlobStream())
             {
-                var w = new SelfWatchCloudBlobStream(s, null);
+                var w = new WatchableCloudBlobStream(s, null);
 
                 // Act
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.Equal(String.Empty, result);
+                Assert.IsType<TextParameterLog>(result);
+                Assert.Equal(String.Empty, ((TextParameterLog)result).Value);
             }
         }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Jobs.Host.Tables
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return new PocoEntityValueBinder(value, userEntity, typeof(TElement));
             }
 
-            private class PocoEntityValueBinder : IValueBinder, IWatchable, ISelfWatch
+            private class PocoEntityValueBinder : IValueBinder, IWatchable, IWatcher
             {
                 private readonly TableEntityContext _entityContext;
                 private readonly object _value;
@@ -70,7 +71,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     get { return _valueType; }
                 }
 
-                public ISelfWatch Watcher
+                public IWatcher Watcher
                 {
                     get { return this; }
                 }
@@ -96,9 +97,9 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     return _entityContext.ToInvokeString();
                 }
 
-                public string GetStatus()
+                public ParameterLog GetStatus()
                 {
-                    return HasChanged ? "1 entity updated." : null;
+                    return HasChanged ? new TextParameterLog { Value = "1 entity updated." } : null;
                 }
 
                 private bool HasChanged

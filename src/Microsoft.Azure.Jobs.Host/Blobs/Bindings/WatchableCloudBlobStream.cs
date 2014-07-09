@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Globalization;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
-    internal class SelfWatchCloudBlobStream : DelegatingCloudBlobStream, ISelfWatch
+    internal class WatchableCloudBlobStream : DelegatingCloudBlobStream, IWatcher
     {
         private readonly IBlobCommitedAction _committedAction;
 
@@ -16,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         private bool _committed;
         private bool _disposed;
 
-        public SelfWatchCloudBlobStream(CloudBlobStream inner, IBlobCommitedAction committedAction)
+        public WatchableCloudBlobStream(CloudBlobStream inner, IBlobCommitedAction committedAction)
             : base(inner)
         {
             _committedAction = committedAction;
@@ -42,23 +43,26 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             base.WriteByte(value);
         }
 
-        public string GetStatus()
+        public ParameterLog GetStatus()
         {
             if (_countWritten > 0)
             {
-                return String.Format(CultureInfo.InvariantCulture, "Wrote {0:n0} bytes.", _countWritten);
+                return new TextParameterLog
+                {
+                    Value = String.Format(CultureInfo.InvariantCulture, "Wrote {0:n0} bytes.", _countWritten)
+                };
             }
             else if (!CanWrite)
             {
-                return "Wrote 0 bytes.";
+                return new TextParameterLog { Value = "Wrote 0 bytes." };
             }
             else if (_completed)
             {
-                return "Nothing was written.";
+                return new TextParameterLog { Value = "Nothing was written." };
             }
             else
             {
-                return String.Empty;
+                return new TextParameterLog { Value = String.Empty };
             }
         }
 

@@ -13,6 +13,6 @@
         public BlobBoundParamModel ExtendedBlobModel { get; set; }
 
         // Runtime info. This can be structured to provide rich hyperlinks.
-        public string SelfWatch { get; set; }
+        public string Status { get; set; }
     }
 }

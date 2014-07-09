@@ -58,10 +58,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                     }
                 }
 
-                SelfWatchReadStream selfWatchStream = new SelfWatchReadStream(rawStream);
-                TextReader reader = new StreamReader(selfWatchStream);
+                WatchableReadStream watchableStream = new WatchableReadStream(rawStream);
+                TextReader reader = new StreamReader(watchableStream);
                 return new BlobWatchableDisposableValueProvider(blob, reader, typeof(TextReader),
-                    watcher: selfWatchStream, disposable: reader);
+                    watcher: watchableStream, disposable: reader);
             }
         }
     }

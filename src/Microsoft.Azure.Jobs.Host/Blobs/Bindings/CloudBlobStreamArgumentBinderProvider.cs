@@ -48,8 +48,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 CloudBlobStream rawStream = blockBlob.OpenWrite();
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
-                SelfWatchCloudBlobStream selfWatchStream = new SelfWatchCloudBlobStream(rawStream, committedAction);
-                return new CloudBlobStreamValueBinder(blob, selfWatchStream);
+                WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
+                return new CloudBlobStreamValueBinder(blob, watchableStream);
             }
 
             // There's no way to dispose a CloudBlobStream without committing.
@@ -57,9 +57,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             private sealed class CloudBlobStreamValueBinder : IValueBinder, IWatchable
             {
                 private readonly ICloudBlob _blob;
-                private readonly SelfWatchCloudBlobStream _stream;
+                private readonly WatchableCloudBlobStream _stream;
 
-                public CloudBlobStreamValueBinder(ICloudBlob blob, SelfWatchCloudBlobStream stream)
+                public CloudBlobStreamValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream)
                 {
                     _blob = blob;
                     _stream = stream;
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     get { return typeof(CloudBlobStream); }
                 }
 
-                public ISelfWatch Watcher
+                public IWatcher Watcher
                 {
                     get { return _stream; }
                 }

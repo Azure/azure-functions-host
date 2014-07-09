@@ -84,7 +84,7 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
-        // IBinder's self watch uses an attribute's ToString as a key.
+        // IBinder's watcher uses an attribute's ToString as a key.
         /// <inheritdoc />
         public override string ToString()
         {
