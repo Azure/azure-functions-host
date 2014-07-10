@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Globalization;
-using System.IO;
 using System.Text;
-using Microsoft.Azure.Jobs.Host.Blobs;
 using Xunit;
 using Xunit.Extensions;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
+namespace Dashboard.UnitTests.Infrastructure
 {
-    public class WatchableReadStreamTests
+    public class LogAnalysisTests
     {
         [Fact]
         public void AppendNetworkTime_ZeroTime_NoOutput()
@@ -18,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.Zero;
 
             // Act
-            WatchableReadStream.AppendNetworkTime(sb, time);
+            LogAnalysis.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -44,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromTicks((long) (milliseconds*10000));
 
             // Act
-            WatchableReadStream.AppendNetworkTime(sb, time);
+            LogAnalysis.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -65,7 +63,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromSeconds(seconds);
             
             // Act
-            WatchableReadStream.AppendNetworkTime(sb, time);
+            LogAnalysis.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -86,7 +84,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromMinutes(minutes);
 
             // Act
-            WatchableReadStream.AppendNetworkTime(sb, time);
+            LogAnalysis.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert
@@ -106,7 +104,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             var time = TimeSpan.FromHours(hours);
 
             // Act
-            WatchableReadStream.AppendNetworkTime(sb, time);
+            LogAnalysis.AppendNetworkTime(sb, time);
             var result = sb.ToString();
 
             // Assert

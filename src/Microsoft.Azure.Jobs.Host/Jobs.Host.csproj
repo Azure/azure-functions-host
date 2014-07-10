@@ -199,6 +199,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\QueueTriggerParameterDescriptor.cs">
       <Link>Protocols\QueueTriggerParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ReadBlobParameterLog.cs">
+      <Link>Protocols\ReadBlobParameterLog.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusConnectionStringDescriptor.cs">
       <Link>Protocols\ServiceBusConnectionStringDescriptor.cs</Link>
     </Compile>

@@ -151,6 +151,13 @@ namespace Dashboard
 
         private static string Format(ParameterLog log)
         {
+            ReadBlobParameterLog readBlobLog = log as ReadBlobParameterLog;
+
+            if (readBlobLog != null)
+            {
+                return Format(readBlobLog);
+            }
+
             TableParameterLog tableLog = log as TableParameterLog;
 
             if (tableLog != null)
@@ -173,6 +180,61 @@ namespace Dashboard
             }
 
             return null;
+        }
+
+        private static string Format(ReadBlobParameterLog log)
+        {
+            Debug.Assert(log != null);
+            StringBuilder builder = new StringBuilder();
+            long bytesRead = log.BytesRead;
+            double complete = bytesRead * 100.0 / log.Length;
+            builder.AppendFormat("Read {0:n0} bytes ({1:0.00}% of total). ", bytesRead, complete);
+            AppendNetworkTime(builder, log.ElapsedTime);
+            return builder.ToString();
+        }
+
+        internal static void AppendNetworkTime(StringBuilder builder, TimeSpan elapsed)
+        {
+            if (elapsed == TimeSpan.Zero)
+            {
+                return;
+            }
+
+            builder.Append("(about ");
+
+            string unitName;
+            int unitCount;
+
+            if (elapsed > TimeSpan.FromMinutes(55)) // it is about an hour, right?
+            {
+                unitName = "hour";
+                unitCount = (int)Math.Round(elapsed.TotalHours);
+            }
+            else if (elapsed > TimeSpan.FromSeconds(55)) // it is about a minute, right?
+            {
+                unitName = "minute";
+                unitCount = (int)Math.Round(elapsed.TotalMinutes);
+            }
+            else if (elapsed > TimeSpan.FromMilliseconds(950)) // it is about a second, right?
+            {
+                unitName = "second";
+                unitCount = (int)Math.Round(elapsed.TotalSeconds);
+            }
+            else
+            {
+                unitName = "millisecond";
+                unitCount = Math.Max((int)Math.Round(elapsed.TotalMilliseconds), 1);
+            }
+            builder.AppendFormat(CultureInfo.CurrentCulture, "{0} {1}{2}", unitCount, unitName, unitCount > 1 ? "s" : String.Empty);
+            builder.Append(" spent on I/O)");
+        }
+
+        private static string Format(TableParameterLog log)
+        {
+            Debug.Assert(log != null);
+
+            return String.Format(CultureInfo.CurrentCulture, "Updated {0} {1}", log.EntitiesUpdated,
+                log.EntitiesUpdated == 1 ? "entity" : "entities");
         }
 
         private static string Format(BinderParameterLog log)
@@ -211,14 +273,6 @@ namespace Dashboard
             }
 
             return builder.ToString();
-        }
-
-        private static string Format(TableParameterLog log)
-        {
-            Debug.Assert(log != null);
-
-            return String.Format(CultureInfo.CurrentCulture, "Updated {0} {1}", log.EntitiesUpdated,
-                log.EntitiesUpdated == 1 ? "entity" : "entities");
         }
     }
 }
