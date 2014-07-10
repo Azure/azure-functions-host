@@ -324,6 +324,10 @@
     <Compile Include="Listeners\ListenerFactoryContext.cs" />
     <Compile Include="Listeners\SharedListenerContainer.cs" />
     <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />
+    <Compile Include="Tables\PocoEntityValueBinder.cs" />
+    <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
+    <Compile Include="Tables\TableEntityValueBinder.cs" />
+    <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommand.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />
