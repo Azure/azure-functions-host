@@ -4,13 +4,18 @@ using System.Threading;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
-    internal class AttributeBinding : IAttributeBinding
+    internal class AttributeBindingSource : IAttributeBindingSource
     {
         private readonly BindingContext _context;
 
-        public AttributeBinding(BindingContext context)
+        public AttributeBindingSource(BindingContext context)
         {
             _context = context;
+        }
+
+        public BindingContext BindingContext
+        {
+            get { return _context; }
         }
 
         public CancellationToken CancellationToken
@@ -18,17 +23,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             get { return _context.CancellationToken; }
         }
 
-        public IValueProvider Bind<TValue>(Attribute attribute)
+        public IBinding Bind<TValue>(Attribute attribute)
         {
-            IBinding binding = _context.BindingProvider.TryCreate(BindingProviderContext.Create(
+            return _context.BindingProvider.TryCreate(BindingProviderContext.Create(
                 _context, new FakeParameterInfo(typeof(TValue), attribute), bindingDataContract: null));
-
-            if (binding == null)
-            {
-                throw new InvalidOperationException("No binding found for attribute '" + attribute.GetType() + "'.");
-            }
-
-            return binding.Bind(_context);
         }
 
         // A non-reflection based implementation

@@ -59,12 +59,5 @@ namespace Microsoft.Azure.Jobs
         {
             get { return _access; }
         }
-
-        // IBinder's watcher uses an attribute's ToString as a key.
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return String.Format(CultureInfo.InvariantCulture, "[Blob(\"{0}\")]", _blobPath);
-        }
     }
 }

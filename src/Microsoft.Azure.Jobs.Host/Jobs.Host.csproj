@@ -88,6 +88,12 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterDescriptor.cs">
       <Link>Protocols\BinderParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterLog.cs">
+      <Link>Protocols\BinderParameterLog.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BinderParameterLogItem.cs">
+      <Link>Protocols\BinderParameterLogItem.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BindingDataParameterDescriptor.cs">
       <Link>Protocols\BindingDataParameterDescriptor.cs</Link>
     </Compile>
@@ -266,7 +272,7 @@
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
     <Compile Include="Bindings\IWatcher.cs" />
-    <Compile Include="Bindings\Runtime\AttributeBinding.cs" />
+    <Compile Include="Bindings\Runtime\AttributeBindingSource.cs" />
     <Compile Include="Bindings\BindingDataPath.cs" />
     <Compile Include="Bindings\BindingExceptionValueProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
@@ -355,14 +361,14 @@
     <Compile Include="Bindings\ObjectValueProvider.cs" />
     <Compile Include="Bindings\ClassOutputConverter.cs" />
     <Compile Include="Bindings\CompositeDisposable.cs" />
-    <Compile Include="Bindings\Runtime\CompositeWatcher.cs" />
+    <Compile Include="Bindings\Runtime\RuntimeBindingWatcher.cs" />
     <Compile Include="Bindings\Runtime\RuntimeValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountValueProvider.cs" />
     <Compile Include="Bindings\StorageAccount\StringToCloudStorageAccountConverter.cs" />
     <Compile Include="Bindings\StorageAccount\OutputConverter.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBinding.cs" />
     <Compile Include="Bindings\StorageAccount\CloudStorageAccountBindingProvider.cs" />
-    <Compile Include="Bindings\Runtime\IAttributeBinding.cs" />
+    <Compile Include="Bindings\Runtime\IAttributeBindingSource.cs" />
     <Compile Include="Bindings\FunctionBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
     <Compile Include="Bindings\BindingData.cs" />

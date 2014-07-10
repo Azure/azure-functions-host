@@ -21,6 +21,9 @@ namespace Dashboard.Data
         public abstract string Description { get; }
 
         [JsonIgnore]
+        public abstract string AttributeText { get; }
+
+        [JsonIgnore]
         public abstract string Prompt { get; }
 
         [JsonIgnore]

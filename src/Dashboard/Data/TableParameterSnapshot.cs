@@ -1,4 +1,6 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
+﻿using System;
+using System.Globalization;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
@@ -9,26 +11,22 @@ namespace Dashboard.Data
 
         public override string Description
         {
-            get
-            {
-                return string.Format("Access table: {0}", this.TableName);
-            }
+            get { return String.Format(CultureInfo.CurrentCulture, "Access table: {0}", TableName); }
+        }
+
+        public override string AttributeText
+        {
+            get { return String.Format(CultureInfo.CurrentCulture, "[Table(\"{0}\")]", TableName); }
         }
 
         public override string Prompt
         {
-            get
-            {
-                return "Enter the table name";
-            }
+            get { return "Enter the table name"; }
         }
 
         public override string DefaultValue
         {
-            get
-            {
-                return TableName;
-            }
+            get { return TableName; }
         }
     }
 }

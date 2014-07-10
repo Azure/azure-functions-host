@@ -51,6 +51,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BinderParameterLogItem.cs" />
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
     <Compile Include="ConnectionStringDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
@@ -69,6 +70,7 @@
     <Compile Include="CallerSuppliedParameterDescriptor.cs" />
     <Compile Include="LocalBlobDescriptor.cs" />
     <Compile Include="PersistentQueueReader.cs" />
+    <Compile Include="BinderParameterLog.cs" />
     <Compile Include="TextParameterLog.cs" />
     <Compile Include="ParameterLog.cs" />
     <Compile Include="QueueTriggerParameterDescriptor.cs" />

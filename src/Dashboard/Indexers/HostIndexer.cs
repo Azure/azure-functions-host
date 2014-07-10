@@ -89,7 +89,7 @@ namespace Dashboard.Indexers
             return snapshots;
         }
 
-        private static ParameterSnapshot CreateParameterSnapshot(ParameterDescriptor parameter)
+        internal static ParameterSnapshot CreateParameterSnapshot(ParameterDescriptor parameter)
         {
             switch (parameter.Type)
             {

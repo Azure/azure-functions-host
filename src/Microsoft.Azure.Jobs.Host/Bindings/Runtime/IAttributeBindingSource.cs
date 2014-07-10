@@ -3,10 +3,12 @@ using System.Threading;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
-    internal interface IAttributeBinding
+    internal interface IAttributeBindingSource
     {
+        BindingContext BindingContext { get; }
+
         CancellationToken CancellationToken { get; }
 
-        IValueProvider Bind<TValue>(Attribute attribute);
+        IBinding Bind<TValue>(Attribute attribute);
     }
 }

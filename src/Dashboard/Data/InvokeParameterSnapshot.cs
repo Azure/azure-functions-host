@@ -10,6 +10,11 @@ namespace Dashboard.Data
             get { return "Caller-supplied value"; }
         }
 
+        public override string AttributeText
+        {
+            get { return null; }
+        }
+
         public override string Prompt
         {
             get { return "Enter a value"; }

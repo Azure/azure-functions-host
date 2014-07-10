@@ -1,4 +1,6 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
+﻿using System;
+using System.Globalization;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.Data
 {
@@ -15,13 +17,18 @@ namespace Dashboard.Data
             {
                 if (this.IsInput)
                 {
-                    return string.Format("dequeue from '{0}'", this.QueueName);
+                    return String.Format(CultureInfo.CurrentCulture, "dequeue from '{0}'", this.QueueName);
                 }
                 else
                 {
-                    return string.Format("enqueue to '{0}'", this.QueueName);
+                    return String.Format(CultureInfo.CurrentCulture, "enqueue to '{0}'", this.QueueName);
                 }
             }
+        }
+
+        public override string AttributeText
+        {
+            get { return String.Format(CultureInfo.CurrentCulture, "[Queue(\"{0}\")]", QueueName); }
         }
 
         public override string Prompt

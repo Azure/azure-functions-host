@@ -2,26 +2,27 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal sealed class RuntimeValueProvider : IValueBinder, IWatchable, IDisposable, IBinder
     {
-        private readonly IAttributeBinding _binding;
+        private readonly IAttributeBindingSource _bindingSource;
         private readonly IList<IValueBinder> _binders = new List<IValueBinder>();
-        private readonly CompositeWatcher _watcher = new CompositeWatcher();
+        private readonly RuntimeBindingWatcher _watcher = new RuntimeBindingWatcher();
         private readonly CollectingDisposable _disposable = new CollectingDisposable();
 
         private bool _disposed;
 
-        public RuntimeValueProvider(IAttributeBinding binding)
+        public RuntimeValueProvider(IAttributeBindingSource bindingSource)
         {
-            _binding = binding;
+            _bindingSource = bindingSource;
         }
 
         public CancellationToken CancellationToken
         {
-            get { return _binding.CancellationToken; }
+            get { return _bindingSource.CancellationToken; }
         }
 
         public Type Type
@@ -55,7 +56,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
         public TValue Bind<TValue>(Attribute attribute)
         {
-            IValueProvider provider = _binding.Bind<TValue>(attribute);
+            IBinding binding = _bindingSource.Bind<TValue>(attribute);
+
+            if (binding == null)
+            {
+                throw new InvalidOperationException("No binding found for attribute '" + attribute.GetType() + "'.");
+            }
+
+            IValueProvider provider = binding.Bind(_bindingSource.BindingContext);
 
             if (provider == null)
             {
@@ -64,8 +72,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
             Debug.Assert(provider.Type == typeof(TValue));
 
+            ParameterDescriptor parameterDesciptor = binding.ToParameterDescriptor();
+            parameterDesciptor.Name = null; // Remove the dummy name "?" used for runtime binding.
             IWatchable watchable = provider as IWatchable;
-            _watcher.Add(attribute.ToString(), watchable); // Add even if null to show name in status.
+            // Add even if watchable is null to show parameter descriptor in status.
+            _watcher.Add(parameterDesciptor, watchable);
 
             IValueBinder binder = provider as IValueBinder;
 

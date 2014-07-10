@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
+using Dashboard.Indexers;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Protocols;
@@ -133,15 +137,72 @@ namespace Dashboard
 
             foreach (KeyValuePair<string, ParameterLog> status in parameterLogs)
             {
-                TextParameterLog textLog = status.Value as TextParameterLog;
+                string value = Format(status.Value);
 
-                if (textLog != null)
+                if (value != null)
                 {
-                    logs.Add(status.Key, textLog.Value);
+                    logs.Add(status.Key, value);
                 }
             }
 
             return logs;
+        }
+
+        private static string Format(ParameterLog log)
+        {
+            TextParameterLog textLog = log as TextParameterLog;
+
+            if (textLog != null)
+            {
+                return textLog.Value;
+            }
+
+            BinderParameterLog binderLog = log as BinderParameterLog;
+
+            if (binderLog != null)
+            {
+                return Format(binderLog);
+            }
+
+            return null;
+        }
+
+        private static string Format(BinderParameterLog log)
+        {
+            Debug.Assert(log != null);
+            IEnumerable<BinderParameterLogItem> items = log.Items;
+
+            if (items == null)
+            {
+                return null;
+            }
+
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat("Bound {0} object(s):", items.Count());
+            builder.AppendLine();
+
+            foreach (BinderParameterLogItem item in items)
+            {
+                ParameterSnapshot snapshot = HostIndexer.CreateParameterSnapshot(item.Descriptor);
+
+                if (snapshot == null)
+                {
+                    continue;
+                }
+
+                builder.Append(snapshot.AttributeText);
+                string status = Format(item.Log);
+
+                if (status != null)
+                {
+                    builder.Append(" ");
+                    builder.Append(status);
+                }
+
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
         }
     }
 }

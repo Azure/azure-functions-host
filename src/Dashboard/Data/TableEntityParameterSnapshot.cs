@@ -17,8 +17,17 @@ namespace Dashboard.Data
         {
             get
             {
-                return string.Format(CultureInfo.CurrentCulture,
+                return String.Format(CultureInfo.CurrentCulture,
                     "Access table entity: {0} (PK: {1}, RK: {2})", TableName, PartitionKey, RowKey);
+            }
+        }
+
+        public override string AttributeText
+        {
+            get
+            {
+                return String.Format(CultureInfo.CurrentCulture,
+                    "[Table(\"{0}\", \"{1}\", \"{2}\")]", TableName, PartitionKey, RowKey);
             }
         }
 

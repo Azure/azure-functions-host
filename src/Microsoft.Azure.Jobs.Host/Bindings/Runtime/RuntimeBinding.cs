@@ -17,14 +17,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             get { return false; }
         }
 
-        private IValueProvider Bind(IAttributeBinding binding, FunctionBindingContext context)
+        private IValueProvider Bind(IAttributeBindingSource binding, FunctionBindingContext context)
         {
             return new RuntimeValueProvider(binding);
         }
 
         public IValueProvider Bind(object value, FunctionBindingContext context)
         {
-            IAttributeBinding binding = value as IAttributeBinding;
+            IAttributeBindingSource binding = value as IAttributeBindingSource;
 
             if (binding == null)
             {
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
         public IValueProvider Bind(BindingContext context)
         {
-            return Bind(new AttributeBinding(context), context.FunctionContext);
+            return Bind(new AttributeBindingSource(context), context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

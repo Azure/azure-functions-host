@@ -37,12 +37,5 @@ namespace Microsoft.Azure.Jobs
         {
             get { return _queueName; }
         }
-
-        // IBinder's watcher uses an attribute's ToString as a key.
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            return String.Format(CultureInfo.InvariantCulture, "[Queue(\"{0}\")]", _queueName);
-        }
     }
 }

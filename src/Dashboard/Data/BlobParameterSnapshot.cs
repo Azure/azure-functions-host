@@ -1,4 +1,6 @@
-﻿using Microsoft.Azure.Jobs.Protocols;
+﻿using System;
+using System.Globalization;
+using Microsoft.Azure.Jobs.Protocols;
 using Newtonsoft.Json;
 
 namespace Dashboard.Data
@@ -34,6 +36,11 @@ namespace Dashboard.Data
                     return string.Format("Write to blob: {0}", Path);
                 }
             }
+        }
+
+        public override string AttributeText
+        {
+            get { return String.Format(CultureInfo.CurrentCulture, "[Blob(\"{0}\")]", Path); }
         }
 
         public override string Prompt
