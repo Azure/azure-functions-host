@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using Dashboard.Data;
@@ -150,11 +151,11 @@ namespace Dashboard
 
         private static string Format(ParameterLog log)
         {
-            TextParameterLog textLog = log as TextParameterLog;
+            TableParameterLog tableLog = log as TableParameterLog;
 
-            if (textLog != null)
+            if (tableLog != null)
             {
-                return textLog.Value;
+                return Format(tableLog);
             }
 
             BinderParameterLog binderLog = log as BinderParameterLog;
@@ -162,6 +163,13 @@ namespace Dashboard
             if (binderLog != null)
             {
                 return Format(binderLog);
+            }
+
+            TextParameterLog textLog = log as TextParameterLog;
+
+            if (textLog != null)
+            {
+                return textLog.Value;
             }
 
             return null;
@@ -178,7 +186,7 @@ namespace Dashboard
             }
 
             StringBuilder builder = new StringBuilder();
-            builder.AppendFormat("Bound {0} object(s):", items.Count());
+            builder.AppendFormat(CultureInfo.CurrentCulture, "Bound {0} object(s):", items.Count());
             builder.AppendLine();
 
             foreach (BinderParameterLogItem item in items)
@@ -203,6 +211,14 @@ namespace Dashboard
             }
 
             return builder.ToString();
+        }
+
+        private static string Format(TableParameterLog log)
+        {
+            Debug.Assert(log != null);
+
+            return String.Format(CultureInfo.CurrentCulture, "Updated {0} {1}", log.EntitiesUpdated,
+                log.EntitiesUpdated == 1 ? "entity" : "entities");
         }
     }
 }

@@ -102,7 +102,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
                 public ParameterLog GetStatus()
                 {
-                    return HasChanged ? new TextParameterLog { Value = "1 entity updated." } : null;
+                    return HasChanged ? new TableParameterLog { EntitiesUpdated = 1 } : null;
                 }
 
                 private bool HasChanged

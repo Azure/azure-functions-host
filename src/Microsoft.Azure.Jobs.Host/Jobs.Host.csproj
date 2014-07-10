@@ -217,6 +217,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableParameterDescriptor.cs">
       <Link>Protocols\TableParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableParameterLog.cs">
+      <Link>Protocols\TableParameterLog.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TextParameterLog.cs">
       <Link>Protocols\TextParameterLog.cs</Link>
     </Compile>
