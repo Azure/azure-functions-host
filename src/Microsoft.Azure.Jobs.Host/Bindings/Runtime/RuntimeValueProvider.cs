@@ -74,9 +74,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
             ParameterDescriptor parameterDesciptor = binding.ToParameterDescriptor();
             parameterDesciptor.Name = null; // Remove the dummy name "?" used for runtime binding.
+
+            string value = provider.ToInvokeString();
+
             IWatchable watchable = provider as IWatchable;
+
             // Add even if watchable is null to show parameter descriptor in status.
-            _watcher.Add(parameterDesciptor, watchable);
+            _watcher.Add(parameterDesciptor, value, watchable);
 
             IValueBinder binder = provider as IValueBinder;
 

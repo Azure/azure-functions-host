@@ -20,8 +20,66 @@ namespace Dashboard
     // $$$ Analysis can be expensive. Use a cache?
     public class LogAnalysis
     {
+        public static void AddParameterModels(string parameterName, FunctionInstanceArgument argument, ParameterLog log,
+            FunctionInstanceSnapshot snapshot, ICollection<ParamModel> parameterModels)
+        {
+            ParamModel model = new ParamModel
+            {
+                Name = parameterName,
+                ArgInvokeString = argument.Value
+            };
+
+            if (log != null)
+            {
+                model.Status = Format(log);
+            }
+
+            if (argument.IsBlob)
+            {
+                model.ExtendedBlobModel = LogAnalysis.CreateExtendedBlobModel(snapshot, argument);
+            }
+
+            parameterModels.Add(model);
+
+            // Special-case IBinder, which adds sub-parameters.
+            BinderParameterLog binderLog = log as BinderParameterLog;
+
+            if (binderLog != null)
+            {
+                IEnumerable<BinderParameterLogItem> items = binderLog.Items;
+
+                if (items != null)
+                {
+                    int count = items.Count();
+                    model.Status = String.Format(CultureInfo.CurrentCulture, "Bound {0} object{1}.", count, count != 1 ? "s" : String.Empty);
+
+                    foreach (BinderParameterLogItem item in items)
+                    {
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+                        ParameterSnapshot itemSnapshot = HostIndexer.CreateParameterSnapshot(item.Descriptor);
+                        string itemName = parameterName + ": " + itemSnapshot.AttributeText;
+                        FunctionInstanceArgument itemArgument =
+                            FunctionIndexer.CreateFunctionInstanceArgument(item.Value, item.Descriptor);
+
+                        AddParameterModels(itemName, itemArgument, item.Log, snapshot, parameterModels);
+                    }
+                }
+            }
+        }
+
         internal static BlobBoundParamModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
         {
+            Debug.Assert(argument != null);
+
+            if (argument.Value == null)
+            {
+                return null;
+            }
+
             string[] components = argument.Value.Split(new char[] { '/' });
 
             if (components.Length != 2)
@@ -83,11 +141,11 @@ namespace Dashboard
         }
 
         // Get Live information from current watcher values. 
-        internal static IDictionary<string, string> GetParameterLogs(FunctionInstanceSnapshot snapshot)
+        internal static IDictionary<string, ParameterLog> GetParameterLogs(FunctionInstanceSnapshot snapshot)
         {
             if (snapshot.ParameterLogs != null)
             {
-                return ToStringDictionary(snapshot.ParameterLogs);
+                return snapshot.ParameterLogs;
             }
 
             if (snapshot.ParameterLogBlob == null)
@@ -116,11 +174,9 @@ namespace Dashboard
                 }
             }
 
-            IDictionary<string, ParameterLog> logs;
-
             try
             {
-                logs = JsonConvert.DeserializeObject<IDictionary<string, ParameterLog>>(contents);
+                return JsonConvert.DeserializeObject<IDictionary<string, ParameterLog>>(contents);
             }
             catch
             {
@@ -128,25 +184,6 @@ namespace Dashboard
                 // This could happen if the app wrote a corrupted log. 
                 return null;
             }
-
-            return ToStringDictionary(logs);
-        }
-
-        private static IDictionary<string, string> ToStringDictionary(IDictionary<string, ParameterLog> parameterLogs)
-        {
-            Dictionary<string, string> logs = new Dictionary<string, string>();
-
-            foreach (KeyValuePair<string, ParameterLog> status in parameterLogs)
-            {
-                string value = Format(status.Value);
-
-                if (value != null)
-                {
-                    logs.Add(status.Key, value);
-                }
-            }
-
-            return logs;
         }
 
         private static string Format(ParameterLog log)
@@ -170,13 +207,6 @@ namespace Dashboard
             if (tableLog != null)
             {
                 return Format(tableLog);
-            }
-
-            BinderParameterLog binderLog = log as BinderParameterLog;
-
-            if (binderLog != null)
-            {
-                return Format(binderLog);
             }
 
             TextParameterLog textLog = log as TextParameterLog;
@@ -256,44 +286,6 @@ namespace Dashboard
 
             return String.Format(CultureInfo.CurrentCulture, "Updated {0} {1}", log.EntitiesUpdated,
                 log.EntitiesUpdated == 1 ? "entity" : "entities");
-        }
-
-        private static string Format(BinderParameterLog log)
-        {
-            Debug.Assert(log != null);
-            IEnumerable<BinderParameterLogItem> items = log.Items;
-
-            if (items == null)
-            {
-                return null;
-            }
-
-            StringBuilder builder = new StringBuilder();
-            builder.AppendFormat(CultureInfo.CurrentCulture, "Bound {0} object(s):", items.Count());
-            builder.AppendLine();
-
-            foreach (BinderParameterLogItem item in items)
-            {
-                ParameterSnapshot snapshot = HostIndexer.CreateParameterSnapshot(item.Descriptor);
-
-                if (snapshot == null)
-                {
-                    continue;
-                }
-
-                builder.Append(snapshot.AttributeText);
-                string status = Format(item.Log);
-
-                if (status != null)
-                {
-                    builder.Append(" ");
-                    builder.Append(status);
-                }
-
-                builder.AppendLine();
-            }
-
-            return builder.ToString();
         }
     }
 }

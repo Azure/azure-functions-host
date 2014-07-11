@@ -149,16 +149,22 @@ namespace Dashboard.Indexers
             {
                 string name = item.Key;
                 ParameterDescriptor descriptor = GetParameterDescriptor(parameters, name);
-                BlobParameterDescriptor blobDescriptor = descriptor as BlobParameterDescriptor;
-                arguments.Add(name, new FunctionInstanceArgument
-                {
-                    Value = item.Value,
-                    IsBlob = blobDescriptor != null || descriptor is BlobTriggerParameterDescriptor,
-                    IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write
-                });
+                arguments.Add(name, CreateFunctionInstanceArgument(item.Value, descriptor));
             }
 
             return arguments;
+        }
+
+        internal static FunctionInstanceArgument CreateFunctionInstanceArgument(string value,
+            ParameterDescriptor descriptor)
+        {
+            BlobParameterDescriptor blobDescriptor = descriptor as BlobParameterDescriptor;
+            return new FunctionInstanceArgument
+            {
+                Value = value,
+                IsBlob = blobDescriptor != null || descriptor is BlobTriggerParameterDescriptor,
+                IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write
+            };
         }
 
         private static ParameterDescriptor GetParameterDescriptor(IEnumerable<ParameterDescriptor> parameters, string name)

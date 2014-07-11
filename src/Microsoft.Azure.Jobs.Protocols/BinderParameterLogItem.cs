@@ -14,6 +14,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the parameter descriptor.</summary>
         public ParameterDescriptor Descriptor { get; set; }
 
+        /// <summary>Gets or sets the parameter value.</summary>
+        public string Value { get; set; }
+
         /// <summary>
         /// Gets or sets the parameter log.
         /// </summary>

@@ -342,30 +342,24 @@ namespace Dashboard.ApiControllers
             List<ParamModel> models = new List<ParamModel>();
 
             IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
-            IDictionary<string, string> parameterLogs = LogAnalysis.GetParameterLogs(snapshot);
+            IDictionary<string, ParameterLog> parameterLogs = LogAnalysis.GetParameterLogs(snapshot);
 
             foreach (KeyValuePair<string, FunctionInstanceArgument> parameter in parameters)
             {
                 string name = parameter.Key;
                 FunctionInstanceArgument argument = parameter.Value;
-
-                ParamModel model = new ParamModel
-                {
-                    Name = name,
-                    ArgInvokeString = argument.Value
-                };
-
+                ParameterLog log;
+               
                 if (parameterLogs.ContainsKey(name))
                 {
-                    model.Status = parameterLogs[name];
+                    log = parameterLogs[name];
                 }
-
-                if (argument.IsBlob)
+                else
                 {
-                    model.ExtendedBlobModel = LogAnalysis.CreateExtendedBlobModel(snapshot, argument);
+                    log = null;
                 }
 
-                models.Add(model);
+                LogAnalysis.AddParameterModels(name, argument, log, snapshot, models);
             }
 
             return models.ToArray();

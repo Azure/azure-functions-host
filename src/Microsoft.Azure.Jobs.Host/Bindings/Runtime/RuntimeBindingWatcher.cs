@@ -6,15 +6,15 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingWatcher : IWatcher
     {
-        private ICollection<Tuple<ParameterDescriptor, IWatchable>> _items =
-            new List<Tuple<ParameterDescriptor, IWatchable>>();
+        private ICollection<Tuple<ParameterDescriptor, string, IWatchable>> _items =
+            new List<Tuple<ParameterDescriptor, string, IWatchable>>();
         private readonly object _itemsLock = new object();
 
-        public void Add(ParameterDescriptor parameterDescriptor, IWatchable watchable)
+        public void Add(ParameterDescriptor parameterDescriptor, string value, IWatchable watchable)
         {
             lock (_itemsLock)
             {
-                _items.Add(new Tuple<ParameterDescriptor, IWatchable>(parameterDescriptor, watchable));
+                _items.Add(new Tuple<ParameterDescriptor, string, IWatchable>(parameterDescriptor, value, watchable));
             }
         }
 
@@ -29,10 +29,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
                 List<BinderParameterLogItem> logItems = new List<BinderParameterLogItem>();
 
-                foreach (Tuple<ParameterDescriptor, IWatchable> item in _items)
+                foreach (Tuple<ParameterDescriptor, string, IWatchable> item in _items)
                 {
                     ParameterDescriptor parameterDescriptor = item.Item1;
-                    IWatchable watchable = item.Item2;
+                    string value = item.Item2;
+                    IWatchable watchable = item.Item3;
                     IWatcher watcher;
 
                     if (watchable != null)
@@ -58,6 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
                     BinderParameterLogItem logItem = new BinderParameterLogItem
                     {
                         Descriptor = parameterDescriptor,
+                        Value = value,
                         Log = itemStatus
                     };
                     logItems.Add(logItem);
