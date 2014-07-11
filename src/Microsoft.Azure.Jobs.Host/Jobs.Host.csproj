@@ -97,6 +97,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BindingDataParameterDescriptor.cs">
       <Link>Protocols\BindingDataParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobNames.cs">
+      <Link>Protocols\BlobNames.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\BlobParameterDescriptor.cs">
       <Link>Protocols\BlobParameterDescriptor.cs</Link>
     </Compile>

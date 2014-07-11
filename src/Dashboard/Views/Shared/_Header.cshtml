@@ -23,6 +23,7 @@
             @if (!SdkSetupState.BadInit)
             {
                 @Html.MenuLink("Search Blobs", icon: "glyphicon glyphicon-search", action: "SearchBlob", controller: "Function")
+                <li><a href="@Url.Content("~/#/about")">About</a></li>
             }
         </ul>
     </div>

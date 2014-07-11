@@ -16,6 +16,9 @@
         public const string RecentFunctionsByParent = "functions/recent/by-parent";
         public const string RecentFunctionsFlat = "functions/recent/flat";
 
+        public const string Logs = "logs";
+        public const string IndexerLog = Logs + "/indexer";
+
         /// <summary>The name of the container where version compatibility warnings are stored.</summary>
         public const string Versions = "versions";
     }

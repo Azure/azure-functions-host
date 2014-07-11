@@ -186,6 +186,7 @@
       <Link>Data\IStorageValidator.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
+    <Compile Include="ApiControllers\DiagnosticsController.cs" />
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
     <Compile Include="Data\FunctionIndexReader.cs" />
@@ -194,6 +195,12 @@
     <Compile Include="Data\FunctionIndexVersionManager.cs" />
     <Compile Include="Data\IHeartbeatValidityMonitor.cs" />
     <Compile Include="Data\IFunctionIndexVersionManager.cs" />
+    <Compile Include="Data\Logs\BlobLogEntryKeys.cs" />
+    <Compile Include="Data\Logs\IndexerBlobLogReader.cs" />
+    <Compile Include="Data\Logs\IndexerBlobLogWriter.cs" />
+    <Compile Include="Data\Logs\IIndexerLogReader.cs" />
+    <Compile Include="Data\Logs\IIndexerLogWriter.cs" />
+    <Compile Include="Data\Logs\IndexerLogEntry.cs" />
     <Compile Include="Data\VersionedMetadataDocument.cs" />
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />
@@ -293,6 +300,7 @@
     <Compile Include="ViewModels\InvocationLogViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceSnapshotExtensions.cs" />
     <Compile Include="ViewModels\FunctionStatisticsSegment.cs" />
+    <Compile Include="ViewModels\IndexerLogEntriesViewModel.cs" />
     <Compile Include="ViewModels\PagingInfo.cs" />
     <Compile Include="ApiControllers\LogController.cs" />
     <Compile Include="App_Start\AppModule.cs" />
@@ -326,14 +334,18 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="app\controllers\ConsoleOutputController.js" />
+    <Content Include="app\controllers\AboutController.js" />
     <Content Include="app\controllers\FunctionsHomeController.js" />
     <Content Include="app\controllers\FunctionController.js" />
+    <Content Include="app\controllers\IndexerLogEntryController.js" />
+    <Content Include="app\controllers\IndexerLogTableController.js" />
     <Content Include="app\controllers\FunctionsTableController.js" />
     <Content Include="app\controllers\InvocationsTableController.js" />
     <Content Include="app\controllers\JobsListController.js" />
     <Content Include="app\controllers\ContinuousJobController.js" />
     <Content Include="app\models\FunctionDefinition.js" />
     <Content Include="app\models\FunctionInvocationModel.js" />
+    <Content Include="app\models\IndexerLogEntry.js" />
     <Content Include="app\models\JobDefinition.js" />
     <Content Include="app\services\consoleOutput.js" />
     <Content Include="app\services\isUsingSdk.js" />
@@ -343,6 +355,9 @@
     <Content Include="app\views\FunctionsTable.html" />
     <Content Include="app\views\FunctionsHome.html" />
     <Content Include="app\views\Function.html" />
+    <Content Include="app\views\AboutHome.html" />
+    <Content Include="app\views\IndexerLogEntry.html" />
+    <Content Include="app\views\IndexerLogTable.html" />
     <Content Include="app\views\JobsList.html" />
     <Content Include="app\views\shared\Breadcrumb.html" />
     <Content Include="app\views\shared\ConsoleOutput.html" />

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using Microsoft.Azure.Jobs.Protocols;
+using Dashboard.Data.Logs;
 
 namespace Dashboard.Indexers
 {
@@ -9,17 +10,51 @@ namespace Dashboard.Indexers
         private readonly IPersistentQueueReader<PersistentQueueMessage> _queueReader;
         private readonly IHostIndexer _hostIndexer;
         private readonly IFunctionIndexer _functionIndexer;
+        private readonly IIndexerLogWriter _logWriter;
 
         public Indexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
             IHostIndexer hostIndexer,
-            IFunctionIndexer functionIndexer)
+            IFunctionIndexer functionIndexer,
+            IIndexerLogWriter logWriter)
         {
             _queueReader = queueReader;
             _hostIndexer = hostIndexer;
             _functionIndexer = functionIndexer;
+            _logWriter = logWriter;
         }
 
         public void Update()
+        {
+            const int ExceptionTitleMaxLength = 64;
+
+            try
+            {
+                UpdateCore();
+            }
+            catch (Exception ex)
+            {
+                IndexerLogEntry logEntry = new IndexerLogEntry()
+                {
+                    Title = ex.Message,
+                    Date = DateTime.UtcNow,
+                    ExceptionDetails = ex.ToString()
+                };
+
+                if (logEntry.Title.Length > ExceptionTitleMaxLength)
+                {
+                    logEntry.Title = logEntry.Title.Substring(0, ExceptionTitleMaxLength);
+                }
+
+                // Remove any new lines from the metadata, otherwise you get a 403
+                // back from the Azure SDK
+                logEntry.Title = logEntry.Title.Replace("\r", "");
+                logEntry.Title = logEntry.Title.Replace("\n", "");
+
+                _logWriter.Write(logEntry);
+            }
+        }
+
+        private void UpdateCore()
         {
             PersistentQueueMessage message = _queueReader.Dequeue();
 

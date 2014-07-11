@@ -1,0 +1,16 @@
+﻿<section ng-controller="IndexerLogEntryController">
+    <div class="row" ng-if="!_sdkNotConfigured">
+        <div class="col-md-12">
+            <h3>Indexer log entry</h3>
+            <p ng-if="entry.initializing">Loading...</p>
+            <p ng-if="entry.notFound">Entry not found</p>
+
+            <div ng-if="entry.item">
+                <p><strong>Date:</strong></p>
+                <p>{{entry.item.date}}</p>
+                <p><strong>Exception details:</strong></p>
+                <textarea rows="20" class="form-control" ng-bind="entry.item.exceptionDetails" ng-readonly="true" placeholder="Loading..."></textarea>
+            </div>
+        </div>
+    </div>
+</section>

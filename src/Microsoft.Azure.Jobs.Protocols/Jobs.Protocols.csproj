@@ -53,6 +53,7 @@
     </Compile>
     <Compile Include="WriteBlobParameterLog.cs" />
     <Compile Include="ReadBlobParameterLog.cs" />
+    <Compile Include="BlobNames.cs" />
     <Compile Include="TableParameterLog.cs" />
     <Compile Include="BinderParameterLogItem.cs" />
     <Compile Include="BlobTriggerParameterDescriptor.cs" />

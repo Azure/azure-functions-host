@@ -63,6 +63,12 @@
                     return 'api/jobs/triggered/' + jobName + '/runs/' + runId + '/functions';
                 }
                 return 'api/jobs/continuous/' + jobName + '/functions';
+            },
+            indexerLogs: function () {
+                return "api/diagnostics/indexerLogs";
+            },
+            indexerLogEntry: function (entryId) {
+                return "api/diagnostics/indexerLogEntry?entryId=" + encodeURIComponent(entryId);
             }
         }
     };

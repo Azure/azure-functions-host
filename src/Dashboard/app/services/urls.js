@@ -28,6 +28,9 @@
         runFunction: function(functionId) {
             //return '#/functions/definitions/' + encodeURIComponent(functionId) + '/run;
             return siteRoot + 'function/run?functionId=' + encodeURIComponent(functionId);
+        },
+        indexerLogEntry: function (entryId) {
+            return siteRoot + '#/diagnostics/indexerLogEntry/' + encodeURIComponent(entryId);
         }
     };
 });

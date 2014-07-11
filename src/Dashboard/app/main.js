@@ -71,6 +71,14 @@
                     templateUrl: 'app/views/FunctionInvocation.html',
                     controller: 'FunctionInvocationController'
                 }).
+                when('/about', {
+                    templateUrl: 'app/views/AboutHome.html',
+                    controller: 'AboutController'
+                }).
+                when('/diagnostics/indexerLogEntry/:entryId', {
+                    templateUrl: 'app/views/IndexerLogEntry.html',
+                    controller: 'IndexerLogEntryController'
+                }).
                 otherwise({
                     redirectTo: '/'
                 });

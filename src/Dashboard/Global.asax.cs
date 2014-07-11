@@ -47,8 +47,8 @@ namespace Dashboard
                 }
                 catch (Exception exception)
                 {
-                    // Don't fail to display any dashboard data just because of an index updating error
-                    // (could be transient).
+                    // If we get here, it means that we had an indexing exception and
+                    // error logging failed
                     HttpContext.Current.Items["IndexingException"] = exception.Message;
                 }
             }

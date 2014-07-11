@@ -1,0 +1,31 @@
+﻿<section ng-controller="IndexerLogTableController">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th class="col-md-12" colspan="2">Indexer failures</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-if="indexerLogs.initializing">
+                <td colspan="2">Loading...</td>
+            </tr>
+            <tr ng-if="indexerLogs.page.length === 0">
+                <td colspan="2">No indexing errors have occurred.</td>
+            </tr>
+            <tr ng-repeat="entry in indexerLogs.page">
+                <td class="col-md-2">{{entry.date}}</td>
+                <td class="col-md-8">
+                    <a title="Invocations" href="{{_urls.indexerLogEntry(entry.id)}}">{{entry.title}}</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <ul class="pager" ng-class="indexerLogs.disablePager ? 'disabled' : ''">
+        <li class="previous" ng-if="!indexerLogs.firstPage" ng-click="indexerLogs.loadPreviousPage()">
+            <a href="">← Previous</a>
+        </li>
+        <li class="next" ng-if="indexerLogs.hasMore" ng-click="indexerLogs.loadNextPage()">
+            <a href="">Next →</a>
+        </li>
+    </ul>
+</section>

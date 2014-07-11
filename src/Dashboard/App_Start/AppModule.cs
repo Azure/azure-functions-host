@@ -2,6 +2,7 @@
 using System.Web;
 using System.Web.Caching;
 using Dashboard.Data;
+using Dashboard.Data.Logs;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
 using Microsoft.Azure.Jobs;
@@ -64,6 +65,9 @@ namespace Dashboard
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
             Bind<IAborter>().To<Aborter>();
+
+            Bind<IIndexerLogWriter>().To<IndexerBlobLogWriter>();
+            Bind<IIndexerLogReader>().To<IndexerBlobLogReader>();
         }
 
         private static CloudStorageAccount TryCreateAccount()
