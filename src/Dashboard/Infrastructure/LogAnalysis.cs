@@ -158,6 +158,13 @@ namespace Dashboard
                 return Format(readBlobLog);
             }
 
+            WriteBlobParameterLog writeBlobLog = log as WriteBlobParameterLog;
+
+            if (writeBlobLog != null)
+            {
+                return Format(writeBlobLog);
+            }
+
             TableParameterLog tableLog = log as TableParameterLog;
 
             if (tableLog != null)
@@ -227,6 +234,20 @@ namespace Dashboard
             }
             builder.AppendFormat(CultureInfo.CurrentCulture, "{0} {1}{2}", unitCount, unitName, unitCount > 1 ? "s" : String.Empty);
             builder.Append(" spent on I/O)");
+        }
+
+        private static string Format(WriteBlobParameterLog log)
+        {
+            Debug.Assert(log != null);
+
+            if (!log.WasWritten)
+            {
+                return "Nothing was written.";
+            }
+            else
+            {
+                return String.Format(CultureInfo.CurrentCulture, "Wrote {0:n0} bytes.", log.BytesWritten);
+            }
         }
 
         private static string Format(TableParameterLog log)

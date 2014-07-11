@@ -1,6 +1,4 @@
-﻿using System;
-using System.Globalization;
-using Microsoft.Azure.Jobs.Host.Bindings;
+﻿using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -47,22 +45,19 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         {
             if (_countWritten > 0)
             {
-                return new TextParameterLog
-                {
-                    Value = String.Format(CultureInfo.InvariantCulture, "Wrote {0:n0} bytes.", _countWritten)
-                };
+                return new WriteBlobParameterLog { WasWritten = true, BytesWritten = _countWritten };
             }
             else if (!CanWrite)
             {
-                return new TextParameterLog { Value = "Wrote 0 bytes." };
+                return new WriteBlobParameterLog { WasWritten = true, BytesWritten = 0 };
             }
             else if (_completed)
             {
-                return new TextParameterLog { Value = "Nothing was written." };
+                return new WriteBlobParameterLog { WasWritten = false, BytesWritten = 0 };
             }
             else
             {
-                return new TextParameterLog { Value = String.Empty };
+                return null;
             }
         }
 

@@ -235,6 +235,9 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WebSitesKnownKeyNames.cs">
       <Link>Protocols\WebSitesKnownKeyNames.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\WriteBlobParameterLog.cs">
+      <Link>Protocols\WriteBlobParameterLog.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Storage\ICloudStorageAccount.cs">
       <Link>Storage\ICloudStorageAccount.cs</Link>
     </Compile>

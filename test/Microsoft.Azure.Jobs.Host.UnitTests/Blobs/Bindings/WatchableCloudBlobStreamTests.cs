@@ -110,8 +110,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.IsType<TextParameterLog>(result);
-                Assert.Equal("Wrote 0 bytes.", ((TextParameterLog)result).Value);
+                Assert.IsType<WriteBlobParameterLog>(result);
+                WriteBlobParameterLog blobResult = (WriteBlobParameterLog)result;
+                Assert.True(blobResult.WasWritten);
+                Assert.Equal(0, blobResult.BytesWritten);
             }
         }
 
@@ -127,8 +129,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.IsType<TextParameterLog>(result);
-                Assert.Equal("Nothing was written.", ((TextParameterLog)result).Value);
+                Assert.IsType<WriteBlobParameterLog>(result);
+                WriteBlobParameterLog blobResult = (WriteBlobParameterLog)result;
+                Assert.False(blobResult.WasWritten);
+                Assert.Equal(0, blobResult.BytesWritten);
             }
         }
 
@@ -145,8 +149,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.IsType<TextParameterLog>(result);
-                Assert.Equal("Wrote 0 bytes.", ((TextParameterLog)result).Value);
+                Assert.IsType<WriteBlobParameterLog>(result);
+                WriteBlobParameterLog blobResult = (WriteBlobParameterLog)result;
+                Assert.True(blobResult.WasWritten);
+                Assert.Equal(0, blobResult.BytesWritten);
             }
         }
 
@@ -162,8 +168,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 var result = w.GetStatus();
 
                 // Assert
-                Assert.IsType<TextParameterLog>(result);
-                Assert.Equal(String.Empty, ((TextParameterLog)result).Value);
+                Assert.Null(result);
             }
         }
 

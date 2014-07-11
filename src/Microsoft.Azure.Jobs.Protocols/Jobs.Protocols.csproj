@@ -51,6 +51,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="WriteBlobParameterLog.cs" />
     <Compile Include="ReadBlobParameterLog.cs" />
     <Compile Include="TableParameterLog.cs" />
     <Compile Include="BinderParameterLogItem.cs" />
