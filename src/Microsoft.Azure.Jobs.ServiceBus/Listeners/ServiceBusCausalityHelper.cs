@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Listeners

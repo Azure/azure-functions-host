@@ -1,4 +1,4 @@
-Windows Azure WebJobs SDK Samples
+﻿Windows Azure WebJobs SDK Samples
 -----------------------------------
 
 This folder contains C# samples for the Windows Azure WebJobs SDK.

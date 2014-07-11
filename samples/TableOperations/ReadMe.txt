@@ -1,4 +1,4 @@
-Windows Azure WebJobs SDK Table Sample
+﻿Windows Azure WebJobs SDK Table Sample
 -----------------------------------
 
 This sample demonstrates table bindings and operations with Windows Azure WebJobs SDK. The two 

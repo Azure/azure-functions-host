@@ -1,4 +1,4 @@
-using Microsoft.WindowsAzure.Storage.Blob;
+﻿using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {

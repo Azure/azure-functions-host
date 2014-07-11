@@ -1,4 +1,4 @@
-Windows Azure WebJobs SDK Hello World Sample
+﻿Windows Azure WebJobs SDK Hello World Sample
 -----------------------------------
 
 This sample can be used as a start point for working with Windows Azure WebJobs SDK. It demonstrates

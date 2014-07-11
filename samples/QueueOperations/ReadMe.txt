@@ -1,4 +1,4 @@
-Windows Azure WebJobs SDK Queue Sample
+﻿Windows Azure WebJobs SDK Queue Sample
 -----------------------------------
 
 This sample demonstrates various queue bindings and operations with Windows Azure WebJobs SDK. 
