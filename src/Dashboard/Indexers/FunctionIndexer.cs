@@ -36,6 +36,8 @@ namespace Dashboard.Indexers
             _recentInvocationsByParentWriter = recentInvocationsByParentWriter;
         }
 
+        // This method runs concurrently with other index processing.
+        // Ensure all logic here is idempotent.
         public void ProcessFunctionStarted(FunctionStartedMessage message)
         {
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
@@ -44,35 +46,83 @@ namespace Dashboard.Indexers
             string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
             Guid functionInstanceId = message.FunctionInstanceId;
             DateTimeOffset startTime = message.StartTime;
-
-            if (!HasLoggedFunctionCompleted(functionInstanceId))
-            {
-                _recentInvocationsWriter.CreateOrUpdate(startTime, functionInstanceId);
-                _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, startTime, functionInstanceId);
-            }
-
             WebJobRunIdentifier webJobRunId = message.WebJobRunIdentifier;
-
-            if (webJobRunId != null)
-            {
-                _recentInvocationsByJobRunWriter.CreateOrUpdate(webJobRunId, startTime, functionInstanceId);
-            }
-
             Guid? parentId = message.ParentId;
 
-            if (parentId.HasValue)
+            // Race to write index entries for function started.
+            if (!HasLoggedFunctionCompleted(functionInstanceId))
             {
-                _recentInvocationsByParentWriter.CreateOrUpdate(parentId.Value, startTime, functionInstanceId);
+                CreateOrUpdateIndexEntries(functionInstanceId, startTime, functionId, parentId, webJobRunId);
+            }
+
+            // If the function has since completed, we lost the race.
+            // Delete any function started index entries.
+            // Note that this code does not depend on whether or not the index entries were previously written by this
+            // method, as this processing could have been aborted and resumed at another point in time. In that case,
+            // we still own cleaning up any dangling function started index entries.
+            DateTimeOffset? functionCompletedTime = GetFunctionCompletedTime(functionInstanceId);
+            bool hasLoggedFunctionCompleted = functionCompletedTime.HasValue;
+
+            if (hasLoggedFunctionCompleted)
+            {
+                DeleteFunctionStartedIndexEntriesIfNeeded(functionInstanceId, message.StartTime,
+                    functionCompletedTime.Value, functionId, parentId, webJobRunId);
             }
         }
 
         private bool HasLoggedFunctionCompleted(Guid functionInstanceId)
         {
-            FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
+            DateTimeOffset? functionCompletedTime = GetFunctionCompletedTime(functionInstanceId);
 
-            return primaryLog != null && primaryLog.EndTime.HasValue;
+            return functionCompletedTime.HasValue;
         }
 
+        private DateTimeOffset? GetFunctionCompletedTime(Guid functionInstanceId)
+        {
+            FunctionInstanceSnapshot primaryLog = _functionInstanceLookup.Lookup(functionInstanceId);
+
+            return primaryLog != null ? primaryLog.EndTime : null;
+        }
+
+        private void CreateOrUpdateIndexEntries(Guid functionInstanceId, DateTimeOffset timestamp, string functionId,
+            Guid? parentId, WebJobRunIdentifier webJobRunId)
+        {
+            _recentInvocationsWriter.CreateOrUpdate(timestamp, functionInstanceId);
+            _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, timestamp, functionInstanceId);
+
+            if (webJobRunId != null)
+            {
+                _recentInvocationsByJobRunWriter.CreateOrUpdate(webJobRunId, timestamp, functionInstanceId);
+            }
+
+            if (parentId.HasValue)
+            {
+                _recentInvocationsByParentWriter.CreateOrUpdate(parentId.Value, timestamp, functionInstanceId);
+            }
+        }
+
+        private void DeleteFunctionStartedIndexEntriesIfNeeded(Guid functionInstanceId, DateTimeOffset startTime,
+            DateTimeOffset endTime, string functionId, Guid? parentId, WebJobRunIdentifier webJobRunId)
+        {
+            if (startTime.UtcDateTime.Ticks != endTime.UtcDateTime.Ticks)
+            {
+                _recentInvocationsWriter.DeleteIfExists(startTime, functionInstanceId);
+                _recentInvocationsByFunctionWriter.DeleteIfExists(functionId, startTime, functionInstanceId);
+
+                if (parentId.HasValue)
+                {
+                    _recentInvocationsByParentWriter.DeleteIfExists(parentId.Value, startTime, functionInstanceId);
+                }
+
+                if (webJobRunId != null)
+                {
+                    _recentInvocationsByJobRunWriter.DeleteIfExists(webJobRunId, startTime, functionInstanceId);
+                }
+            }
+        }
+
+        // This method runs concurrently with other index processing.
+        // Ensure all logic here is idempotent.
         public void ProcessFunctionCompleted(FunctionCompletedMessage message)
         {
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
@@ -84,22 +134,24 @@ namespace Dashboard.Indexers
 
             _functionInstanceLogger.LogFunctionCompleted(snapshot);
 
-            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
             Guid functionInstanceId = message.FunctionInstanceId;
-            DateTimeOffset startTime = message.StartTime;
             DateTimeOffset endTime = message.EndTime;
+            string functionId = new FunctionIdentifier(message.SharedQueueName, message.Function.Id).ToString();
+            Guid? parentId = message.ParentId;
+            WebJobRunIdentifier webJobRunId = message.WebJobRunIdentifier;
 
-            if (startTime.Ticks != endTime.Ticks)
-            {
-                _recentInvocationsWriter.DeleteIfExists(startTime, functionInstanceId);
-                _recentInvocationsByFunctionWriter.DeleteIfExists(functionId, startTime, functionInstanceId);
-            }
+            DeleteFunctionStartedIndexEntriesIfNeeded(functionInstanceId, message.StartTime, endTime, functionId,
+                parentId, webJobRunId);
 
-            _recentInvocationsWriter.CreateOrUpdate(endTime, functionInstanceId);
-            _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, endTime, functionInstanceId);
+            CreateOrUpdateIndexEntries(functionInstanceId, endTime, functionId, parentId, webJobRunId);
 
             // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
             // occur multiple times.
+            // If we wanted to make this operation idempotent, one option would be to store the list of function
+            // instance IDs that succeeded & failed, rather than just the counters, so duplicate operations could be
+            // detected.
+            // For now, we just do a non-idempotent increment last, which makes it very unlikely that the queue message
+            // would not subsequently get deleted.
             if (message.Succeeded)
             {
                 _statisticsWriter.IncrementSuccess(functionId);

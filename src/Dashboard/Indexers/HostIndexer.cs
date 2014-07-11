@@ -20,6 +20,8 @@ namespace Dashboard.Indexers
             _cache = cache;
         }
 
+        // This method runs concurrently with other index processing.
+        // Ensure all logic here is idempotent.
         public void ProcessHostStarted(HostStartedMessage message)
         {
             string hostId = message.SharedQueueName;
