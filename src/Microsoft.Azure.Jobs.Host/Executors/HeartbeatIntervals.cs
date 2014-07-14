@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs.Host.Runners
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal static class HeartbeatIntervals
     {

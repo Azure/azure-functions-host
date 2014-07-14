@@ -2,6 +2,7 @@
 using System.IO;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Indexers;
 
 namespace Microsoft.Azure.Jobs
 {

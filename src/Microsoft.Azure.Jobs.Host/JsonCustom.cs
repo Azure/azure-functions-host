@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host
 {
     internal static class JsonCustom
     {

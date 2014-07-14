@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Runners
+﻿namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal interface IDelayedException
     {

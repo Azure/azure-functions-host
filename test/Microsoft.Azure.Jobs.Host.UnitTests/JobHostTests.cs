@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
-    // Unit test the static parameter bindings. This primarily tests the indexer.
-    public class HostUnitTests
+    public class JobHostUnitTests
     {
         [Fact]
         public void SimpleInvoke_WithDictionary()

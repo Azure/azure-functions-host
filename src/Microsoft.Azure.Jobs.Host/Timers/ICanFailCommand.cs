@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs
+﻿namespace Microsoft.Azure.Jobs.Host.Timers
 {
     /// <summary>Defines a command that may fail gracefully.</summary>
     internal interface ICanFailCommand

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Newtonsoft.Json;
 using Xunit;

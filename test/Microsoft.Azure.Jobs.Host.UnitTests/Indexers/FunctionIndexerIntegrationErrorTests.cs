@@ -6,10 +6,10 @@ using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
 {
     // Test failure cases for indexing
-    public class FlowUnitTestErrors
+    public class FunctionIndexerIntegrationErrorTests
     {
         [Fact]
         public void TestFails()

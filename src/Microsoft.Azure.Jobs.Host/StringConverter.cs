@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host
 {
     // See example: http://stackoverflow.com/questions/7585593/how-do-i-configure-json-net-custom-serialization
     // General purpose converted for types that have string conversion. 

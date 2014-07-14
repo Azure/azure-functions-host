@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Azure.Jobs.Host.Timers;
 
 namespace Microsoft.Azure.Jobs.Host.Listeners
 {

@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host
 {
     internal static class ObjectBinderHelpers
     {

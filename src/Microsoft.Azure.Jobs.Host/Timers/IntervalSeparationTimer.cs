@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Timers
 {
     /// <summary>Represents a timer that keeps a heartbeat running at a specified interval using a separate thread.</summary>
     internal sealed class IntervalSeparationTimer : IDisposable

@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers

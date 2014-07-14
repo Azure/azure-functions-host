@@ -1,7 +1,7 @@
 ﻿using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class FunctionExecutionContext
     {

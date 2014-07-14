@@ -4,7 +4,7 @@ using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     // Wrap facilities for logging a function's output. 
     // This means capturing console out, redirecting to a textwriter that is available at a blob.

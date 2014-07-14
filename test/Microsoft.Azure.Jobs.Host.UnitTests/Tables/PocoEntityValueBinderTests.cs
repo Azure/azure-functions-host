@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Tables;
 using Xunit;
 

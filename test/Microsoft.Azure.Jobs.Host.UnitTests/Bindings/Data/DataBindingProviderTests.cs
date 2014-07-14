@@ -5,7 +5,7 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.Data;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Invoke
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
 {
     public class DataBindingProviderTests
     {

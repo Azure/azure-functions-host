@@ -5,9 +5,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Queues
 {
-    public class QueueCausalityHelperTests
+    public class QueueCausalityManagerTests
     {
         // Internal and external queuing are important for interoping between simpleBatch (on the cloud)
         // and client code. 

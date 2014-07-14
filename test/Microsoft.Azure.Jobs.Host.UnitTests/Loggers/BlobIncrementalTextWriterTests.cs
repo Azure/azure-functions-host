@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.Loggers;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
 {
-    public class BlobIncrementalTextWriterUnitTest
+    public class BlobIncrementalTextWriterTests
     {
         [Fact]
         public void TestIncrementalWriter()

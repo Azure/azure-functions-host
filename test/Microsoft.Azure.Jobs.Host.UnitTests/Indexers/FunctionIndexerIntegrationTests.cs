@@ -1,31 +1,21 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Bindings.Data;
-using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Queues.Bindings;
-using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Tables;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
 {
-    // Unit test the static parameter bindings. This primarily tests the indexer.
-    public class FlowUnitTests
+    public class FunctionIndexerIntegrationTests
     {
         // Helper to do the indexing.
         private static FunctionDescriptor Get(string methodName, INameResolver nameResolver = null)
         {
-            MethodInfo method = typeof(FlowUnitTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            MethodInfo method = typeof(FunctionIndexerIntegrationTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(method);
 
             FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(

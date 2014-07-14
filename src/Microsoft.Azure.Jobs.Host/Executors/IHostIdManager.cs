@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     /// <summary>Defines a manager that maps a shared host name to an ID.</summary>
     /// <remarks>

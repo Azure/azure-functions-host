@@ -2,17 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using System.Runtime.ExceptionServices;
-using Microsoft.Azure.Jobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Runners
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     // In-memory executor. 
     class WebSitesExecuteFunction : IExecuteFunction

@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 {
     public class BlobPathSourceTests
     {

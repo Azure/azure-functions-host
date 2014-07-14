@@ -1,6 +1,6 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host
 {
     class StorageConverter : StringConverter<CloudStorageAccount>
     {

@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
 {
-    public class NameResolverUnitTests
+    public class NameResolverTests
     {
         [Fact]
         public static void ResolveNameSet()

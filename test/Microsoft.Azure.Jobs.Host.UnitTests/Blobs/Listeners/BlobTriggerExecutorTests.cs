@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Listeners
 {
-    public class TimeCheckTests
+    public class BlobTriggerExecutorTests
     {
         // Sequential times.
         static DateTime TimeOld = new DateTime(1900, 1, 1);

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Timers
 {
     /// <summary>Defines a command that occurs at an interval that may change with every execution.</summary>
     internal interface IIntervalSeparationCommand

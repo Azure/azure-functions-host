@@ -1,8 +1,9 @@
 ﻿using System;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class UpdateHostHeartbeatCommand : ICanFailCommand
     {

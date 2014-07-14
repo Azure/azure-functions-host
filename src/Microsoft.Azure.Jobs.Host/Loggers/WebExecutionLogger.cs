@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Jobs.Host.Protocols;
+﻿using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers

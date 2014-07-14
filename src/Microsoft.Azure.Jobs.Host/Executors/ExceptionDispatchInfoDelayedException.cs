@@ -1,6 +1,6 @@
 ﻿using System.Runtime.ExceptionServices;
 
-namespace Microsoft.Azure.Jobs.Host.Runners
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class ExceptionDispatchInfoDelayedException : IDelayedException
     {

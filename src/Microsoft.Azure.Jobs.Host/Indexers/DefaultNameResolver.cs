@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     internal class DefaultNameResolver : INameResolver
     {

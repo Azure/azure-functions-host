@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Runners
+namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal static class ExceptionExtensions
     {

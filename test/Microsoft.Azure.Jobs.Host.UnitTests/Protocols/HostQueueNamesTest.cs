@@ -1,5 +1,4 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Protocols;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols

@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     // $$$ Need to wrap all the other methods too?
     // Flush on a timer so that we get updated input. 

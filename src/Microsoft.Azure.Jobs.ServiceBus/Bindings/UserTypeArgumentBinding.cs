@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Text;
+using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 

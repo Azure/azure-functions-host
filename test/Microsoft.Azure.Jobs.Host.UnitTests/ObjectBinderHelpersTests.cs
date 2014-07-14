@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
-    public class ObjectBinderHelpersTest
+    public class ObjectBinderHelpersTests
     {
         [Fact]
         public void ConvertAnonymousType()
