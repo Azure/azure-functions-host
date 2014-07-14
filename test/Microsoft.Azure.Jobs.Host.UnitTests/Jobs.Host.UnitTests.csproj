@@ -96,7 +96,7 @@
     <Compile Include="Blobs\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />
     <Compile Include="Bindings\BindingDataTests.cs" />
-    <Compile Include="Loggers\BlobIncrementalTextWriterTests.cs" />
+    <Compile Include="Loggers\UpdateOutputLogCommandTests.cs" />
     <Compile Include="Indexers\FunctionIndexerIntegrationErrorTests.cs" />
     <Compile Include="Indexers\FunctionIndexerIntegrationTests.cs" />
     <Compile Include="JobHostTests.cs" />

@@ -81,12 +81,15 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 // Publish this to Azure logging account so that a web dashboard can see it. 
                 PublishFunctionTable(_functionIndex, persistentQueueWriter);
 
-                var logger = new WebExecutionLogger(blobClient, _hostOutputMessage);
-                ctx = logger.GetExecutionContext();
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueueWriter),
                     new ConsoleFunctionInstanceLogger());
-                ctx.FunctionInstanceLogger = _functionInstanceLogger;
+                ctx = new FunctionExecutionContext
+                {
+                    HostOutputMessage = _hostOutputMessage,
+                    OutputLogFactory = new BlobFunctionOutputLogger(blobClient),
+                    FunctionInstanceLogger = _functionInstanceLogger
+                };
 
                 _heartbeatCommand = new HeartbeatCommand(dashboardAccount, heartbeatDescriptor.SharedContainerName,
                     heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
@@ -98,7 +101,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 ctx = new FunctionExecutionContext
                 {
                     HostOutputMessage = new DataOnlyHostOutputMessage(),
-                    OutputLogDispenser = new ConsoleFunctionOuputLogDispenser(),
+                    OutputLogFactory = new ConsoleFunctionOuputLogFactory(),
                     FunctionInstanceLogger = new ConsoleFunctionInstanceLogger()
                 };
 

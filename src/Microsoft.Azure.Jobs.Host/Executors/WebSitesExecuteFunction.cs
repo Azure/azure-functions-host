@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -71,87 +71,116 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             FunctionStartedMessage message, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             // Create the console output writer
-            FunctionOutputLog functionOutput = _sharedContext.OutputLogDispenser.CreateLogStream(instance);
-            TextWriter consoleOutput = functionOutput.Output;
-            FunctionBindingContext functionContext = new FunctionBindingContext(context, instance.Id, consoleOutput);
+            IFunctionOutputDefinition outputDefinition = _sharedContext.OutputLogFactory.Create(instance);
 
-            // Must bind before logging (bound invoke string is included in log message).
-            IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindingSource.Bind(functionContext);
-
-            using (ValueProviderDisposable.Create(parameters))
+            using (IFunctionOutput outputLog = outputDefinition.CreateOutput())
+            using (IntervalSeparationTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
             {
-                LogFunctionStarted(message, functionOutput, parameters);
+                TextWriter consoleOutput = outputLog.Output;
+                FunctionBindingContext functionContext =
+                    new FunctionBindingContext(context, instance.Id, consoleOutput);
 
-                try
+                // Must bind before logging (bound invoke string is included in log message).
+                IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindingSource.Bind(functionContext);
+
+                using (ValueProviderDisposable.Create(parameters))
                 {
-                    ExecuteWithOutputLogs(instance, parameters, consoleOutput, functionOutput.ParameterLogBlob,
-                        parameterLogCollector);
+                    LogFunctionStarted(message, outputDefinition, parameters);
+
+                    try
+                    {
+                        ExecuteWithOutputLogs(instance, parameters, consoleOutput, outputDefinition,
+                            parameterLogCollector);
+                    }
+                    catch (Exception exception)
+                    {
+                        consoleOutput.WriteLine("--------");
+                        consoleOutput.WriteLine("Exception while executing:");
+                        consoleOutput.Write(exception.ToDetails());
+                        throw;
+                    }
                 }
-                catch (Exception exception)
+
+                if (updateOutputLogTimer != null)
                 {
-                    consoleOutput.WriteLine("--------");
-                    consoleOutput.WriteLine("Exception while executing:");
-                    consoleOutput.Write(exception.ToDetails());
-                    throw;
+                    updateOutputLogTimer.Stop();
                 }
-                finally
-                {
-                    functionOutput.CloseOutput();
-                }
+
+                outputLog.SaveAndClose();
             }
         }
 
-        private void LogFunctionStarted(FunctionStartedMessage message, FunctionOutputLog functionOutput,
+        private void LogFunctionStarted(FunctionStartedMessage message, IFunctionOutputDefinition functionOutput,
             IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             // Finish populating the function started snapshot.
-            message.OutputBlob = GetBlobDescriptor(functionOutput.Blob);
-            message.ParameterLogBlob = GetBlobDescriptor(functionOutput.ParameterLogBlob);
+            message.OutputBlob = functionOutput.OutputBlob;
+            message.ParameterLogBlob = functionOutput.ParameterLogBlob;
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
             _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
         }
 
-        private static LocalBlobDescriptor GetBlobDescriptor(ICloudBlob blob)
+        private static IntervalSeparationTimer StartOutputTimer(ICanFailCommand updateCommand)
         {
-            if (blob == null)
+            if (updateCommand == null)
             {
                 return null;
             }
 
-            return new LocalBlobDescriptor
+            TimeSpan initialDelay = FunctionOutputIntervals.InitialDelay;
+            TimeSpan refreshRate = FunctionOutputIntervals.RefreshRate;
+            IntervalSeparationTimer timer =
+                FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
+            timer.Start(executeFirst: false);
+            return timer;
+        }
+
+        private static IntervalSeparationTimer StartParameterLogTimer(ICanFailCommand updateCommand)
+        {
+            if (updateCommand == null)
             {
-                ContainerName = blob.Container.Name,
-                BlobName = blob.Name
-            };
+                return null;
+            }
+
+            TimeSpan initialDelay = FunctionParameterLogIntervals.InitialDelay;
+            TimeSpan refreshRate = FunctionParameterLogIntervals.RefreshRate;
+            IntervalSeparationTimer timer =
+                FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
+            timer.Start(executeFirst: false);
+            return timer;
         }
 
         private void ExecuteWithOutputLogs(IFunctionInstance instance,
             IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
-            CloudBlockBlob parameterLogBlob, IDictionary<string, ParameterLog> parameterLogCollector)
+            IFunctionOutputDefinition outputDefinition, IDictionary<string, ParameterLog> parameterLogCollector)
         {
             MethodInfo method = instance.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
-            ValueWatcher valueWatcher = CreateValueWatcher(watches, parameterLogBlob, consoleOutput);
+            ICanFailCommand updateParameterLogCommand =
+                outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
 
-            try
+            using (IntervalSeparationTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand))
             {
-                ExecuteWithWatchers(method, parameterInfos, parameters, consoleOutput);
-            }
-            finally
-            {
-                // Stop the watches after calling IValueBinder.SetValue (it may do things that should show up in the
-                // watches).
-                // Also, IValueBinder.SetValue could also take a long time (flushing large caches), and so it's useful
-                // to have watches still running.                
-                if (valueWatcher != null)
+                try
                 {
-                    valueWatcher.Stop();
-                }
+                    ExecuteWithWatchers(method, parameterInfos, parameters, consoleOutput);
 
-                ValueWatcher.AddLogs(watches, parameterLogCollector);
+                    if (updateParameterLogTimer != null)
+                    {
+                        // Stop the watches after calling IValueBinder.SetValue (it may do things that should show up in
+                        // the watches).
+                        // Also, IValueBinder.SetValue could also take a long time (flushing large caches), and so it's
+                        // useful to have watches still running.
+                        updateParameterLogTimer.Stop();
+                    }
+                }
+                finally
+                {
+                    ValueWatcher.AddLogs(watches, parameterLogCollector);
+                }
             }
         }
 
