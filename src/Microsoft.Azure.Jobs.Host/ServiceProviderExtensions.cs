@@ -1,19 +1,24 @@
 ﻿using System;
-using System.Diagnostics.Contracts;
 using System.Globalization;
+using Microsoft.Azure.Jobs.Host.Executors;
 
 namespace Microsoft.Azure.Jobs.Host
 {
     internal static class ServiceProviderExtensions
     {
+        public static IStorageAccountProvider GetStorageAccountProvider(this IServiceProvider serviceProvider)
+        {
+            return GetService<IStorageAccountProvider>(serviceProvider);
+        }
+
+        public static IStorageCredentialsValidator GetStorageCredentialsValidator(this IServiceProvider serviceProvider)
+        {
+            return GetService<IStorageCredentialsValidator>(serviceProvider);
+        }
+
         public static IConnectionStringProvider GetConnectionStringProvider(this IServiceProvider serviceProvider)
         {
             return GetService<IConnectionStringProvider>(serviceProvider);
-        }
-
-        public static IStorageValidator GetStorageValidator(this IServiceProvider serviceProvider)
-        {
-            return GetService<IStorageValidator>(serviceProvider);
         }
 
         public static ITypeLocator GetTypeLocator(this IServiceProvider serviceProvider)

@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         private static IBlobNotificationStrategy CreateStrategy(CloudStorageAccount account,
             CancellationToken cancellationToken)
         {
-            if (!DefaultStorageValidator.IsDevelopmentStorageAccount(account))
+            if (!StorageClient.IsDevelopmentStorageAccount(account))
             {
                 return new PollLogsStrategy(cancellationToken);
             }

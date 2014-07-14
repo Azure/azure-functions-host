@@ -6,7 +6,7 @@ using Dashboard.Data.Logs;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
 using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -72,14 +72,13 @@ namespace Dashboard
 
         private static CloudStorageAccount TryCreateAccount()
         {
-            // Validate services
             try
             {
-                var val = GetDashboardConnectionString();
-                if (val != null)
+                var account = GetDashboardAccount();
+                if (account != null)
                 {
                     SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Valid;
-                    return CloudStorageAccount.Parse(val);
+                    return account;
                 }
                 SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Missing;
             }
@@ -92,21 +91,15 @@ namespace Dashboard
             return null;
         }
 
-        private static string GetDashboardConnectionString()
+        private static CloudStorageAccount GetDashboardAccount()
         {
-            var val = new AmbientConnectionStringProvider().GetConnectionString("Dashboard");
-
-            if (String.IsNullOrEmpty(val))
-            {
-                return null;
-            }
-
-            string validationErrorMessage;
-            if (!new DefaultStorageValidator().TryValidateConnectionString(val, out validationErrorMessage))
-            {
-                throw new InvalidOperationException(validationErrorMessage);
-            }
-            return val;
+            DefaultStorageAccountProvider provider = new DefaultStorageAccountProvider();
+            // Explicitly set a value to allow nulls/empty without throwing.
+            provider.DashboardConnectionString = provider.DashboardConnectionString;
+            CloudStorageAccount account = provider.GetAccount(ConnectionStringNames.Dashboard);
+            DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
+            validator.ValidateCredentials(account);
+            return account;
         }
     }
 }

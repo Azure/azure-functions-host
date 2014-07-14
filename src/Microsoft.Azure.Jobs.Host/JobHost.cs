@@ -1,6 +1,5 @@
 ﻿﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host;
@@ -23,18 +22,14 @@ namespace Microsoft.Azure.Jobs
     public class JobHost
     {
         // Where we log things to (null if logging is not supported).
-        private readonly string _dashboardConnectionString;
+        private readonly CloudStorageAccount _dashboardAccount;
 
         // The user account that we listen on.
         // This is the account that the bindings resolve against.
-        private readonly string _storageConnectionString;
+        private readonly CloudStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
 
         private readonly JobHostContext _hostContext;
-
-        internal const string DashboardConnectionStringName = "Dashboard";
-        internal const string StorageConnectionStringName = "Storage";
-        internal const string ServiceBusConnectionStringName = "ServiceBus";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -65,51 +60,32 @@ namespace Microsoft.Azure.Jobs
                 throw new ArgumentNullException("serviceProvider");
             }
 
-            IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
-            _storageConnectionString = connectionStringProvider.GetConnectionString(StorageConnectionStringName);
-            _serviceBusConnectionString = connectionStringProvider.GetConnectionString(ServiceBusConnectionStringName);
-            _dashboardConnectionString = connectionStringProvider.GetConnectionString(DashboardConnectionStringName);
+            IStorageAccountProvider accountProvider = serviceProvider.GetStorageAccountProvider();
+            IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
 
-            ValidateConnectionStrings(serviceProvider.GetStorageValidator());
+            _storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
+            // This will make a network call to verify the credentials work.
+            credentialsValidator.ValidateCredentials(_storageAccount);
+            _dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
+
+            // Avoid double-validating the same credentials.
+            if (_storageAccount != null && _storageAccount.Credentials != null && _dashboardAccount != null &&
+                !_storageAccount.Credentials.Equals(_dashboardAccount.Credentials))
+            {
+                // This will make a network call to verify the credentials work.
+                credentialsValidator.ValidateCredentials(_dashboardAccount);
+            }
+
+            IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
+            _serviceBusConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
 
             // This will do heavy operations like indexing. 
             _hostContext = GetHostContext(serviceProvider.GetTypeLocator(), serviceProvider.GetNameResolver());
         }
 
-        private void ValidateConnectionStrings(IStorageValidator storageValidator)
-        {
-            string storageConnectionStringValidationError;
-            if (!storageValidator.TryValidateConnectionString(_storageConnectionString, out storageConnectionStringValidationError))
-            {
-                var msg = FormatConnectionStringValidationError("storage", StorageConnectionStringName, storageConnectionStringValidationError);
-                throw new InvalidOperationException(msg);
-            }
-            if (_dashboardConnectionString != null)
-            {
-                if (_dashboardConnectionString != _storageConnectionString)
-                {
-                    string dashboardConnectionStringValidationError;
-                    if (!storageValidator.TryValidateConnectionString(_dashboardConnectionString, out dashboardConnectionStringValidationError))
-                    {
-                        var msg = FormatConnectionStringValidationError("dashboard", DashboardConnectionStringName, dashboardConnectionStringValidationError);
-                        throw new InvalidOperationException(msg);
-                    }
-                }
-            }
-        }
-
-        internal static string FormatConnectionStringValidationError(string connectionStringType, string connectionStringName, string validationErrorMessage)
-        {
-            return String.Format(CultureInfo.CurrentCulture,
-                "Failed to validate Microsoft Azure Jobs {0} connection string: {2}" + Environment.NewLine +
-                "The Microsoft Azure Jobs connection string is specified by setting a connection string named '{1}' in the connectionStrings section of the .config file, " +
-                "or with an environment variable named '{1}', or by using a constructor for JobHostConfiguration that accepts connection strings.",
-                connectionStringType, AmbientConnectionStringProvider.GetPrefixedConnectionStringName(connectionStringName), validationErrorMessage);
-        }
-
         private JobHostContext GetHostContext(ITypeLocator typesLocator, INameResolver nameResolver)
         {
-            var hostContext = new JobHostContext(_dashboardConnectionString, _storageConnectionString, _serviceBusConnectionString, typesLocator, nameResolver);
+            var hostContext = new JobHostContext(_dashboardAccount, _storageAccount, _serviceBusConnectionString, typesLocator, nameResolver);
             return hostContext;
         }
 
@@ -170,21 +146,20 @@ namespace Microsoft.Azure.Jobs
             {
                 timer.Start(executeFirst: true);
 
-                CloudStorageAccount account = CloudStorageAccount.Parse(_storageConnectionString);
                 token = CancellationTokenSource.CreateLinkedTokenSource(token, watcher.Token).Token;
 
                 HostBindingContext context = new HostBindingContext(
                     bindingProvider: _hostContext.BindingProvider,
                     cancellationToken: token,
                     nameResolver: _hostContext.NameResolver,
-                    storageAccount: account,
+                    storageAccount: _storageAccount,
                     serviceBusConnectionString: _serviceBusConnectionString);
 
-                CloudQueueClient queueClient = account.CreateCloudQueueClient();
+                CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
                 IListener sharedQueueListener;
                 IListener instanceQueueListener;
 
-                if (_dashboardConnectionString != null)
+                if (_dashboardAccount != null)
                 {
                     sharedQueueListener = HostMessageListener.Create(
                         queueClient.GetQueueReference(_hostContext.SharedQueueName),
@@ -289,7 +264,7 @@ namespace Microsoft.Azure.Jobs
                     bindingProvider: _hostContext.BindingProvider,
                     cancellationToken: cancellationToken,
                     nameResolver: _hostContext.NameResolver,
-                    storageAccount: _storageConnectionString != null ? CloudStorageAccount.Parse(_storageConnectionString) : null,
+                    storageAccount: _storageAccount,
                     serviceBusConnectionString: _serviceBusConnectionString);
                 IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
 

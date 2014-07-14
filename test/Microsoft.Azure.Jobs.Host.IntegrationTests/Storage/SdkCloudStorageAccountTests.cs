@@ -1,5 +1,5 @@
 ﻿using System;
-using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Storage.Queue;
 using Microsoft.Azure.Jobs.Host.Storage.Table;
@@ -240,7 +240,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
 
         private static string GetConnectionString()
         {
-            string name = JobHost.DashboardConnectionStringName;
+            string name = ConnectionStringNames.Dashboard;
             string value = new AmbientConnectionStringProvider().GetConnectionString(name);
 
             if (String.IsNullOrEmpty(value))

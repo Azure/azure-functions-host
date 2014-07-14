@@ -1,6 +1,9 @@
 ﻿using System;
 using System.IO;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Auth;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
@@ -19,15 +22,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
 
                 JobHostConfiguration configuration = new JobHostConfiguration
                 {
-                    StorageConnectionString = "SOME_DATA_CONNECTION_STRING",
+                    StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", new byte[0], "key") , true).ToString(exportSecrets: true)
                 };
                 Assert.Null(configuration.DashboardConnectionString); // Guard
                 IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
 
                 // Act & Assert
                 ExceptionAssert.ThrowsInvalidOperation(() =>
-                    connectionStringProvider.GetConnectionString(JobHost.DashboardConnectionStringName),
-                    "Failed to validate Microsoft Azure Jobs dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsDashboard', or by using a constructor for JobHostConfiguration that accepts connection strings.");
+                    connectionStringProvider.GetConnectionString(ConnectionStringNames.Dashboard),
+                    "Failed to validate Microsoft Azure Jobs dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure Jobs connection string is specified by setting a connection string named 'AzureJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureJobsDashboard', or through JobHostConfiguration.");
             }
             finally
             {

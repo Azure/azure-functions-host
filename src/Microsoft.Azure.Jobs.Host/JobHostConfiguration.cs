@@ -1,15 +1,16 @@
 ﻿using System;
 using System.IO;
 using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Runners;
+using Microsoft.Azure.Jobs.Host.Executors;
 
 namespace Microsoft.Azure.Jobs
 {
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public class JobHostConfiguration : IServiceProvider
     {
-        private readonly DefaultConnectionStringProvider _connectionStringProvider;
-        private readonly IStorageValidator _storageValidator = new DefaultStorageValidator();
+        private readonly DefaultStorageAccountProvider _storageAccountProvider;
+        private readonly IStorageCredentialsValidator _storageCredentialsValidator =
+            new DefaultStorageCredentialsValidator();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.Jobs
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
         public JobHostConfiguration()
-            : this(new DefaultConnectionStringProvider())
+            : this(new DefaultStorageAccountProvider())
         {
         }
 
@@ -31,13 +32,13 @@ namespace Microsoft.Azure.Jobs
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
         public JobHostConfiguration(string dashboardAndStorageConnectionString)
-            : this(new DefaultConnectionStringProvider(dashboardAndStorageConnectionString))
+            : this(new DefaultStorageAccountProvider(dashboardAndStorageConnectionString))
         {
         }
 
-        private JobHostConfiguration(DefaultConnectionStringProvider connectionStringProvider)
+        private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
         {
-            _connectionStringProvider = connectionStringProvider;
+            _storageAccountProvider = storageAccountProvider;
 
             WriteSiteExtensionManifest();
         }
@@ -45,22 +46,22 @@ namespace Microsoft.Azure.Jobs
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
         public string DashboardConnectionString
         {
-            get { return _connectionStringProvider.DashboardConnectionString; }
-            set { _connectionStringProvider.DashboardConnectionString = value; }
+            get { return _storageAccountProvider.DashboardConnectionString; }
+            set { _storageAccountProvider.DashboardConnectionString = value; }
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for reading and writing data.</summary>
         public string StorageConnectionString
         {
-            get { return _connectionStringProvider.StorageConnectionString; }
-            set { _connectionStringProvider.StorageConnectionString = value; }
+            get { return _storageAccountProvider.StorageConnectionString; }
+            set { _storageAccountProvider.StorageConnectionString = value; }
         }
 
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>
         public string ServiceBusConnectionString
         {
-            get { return _connectionStringProvider.ServiceBusConnectionString; }
-            set { _connectionStringProvider.ServiceBusConnectionString = value; }
+            get { return _storageAccountProvider.ServiceBusConnectionString; }
+            set { _storageAccountProvider.ServiceBusConnectionString = value; }
         }
 
         /// <summary>Gets or sets the type locator.</summary>
@@ -102,13 +103,17 @@ namespace Microsoft.Azure.Jobs
         /// </returns>
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IConnectionStringProvider))
+            if (serviceType == typeof(IStorageAccountProvider))
             {
-                return _connectionStringProvider;
+                return _storageAccountProvider;
             }
-            else if (serviceType == typeof(IStorageValidator))
+            else if (serviceType == typeof(IStorageCredentialsValidator))
             {
-                return _storageValidator;
+                return _storageCredentialsValidator;
+            }
+            else if (serviceType == typeof(IConnectionStringProvider))
+            {
+                return _storageAccountProvider;
             }
             else if (serviceType == typeof(ITypeLocator))
             {

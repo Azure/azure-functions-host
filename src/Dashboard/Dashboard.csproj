@@ -173,17 +173,29 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobPath.cs">
       <Link>Data\BlobPath.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\AmbientConnectionStringProvider.cs">
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\ConnectionStringNames.cs">
+      <Link>Data\ConnectionStringNames.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\AmbientConnectionStringProvider.cs">
       <Link>Data\AmbientConnectionStringProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\DefaultStorageValidator.cs">
-      <Link>Data\DefaultStorageValidator.cs</Link>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\DefaultStorageAccountProvider.cs">
+      <Link>Data\DefaultStorageAccountProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\IConnectionStringProvider.cs">
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\DefaultStorageCredentialsValidator.cs">
+      <Link>Data\DefaultStorageCredentialsValidator.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IConnectionStringProvider.cs">
       <Link>Data\IConnectionStringProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Runners\IStorageValidator.cs">
-      <Link>Data\IStorageValidator.cs</Link>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IStorageAccountProvider.cs">
+      <Link>Data\IStorageAccountProvider.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IStorageCredentialsValidator.cs">
+      <Link>Data\IStorageCredentialsValidator.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.Jobs.Host\StorageClient.cs">
+      <Link>Data\StorageClient.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\DiagnosticsController.cs" />
@@ -250,7 +262,6 @@
     <Compile Include="Data\ResultSegment.cs" />
     <Compile Include="Data\IResultSegment.cs" />
     <Compile Include="Data\IConcurrentDocumentStore.cs" />
-    <Compile Include="Data\StorageClient.cs" />
     <Compile Include="Data\JsonConcurrentDocumentStore.cs" />
     <Compile Include="Data\IConcurrentDocument.cs" />
     <Compile Include="Data\ConcurrentMetadata.cs" />

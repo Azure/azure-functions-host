@@ -58,6 +58,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var assembly = typeof(Microsoft.Azure.Jobs.JobHost).Assembly;
 
             var expected = new[] { 
+                "ConnectionStringNames",
                 "JobHost", 
                 "JobHostConfiguration", 
                 "ITypeLocator", 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
@@ -10,23 +11,24 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
         public JobHost Host { get; private set; }
 
         public TestJobHost()
-            : this(DeveloperStorageConnectionString)
+            : this(CloudStorageAccount.DevelopmentStorageAccount)
         {
         }
 
-        // accountConnectionString can be null if the test is really sure that it's not using any storage operations. 
-        public TestJobHost(string storageConnectionString)
+        // storageAccount can be null if the test is really sure that it's not using any storage operations. 
+        public TestJobHost(CloudStorageAccount storageAccount)
         {
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
-                StorageValidator = new NullStorageValidator(),
                 TypeLocator = new SimpleTypeLocator(typeof(T)),
-                ConnectionStringProvider = new SimpleConnectionStringProvider
+                StorageAccountProvider = new SimpleStorageAccountProvider
                 {
-                    StorageConnectionString = storageConnectionString,
+                    StorageAccount = storageAccount,
                     // use null logging string since unit tests don't need logs. 
-                    DashboardConnectionString = null
-                }
+                    DashboardAccount = null
+                },
+                StorageCredentialsValidator = new NullStorageCredentialsValidator(),
+                ConnectionStringProvider = new NullConnectionStringProvider()
             };
 
             // If there is an indexing error, we'll throw here. 

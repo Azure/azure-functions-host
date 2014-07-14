@@ -8,8 +8,6 @@ using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Runners;
-using Microsoft.Azure.Jobs.Host.Storage;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -32,39 +30,27 @@ namespace Microsoft.Azure.Jobs
         private readonly HostOutputMessage _hostOutputMessage;
         private readonly IHeartbeatCommand _heartbeatCommand;
 
-        public JobHostContext(string dashboardConnectionString, string storageConnectionString, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
+        public JobHostContext(CloudStorageAccount dashboardAccount, CloudStorageAccount storageAccount, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
         {
             _nameResolver = nameResolver;
             Guid id = Guid.NewGuid();
-            CloudStorageAccount storageAccount;
-
-            if (storageConnectionString == null)
-            {
-                storageAccount = null;
-            }
-            else
-            {
-                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            }
 
             _functionIndex = FunctionIndex.Create(new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
                 serviceBusConnectionString));
 
             FunctionExecutionContext ctx;
 
-            if (dashboardConnectionString != null)
+            if (dashboardAccount != null)
             {
                 // Create logging against a live azure account 
 
-                CloudStorageAccount account = CloudStorageAccount.Parse(dashboardConnectionString);
-                CloudBlobClient blobClient = account.CreateCloudBlobClient();
-                ICloudTableClient tableClient = new SdkCloudStorageAccount(account).CreateCloudTableClient();
+                CloudBlobClient blobClient = dashboardAccount.CreateCloudBlobClient();
                 IHostIdManager hostIdManager = new HostIdManager(blobClient);
                 // Determine the host name from the method list
                 Assembly hostAssembly = GetHostAssembly(_functionIndex.ReadAllMethods());
 
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                string sharedHostName = account.Credentials.AccountName + "/" + hostName;
+                string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
                 Guid hostId = hostIdManager.GetOrCreateHostId(sharedHostName);
                 _sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                 _instanceQueueName = HostQueueNames.GetHostQueueName(id);
@@ -95,8 +81,7 @@ namespace Microsoft.Azure.Jobs
                     new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(_functionIndex, storageConnectionString, serviceBusConnectionString,
-                    persistentQueueWriter);
+                PublishFunctionTable(_functionIndex, persistentQueueWriter);
 
                 var logger = new WebExecutionLogger(blobClient, _hostOutputMessage);
                 ctx = logger.GetExecutionContext();
@@ -105,7 +90,7 @@ namespace Microsoft.Azure.Jobs
                     new ConsoleFunctionInstanceLogger());
                 ctx.FunctionInstanceLogger = _functionInstanceLogger;
 
-                _heartbeatCommand = new HeartbeatCommand(account, heartbeatDescriptor.SharedContainerName,
+                _heartbeatCommand = new HeartbeatCommand(dashboardAccount, heartbeatDescriptor.SharedContainerName,
                     heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
             }
             else
@@ -210,8 +195,7 @@ namespace Microsoft.Azure.Jobs
 
         // Publish functions to the cloud
         // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionIndex functionIndex, string storageConnectionString,
-            string serviceBusConnectionString, IPersistentQueueWriter<PersistentQueueMessage> logger)
+        private void PublishFunctionTable(IFunctionIndex functionIndex, IPersistentQueueWriter<PersistentQueueMessage> logger)
         {
             IEnumerable<FunctionDescriptor> functions = functionIndex.ReadAllDescriptors();
 

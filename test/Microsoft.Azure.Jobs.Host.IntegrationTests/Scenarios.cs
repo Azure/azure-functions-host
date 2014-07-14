@@ -98,17 +98,17 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestAggressiveBlobChaining()
         {
             var account = TestStorage.GetAccount();
-            var storageConnectionString = account.ToString(true);
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
-                StorageValidator = new NullStorageValidator(),
                 TypeLocator = new SimpleTypeLocator(typeof(Program)),
-                ConnectionStringProvider = new SimpleConnectionStringProvider
+                StorageAccountProvider = new SimpleStorageAccountProvider
                 {
-                    StorageConnectionString = storageConnectionString,
-                    DashboardConnectionString = null
-                }
+                    StorageAccount = account,
+                    DashboardAccount = null
+                },
+                StorageCredentialsValidator = new NullStorageCredentialsValidator(),
+                ConnectionStringProvider = new NullConnectionStringProvider()
             };
 
             JobHost host = new JobHost(configuration);
