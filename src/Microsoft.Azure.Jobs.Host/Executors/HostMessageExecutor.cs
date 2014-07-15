@@ -13,12 +13,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class HostMessageExecutor : ITriggerExecutor<CloudQueueMessage>
     {
-        private readonly IExecuteFunction _innerExecutor;
+        private readonly IFunctionExecutor _innerExecutor;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly HostBindingContext _context;
 
-        public HostMessageExecutor(IExecuteFunction innerExecutor, IFunctionIndexLookup functionLookup,
+        public HostMessageExecutor(IFunctionExecutor innerExecutor, IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             _innerExecutor = innerExecutor;
@@ -115,7 +115,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             if (instance != null)
             {
-                _innerExecutor.Execute(instance, context);
+                _innerExecutor.TryExecute(instance);
             }
             else
             {

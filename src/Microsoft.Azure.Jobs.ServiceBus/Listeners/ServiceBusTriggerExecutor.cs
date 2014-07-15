@@ -22,7 +22,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
         {
             Guid? parentId = ServiceBusCausalityHelper.GetOwner(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            return _innerExecutor.Execute(instance);
+            IDelayedException exception = _innerExecutor.TryExecute(instance);
+            return exception == null;
         }
     }
 }

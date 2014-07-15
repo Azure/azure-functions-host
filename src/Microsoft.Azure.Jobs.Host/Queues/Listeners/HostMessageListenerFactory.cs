@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
     {
         private static readonly TimeSpan maxmimum = TimeSpan.FromMinutes(1);
 
-        public static IListener Create(CloudQueue queue, IExecuteFunction executor, IFunctionIndexLookup functionLookup,
+        public static IListener Create(CloudQueue queue, IFunctionExecutor executor, IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, functionLookup,

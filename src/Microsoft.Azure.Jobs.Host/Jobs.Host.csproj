@@ -320,7 +320,6 @@
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
     <Compile Include="ConnectionStringNames.cs" />
-    <Compile Include="Executors\ExecuteFunctionExecutor.cs" />
     <Compile Include="Executors\FunctionInstanceFactory.cs" />
     <Compile Include="Executors\FunctionOutputIntervals.cs" />
     <Compile Include="Executors\FunctionParameterLogIntervals.cs" />
@@ -541,7 +540,6 @@
     <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
     <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
     <Compile Include="Executors\AmbientConnectionStringProvider.cs" />
-    <Compile Include="Executors\FunctionInvocationResult.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Loggers\PersistentQueueFunctionInstanceLogger.cs" />
     <Compile Include="NativeMethods.cs" />
@@ -573,7 +571,6 @@
     <Compile Include="Loggers\IFunctionOutputLogger.cs" />
     <Compile Include="Loggers\BlobFunctionOutputDefinition.cs" />
     <Compile Include="Loggers\BlobFunctionOutputLogger.cs" />
-    <Compile Include="Executors\IExecuteFunction.cs" />
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
     <Compile Include="Indexers\FunctionDefinition.cs" />
     <Compile Include="Indexers\FunctionIndexingException.cs" />
@@ -583,7 +580,7 @@
     <Compile Include="ObjectBinderHelpers.cs" />
     <Compile Include="Queues\QueueClient.cs" />
     <Compile Include="Tables\TableClient.cs" />
-    <Compile Include="Executors\WebSitesExecuteFunction.cs" />
+    <Compile Include="Executors\FunctionExecutor.cs" />
     <Compile Include="Blobs\Listeners\ServiceType.cs" />
     <Compile Include="Blobs\Listeners\LogRow.cs" />
     <Compile Include="Blobs\Listeners\OperationType.cs" />

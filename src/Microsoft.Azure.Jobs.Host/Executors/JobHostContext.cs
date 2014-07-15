@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             CreateServiceBusConnectionStringDescriptorFactory();
 
         private readonly INameResolver _nameResolver;
-        private readonly IExecuteFunction _executeFunction;
+        private readonly FunctionExecutionContext _executionContext;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly FunctionIndex _functionIndex;
         private readonly string _sharedQueueName;
@@ -35,8 +35,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             _functionIndex = FunctionIndex.Create(new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
                 serviceBusConnectionString));
-
-            FunctionExecutionContext ctx;
 
             if (dashboardAccount != null)
             {
@@ -84,7 +82,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(
                     new PersistentQueueFunctionInstanceLogger(persistentQueueWriter),
                     new ConsoleFunctionInstanceLogger());
-                ctx = new FunctionExecutionContext
+                _executionContext = new FunctionExecutionContext
                 {
                     HostOutputMessage = _hostOutputMessage,
                     OutputLogFactory = new BlobFunctionOutputLogger(blobClient),
@@ -98,7 +96,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             {
                 // No auxillary logging. Logging interfaces are nops or in-memory.
 
-                ctx = new FunctionExecutionContext
+                _executionContext = new FunctionExecutionContext
                 {
                     HostOutputMessage = new DataOnlyHostOutputMessage(),
                     OutputLogFactory = new ConsoleFunctionOuputLogFactory(),
@@ -107,14 +105,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 _heartbeatCommand = new NullHeartbeatCommand();
             }
-
-            // This is direct execution, doesn't queue up. 
-            _executeFunction = new WebSitesExecuteFunction(ctx);
         }
 
-        public IExecuteFunction ExecuteFunction
+        public FunctionExecutionContext ExecutionContext
         {
-            get { return _executeFunction; }
+            get { return _executionContext; }
         }
 
         public IFunctionInstanceLogger FunctionInstanceLogger

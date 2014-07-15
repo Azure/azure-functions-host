@@ -2,6 +2,6 @@
 {
     internal interface IFunctionExecutor
     {
-        bool Execute(IFunctionInstance instance);
+        IDelayedException TryExecute(IFunctionInstance instance);
     }
 }

@@ -14,19 +14,21 @@ using Microsoft.WindowsAzure.Storage.Blob;
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
     // In-memory executor. 
-    class WebSitesExecuteFunction : IExecuteFunction
+    class FunctionExecutor : IFunctionExecutor
     {
         private readonly FunctionExecutionContext _sharedContext;
+        private readonly HostBindingContext _context;
 
-        public WebSitesExecuteFunction(FunctionExecutionContext sharedContext)
+        public FunctionExecutor(FunctionExecutionContext sharedContext, HostBindingContext context)
         {
             _sharedContext = sharedContext;
+            _context = context;
         }
 
-        public FunctionInvocationResult Execute(IFunctionInstance instance, HostBindingContext context)
+        public IDelayedException TryExecute(IFunctionInstance instance)
         {
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance,
-                context.StorageAccount, context.ServiceBusConnectionString);
+                _context.StorageAccount, _context.ServiceBusConnectionString);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
             FunctionCompletedMessage completedMessage = null;
 
@@ -34,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             try
             {
-                ExecuteWithLogMessage(instance, context, startedMessage, parameterLogCollector);
+                ExecuteWithLogMessage(instance, _context, startedMessage, parameterLogCollector);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception e)
@@ -59,12 +61,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 _sharedContext.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
             }
 
-            return new FunctionInvocationResult
-            {
-                Id = completedMessage.FunctionInstanceId,
-                Succeeded = completedMessage.Succeeded,
-                ExceptionInfo = exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null
-            };
+            return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
         private void ExecuteWithLogMessage(IFunctionInstance instance, HostBindingContext context,

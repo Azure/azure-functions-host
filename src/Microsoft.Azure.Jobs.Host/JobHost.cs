@@ -154,6 +154,7 @@ namespace Microsoft.Azure.Jobs
                     nameResolver: _hostContext.NameResolver,
                     storageAccount: _storageAccount,
                     serviceBusConnectionString: _serviceBusConnectionString);
+                IFunctionExecutor executor = new FunctionExecutor(_hostContext.ExecutionContext, context);
 
                 CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
                 IListener sharedQueueListener;
@@ -163,13 +164,13 @@ namespace Microsoft.Azure.Jobs
                 {
                     sharedQueueListener = HostMessageListener.Create(
                         queueClient.GetQueueReference(_hostContext.SharedQueueName),
-                        _hostContext.ExecuteFunction,
+                        executor,
                         _hostContext.FunctionLookup,
                         _hostContext.FunctionInstanceLogger,
                         context);
                     instanceQueueListener = HostMessageListener.Create(
                         queueClient.GetQueueReference(_hostContext.InstanceQueueName),
-                        _hostContext.ExecuteFunction,
+                        executor,
                         _hostContext.FunctionLookup,
                         _hostContext.FunctionInstanceLogger,
                         context);
@@ -185,7 +186,7 @@ namespace Microsoft.Azure.Jobs
                     return;
                 }
 
-                using (IListener listener = CreateListener(_hostContext.ExecuteFunction, context,
+                using (IListener listener = CreateListener(executor, context,
                     _hostContext.Functions.ReadAll(), sharedQueueListener, instanceQueueListener))
                 {
                     if (token.IsCancellationRequested)
@@ -255,7 +256,7 @@ namespace Microsoft.Azure.Jobs
             }
 
             IFunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionLookup);
-            FunctionInvocationResult result;
+            IDelayedException exception;
 
             using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
             {
@@ -266,14 +267,15 @@ namespace Microsoft.Azure.Jobs
                     nameResolver: _hostContext.NameResolver,
                     storageAccount: _storageAccount,
                     serviceBusConnectionString: _serviceBusConnectionString);
+                IFunctionExecutor executor = new FunctionExecutor(_hostContext.ExecutionContext, context);
                 IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
 
-                result = _hostContext.ExecuteFunction.Execute(instance, context);
+                exception = executor.TryExecute(instance);
             }
 
-            if (!result.Succeeded)
+            if (exception != null)
             {
-                result.ExceptionInfo.Throw();
+                exception.Throw();
             }
         }
 
@@ -290,12 +292,10 @@ namespace Microsoft.Azure.Jobs
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }
 
-        private static IListener CreateListener(IExecuteFunction executeFunction, HostBindingContext context,
+        private static IListener CreateListener(IFunctionExecutor executor, HostBindingContext context,
             IEnumerable<IFunctionDefinition> functionDefinitions, IListener sharedQueueListener,
             IListener instanceQueueListener)
         {
-            IFunctionExecutor executor = new ExecuteFunctionExecutor(executeFunction, context);
-
             List<IListener> listeners = new List<IListener>();
             ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer());
 

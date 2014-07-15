@@ -37,7 +37,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
 
             Guid? parentId = BlobCausalityManager.GetWriter(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            return _innerExecutor.Execute(instance);
+            IDelayedException exception = _innerExecutor.TryExecute(instance);
+            return exception == null;
         }
 
         private bool ShouldExecuteTrigger(ICloudBlob possibleTrigger)

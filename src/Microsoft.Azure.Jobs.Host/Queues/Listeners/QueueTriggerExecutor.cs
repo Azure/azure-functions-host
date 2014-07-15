@@ -22,7 +22,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         {
             Guid? parentId = QueueCausalityManager.GetOwner(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            return _innerExecutor.Execute(instance);
+            IDelayedException exception = _innerExecutor.TryExecute(instance);
+            return exception == null;
         }
     }
 }
