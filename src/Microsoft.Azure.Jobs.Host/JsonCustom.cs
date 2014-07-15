@@ -13,7 +13,6 @@ namespace Microsoft.Azure.Jobs.Host
                 NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
                 Formatting = Formatting.Indented
             };
-            settings.Converters.Add(new StorageConverter());
 
             return settings;
         }

@@ -565,7 +565,6 @@
     <Compile Include="Blobs\Listeners\CloudBlobContainerComparer.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
     <Compile Include="ITypeLocator.cs" />
-    <Compile Include="StringConverter.cs" />
     <Compile Include="JsonCustom.cs" />
     <Compile Include="Executors\FunctionExecutionContext.cs" />
     <Compile Include="Loggers\IFunctionOutputLogger.cs" />
@@ -574,7 +573,6 @@
     <Compile Include="Loggers\IFunctionInstanceLogger.cs" />
     <Compile Include="Indexers\FunctionDefinition.cs" />
     <Compile Include="Indexers\FunctionIndexingException.cs" />
-    <Compile Include="StorageConverter.cs" />
     <Compile Include="Blobs\BlobCausalityManager.cs" />
     <Compile Include="Queues\QueueCausalityManager.cs" />
     <Compile Include="ObjectBinderHelpers.cs" />
