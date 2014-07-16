@@ -12,6 +12,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
 
         private bool _disposed;
 
+        public CompositeDisposable(params IDisposable[] disposables)
+            : this((IEnumerable<IDisposable>)disposables)
+        {
+        }
+
         public CompositeDisposable(IEnumerable<IDisposable> disposables)
         {
             _disposables = disposables;

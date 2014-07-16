@@ -74,7 +74,7 @@ namespace Microsoft.Azure.Jobs
         {
             get
             {
-                // CancellationToken.None means CanBeCancelled = false, which can facilitate optimizations with tokens.
+                // CancellationToken.None means CanBeCanceled = false, which can facilitate optimizations with tokens.
                 return (_cts != null) ? _cts.Token : CancellationToken.None;
             }
         }

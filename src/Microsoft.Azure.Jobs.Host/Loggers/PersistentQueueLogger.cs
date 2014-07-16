@@ -6,11 +6,11 @@ using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
-    internal class PersistentQueueFunctionInstanceLogger : IFunctionInstanceLogger
+    internal class PersistentQueueLogger : IHostInstanceLogger, IFunctionInstanceLogger
     {
         private readonly IPersistentQueueWriter<PersistentQueueMessage> _queue;
 
-        public PersistentQueueFunctionInstanceLogger(IPersistentQueueWriter<PersistentQueueMessage> queue)
+        public PersistentQueueLogger(IPersistentQueueWriter<PersistentQueueMessage> queue)
         {
             if (queue == null)
             {
@@ -18,6 +18,11 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             }
 
             _queue = queue;
+        }
+
+        public void LogHostStarted(HostStartedMessage message)
+        {
+            _queue.Enqueue(message);
         }
 
         public void LogFunctionStarted(FunctionStartedMessage message)

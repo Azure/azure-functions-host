@@ -1,15 +1,14 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
-    internal class ConsoleFunctionOuputLogger : IFunctionOutputLogger
+    internal class NullHostInstanceLogger : IHostInstanceLogger
     {
-        public IFunctionOutputDefinition Create(IFunctionInstance instance)
+        public void LogHostStarted(HostStartedMessage message)
         {
-            return new ConsoleFunctionOutputDefinition();
         }
     }
 }

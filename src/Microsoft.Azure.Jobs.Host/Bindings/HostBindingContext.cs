@@ -3,6 +3,7 @@
 
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
@@ -19,19 +20,16 @@ namespace Microsoft.Azure.Jobs.Host.Executors
     // In-memory executor. 
     class FunctionExecutor : IFunctionExecutor
     {
-        private readonly FunctionExecutionContext _sharedContext;
-        private readonly HostBindingContext _context;
+        private readonly FunctionExecutorContext _context;
 
-        public FunctionExecutor(FunctionExecutionContext sharedContext, HostBindingContext context)
+        public FunctionExecutor(FunctionExecutorContext context)
         {
-            _sharedContext = sharedContext;
             _context = context;
         }
 
         public IDelayedException TryExecute(IFunctionInstance instance)
         {
-            FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance,
-                _context.StorageAccount, _context.ServiceBusConnectionString);
+            FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
             FunctionCompletedMessage completedMessage = null;
 
@@ -39,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             try
             {
-                ExecuteWithLogMessage(instance, _context, startedMessage, parameterLogCollector);
+                ExecuteWithLogMessage(instance, startedMessage, parameterLogCollector);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception e)
@@ -61,24 +59,24 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             {
                 completedMessage.ParameterLogs = parameterLogCollector;
                 completedMessage.EndTime = DateTimeOffset.UtcNow;
-                _sharedContext.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
+                _context.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
             }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
-        private void ExecuteWithLogMessage(IFunctionInstance instance, HostBindingContext context,
-            FunctionStartedMessage message, IDictionary<string, ParameterLog> parameterLogCollector)
+        private void ExecuteWithLogMessage(IFunctionInstance instance, FunctionStartedMessage message,
+            IDictionary<string, ParameterLog> parameterLogCollector)
         {
             // Create the console output writer
-            IFunctionOutputDefinition outputDefinition = _sharedContext.OutputLogFactory.Create(instance);
+            IFunctionOutputDefinition outputDefinition = _context.FunctionOutputLogger.Create(instance);
 
             using (IFunctionOutput outputLog = outputDefinition.CreateOutput())
             using (IntervalSeparationTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
-                    new FunctionBindingContext(context, instance.Id, consoleOutput);
+                    new FunctionBindingContext(_context.BindingContext, instance.Id, consoleOutput);
 
                 // Must bind before logging (bound invoke string is included in log message).
                 IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindingSource.Bind(functionContext);
@@ -119,7 +117,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
-            _sharedContext.FunctionInstanceLogger.LogFunctionStarted(message);
+            _context.FunctionInstanceLogger.LogFunctionStarted(message);
         }
 
         private static IntervalSeparationTimer StartOutputTimer(ICanFailCommand updateCommand)
@@ -316,18 +314,17 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return reflectionParameters;
         }
 
-        private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance,
-            CloudStorageAccount storageAccount, string serviceBusConnectionString)
+        private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance)
         {
             return new FunctionStartedMessage
             {
-                HostInstanceId = _sharedContext.HostOutputMessage.HostInstanceId,
-                HostDisplayName = _sharedContext.HostOutputMessage.HostDisplayName,
-                SharedQueueName = _sharedContext.HostOutputMessage.SharedQueueName,
-                InstanceQueueName = _sharedContext.HostOutputMessage.InstanceQueueName,
-                Heartbeat = _sharedContext.HostOutputMessage.Heartbeat,
-                Credentials = _sharedContext.HostOutputMessage.Credentials,
-                WebJobRunIdentifier = _sharedContext.HostOutputMessage.WebJobRunIdentifier,
+                HostInstanceId = _context.HostOutputMessage.HostInstanceId,
+                HostDisplayName = _context.HostOutputMessage.HostDisplayName,
+                SharedQueueName = _context.HostOutputMessage.SharedQueueName,
+                InstanceQueueName = _context.HostOutputMessage.InstanceQueueName,
+                Heartbeat = _context.HostOutputMessage.Heartbeat,
+                Credentials = _context.HostOutputMessage.Credentials,
+                WebJobRunIdentifier = _context.HostOutputMessage.WebJobRunIdentifier,
                 FunctionInstanceId = instance.Id,
                 Function = instance.FunctionDescriptor,
                 ParentId = instance.ParentId,

@@ -6,15 +6,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Queues.Listeners;
-using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -24,15 +19,11 @@ namespace Microsoft.Azure.Jobs
     /// </summary>
     public class JobHost
     {
-        // Where we log things to (null if logging is not supported).
-        private readonly CloudStorageAccount _dashboardAccount;
+        private readonly JobHostContextFactory _contextFactory;
 
-        // The user account that we listen on.
-        // This is the account that the bindings resolve against.
-        private readonly CloudStorageAccount _storageAccount;
-        private readonly string _serviceBusConnectionString;
-
-        private readonly JobHostContext _hostContext;
+        private JobHostContext _context;
+        private bool _contextInitialized;
+        private object _contextLock = new object();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -64,32 +55,19 @@ namespace Microsoft.Azure.Jobs
             }
 
             IStorageAccountProvider accountProvider = serviceProvider.GetStorageAccountProvider();
-            IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
-
-            _storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
-            // This will make a network call to verify the credentials work.
-            credentialsValidator.ValidateCredentials(_storageAccount);
-            _dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
-
-            // Avoid double-validating the same credentials.
-            if (_storageAccount != null && _storageAccount.Credentials != null && _dashboardAccount != null &&
-                !_storageAccount.Credentials.Equals(_dashboardAccount.Credentials))
-            {
-                // This will make a network call to verify the credentials work.
-                credentialsValidator.ValidateCredentials(_dashboardAccount);
-            }
+            CloudStorageAccount dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
+            CloudStorageAccount storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
 
             IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
-            _serviceBusConnectionString = connectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
+            string serviceBusConnectionString =
+                connectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
 
-            // This will do heavy operations like indexing. 
-            _hostContext = GetHostContext(serviceProvider.GetTypeLocator(), serviceProvider.GetNameResolver());
-        }
+            IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
+            ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
+            INameResolver nameResolver = serviceProvider.GetNameResolver();
 
-        private JobHostContext GetHostContext(ITypeLocator typesLocator, INameResolver nameResolver)
-        {
-            var hostContext = new JobHostContext(_dashboardAccount, _storageAccount, _serviceBusConnectionString, typesLocator, nameResolver);
-            return hostContext;
+            _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
+                credentialsValidator, typeLocator, nameResolver);
         }
 
         /// <summary>
@@ -106,11 +84,36 @@ namespace Microsoft.Azure.Jobs
         /// The trigger listeners and jobs will execute on the background thread.
         /// The thread exits when the cancellation token is signalled.
         /// </summary>
-        /// <param name="token">The token to monitor for cancellation requests.</param>
-        public void RunOnBackgroundThread(CancellationToken token)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        public void RunOnBackgroundThread(CancellationToken cancellationToken)
         {
-            Thread thread = new Thread(_ => RunAndBlock(token));
-            thread.Start();
+            JobHostContext hostContext = EnsureHostStarted();
+
+            Console.WriteLine("Job host started");
+
+            IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: false,
+                cancellationToken: cancellationToken);
+            CancellationToken runnerCancellationToken = runner.CancellationToken;
+
+            if (!runnerCancellationToken.CanBeCanceled)
+            {
+                Thread backgroundThread = new Thread(() =>
+                {
+                    try
+                    {
+                        runnerCancellationToken.WaitHandle.WaitOne();
+                        runner.Stop();
+                    }
+                    finally
+                    {
+                        runner.Dispose();
+                    }
+
+                    Console.WriteLine("Job host stopped");
+                });
+
+                backgroundThread.Start();
+            }
         }
 
         /// <summary>
@@ -127,88 +130,31 @@ namespace Microsoft.Azure.Jobs
         /// The trigger listeners and jobs will execute on the current thread.
         /// The thread will be blocked until the cancellation token is signalled.
         /// </summary>
-        /// <param name="token">The token to monitor for cancellation requests.</param>
-        public void RunAndBlock(CancellationToken token)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        public void RunAndBlock(CancellationToken cancellationToken)
         {
+            JobHostContext hostContext = EnsureHostStarted();
+
             Console.WriteLine("Job host started");
 
-            RunAndBlock(token, () =>
+            using (IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: false,
+                cancellationToken: cancellationToken))
             {
-                Thread.Sleep(2 * 1000);
-            });
+                CancellationToken runnerCancellationToken = runner.CancellationToken;
 
-            Console.WriteLine("Job host stopped");
-        }
-
-        // Run the jobs on the current thread. 
-        // Execute as much work as possible, and then invoke pauseAction() when there's a pause in the work. 
-        internal void RunAndBlock(CancellationToken token, Action pauseAction)
-        {
-            using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
-            using (IntervalSeparationTimer timer = CreateHeartbeatTimer())
-            {
-                timer.Start(executeFirst: true);
-
-                token = CancellationTokenSource.CreateLinkedTokenSource(token, watcher.Token).Token;
-
-                HostBindingContext context = new HostBindingContext(
-                    bindingProvider: _hostContext.BindingProvider,
-                    cancellationToken: token,
-                    nameResolver: _hostContext.NameResolver,
-                    storageAccount: _storageAccount,
-                    serviceBusConnectionString: _serviceBusConnectionString);
-                IFunctionExecutor executor = new FunctionExecutor(_hostContext.ExecutionContext, context);
-
-                CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-                IListener sharedQueueListener;
-                IListener instanceQueueListener;
-
-                if (_dashboardAccount != null)
+                if (!runnerCancellationToken.CanBeCanceled)
                 {
-                    sharedQueueListener = HostMessageListener.Create(
-                        queueClient.GetQueueReference(_hostContext.SharedQueueName),
-                        executor,
-                        _hostContext.FunctionLookup,
-                        _hostContext.FunctionInstanceLogger,
-                        context);
-                    instanceQueueListener = HostMessageListener.Create(
-                        queueClient.GetQueueReference(_hostContext.InstanceQueueName),
-                        executor,
-                        _hostContext.FunctionLookup,
-                        _hostContext.FunctionInstanceLogger,
-                        context);
+                    Thread.Sleep(Timeout.Infinite);
                 }
                 else
                 {
-                    sharedQueueListener = null;
-                    instanceQueueListener = null;
+                    runnerCancellationToken.WaitHandle.WaitOne();
                 }
 
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                using (IListener listener = CreateListener(executor, context,
-                    _hostContext.Functions.ReadAll(), sharedQueueListener, instanceQueueListener))
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    listener.Start();
-
-                    while (!token.IsCancellationRequested)
-                    {
-                        pauseAction();
-                    }
-
-                    listener.Stop();
-                }
-
-                timer.Stop();
+                runner.Stop();
             }
+
+            Console.WriteLine("Job host stopped");
         }
 
         /// <summary>Invokes a job function.</summary>
@@ -239,7 +185,10 @@ namespace Microsoft.Azure.Jobs
 
         /// <summary>Invokes a job function.</summary>
         /// <param name="method">A MethodInfo representing the job method to execute.</param>
-        /// <param name="arguments">An object with public properties representing argument names and values to bind to the parameter tokens in the job method's arguments.</param>
+        /// <param name="arguments">
+        /// An object with public properties representing argument names and values to bind to the parameter tokens in
+        /// the job method's arguments.
+        /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         public void Call(MethodInfo method, object arguments, CancellationToken cancellationToken)
         {
@@ -258,22 +207,18 @@ namespace Microsoft.Azure.Jobs
                 throw new ArgumentNullException("method");
             }
 
-            IFunctionDefinition func = ResolveFunctionDefinition(method, _hostContext.FunctionLookup);
+            JobHostContext hostContext = EnsureHostStarted();
+            IFunctionDefinition function = ResolveFunctionDefinition(method, hostContext.FunctionLookup);
+            IFunctionInstance instance = CreateFunctionInstance(function, arguments);
             IDelayedException exception;
 
-            using (WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher())
+            using (IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: true,
+                cancellationToken: cancellationToken))
             {
-                cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token).Token;
-                HostBindingContext context = new HostBindingContext(
-                    bindingProvider: _hostContext.BindingProvider,
-                    cancellationToken: cancellationToken,
-                    nameResolver: _hostContext.NameResolver,
-                    storageAccount: _storageAccount,
-                    serviceBusConnectionString: _serviceBusConnectionString);
-                IFunctionExecutor executor = new FunctionExecutor(_hostContext.ExecutionContext, context);
-                IFunctionInstance instance = CreateFunctionInstance(func, arguments, context);
-
+                IFunctionExecutor executor = runner.Executor;
                 exception = executor.TryExecute(instance);
+
+                runner.Stop();
             }
 
             if (exception != null)
@@ -283,49 +228,23 @@ namespace Microsoft.Azure.Jobs
         }
 
         private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func,
-            IDictionary<string, object> parameters, HostBindingContext context)
+            IDictionary<string, object> parameters)
         {
             return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
         }
 
-        private IntervalSeparationTimer CreateHeartbeatTimer()
+        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
         {
-            ICanFailCommand heartbeatCommand = new UpdateHostHeartbeatCommand(_hostContext.HeartbeatCommand);
-            return LinearSpeedupTimerCommand.CreateTimer(heartbeatCommand,
-                HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
-        }
+            IFunctionDefinition function = functionLookup.Lookup(method);
 
-        private static IListener CreateListener(IFunctionExecutor executor, HostBindingContext context,
-            IEnumerable<IFunctionDefinition> functionDefinitions, IListener sharedQueueListener,
-            IListener instanceQueueListener)
-        {
-            List<IListener> listeners = new List<IListener>();
-            ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer());
-
-            foreach (IFunctionDefinition functionDefinition in functionDefinitions)
+            if (function == null)
             {
-                IListenerFactory listenerFactory = functionDefinition.ListenerFactory;
-
-                if (listenerFactory == null)
-                {
-                    continue;
-                }
-
-                IListener listener = listenerFactory.Create(executor, listenerContext);
-                listeners.Add(listener);
+                string msg = String.Format(
+                    "'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
+                throw new InvalidOperationException(msg);
             }
 
-            if (sharedQueueListener != null)
-            {
-                listeners.Add(sharedQueueListener);
-            }
-
-            if (instanceQueueListener != null)
-            {
-                listeners.Add(instanceQueueListener);
-            }
-
-            return new CompositeListener(listeners);
+            return function;
         }
 
         private static JobHostConfiguration ThrowIfNull(JobHostConfiguration configuration)
@@ -338,17 +257,15 @@ namespace Microsoft.Azure.Jobs
             return configuration;
         }
 
-        private IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
+        private JobHostContext CreateContextAndLogHostStarted()
         {
-            IFunctionDefinition function = functionLookup.Lookup(method);
+            return _contextFactory.CreateAndLogHostStarted();
+        }
 
-            if (function == null)
-            {
-                string msg = String.Format("'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
-                throw new InvalidOperationException(msg);
-            }
-
-            return function;
+        private JobHostContext EnsureHostStarted()
+        {
+            return LazyInitializer.EnsureInitialized<JobHostContext>(ref _context, ref _contextInitialized,
+                ref _contextLock, CreateContextAndLogHostStarted);
         }
     }
 }

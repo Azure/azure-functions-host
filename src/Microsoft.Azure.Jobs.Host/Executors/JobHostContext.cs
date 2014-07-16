@@ -1,59 +1,121 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues.Listeners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
-    // Create host services that point to a logging account. 
-    // This will scan for all functions in-memory, publish them to the function dashboard, 
-    // and return a set of services that the host can use for invoking, listening, etc. 
     internal class JobHostContext
     {
         private static readonly Func<string, ConnectionStringDescriptor> _serviceBusConnectionStringDescriptorFactory =
             CreateServiceBusConnectionStringDescriptorFactory();
 
-        private readonly INameResolver _nameResolver;
-        private readonly FunctionExecutionContext _executionContext;
-        private readonly IFunctionInstanceLogger _functionInstanceLogger;
-        private readonly FunctionIndex _functionIndex;
-        private readonly string _sharedQueueName;
-        private readonly string _instanceQueueName;
-        private readonly HostOutputMessage _hostOutputMessage;
-        private readonly IHeartbeatCommand _heartbeatCommand;
+        private readonly IFunctionIndexLookup _functionLookup;
+        private readonly IRunnerFactory _runnerFactory;
 
-        public JobHostContext(CloudStorageAccount dashboardAccount, CloudStorageAccount storageAccount, string serviceBusConnectionString, ITypeLocator typeLocator, INameResolver nameResolver)
+        public JobHostContext(IFunctionIndexLookup functionLookup,
+            IRunnerFactory runnerFactory)
         {
-            _nameResolver = nameResolver;
-            Guid id = Guid.NewGuid();
+            _functionLookup = functionLookup;
+            _runnerFactory = runnerFactory;
+        }
 
-            _functionIndex = FunctionIndex.Create(new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
-                serviceBusConnectionString));
+        public IFunctionIndexLookup FunctionLookup
+        {
+            get { return _functionLookup; }
+        }
+
+        public IRunnerFactory RunnerFactory
+        {
+            get { return _runnerFactory; }
+        }
+
+        public static JobHostContext CreateAndLogHostStarted(CloudStorageAccount dashboardAccount,
+            CloudStorageAccount storageAccount, string serviceBusConnectionString,
+            IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver)
+        {
+            // This will make a network call to verify the credentials work.
+            credentialsValidator.ValidateCredentials(storageAccount);
+
+            // Avoid double-validating the same credentials.
+            if (storageAccount != null && storageAccount.Credentials != null && dashboardAccount != null &&
+                !storageAccount.Credentials.Equals(dashboardAccount.Credentials))
+            {
+                // This will make a network call to verify the credentials work.
+                credentialsValidator.ValidateCredentials(dashboardAccount);
+            }
+
+            CloudBlobClient blobClient;
+            IHostInstanceLogger hostInstanceLogger;
+            IFunctionInstanceLogger functionInstanceLogger;
+            IFunctionOutputLogger functionOutputLogger;
 
             if (dashboardAccount != null)
             {
-                // Create logging against a live azure account 
+                // Create logging against a live Azure account.
+                blobClient = dashboardAccount.CreateCloudBlobClient();
+                IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
+                    new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
+                PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
+                hostInstanceLogger = queueLogger;
+                functionInstanceLogger = new CompositeFunctionInstanceLogger(
+                    queueLogger,
+                    new ConsoleFunctionInstanceLogger());
+                functionOutputLogger = new BlobFunctionOutputLogger(blobClient);
+            }
+            else
+            {
+                // No auxillary logging. Logging interfaces are nops or in-memory.
+                blobClient = null;
+                hostInstanceLogger = new NullHostInstanceLogger();
+                functionInstanceLogger = new ConsoleFunctionInstanceLogger();
+                functionOutputLogger = new ConsoleFunctionOuputLogger();
+            }
 
-                CloudBlobClient blobClient = dashboardAccount.CreateCloudBlobClient();
-                IHostIdManager hostIdManager = new HostIdManager(blobClient);
+            FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
+                serviceBusConnectionString);
+            FunctionIndex functions = FunctionIndex.Create(indexContext);
+            HostBindingContextFactory bindingContextFactory = new HostBindingContextFactory(functions.BindingProvider,
+                nameResolver, storageAccount, serviceBusConnectionString);
+
+            IListenerFactory sharedQueueListenerFactory;
+            IListenerFactory instanceQueueListenerFactory;
+            IHeartbeatCommand heartbeatCommand;
+            HostOutputMessage hostOutputMessage;
+
+            if (dashboardAccount != null)
+            {
                 // Determine the host name from the method list
-                Assembly hostAssembly = GetHostAssembly(_functionIndex.ReadAllMethods());
-
+                Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
                 string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
                 string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
+
+                IHostIdManager hostIdManager = new HostIdManager(blobClient);
                 Guid hostId = hostIdManager.GetOrCreateHostId(sharedHostName);
-                _sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
-                _instanceQueueName = HostQueueNames.GetHostQueueName(id);
-                string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+
+                string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
+                CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+                CloudQueue sharedQueue = queueClient.GetQueueReference(sharedQueueName);
+                sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
+                    functionInstanceLogger);
+
+                Guid id = Guid.NewGuid();
+                string instanceQueueName = HostQueueNames.GetHostQueueName(id);
+                CloudQueue instanceQueue = queueClient.GetQueueReference(instanceQueueName);
+                instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
+                    functionInstanceLogger);
 
                 HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                 {
@@ -62,97 +124,81 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     InstanceBlobName = id.ToString("N"),
                     ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                 };
+                heartbeatCommand = new HeartbeatCommand(dashboardAccount,
+                    heartbeatDescriptor.SharedContainerName,
+                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
 
-                CredentialsDescriptor credentialsDescriptor = CreateCredentialsDescriptor(storageAccount,
-                    serviceBusConnectionString);
+                string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+                CredentialsDescriptor credentials =
+                    CreateCredentialsDescriptor(storageAccount, serviceBusConnectionString);
 
-                _hostOutputMessage = new DataOnlyHostOutputMessage {
+                hostOutputMessage = new DataOnlyHostOutputMessage
+                {
                     HostInstanceId = id,
                     HostDisplayName = displayName,
-                    SharedQueueName = _sharedQueueName,
-                    InstanceQueueName = _instanceQueueName,
+                    SharedQueueName = sharedQueueName,
+                    InstanceQueueName = instanceQueueName,
                     Heartbeat = heartbeatDescriptor,
-                    Credentials = credentialsDescriptor,
-                    WebJobRunIdentifier = WebJobRunIdentifier.Current,
+                    Credentials = credentials,
+                    WebJobRunIdentifier = WebJobRunIdentifier.Current
                 };
-
-                IPersistentQueueWriter<PersistentQueueMessage> persistentQueueWriter =
-                    new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                PublishFunctionTable(_functionIndex, persistentQueueWriter);
-
-                _functionInstanceLogger = new CompositeFunctionInstanceLogger(
-                    new PersistentQueueFunctionInstanceLogger(persistentQueueWriter),
-                    new ConsoleFunctionInstanceLogger());
-                _executionContext = new FunctionExecutionContext
-                {
-                    HostOutputMessage = _hostOutputMessage,
-                    OutputLogFactory = new BlobFunctionOutputLogger(blobClient),
-                    FunctionInstanceLogger = _functionInstanceLogger
-                };
-
-                _heartbeatCommand = new HeartbeatCommand(dashboardAccount, heartbeatDescriptor.SharedContainerName,
-                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
+                LogHostStarted(functions, hostOutputMessage, hostInstanceLogger);
             }
             else
             {
-                // No auxillary logging. Logging interfaces are nops or in-memory.
-
-                _executionContext = new FunctionExecutionContext
-                {
-                    HostOutputMessage = new DataOnlyHostOutputMessage(),
-                    OutputLogFactory = new ConsoleFunctionOuputLogFactory(),
-                    FunctionInstanceLogger = new ConsoleFunctionInstanceLogger()
-                };
-
-                _heartbeatCommand = new NullHeartbeatCommand();
+                sharedQueueListenerFactory = new NullListenerFactory();
+                instanceQueueListenerFactory = new NullListenerFactory();
+                heartbeatCommand = new NullHeartbeatCommand();
+                hostOutputMessage = new DataOnlyHostOutputMessage();
             }
+
+            IFunctionExecutorFactory executorFactory = new FunctionExecutorFactory(functionInstanceLogger,
+                functionOutputLogger, hostOutputMessage);
+            IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
+                sharedQueueListenerFactory, instanceQueueListenerFactory);
+
+            IRunnerFactory runnerFactory = new RunnerFactory(heartbeatCommand, bindingContextFactory, executorFactory,
+                allFunctionsListenerFactory, instanceQueueListenerFactory);
+
+            return new JobHostContext(functions, runnerFactory);
         }
 
-        public FunctionExecutionContext ExecutionContext
+        private static CredentialsDescriptor CreateCredentialsDescriptor(CloudStorageAccount storageAccount,
+            string serviceBusConnectionString)
         {
-            get { return _executionContext; }
-        }
+            List<ConnectionStringDescriptor> connectionStrings = new List<ConnectionStringDescriptor>();
 
-        public IFunctionInstanceLogger FunctionInstanceLogger
-        {
-            get { return _functionInstanceLogger; }
-        }
+            if (storageAccount != null)
+            {
+                connectionStrings.Add(new StorageConnectionStringDescriptor
+                {
+                    Account = storageAccount.Credentials.AccountName,
+                    ConnectionString = storageAccount.ToString(exportSecrets: true)
+                });
+            }
 
-        public IFunctionIndexLookup FunctionLookup
-        {
-            get { return _functionIndex; }
-        }
+            if (serviceBusConnectionString != null)
+            {
+                ConnectionStringDescriptor serviceBusConnectionStringDescriptor =
+                    _serviceBusConnectionStringDescriptorFactory.Invoke(serviceBusConnectionString);
 
-        public IFunctionIndex Functions
-        {
-            get { return _functionIndex; }
-        }
+                if (serviceBusConnectionStringDescriptor != null)
+                {
+                    connectionStrings.Add(serviceBusConnectionStringDescriptor);
+                }
+            }
 
-        public string SharedQueueName
-        {
-            get { return _sharedQueueName; }
-        }
+            if (connectionStrings.Count == 0)
+            {
+                return null;
+            }
 
-        public string InstanceQueueName
-        {
-            get { return _instanceQueueName; }
-        }
-
-        public IHeartbeatCommand HeartbeatCommand
-        {
-            get { return _heartbeatCommand; }
-        }
-
-        public IBindingProvider BindingProvider
-        {
-            get { return _functionIndex.BindingProvider; }
-        }
-
-        public INameResolver NameResolver
-        {
-            get { return _nameResolver; }
+            return new CredentialsDescriptor
+            {
+                ConnectionStrings = connectionStrings.ToArray()
+            };
         }
 
         private static Func<string, ConnectionStringDescriptor> CreateServiceBusConnectionStringDescriptorFactory()
@@ -192,61 +238,24 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return null;
         }
 
-        // Publish functions to the cloud
-        // This lets another site go view them. 
-        private void PublishFunctionTable(IFunctionIndex functionIndex, IPersistentQueueWriter<PersistentQueueMessage> logger)
+        private static void LogHostStarted(IFunctionIndex functionIndex, HostOutputMessage hostOutputMessage,
+            IHostInstanceLogger logger)
         {
             IEnumerable<FunctionDescriptor> functions = functionIndex.ReadAllDescriptors();
 
             HostStartedMessage message = new HostStartedMessage
             {
-                HostInstanceId = _hostOutputMessage.HostInstanceId,
-                HostDisplayName = _hostOutputMessage.HostDisplayName,
-                SharedQueueName = _hostOutputMessage.SharedQueueName,
-                InstanceQueueName = _hostOutputMessage.InstanceQueueName,
-                Heartbeat = _hostOutputMessage.Heartbeat,
-                Credentials = _hostOutputMessage.Credentials,
-                WebJobRunIdentifier = _hostOutputMessage.WebJobRunIdentifier,
+                HostInstanceId = hostOutputMessage.HostInstanceId,
+                HostDisplayName = hostOutputMessage.HostDisplayName,
+                SharedQueueName = hostOutputMessage.SharedQueueName,
+                InstanceQueueName = hostOutputMessage.InstanceQueueName,
+                Heartbeat = hostOutputMessage.Heartbeat,
+                Credentials = hostOutputMessage.Credentials,
+                WebJobRunIdentifier = hostOutputMessage.WebJobRunIdentifier,
                 Functions = functions
             };
 
-            logger.Enqueue(message);
-        }
-
-        private static CredentialsDescriptor CreateCredentialsDescriptor(CloudStorageAccount storageAccount,
-            string serviceBusConnectionString)
-        {
-            List<ConnectionStringDescriptor> connectionStrings = new List<ConnectionStringDescriptor>();
-
-            if (storageAccount != null)
-            {
-                connectionStrings.Add(new StorageConnectionStringDescriptor
-                {
-                    Account = storageAccount.Credentials.AccountName,
-                    ConnectionString = storageAccount.ToString(exportSecrets: true)
-                });
-            }
-
-            if (serviceBusConnectionString != null)
-            {
-                ConnectionStringDescriptor serviceBusConnectionStringDescriptor =
-                    _serviceBusConnectionStringDescriptorFactory.Invoke(serviceBusConnectionString);
-
-                if (serviceBusConnectionStringDescriptor != null)
-                {
-                    connectionStrings.Add(serviceBusConnectionStringDescriptor);
-                }
-            }
-
-            if (connectionStrings.Count == 0)
-            {
-                return null;
-            }
-
-            return new CredentialsDescriptor
-            {
-                ConnectionStrings = connectionStrings.ToArray()
-            };
+            logger.LogHostStarted(message);
         }
 
         private class DataOnlyHostOutputMessage : HostOutputMessage

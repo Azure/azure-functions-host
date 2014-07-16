@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ICloudBlob blob = account.CreateCloudBlobClient()
                     .GetContainerReference(container).GetBlockBlobReference("foo.output");
                 Action updateTokenSource = () => CancelWhenBlobExists(source, blob);
-                host.Host.RunAndBlock(source.Token, updateTokenSource);
+                RunAndBlock(host.Host, source.Token, updateTokenSource);
             }
 
             string output = TestBlobClient.ReadBlob(account, container, "foo.output");
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ICloudBlob middleBlob = containerReference.GetBlockBlobReference("foo.2");
                 ICloudBlob outputBlob = containerReference.GetBlockBlobReference("foo.3");
                 Action updateTokenSource = () => CancelWhenBlobsExists(source, middleBlob, outputBlob);
-                host.RunAndBlock(source.Token, updateTokenSource);
+                RunAndBlock(host, source.Token, updateTokenSource);
             }
 
             // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     source.CancelAfter(3000);
                     Action updateTokenSource = () => CancelWhenRowUpdated<SimpleEntity>(source, table, partitionKey, rowKey,
                         (current) => current.Value == 456);
-                    host.Host.RunAndBlock(source.Token, updateTokenSource);
+                    RunAndBlock(host.Host, source.Token, updateTokenSource);
                 }
 
                 SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()
@@ -208,6 +208,23 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 }
                 table.DeleteIfExists();
             }
+        }
+
+        private static void RunAndBlock(JobHost host, CancellationToken cancellationToken, Action pollAction)
+        {
+            Thread pollThread = new Thread(() =>
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    pollAction();
+
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        Thread.Sleep(2 * 1000);
+                    }
+                }
+            });
+            host.RunAndBlock(cancellationToken);
         }
 
         private static void CancelWhenRowUpdated<TElement>(CancellationTokenSource source, CloudTable table,
@@ -271,6 +288,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             entity.Value = 456;
         }
     }
+
     public class PoisonQueueProgram
     {
         public static CancellationTokenSource SignalOnPoisonMessage { get; set; }
@@ -319,7 +337,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             output.Write("*" + content + "*");
         }
     }
-
 
     // Set dev storage. These are well known values.
     class TestStorage

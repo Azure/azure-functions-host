@@ -19,15 +19,13 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private readonly IFunctionExecutor _innerExecutor;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
-        private readonly HostBindingContext _context;
 
         public HostMessageExecutor(IFunctionExecutor innerExecutor, IFunctionIndexLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
+            IFunctionInstanceLogger functionInstanceLogger)
         {
             _innerExecutor = innerExecutor;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
-            _context = context;
         }
 
         public bool Execute(CloudQueueMessage value)
@@ -43,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             if (callAndOverrideModel != null)
             {
-                ProcessCallAndOverrideMessage(callAndOverrideModel, value.InsertionTime.Value, _context);
+                ProcessCallAndOverrideMessage(callAndOverrideModel, value.InsertionTime.Value);
                 return true;
             }
 
@@ -89,7 +87,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             };
         }
 
-        private IFunctionInstance CreateFunctionInstance(CallAndOverrideMessage message, HostBindingContext context)
+        private IFunctionInstance CreateFunctionInstance(CallAndOverrideMessage message)
         {
             IFunctionDefinition function = _functionLookup.Lookup(message.FunctionId);
 
@@ -111,10 +109,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return function.InstanceFactory.Create(message.Id, message.ParentId, message.Reason, objectParameters);
         }
 
-        private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,
-            HostBindingContext context)
+        private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime)
         {
-            IFunctionInstance instance = CreateFunctionInstance(message, context);
+            IFunctionInstance instance = CreateFunctionInstance(message);
 
             if (instance != null)
             {

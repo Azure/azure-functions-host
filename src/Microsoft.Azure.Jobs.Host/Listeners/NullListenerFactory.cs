@@ -3,13 +3,13 @@
 
 using Microsoft.Azure.Jobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Loggers
+namespace Microsoft.Azure.Jobs.Host.Listeners
 {
-    internal class ConsoleFunctionOuputLogger : IFunctionOutputLogger
+    internal class NullListenerFactory : IListenerFactory
     {
-        public IFunctionOutputDefinition Create(IFunctionInstance instance)
+        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
         {
-            return new ConsoleFunctionOutputDefinition();
+            return new NullListener();
         }
     }
 }

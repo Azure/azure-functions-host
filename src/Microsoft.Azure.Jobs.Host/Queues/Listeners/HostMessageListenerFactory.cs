@@ -12,16 +12,26 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal static class HostMessageListener
+    internal class HostMessageListenerFactory : IListenerFactory
     {
         private static readonly TimeSpan maxmimum = TimeSpan.FromMinutes(1);
 
-        public static IListener Create(CloudQueue queue, IFunctionExecutor executor, IFunctionIndexLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger, HostBindingContext context)
+        private readonly CloudQueue _queue;
+        private readonly IFunctionIndexLookup _functionLookup;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
+
+        public HostMessageListenerFactory(CloudQueue queue, IFunctionIndexLookup functionLookup, IFunctionInstanceLogger functionInstanceLogger)
         {
-            ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, functionLookup,
-                functionInstanceLogger, context);
-            ICanFailCommand command = new PollQueueCommand(queue, poisonQueue: null, triggerExecutor: triggerExecutor);
+            _queue = queue;
+            _functionLookup = functionLookup;
+            _functionInstanceLogger = functionInstanceLogger;
+        }
+
+        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        {
+            ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
+                _functionInstanceLogger);
+            ICanFailCommand command = new PollQueueCommand(_queue, poisonQueue: null, triggerExecutor: triggerExecutor);
             // Use a shorter maximum polling interval for run/abort from dashboard.
             IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command,
                 QueuePollingIntervals.Minimum, maxmimum);
