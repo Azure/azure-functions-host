@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <WebsiteProjectFile>..\Dashboard\Dashboard.csproj</WebsiteProjectFile>
+    <OutputPath>bin</OutputPath>
+    <SiteExtensionName>AzureJobsTest</SiteExtensionName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="applicationHost.xdt"/>
+  </ItemGroup>
+
+  <Target Name="GetPublishPath">
+    <PropertyGroup>
+      <PublishPath>$(MSBuildThisFileDirectory)$(OutputPath)\SiteExtensions\$(SiteExtensionName)</PublishPath>
+    </PropertyGroup>
+  </Target>
+
+  <Import Project="..\..\tools\PublishWebsite.targets"/>
+</Project>

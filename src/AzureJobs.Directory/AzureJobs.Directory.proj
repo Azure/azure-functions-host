@@ -13,57 +13,21 @@
     <UnversionedContent Include="extension.xml"/>
   </ItemGroup>
 
-  <PropertyGroup>
-    <BuildInParallel Condition=" '$(BuildInParallel)'  == ''">true</BuildInParallel>
-    <SetConfiguration Condition=" '$(Configuration)' != '' ">Configuration=$(Configuration)</SetConfiguration>
-    <SetPlatform Condition=" '$(Platform)' != '' ">Platform=$(Platform)</SetPlatform>
-  </PropertyGroup>
-
-  <Target Name="BuildWebsiteProject">
-    <MSBuild Projects="$(WebsiteProjectFile)"
-             Properties="$(SetConfiguration); $(SetPlatform)"
-             BuildInParallel="$(BuildInParallel)"/>
-  </Target>
-  
   <Target Name="GetVersion" Returns="$(Version)">
     <ReadLinesFromFile File="Version.txt">
       <Output TaskParameter="Lines" PropertyName="Version"/>
     </ReadLinesFromFile>
   </Target>
 
-  <Target Name="Build" DependsOnTargets="BuildWebsiteProject;GetVersion">
+  <Target Name="GetPublishPath" DependsOnTargets="GetVersion">
     <PropertyGroup>
-      <VersionedOutputPath>$(OutputPath)\$(Version)</VersionedOutputPath>
-      <_FullVersionedOutputPath>$(MSBuildThisFileDirectory)$(VersionedOutputPath)</_FullVersionedOutputPath>
+      <PublishPath>$(MSBuildThisFileDirectory)$(OutputPath)\$(Version)</PublishPath>
     </PropertyGroup>
-    
-    <MSBuild Projects="$(WebsiteProjectFile)"
-             Targets="PipelineCopyAllFilesToOneFolderForMsdeploy"
-             Properties="$(SetConfiguration); $(SetPlatform); WPPAllFilesInSingleFolder=$(_FullVersionedOutputPath);
-              AutoParameterizationWebConfigConnectionStrings=false;InsertAdditionalWebCofigConnectionStrings=false;
-              ExcludeGeneratedDebugSymbol=false"
-             BuildInParallel="$(BuildInParallel)"/>
-    
-    <Copy SourceFiles="@(Content)" DestinationFolder="$(VersionedOutputPath)"/>
+  </Target>
+
+  <Target Name="PostBuild" AfterTargets="Build">
     <Copy SourceFiles="@(UnversionedContent)" DestinationFolder="$(OutputPath)"/>
   </Target>
 
-  <Target Name="CleanWebsiteProject">
-    <MSBuild Projects="$(WebsiteProjectFile)"
-             Targets="Clean"
-             Properties="$(SetConfiguration); $(SetPlatform)"
-             BuildInParallel="$(BuildInParallel)"/>
-  </Target>
-
-  <Target Name="Clean" DependsOnTargets="CleanWebsiteProject">
-    <RemoveDir Directories="$(OutputPath)" Condition="Exists('$(OutputPath)')"/>
-  </Target>
-
-  <Target Name="Rebuild" DependsOnTargets="Clean;Build"/>
-
-  <Target Name="GetOutputPath" Returns="$(_FullOutputPath)">
-    <PropertyGroup>
-      <_FullOutputPath>$(MSBuildThisFileDirectory)$(OutputPath)</_FullOutputPath>
-    </PropertyGroup>
-  </Target>
+  <Import Project="..\..\tools\PublishWebsite.targets"/>
 </Project>
