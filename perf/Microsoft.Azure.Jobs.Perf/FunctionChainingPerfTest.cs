@@ -1,4 +1,7 @@
-﻿// This test covers the following performance metrics
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+// This test covers the following performance metrics
 // - Startup time for host (from the moment RunAndBlock is called, to the moment when the first function is invoked)
 // - Execution time for a number of functions that are triggerd by queue messages
 

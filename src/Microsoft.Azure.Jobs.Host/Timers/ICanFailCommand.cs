@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Azure.Jobs.Host.Timers
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+namespace Microsoft.Azure.Jobs.Host.Timers
 {
     /// <summary>Defines a command that may fail gracefully.</summary>
     internal interface ICanFailCommand
