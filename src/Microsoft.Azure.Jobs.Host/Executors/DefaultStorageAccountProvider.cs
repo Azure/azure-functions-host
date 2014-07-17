@@ -47,6 +47,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         {
             get
             {
+                if (!_dashboardAccountSet)
+                {
+                    return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Dashboard);
+                }
+
                 return _dashboardAccount != null ? _dashboardAccount.ToString(exportSecrets: true) : null;
             }
             set
@@ -61,6 +66,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         {
             get
             {
+                if (!_storageAccountSet)
+                {
+                    return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
+                }
+
                 return _storageAccount != null ? _storageAccount.ToString(exportSecrets: true) : null;
             }
             set
@@ -73,7 +83,15 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>
         public string ServiceBusConnectionString
         {
-            get { return _serviceBusConnectionString; }
+            get
+            {
+                if (!_serviceBusConnectionStringSet)
+                {
+                    return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
+                }
+
+                return _serviceBusConnectionString;
+            }
             set
             {
                 _serviceBusConnectionString = value;
