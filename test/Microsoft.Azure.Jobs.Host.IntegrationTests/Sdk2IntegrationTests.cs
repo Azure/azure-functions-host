@@ -78,8 +78,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestQueueBadName()
         {
+            var host = new TestJobHost<ProgramBadQueueName>(null);
+
             // indexer should notice bad queue name and fail immediately
-            Assert.Throws<FunctionIndexingException>(() => new TestJobHost<ProgramBadQueueName>(null));
+            Assert.Throws<FunctionIndexingException>(() => host.Host.RunAndBlock());
         }
 
         public void TestTable()
