@@ -59,17 +59,20 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 queue.AddMessage(new CloudQueueMessage(expectedMessageText));
                 var host = new TestJobHost<PoisonQueueProgram>();
+                host.Host.Start();
 
                 using (CancellationTokenSource source = new CancellationTokenSource())
                 {
-                    source.CancelAfter(3000);
                     PoisonQueueProgram.SignalOnPoisonMessage = source;
 
                     // Act
-                    host.Host.RunAndBlock(source.Token);
+                    source.Token.WaitHandle.WaitOne(3000);
 
                     // Assert
                     Assert.Equal(expectedMessageText, PoisonQueueProgram.PoisonMessageText);
+
+                    // Cleanup
+                    host.Host.Stop();
                 }
             }
             finally
@@ -212,6 +215,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         private static void RunAndBlock(JobHost host, CancellationToken cancellationToken, Action pollAction)
         {
+            cancellationToken.Register(host.Stop);
             Thread pollThread = new Thread(() =>
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -224,7 +228,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     }
                 }
             });
-            host.RunAndBlock(cancellationToken);
+            host.RunAndBlock();
         }
 
         private static void CancelWhenRowUpdated<TElement>(CancellationTokenSource source, CloudTable table,

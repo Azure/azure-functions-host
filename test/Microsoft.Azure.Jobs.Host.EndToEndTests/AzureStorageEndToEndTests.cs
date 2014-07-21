@@ -156,12 +156,9 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             // The jobs host is started
             JobHost host = new JobHost(hostConfig);
 
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-
             _functionChainWaitHandle = new ManualResetEvent(initialState: false);
 
-            Thread hostThread = new Thread(() => host.RunAndBlock(tokenSource.Token));
-            hostThread.Start();
+            host.Start();
 
             if (!uploadBlobBeforeHostStart)
             {
@@ -172,8 +169,7 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
             bool signaled = _functionChainWaitHandle.WaitOne(15 * 60 * 1000);
 
             // Stop the host and wait for it to finish
-            tokenSource.Cancel();
-            hostThread.Join();
+            host.Stop();
 
             Assert.True(signaled);
 

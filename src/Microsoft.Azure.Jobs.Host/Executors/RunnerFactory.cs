@@ -42,16 +42,14 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             try
             {
-                WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher();
+                CancellationTokenSource runnerCancellationTokenSource = new CancellationTokenSource();
 
                 try
                 {
-                    CancellationTokenSource combinedCancellationTokenSource =
-                        CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, watcher.Token);
+                    WebJobsShutdownWatcher watcher = WebJobsShutdownWatcher.Create(runnerCancellationTokenSource);
 
                     try
                     {
-                        CancellationToken combinedCancellationToken = combinedCancellationTokenSource.Token;
                         HostBindingContext bindingContext = _bindingContextFactory.Create(cancellationToken);
                         IFunctionExecutor executor = _executorFactory.Create(bindingContext);
                         IListener listener = CreateListener(listenerFactory, executor, bindingContext);
@@ -61,10 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                             timer.Start(executeFirst: true);
                             listener.Start();
 
-                            IDisposable disposable = new CompositeDisposable(watcher, combinedCancellationTokenSource,
-                                timer, listener);
-
-                            return new Runner(disposable, timer, executor, listener, cancellationToken);
+                            return new Runner(timer, runnerCancellationTokenSource, watcher, executor, listener);
                         }
                         catch
                         {
@@ -74,13 +69,13 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     }
                     catch
                     {
-                        combinedCancellationTokenSource.Dispose();
+                        watcher.Dispose();
                         throw;
                     }
                 }
                 catch
                 {
-                    watcher.Dispose();
+                    runnerCancellationTokenSource.Dispose();
                     throw;
                 }
             }

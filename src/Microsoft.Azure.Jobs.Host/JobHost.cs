@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
@@ -17,13 +18,16 @@ namespace Microsoft.Azure.Jobs
     /// Defines properties and methods to locate Job methods and listen to trigger events in order
     /// to execute Job methods.
     /// </summary>
-    public class JobHost
+    public class JobHost : IDisposable
     {
         private readonly JobHostContextFactory _contextFactory;
 
         private JobHostContext _context;
         private bool _contextInitialized;
         private object _contextLock = new object();
+
+        private IRunner _runner;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHost"/> class, using a Microsoft Azure Storage connection
@@ -70,143 +74,151 @@ namespace Microsoft.Azure.Jobs
                 credentialsValidator, typeLocator, nameResolver);
         }
 
-        /// <summary>
-        /// Runs the jobs on a background thread and return immediately.
-        /// The trigger listeners and jobs will execute on the background thread.
-        /// </summary>
-        public void RunOnBackgroundThread()
+        /// <summary>Starts the host.</summary>
+        public void Start()
         {
-            RunOnBackgroundThread(CancellationToken.None);
+            StartAsync().Wait();
         }
 
-        /// <summary>
-        /// Runs the jobs on a background thread and return immediately.
-        /// The trigger listeners and jobs will execute on the background thread.
-        /// The thread exits when the cancellation token is signalled.
-        /// </summary>
+        /// <summary>Starts the host.</summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        public void RunOnBackgroundThread(CancellationToken cancellationToken)
+        /// <returns>A <see cref="Task"/> that will start the host.</returns>
+        public Task StartAsync(CancellationToken cancellationToken = default(CancellationToken))
         {
-            JobHostContext hostContext = EnsureHostStarted();
+            ThrowIfDisposed();
+
+            if (_runner != null)
+            {
+                return Task.FromResult(0);
+            }
+
+            return StartAsyncCore(cancellationToken);
+        }
+
+        private Task StartAsyncCore(CancellationToken cancellationToken)
+        {
+            JobHostContext context = EnsureHostStarted();
+            _runner = context.RunnerFactory.CreateAndStart(listenForAbortOnly: false, cancellationToken: cancellationToken);
 
             Console.WriteLine("Job host started");
-
-            IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: false,
-                cancellationToken: cancellationToken);
-            CancellationToken runnerCancellationToken = runner.CancellationToken;
-
-            if (!runnerCancellationToken.CanBeCanceled)
-            {
-                Thread backgroundThread = new Thread(() =>
-                {
-                    try
-                    {
-                        runnerCancellationToken.WaitHandle.WaitOne();
-                        runner.Stop();
-                    }
-                    finally
-                    {
-                        runner.Dispose();
-                    }
-
-                    Console.WriteLine("Job host stopped");
-                });
-
-                backgroundThread.Start();
-            }
+            return Task.FromResult(0);
         }
 
-        /// <summary>
-        /// Runs the jobs on the current thread.
-        /// The trigger listeners and jobs will execute on the current thread.
-        /// </summary>
-        public void RunAndBlock()
+        /// <summary>Stops the host.</summary>
+        public void Stop()
         {
-            RunAndBlock(CancellationToken.None);
+            StopAsync().Wait();
         }
 
-        /// <summary>
-        /// Runs the jobs on the current thread.
-        /// The trigger listeners and jobs will execute on the current thread.
-        /// The thread will be blocked until the cancellation token is signalled.
-        /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        public void RunAndBlock(CancellationToken cancellationToken)
+        /// <summary>Stops the host.</summary>
+        /// <returns>A <see cref="Task"/> that will stop the host.</returns>
+        public Task StopAsync()
         {
-            JobHostContext hostContext = EnsureHostStarted();
+            ThrowIfDisposed();
 
-            Console.WriteLine("Job host started");
-
-            using (IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: false,
-                cancellationToken: cancellationToken))
+            if (_runner == null)
             {
-                CancellationToken runnerCancellationToken = runner.CancellationToken;
-
-                if (!runnerCancellationToken.CanBeCanceled)
-                {
-                    Thread.Sleep(Timeout.Infinite);
-                }
-                else
-                {
-                    runnerCancellationToken.WaitHandle.WaitOne();
-                }
-
-                runner.Stop();
+                return Task.FromResult(0);
             }
+
+            return StopAsyncCore();
+        }
+
+        private Task StopAsyncCore()
+        {
+            _runner.Stop();
 
             Console.WriteLine("Job host stopped");
+            _runner = null;
+            return Task.FromResult(0);
         }
 
-        /// <summary>Invokes a job function.</summary>
-        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>
+        public void RunAndBlock()
+        {
+            Start();
+
+            // Wait for someone to begin shut down (either Stop or _shutdownWatcher).
+            _runner.CancellationToken.WaitHandle.WaitOne();
+
+            // Don't return until all executing functions have completed.
+            Stop();
+        }
+
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
         public void Call(MethodInfo method)
         {
-            Call(method, arguments: (IDictionary<string, object>)null);
+            CallAsync(method).Wait();
         }
 
-        /// <summary>Invokes a job function.</summary>
-        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
         /// <param name="arguments">
         /// An object with public properties representing argument names and values to bind to parameters in the job
         /// method.
         /// </param>
         public void Call(MethodInfo method, object arguments)
         {
-            Call(method, arguments, CancellationToken.None);
+            CallAsync(method, arguments).Wait();
         }
 
-        /// <summary>Invokes a job function.</summary>
-        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
         /// <param name="arguments">The argument names and values to bind to parameters in the job method.</param>
         public void Call(MethodInfo method, IDictionary<string, object> arguments)
         {
-            Call(method, arguments, CancellationToken.None);
+            CallAsync(method, arguments).Wait();
         }
 
-        /// <summary>Invokes a job function.</summary>
-        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will call the job method.</returns>
+        public Task CallAsync(MethodInfo method, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            IDictionary<string, object> argumentsDictionary = null;
+            return CallAsync(method, argumentsDictionary, cancellationToken);
+        }
+
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
         /// <param name="arguments">
-        /// An object with public properties representing argument names and values to bind to the parameter tokens in
-        /// the job method's arguments.
+        /// An object with public properties representing argument names and values to bind to parameters in the job
+        /// method.
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        public void Call(MethodInfo method, object arguments, CancellationToken cancellationToken)
+        /// <returns>A <see cref="Task"/> that will call the job method.</returns>
+        public Task CallAsync(MethodInfo method, object arguments,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
+            ThrowIfDisposed();
+
             IDictionary<string, object> argumentsDictionary = ObjectDictionaryConverter.AsDictionary(arguments);
-            Call(method, argumentsDictionary, cancellationToken);
+            return CallAsync(method, argumentsDictionary, cancellationToken);
         }
 
-        /// <summary>Invokes a job function.</summary>
-        /// <param name="method">A MethodInfo representing the job method to execute.</param>
+        /// <summary>Calls a job method.</summary>
+        /// <param name="method">The job method to call.</param>
         /// <param name="arguments">The argument names and values to bind to parameters in the job method.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        public void Call(MethodInfo method, IDictionary<string, object> arguments, CancellationToken cancellationToken)
+        /// <returns>A <see cref="Task"/> that will call the job method.</returns>
+        public Task CallAsync(MethodInfo method, IDictionary<string, object> arguments,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             if (method == null)
             {
                 throw new ArgumentNullException("method");
             }
 
+            ThrowIfDisposed();
+
+            return CallAsyncCore(method, arguments, cancellationToken);
+        }
+
+        private Task CallAsyncCore(MethodInfo method, IDictionary<string, object> arguments,
+            CancellationToken cancellationToken)
+        {
             JobHostContext hostContext = EnsureHostStarted();
             IFunctionDefinition function = ResolveFunctionDefinition(method, hostContext.FunctionLookup);
             IFunctionInstance instance = CreateFunctionInstance(function, arguments);
@@ -224,6 +236,23 @@ namespace Microsoft.Azure.Jobs
             if (exception != null)
             {
                 exception.Throw();
+            }
+
+            return Task.FromResult(0);
+        }
+
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                if (_runner != null)
+                {
+                    _runner.Dispose();
+                    _runner = null;
+                }
+
+                _disposed = true;
             }
         }
 
@@ -266,6 +295,14 @@ namespace Microsoft.Azure.Jobs
         {
             return LazyInitializer.EnsureInitialized<JobHostContext>(ref _context, ref _contextInitialized,
                 ref _contextLock, CreateContextAndLogHostStarted);
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(null);
+            }
         }
     }
 }

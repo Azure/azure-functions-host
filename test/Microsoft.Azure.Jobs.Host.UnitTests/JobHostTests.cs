@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
 
         [Fact]
-        public void CallWithCancellationToken_PassesCancellationTokenToMethod()
+        public void CallAsyncWithCancellationToken_PassesCancellationTokenToMethod()
         {
             // Arrange
             ProgramWithCancellationToken.Cleanup();
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 ProgramWithCancellationToken.CancellationTokenSource = source;
 
                 // Act
-                host.Call("BindCancellationToken", null, source.Token);
+                host.CallAsync("BindCancellationToken", null, source.Token).Wait();
 
                 // Assert
                 Assert.True(ProgramWithCancellationToken.IsCancellationRequested);
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         }
 
         [Fact]
-        public void CallWithCancellationToken_PassesCancellationTokenToMethodViaIBinder()
+        public void CallAsyncWithCancellationToken_PassesCancellationTokenToMethodViaIBinder()
         {
             // Arrange
             ProgramWithCancellationToken.Cleanup();
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 ProgramWithCancellationToken.CancellationTokenSource = source;
 
                 // Act
-                host.Call("BindCancellationTokenViaIBinder", null, source.Token);
+                host.CallAsync("BindCancellationTokenViaIBinder", null, source.Token).Wait();
 
                 // Assert
                 Assert.True(ProgramWithCancellationToken.IsCancellationRequested);

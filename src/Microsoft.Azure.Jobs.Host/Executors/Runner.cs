@@ -10,23 +10,23 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal sealed class Runner : IRunner
     {
-        private readonly IDisposable _disposable;
         private readonly IntervalSeparationTimer _timer;
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly WebJobsShutdownWatcher _watcher;
         private readonly IFunctionExecutor _executor;
         private readonly IListener _listener;
-        private readonly CancellationToken _cancellationToken;
 
         private bool _disposed;
         private bool _stopped;
 
-        public Runner(IDisposable disposable, IntervalSeparationTimer timer, IFunctionExecutor executor,
-            IListener listener, CancellationToken cancellationToken)
+        public Runner(IntervalSeparationTimer timer, CancellationTokenSource cancellationTokenSource,
+            WebJobsShutdownWatcher watcher, IFunctionExecutor executor, IListener listener)
         {
-            _disposable = disposable;
             _timer = timer;
+            _cancellationTokenSource = cancellationTokenSource;
+            _watcher = watcher;
             _executor = executor;
             _listener = listener;
-            _cancellationToken = cancellationToken;
         }
 
         public CancellationToken CancellationToken
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             get
             {
                 ThrowIfDisposed();
-                return _cancellationToken;
+                return _cancellationTokenSource.Token;
             }
         }
 
@@ -65,8 +65,20 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         {
             if (!_disposed)
             {
-                // _disposable is responsible for handling _timer and _listener.
-                _disposable.Dispose();
+                // Running callers might still be using the cancellation token.
+                // Mark it canceled but don't dispose of the source while the callers are running.
+                // Otherwise, callers would receive ObjectDisposedException when calling token.Register.
+                // For now, rely on finalization to clean up _cancellationTokenSource's wait handle (if allocated).
+                _cancellationTokenSource.Cancel();
+
+                if (_watcher != null)
+                {
+                    _watcher.Dispose();
+                }
+
+                _timer.Dispose();
+                _listener.Dispose();
+
                 _disposed = true;
             }
         }

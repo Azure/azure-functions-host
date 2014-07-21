@@ -128,21 +128,17 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
             JobHost host = new JobHost(config);
 
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
-
             _topicSubscriptionCalled1 = new ManualResetEvent(initialState: false);
             _topicSubscriptionCalled2 = new ManualResetEvent(initialState: false);
 
-            Thread hostThread = new Thread(() => host.RunAndBlock(tokenSource.Token));
-            hostThread.Start();
+            host.Start();
 
             bool signaled = WaitHandle.WaitAll(
                 new WaitHandle[] { _topicSubscriptionCalled1, _topicSubscriptionCalled2 },
                 2 * 60 * 1000);
 
             // Wait for the host to terminate
-            tokenSource.Cancel();
-            hostThread.Join();
+            host.Stop();
 
             Assert.True(signaled);
 

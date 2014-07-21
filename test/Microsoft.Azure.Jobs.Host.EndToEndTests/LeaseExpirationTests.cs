@@ -74,9 +74,10 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 queue.AddMessage(new CloudQueueMessage("Test"));
 
                 _tokenSource = new CancellationTokenSource();
-
                 JobHost host = new JobHost(hostConfig);
-                host.RunAndBlock(_tokenSource.Token);
+
+                _tokenSource.Token.Register(host.Stop);
+                host.RunAndBlock();
 
                 Assert.False(_messageFoundAgain);
             }

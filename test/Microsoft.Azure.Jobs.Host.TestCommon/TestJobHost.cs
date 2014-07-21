@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.TestCommon
@@ -49,10 +49,10 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
             Host.Call(methodInfo, arguments);
         }
 
-        public void Call(string methodName, object arguments, CancellationToken cancellationToken)
+        public Task CallAsync(string methodName, object arguments, CancellationToken cancellationToken)
         {
             var methodInfo = typeof(T).GetMethod(methodName);
-            Host.Call(methodInfo, arguments, cancellationToken);
+            return Host.CallAsync(methodInfo, arguments, cancellationToken);
         }
     }  
 }

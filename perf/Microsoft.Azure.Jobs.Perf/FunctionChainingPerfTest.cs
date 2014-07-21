@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Perf
         private const string FirstQueueName = PerfQueuePrefix + "start";
         private const string LastQueueName = PerfQueuePrefix + "final";
 
-        public static CancellationTokenSource _cancelToken;
+        public static CancellationTokenSource _tokenSource;
 
         /// <summary>
         /// Measures the time from the moment when the host is created t
@@ -50,8 +50,6 @@ namespace Microsoft.Azure.Jobs.Perf
                 CloudQueue firstQueue = queueClient.GetQueueReference(_nameResolver.ResolveInString(FunctionChainingPerfTest.FirstQueueName));
                 firstQueue.AddMessage(new CloudQueueMessage("Test"));
 
-                _cancelToken = new CancellationTokenSource();
-
                 _startBlock = MeasurementBlock.BeginNew(0, HostStartMetric);
 
                 JobHostConfiguration hostConfig = new JobHostConfiguration(connectionString);
@@ -59,7 +57,9 @@ namespace Microsoft.Azure.Jobs.Perf
                 hostConfig.TypeLocator = new SimpleTypeLocator(typeof(FunctionChainingPerfTest));
 
                 JobHost host = new JobHost(hostConfig);
-                host.RunAndBlock(_cancelToken.Token);
+                _tokenSource = new CancellationTokenSource();
+                _tokenSource.Token.Register(host.Stop);
+                host.RunAndBlock();
             }
             finally
             {
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.Jobs.Perf
             // When we reach here, it means that all functions have completed and we can stop the timer
             _functionsExecutionBlock.Dispose();
 
-            _cancelToken.Cancel();
+            _tokenSource.Cancel();
         }
 
         private static void CreateTestQueues(CloudQueueClient queueClient)
