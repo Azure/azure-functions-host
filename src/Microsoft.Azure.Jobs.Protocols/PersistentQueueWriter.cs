@@ -3,8 +3,14 @@
 
 using System;
 using System.Globalization;
+#if PUBLICPROTOCOL
+using Microsoft.Azure.Jobs.Storage;
+#else
+using Microsoft.Azure.Jobs.Host.Storage;
+#endif
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using Microsoft.WindowsAzure.Storage;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -40,7 +46,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public void Enqueue(T message)
+        public string Enqueue(T message)
         {
             _blobContainer.CreateIfNotExists();
 
@@ -49,6 +55,35 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             message.AddMetadata(blob.Metadata);
             string messageBody = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
             blob.UploadText(messageBody);
+
+            return blobName;
+        }
+
+        /// <inheritdoc />
+        public void Delete(string messageId)
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(messageId))
+                {
+                    throw new ArgumentNullException("messageId");
+                }
+
+                CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId);
+                blob.Delete();
+            }
+            catch (StorageException exception)
+            {
+                // Return successfully if the blob has already been deleted.
+                if (exception.IsNotFoundBlobOrContainerNotFound())
+                {
+                    return;
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
     }
 }

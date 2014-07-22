@@ -4,7 +4,11 @@
 using System;
 using System.Collections.Generic;
 
+#if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
+#else
+namespace Microsoft.Azure.Jobs.Host.Protocols
+#endif
 {
     internal static class DictionaryExtensions
     {

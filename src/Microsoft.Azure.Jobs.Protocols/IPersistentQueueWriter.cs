@@ -17,6 +17,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         /// <summary>Adds a message to the queue.</summary>
         /// <param name="message">The message to enqueue.</param>
-        void Enqueue(T message);
+        /// <returns>The enqueued message identifier.</returns>
+        string Enqueue(T message);
+
+        /// <summary>Deletes a message from the queue.</summary>
+        /// <param name="messageId">The message identifier from the message to delete.</param>
+        void Delete(string messageId);
     }
 }
