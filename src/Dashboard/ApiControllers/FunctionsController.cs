@@ -316,7 +316,7 @@ namespace Dashboard.ApiControllers
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running
                 && _aborter.HasRequestedHostInstanceAbort(func.InstanceQueueName);
-            model.Parameters = CreateParameterModels(func);
+            model.Parameters = CreateParameterModels(_account, func);
 
             // fetch ancestor
             var parentGuid = func.ParentId;
@@ -340,19 +340,19 @@ namespace Dashboard.ApiControllers
             return Ok(model);
         }
 
-        private static ParamModel[] CreateParameterModels(FunctionInstanceSnapshot snapshot)
+        private static ParamModel[] CreateParameterModels(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
             List<ParamModel> models = new List<ParamModel>();
 
             IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
-            IDictionary<string, ParameterLog> parameterLogs = LogAnalysis.GetParameterLogs(snapshot);
+            IDictionary<string, ParameterLog> parameterLogs = LogAnalysis.GetParameterLogs(account, snapshot);
 
             foreach (KeyValuePair<string, FunctionInstanceArgument> parameter in parameters)
             {
                 string name = parameter.Key;
                 FunctionInstanceArgument argument = parameter.Value;
                 ParameterLog log;
-               
+
                 if (parameterLogs.ContainsKey(name))
                 {
                     log = parameterLogs[name];

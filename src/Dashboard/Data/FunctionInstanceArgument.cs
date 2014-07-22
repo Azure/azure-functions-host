@@ -10,5 +10,7 @@ namespace Dashboard.Data
         public bool IsBlob { get; set; }
 
         public bool IsBlobOutput { get; set; }
+
+        public string AccountName { get; set; }
     }
 }

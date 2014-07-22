@@ -37,8 +37,6 @@ namespace Dashboard.Data
 
         public DateTimeOffset? EndTime { get; set; }
 
-        public string StorageConnectionString { get; set; }
-
         public LocalBlobDescriptor OutputBlob { get; set; }
 
         public LocalBlobDescriptor ParameterLogBlob { get; set; }

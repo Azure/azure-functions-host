@@ -118,17 +118,11 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CloudStorageAccountParameterDescriptor.cs">
       <Link>Protocols\CloudStorageAccountParameterDescriptor.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ConnectionStringDescriptor.cs">
-      <Link>Protocols\ConnectionStringDescriptor.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ConsoleOutputParameterDescriptor.cs">
       <Link>Protocols\ConsoleOutputParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ContainerNames.cs">
       <Link>Protocols\ContainerNames.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\CredentialsDescriptor.cs">
-      <Link>Protocols\CredentialsDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ExecutionReason.cs">
       <Link>Protocols\ExecutionReason.cs</Link>
@@ -205,17 +199,11 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ReadBlobParameterLog.cs">
       <Link>Protocols\ReadBlobParameterLog.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusConnectionStringDescriptor.cs">
-      <Link>Protocols\ServiceBusConnectionStringDescriptor.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusParameterDescriptor.cs">
       <Link>Protocols\ServiceBusParameterDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\ServiceBusTriggerParameterDescriptor.cs">
       <Link>Protocols\ServiceBusTriggerParameterDescriptor.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Protocols\StorageConnectionStringDescriptor.cs">
-      <Link>Protocols\StorageConnectionStringDescriptor.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.Jobs.Protocols\TableEntityParameterDescriptor.cs">
       <Link>Protocols\TableEntityParameterDescriptor.cs</Link>

@@ -17,6 +17,7 @@ using Microsoft.Azure.Jobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using Microsoft.Azure.Jobs.Host.Executors;
 
 namespace Dashboard
 {
@@ -90,9 +91,10 @@ namespace Dashboard
                 return null;
             }
 
-            CloudBlockBlob blob = CloudStorageAccount.Parse(
-                snapshot.StorageConnectionString).CreateCloudBlobClient().GetContainerReference(
-                components[0]).GetBlockBlobReference(components[1]);
+            CloudBlockBlob blob = CloudStorageAccount.Parse(argument.GetStorageConnectionString())
+                .CreateCloudBlobClient()
+                .GetContainerReference(components[0])
+                .GetBlockBlobReference(components[1]);
 
             var blobParam = new BlobBoundParamModel();
             blobParam.IsOutput = argument.IsBlobOutput;
@@ -144,7 +146,7 @@ namespace Dashboard
         }
 
         // Get Live information from current watcher values. 
-        internal static IDictionary<string, ParameterLog> GetParameterLogs(FunctionInstanceSnapshot snapshot)
+        internal static IDictionary<string, ParameterLog> GetParameterLogs(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
             if (snapshot.ParameterLogs != null)
             {
@@ -156,7 +158,7 @@ namespace Dashboard
                 return null;
             }
 
-            CloudBlockBlob blob = snapshot.ParameterLogBlob.GetBlockBlob(snapshot.StorageConnectionString);
+            CloudBlockBlob blob = snapshot.ParameterLogBlob.GetBlockBlob(account);
 
             string contents;
 

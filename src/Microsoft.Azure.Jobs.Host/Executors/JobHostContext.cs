@@ -19,9 +19,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class JobHostContext
     {
-        private static readonly Func<string, ConnectionStringDescriptor> _serviceBusConnectionStringDescriptorFactory =
-            CreateServiceBusConnectionStringDescriptorFactory();
-
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IRunnerFactory _runnerFactory;
 
@@ -129,8 +126,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
 
                 string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
-                CredentialsDescriptor credentials =
-                    CreateCredentialsDescriptor(storageAccount, serviceBusConnectionString);
 
                 hostOutputMessage = new DataOnlyHostOutputMessage
                 {
@@ -139,7 +134,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     SharedQueueName = sharedQueueName,
                     InstanceQueueName = instanceQueueName,
                     Heartbeat = heartbeatDescriptor,
-                    Credentials = credentials,
                     WebJobRunIdentifier = WebJobRunIdentifier.Current
                 };
 
@@ -163,57 +157,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 allFunctionsListenerFactory, instanceQueueListenerFactory);
 
             return new JobHostContext(functions, runnerFactory);
-        }
-
-        private static CredentialsDescriptor CreateCredentialsDescriptor(CloudStorageAccount storageAccount,
-            string serviceBusConnectionString)
-        {
-            List<ConnectionStringDescriptor> connectionStrings = new List<ConnectionStringDescriptor>();
-
-            if (storageAccount != null)
-            {
-                connectionStrings.Add(new StorageConnectionStringDescriptor
-                {
-                    Account = storageAccount.Credentials.AccountName,
-                    ConnectionString = storageAccount.ToString(exportSecrets: true)
-                });
-            }
-
-            if (serviceBusConnectionString != null)
-            {
-                ConnectionStringDescriptor serviceBusConnectionStringDescriptor =
-                    _serviceBusConnectionStringDescriptorFactory.Invoke(serviceBusConnectionString);
-
-                if (serviceBusConnectionStringDescriptor != null)
-                {
-                    connectionStrings.Add(serviceBusConnectionStringDescriptor);
-                }
-            }
-
-            if (connectionStrings.Count == 0)
-            {
-                return null;
-            }
-
-            return new CredentialsDescriptor
-            {
-                ConnectionStrings = connectionStrings.ToArray()
-            };
-        }
-
-        private static Func<string, ConnectionStringDescriptor> CreateServiceBusConnectionStringDescriptorFactory()
-        {
-            Type factoryType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.Jobs.ServiceBus.Listeners.ServiceBusConnectionStringDescriptorFactory");
-
-            if (factoryType == null)
-            {
-                return (_) => null;
-            }
-
-            MethodInfo method = factoryType.GetMethod("Create", new Type[] { typeof(string) });
-            return (Func<string, ConnectionStringDescriptor>)Delegate.CreateDelegate(
-                typeof(Func<string, ConnectionStringDescriptor>), method);
         }
 
         private static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
@@ -250,7 +193,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 SharedQueueName = hostOutputMessage.SharedQueueName,
                 InstanceQueueName = hostOutputMessage.InstanceQueueName,
                 Heartbeat = hostOutputMessage.Heartbeat,
-                Credentials = hostOutputMessage.Credentials,
                 WebJobRunIdentifier = hostOutputMessage.WebJobRunIdentifier,
                 Functions = functions
             };

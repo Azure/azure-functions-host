@@ -38,9 +38,6 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Gets or sets the heartbeat for the host instance, if any.</summary>
         public HeartbeatDescriptor Heartbeat { get; set; }
 
-        /// <summary>Gets or sets the credentials used by the host instance.</summary>
-        public CredentialsDescriptor Credentials { get; set; }
-
         /// <summary>Gets or sets the ID of the web job under which the function is running, if any.</summary>
         public WebJobRunIdentifier WebJobRunIdentifier { get; set; }
     }

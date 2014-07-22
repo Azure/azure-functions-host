@@ -9,11 +9,13 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Microsoft.Azure.Jobs.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Dashboard.Indexers
 {
     internal class FunctionIndexer : IFunctionIndexer
     {
+        private readonly CloudStorageAccount _cloudStorageAccount;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionStatisticsWriter _statisticsWriter;
@@ -22,7 +24,9 @@ namespace Dashboard.Indexers
         private readonly IRecentInvocationIndexByJobRunWriter _recentInvocationsByJobRunWriter;
         private readonly IRecentInvocationIndexByParentWriter _recentInvocationsByParentWriter;
 
-        public FunctionIndexer(IFunctionInstanceLogger functionInstanceLogger,
+        public FunctionIndexer(
+            CloudStorageAccount cloudStorageAccount,
+            IFunctionInstanceLogger functionInstanceLogger,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionStatisticsWriter statisticsWriter,
             IRecentInvocationIndexWriter recentInvocationsWriter,
@@ -30,6 +34,7 @@ namespace Dashboard.Indexers
             IRecentInvocationIndexByJobRunWriter recentInvocationsByJobRunWriter,
             IRecentInvocationIndexByParentWriter recentInvocationsByParentWriter)
         {
+            _cloudStorageAccount = cloudStorageAccount;
             _functionInstanceLogger = functionInstanceLogger;
             _functionInstanceLookup = functionInstanceLookup;
             _statisticsWriter = statisticsWriter;
@@ -132,7 +137,7 @@ namespace Dashboard.Indexers
 
             // The completed message includes the full parameter logs; delete the extra blob used for running status
             // updates.
-            DeleteParameterLogBlob(message.Credentials, snapshot.ParameterLogBlob);
+            DeleteParameterLogBlob(snapshot.ParameterLogBlob);
             snapshot.ParameterLogBlob = null;
 
             _functionInstanceLogger.LogFunctionCompleted(snapshot);
@@ -167,9 +172,6 @@ namespace Dashboard.Indexers
 
         private static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
         {
-            string storageConnectionString = message.Credentials != null ?
-                message.Credentials.GetStorageConnectionString() : null;
-
             return new FunctionInstanceSnapshot
             {
                 Id = message.FunctionInstanceId,
@@ -184,7 +186,6 @@ namespace Dashboard.Indexers
                 Reason = message.FormatReason(),
                 QueueTime = message.StartTime,
                 StartTime = message.StartTime,
-                StorageConnectionString = storageConnectionString,
                 OutputBlob = message.OutputBlob,
                 ParameterLogBlob = message.ParameterLogBlob,
                 WebSiteName = message.WebJobRunIdentifier != null ? message.WebJobRunIdentifier.WebSiteName : null,
@@ -214,11 +215,28 @@ namespace Dashboard.Indexers
             ParameterDescriptor descriptor)
         {
             BlobParameterDescriptor blobDescriptor = descriptor as BlobParameterDescriptor;
+            BlobTriggerParameterDescriptor blobTriggerDescriptor = null;
+
+            string accountName = null;
+            if (blobDescriptor != null)
+            {
+                accountName = blobDescriptor.AccountName;
+            }
+            else
+            {
+                blobTriggerDescriptor = descriptor as BlobTriggerParameterDescriptor;
+                if (blobTriggerDescriptor != null)
+                {
+                    accountName = blobTriggerDescriptor.AccountName;
+                }
+            }
+
             return new FunctionInstanceArgument
             {
                 Value = value,
-                IsBlob = blobDescriptor != null || descriptor is BlobTriggerParameterDescriptor,
-                IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write
+                IsBlob = blobDescriptor != null || blobTriggerDescriptor != null,
+                IsBlobOutput = blobDescriptor != null && blobDescriptor.Access == FileAccess.Write,
+                AccountName = accountName
             };
         }
 
@@ -238,21 +256,14 @@ namespace Dashboard.Indexers
             return entity;
         }
 
-        private void DeleteParameterLogBlob(CredentialsDescriptor credentials, LocalBlobDescriptor blobDescriptor)
+        private void DeleteParameterLogBlob(LocalBlobDescriptor blobDescriptor)
         {
-            if (credentials == null || blobDescriptor == null)
+            if (blobDescriptor == null)
             {
                 return;
             }
 
-            string connectionString = credentials.GetStorageConnectionString();
-
-            if (connectionString == null)
-            {
-                return;
-            }
-
-            CloudBlockBlob blob = blobDescriptor.GetBlockBlob(connectionString);
+            CloudBlockBlob blob = blobDescriptor.GetBlockBlob(_cloudStorageAccount);
             blob.DeleteIfExists();
         }
     }

@@ -57,9 +57,7 @@
     <Compile Include="TableParameterLog.cs" />
     <Compile Include="BinderParameterLogItem.cs" />
     <Compile Include="BlobTriggerParameterDescriptor.cs" />
-    <Compile Include="ConnectionStringDescriptor.cs" />
     <Compile Include="ConsoleOutputParameterDescriptor.cs" />
-    <Compile Include="CredentialsDescriptor.cs" />
     <Compile Include="DictionaryExtensions.cs" />
     <Compile Include="FunctionFailure.cs" />
     <Compile Include="FunctionStartedMessageExtensions.cs" />
@@ -102,10 +100,8 @@
     </Compile>
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />
-    <Compile Include="ServiceBusConnectionStringDescriptor.cs" />
     <Compile Include="ServiceBusTriggerParameterDescriptor.cs" />
     <Compile Include="ServiceBusParameterDescriptor.cs" />
-    <Compile Include="StorageConnectionStringDescriptor.cs" />
     <Compile Include="TableEntityParameterDescriptor.cs" />
     <Compile Include="TableParameterDescriptor.cs" />
     <Compile Include="AbortHostInstanceMessage.cs" />

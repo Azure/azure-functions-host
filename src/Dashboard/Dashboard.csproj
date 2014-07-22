@@ -293,7 +293,7 @@
     <Compile Include="Data\ConcurrentMetadataDocument.cs" />
     <Compile Include="Data\BlobConcurrentTextStore.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
-    <Compile Include="HostMessaging\CredentialsDescriptorExtensions.cs" />
+    <Compile Include="HostMessaging\FunctionInstanceArgumentExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />
     <Compile Include="HostMessaging\IInvoker.cs" />
     <Compile Include="HostMessaging\Invoker.cs" />
