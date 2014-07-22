@@ -97,6 +97,9 @@
     <Compile Include="ParameterDescriptor.cs" />
     <Compile Include="PersistentQueueWriter.cs" />
     <Compile Include="PersistentQueueMessage.cs" />
+    <Compile Include="..\Microsoft.Azure.Jobs.Storage\StorageExceptionExtensions.cs">
+      <Link>Storage\StorageExceptionExtensions.cs</Link>
+    </Compile>
     <Compile Include="PolymorphicJsonConverter.cs" />
     <Compile Include="QueueParameterDescriptor.cs" />
     <Compile Include="ServiceBusConnectionStringDescriptor.cs" />

@@ -35,9 +35,10 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             ExceptionDispatchInfo exceptionInfo = null;
 
+            string startedMessageId = null;
             try
             {
-                ExecuteWithLogMessage(instance, startedMessage, parameterLogCollector);
+                startedMessageId = ExecuteWithLogMessage(instance, startedMessage, parameterLogCollector);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception e)
@@ -60,14 +61,17 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 completedMessage.ParameterLogs = parameterLogCollector;
                 completedMessage.EndTime = DateTimeOffset.UtcNow;
                 _context.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
+                _context.FunctionInstanceLogger.DeleteLogFunctionStarted(startedMessageId);
             }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
-        private void ExecuteWithLogMessage(IFunctionInstance instance, FunctionStartedMessage message,
+        private string ExecuteWithLogMessage(IFunctionInstance instance, FunctionStartedMessage message,
             IDictionary<string, ParameterLog> parameterLogCollector)
         {
+            string startedMessageId;
+
             // Create the console output writer
             IFunctionOutputDefinition outputDefinition = _context.FunctionOutputLogger.Create(instance);
 
@@ -83,7 +87,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 using (ValueProviderDisposable.Create(parameters))
                 {
-                    LogFunctionStarted(message, outputDefinition, parameters);
+                    startedMessageId = LogFunctionStarted(message, outputDefinition, parameters);
 
                     try
                     {
@@ -105,10 +109,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 }
 
                 outputLog.SaveAndClose();
+
+                return startedMessageId;
             }
         }
 
-        private void LogFunctionStarted(FunctionStartedMessage message, IFunctionOutputDefinition functionOutput,
+        private string LogFunctionStarted(FunctionStartedMessage message, IFunctionOutputDefinition functionOutput,
             IReadOnlyDictionary<string, IValueProvider> parameters)
         {
             // Finish populating the function started snapshot.
@@ -117,7 +123,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
-            _context.FunctionInstanceLogger.LogFunctionStarted(message);
+            return _context.FunctionInstanceLogger.LogFunctionStarted(message);
         }
 
         private static IntervalSeparationTimer StartOutputTimer(ICanFailCommand updateCommand)

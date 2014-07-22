@@ -3,36 +3,52 @@
 
 using System;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal class PersistentQueueLogger : IHostInstanceLogger, IFunctionInstanceLogger
     {
-        private readonly IPersistentQueueWriter<PersistentQueueMessage> _queue;
+        private readonly IPersistentQueueWriter<PersistentQueueMessage> _queueWriter;
 
-        public PersistentQueueLogger(IPersistentQueueWriter<PersistentQueueMessage> queue)
+        public PersistentQueueLogger(IPersistentQueueWriter<PersistentQueueMessage> queueWriter)
         {
-            if (queue == null)
+            if (queueWriter == null)
             {
-                throw new ArgumentNullException("queue");
+                throw new ArgumentNullException("queueWriter");
             }
 
-            _queue = queue;
+            _queueWriter = queueWriter;
         }
 
         public void LogHostStarted(HostStartedMessage message)
         {
-            _queue.Enqueue(message);
+            _queueWriter.Enqueue(message);
         }
 
-        public void LogFunctionStarted(FunctionStartedMessage message)
+        public string LogFunctionStarted(FunctionStartedMessage message)
         {
-            _queue.Enqueue(message);
+            return _queueWriter.Enqueue(message);
         }
 
         public void LogFunctionCompleted(FunctionCompletedMessage message)
         {
-            _queue.Enqueue(message);
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+
+            _queueWriter.Enqueue(message);
+        }
+
+        public void DeleteLogFunctionStarted(string startedMessageId)
+        {
+            if (String.IsNullOrEmpty(startedMessageId))
+            {
+                throw new ArgumentNullException("startedMessageId");
+            }
+
+            _queueWriter.Delete(startedMessageId);
         }
     }
 }
