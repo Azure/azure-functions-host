@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -22,9 +24,10 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _outputLogDirectory = outputLogDirectory;
         }
 
-        public IFunctionOutputDefinition Create(IFunctionInstance instance)
+        public async Task<IFunctionOutputDefinition> CreateAsync(IFunctionInstance instance,
+            CancellationToken cancellationToken)
         {
-            _outputLogDirectory.Container.CreateIfNotExists();
+            await _outputLogDirectory.Container.CreateIfNotExistsAsync(cancellationToken);
 
             string namePrefix = instance.Id.ToString("N");
 

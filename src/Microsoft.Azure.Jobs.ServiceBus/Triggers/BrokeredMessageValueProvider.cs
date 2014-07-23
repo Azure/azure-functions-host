@@ -4,6 +4,8 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
@@ -15,7 +17,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         private readonly Type _valueType;
         private readonly string _invokeString;
 
-        public BrokeredMessageValueProvider(BrokeredMessage clone, object value, Type valueType)
+        private BrokeredMessageValueProvider(object value, Type valueType, string invokeString)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
@@ -24,7 +26,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             _value = value;
             _valueType = valueType;
-            _invokeString = CreateInvokeString(clone);
+            _invokeString = invokeString;
         }
 
         public Type Type
@@ -42,7 +44,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return _invokeString;
         }
 
-        private static string CreateInvokeString(BrokeredMessage clonedMessage)
+        public static async Task<BrokeredMessageValueProvider> CreateAsync(BrokeredMessage clone, object value,
+            Type valueType, CancellationToken cancellationToken)
+        {
+            string invokeString = await CreateInvokeStringAsync(clone, cancellationToken);
+            return new BrokeredMessageValueProvider(value, valueType, invokeString);
+        }
+
+        private static async Task<string> CreateInvokeStringAsync(BrokeredMessage clonedMessage,
+            CancellationToken cancellationToken)
         {
             using (MemoryStream outputStream = new MemoryStream())
             {
@@ -53,7 +63,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                         return null;
                     }
 
-                    inputStream.CopyTo(outputStream);
+                    const int defaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
                     byte[] bytes = outputStream.ToArray();
 
                     try

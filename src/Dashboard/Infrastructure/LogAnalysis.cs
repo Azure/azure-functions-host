@@ -18,6 +18,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Microsoft.Azure.Jobs.Host.Executors;
+using System.Threading;
 
 namespace Dashboard
 {
@@ -129,7 +130,7 @@ namespace Dashboard
 
             try
             {
-                return BlobCausalityManager.GetWriter(blob) ?? Guid.Empty;
+                return BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None).Result ?? Guid.Empty;
             }
             catch (StorageException e)
             {

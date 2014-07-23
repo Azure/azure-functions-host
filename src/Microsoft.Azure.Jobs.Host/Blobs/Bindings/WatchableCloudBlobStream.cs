@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -66,11 +68,17 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
         public override void Commit()
         {
+            CommitAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public async Task CommitAsync(CancellationToken cancellationToken)
+        {
+            // async TODO: Use BeginCommit/EndCommit.
             base.Commit();
 
             if (_committedAction != null)
             {
-                _committedAction.Execute();
+                await _committedAction.ExecuteAsync(cancellationToken);
             }
 
             _committed = true;
@@ -96,8 +104,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
         }
 
         /// <summary>Commits the stream as appropriate (when written to or explicitly closed).</summary>
-        /// <returns><see langword="true"/> when the stream was committed; otherwise, <see langword="false"/></returns>
-        public bool Complete()
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>
+        /// A <see cref="Task"/> that commits the stream as appropriate. The result of the task is
+        /// <see langword="true"/> when the stream was committed; otherwise, <see langword="false"/>
+        /// </returns>
+        public async Task<bool> CompleteAsync(CancellationToken cancellationToken)
         {
             if (!_completed)
             {
@@ -105,7 +117,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
                 if (!_wasExplicitlyClosed && _countWritten > 0 && !_committed)
                 {
-                    Commit();
+                    await CommitAsync(cancellationToken);
                 }
 
                 _completed = true;

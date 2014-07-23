@@ -11,32 +11,38 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 {
     internal class FunctionIndexerContext
     {
-        private readonly FunctionIndexContext _indexContext;
+        private readonly INameResolver _nameResolver;
+        private readonly CloudStorageAccount _storageAccount;
+        private readonly string _serviceBusConnectionString;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
 
-        private FunctionIndexerContext(FunctionIndexContext indexContext,
+        private FunctionIndexerContext(INameResolver nameResolver,
+            CloudStorageAccount storageAccount,
+            string serviceBusConnectionString,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider)
         {
-            _indexContext = indexContext;
+            _nameResolver = nameResolver;
+            _storageAccount = storageAccount;
+            _serviceBusConnectionString = serviceBusConnectionString;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
         }
 
         public INameResolver NameResolver
         {
-            get { return _indexContext.NameResolver; }
+            get { return _nameResolver; }
         }
 
         public CloudStorageAccount StorageAccount
         {
-            get { return _indexContext.StorageAccount; }
+            get { return _storageAccount; }
         }
 
         public string ServiceBusConnectionString
         {
-            get { return _indexContext.ServiceBusConnectionString; }
+            get { return _serviceBusConnectionString; }
         }
 
         public ITriggerBindingProvider TriggerBindingProvider
@@ -51,15 +57,30 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 
         public string Resolve(string input)
         {
-            return _indexContext.Resolve(input);
+            if (_nameResolver == null)
+            {
+                return input;
+            }
+
+            return _nameResolver.ResolveWholeString(input);
         }
 
         public static FunctionIndexerContext CreateDefault(FunctionIndexContext indexContext,
             IEnumerable<Type> cloudBlobStreamBinderTypes)
         {
+            return CreateDefault(indexContext.NameResolver, indexContext.StorageAccount,
+                indexContext.ServiceBusConnectionString, cloudBlobStreamBinderTypes);
+        }
+
+        public static FunctionIndexerContext CreateDefault(INameResolver nameResolver,
+            CloudStorageAccount storageAccount,
+            string serviceBusConnectionString,
+            IEnumerable<Type> cloudBlobStreamBinderTypes)
+        {
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(cloudBlobStreamBinderTypes);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(cloudBlobStreamBinderTypes);
-            return new FunctionIndexerContext(indexContext, triggerBindingProvider, bindingProvider);
+            return new FunctionIndexerContext(nameResolver, storageAccount, serviceBusConnectionString,
+                triggerBindingProvider, bindingProvider);
         }
     }
 }

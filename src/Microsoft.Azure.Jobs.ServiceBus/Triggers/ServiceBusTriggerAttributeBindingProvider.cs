@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -14,19 +15,19 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
     {
         private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
             new CompositeArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
+                new ConverterArgumentBindingProvider<BrokeredMessage>(new AsyncIdentityConverter<BrokeredMessage>()),
                 new ConverterArgumentBindingProvider<string>(new BrokeredMessageToStringConverter()),
                 new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
-        public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
+        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             ServiceBusTriggerAttribute serviceBusTrigger = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>(inherit: false);
 
             if (serviceBusTrigger == null)
             {
-                return null;
+                return Task.FromResult<ITriggerBinding>(null);
             }
 
             string queueName = null;
@@ -52,15 +53,19 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
                 context.ServiceBusConnectionString);
+            ITriggerBinding binding;
 
             if (queueName != null)
             {
-                return new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, queueName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, queueName);
             }
             else
             {
-                return new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName,
+                    subscriptionName);
             }
+
+            return Task.FromResult(binding);
         }
     }
 }

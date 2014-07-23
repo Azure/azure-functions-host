@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -10,13 +11,11 @@ namespace Microsoft.Azure.Jobs
     /// <remarks>This interface enables imperative binding with attribute information specified at runtime.</remarks>
     public interface IBinder
     {
-        /// <summary>Gets the token to monitor for cancellation requests.</summary>
-        CancellationToken CancellationToken { get; }
-
         /// <summary>Binds the specified attribute.</summary>
         /// <typeparam name="T">The type to which to bind.</typeparam>
         /// <param name="attribute">The attribute to bind.</param>
-        /// <returns>The bound value.</returns>
-        T Bind<T>(Attribute attribute);
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will provide the bound the value.</returns>
+        Task<T> BindAsync<T>(Attribute attribute, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

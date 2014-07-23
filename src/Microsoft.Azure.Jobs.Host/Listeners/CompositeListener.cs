@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Listeners
 {
@@ -17,23 +19,23 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _listeners = listeners;
         }
 
-        public void Start()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
             foreach (IListener listener in _listeners)
             {
-                listener.Start();
+                await listener.StartAsync(cancellationToken);
             }
         }
 
-        public void Stop()
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
             foreach (IListener listener in _listeners)
             {
-                listener.Stop();
+                await listener.StopAsync(cancellationToken);
             }
         }
 

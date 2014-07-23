@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -30,14 +32,14 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             get { return _bindingProvider; }
         }
 
-        public static FunctionIndex Create(FunctionIndexContext context)
+        public static Task<FunctionIndex> CreateAsync(FunctionIndexContext context)
         {
             IEnumerable<Type> types = context.TypeLocator.GetTypes();
             IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(types);
-            return Create(context, types, cloudBlobStreamBinderTypes);
+            return CreateAsync(context, types, cloudBlobStreamBinderTypes);
         }
 
-        internal static FunctionIndex Create(FunctionIndexContext context, IEnumerable<Type> types,
+        internal static async Task<FunctionIndex> CreateAsync(FunctionIndexContext context, IEnumerable<Type> types,
             IEnumerable<Type> cloudBlobStreamBinderTypes)
         {
             FunctionIndexerContext indexerContext = FunctionIndexerContext.CreateDefault(context,
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
 
             foreach (Type type in types)
             {
-                indexer.IndexType(type, index);
+                await indexer.IndexTypeAsync(type, index, context.CancellationToken);
             }
 
             return index;

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 
@@ -18,9 +19,9 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             _value = value;
         }
 
-        public IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context)
+        public Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context)
         {
-            return _functionBinding.Bind(context, _value);
+            return _functionBinding.BindAsync(context, _value);
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
@@ -18,7 +19,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
     {
         private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
 
-        private readonly CancellationToken _cancellationToken;
         private readonly IDictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>> _registrations;
         private readonly IDictionary<CloudBlobClient, BlobLogListener> _logListeners;
         private readonly Thread _initialScanThread;
@@ -27,9 +27,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         // Start the first iteration immediately.
         private TimeSpan _separationInterval = TimeSpan.Zero;
 
-        public PollLogsStrategy(CancellationToken cancellationToken)
+        public PollLogsStrategy()
         {
-            _cancellationToken = cancellationToken;
             _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>>(
                 new CloudContainerComparer());
             _logListeners = new Dictionary<CloudBlobClient, BlobLogListener>(new CloudBlobClientComparer());
@@ -79,7 +78,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _blobsFoundFromScanOrNotification.Enqueue(blobWritten);
         }
 
-        public void Execute()
+        public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             // Run subsequent iterations at 2 second intervals.
             _separationInterval = _twoSeconds;
@@ -87,18 +86,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             // Start a background scan of the container on first execution. Later writes will be found via polling logs.
             if (_initialScanThread.ThreadState == ThreadState.Unstarted)
             {
-                // Thread monitors _cancellationToken (that's the only way this thread is controlled).
+                // Thread monitors _hostCancellationToken (that's the only way this thread is controlled).
                 _initialScanThread.Start();
             }
 
             // Drain the background queue (for initial container scans and blob written notifications).
             while (true)
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
+                cancellationToken.ThrowIfCancellationRequested();
                 ICloudBlob blob;
 
                 if (!_blobsFoundFromScanOrNotification.TryDequeue(out blob))
@@ -106,30 +101,23 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                     break;
                 }
 
-                NotifyRegistrations(blob);
+                await NotifyRegistrationsAsync(blob, cancellationToken);
             }
 
             // Poll the logs (to detect ongoing writes).
             foreach (BlobLogListener logListener in _logListeners.Values)
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
+                cancellationToken.ThrowIfCancellationRequested();
 
-                foreach (ICloudBlob blob in logListener.GetRecentBlobWrites())
+                foreach (ICloudBlob blob in await logListener.GetRecentBlobWritesAsync(cancellationToken))
                 {
-                    if (_cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    NotifyRegistrations(blob);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await NotifyRegistrationsAsync(blob, cancellationToken);
                 }
             }
         }
 
-        private void NotifyRegistrations(ICloudBlob blob)
+        private async Task NotifyRegistrationsAsync(ICloudBlob blob, CancellationToken cancellationToken)
         {
             CloudBlobContainer container = blob.Container;
 
@@ -142,12 +130,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
 
             foreach (ITriggerExecutor<ICloudBlob> registration in _registrations[container])
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                registration.Execute(blob);
+                cancellationToken.ThrowIfCancellationRequested();
+                await registration.ExecuteAsync(blob, cancellationToken);
             }
         }
 
@@ -155,15 +139,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         {
             foreach (CloudBlobContainer container in _registrations.Keys)
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    return;
-                }
-
+                // async TODO: Provide early termination graceful shutdown mechanism.
                 List<IListBlobItem> items;
 
                 try
                 {
+                    // Non-async is correct here. ScanContainers occurs on a background thread. Unless it blocks, no one
+                    // else is around to observe the results.
                     items = container.ListBlobs(useFlatBlobListing: true).ToList();
                 }
                 catch (StorageException exception)
@@ -181,11 +163,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                 // Type cast to ICloudBlob is safe due to useFlatBlobListing: true above.
                 foreach (ICloudBlob item in items)
                 {
-                    if (_cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
+                    // async TODO: Provide early termination graceful shutdown mechanism.
                     _blobsFoundFromScanOrNotification.Enqueue(item);
                 }
             }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
@@ -29,10 +31,10 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _nameResolver = nameResolver;
         }
 
-        public JobHostContext CreateAndLogHostStarted()
+        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            return JobHostContext.CreateAndLogHostStarted(_dashboardAccount, _storageAccount,
-                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver);
+            return JobHostContext.CreateAndLogHostStartedAsync(_dashboardAccount, _storageAccount,
+                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, cancellationToken);
         }
     }
 }

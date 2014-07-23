@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs
 {
@@ -11,12 +13,15 @@ namespace Microsoft.Azure.Jobs
     {
         /// <summary>Binds the content of the blob to a custom type.</summary>
         /// <param name="input">The blob stream to read.</param>
-        /// <returns>The deserialized object.</returns>
-        T ReadFromStream(Stream input);
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will provide the deserialized object.</returns>
+        Task<T> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken);
 
         /// <summary>Binds the custom type to the contents of a blob.</summary>
         /// <param name="value">The value to serialize.</param>
         /// <param name="output">The stream to which to write the value.</param>
-        void WriteToStream(T value, Stream output);
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will write to the stream.</returns>
+        Task WriteToStreamAsync(T value, Stream output, CancellationToken cancellationToken);
     }
 }

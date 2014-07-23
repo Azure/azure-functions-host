@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Moq;
@@ -265,7 +267,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         private static ICanFailCommand CreateLambdaCommand(Func<bool> tryExecute)
         {
             Mock<ICanFailCommand> mock = new Mock<ICanFailCommand>(MockBehavior.Strict);
-            mock.Setup(m => m.TryExecute()).Returns(tryExecute);
+            mock.Setup(m => m.TryExecuteAsync(It.IsAny<CancellationToken>()))
+                .Returns(() => Task.FromResult(tryExecute.Invoke()));
             return mock.Object;
         }
 
@@ -278,7 +281,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         private static ICanFailCommand CreateStubCommand(bool result)
         {
             Mock<ICanFailCommand> mock = new Mock<ICanFailCommand>(MockBehavior.Strict);
-            mock.Setup(m => m.TryExecute()).Returns(result);
+            mock.Setup(m => m.TryExecuteAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(result));
             return mock.Object;
         }
     }

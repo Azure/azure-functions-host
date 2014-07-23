@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(BrokeredMessage value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(BrokeredMessage value, FunctionBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 string contents;
@@ -43,12 +44,14 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 {
                     if (stream == null)
                     {
-                        return new BrokeredMessageValueProvider(clone, null, _valueType);
+                        return await BrokeredMessageValueProvider.CreateAsync(clone, null, _valueType,
+                            context.CancellationToken);
                     }
 
                     using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
                     {
-                        contents = reader.ReadToEnd();
+                        context.CancellationToken.ThrowIfCancellationRequested();
+                        contents = await reader.ReadToEndAsync();
                     }
                 }
 
@@ -69,7 +72,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-                return new BrokeredMessageValueProvider(clone, convertedValue, _valueType);
+                return await BrokeredMessageValueProvider.CreateAsync(clone, convertedValue, _valueType,
+                    context.CancellationToken);
             }
         }
     }

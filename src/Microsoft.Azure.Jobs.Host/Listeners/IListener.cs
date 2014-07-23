@@ -2,13 +2,15 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal interface IListener : IDisposable
     {
-        void Start();
+        Task StartAsync(CancellationToken cancellationToken);
 
-        void Stop();
+        Task StopAsync(CancellationToken cancellationToken);
     }
 }

@@ -48,19 +48,13 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             }
         }
 
-        public void Start(bool executeFirst)
+        public void Start()
         {
             ThrowIfDisposed();
 
             if (_started)
             {
                 throw new InvalidOperationException("The timer has already been started; it cannot be restarted.");
-            }
-
-            if (executeFirst)
-            {
-                // Do an initial execution without waiting for the separation interval.
-                _command.Execute();
             }
 
             bool changed = _timer.Change(_command.SeparationInterval, infiniteTimeout);
@@ -97,7 +91,8 @@ namespace Microsoft.Azure.Jobs.Host.Timers
 
         private void RunTimer(object state)
         {
-            _command.Execute();
+            // async TODO: Keep starting tasks here; wait for them all on stop.
+            _command.ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             // Schedule another execution until stopped.
             // Don't call _timer.Change on one thread after another thread may have called _timer.Dispose.

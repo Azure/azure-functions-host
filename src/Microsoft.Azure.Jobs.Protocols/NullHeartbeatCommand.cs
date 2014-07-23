@@ -1,6 +1,9 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
+
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
 #else
@@ -15,8 +18,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 #endif
     {
         /// <inheritdoc />
-        public void Beat()
+        public Task BeatAsync(CancellationToken cancellationToken)
         {
+            return Task.FromResult(0);
         }
     }
 }

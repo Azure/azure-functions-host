@@ -1,35 +1,42 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using System;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
     internal static class CloudBlobContainerExtensions
     {
-        public static ICloudBlob GetBlobReferenceForArgumentType(this CloudBlobContainer container, string blobName, Type argumentType)
+        public static Task<ICloudBlob> GetBlobReferenceForArgumentTypeAsync(this CloudBlobContainer container,
+            string blobName, Type argumentType, CancellationToken cancellationToken)
         {
+
             if (argumentType == typeof(CloudBlockBlob))
             {
-                return container.GetBlockBlobReference(blobName);
+                ICloudBlob blob = container.GetBlockBlobReference(blobName);
+                return Task.FromResult(blob);
             }
             else if (argumentType == typeof(CloudPageBlob))
             {
-                return container.GetPageBlobReference(blobName);
+                ICloudBlob blob = container.GetPageBlobReference(blobName);
+                return Task.FromResult(blob);
             }
             else
             {
-                return GetExistingOrNewBlockBlobReference(container, blobName);
+                return GetExistingOrNewBlockBlobReferenceAsync(container, blobName, cancellationToken);
             }
         }
 
-        private static ICloudBlob GetExistingOrNewBlockBlobReference(this CloudBlobContainer container, string blobName)
+        private static async Task<ICloudBlob> GetExistingOrNewBlockBlobReferenceAsync(this CloudBlobContainer container,
+            string blobName, CancellationToken cancellationToken)
         {
             try
             {
-                return container.GetBlobReferenceFromServer(blobName);
+                return await container.GetBlobReferenceFromServerAsync(blobName, cancellationToken);
             }
             catch (StorageException exception)
             {

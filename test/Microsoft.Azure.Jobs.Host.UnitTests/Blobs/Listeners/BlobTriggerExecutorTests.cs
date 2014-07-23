@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -106,8 +108,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Listeners
             CloudBlobContainer inputContainer = client.GetContainerReference(input.ContainerName);
             ICloudBlob possibleTrigger = inputContainer.GetBlockBlobReference(input.BlobName);
 
-            return BlobTriggerExecutor.ShouldExecuteTrigger(possibleTrigger, new FixedBlobPathSource(input), outputs,
-                new LambdaTimestampReader(LookupTime));
+            return BlobTriggerExecutor.ShouldExecuteTriggerAsync(possibleTrigger, new FixedBlobPathSource(input),
+                outputs, new LambdaTimestampReader(LookupTime), CancellationToken.None).Result;
         }
 
         private static BlobPath CreateInput(string containerName, string blobName)
@@ -150,9 +152,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Listeners
                 _getLastModifiedTimestamp = getLastModifiedTimestamp;
             }
 
-            public DateTime? GetLastModifiedTimestamp(ICloudBlob blob)
+            public Task<DateTime?> GetLastModifiedTimestampAsync(ICloudBlob blob, CancellationToken cancellationToken)
             {
-                return _getLastModifiedTimestamp.Invoke(blob);
+                return Task.FromResult(_getLastModifiedTimestamp.Invoke(blob));
             }
         }
     }

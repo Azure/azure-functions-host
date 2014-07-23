@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
@@ -12,9 +14,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 
         public MessageSender MessageSender { get; set; }
 
-        public void SendAndCreateQueueIfNotExists(BrokeredMessage message, Guid functionInstanceId)
+        public Task SendAndCreateQueueIfNotExistsAsync(BrokeredMessage message, Guid functionInstanceId,
+            CancellationToken cancellationToken)
         {
-            MessageSender.SendAndCreateQueueIfNotExists(message, functionInstanceId, Account.NamespaceManager);
+            return MessageSender.SendAndCreateQueueIfNotExistsAsync(message, functionInstanceId,
+                Account.NamespaceManager, cancellationToken);
         }
     }
 }

@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -18,12 +20,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private readonly IIntervalSeparationCommand _command;
         private readonly IntervalSeparationTimer _timer;
 
-        public void Stop()
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _timer.Stop();
 
             // Flush remaining. do this after timer has been shutdown to avoid races. 
-            _command.Execute();
+            return _command.ExecuteAsync(cancellationToken);
         }
 
         // Begin watchers.
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         {
             _command = new ValueWatcherCommand(watches, blobResults, consoleOutput);
             _timer = new IntervalSeparationTimer(_command);
-            _timer.Start(executeFirst: false);
+            _timer.Start();
         }
 
         public static void AddLogs(IReadOnlyDictionary<string, IWatcher> watches,
@@ -81,13 +83,13 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 get { return _currentDelay; }
             }
 
-            public void Execute()
+            public async Task ExecuteAsync(CancellationToken cancellationToken)
             {
-                LogStatusWorker();
+                await LogStatusWorkerAsync(cancellationToken);
                 _currentDelay = _refreshRate;
             }
 
-            private void LogStatusWorker()
+            private async Task LogStatusWorkerAsync(CancellationToken cancellationToken)
             {
                 if (_blobResults == null)
                 {
@@ -107,7 +109,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     }
 
                     _lastContent = content;
-                    _blobResults.UploadText(content);
+                    await _blobResults.UploadTextAsync(content, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception e)
                 {

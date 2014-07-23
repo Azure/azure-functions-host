@@ -3,15 +3,18 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal interface IRunner : IDisposable
     {
-        CancellationToken CancellationToken { get; }
+        CancellationToken HostCancellationToken { get; }
 
         IFunctionExecutor Executor { get; }
 
-        void Stop();
+        void Cancel();
+
+        Task StopAsync(CancellationToken cancellationToken);
     }
 }

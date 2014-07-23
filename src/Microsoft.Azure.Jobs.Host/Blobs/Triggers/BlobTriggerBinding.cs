@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
         private readonly CloudBlobClient _client;
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
-        private readonly IObjectToTypeConverter<ICloudBlob> _converter;
+        private readonly IAsyncObjectToTypeConverter<ICloudBlob> _converter;
 
         public BlobTriggerBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding,
             CloudBlobClient client, IBlobPathSource path)
@@ -68,31 +68,32 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             }
         }
 
-        private static IObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
+        private static IAsyncObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
         {
-            return new CompositeObjectToTypeConverter<ICloudBlob>(
-                new OutputConverter<ICloudBlob>(new IdentityConverter<ICloudBlob>()),
+            return new CompositeAsyncObjectToTypeConverter<ICloudBlob>(
+                new OutputConverter<ICloudBlob>(new AsyncIdentityConverter<ICloudBlob>()),
                 new OutputConverter<string>(new StringToCloudBlobConverter(client)));
         }
 
-        public ITriggerData Bind(ICloudBlob value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(ICloudBlob value, FunctionBindingContext context)
         {
-            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
+            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
         {
-            ICloudBlob blob = null;
+            ConversionResult<ICloudBlob> conversionResult = await _converter.TryConvertAsync(value,
+                context.CancellationToken);
 
-            if (!_converter.TryConvert(value, out blob))
+            if (!conversionResult.Succeeded)
             {
                 throw new InvalidOperationException("Unable to convert trigger to ICloudBlob.");
             }
 
-            return Bind(blob, context);
+            return await BindAsync(conversionResult.Result, context);
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,

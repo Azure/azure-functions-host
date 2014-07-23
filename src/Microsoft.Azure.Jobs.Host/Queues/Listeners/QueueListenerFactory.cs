@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Timers;
@@ -36,13 +37,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
             ICanFailCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor);
             IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command,
                 QueuePollingIntervals.Minimum, QueuePollingIntervals.Maximum);
-            return new TimerListener(timer);
+            IListener listener = new TimerListener(timer);
+            return Task.FromResult(listener);
         }
 
         private static CloudQueue CreatePoisonQueueReference(CloudQueueClient client, string name)

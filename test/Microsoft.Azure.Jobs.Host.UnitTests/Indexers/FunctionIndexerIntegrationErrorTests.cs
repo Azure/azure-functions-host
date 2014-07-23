@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
@@ -17,14 +18,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
         [Fact]
         public void TestFails()
         {
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(
-                new FunctionIndexContext(null, null, CloudStorageAccount.DevelopmentStorageAccount, null), null);
+            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null,
+                CloudStorageAccount.DevelopmentStorageAccount, null, null);
 
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
                 IFunctionIndex stubIndex = new Mock<IFunctionIndex>().Object;
                 FunctionIndexer indexer = new FunctionIndexer(context);
-                Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethod(method, stubIndex));
+                Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethodAsync(method, stubIndex, CancellationToken.None).GetAwaiter().GetResult());
             }
         }
 

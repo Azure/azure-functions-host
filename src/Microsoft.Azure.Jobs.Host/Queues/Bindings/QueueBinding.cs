@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -56,18 +57,18 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 new OutputConverter<string>(new StringToCloudQueueConverter(client, queueName)));
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
             CloudQueue queue = _client.GetQueueReference(_queueName);
-            return Bind(queue, context.FunctionContext);
+            return BindAsync(queue, context.FunctionContext);
         }
 
-        private IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
         {
-            return _argumentBinding.Bind(value, context);
+            return _argumentBinding.BindAsync(value, context);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             CloudQueue queue = null;
 
@@ -76,7 +77,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Unable to convert value to CloudQueue.");
             }
 
-            return Bind(queue, context);
+            return BindAsync(queue, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

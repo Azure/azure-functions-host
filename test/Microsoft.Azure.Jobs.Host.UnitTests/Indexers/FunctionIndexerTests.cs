@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Moq;
@@ -25,7 +26,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            product.IndexMethod(typeof(FunctionIndexerTests).GetMethod("TryParse"), index);
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("TryParse"), index,
+                CancellationToken.None).GetAwaiter().GetResult();
 
             // Assert
             Assert.Equal(0, calls);
@@ -45,7 +47,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
 
             // Act & Assert
             FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(
-                () => product.IndexMethod(typeof(FunctionIndexerTests).GetMethod("FailIndexing"), index));
+                () => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("FailIndexing"), index,
+                    CancellationToken.None).GetAwaiter().GetResult());
             InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
             Assert.NotNull(innerException);
             Assert.Equal("Cannot bind parameter 'parsed' to type Foo&.", innerException.Message);
@@ -53,9 +56,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
 
         private static FunctionIndexer CreateProductUnderTest()
         {
-            FunctionIndexContext indexContext = new FunctionIndexContext(null, null, null, null);
-            FunctionIndexerContext indexerContext = FunctionIndexerContext.CreateDefault(indexContext, null);
-            return new FunctionIndexer(indexerContext);
+            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null, null, null, null);
+            return new FunctionIndexer(context);
         }
 
         [NoAutomaticTrigger]

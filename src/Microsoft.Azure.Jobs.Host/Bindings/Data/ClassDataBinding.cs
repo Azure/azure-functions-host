@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
@@ -30,12 +31,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             get { return false; }
         }
 
-        private IValueProvider Bind(TBindingData bindingDataItem, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TBindingData bindingDataItem, FunctionBindingContext context)
         {
-            return _argumentBinding.Bind(bindingDataItem, context);
+            return _argumentBinding.BindAsync(bindingDataItem, context);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             TBindingData typedValue;
 
@@ -44,10 +45,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 throw new InvalidOperationException("Unable to convert value to " + typeof(TBindingData).Name + ".");
             }
 
-            return Bind(typedValue, context);
+            return BindAsync(typedValue, context);
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
             IReadOnlyDictionary<string, object> bindingData = context.BindingData;
 
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             }
 
             TBindingData typedValue = (TBindingData)untypedValue;
-            return Bind(typedValue, context.FunctionContext);
+            return BindAsync(typedValue, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

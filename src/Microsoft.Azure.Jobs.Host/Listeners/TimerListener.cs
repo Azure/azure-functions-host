@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Timers;
 
 namespace Microsoft.Azure.Jobs.Host.Listeners
@@ -17,16 +19,18 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _timer = timer;
         }
 
-        public void Start()
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            _timer.Start(executeFirst: false);
+            _timer.Start();
+            return Task.FromResult(0);
         }
 
-        public void Stop()
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
             _timer.Stop();
+            return Task.FromResult(0);
         }
 
         public void Dispose()

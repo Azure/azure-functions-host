@@ -18,9 +18,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobListener(CloudStorageAccount storageAccount, CancellationToken cancellationToken)
+        public SharedBlobListener(CloudStorageAccount storageAccount)
         {
-            _strategy = CreateStrategy(storageAccount, cancellationToken);
+            _strategy = CreateStrategy(storageAccount);
             _timer = new IntervalSeparationTimer(_strategy);
         }
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         {
             if (!_started)
             {
-                _timer.Start(executeFirst: false);
+                _timer.Start();
                 _started = true;
             }
         }
@@ -71,16 +71,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             }
         }
 
-        private static IBlobNotificationStrategy CreateStrategy(CloudStorageAccount account,
-            CancellationToken cancellationToken)
+        private static IBlobNotificationStrategy CreateStrategy(CloudStorageAccount account)
         {
             if (!StorageClient.IsDevelopmentStorageAccount(account))
             {
-                return new PollLogsStrategy(cancellationToken);
+                return new PollLogsStrategy();
             }
             else
             {
-                return new ScanContainersStrategy(cancellationToken);
+                return new ScanContainersStrategy();
             }
         }
     }

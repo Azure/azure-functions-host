@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.ServiceBus.Messaging;
@@ -11,9 +12,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class ConverterArgumentBindingProvider<T> : IQueueTriggerArgumentBindingProvider
     {
-        private readonly IConverter<BrokeredMessage, T> _converter;
+        private readonly IAsyncConverter<BrokeredMessage, T> _converter;
 
-        public ConverterArgumentBindingProvider(IConverter<BrokeredMessage, T> converter)
+        public ConverterArgumentBindingProvider(IAsyncConverter<BrokeredMessage, T> converter)
         {
             _converter = converter;
         }
@@ -30,9 +31,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
         internal class ConverterArgumentBinding : IArgumentBinding<BrokeredMessage>
         {
-            private readonly IConverter<BrokeredMessage, T> _converter;
+            private readonly IAsyncConverter<BrokeredMessage, T> _converter;
 
-            public ConverterArgumentBinding(IConverter<BrokeredMessage, T> converter)
+            public ConverterArgumentBinding(IAsyncConverter<BrokeredMessage, T> converter)
             {
                 _converter = converter;
             }
@@ -42,11 +43,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(BrokeredMessage value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(BrokeredMessage value, FunctionBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
-                object converted = _converter.Convert(value);
-                return new BrokeredMessageValueProvider(clone, converted, typeof(T));
+                object converted = await _converter.ConvertAsync(value, context.CancellationToken);
+                return await BrokeredMessageValueProvider.CreateAsync(clone, converted, typeof(T),
+                    context.CancellationToken);
             }
         }
     }

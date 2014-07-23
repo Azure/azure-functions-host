@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -14,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
     {
         IReadOnlyDictionary<string, Type> BindingDataContract { get; }
 
-        ITriggerData Bind(object value, FunctionBindingContext context);
+        Task<ITriggerData> BindAsync(object value, FunctionBindingContext context);
 
         IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             FunctionDescriptor functionDescriptor, MethodInfo method);

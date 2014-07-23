@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -25,13 +26,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             SharedBlobListener sharedListener = context.SharedListeners.GetOrCreate<SharedBlobListener>(
                 new SharedBlobListenerFactory(context));
             BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(_input, _outputs, _instanceFactory, executor);
             sharedListener.Register(_container, triggerExecutor);
-            return new BlobListener(sharedListener);
+            IListener listener = new BlobListener(sharedListener);
+            return Task.FromResult(listener);
         }
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -28,9 +29,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 get { return typeof(CloudQueue); }
             }
 
-            public IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
             {
-                value.CreateIfNotExists();
+                await value.CreateIfNotExistsAsync(context.CancellationToken);
                 return new QueueValueProvider(value, value, typeof(CloudQueue));
             }
         }

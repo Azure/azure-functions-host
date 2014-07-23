@@ -3,13 +3,15 @@
 
 using System;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
-        public void ValidateCredentials(CloudStorageAccount account)
+        public async Task ValidateCredentialsAsync(CloudStorageAccount account, CancellationToken cancellationToken)
         {
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
@@ -19,7 +21,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             {
                 // This can hang for a long time if the account name is wrong. 
                 // If will fail fast if the password is incorrect.
-                client.GetServiceProperties();
+                await client.GetServicePropertiesAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {

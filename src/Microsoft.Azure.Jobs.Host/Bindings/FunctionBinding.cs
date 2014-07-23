@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
@@ -18,7 +19,8 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             _bindings = bindings;
         }
 
-        public IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context, IDictionary<string, object> parameters)
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+            IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
             IReadOnlyDictionary<string, object> bindingData = null;
@@ -35,13 +37,17 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
                 {
                     if (parameters != null && parameters.ContainsKey(name))
                     {
-                        valueProvider = binding.Bind(parameters[name], context);
+                        valueProvider = await binding.BindAsync(parameters[name], context);
                     }
                     else
                     {
-                        valueProvider = binding.Bind(bindingContext);
+                        valueProvider = await binding.BindAsync(bindingContext);
                     }
 
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception exception)
                 {

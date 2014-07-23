@@ -14,12 +14,15 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         private readonly HostBindingContext _hostContext;
         private readonly Guid _functionInstanceId;
         private readonly TextWriter _consoleOutput;
+        private readonly CancellationToken _cancellationToken;
 
-        public FunctionBindingContext(HostBindingContext hostContext, Guid functionInstanceId, TextWriter consoleOutput)
+        public FunctionBindingContext(HostBindingContext hostContext, Guid functionInstanceId, TextWriter consoleOutput,
+            CancellationToken cancellationToken)
         {
             _hostContext = hostContext;
             _functionInstanceId = functionInstanceId;
             _consoleOutput = consoleOutput;
+            _cancellationToken = cancellationToken;
         }
 
         public IBindingProvider BindingProvider
@@ -27,9 +30,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _hostContext.BindingProvider; }
         }
 
-        public CancellationToken CancellationToken
+        public CancellationToken HostCancellationToken
         {
-            get { return _hostContext.CancellationToken; }
+            get { return _hostContext.HostCancellationToken; }
         }
 
         public INameResolver NameResolver
@@ -60,6 +63,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public TextWriter ConsoleOutput
         {
             get { return _consoleOutput; }
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
         }
     }
 }

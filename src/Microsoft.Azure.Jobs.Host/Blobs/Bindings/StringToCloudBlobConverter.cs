@@ -2,12 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 {
-    internal class StringToCloudBlobConverter : IConverter<string, ICloudBlob>
+    internal class StringToCloudBlobConverter : IAsyncConverter<string, ICloudBlob>
     {
         private readonly CloudBlobClient _client;
         private readonly IBindableBlobPath _defaultPath;
@@ -20,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _argumentType = argumentType;
         }
 
-        public ICloudBlob Convert(string input)
+        public Task<ICloudBlob> ConvertAsync(string input, CancellationToken cancellationToken)
         {
             BlobPath path;
 
@@ -36,7 +38,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
 
             CloudBlobContainer container = _client.GetContainerReference(path.ContainerName);
             container.CreateIfNotExists();
-            return container.GetBlobReferenceForArgumentType(path.BlobName, _argumentType);
+            return container.GetBlobReferenceForArgumentTypeAsync(path.BlobName, _argumentType, cancellationToken);
         }
     }
 }

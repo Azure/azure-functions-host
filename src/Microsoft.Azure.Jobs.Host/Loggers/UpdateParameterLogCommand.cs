@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -65,7 +67,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             }
         }
 
-        public bool TryExecute()
+        public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
         {
             Dictionary<string, ParameterLog> logs = new Dictionary<string, ParameterLog>();
             AddLogs(_watches, logs);
@@ -80,8 +82,12 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
                 }
 
                 _lastContent = content;
-                _parameterLogBlob.UploadText(content);
+                await _parameterLogBlob.UploadTextAsync(content, cancellationToken);
                 return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception e)
             {

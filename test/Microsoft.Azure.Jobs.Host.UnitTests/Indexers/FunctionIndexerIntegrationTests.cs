@@ -4,6 +4,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
@@ -21,8 +22,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
             MethodInfo method = typeof(FunctionIndexerIntegrationTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(method);
 
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(
-                new FunctionIndexContext(null, nameResolver, CloudStorageAccount.DevelopmentStorageAccount, null), null);
+            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(nameResolver,
+                CloudStorageAccount.DevelopmentStorageAccount, null, null);
 
             FunctionIndexer indexer = new FunctionIndexer(context);
 
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
                 .Callback<IFunctionDefinition, FunctionDescriptor, MethodInfo>((i1, d, i2) => descriptor = d);
             IFunctionIndex index = indexMock.Object;
 
-            indexer.IndexMethod(method, index);
+            indexer.IndexMethodAsync(method, index, CancellationToken.None).GetAwaiter().GetResult();
 
             return descriptor;
         }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
@@ -21,12 +22,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
             get { return false; }
         }
 
-        private IValueProvider Bind(CancellationToken token, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CancellationToken token, FunctionBindingContext context)
         {
-            return new CancellationTokenValueProvider(token);
+            IValueProvider provider = new CancellationTokenValueProvider(token);
+            return Task.FromResult(provider);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             if (value is CancellationToken)
             {
@@ -35,12 +37,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 
             CancellationToken token = (CancellationToken)value;
 
-            return Bind(token, context);
+            return BindAsync(token, context);
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return Bind(context.CancellationToken, context.FunctionContext);
+            return BindAsync(context.HostCancellationToken, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

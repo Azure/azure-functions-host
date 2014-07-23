@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
@@ -14,8 +16,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
         public void TestIncrementalWriter()
         {
             string content = null;
-            Action<string> fp = x => { content = x; };
-            UpdateOutputLogCommand writer = new UpdateOutputLogCommand(new CloudBlockBlob(new Uri("aa://b/c")), null, fp);
+            Func<string, CancellationToken, Task> fp = (x, _) => { content = x; return Task.FromResult(0); };
+            UpdateOutputLogCommand writer = UpdateOutputLogCommand.CreateAsync(
+                new CloudBlockBlob(new Uri("aa://b/c")), null, fp, CancellationToken.None).Result;
 
             var tw = writer.Output;
             tw.Write("1");

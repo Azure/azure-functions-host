@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -15,10 +16,10 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             get { return typeof(TElement); }
         }
 
-        public IValueProvider Bind(TableEntityContext value, FunctionBindingContext context)
+        public async Task<IValueProvider> BindAsync(TableEntityContext value, FunctionBindingContext context)
         {
             TableOperation retrieve = TableOperation.Retrieve<TElement>(value.PartitionKey, value.RowKey);
-            TableResult result = value.Table.Execute(retrieve);
+            TableResult result = await value.Table.ExecuteAsync(retrieve, context.CancellationToken);
             TElement entity = (TElement)result.Result;
 
             if (entity == null)

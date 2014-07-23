@@ -1,9 +1,10 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.Protocols;
 using System;
-using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
@@ -16,13 +17,14 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _loggers = loggers;
         }
 
-        public string LogFunctionStarted(FunctionStartedMessage message)
+        public async Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
+            CancellationToken cancellationToken)
         {
             string startedMessageId = null;
 
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                var messageId = logger.LogFunctionStarted(message);
+                var messageId = await logger.LogFunctionStartedAsync(message, cancellationToken);
                 if (!String.IsNullOrEmpty(messageId))
                 {
                     if (String.IsNullOrEmpty(startedMessageId))
@@ -39,19 +41,20 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             return startedMessageId;
         }
 
-        public void LogFunctionCompleted(FunctionCompletedMessage message)
+        public async Task LogFunctionCompletedAsync(FunctionCompletedMessage message,
+            CancellationToken cancellationToken)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.LogFunctionCompleted(message);
+                await logger.LogFunctionCompletedAsync(message, cancellationToken);
             }
         }
 
-        public void DeleteLogFunctionStarted(string startedMessageId)
+        public async Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {
-                logger.DeleteLogFunctionStarted(startedMessageId);
+                await logger.DeleteLogFunctionStartedAsync(startedMessageId, cancellationToken);
             }
         }
     }

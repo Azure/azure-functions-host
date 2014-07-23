@@ -11,20 +11,20 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     internal class HostBindingContext
     {
         private readonly IBindingProvider _bindingProvider;
-        private readonly CancellationToken _cancellationToken;
+        private readonly CancellationToken _hostCancellationToken;
         private readonly INameResolver _nameResolver;
         private readonly CloudStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
 
         public HostBindingContext(
             IBindingProvider bindingProvider,
-            CancellationToken cancellationToken,
+            CancellationToken hostCancellationToken,
             INameResolver nameResolver,
             CloudStorageAccount storageAccount,
             string serviceBusConnectionString)
         {
             _bindingProvider = bindingProvider;
-            _cancellationToken = cancellationToken;
+            _hostCancellationToken = hostCancellationToken;
             _nameResolver = nameResolver;
             _storageAccount = storageAccount;
             _serviceBusConnectionString = serviceBusConnectionString;
@@ -35,9 +35,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _bindingProvider; }
         }
 
-        public CancellationToken CancellationToken
+        public CancellationToken HostCancellationToken
         {
-            get { return _cancellationToken; }
+            get { return _hostCancellationToken; }
         }
 
         public INameResolver NameResolver

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -21,9 +23,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
         {
-            return new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
+            IValueProvider provider = new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
+            return Task.FromResult(provider);
         }
 
         private class UserTypeValueBinder : IOrderedValueBinder
@@ -59,11 +62,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return _queue.Name;
             }
 
-            public void SetValue(object value)
+            public Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 CloudQueueMessage message = QueueCausalityManager.EncodePayload(_functionInstanceId, value);
 
-                _queue.AddMessageAndCreateIfNotExists(message);
+                return _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
             }
         }
     }

@@ -5,12 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Queues.Listeners;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -39,19 +42,20 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             get { return _runnerFactory; }
         }
 
-        public static JobHostContext CreateAndLogHostStarted(CloudStorageAccount dashboardAccount,
+        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(CloudStorageAccount dashboardAccount,
             CloudStorageAccount storageAccount, string serviceBusConnectionString,
-            IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver)
+            IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
+            CancellationToken cancellationToken)
         {
             // This will make a network call to verify the credentials work.
-            credentialsValidator.ValidateCredentials(storageAccount);
+            await credentialsValidator.ValidateCredentialsAsync(storageAccount, cancellationToken);
 
             // Avoid double-validating the same credentials.
             if (storageAccount != null && storageAccount.Credentials != null && dashboardAccount != null &&
                 !storageAccount.Credentials.Equals(dashboardAccount.Credentials))
             {
                 // This will make a network call to verify the credentials work.
-                credentialsValidator.ValidateCredentials(dashboardAccount);
+                await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, cancellationToken);
             }
 
             CloudBlobClient blobClient;
@@ -78,18 +82,18 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 blobClient = null;
                 hostInstanceLogger = new NullHostInstanceLogger();
                 functionInstanceLogger = new ConsoleFunctionInstanceLogger();
-                functionOutputLogger = new ConsoleFunctionOuputLogger();
+                functionOutputLogger = new ConsoleFunctionOutputLogger();
             }
 
             FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
-                serviceBusConnectionString);
-            FunctionIndex functions = FunctionIndex.Create(indexContext);
+                serviceBusConnectionString, cancellationToken);
+            FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
             HostBindingContextFactory bindingContextFactory = new HostBindingContextFactory(functions.BindingProvider,
                 nameResolver, storageAccount, serviceBusConnectionString);
 
             IListenerFactory sharedQueueListenerFactory;
             IListenerFactory instanceQueueListenerFactory;
-            IHeartbeatCommand heartbeatCommand;
+            ICanFailCommand heartbeatCommand;
             HostOutputMessage hostOutputMessage;
 
             if (dashboardAccount != null)
@@ -100,7 +104,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
 
                 IHostIdManager hostIdManager = new HostIdManager(blobClient);
-                Guid hostId = hostIdManager.GetOrCreateHostId(sharedHostName);
+                Guid hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, cancellationToken);
 
                 string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                 CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
@@ -121,9 +125,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     InstanceBlobName = id.ToString("N"),
                     ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                 };
-                heartbeatCommand = new HeartbeatCommand(dashboardAccount,
+                heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(dashboardAccount,
                     heartbeatDescriptor.SharedContainerName,
-                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName);
+                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 
                 string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
 
@@ -138,13 +142,13 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 };
 
                 // Publish this to Azure logging account so that a web dashboard can see it. 
-                LogHostStarted(functions, hostOutputMessage, hostInstanceLogger);
+                await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, cancellationToken);
             }
             else
             {
                 sharedQueueListenerFactory = new NullListenerFactory();
                 instanceQueueListenerFactory = new NullListenerFactory();
-                heartbeatCommand = new NullHeartbeatCommand();
+                heartbeatCommand = new NullCanFailCommand();
                 hostOutputMessage = new DataOnlyHostOutputMessage();
             }
 
@@ -181,8 +185,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return null;
         }
 
-        private static void LogHostStarted(IFunctionIndex functionIndex, HostOutputMessage hostOutputMessage,
-            IHostInstanceLogger logger)
+        private static Task LogHostStartedAsync(IFunctionIndex functionIndex, HostOutputMessage hostOutputMessage,
+            IHostInstanceLogger logger, CancellationToken cancellationToken)
         {
             IEnumerable<FunctionDescriptor> functions = functionIndex.ReadAllDescriptors();
 
@@ -197,7 +201,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 Functions = functions
             };
 
-            logger.LogHostStarted(message);
+            return logger.LogHostStartedAsync(message, cancellationToken);
         }
 
         private class DataOnlyHostOutputMessage : HostOutputMessage

@@ -23,9 +23,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _serviceBusConnectionString = serviceBusConnectionString;
         }
 
-        public HostBindingContext Create(CancellationToken cancellationToken)
+        public HostBindingContext Create(CancellationToken hostCancellationToken)
         {
-            return new HostBindingContext(_bindingProvider, cancellationToken, _nameResolver, _storageAccount,
+            return new HostBindingContext(_bindingProvider, hostCancellationToken, _nameResolver, _storageAccount,
                 _serviceBusConnectionString);
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Triggers
 {
@@ -14,11 +15,11 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             _providers = providers;
         }
 
-        public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
+        public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             foreach (ITriggerBindingProvider provider in _providers)
             {
-                ITriggerBinding binding = provider.TryCreate(context);
+                ITriggerBinding binding = await provider.TryCreateAsync(context);
 
                 if (binding != null)
                 {

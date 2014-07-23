@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
@@ -23,11 +24,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             _bindingSource = bindingSource;
         }
 
-        public CancellationToken CancellationToken
-        {
-            get { return _bindingSource.CancellationToken; }
-        }
-
         public Type Type
         {
             get { return typeof(IBinder); }
@@ -43,12 +39,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             return this;
         }
 
-        public void SetValue(object value)
+        public async Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
             foreach (IValueBinder binder in _binders)
             {
                 // RuntimeBinding can only be uses for non-Out parameters, and their binders ignore this argument.
-                binder.SetValue(value: null);
+                await binder.SetValueAsync(value: null, cancellationToken: cancellationToken);
             }
         }
 
@@ -57,16 +53,16 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             return null;
         }
 
-        public TValue Bind<TValue>(Attribute attribute)
+        public async Task<TValue> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
         {
-            IBinding binding = _bindingSource.Bind<TValue>(attribute);
+            IBinding binding = await _bindingSource.BindAsync<TValue>(attribute, cancellationToken);
 
             if (binding == null)
             {
                 throw new InvalidOperationException("No binding found for attribute '" + attribute.GetType() + "'.");
             }
 
-            IValueProvider provider = binding.Bind(_bindingSource.BindingContext);
+            IValueProvider provider = await binding.BindAsync(_bindingSource.BindingContext);
 
             if (provider == null)
             {

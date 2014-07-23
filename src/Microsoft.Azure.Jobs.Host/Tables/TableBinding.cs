@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -57,20 +58,20 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 new OutputConverter<string>(new StringToCloudTableConverter(client, path)));
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
             string boundTableName = _path.Bind(context.BindingData);
             CloudTable table = _client.GetTableReference(boundTableName);
 
-            return Bind(table, context.FunctionContext);
+            return BindAsync(table, context.FunctionContext);
         }
 
-        private IValueProvider Bind(CloudTable value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudTable value, FunctionBindingContext context)
         {
-            return _argumentBinding.Bind(value, context);
+            return _argumentBinding.BindAsync(value, context);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             CloudTable table = null;
 
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 throw new InvalidOperationException("Unable to convert value to CloudTable.");
             }
 
-            return Bind(table, context);
+            return BindAsync(table, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

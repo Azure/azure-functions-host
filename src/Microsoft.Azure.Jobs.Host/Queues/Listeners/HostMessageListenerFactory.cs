@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
@@ -20,14 +21,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
-        public HostMessageListenerFactory(CloudQueue queue, IFunctionIndexLookup functionLookup, IFunctionInstanceLogger functionInstanceLogger)
+        public HostMessageListenerFactory(CloudQueue queue, IFunctionIndexLookup functionLookup,
+            IFunctionInstanceLogger functionInstanceLogger)
         {
             _queue = queue;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
         }
 
-        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
@@ -35,7 +37,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             // Use a shorter maximum polling interval for run/abort from dashboard.
             IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command,
                 QueuePollingIntervals.Minimum, maxmimum);
-            return new TimerListener(timer);
+            IListener listener = new TimerListener(timer);
+            return Task.FromResult(listener);
         }
     }
 }

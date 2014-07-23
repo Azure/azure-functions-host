@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Data
@@ -16,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 new ConverterArgumentBindingProvider<TBindingData, string>(new TToStringConverter<TBindingData>()),
                 new StringToTArgumentBindingProvider<TBindingData>());
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
 
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                     "Can't bind parameter '" + parameterName + "' to type '" + parameterType + "'.");
             }
 
-            return new ClassDataBinding<TBindingData>(parameterName, argumentBinding);
+            IBinding binding = new ClassDataBinding<TBindingData>(parameterName, argumentBinding);
+            return Task.FromResult(binding);
         }
     }
 }

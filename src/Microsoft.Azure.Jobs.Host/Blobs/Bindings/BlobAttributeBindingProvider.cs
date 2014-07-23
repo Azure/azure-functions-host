@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -49,14 +50,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             return new CompositeArgumentBindingProvider(innerProviders);
         }
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
 
             if (blob == null)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             string resolvedCombinedPath = context.Resolve(blob.BlobPath);
@@ -70,8 +71,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
             }
 
-            return new BlobBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudBlobClient(),
-                path);
+            IBinding binding = new BlobBinding(parameter.Name, argumentBinding,
+                context.StorageAccount.CreateCloudBlobClient(), path);
+            return Task.FromResult(binding);
         }
     }
 }

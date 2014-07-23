@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
@@ -21,15 +22,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             get { return _context; }
         }
 
-        public CancellationToken CancellationToken
+        public Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
         {
-            get { return _context.CancellationToken; }
-        }
-
-        public IBinding Bind<TValue>(Attribute attribute)
-        {
-            return _context.BindingProvider.TryCreate(BindingProviderContext.Create(
-                _context, new FakeParameterInfo(typeof(TValue), attribute), bindingDataContract: null));
+            return _context.BindingProvider.TryCreateAsync(BindingProviderContext.Create(
+                _context, new FakeParameterInfo(typeof(TValue), attribute), bindingDataContract: null,
+                cancellationToken: cancellationToken));
         }
 
         // A non-reflection based implementation

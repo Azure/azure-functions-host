@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
@@ -14,14 +16,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             _innerBinder = innerBinder;
         }
 
-        public object ReadFromStream(Stream input)
+        public async Task<object> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
         {
-            return _innerBinder.ReadFromStream(input);
+            return await _innerBinder.ReadFromStreamAsync(input, cancellationToken);
         }
 
-        public void WriteToStream(Stream output, object value)
+        public Task WriteToStreamAsync(Stream output, object value, CancellationToken cancellationToken)
         {
-            _innerBinder.WriteToStream((TValue)value, output);
+            return _innerBinder.WriteToStreamAsync((TValue)value, output, cancellationToken);
         }
     }
 }

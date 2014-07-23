@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
@@ -41,13 +42,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(TextReader); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
             {
                 Stream rawStream;
 
                 try
                 {
-                    rawStream = blob.OpenRead();
+                    rawStream = await blob.OpenReadAsync(context.CancellationToken);
                 }
                 catch (StorageException exception)
                 {

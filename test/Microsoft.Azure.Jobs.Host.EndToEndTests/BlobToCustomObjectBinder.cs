@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -16,16 +17,17 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
     /// </summary>
     public class BlobToCustomObjectBinder : ICloudBlobStreamBinder<CustomObject>
     {
-        public CustomObject ReadFromStream(Stream input)
+        public async Task<CustomObject> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
         {
             using (StreamReader reader = new StreamReader(input))
             {
-                string jsonString = reader.ReadToEnd();
+                cancellationToken.ThrowIfCancellationRequested();
+                string jsonString = await reader.ReadToEndAsync();
                 return JsonConvert.DeserializeObject<CustomObject>(jsonString);
             };
         }
 
-        public void WriteToStream(CustomObject value, Stream output)
+        public async Task WriteToStreamAsync(CustomObject value, Stream output, CancellationToken cancellationToken)
         {
             const int defaultBufferSize = 1024;
 
@@ -33,8 +35,8 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
                 leaveOpen: true))
             {
                 string jsonString = JsonConvert.SerializeObject(value);
-                writer.Write(jsonString);
-                writer.Flush();
+                await writer.WriteAsync(jsonString);
+                await writer.FlushAsync();
             };
         }
     }

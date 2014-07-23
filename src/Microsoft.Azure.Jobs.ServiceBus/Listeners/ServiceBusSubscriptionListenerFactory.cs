@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -27,13 +28,13 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             // Must create all messaging entities before creating message receivers and calling OnMessage.
             // Otherwise, some function could start to execute and try to output messages to entities that don't yet
             // exist.
-            _namespaceManager.CreateTopicIfNotExists(_topicName);
-            _namespaceManager.CreateSubscriptionIfNotExists(_topicName, _subscriptionName);
+            await _namespaceManager.CreateTopicIfNotExistsAsync(_topicName, context.CancellationToken);
+            await _namespaceManager.CreateSubscriptionIfNotExistsAsync(_topicName, _subscriptionName, context.CancellationToken);
 
             string entityPath = SubscriptionClient.FormatSubscriptionPath(_topicName, _subscriptionName);
 

@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -18,14 +19,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             new CollectionArgumentBindingProvider(),
             new UserTypeArgumentBindingProvider()); // Must come after collection provider (IEnumerable checks).
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             QueueAttribute queueAttribute = parameter.GetCustomAttribute<QueueAttribute>(inherit: false);
 
             if (queueAttribute == null)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             string queueName = context.Resolve(queueAttribute.QueueName);
@@ -38,8 +39,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
-            return new QueueBinding(parameter.Name, argumentBinding, context.StorageAccount.CreateCloudQueueClient(),
-                queueName);
+            IBinding binding = new QueueBinding(parameter.Name, argumentBinding,
+                context.StorageAccount.CreateCloudQueueClient(), queueName);
+            return Task.FromResult(binding);
         }
 
         private static string NormalizeAndValidate(string queueName)

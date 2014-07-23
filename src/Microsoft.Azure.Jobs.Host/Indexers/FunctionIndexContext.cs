@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Indexers
@@ -11,17 +12,20 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
         private readonly INameResolver _nameResolver;
         private readonly CloudStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
+        private readonly CancellationToken _cancellationToken;
 
         public FunctionIndexContext(
             ITypeLocator typeLocator,
             INameResolver nameResolver,
             CloudStorageAccount storageAccount,
-            string serviceBusConnectionString)
+            string serviceBusConnectionString,
+            CancellationToken cancellationToken)
         {
             _typeLocator = typeLocator;
             _nameResolver = nameResolver;
             _storageAccount = storageAccount;
             _serviceBusConnectionString = serviceBusConnectionString;
+            _cancellationToken = cancellationToken;
         }
 
         public ITypeLocator TypeLocator
@@ -42,6 +46,11 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
         public string ServiceBusConnectionString
         {
             get { return _serviceBusConnectionString; }
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
         }
 
         public string Resolve(string input)

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs.Host.Triggers
@@ -21,7 +22,8 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             _nonTriggerBindings = nonTriggerBindings;
         }
 
-        public IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context, TTriggerValue value)
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+            TTriggerValue value)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
 
@@ -30,9 +32,13 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 
             try
             {
-                ITriggerData triggerData = _triggerBinding.Bind(value, context);
+                ITriggerData triggerData = await _triggerBinding.BindAsync(value, context);
                 triggerProvider = triggerData.ValueProvider;
                 bindingData = triggerData.BindingData;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -52,7 +58,11 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 
                 try
                 {
-                    valueProvider = binding.Bind(bindingContext);
+                    valueProvider = await binding.BindAsync(bindingContext);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception exception)
                 {
@@ -65,7 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             return results;
         }
 
-        public IReadOnlyDictionary<string, IValueProvider> Bind(FunctionBindingContext context,
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
             IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
@@ -83,9 +93,13 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 
             try
             {
-                ITriggerData triggerData = _triggerBinding.Bind(triggerValue, context);
+                ITriggerData triggerData = await _triggerBinding.BindAsync(triggerValue, context);
                 triggerProvider = triggerData.ValueProvider;
                 bindingData = triggerData.BindingData;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -107,13 +121,17 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
                 {
                     if (parameters != null && parameters.ContainsKey(name))
                     {
-                        valueProvider = binding.Bind(parameters[name], context);
+                        valueProvider = await binding.BindAsync(parameters[name], context);
                     }
                     else
                     {
-                        valueProvider = binding.Bind(bindingContext);
+                        valueProvider = await binding.BindAsync(bindingContext);
                     }
 
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception exception)
                 {

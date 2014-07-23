@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -16,16 +17,21 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         private readonly string _serviceBusConnectionString;
         private readonly ParameterInfo _parameter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
+        private readonly CancellationToken _cancellationToken;
 
-        public BindingProviderContext(INameResolver nameResolver, CloudStorageAccount storageAccount,
-            string serviceBusConnectionString, ParameterInfo parameter,
-            IReadOnlyDictionary<string, Type> bindingDataContract)
+        public BindingProviderContext(INameResolver nameResolver,
+            CloudStorageAccount storageAccount,
+            string serviceBusConnectionString,
+            ParameterInfo parameter,
+            IReadOnlyDictionary<string, Type> bindingDataContract,
+            CancellationToken cancellationToken)
         {
             _nameResolver = nameResolver;
             _storageAccount = storageAccount;
             _serviceBusConnectionString = serviceBusConnectionString;
             _parameter = parameter;
             _bindingDataContract = bindingDataContract;
+            _cancellationToken = cancellationToken;
         }
 
         public INameResolver NameResolver
@@ -53,6 +59,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _bindingDataContract; }
         }
 
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
+        }
+
         public string Resolve(string input)
         {
             if (_nameResolver == null)
@@ -64,17 +75,17 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         }
 
         public static BindingProviderContext Create(FunctionIndexerContext indexerContext, ParameterInfo parameter,
-            IReadOnlyDictionary<string, Type> bindingDataContract)
+            IReadOnlyDictionary<string, Type> bindingDataContract, CancellationToken cancellationToken)
         {
             return new BindingProviderContext(indexerContext.NameResolver, indexerContext.StorageAccount,
-                indexerContext.ServiceBusConnectionString, parameter, bindingDataContract);
+                indexerContext.ServiceBusConnectionString, parameter, bindingDataContract, cancellationToken);
         }
 
         public static BindingProviderContext Create(BindingContext bindingContext, ParameterInfo parameter,
-            IReadOnlyDictionary<string, Type> bindingDataContract)
+            IReadOnlyDictionary<string, Type> bindingDataContract, CancellationToken cancellationToken)
         {
             return new BindingProviderContext(bindingContext.NameResolver, bindingContext.StorageAccount,
-                bindingContext.ServiceBusConnectionString, parameter, bindingDataContract);
+                bindingContext.ServiceBusConnectionString, parameter, bindingDataContract, cancellationToken);
         }
     }
 }

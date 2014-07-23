@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -31,11 +33,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             _visibilityTimeout = visibilityTimeout;
         }
 
-        public bool TryExecute()
+        public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
         {
             try
             {
-                _queue.UpdateMessage(_message, _visibilityTimeout, MessageUpdateFields.Visibility);
+                await _queue.UpdateMessageAsync(_message, _visibilityTimeout, MessageUpdateFields.Visibility,
+                    cancellationToken);
                 return true;
             }
             catch (StorageException exception)

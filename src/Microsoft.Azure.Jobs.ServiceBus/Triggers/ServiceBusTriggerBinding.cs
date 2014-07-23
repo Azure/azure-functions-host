@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Indexers;
@@ -81,16 +83,17 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             get { return _entityPath; }
         }
 
-        public ITriggerData Bind(BrokeredMessage value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(BrokeredMessage value, FunctionBindingContext context)
         {
             BrokeredMessage clonedMessage = value.Clone();
-            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
-            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(clonedMessage);
+            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
+            IReadOnlyDictionary<string, object> bindingData = await CreateBindingDataAsync(clonedMessage,
+                context.CancellationToken);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, FunctionBindingContext context)
+        public Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
         {
             BrokeredMessage message = null;
 
@@ -99,7 +102,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 throw new InvalidOperationException("Unable to convert trigger to BrokeredMessage.");
             }
 
-            return Bind(message, context);
+            return BindAsync(message, context);
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
@@ -136,7 +139,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(BrokeredMessage clonedMessage)
+        private async Task<IReadOnlyDictionary<string, object>> CreateBindingDataAsync(BrokeredMessage clonedMessage,
+            CancellationToken cancellationToken)
         {
             string contents;
 
@@ -151,7 +155,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 {
                     using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
                     {
-                        contents = reader.ReadToEnd();
+                        cancellationToken.ThrowIfCancellationRequested();
+                        contents = await reader.ReadToEndAsync();
                     }
                 }
                 catch (DecoderFallbackException)

@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             return _value;
         }
 
-        public void SetValue(object value)
+        public Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
             // Not ByRef, so can ignore value argument.
             ITableEntity entity = PocoTableEntity.ToTableEntity(_entityContext.PartitionKey, _entityContext.RowKey,
@@ -48,8 +50,10 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
             if (HasChanged)
             {
-                _entityContext.Table.Execute(TableOperation.InsertOrReplace(entity));
+                return _entityContext.Table.ExecuteAsync(TableOperation.InsertOrReplace(entity), cancellationToken);
             }
+
+            return Task.FromResult(0);
         }
 
         public string ToInvokeString()

@@ -5,6 +5,8 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 get { return typeof(TextWriter); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 
@@ -49,7 +51,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     throw new InvalidOperationException("Cannot bind a page blob to a TextWriter.");
                 }
 
-                CloudBlobStream rawStream = blockBlob.OpenWrite();
+                CloudBlobStream rawStream = await blockBlob.OpenWriteAsync(context.CancellationToken);
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
                 WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
@@ -89,14 +91,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     return _value;
                 }
 
-                public void SetValue(object value)
+                public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
                     // Not ByRef, so can ignore value argument.
-                    _value.Flush();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await _value.FlushAsync();
                     _value.Dispose();
 
                     // Determine whether or not to upload the blob.
-                    if (_stream.Complete())
+                    if (await _stream.CompleteAsync(cancellationToken))
                     {
                         _stream.Dispose(); // Can only dispose when committing; see note on class above.
                     }

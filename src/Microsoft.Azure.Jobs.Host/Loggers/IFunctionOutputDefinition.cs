@@ -3,6 +3,8 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Timers;
@@ -15,7 +17,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 
         LocalBlobDescriptor ParameterLogBlob { get; }
 
-        IFunctionOutput CreateOutput();
+        Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken);
 
         ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
             TextWriter consoleOutput);

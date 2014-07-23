@@ -33,7 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <returns>A blob name</returns>
         public static string GetConflictFreeDateTimeBasedBlobName(DateTimeOffset timestamp)
         {
-            return string.Format(
+            return String.Format(
                 CultureInfo.InvariantCulture, "{0}_{1:N}",
                 CreateDateBasedBlobName(timestamp),
                 Guid.NewGuid());

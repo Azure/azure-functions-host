@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -21,11 +23,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _innerExecutor = innerExecutor;
         }
 
-        public bool Execute(BrokeredMessage value)
+        public async Task<bool> ExecuteAsync(BrokeredMessage value, CancellationToken cancellationToken)
         {
             Guid? parentId = ServiceBusCausalityHelper.GetOwner(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            IDelayedException exception = _innerExecutor.TryExecute(instance);
+            IDelayedException exception = await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
             return exception == null;
         }
     }

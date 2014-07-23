@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
@@ -14,9 +16,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return typeof(BrokeredMessage); }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
         {
-            return new MessageValueBinder(value, context.FunctionInstanceId);
+            IValueProvider provider = new MessageValueBinder(value, context.FunctionInstanceId);
+            return Task.FromResult(provider);
         }
 
         private class MessageValueBinder : IOrderedValueBinder
@@ -50,11 +53,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 return _entity.MessageSender.Path;
             }
 
-            public void SetValue(object value)
+            public Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 BrokeredMessage message = (BrokeredMessage)value;
 
-                _entity.SendAndCreateQueueIfNotExists(message, _functionInstanceId);
+                return _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
             }
         }
     }

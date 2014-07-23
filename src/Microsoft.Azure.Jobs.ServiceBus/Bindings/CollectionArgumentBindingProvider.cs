@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
@@ -78,9 +80,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 get { return typeof(ICollection<T>); }
             }
 
-            public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
             {
-                return new CollectionValueBinder(value, (IValueBinder)_itemBinding.Bind(value, context));
+                IValueBinder itemBinder = (IValueBinder)await _itemBinding.BindAsync(value, context);
+                return new CollectionValueBinder(value, itemBinder);
             }
 
             private class CollectionValueBinder : IOrderedValueBinder
@@ -115,12 +118,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                     return _entity.MessageSender.Path;
                 }
 
-                public void SetValue(object value)
+                public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
                     // Not ByRef, so can ignore value argument.
                     foreach (T item in _value)
                     {
-                        _itemBinder.SetValue(item);
+                        await _itemBinder.SetValueAsync(item, cancellationToken);
                     }
                 }
             }

@@ -80,13 +80,15 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="ExceptionAssert.cs" />
+    <Compile Include="TestJobHost.cs" />
     <Compile Include="NullConnectionStringProvider.cs" />
     <Compile Include="RandomNameResolver.cs" />
     <Compile Include="NullStorageCredentialsValidator.cs" />
     <Compile Include="SimpleTypeLocator.cs" />
     <Compile Include="SimpleStorageAccountProvider.cs" />
-    <Compile Include="TestJobHost.cs" />
+    <Compile Include="JobHostFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestJobHostConfiguration.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">

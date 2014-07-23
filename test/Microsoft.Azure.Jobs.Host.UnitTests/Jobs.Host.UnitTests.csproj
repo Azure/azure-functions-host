@@ -84,7 +84,9 @@
     </Compile>
     <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
+    <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamExtensions.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
+    <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
@@ -92,6 +94,7 @@
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommandTests.cs" />
+    <Compile Include="Timers\IntervalSeparationCommandExtensions.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />

@@ -1,0 +1,43 @@
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Microsoft.Azure.Jobs.Host.Converters
+{
+    internal class CompositeAsyncObjectToTypeConverter<T> : IAsyncObjectToTypeConverter<T>
+    {
+        private readonly IEnumerable<IAsyncObjectToTypeConverter<T>> _converters;
+
+        public CompositeAsyncObjectToTypeConverter(IEnumerable<IAsyncObjectToTypeConverter<T>> converters)
+        {
+            _converters = converters;
+        }
+
+        public CompositeAsyncObjectToTypeConverter(params IAsyncObjectToTypeConverter<T>[] converters)
+            : this((IEnumerable<IAsyncObjectToTypeConverter<T>>)converters)
+        {
+        }
+
+        public async Task<ConversionResult<T>> TryConvertAsync(object value, CancellationToken cancellationToken)
+        {
+            foreach (IAsyncObjectToTypeConverter<T> converter in _converters)
+            {
+                ConversionResult<T> result = await converter.TryConvertAsync(value, cancellationToken);
+
+                if (result.Succeeded)
+                {
+                    return result;
+                }
+            }
+
+            return new ConversionResult<T>
+            {
+                Succeeded = false,
+                Result = default(T)
+            };
+        }
+    }
+}

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -26,9 +27,9 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(CloudTable); }
             }
 
-            public IValueProvider Bind(CloudTable value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudTable value, FunctionBindingContext context)
             {
-                value.CreateIfNotExists();
+                await value.CreateIfNotExistsAsync(context.CancellationToken);
                 return new TableValueProvider(value, value, typeof(CloudTable));
             }
         }

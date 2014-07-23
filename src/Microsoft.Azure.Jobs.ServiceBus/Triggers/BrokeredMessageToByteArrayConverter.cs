@@ -2,14 +2,16 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
-    internal class BrokeredMessageToByteArrayConverter : IConverter<BrokeredMessage, byte[]>
+    internal class BrokeredMessageToByteArrayConverter : IAsyncConverter<BrokeredMessage, byte[]>
     {
-        public byte[] Convert(BrokeredMessage input)
+        public async Task<byte[]> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
             using (MemoryStream outputStream = new MemoryStream())
             using (Stream inputStream = input.GetBody<Stream>())
@@ -19,7 +21,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     return null;
                 }
 
-                inputStream.CopyTo(outputStream);
+                const int defaultBufferSize = 4096;
+                await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
                 return outputStream.ToArray();
             }
         }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.Data;
 using Xunit;
@@ -23,13 +24,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
             ParameterInfo parameter = new StubParameterInfo(parameterName, parameterType);
             Dictionary<string, Type> bindingDataContract = new Dictionary<string, Type>
             {
-                { parameterName, parameterType } 
+                { parameterName, parameterType }
             };
             BindingProviderContext context =
-                new BindingProviderContext(null, null, null, parameter, bindingDataContract);
+                new BindingProviderContext(null, null, null, parameter, bindingDataContract, CancellationToken.None);
 
             // Act
-            IBinding binding = product.TryCreate(context);
+            IBinding binding = product.TryCreateAsync(context).Result;
 
             // Assert
             Assert.Null(binding);

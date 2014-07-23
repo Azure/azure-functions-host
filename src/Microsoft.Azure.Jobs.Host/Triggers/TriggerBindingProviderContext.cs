@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Reflection;
+using System.Threading;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -11,11 +12,14 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
     {
         private readonly FunctionIndexerContext _indexerContext;
         private readonly ParameterInfo _parameter;
+        private readonly CancellationToken _cancellationToken;
 
-        public TriggerBindingProviderContext(FunctionIndexerContext indexerContext, ParameterInfo parameter)
+        public TriggerBindingProviderContext(FunctionIndexerContext indexerContext, ParameterInfo parameter,
+            CancellationToken cancellationToken)
         {
             _indexerContext = indexerContext;
             _parameter = parameter;
+            _cancellationToken = cancellationToken;
         }
 
         public INameResolver NameResolver
@@ -36,6 +40,11 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
         public ParameterInfo Parameter
         {
             get { return _parameter; }
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
         }
 
         public string Resolve(string input)

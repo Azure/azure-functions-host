@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Xunit;
@@ -23,40 +24,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         }
 
         [Fact]
-        public void Start_IfExecuteFirstIsTrue_Executes()
-        {
-            // Arrange
-            bool executed = false;
-            IIntervalSeparationCommand command = CreateLambdaCommand(() => executed = true, TimeSpan.FromDays(1));
-
-            using (IntervalSeparationTimer product = CreateProductUnderTest(command))
-            {
-                // Act
-                product.Start(executeFirst: true);
-
-                // Assert
-                Assert.True(executed);
-            }
-        }
-
-        [Fact]
-        public void Start_IfExecuteFirstIsFalse_DoesNotExecute()
-        {
-            // Arrange
-            bool executed = false;
-            IIntervalSeparationCommand command = CreateLambdaCommand(() => executed = true, TimeSpan.FromDays(1));
-
-            using (IntervalSeparationTimer product = CreateProductUnderTest(command))
-            {
-                // Act
-                product.Start(executeFirst: false);
-
-                // Assert
-                Assert.False(executed);
-            }
-        }
-        
-        [Fact]
         public void Start_AfterSeparationInterval_Executes()
         {
             // Arrange
@@ -69,7 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
                 using (IntervalSeparationTimer product = CreateProductUnderTest(command))
                 {
                     // Act
-                    product.Start(executeFirst: false);
+                    product.Start();
                     bool executed = executedWaitHandle.WaitOne(1000);
 
                     // Assert
@@ -114,7 +81,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
                 using (IntervalSeparationTimer product = CreateProductUnderTest(command))
                 {
                     // Act
-                    product.Start(executeFirst: false);
+                    product.Start();
                     waitForSecondExecution.WaitOne();
 
                     // Assert
@@ -134,7 +101,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             product.Dispose();
 
             // Act & Assert
-            ExceptionAssert.ThrowsObjectDisposed(() => product.Start(executeFirst: false));
+            ExceptionAssert.ThrowsObjectDisposed(() => product.Start());
         }
 
         [Fact]
@@ -145,11 +112,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
 
             using (IntervalSeparationTimer product = CreateProductUnderTest(command))
             {
-                bool executeFirst = false;
-                product.Start(executeFirst);
+                product.Start();
 
                 // Act & Assert
-                ExceptionAssert.ThrowsInvalidOperation(() => product.Start(executeFirst),
+                ExceptionAssert.ThrowsInvalidOperation(() => product.Start(),
                     "The timer has already been started; it cannot be restarted.");
             }
         }
@@ -175,7 +141,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
 
                 using (IntervalSeparationTimer product = CreateProductUnderTest(command))
                 {
-                    product.Start(executeFirst: false);
+                    product.Start();
                     executeStarted.WaitOne();
                     Assert.True(stopExecuteInFiveMilliseconds.Set());
 
@@ -221,7 +187,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
 
             using (IntervalSeparationTimer product = CreateProductUnderTest(command))
             {
-                product.Start(executeFirst: false);
+                product.Start();
                 product.Stop();
 
                 // Act & Assert
@@ -258,7 +224,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             // Arrange
             IIntervalSeparationCommand command = CreateStubCommand(TimeSpan.FromDays(1));
             IntervalSeparationTimer product = CreateProductUnderTest(command);
-            product.Start(executeFirst: false);
+            product.Start();
             product.Stop();
 
             // Act & Assert
@@ -286,7 +252,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
 
                 using (IntervalSeparationTimer product = CreateProductUnderTest(command))
                 {
-                    product.Start(executeFirst: false);
+                    product.Start();
                     executeStarted.WaitOne();
                     Assert.True(stopExecuteInFiveMilliseconds.Set());
 
@@ -346,9 +312,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
                 get { return _separationInterval.Invoke(); }
             }
 
-            public void Execute()
+            public Task ExecuteAsync(CancellationToken cancellationToken)
             {
                 _execute.Invoke();
+                return Task.FromResult(0);
             }
         }
     }

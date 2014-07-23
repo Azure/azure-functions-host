@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// <summary>Defines a persistent queue reader.</summary>
     /// <typeparam name="T">The type of messages in the queue.</typeparam>
 #if PUBLICPROTOCOL
-    public interface IPersistentQueueReader<T>
+    public interface    IPersistentQueueReader<T>
 #else
     internal interface IPersistentQueueReader<T>
 #endif

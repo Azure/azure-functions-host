@@ -31,9 +31,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             get { return _functionContext.BindingProvider; }
         }
 
-        public CancellationToken CancellationToken
+        public CancellationToken HostCancellationToken
         {
-            get { return _functionContext.CancellationToken; }
+            get { return _functionContext.HostCancellationToken; }
         }
 
         public INameResolver NameResolver
@@ -64,6 +64,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public TextWriter ConsoleOutput
         {
             get { return _functionContext.ConsoleOutput; }
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get { return _functionContext.CancellationToken; }
         }
 
         public IReadOnlyDictionary<string, object> BindingData

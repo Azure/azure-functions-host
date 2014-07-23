@@ -22,9 +22,9 @@ namespace Microsoft.Azure.Jobs
     {
         private readonly JobHostContextFactory _contextFactory;
 
-        private JobHostContext _context;
-        private bool _contextInitialized;
-        private object _contextLock = new object();
+        private Task<JobHostContext> _contextTask;
+        private bool _contextTaskInitialized;
+        private object _contextTaskLock = new object();
 
         private IRunner _runner;
         private bool _disposed;
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.Jobs
         /// <summary>Starts the host.</summary>
         public void Start()
         {
-            StartAsync().Wait();
+            StartAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>Starts the host.</summary>
@@ -95,19 +95,19 @@ namespace Microsoft.Azure.Jobs
             return StartAsyncCore(cancellationToken);
         }
 
-        private Task StartAsyncCore(CancellationToken cancellationToken)
+        private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            JobHostContext context = EnsureHostStarted();
-            _runner = context.RunnerFactory.CreateAndStart(listenForAbortOnly: false, cancellationToken: cancellationToken);
+            JobHostContext context = await EnsureHostStartedAsync(cancellationToken);
+            _runner = await context.RunnerFactory.CreateAndStartAsync(listenForAbortOnly: false,
+                cancellationToken: cancellationToken);
 
             Console.WriteLine("Job host started");
-            return Task.FromResult(0);
         }
 
         /// <summary>Stops the host.</summary>
         public void Stop()
         {
-            StopAsync().Wait();
+            StopAsync().GetAwaiter().GetResult();
         }
 
         /// <summary>Stops the host.</summary>
@@ -121,16 +121,18 @@ namespace Microsoft.Azure.Jobs
                 return Task.FromResult(0);
             }
 
-            return StopAsyncCore();
+            return StopAsyncCore(CancellationToken.None);
         }
 
-        private Task StopAsyncCore()
+        private async Task StopAsyncCore(CancellationToken cancellationToken)
         {
-            _runner.Stop();
+            if (_runner != null)
+            {
+                await _runner.StopAsync(cancellationToken);
 
-            Console.WriteLine("Job host stopped");
-            _runner = null;
-            return Task.FromResult(0);
+                Console.WriteLine("Job host stopped");
+                _runner = null;
+            }
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>
@@ -139,7 +141,7 @@ namespace Microsoft.Azure.Jobs
             Start();
 
             // Wait for someone to begin shut down (either Stop or _shutdownWatcher).
-            _runner.CancellationToken.WaitHandle.WaitOne();
+            _runner.HostCancellationToken.WaitHandle.WaitOne();
 
             // Don't return until all executing functions have completed.
             Stop();
@@ -149,7 +151,7 @@ namespace Microsoft.Azure.Jobs
         /// <param name="method">The job method to call.</param>
         public void Call(MethodInfo method)
         {
-            CallAsync(method).Wait();
+            CallAsync(method).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>
@@ -160,7 +162,7 @@ namespace Microsoft.Azure.Jobs
         /// </param>
         public void Call(MethodInfo method, object arguments)
         {
-            CallAsync(method, arguments).Wait();
+            CallAsync(method, arguments).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>
@@ -168,7 +170,7 @@ namespace Microsoft.Azure.Jobs
         /// <param name="arguments">The argument names and values to bind to parameters in the job method.</param>
         public void Call(MethodInfo method, IDictionary<string, object> arguments)
         {
-            CallAsync(method, arguments).Wait();
+            CallAsync(method, arguments).GetAwaiter().GetResult();
         }
 
         /// <summary>Calls a job method.</summary>
@@ -216,29 +218,27 @@ namespace Microsoft.Azure.Jobs
             return CallAsyncCore(method, arguments, cancellationToken);
         }
 
-        private Task CallAsyncCore(MethodInfo method, IDictionary<string, object> arguments,
+        private async Task CallAsyncCore(MethodInfo method, IDictionary<string, object> arguments,
             CancellationToken cancellationToken)
         {
-            JobHostContext hostContext = EnsureHostStarted();
+            JobHostContext hostContext = await EnsureHostStartedAsync(cancellationToken);
             IFunctionDefinition function = ResolveFunctionDefinition(method, hostContext.FunctionLookup);
             IFunctionInstance instance = CreateFunctionInstance(function, arguments);
             IDelayedException exception;
 
-            using (IRunner runner = hostContext.RunnerFactory.CreateAndStart(listenForAbortOnly: true,
+            using (IRunner runner = await hostContext.RunnerFactory.CreateAndStartAsync(listenForAbortOnly: true,
                 cancellationToken: cancellationToken))
+            using (cancellationToken.Register(runner.Cancel))
             {
                 IFunctionExecutor executor = runner.Executor;
-                exception = executor.TryExecute(instance);
-
-                runner.Stop();
+                exception = await executor.TryExecuteAsync(instance, runner.HostCancellationToken);
+                await runner.StopAsync(cancellationToken);
             }
 
             if (exception != null)
             {
                 exception.Throw();
             }
-
-            return Task.FromResult(0);
         }
 
         /// <inheritdoc />
@@ -286,15 +286,17 @@ namespace Microsoft.Azure.Jobs
             return configuration;
         }
 
-        private JobHostContext CreateContextAndLogHostStarted()
+        private Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            return _contextFactory.CreateAndLogHostStarted();
+            return _contextFactory.CreateAndLogHostStartedAsync(cancellationToken);
         }
 
-        private JobHostContext EnsureHostStarted()
+        private Task<JobHostContext> EnsureHostStartedAsync(CancellationToken cancellationToken)
         {
-            return LazyInitializer.EnsureInitialized<JobHostContext>(ref _context, ref _contextInitialized,
-                ref _contextLock, CreateContextAndLogHostStarted);
+            return LazyInitializer.EnsureInitialized<Task<JobHostContext>>(ref _contextTask,
+                ref _contextTaskInitialized,
+                ref _contextTaskLock,
+                () => CreateContextAndLogHostStartedAsync(cancellationToken));
         }
 
         private void ThrowIfDisposed()

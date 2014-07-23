@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Timers;
@@ -22,9 +24,10 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             get { return null; }
         }
 
-        public IFunctionOutput CreateOutput()
+        public Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
         {
-            return new ConsoleFunctionOutputLog();
+            IFunctionOutput output = new ConsoleFunctionOutputLog();
+            return Task.FromResult(output);
         }
 
         public ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
@@ -45,8 +48,9 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
                 get { return null; }
             }
 
-            public void SaveAndClose()
+            public Task SaveAndCloseAsync(CancellationToken cancellationToken)
             {
+                return Task.FromResult(0);
             }
 
             public void Dispose()

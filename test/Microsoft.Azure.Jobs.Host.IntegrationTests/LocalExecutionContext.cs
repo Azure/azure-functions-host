@@ -28,14 +28,15 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public LocalExecutionContext(Type type, CloudStorageAccount account, Type[] cloudBlobStreamBinderTypes)
         {
             _type = type;
-            FunctionIndex index = FunctionIndex.Create(new FunctionIndexContext(null, null, account, null),
-                new Type[] { type }, cloudBlobStreamBinderTypes);
+            FunctionIndex index = FunctionIndex.CreateAsync(
+                new FunctionIndexContext(null, null, account, null, CancellationToken.None),
+                new Type[] { type }, cloudBlobStreamBinderTypes).Result;
             _index = index;
 
             _blobClient = account.CreateCloudBlobClient();
             _context = new HostBindingContext(
                 bindingProvider: index.BindingProvider,
-                cancellationToken: CancellationToken.None,
+                hostCancellationToken: CancellationToken.None,
                 nameResolver: null,
                 storageAccount: account,
                 serviceBusConnectionString: null);
@@ -70,9 +71,11 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         private void Execute(IFunctionInstance instance)
         {
-            FunctionBindingContext context = new FunctionBindingContext(_context, instance.Id, TextWriter.Null);
-            FunctionExecutor.ExecuteWithWatchers(instance.Method, instance.Method.GetParameters(),
-                instance.BindingSource.Bind(context), TextWriter.Null);
+            FunctionBindingContext context = new FunctionBindingContext(_context, instance.Id, TextWriter.Null,
+                CancellationToken.None);
+            FunctionExecutor.ExecuteWithWatchersAsync(instance.Method, instance.Method.GetParameters(),
+                instance.BindingSource.BindAsync(context).Result, TextWriter.Null,
+                CancellationToken.None).GetAwaiter().GetResult();
         }
     }
 }

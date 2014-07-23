@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
@@ -22,11 +24,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _heartbeatCommand = heartbeatCommand;
         }
 
-        public bool TryExecute()
+        public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
         {
             try
             {
-                _heartbeatCommand.Beat();
+                await _heartbeatCommand.BeatAsync(cancellationToken);
                 return true;
             }
             catch (StorageException exception)

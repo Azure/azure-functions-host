@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
@@ -29,12 +30,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
             get { return false; }
         }
 
-        private IValueProvider Bind(CloudStorageAccount account, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudStorageAccount account, FunctionBindingContext context)
         {
-            return new CloudStorageAccountValueProvider(account);
+            IValueProvider provider = new CloudStorageAccountValueProvider(account);
+            return Task.FromResult(provider);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             CloudStorageAccount account = null;
 
@@ -43,12 +45,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
                 throw new InvalidOperationException("Unable to convert value to CloudStorageAccount.");
             }
 
-            return Bind(account, context);
+            return BindAsync(account, context);
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return Bind(context.StorageAccount, context.FunctionContext);
+            return BindAsync(context.StorageAccount, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

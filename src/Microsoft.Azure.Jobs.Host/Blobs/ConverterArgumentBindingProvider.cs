@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -54,9 +55,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(ICloudBlob value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(ICloudBlob value, FunctionBindingContext context)
             {
-                return new BlobValueProvider(value, _converter.Convert(value), typeof(T));
+                IValueProvider provider = new BlobValueProvider(value, _converter.Convert(value), typeof(T));
+                return Task.FromResult(provider);
             }
         }
     }

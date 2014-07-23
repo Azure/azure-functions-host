@@ -4,6 +4,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -39,11 +41,11 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             get { return _parameterLogBlob; }
         }
 
-        public IFunctionOutput CreateOutput()
+        public async Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
         {
             CloudBlockBlob blob = GetBlockBlobReference(_outputBlob);
-            string existingContents = ReadBlob(blob);
-            return new UpdateOutputLogCommand(blob, existingContents);
+            string existingContents = await ReadBlobAsync(blob, cancellationToken);
+            return await UpdateOutputLogCommand.CreateAsync(blob, existingContents, cancellationToken);
         }
 
         public ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
@@ -60,15 +62,16 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 
         // Return Null if doesn't exist
         [DebuggerNonUserCode]
-        private static string ReadBlob(ICloudBlob blob)
+        private static async Task<string> ReadBlobAsync(ICloudBlob blob, CancellationToken cancellationToken)
         {
             // Beware! Blob.DownloadText does not strip the BOM! 
             try
             {
-                using (var stream = blob.OpenRead())
+                using (var stream = await blob.OpenReadAsync(cancellationToken))
                 using (StreamReader sr = new StreamReader(stream, detectEncodingFromByteOrderMarks: true))
                 {
-                    string data = sr.ReadToEnd();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string data = await sr.ReadToEndAsync();
                     return data;
                 }
             }

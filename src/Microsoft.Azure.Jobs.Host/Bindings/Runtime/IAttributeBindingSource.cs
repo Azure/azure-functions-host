@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
@@ -10,8 +11,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
     {
         BindingContext BindingContext { get; }
 
-        CancellationToken CancellationToken { get; }
-
-        IBinding Bind<TValue>(Attribute attribute);
+        Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken);
     }
 }

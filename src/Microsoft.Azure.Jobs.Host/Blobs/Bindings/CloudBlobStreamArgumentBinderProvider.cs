@@ -4,6 +4,8 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 get { return typeof(CloudBlobStream); }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     throw new InvalidOperationException("Cannot bind a page blob to a CloudBlobStream.");
                 }
 
-                CloudBlobStream rawStream = blockBlob.OpenWrite();
+                CloudBlobStream rawStream = await blockBlob.OpenWriteAsync(context.CancellationToken);
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
                 WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
@@ -83,12 +85,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     return _stream;
                 }
 
-                public void SetValue(object value)
+                public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
                     // Not ByRef, so can ignore value argument.
 
                     // Determine whether or not to upload the blob.
-                    if (_stream.Complete())
+                    if (await _stream.CompleteAsync(cancellationToken))
                     {
                         _stream.Dispose(); // Can only dispose when committing; see note on class above.
                     }

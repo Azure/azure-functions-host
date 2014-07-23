@@ -12,16 +12,14 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
     {
         private readonly HostBindingContext _hostContext;
         private readonly SharedListenerContainer _sharedListeners;
+        private readonly CancellationToken _cancellationToken;
 
-        public ListenerFactoryContext(HostBindingContext hostContext, SharedListenerContainer sharedListeners)
+        public ListenerFactoryContext(HostBindingContext hostContext, SharedListenerContainer sharedListeners,
+            CancellationToken cancellationToken)
         {
             _hostContext = hostContext;
             _sharedListeners = sharedListeners;
-        }
-
-        public CancellationToken CancellationToken
-        {
-            get { return _hostContext.CancellationToken; }
+            _cancellationToken = cancellationToken;
         }
 
         public CloudStorageAccount StorageAccount
@@ -38,6 +36,11 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
         public SharedListenerContainer SharedListeners
         {
             get { return _sharedListeners; }
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get { return _cancellationToken; }
         }
     }
 }

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
@@ -18,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _sharedListener = sharedListener;
         }
 
-        public void Start()
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
@@ -31,9 +33,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             // There is currently no scenario for controlling a single blob listener independently.
             _sharedListener.EnsureAllStarted();
             _started = true;
+            return Task.FromResult(0);
         }
 
-        public void Stop()
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
@@ -47,6 +50,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             // There is currently no scenario for controlling a single blob listener independently.
             _sharedListener.EnsureAllStopped();
             _started = false;
+            return Task.FromResult(0);
         }
 
         public void Dispose()

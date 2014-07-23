@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             return _value;
         }
 
-        public void SetValue(object value)
+        public Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
             // Not ByRef, so can ignore value argument.
 
@@ -52,8 +54,10 @@ namespace Microsoft.Azure.Jobs.Host.Tables
 
             if (HasChanged)
             {
-                _entityContext.Table.Execute(TableOperation.InsertOrReplace(_value));
+                return _entityContext.Table.ExecuteAsync(TableOperation.InsertOrReplace(_value), cancellationToken);
             }
+
+            return Task.FromResult(0);
         }
 
         public string ToInvokeString()
@@ -108,7 +112,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return false;
             }
         }
-        
+
         private static IDictionary<string, EntityProperty> DeepClone(IDictionary<string, EntityProperty> value)
         {
             if (value == null)
@@ -117,7 +121,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             }
 
             IDictionary<string, EntityProperty> clone = new Dictionary<string, EntityProperty>();
-            
+
             foreach (KeyValuePair<string, EntityProperty> item in value)
             {
                 clone.Add(item.Key, EntityProperty.CreateEntityPropertyFromObject(item.Value.PropertyAsObject));

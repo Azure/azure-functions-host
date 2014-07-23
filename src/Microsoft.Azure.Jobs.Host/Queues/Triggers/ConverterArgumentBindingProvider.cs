@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -42,10 +43,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(CloudQueueMessage value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(CloudQueueMessage value, FunctionBindingContext context)
             {
                 object converted = _converter.Convert(value);
-                return new QueueMessageValueProvider(value, converted, typeof(T));
+                IValueProvider provider = new QueueMessageValueProvider(value, converted, typeof(T));
+                return Task.FromResult(provider);
             }
         }
     }

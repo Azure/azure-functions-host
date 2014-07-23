@@ -42,6 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             var assembly = typeof(QueueTriggerAttribute).Assembly;
 
             var expected = new[] {
+                "BinderExtensions",
                 "BlobAttribute",
                 "BlobTriggerAttribute",
                 "IBinder",

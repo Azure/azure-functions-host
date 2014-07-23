@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -50,11 +51,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(IQueryable<TElement>); }
             }
 
-            public IValueProvider Bind(CloudTable value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudTable value, FunctionBindingContext context)
             {
                 IQueryable<TElement> queryable;
 
-                if (!value.Exists())
+                if (!await value.ExistsAsync(context.CancellationToken))
                 {
                     queryable = Enumerable.Empty<TElement>().AsQueryable();
                 }

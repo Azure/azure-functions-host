@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
@@ -188,8 +190,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
                 get { return _instance; }
             }
 
-            public void Execute()
+            public Task ExecuteAsync(CancellationToken cancellationToken)
             {
+                return Task.FromResult(0);
             }
         }
 
@@ -199,12 +202,16 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
 
             public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
             {
-                throw new NotImplementedException();
+                ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
+                callback.Invoke(result);
+                return result;
             }
 
             public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
             {
-                throw new NotImplementedException();
+                ICancellableAsyncResult result = new CompletedCancellableAsyncResult(state);
+                callback.Invoke(result);
+                return result;
             }
 
             public override void Commit()
@@ -213,12 +220,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
 
             public override void EndCommit(IAsyncResult asyncResult)
             {
-                throw new NotImplementedException();
             }
 
             public override void EndFlush(IAsyncResult asyncResult)
             {
-                throw new NotImplementedException();
             }
 
             public override bool CanRead
@@ -281,6 +286,40 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
             public override void Close()
             {
                 _inner.Close();
+            }
+        }
+
+        private class CompletedCancellableAsyncResult : ICancellableAsyncResult
+        {
+            private readonly object _state;
+
+            public CompletedCancellableAsyncResult(object state)
+            {
+                _state = state;
+            }
+
+            public void Cancel()
+            {
+            }
+
+            public object AsyncState
+            {
+                get { return _state; }
+            }
+
+            public WaitHandle AsyncWaitHandle
+            {
+                get { throw new NotSupportedException(); }
+            }
+
+            public bool CompletedSynchronously
+            {
+                get { return true; }
+            }
+
+            public bool IsCompleted
+            {
+                get { return true; }
             }
         }
     }

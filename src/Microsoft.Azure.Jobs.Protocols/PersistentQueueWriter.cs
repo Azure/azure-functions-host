@@ -11,6 +11,8 @@ using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
+using System.Threading;
+using System.Threading.Tasks;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -46,7 +48,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public string Enqueue(T message)
+        public async Task<string> EnqueueAsync(T message, CancellationToken cancellationToken)
         {
             _blobContainer.CreateIfNotExists();
 
@@ -54,13 +56,13 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(blobName);
             message.AddMetadata(blob.Metadata);
             string messageBody = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
-            blob.UploadText(messageBody);
+            await blob.UploadTextAsync(messageBody, cancellationToken);
 
             return blobName;
         }
 
         /// <inheritdoc />
-        public void Delete(string messageId)
+        public async Task DeleteAsync(string messageId, CancellationToken cancellationToken)
         {
             try
             {
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 }
 
                 CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId);
-                blob.Delete();
+                await blob.DeleteAsync(cancellationToken);
             }
             catch (StorageException exception)
             {

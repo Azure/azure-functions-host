@@ -6,6 +6,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -79,9 +81,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 get { return typeof(ICollection<TItem>); }
             }
 
-            public IValueProvider Bind(CloudQueue value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
             {
-                return new CollectionValueBinder(value, (IValueBinder)_itemBinding.Bind(value, context));
+                IValueBinder itemBinder = (IValueBinder)await _itemBinding.BindAsync(value, context);
+                return new CollectionValueBinder(value, itemBinder);
             }
 
             private class CollectionValueBinder : IOrderedValueBinder
@@ -116,12 +119,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                     return _queue.Name;
                 }
 
-                public void SetValue(object value)
+                public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
                     // Not ByRef, so can ignore value argument.
                     foreach (TItem item in _value)
                     {
-                        _itemBinder.SetValue(item);
+                        await _itemBinder.SetValueAsync(item, cancellationToken);
                     }
                 }
             }

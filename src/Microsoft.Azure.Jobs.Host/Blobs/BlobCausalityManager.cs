@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -20,13 +22,13 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
         const string MetadataKeyName = "AzureJobsParentId";
 
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
-        public static void SetWriter(ICloudBlob blob, Guid function)
+        public static async Task SetWriterAsync(ICloudBlob blob, Guid function, CancellationToken cancellationToken)
         {
             // Beware, SetMetadata() is like a POST, not a PUT, so must
             // fetch existing attributes to preserve them. 
             try
             {
-                blob.FetchAttributes();
+                await blob.FetchAttributesAsync(cancellationToken);
             }
             catch (StorageException)
             {
@@ -35,12 +37,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             }
 
             blob.Metadata[MetadataKeyName] = function.ToString();
-            blob.SetMetadata();
+            await blob.SetMetadataAsync(cancellationToken);
         }
 
-        public static Guid? GetWriter(ICloudBlob blob)
+        public static async Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)
         {
-            blob.FetchAttributes();
+            await blob.FetchAttributesAsync(cancellationToken);
             if (!blob.Metadata.ContainsKey(MetadataKeyName))
             {
                 return null;

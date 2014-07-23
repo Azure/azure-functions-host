@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
@@ -15,9 +17,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return typeof(byte[]); }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
         {
-            return new ByteArrayValueBinder(value, context.FunctionInstanceId);
+            IValueProvider provider = new ByteArrayValueBinder(value, context.FunctionInstanceId);
+            return Task.FromResult(provider);
         }
 
         private class ByteArrayValueBinder : IOrderedValueBinder
@@ -51,14 +54,14 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 return _entity.MessageSender.Path;
             }
 
-            public void SetValue(object value)
+            public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 byte[] bytes = (byte[])value;
 
                 using (MemoryStream stream = new MemoryStream(bytes, writable: false))
                 using (BrokeredMessage message = new BrokeredMessage(stream))
                 {
-                    _entity.SendAndCreateQueueIfNotExists(message, _functionInstanceId);
+                    await _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
                 }
             }
         }

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
@@ -19,11 +21,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
-        public void Execute()
+        public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             // This is the critical call to record causality. 
             // This must be called after the blob is written, since it may stamp the blob. 
-            BlobCausalityManager.SetWriter(_blob, _functionInstanceId);
+            await BlobCausalityManager.SetWriterAsync(_blob, _functionInstanceId, cancellationToken);
 
             // Notify that blob is available. 
             if (_blobWrittenWatcher != null)

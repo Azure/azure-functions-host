@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 new EntityOutputConverter<string>(new StringToTableEntityContextConverter(client, path)));
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
             TableEntityPath boundPath = _path.Bind(context.BindingData);
             CloudTable table = _client.GetTableReference(boundPath.TableName);
@@ -69,15 +70,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 RowKey = boundPath.RowKey
             };
 
-            return Bind(entityContext, context.FunctionContext);
+            return BindAsync(entityContext, context.FunctionContext);
         }
 
-        private IValueProvider Bind(TableEntityContext entityContext, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TableEntityContext entityContext, FunctionBindingContext context)
         {
-            return _argumentBinding.Bind(entityContext, context);
+            return _argumentBinding.BindAsync(entityContext, context);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             TableEntityContext entityContext = null;
 
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             TableClient.ValidateAzureTableKeyValue(entityContext.PartitionKey);
             TableClient.ValidateAzureTableKeyValue(entityContext.RowKey);
 
-            return Bind(entityContext, context);
+            return BindAsync(entityContext, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

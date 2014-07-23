@@ -4,6 +4,8 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 
@@ -66,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     throw new InvalidOperationException("Cannot bind a page blob using an ICloudBlobStreamBinder.");
                 }
 
-                CloudBlobStream rawStream = blockBlob.OpenWrite();
+                CloudBlobStream rawStream = await blockBlob.OpenWriteAsync(context.CancellationToken);
                 IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
                     context.BlobWrittenWatcher);
                 WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
@@ -106,10 +108,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                     return null;
                 }
 
-                public void SetValue(object value)
+                public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
-                    _objectBinder.WriteToStream(_stream, value);
-                    _stream.Commit();
+                    await _objectBinder.WriteToStreamAsync(_stream, value, cancellationToken);
+                    await _stream.CommitAsync(cancellationToken);
                     _stream.Dispose();
                 }
 

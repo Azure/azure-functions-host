@@ -3,6 +3,8 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -34,69 +36,66 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             get { return _directory; }
         }
 
-        public Guid GetOrCreateHostId(string sharedHostName)
+        public async Task<Guid> GetOrCreateHostIdAsync(string sharedHostName, CancellationToken cancellationToken)
         {
             Debug.Assert(_directory != null);
 
             CloudBlockBlob blob = _directory.GetBlockBlobReference(sharedHostName);
-            Guid hostId;
+            Guid? possibleHostId = await TryGetExistingIdAsync(blob, cancellationToken);
 
-            if (TryGetExistingId(blob, out hostId))
+            if (possibleHostId.HasValue)
             {
-                return hostId;
+                return possibleHostId.Value;
             }
 
             Guid newHostId = Guid.NewGuid();
 
-            if (TryInitializeId(blob, newHostId))
+            if (await TryInitializeIdAsync(blob, newHostId, cancellationToken))
             {
                 return newHostId;
             }
 
-            if (TryGetExistingId(blob, out hostId))
+            possibleHostId = await TryGetExistingIdAsync(blob, cancellationToken);
+
+            if (possibleHostId.HasValue)
             {
-                return hostId;
+                return possibleHostId.Value;
             }
 
             // Not expected - valid host ID didn't exist before, couldn't be created, and still didn't exist after.
             throw new InvalidOperationException("Unable to determine host ID.");
         }
 
-        private static bool TryGetExistingId(CloudBlockBlob blob, out Guid hostId)
+        private static async Task<Guid?> TryGetExistingIdAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
         {
-            string text;
+            string text = await TryDownloadAsync(blob, cancellationToken);
 
-            if (!TryDownload(blob, out text))
+            if (text == null)
             {
-                hostId = Guid.Empty;
-                return false;
+                return null;
             }
 
             Guid possibleHostId;
 
             if (Guid.TryParseExact(text, "N", out possibleHostId))
             {
-                hostId = possibleHostId;
-                return true;
+                return possibleHostId;
             }
 
-            hostId = Guid.Empty;
-            return false;
+            return null;
         }
 
-        private static bool TryDownload(CloudBlockBlob blob, out string text)
+        private static async Task<string> TryDownloadAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
         {
             try
             {
-                text = blob.DownloadText();
-                return true;
+                return await blob.DownloadTextAsync(cancellationToken);
             }
             catch (StorageException exception)
             {
                 if (exception.IsNotFound())
                 {
-                    text = null;
-                    return false;
+                    return null;
                 }
                 else
                 {
@@ -105,14 +104,22 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             }
         }
 
-        private static bool TryInitializeId(CloudBlockBlob blob, Guid hostId)
+        private static async Task<bool> TryInitializeIdAsync(CloudBlockBlob blob, Guid hostId,
+            CancellationToken cancellationToken)
         {
             string text = hostId.ToString("N");
             AccessCondition accessCondition = new AccessCondition { IfNoneMatchETag = "*" };
+            bool failedWithContainerNotFoundException = false;
 
             try
             {
-                blob.UploadText(text, accessCondition: accessCondition);
+                await blob.UploadTextAsync(text,
+                    encoding: null,
+                    accessCondition: accessCondition,
+                    options: null,
+                    operationContext: null,
+                    cancellationToken: cancellationToken);
+                return true;
             }
             catch (StorageException exception)
             {
@@ -120,25 +127,9 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 {
                     return false;
                 }
-                else if (exception.IsNotFound())
+                else if (exception.IsNotFoundContainerNotFound())
                 {
-                    blob.Container.CreateIfNotExists();
-
-                    try
-                    {
-                        blob.UploadText(text, accessCondition: accessCondition);
-                    }
-                    catch (StorageException retryException)
-                    {
-                        if (retryException.IsPreconditionFailed() || exception.IsConflict())
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
+                    failedWithContainerNotFoundException = true;
                 }
                 else
                 {
@@ -146,7 +137,31 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 }
             }
 
-            return true;
+            Debug.Assert(failedWithContainerNotFoundException);
+
+            await blob.Container.CreateIfNotExistsAsync(cancellationToken);
+
+            try
+            {
+                await blob.UploadTextAsync(text,
+                    encoding: null,
+                    accessCondition: accessCondition,
+                    options: null,
+                    operationContext: null,
+                    cancellationToken: cancellationToken);
+                return true;
+            }
+            catch (StorageException retryException)
+            {
+                if (retryException.IsPreconditionFailed() || retryException.IsConflict())
+                {
+                    return false;
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         private static CloudBlobClient VerifyNotNull(CloudBlobClient client)

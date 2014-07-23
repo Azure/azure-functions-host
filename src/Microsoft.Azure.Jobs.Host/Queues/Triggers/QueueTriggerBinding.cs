@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Executors;
@@ -75,15 +76,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return contract;
         }
 
-        public ITriggerData Bind(CloudQueueMessage value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(CloudQueueMessage value, FunctionBindingContext context)
         {
-            IValueProvider valueProvider = _argumentBinding.Bind(value, context);
+            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
 
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public ITriggerData Bind(object value, FunctionBindingContext context)
+        public Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
         {
             CloudQueueMessage message = null;
 
@@ -92,7 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 throw new InvalidOperationException("Unable to convert trigger to CloudQueueMessage.");
             }
 
-            return Bind(message, context);
+            return BindAsync(message, context);
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,

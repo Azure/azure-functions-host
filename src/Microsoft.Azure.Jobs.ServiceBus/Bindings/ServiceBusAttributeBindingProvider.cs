@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
@@ -17,14 +18,14 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 new CollectionArgumentBindingProvider(),
                 new UserTypeArgumentBindingProvider()); // Must be after collection provider (IEnumerable checks).
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             ServiceBusAttribute serviceBusAttribute = parameter.GetCustomAttribute<ServiceBusAttribute>(inherit: false);
 
             if (serviceBusAttribute == null)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             string queueOrTopicName = context.Resolve(serviceBusAttribute.QueueOrTopicName);
@@ -39,7 +40,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
                 context.ServiceBusConnectionString);
 
-            return new ServiceBusBinding(parameter.Name, argumentBinding, account, queueOrTopicName);
+            IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, queueOrTopicName);
+            return Task.FromResult(binding);
         }
     }
 }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
@@ -12,7 +13,6 @@ using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.Azure.Jobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
@@ -27,7 +27,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _context = context;
         }
 
-        public IDelayedException TryExecute(IFunctionInstance instance)
+        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
+            CancellationToken cancellationToken)
         {
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
@@ -38,10 +39,15 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             string startedMessageId = null;
             try
             {
-                startedMessageId = ExecuteWithLogMessage(instance, startedMessage, parameterLogCollector);
+                startedMessageId = await ExecuteWithLogMessageAsync(instance, startedMessage, parameterLogCollector,
+                    cancellationToken);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception exception)
             {
                 if (completedMessage == null)
                 {
@@ -50,49 +56,55 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 completedMessage.Failure = new FunctionFailure
                 {
-                    ExceptionType = e.GetType().FullName,
-                    ExceptionDetails = e.ToDetails(),
+                    ExceptionType = exception.GetType().FullName,
+                    ExceptionDetails = exception.ToDetails(),
                 };
 
-                exceptionInfo = ExceptionDispatchInfo.Capture(e);
+                exceptionInfo = ExceptionDispatchInfo.Capture(exception);
             }
-            finally
-            {
-                completedMessage.ParameterLogs = parameterLogCollector;
-                completedMessage.EndTime = DateTimeOffset.UtcNow;
-                _context.FunctionInstanceLogger.LogFunctionCompleted(completedMessage);
-                _context.FunctionInstanceLogger.DeleteLogFunctionStarted(startedMessageId);
-            }
+
+            completedMessage.ParameterLogs = parameterLogCollector;
+            completedMessage.EndTime = DateTimeOffset.UtcNow;
+            await _context.FunctionInstanceLogger.LogFunctionCompletedAsync(completedMessage, cancellationToken);
+            await _context.FunctionInstanceLogger.DeleteLogFunctionStartedAsync(startedMessageId, cancellationToken);
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
-        private string ExecuteWithLogMessage(IFunctionInstance instance, FunctionStartedMessage message,
-            IDictionary<string, ParameterLog> parameterLogCollector)
+        private async Task<string> ExecuteWithLogMessageAsync(IFunctionInstance instance,
+            FunctionStartedMessage message,
+            IDictionary<string, ParameterLog> parameterLogCollector,
+            CancellationToken cancellationToken)
         {
             string startedMessageId;
 
             // Create the console output writer
-            IFunctionOutputDefinition outputDefinition = _context.FunctionOutputLogger.Create(instance);
+            IFunctionOutputDefinition outputDefinition = await _context.FunctionOutputLogger.CreateAsync(instance,
+                cancellationToken);
 
-            using (IFunctionOutput outputLog = outputDefinition.CreateOutput())
+            using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
             using (IntervalSeparationTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
-                    new FunctionBindingContext(_context.BindingContext, instance.Id, consoleOutput);
+                    new FunctionBindingContext(_context.BindingContext, instance.Id, consoleOutput, cancellationToken);
 
                 // Must bind before logging (bound invoke string is included in log message).
-                IReadOnlyDictionary<string, IValueProvider> parameters = instance.BindingSource.Bind(functionContext);
+                IReadOnlyDictionary<string, IValueProvider> parameters =
+                    await instance.BindingSource.BindAsync(functionContext);
 
                 using (ValueProviderDisposable.Create(parameters))
                 {
-                    startedMessageId = LogFunctionStarted(message, outputDefinition, parameters);
+                    startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
 
                     try
                     {
-                        ExecuteWithOutputLogs(instance, parameters, consoleOutput, outputDefinition,
-                            parameterLogCollector);
+                        await ExecuteWithOutputLogsAsync(instance, parameters, consoleOutput, outputDefinition,
+                            parameterLogCollector, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception exception)
                     {
@@ -108,14 +120,16 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     updateOutputLogTimer.Stop();
                 }
 
-                outputLog.SaveAndClose();
+                await outputLog.SaveAndCloseAsync(cancellationToken);
 
                 return startedMessageId;
             }
         }
 
-        private string LogFunctionStarted(FunctionStartedMessage message, IFunctionOutputDefinition functionOutput,
-            IReadOnlyDictionary<string, IValueProvider> parameters)
+        private Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
+            IFunctionOutputDefinition functionOutput,
+            IReadOnlyDictionary<string, IValueProvider> parameters,
+            CancellationToken cancellationToken)
         {
             // Finish populating the function started snapshot.
             message.OutputBlob = functionOutput.OutputBlob;
@@ -123,7 +137,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
-            return _context.FunctionInstanceLogger.LogFunctionStarted(message);
+            return _context.FunctionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
         }
 
         private static IntervalSeparationTimer StartOutputTimer(ICanFailCommand updateCommand)
@@ -137,7 +151,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             TimeSpan refreshRate = FunctionOutputIntervals.RefreshRate;
             IntervalSeparationTimer timer =
                 FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
-            timer.Start(executeFirst: false);
+            timer.Start();
             return timer;
         }
 
@@ -152,13 +166,16 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             TimeSpan refreshRate = FunctionParameterLogIntervals.RefreshRate;
             IntervalSeparationTimer timer =
                 FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
-            timer.Start(executeFirst: false);
+            timer.Start();
             return timer;
         }
 
-        private void ExecuteWithOutputLogs(IFunctionInstance instance,
-            IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput,
-            IFunctionOutputDefinition outputDefinition, IDictionary<string, ParameterLog> parameterLogCollector)
+        private async Task ExecuteWithOutputLogsAsync(IFunctionInstance instance,
+            IReadOnlyDictionary<string, IValueProvider> parameters,
+            TextWriter consoleOutput,
+            IFunctionOutputDefinition outputDefinition,
+            IDictionary<string, ParameterLog> parameterLogCollector,
+            CancellationToken cancellationToken)
         {
             MethodInfo method = instance.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
@@ -170,7 +187,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             {
                 try
                 {
-                    ExecuteWithWatchers(method, parameterInfos, parameters, consoleOutput);
+                    await ExecuteWithWatchersAsync(method, parameterInfos, parameters, consoleOutput,
+                        cancellationToken);
 
                     if (updateParameterLogTimer != null)
                     {
@@ -217,8 +235,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return new ValueWatcher(watches, parameterLogBlob, consoleOutput);
         }
 
-        internal static void ExecuteWithWatchers(MethodInfo method, ParameterInfo[] parameterInfos,
-            IReadOnlyDictionary<string, IValueProvider> parameters, TextWriter consoleOutput)
+        internal static async Task ExecuteWithWatchersAsync(MethodInfo method,
+            ParameterInfo[] parameterInfos,
+            IReadOnlyDictionary<string, IValueProvider> parameters,
+            TextWriter consoleOutput,
+            CancellationToken cancellationToken)
         {
             IDelayedException delayedBindingException;
             object[] reflectionParameters = PrepareParameters(parameterInfos, parameters, out delayedBindingException);
@@ -230,16 +251,14 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 delayedBindingException.Throw();
             }
 
-            if (IsAsyncMethod(method))
-            {
-                InformNoAsyncSupport(consoleOutput);
-            }
+            Exception methodException = null;
 
             try
             {
                 object returnValue = method.Invoke(null, reflectionParameters);
-
-                HandleFunctionReturnValue(method, returnValue, consoleOutput);
+                Task returnTask = GetTaskFromReturnValue(method, returnValue);
+                // Cancellation token is provide by reflectionParameters (if the method binds to CancellationToken).
+                await returnTask;
             }
             catch (TargetInvocationException exception)
             {
@@ -247,39 +266,47 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 // Print stacktrace to console now while we have it.
                 consoleOutput.WriteLine(exception.InnerException.StackTrace);
 
-                throw exception.InnerException;
+                methodException = exception.InnerException;
             }
-            finally
+
+            // Process any out parameters, do any cleanup
+            // For update, do any cleanup work.
+
+            // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
+            // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
+            // occurred by the time messages are enqueued.
+            string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
+
+            foreach (string name in parameterNamesInBindOrder)
             {
-                // Process any out parameters, do any cleanup
-                // For update, do any cleanup work. 
+                IValueProvider provider = parameters[name];
+                IValueBinder binder = provider as IValueBinder;
 
-                // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
-                // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
-                // occurred by the time messages are enqueued.
-                string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
-
-                foreach (string name in parameterNamesInBindOrder)
+                if (binder != null)
                 {
-                    IValueProvider provider = parameters[name];
-                    IValueBinder binder = provider as IValueBinder;
+                    object argument = reflectionParameters[GetParameterIndex(parameterInfos, name)];
 
-                    if (binder != null)
+                    try
                     {
-                        object argument = reflectionParameters[GetParameterIndex(parameterInfos, name)];
-
-                        try
-                        {
-                            // This could do complex things that may fail. Catch the exception.
-                            binder.SetValue(argument);
-                        }
-                        catch (Exception e)
-                        {
-                            string msg = string.Format("Error while handling parameter {0} '{1}' after function returned:", name, argument);
-                            throw new InvalidOperationException(msg, e);
-                        }
+                        // This could do complex things that may fail. Catch the exception.
+                        await binder.SetValueAsync(argument, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception exception)
+                    {
+                        string message = String.Format(CultureInfo.InvariantCulture,
+                            "Error while handling parameter {0} '{1}' after function returned:", name, argument);
+                        throw new InvalidOperationException(message, exception);
                     }
                 }
+            }
+
+            if (methodException != null)
+            {
+                throw methodException;
             }
         }
 
@@ -411,52 +438,22 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return parameterNames;
         }
 
-        /// <summary>
-        /// Handles the function return value and logs it, if necessary
-        /// </summary>
-        private static void HandleFunctionReturnValue(MethodInfo m, object returnValue, TextWriter consoleOutput)
+        private static Task GetTaskFromReturnValue(MethodInfo method, object returnValue)
         {
-            Type returnType = m.ReturnType;
-
-            if (returnType == typeof(void))
+            if (typeof(Task).IsAssignableFrom(method.ReturnType))
             {
-                // No need to do anything
-                return;
-            }
-            else if (IsAsyncMethod(m))
-            {
-                Task t = returnValue as Task;
-                t.Wait();
+                Task task = (Task)returnValue;
 
-                if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>))
+                if (task is Task<Task>)
                 {
-                    PropertyInfo resultProperty = returnType.GetProperty("Result");
-                    object result = resultProperty.GetValue(returnValue);
-
-                    LogReturnValue(consoleOutput, result);
+                    throw new InvalidOperationException("Returning a nested Task is not supported. " +
+                        "Did you mean to await the task instead of returning it?");
                 }
+
+                return task;
             }
-            else
-            {
-                LogReturnValue(consoleOutput, returnValue);
-            }
-        }
 
-        private static bool IsAsyncMethod(MethodInfo m)
-        {
-            Type returnType = m.ReturnType;
-
-            return typeof(Task).IsAssignableFrom(returnType);
-        }
-
-        private static void InformNoAsyncSupport(TextWriter consoleOutput)
-        {
-            consoleOutput.WriteLine("Warning: This asynchronous method will be run synchronously.");
-        }
-
-        private static void LogReturnValue(TextWriter consoleOutput, object value)
-        {
-            consoleOutput.WriteLine("Return value: {0}", value != null ? value.ToString() : "<null>");
+            return Task.FromResult(0);
         }
 
         private class ValueBinderStepOrderComparer : IComparer<IValueProvider>

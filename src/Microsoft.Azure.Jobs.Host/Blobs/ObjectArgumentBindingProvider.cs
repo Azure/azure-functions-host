@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -63,15 +64,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
             {
                 object value;
                 ParameterLog status;
 
-                using (Stream rawStream = blob.OpenRead())
+                using (Stream rawStream = await blob.OpenReadAsync(context.CancellationToken))
                 using (WatchableReadStream watchableStream = new WatchableReadStream(rawStream))
                 {
-                    value = _objectBinder.ReadFromStream(watchableStream);
+                    value = await _objectBinder.ReadFromStreamAsync(watchableStream, context.CancellationToken);
                     status = watchableStream.GetStatus();
                 }
 

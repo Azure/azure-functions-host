@@ -1,32 +1,43 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<ServiceBusEntity>
+    internal class OutputConverter<TInput> : IAsyncObjectToTypeConverter<ServiceBusEntity>
         where TInput : class
     {
-        private readonly IConverter<TInput, ServiceBusEntity> _innerConverter;
+        private readonly IAsyncConverter<TInput, ServiceBusEntity> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, ServiceBusEntity> innerConverter)
+        public OutputConverter(IAsyncConverter<TInput, ServiceBusEntity> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out ServiceBusEntity output)
+        public async Task<ConversionResult<ServiceBusEntity>> TryConvertAsync(object input,
+            CancellationToken cancellationToken)
         {
             TInput typedInput = input as TInput;
 
             if (typedInput == null)
             {
-                output = null;
-                return false;
+                return new ConversionResult<ServiceBusEntity>
+                {
+                    Succeeded = false,
+                    Result = null
+                };
             }
 
-            output = _innerConverter.Convert(typedInput);
-            return true;
+            ServiceBusEntity entity = await _innerConverter.ConvertAsync(typedInput, cancellationToken);
+
+            return new ConversionResult<ServiceBusEntity>
+            {
+                Succeeded = true,
+                Result = entity
+            };
         }
     }
 }

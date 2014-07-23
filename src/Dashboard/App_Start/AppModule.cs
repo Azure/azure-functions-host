@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Web;
 using System.Web.Caching;
 using Dashboard.Data;
@@ -101,7 +102,7 @@ namespace Dashboard
             provider.DashboardConnectionString = provider.DashboardConnectionString;
             CloudStorageAccount account = provider.GetAccount(ConnectionStringNames.Dashboard);
             DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
-            validator.ValidateCredentials(account);
+            validator.ValidateCredentialsAsync(account, CancellationToken.None).GetAwaiter().GetResult();
             return account;
         }
     }

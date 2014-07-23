@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
@@ -23,9 +25,10 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return _valueType; }
         }
 
-        public IValueProvider Bind(ServiceBusEntity value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
         {
-            return new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
+            IValueProvider provider = new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
+            return Task.FromResult(provider);
         }
 
         private class UserTypeValueBinder : IOrderedValueBinder
@@ -61,7 +64,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 return _entity.MessageSender.Path;
             }
 
-            public void SetValue(object value)
+            public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 string text = JsonCustom.SerializeObject(value);
                 byte[] bytes = StrictEncodings.Utf8.GetBytes(text);
@@ -69,7 +72,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 using (MemoryStream stream = new MemoryStream(bytes, writable: false))
                 using (BrokeredMessage message = new BrokeredMessage(stream))
                 {
-                    _entity.SendAndCreateQueueIfNotExists(message, _functionInstanceId);
+                    await _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
                 }
             }
         }

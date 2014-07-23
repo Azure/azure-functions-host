@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Timers
 {
@@ -40,10 +42,10 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             get { return _currentInterval; }
         }
 
-        public void Execute()
+        public async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Ignore return value;
-            _innerCommand.TryExecute();
+            // Ignore return value
+            await _innerCommand.TryExecuteAsync(cancellationToken);
             _currentInterval = _normalInterval;
         }
 

@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -21,11 +23,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             get { return _instance; }
         }
 
-        public DateTime? GetLastModifiedTimestamp(ICloudBlob blob)
+        public async Task<DateTime?> GetLastModifiedTimestampAsync(ICloudBlob blob, CancellationToken cancellationToken)
         {
             try
             {
-                blob.FetchAttributes();
+                await blob.FetchAttributesAsync(cancellationToken);
             }
             catch (StorageException exception)
             {

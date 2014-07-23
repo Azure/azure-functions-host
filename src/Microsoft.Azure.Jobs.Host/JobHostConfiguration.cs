@@ -146,6 +146,7 @@ namespace Microsoft.Azure.Jobs
             const string filename = "WebJobsSdk.marker";
             var path = Path.Combine(jobDataPath, filename);
 
+            // async TODO: Consider moving call out of JobHostConfiguration constructor.
             File.WriteAllText(path, DateTime.UtcNow.ToString("s") + "Z"); // content is not really important, this would help debugging though
         }
     }

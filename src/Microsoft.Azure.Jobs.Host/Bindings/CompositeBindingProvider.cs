@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
@@ -14,11 +15,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             _providers = providers;
         }
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             foreach (IBindingProvider provider in _providers)
             {
-                IBinding binding = provider.TryCreate(context);
+                IBinding binding = await provider.TryCreateAsync(context);
 
                 if (binding != null)
                 {

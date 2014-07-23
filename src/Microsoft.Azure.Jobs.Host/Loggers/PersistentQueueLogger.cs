@@ -4,6 +4,8 @@
 using System;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
@@ -21,34 +23,34 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _queueWriter = queueWriter;
         }
 
-        public void LogHostStarted(HostStartedMessage message)
+        public Task LogHostStartedAsync(HostStartedMessage message, CancellationToken cancellationToken)
         {
-            _queueWriter.Enqueue(message);
+            return _queueWriter.EnqueueAsync(message, cancellationToken);
         }
 
-        public string LogFunctionStarted(FunctionStartedMessage message)
+        public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            return _queueWriter.Enqueue(message);
+            return _queueWriter.EnqueueAsync(message, cancellationToken);
         }
 
-        public void LogFunctionCompleted(FunctionCompletedMessage message)
+        public Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)
         {
             if (message == null)
             {
                 throw new ArgumentNullException("message");
             }
 
-            _queueWriter.Enqueue(message);
+            return _queueWriter.EnqueueAsync(message, cancellationToken);
         }
 
-        public void DeleteLogFunctionStarted(string startedMessageId)
+        public Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)
         {
             if (String.IsNullOrEmpty(startedMessageId))
             {
                 throw new ArgumentNullException("startedMessageId");
             }
 
-            _queueWriter.Delete(startedMessageId);
+            return _queueWriter.DeleteAsync(startedMessageId, cancellationToken);
         }
     }
 }

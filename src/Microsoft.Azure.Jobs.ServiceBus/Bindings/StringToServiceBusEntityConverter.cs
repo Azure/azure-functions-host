@@ -2,11 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
 {
-    internal class StringToServiceBusEntityConverter : IConverter<string, ServiceBusEntity>
+    internal class StringToServiceBusEntityConverter : IAsyncConverter<string, ServiceBusEntity>
     {
         private readonly ServiceBusAccount _account;
         private readonly string _defaultQueueOrTopicName;
@@ -17,7 +20,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             _defaultQueueOrTopicName = defaultQueueOrTopicName;
         }
 
-        public ServiceBusEntity Convert(string input)
+        public async Task<ServiceBusEntity> ConvertAsync(string input, CancellationToken cancellationToken)
         {
             string queueOrTopicName;
 
@@ -31,10 +34,13 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 queueOrTopicName = input;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            MessageSender messageSender = await _account.MessagingFactory.CreateMessageSenderAsync(queueOrTopicName);
+
             return new ServiceBusEntity
             {
                 Account = _account,
-                MessageSender = _account.MessagingFactory.CreateMessageSender(queueOrTopicName)
+                MessageSender = messageSender
             };
         }
     }

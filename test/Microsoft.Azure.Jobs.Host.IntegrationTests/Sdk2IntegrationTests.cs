@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestBindCloudStorageAccount()
         {
-            var lc = new TestJobHost<Program>();
+            var lc = JobHostFactory.Create<Program>();
             lc.Call("FuncCloudStorageAccount");
         }
 
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             var page = container.GetPageBlobReference("page");
             page.UploadFromStream(stream);
 
-            var lc = new TestJobHost<Program>();
+            var lc = JobHostFactory.Create<Program>();
 
             lc.Call("IBlob", new { page = page });
 
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestMissingIBlob()
         {
-            var lc = new TestJobHost<Program>();
+            var lc = JobHostFactory.Create<Program>();
             ExceptionAssert.ThrowsInvalidOperation(() => lc.Call("IBlobMissing"),
                 "Missing value for trigger parameter 'missing'.");
             ExceptionAssert.ThrowsInvalidOperation(() => lc.Call("BlockBlobMissing"),
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestQueue()
         {
-            var lc = new TestJobHost<Program>();
+            var lc = JobHostFactory.Create<Program>();
             lc.Call("Queue");
             Assert.True(Program._QueueInvoked);
         }
@@ -78,15 +78,15 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestQueueBadName()
         {
-            var host = new TestJobHost<ProgramBadQueueName>(null);
+            var host = JobHostFactory.Create<ProgramBadQueueName>(null);
 
             // indexer should notice bad queue name and fail immediately
-            Assert.Throws<FunctionIndexingException>(() => host.Host.RunAndBlock());
+            Assert.Throws<FunctionIndexingException>(() => host.RunAndBlock());
         }
 
         public void TestTable()
         {
-            var lc = new TestJobHost<Program>();
+            var lc = JobHostFactory.Create<Program>();
             lc.Call("Table");
             Assert.True(Program.TableInvoked);
         }
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
                 table.ExecuteBatch(batch);
 
-                var host = new TestJobHost<Program>();
+                var host = JobHostFactory.Create<Program>();
                 host.Call("CountEntitiesWithStringPropertyB");
 
                 Assert.Equal(2, Program.EntitiesWithStringPropertyB);
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             Program.RowCount = int.MinValue;
 
-            var host = new TestJobHost<Program>();
+            var host = JobHostFactory.Create<Program>();
             host.Call("IQueryableMissingTable");
 
             Assert.Equal(0, Program.RowCount);
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 entity.Properties["Value"] = new EntityProperty("Foo");
                 table.Execute(TableOperation.Insert(entity));
 
-                var host = new TestJobHost<Program>();
+                var host = JobHostFactory.Create<Program>();
                 host.Call("TestITableEntity");
 
                 DynamicTableEntity updatedEntity =
@@ -188,7 +188,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 entity.Properties["Value"] = new EntityProperty("Foo");
                 table.Execute(TableOperation.Insert(entity));
 
-                var host = new TestJobHost<Program>();
+                var host = JobHostFactory.Create<Program>();
                 host.Call("TestPocoTableEntity");
 
                 DynamicTableEntity updatedEntity =

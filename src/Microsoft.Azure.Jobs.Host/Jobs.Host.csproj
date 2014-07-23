@@ -308,6 +308,11 @@
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
     <Compile Include="ConnectionStringNames.cs" />
+    <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
+    <Compile Include="Converters\IAsyncConverter.cs" />
+    <Compile Include="Converters\AsyncIdentityConverter.cs" />
+    <Compile Include="Converters\ConversionResult.cs" />
+    <Compile Include="Converters\IAsyncObjectToTypeConverter.cs" />
     <Compile Include="Executors\FunctionExecutorContextFactory.cs" />
     <Compile Include="Executors\FunctionInstanceFactory.cs" />
     <Compile Include="Executors\FunctionOutputIntervals.cs" />
@@ -351,9 +356,9 @@
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
-    <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommand.cs" />
     <Compile Include="Timers\FixedIntervalsTimerCommand.cs" />
+    <Compile Include="Timers\NullCanFailCommand.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />
     <Compile Include="Executors\IBindingSource.cs" />

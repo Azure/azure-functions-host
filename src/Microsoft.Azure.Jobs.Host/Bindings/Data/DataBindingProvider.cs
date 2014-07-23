@@ -4,31 +4,32 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 {
     internal class DataBindingProvider : IBindingProvider
     {
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             IReadOnlyDictionary<string, Type> bindingDataContract = context.BindingDataContract;
             string parameterName = context.Parameter.Name;
 
             if (bindingDataContract == null || !bindingDataContract.ContainsKey(parameterName))
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             Type bindingDataType = bindingDataContract[parameterName];
 
             if (bindingDataType.IsByRef)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             IBindingProvider typedProvider = CreateTypedBindingProvider(bindingDataType);
-            return typedProvider.TryCreate(context);
+            return typedProvider.TryCreateAsync(context);
         }
 
         private static IBindingProvider CreateTypedBindingProvider(Type bindingDataType)

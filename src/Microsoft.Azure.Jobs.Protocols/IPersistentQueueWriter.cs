@@ -1,6 +1,9 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
+
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
 #else
@@ -17,11 +20,14 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         /// <summary>Adds a message to the queue.</summary>
         /// <param name="message">The message to enqueue.</param>
-        /// <returns>The enqueued message identifier.</returns>
-        string Enqueue(T message);
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will provide the enqueued message identifier.</returns>
+        Task<string> EnqueueAsync(T message, CancellationToken cancellationToken);
 
         /// <summary>Deletes a message from the queue.</summary>
         /// <param name="messageId">The message identifier from the message to delete.</param>
-        void Delete(string messageId);
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A <see cref="Task"/> that will delete the message from the queue.</returns>
+        Task DeleteAsync(string messageId, CancellationToken cancellationToken);
     }
 }

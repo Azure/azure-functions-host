@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
@@ -31,19 +33,23 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             _bindingProvider = context.BindingProvider;
         }
 
-        public void IndexType(Type type, IFunctionIndex index)
+        public async Task IndexTypeAsync(Type type, IFunctionIndex index, CancellationToken cancellationToken)
         {
             foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags))
             {
-                IndexMethod(method, index);
+                await IndexMethodAsync(method, index, cancellationToken);
             }
         }
 
-        public void IndexMethod(MethodInfo method, IFunctionIndex index)
+        public async Task IndexMethodAsync(MethodInfo method, IFunctionIndex index, CancellationToken cancellationToken)
         {
             try
             {
-                IndexMethodCore(method, index);
+                await IndexMethodAsyncCore(method, index, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -51,17 +57,19 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             }
         }
 
-        private void IndexMethodCore(MethodInfo method, IFunctionIndex index)
+        private async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndex index,
+            CancellationToken cancellationToken)
         {
             bool hasNoAutomaticTrigger = method.GetCustomAttribute<NoAutomaticTriggerAttribute>() != null;
 
             ITriggerBinding triggerBinding = null;
             ParameterInfo triggerParameter = null;
             ParameterInfo[] parameters = method.GetParameters();
+
             foreach (ParameterInfo parameter in parameters)
             {
-                ITriggerBinding possibleTriggerBinding = _triggerBindingProvider.TryCreate(
-                    new TriggerBindingProviderContext(_context, parameter));
+                ITriggerBinding possibleTriggerBinding = await _triggerBindingProvider.TryCreateAsync(
+                    new TriggerBindingProviderContext(_context, parameter, cancellationToken));
 
                 if (possibleTriggerBinding != null)
                 {
@@ -99,14 +107,15 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
                     continue;
                 }
 
-                IBinding binding = _bindingProvider.TryCreate(
-                    BindingProviderContext.Create(_context, parameter, bindingDataContract));
+                IBinding binding = await _bindingProvider.TryCreateAsync(
+                    BindingProviderContext.Create(_context, parameter, bindingDataContract, cancellationToken));
 
                 if (binding == null)
                 {
                     if (triggerBinding != null && !hasNoAutomaticTrigger)
                     {
-                        throw new InvalidOperationException("Cannot bind parameter '" + parameter.Name + "' when using this trigger.");
+                        throw new InvalidOperationException("Cannot bind parameter '" + parameter.Name +
+                            "' when using this trigger.");
                     }
                     else
                     {

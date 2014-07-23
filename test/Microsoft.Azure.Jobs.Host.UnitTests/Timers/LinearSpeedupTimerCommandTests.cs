@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Xunit;
@@ -253,9 +255,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
                 _tryExecute = tryExecute;
             }
 
-            public bool TryExecute()
+            public Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
             {
-                return _tryExecute.Invoke();
+                return Task.FromResult(_tryExecute.Invoke());
             }
         }
     }

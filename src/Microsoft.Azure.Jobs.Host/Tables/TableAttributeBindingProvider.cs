@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -19,14 +20,14 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 new TableEntityArgumentBindingProvider(),
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
 
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
 
             if (tableAttribute == null)
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
             string tableName = context.Resolve(tableAttribute.TableName);
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             Type parameterType = parameter.ParameterType;
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;
+            IBinding binding;
 
             if (bindsToEntireTable)
             {
@@ -47,7 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table to type '" + parameterType + "'.");
                 }
 
-                return new TableBinding(parameter.Name, argumentBinding, client, path);
+                binding = new TableBinding(parameter.Name, argumentBinding, client, path);
             }
             else
             {
@@ -63,8 +65,10 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                     throw new InvalidOperationException("Can't bind Table entity to type '" + parameterType + "'.");
                 }
 
-                return new TableEntityBinding(parameter.Name, argumentBinding, client, path);
+                binding = new TableEntityBinding(parameter.Name, argumentBinding, client, path);
             }
+
+            return Task.FromResult(binding);
         }
     }
 }

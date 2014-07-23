@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.WindowsAzure.Storage;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
             CloudBlobClient client = account.CreateCloudBlobClient();
             var container = client.GetContainerReference(containerName);
-            IBlobNotificationStrategy strategy = new ScanContainersStrategy(CancellationToken.None);
+            IBlobNotificationStrategy strategy = new ScanContainersStrategy();
             LambdaBlobTriggerExecutor executor = new LambdaBlobTriggerExecutor();
             strategy.Register(container, executor);
 
@@ -56,9 +57,9 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         {
             public Func<ICloudBlob, bool> ExecuteLambda { get; set; }
 
-            public bool Execute(ICloudBlob value)
+            public Task<bool> ExecuteAsync(ICloudBlob value, CancellationToken cancellationToken)
             {
-                return ExecuteLambda.Invoke(value);
+                return Task.FromResult(ExecuteLambda.Invoke(value));
             }
         }
     }

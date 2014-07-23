@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _instanceQueueListenerFactory = instanceQueueListenerFactory;
         }
 
-        public IListener Create(IFunctionExecutor executor, ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             List<IListener> listeners = new List<IListener>();
 
@@ -35,18 +36,18 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
                     continue;
                 }
 
-                IListener listener = listenerFactory.Create(executor, context);
+                IListener listener = await listenerFactory.CreateAsync(executor, context);
                 listeners.Add(listener);
             }
 
-            IListener sharedQueueListener = _sharedQueueListenerFactory.Create(executor, context);
+            IListener sharedQueueListener = await _sharedQueueListenerFactory.CreateAsync(executor, context);
 
             if (sharedQueueListener != null)
             {
                 listeners.Add(sharedQueueListener);
             }
 
-            IListener instanceQueueListener = _instanceQueueListenerFactory.Create(executor, context);
+            IListener instanceQueueListener = await _instanceQueueListenerFactory.CreateAsync(executor, context);
 
             if (instanceQueueListener != null)
             {

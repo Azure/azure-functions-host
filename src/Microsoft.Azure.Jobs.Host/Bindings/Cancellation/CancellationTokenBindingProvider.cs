@@ -3,21 +3,23 @@
 
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 {
     internal class CancellationTokenBindingProvider : IBindingProvider
     {
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
 
             if (parameter.ParameterType != typeof(CancellationToken))
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
-            return new CancellationTokenBinding(parameter.Name);
+            IBinding binding = new CancellationTokenBinding(parameter.Name);
+            return Task.FromResult(binding);
         }
     }
 }

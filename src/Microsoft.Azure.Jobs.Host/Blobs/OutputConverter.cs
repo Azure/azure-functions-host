@@ -1,33 +1,44 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<ICloudBlob>
+    internal class OutputConverter<TInput> : IAsyncObjectToTypeConverter<ICloudBlob>
         where TInput : class
     {
-        private readonly IConverter<TInput, ICloudBlob> _innerConverter;
+        private readonly IAsyncConverter<TInput, ICloudBlob> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, ICloudBlob> innerConverter)
+        public OutputConverter(IAsyncConverter<TInput, ICloudBlob> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out ICloudBlob output)
+        public async Task<ConversionResult<ICloudBlob>> TryConvertAsync(object input,
+            CancellationToken cancellationToken)
         {
             TInput typedInput = input as TInput;
 
             if (typedInput == null)
             {
-                output = null;
-                return false;
+                return new ConversionResult<ICloudBlob>
+                {
+                    Succeeded = false,
+                    Result = null
+                };
             }
 
-            output = _innerConverter.Convert(typedInput);
-            return true;
+            ICloudBlob blob = await _innerConverter.ConvertAsync(typedInput, cancellationToken);
+
+            return new ConversionResult<ICloudBlob>
+            {
+                Succeeded = true,
+                Result = blob
+            };
         }
     }
 }

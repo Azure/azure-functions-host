@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
@@ -28,7 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _functionInstanceLogger = functionInstanceLogger;
         }
 
-        public bool Execute(CloudQueueMessage value)
+        public async Task<bool> ExecuteAsync(CloudQueueMessage value, CancellationToken cancellationToken)
         {
             HostMessage model = JsonCustom.DeserializeObject<HostMessage>(value.AsString);
 
@@ -41,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             if (callAndOverrideModel != null)
             {
-                ProcessCallAndOverrideMessage(callAndOverrideModel, value.InsertionTime.Value);
+                await ProcessCallAndOverrideMessage(callAndOverrideModel, value.InsertionTime.Value, cancellationToken);
                 return true;
             }
 
@@ -109,19 +111,20 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return function.InstanceFactory.Create(message.Id, message.ParentId, message.Reason, objectParameters);
         }
 
-        private void ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime)
+        private async Task ProcessCallAndOverrideMessage(CallAndOverrideMessage message, DateTimeOffset insertionTime,
+            CancellationToken cancellationToken)
         {
             IFunctionInstance instance = CreateFunctionInstance(message);
 
             if (instance != null)
             {
-                _innerExecutor.TryExecute(instance);
+                await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
             }
             else
             {
                 // Log that the function failed.
                 FunctionCompletedMessage failedMessage = CreateFailedMessage(message, insertionTime);
-                _functionInstanceLogger.LogFunctionCompleted(failedMessage);
+                await _functionInstanceLogger.LogFunctionCompletedAsync(failedMessage, cancellationToken);
             }
         }
 

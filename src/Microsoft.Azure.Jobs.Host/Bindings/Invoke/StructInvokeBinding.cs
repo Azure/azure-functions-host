@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
@@ -26,12 +27,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
             get { return false; }
         }
 
-        private IValueProvider Bind(TValue value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TValue value, FunctionBindingContext context)
         {
-            return new ObjectValueProvider(value, typeof(TValue));
+            IValueProvider provider = new ObjectValueProvider(value, typeof(TValue));
+            return Task.FromResult(provider);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             TValue typedValue = default(TValue);
 
@@ -40,10 +42,10 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
                 throw new InvalidOperationException("Unable to convert value to " + typeof(TValue).Name + ".");
             }
 
-            return Bind(typedValue, context);
+            return BindAsync(typedValue, context);
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
             throw new InvalidOperationException("No value was provided for parameter '" + _parameterName + "'.");
         }

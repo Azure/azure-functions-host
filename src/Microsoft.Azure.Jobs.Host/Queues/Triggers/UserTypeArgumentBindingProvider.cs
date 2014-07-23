@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(CloudQueueMessage value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(CloudQueueMessage value, FunctionBindingContext context)
             {
                 object convertedValue;
 
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 catch (JsonException e)
                 {
                     // Easy to have the queue payload not deserialize properly. So give a useful error. 
-                    string msg = string.Format(
+                    string msg = String.Format(
 @"Binding parameters to complex objects (such as '{0}') uses Json.NET serialization. 
 1. Bind the parameter type as 'string' instead of '{0}' to get the raw values and avoid JSON deserialization, or
 2. Change the queue payload to be valid json. The JSON parser failed: {1}
@@ -51,7 +52,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-                return new QueueMessageValueProvider(value, convertedValue, _valueType);
+                IValueProvider provider = new QueueMessageValueProvider(value, convertedValue, _valueType);
+                return Task.FromResult(provider);
             }
         }
     }

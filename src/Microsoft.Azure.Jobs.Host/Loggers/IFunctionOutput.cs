@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Timers;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
@@ -13,6 +15,6 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 
         TextWriter Output { get; }
 
-        void SaveAndClose();
+        Task SaveAndCloseAsync(CancellationToken cancellationToken);
     }
 }

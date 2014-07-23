@@ -3,6 +3,8 @@
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.IntegrationTests
@@ -43,18 +45,18 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         class ModelCloudBlobStreamBinder : ICloudBlobStreamBinder<Model>
         {
-            public Model ReadFromStream(Stream input)
+            public async Task<Model> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
             {
                 TextReader reader = new StreamReader(input);
-                string text = reader.ReadToEnd();
+                string text = await reader.ReadToEndAsync();
                 return new Model { Value = text };
             }
 
-            public void WriteToStream(Model value, Stream output)
+            public async Task WriteToStreamAsync(Model value, Stream output, CancellationToken cancellationToken)
             {
                 TextWriter writer = new StreamWriter(output);
-                writer.Write(value.Value);
-                writer.Flush();
+                await writer.WriteAsync(value.Value);
+                await writer.FlushAsync();
             }
         }
 

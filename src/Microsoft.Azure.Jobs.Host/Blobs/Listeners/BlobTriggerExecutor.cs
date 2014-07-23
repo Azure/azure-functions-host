@@ -4,11 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.Azure.Jobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
@@ -31,26 +31,27 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _timestampReader = BlobTimestampReader.Instance;
         }
 
-        public bool Execute(ICloudBlob value)
+        public async Task<bool> ExecuteAsync(ICloudBlob value, CancellationToken cancellationToken)
         {
-            if (!ShouldExecuteTrigger(value))
+            if (!await ShouldExecuteTriggerAsync(value, cancellationToken))
             {
                 return true;
             }
 
-            Guid? parentId = BlobCausalityManager.GetWriter(value);
+            Guid? parentId = await BlobCausalityManager.GetWriterAsync(value, cancellationToken);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            IDelayedException exception = _innerExecutor.TryExecute(instance);
+            IDelayedException exception = await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
             return exception == null;
         }
 
-        private bool ShouldExecuteTrigger(ICloudBlob possibleTrigger)
+        private Task<bool> ShouldExecuteTriggerAsync(ICloudBlob possibleTrigger, CancellationToken cancellationToken)
         {
-            return ShouldExecuteTrigger(possibleTrigger, _input, _outputs, _timestampReader);
+            return ShouldExecuteTriggerAsync(possibleTrigger, _input, _outputs, _timestampReader, cancellationToken);
         }
 
-        internal static bool ShouldExecuteTrigger(ICloudBlob possibleTrigger, IBlobPathSource input,
-            IEnumerable<IBindableBlobPath> outputs, IBlobTimestampReader timestampReader)
+        internal static async Task<bool> ShouldExecuteTriggerAsync(ICloudBlob possibleTrigger, IBlobPathSource input,
+            IEnumerable<IBindableBlobPath> outputs, IBlobTimestampReader timestampReader,
+            CancellationToken cancellationToken)
         {
             // Avoid unnecessary network calls for non-matches. First, check to see if the blob matches this trigger.
             IReadOnlyDictionary<string, object> bindingData = input.CreateBindingData(possibleTrigger.ToBlobPath());
@@ -62,7 +63,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             }
 
             // Next, check to see if the blob currently exists.
-            DateTime? possibleInputTimestamp = timestampReader.GetLastModifiedTimestamp(possibleTrigger);
+            DateTime? possibleInputTimestamp = await timestampReader.GetLastModifiedTimestampAsync(possibleTrigger,
+                cancellationToken);
 
             if (!possibleInputTimestamp.HasValue)
             {
@@ -76,28 +78,32 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             // Finally, if there are outputs, check to see if they are all newer than the input.
             if (outputs != null && outputs.Any())
             {
-                bool allOutputsAreNewerThanInput = outputs.All(
-                    o => IsOutputNewerThan(inputTimestamp, client, bindingData, o, timestampReader));
-
-                if (allOutputsAreNewerThanInput)
+                foreach (IBindableBlobPath output in outputs)
                 {
-                    return false;
+                    if (!await IsOutputNewerThanAsync(inputTimestamp, client, bindingData, output, timestampReader,
+                        cancellationToken))
+                    {
+                        return true;
+                    }
                 }
+
+                return false;
             }
 
             return true;
         }
 
-        private static bool IsOutputNewerThan(DateTime inputTimestamp, CloudBlobClient client,
+        private static async Task<bool> IsOutputNewerThanAsync(DateTime inputTimestamp, CloudBlobClient client,
             IReadOnlyDictionary<string, object> bindingData, IBindableBlobPath output,
-            IBlobTimestampReader timestampReader)
+            IBlobTimestampReader timestampReader, CancellationToken cancellationToken)
         {
             BlobPath outputPath = output.Bind(bindingData);
 
             // Assumes inputs and outputs are in the same storage account.
             CloudBlobContainer outputContainer = client.GetContainerReference(outputPath.ContainerName);
             CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outputPath.BlobName);
-            DateTime? possibleOutputTimestamp = timestampReader.GetLastModifiedTimestamp(outputBlob);
+            DateTime? possibleOutputTimestamp = await timestampReader.GetLastModifiedTimestampAsync(outputBlob,
+                cancellationToken);
 
             if (!possibleOutputTimestamp.HasValue)
             {

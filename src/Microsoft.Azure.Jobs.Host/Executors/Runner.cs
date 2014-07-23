@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Timers;
 
@@ -11,7 +12,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
     internal sealed class Runner : IRunner
     {
         private readonly IntervalSeparationTimer _timer;
-        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly CancellationTokenSource _hostCancellationTokenSource;
         private readonly WebJobsShutdownWatcher _watcher;
         private readonly IFunctionExecutor _executor;
         private readonly IListener _listener;
@@ -19,22 +20,22 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private bool _disposed;
         private bool _stopped;
 
-        public Runner(IntervalSeparationTimer timer, CancellationTokenSource cancellationTokenSource,
+        public Runner(IntervalSeparationTimer timer, CancellationTokenSource hostCancellationTokenSource,
             WebJobsShutdownWatcher watcher, IFunctionExecutor executor, IListener listener)
         {
             _timer = timer;
-            _cancellationTokenSource = cancellationTokenSource;
+            _hostCancellationTokenSource = hostCancellationTokenSource;
             _watcher = watcher;
             _executor = executor;
             _listener = listener;
         }
 
-        public CancellationToken CancellationToken
+        public CancellationToken HostCancellationToken
         {
             get
             {
                 ThrowIfDisposed();
-                return _cancellationTokenSource.Token;
+                return _hostCancellationTokenSource.Token;
             }
         }
 
@@ -47,7 +48,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             }
         }
 
-        public void Stop()
+        public void Cancel()
+        {
+            _hostCancellationTokenSource.Cancel();
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
@@ -56,7 +62,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 throw new InvalidOperationException("The runner has already been stopped.");
             }
 
-            _listener.Stop();
+            _hostCancellationTokenSource.Cancel();
+            await _listener.StopAsync(cancellationToken);
             _timer.Stop();
             _stopped = true;
         }
@@ -69,7 +76,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 // Mark it canceled but don't dispose of the source while the callers are running.
                 // Otherwise, callers would receive ObjectDisposedException when calling token.Register.
                 // For now, rely on finalization to clean up _cancellationTokenSource's wait handle (if allocated).
-                _cancellationTokenSource.Cancel();
+                _hostCancellationTokenSource.Cancel();
 
                 if (_watcher != null)
                 {

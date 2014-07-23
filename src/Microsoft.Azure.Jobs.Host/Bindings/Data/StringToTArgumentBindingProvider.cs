@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Data
 {
@@ -39,11 +40,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return _valueType; }
             }
 
-            public IValueProvider Bind(TBindingData value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(TBindingData value, FunctionBindingContext context)
             {
                 string text = value.ToString(); // Really (string)input, but the compiler can't verify that's possible.
                 object converted = ObjectBinderHelpers.BindFromString(text, _valueType);
-                return new ObjectValueProvider(converted, _valueType);
+                IValueProvider provider = new ObjectValueProvider(converted, _valueType);
+                return Task.FromResult(provider);
             }
         }
     }

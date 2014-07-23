@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
@@ -12,13 +13,13 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class RunnerFactory : IRunnerFactory
     {
-        private readonly IHeartbeatCommand _heartbeatCommand;
+        private readonly ICanFailCommand _heartbeatCommand;
         private readonly HostBindingContextFactory _bindingContextFactory;
         private readonly IFunctionExecutorFactory _executorFactory;
         private readonly IListenerFactory _allFunctionsListenerFactory;
         private readonly IListenerFactory _abortOnlyListenerFactory;
 
-        public RunnerFactory(IHeartbeatCommand heartbeatCommand, HostBindingContextFactory bindingContextFactory,
+        public RunnerFactory(ICanFailCommand heartbeatCommand, HostBindingContextFactory bindingContextFactory,
             IFunctionExecutorFactory executorFactory, IListenerFactory allFunctionsListenerFactory,
             IListenerFactory abortOnlyListenerFactory)
         {
@@ -29,37 +30,45 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _abortOnlyListenerFactory = abortOnlyListenerFactory;
         }
 
-        public IRunner CreateAndStart(bool listenForAbortOnly, CancellationToken cancellationToken)
+        public Task<IRunner> CreateAndStartAsync(bool listenForAbortOnly, CancellationToken cancellationToken)
         {
             IListenerFactory listenerFactory =
                 listenForAbortOnly ? _abortOnlyListenerFactory : _allFunctionsListenerFactory;
-            return CreateAndStart(listenerFactory, cancellationToken);
+            return CreateAndStartAsync(listenerFactory, cancellationToken);
         }
 
-        private IRunner CreateAndStart(IListenerFactory listenerFactory, CancellationToken cancellationToken)
+        private async Task<IRunner> CreateAndStartAsync(IListenerFactory listenerFactory,
+            CancellationToken cancellationToken)
         {
             IntervalSeparationTimer timer = CreateHeartbeatTimer(_heartbeatCommand);
 
             try
             {
-                CancellationTokenSource runnerCancellationTokenSource = new CancellationTokenSource();
+                CancellationTokenSource hostCancellationTokenSource = new CancellationTokenSource();
 
                 try
                 {
-                    WebJobsShutdownWatcher watcher = WebJobsShutdownWatcher.Create(runnerCancellationTokenSource);
+                    WebJobsShutdownWatcher watcher = WebJobsShutdownWatcher.Create(hostCancellationTokenSource);
 
                     try
                     {
-                        HostBindingContext bindingContext = _bindingContextFactory.Create(cancellationToken);
+                        // The cancellation token here is the one used during the lifetime of the runner (to signal when
+                        // the host is stopping; hostCancellationToken), not the one used during the host.StartAsync
+                        // call (cancellationToken).
+                        CancellationToken hostCancellationToken = hostCancellationTokenSource.Token;
+                        HostBindingContext bindingContext = _bindingContextFactory.Create(hostCancellationToken);
                         IFunctionExecutor executor = _executorFactory.Create(bindingContext);
-                        IListener listener = CreateListener(listenerFactory, executor, bindingContext);
+                        IListener listener = await CreateListenerAsync(listenerFactory, executor, bindingContext,
+                            cancellationToken);
 
                         try
                         {
-                            timer.Start(executeFirst: true);
-                            listener.Start();
+                            await _heartbeatCommand.TryExecuteAsync(cancellationToken);
+                            timer.Start();
+                            await listener.StartAsync(cancellationToken);
 
-                            return new Runner(timer, runnerCancellationTokenSource, watcher, executor, listener);
+                            return new Runner(timer, hostCancellationTokenSource, watcher, executor,
+                                listener);
                         }
                         catch
                         {
@@ -75,7 +84,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 }
                 catch
                 {
-                    runnerCancellationTokenSource.Dispose();
+                    hostCancellationTokenSource.Dispose();
                     throw;
                 }
             }
@@ -86,18 +95,18 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             }
         }
 
-        private static IntervalSeparationTimer CreateHeartbeatTimer(IHeartbeatCommand heartbeatCommand)
+        private static IntervalSeparationTimer CreateHeartbeatTimer(ICanFailCommand heartbeatCommand)
         {
-            ICanFailCommand heartbeatTimerCommand = new UpdateHostHeartbeatCommand(heartbeatCommand);
-            return LinearSpeedupTimerCommand.CreateTimer(heartbeatTimerCommand,
+            return LinearSpeedupTimerCommand.CreateTimer(heartbeatCommand,
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }
 
-        private static IListener CreateListener(IListenerFactory listenerFactory, IFunctionExecutor executor,
-            HostBindingContext context)
+        private static Task<IListener> CreateListenerAsync(IListenerFactory listenerFactory, IFunctionExecutor executor,
+            HostBindingContext context, CancellationToken cancellationToken)
         {
-            ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer());
-            return listenerFactory.Create(executor, listenerContext);
+            ListenerFactoryContext listenerContext = new ListenerFactoryContext(context, new SharedListenerContainer(),
+                cancellationToken);
+            return listenerFactory.CreateAsync(executor, listenerContext);
         }
     }
 }

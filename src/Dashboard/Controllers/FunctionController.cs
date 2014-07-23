@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading;
 using System.Web.Mvc;
 using Dashboard.ApiControllers;
 using Dashboard.Data;
@@ -268,7 +269,7 @@ namespace Dashboard.Controllers
 
             try
             {
-                guid = BlobCausalityManager.GetWriter(blob);
+                guid = BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None).Result;
             }
             catch
             {

@@ -3,21 +3,23 @@
 
 using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 {
     internal class ConsoleOutputBindingProvider : IBindingProvider
     {
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
 
             if (parameter.ParameterType != typeof(TextWriter))
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
-            return new ConsoleOutputBinding(parameter.Name);
+            IBinding binding = new ConsoleOutputBinding(parameter.Name);
+            return Task.FromResult(binding);
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
 {
@@ -9,6 +10,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         Type ValueType { get; }
 
-        IValueProvider Bind(TArgument value, FunctionBindingContext context);
+        Task<IValueProvider> BindAsync(TArgument value, FunctionBindingContext context);
     }
 }

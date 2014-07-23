@@ -1,58 +1,39 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
-    // Helper for calling individual methods. 
-    public class TestJobHost<T>
+    public class TestJobHost<TProgram> : JobHost
     {
-        private const string DeveloperStorageConnectionString = "UseDevelopmentStorage=true";
-        public JobHost Host { get; private set; }
-
-        public TestJobHost()
-            : this(CloudStorageAccount.DevelopmentStorageAccount)
+        internal TestJobHost(IServiceProvider serviceProvider)
+            : base(serviceProvider)
         {
-        }
-
-        // storageAccount can be null if the test is really sure that it's not using any storage operations. 
-        public TestJobHost(CloudStorageAccount storageAccount)
-        {
-            TestJobHostConfiguration configuration = new TestJobHostConfiguration
-            {
-                TypeLocator = new SimpleTypeLocator(typeof(T)),
-                StorageAccountProvider = new SimpleStorageAccountProvider
-                {
-                    StorageAccount = storageAccount,
-                    // use null logging string since unit tests don't need logs. 
-                    DashboardAccount = null
-                },
-                StorageCredentialsValidator = new NullStorageCredentialsValidator(),
-                ConnectionStringProvider = new NullConnectionStringProvider()
-            };
-
-            // If there is an indexing error, we'll throw here. 
-            Host = new JobHost(configuration);
         }
 
         public void Call(string methodName)
         {
-            Call(methodName, null);
+            base.Call(typeof(TProgram).GetMethod(methodName));
         }
 
         public void Call(string methodName, object arguments)
         {
-            var methodInfo = typeof(T).GetMethod(methodName);
-            Host.Call(methodInfo, arguments);
+            base.Call(typeof(TProgram).GetMethod(methodName), arguments);
         }
 
-        public Task CallAsync(string methodName, object arguments, CancellationToken cancellationToken)
+        public void Call(string methodName, IDictionary<string, object> arguments)
         {
-            var methodInfo = typeof(T).GetMethod(methodName);
-            return Host.CallAsync(methodInfo, arguments, cancellationToken);
+            base.Call(typeof(TProgram).GetMethod(methodName), arguments);
         }
-    }  
+
+        public Task CallAsync(string methodName, IDictionary<string, object> arguments,
+            CancellationToken cancellationToken)
+        {
+            return base.CallAsync(typeof(TProgram).GetMethod(methodName), arguments, cancellationToken);
+        }
+    }
 }

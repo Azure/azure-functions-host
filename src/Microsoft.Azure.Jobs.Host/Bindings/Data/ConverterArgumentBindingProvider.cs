@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Converters;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Data
@@ -40,10 +41,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return typeof(T); }
             }
 
-            public IValueProvider Bind(TBindingData value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(TBindingData value, FunctionBindingContext context)
             {
                 object converted = _converter.Convert(value);
-                return new ObjectValueProvider(converted, typeof(T));
+                IValueProvider provider = new ObjectValueProvider(converted, typeof(T));
+                return Task.FromResult(provider);
             }
         }
     }

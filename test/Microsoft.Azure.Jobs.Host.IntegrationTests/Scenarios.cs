@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestQueue()
         {
-            var host = new TestJobHost<ProgramQueues>();
+            var host = JobHostFactory.Create<ProgramQueues>();
 
             var account = TestStorage.GetAccount();
             string container = @"daas-test-input";
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                 ICloudBlob blob = account.CreateCloudBlobClient()
                     .GetContainerReference(container).GetBlockBlobReference("foo.output");
                 Action updateTokenSource = () => CancelWhenBlobExists(source, blob);
-                RunAndBlock(host.Host, source.Token, updateTokenSource);
+                RunAndBlock(host, source.Token, updateTokenSource);
             }
 
             string output = TestBlobClient.ReadBlob(account, container, "foo.output");
@@ -58,8 +58,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             try
             {
                 queue.AddMessage(new CloudQueueMessage(expectedMessageText));
-                var host = new TestJobHost<PoisonQueueProgram>();
-                host.Host.Start();
+                var host = JobHostFactory.Create<PoisonQueueProgram>();
+                host.Start();
 
                 using (CancellationTokenSource source = new CancellationTokenSource())
                 {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     Assert.Equal(expectedMessageText, PoisonQueueProgram.PoisonMessageText);
 
                     // Cleanup
-                    host.Host.Stop();
+                    host.Stop();
                 }
             }
             finally
@@ -104,20 +104,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestAggressiveBlobChaining()
         {
             var account = TestStorage.GetAccount();
-
-            TestJobHostConfiguration configuration = new TestJobHostConfiguration
-            {
-                TypeLocator = new SimpleTypeLocator(typeof(Program)),
-                StorageAccountProvider = new SimpleStorageAccountProvider
-                {
-                    StorageAccount = account,
-                    DashboardAccount = null
-                },
-                StorageCredentialsValidator = new NullStorageCredentialsValidator(),
-                ConnectionStringProvider = new NullConnectionStringProvider()
-            };
-
-            JobHost host = new JobHost(configuration);
+            JobHost host = JobHostFactory.Create<Program>(account);
 
             string container = @"daas-test-input";
             TestBlobClient.DeleteContainer(account, container);
@@ -158,7 +145,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public void TestQueueToTableEntityWithRouteParameter()
         {
             var account = TestStorage.GetAccount();
-            var host = new TestJobHost<ProgramQueues>();
+            var host = JobHostFactory.Create<ProgramQueues>();
 
             var queueClient = account.CreateCloudQueueClient();
             var queue = queueClient.GetQueueReference("queuetest2");
@@ -195,7 +182,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     source.CancelAfter(3000);
                     Action updateTokenSource = () => CancelWhenRowUpdated<SimpleEntity>(source, table, partitionKey, rowKey,
                         (current) => current.Value == 456);
-                    RunAndBlock(host.Host, source.Token, updateTokenSource);
+                    RunAndBlock(host, source.Token, updateTokenSource);
                 }
 
                 SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()

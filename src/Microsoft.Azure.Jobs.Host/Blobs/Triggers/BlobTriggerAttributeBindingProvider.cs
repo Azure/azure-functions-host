@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
 using Microsoft.Azure.Jobs.Host.Triggers;
@@ -42,14 +43,14 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return new CompositeArgumentBindingProvider(innerProviders);
         }
 
-        public ITriggerBinding TryCreate(TriggerBindingProviderContext context)
+        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
 
             if (blobTrigger == null)
             {
-                return null;
+                return Task.FromResult<ITriggerBinding>(null);
             }
 
             string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
@@ -62,8 +63,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            return new BlobTriggerBinding(parameter.Name, argumentBinding,
+            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding,
                 context.StorageAccount.CreateCloudBlobClient(), path);
+            return Task.FromResult(binding);
         }
     }
 }

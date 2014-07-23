@@ -91,7 +91,9 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="BlobListenerUnitTests.cs" />
+    <Compile Include="BlobNotificationStrategyExtensions.cs" />
     <Compile Include="LocalExecutionContext.cs" />
+    <Compile Include="CancellationTests.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="ModelBindingTests.cs" />

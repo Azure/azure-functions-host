@@ -9,6 +9,9 @@ using Microsoft.Azure.Jobs.Host.Storage;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using System.Threading.Tasks;
+using System.Threading;
+using System.Diagnostics;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -41,24 +44,30 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public void Beat()
+        public async Task BeatAsync(CancellationToken cancellationToken)
         {
+            bool isContainerNotFoundException = false;
+
             try
             {
-                _blob.UploadText(String.Empty);
+                await _blob.UploadTextAsync(String.Empty, cancellationToken);
+                return;
             }
             catch (StorageException exception)
             {
-                if (exception.IsNotFound())
+                if (exception.IsNotFoundContainerNotFound())
                 {
-                    _blob.Container.CreateIfNotExists();
-                    _blob.UploadText(String.Empty);
+                    isContainerNotFoundException = true;
                 }
                 else
                 {
                     throw;
                 }
             }
+
+            Debug.Assert(isContainerNotFoundException);
+            await _blob.Container.CreateIfNotExistsAsync(cancellationToken);
+            await _blob.UploadTextAsync(String.Empty, cancellationToken);
         }
     }
 }

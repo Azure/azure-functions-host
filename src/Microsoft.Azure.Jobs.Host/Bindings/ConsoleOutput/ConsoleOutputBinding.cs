@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
@@ -22,12 +23,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
             get { return false; }
         }
 
-        private IValueProvider Bind(TextWriter writer, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TextWriter writer, FunctionBindingContext context)
         {
-            return new ConsoleOutputValueProvider(writer);
+            IValueProvider provider = new ConsoleOutputValueProvider(writer);
+            return Task.FromResult(provider);
         }
 
-        public IValueProvider Bind(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
         {
             TextWriter writer = value as TextWriter;
 
@@ -36,12 +38,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
                 throw new InvalidOperationException("Unable to convert value to console output TextWriter.");
             }
 
-            return Bind(writer, context);
+            return BindAsync(writer, context);
         }
 
-        public IValueProvider Bind(BindingContext context)
+        public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return Bind(context.ConsoleOutput, context.FunctionContext);
+            return BindAsync(context.ConsoleOutput, context.FunctionContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

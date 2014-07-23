@@ -2,21 +2,23 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingProvider : IBindingProvider
     {
-        public IBinding TryCreate(BindingProviderContext context)
+        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
 
             if (parameter.ParameterType != typeof(IBinder))
             {
-                return null;
+                return Task.FromResult<IBinding>(null);
             }
 
-            return new RuntimeBinding(parameter.Name);
+            IBinding binding = new RuntimeBinding(parameter.Name);
+            return Task.FromResult(binding);
         }
     }
 }
