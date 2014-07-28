@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
@@ -21,6 +22,14 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     {
         /// <summary>Gets or sets the message type.</summary>
         public string Type { get; set; }
+
+        /// <summary>Gets or sets the blob object.</summary>
+        [JsonIgnore]
+        internal ICloudBlob Blob { get; set; }
+
+        /// <summary>Gets or sets the blob text.</summary>
+        [JsonIgnore]
+        internal string BlobText { get; set; }
 
         /// <summary>Gets or sets the time the message was enqueued.</summary>
         [JsonIgnore]

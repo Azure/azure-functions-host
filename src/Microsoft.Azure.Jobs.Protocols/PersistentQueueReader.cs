@@ -3,9 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 #if PUBLICPROTOCOL
 using Microsoft.Azure.Jobs.Storage;
 #else
@@ -36,6 +38,9 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         private readonly CloudBlobContainer _outputContainer;
         private readonly CloudBlobContainer _archiveContainer;
 
+        private ConcurrentQueue<ICloudBlob> _outputBlobs = new ConcurrentQueue<ICloudBlob>();
+        private int _updating;
+
         /// <summary>Initializes a new instance of the <see cref="PersistentQueueReader{T}"/> class.</summary>
         /// <param name="client">
         /// A blob client for the storage account into which host output messages are written.
@@ -62,27 +67,40 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         {
             ICloudBlob possibleNextItem;
             T nextItem = null;
+            DateTimeOffset createdOn;
+
+            if (_outputBlobs.Count == 0 && Interlocked.CompareExchange(ref _updating, 1, 0) == 0)
+            {
+                try
+                {
+                    EnqueueNextVisibleItems(_outputBlobs);
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _updating, 0);
+                }
+            }
 
             // Keep racing to take ownership of the next visible item until that succeeds or there are no more left.
-            do
+            while (_outputBlobs.TryDequeue(out possibleNextItem))
             {
-                possibleNextItem = GetNextVisibleItem();
-
                 // There two reasons to keep racing:
                 // 1. We tried to mark the item as invisible, and failed (409, someone else won the race)
                 // 2. We then tried to download the item and failed (404, someone else finished processing an item, even
                 // though we owned it).
-            } while (possibleNextItem != null && (!TryMakeItemInvisible(possibleNextItem)
-                || !TryDownloadItem(possibleNextItem, out nextItem)));
+                if (TryMakeItemInvisible(possibleNextItem, out createdOn) && TryDownloadItem(possibleNextItem, createdOn, out nextItem))
+                {
+                    break;
+                }
+            }
 
             return nextItem;
         }
 
-        private ICloudBlob GetNextVisibleItem()
+        private void EnqueueNextVisibleItems(ConcurrentQueue<ICloudBlob> results)
         {
             BlobContinuationToken currentToken = null;
             BlobResultSegment segment;
-            ICloudBlob nextVisibleItem = null;
 
             do
             {
@@ -90,14 +108,23 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
 
                 if (segment == null)
                 {
-                    return null;
+                    return;
                 }
 
                 currentToken = segment.ContinuationToken;
-                nextVisibleItem = GetNextVisibleItem(segment.Results);
-            } while (nextVisibleItem == null && currentToken != null);
 
-            return nextVisibleItem;
+                if (segment.Results != null)
+                {
+                    // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true in GetSegment.
+                    foreach (ICloudBlob blob in segment.Results)
+                    {
+                        if (!blob.Metadata.ContainsKey(NextVisibleTimeKey) || IsInPast(blob.Metadata[NextVisibleTimeKey]))
+                        {
+                            results.Enqueue(blob);
+                        }
+                    }
+                }
+            } while (results.Count == 0 && currentToken != null);
         }
 
         private BlobResultSegment GetSegment(BlobContinuationToken currentToken)
@@ -127,17 +154,6 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
         }
 
-        private ICloudBlob GetNextVisibleItem(IEnumerable<IListBlobItem> results)
-        {
-            if (results == null)
-            {
-                return null;
-            }
-
-            return results.OfType<ICloudBlob>().FirstOrDefault(b => !b.Metadata.ContainsKey(NextVisibleTimeKey)
-                || IsInPast(b.Metadata[NextVisibleTimeKey]));
-        }
-
         private static bool IsInPast(string nextVisibleTimeValue)
         {
             DateTimeOffset nextVisibleTime;
@@ -152,7 +168,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             return DateTimeOffset.UtcNow > nextVisibleTime;
         }
 
-        private static bool TryMakeItemInvisible(ICloudBlob item)
+        private static bool TryMakeItemInvisible(ICloudBlob item, out DateTimeOffset createdOn)
         {
             // After this window expires, others may attempt to process the item.
             const double processingWindowInMinutes = 5;
@@ -160,9 +176,13 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             item.Metadata[NextVisibleTimeKey] =
                 DateTimeOffset.UtcNow.AddMinutes(processingWindowInMinutes).ToString("o", CultureInfo.InvariantCulture);
 
-            if (!item.Metadata.ContainsKey(CreatedKey))
+            if (item.Metadata.ContainsKey(CreatedKey))
             {
-                item.Metadata.Add(CreatedKey, item.Properties.LastModified.GetValueOrDefault(DateTimeOffset.UtcNow).ToString("o", CultureInfo.InvariantCulture));
+                createdOn = GetCreatedOn(item);
+            }
+            else{
+                createdOn = item.Properties.LastModified.GetValueOrDefault(DateTimeOffset.UtcNow);
+                item.Metadata.Add(CreatedKey, createdOn.ToString("o", CultureInfo.InvariantCulture));
             }
 
             try
@@ -183,7 +203,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
         }
 
-        private static bool TryDownloadItem(ICloudBlob possibleNextItem, out T nextItem)
+        private static bool TryDownloadItem(ICloudBlob possibleNextItem, DateTimeOffset createdOn, out T nextItem)
         {
             string contents;
 
@@ -213,8 +233,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
 
             nextItem = JsonConvert.DeserializeObject<T>(contents, JsonSerialization.Settings);
-            nextItem.EnqueuedOn = GetCreatedOn(possibleNextItem);
+            nextItem.Blob = possibleNextItem;
+            nextItem.BlobText = contents;
+            nextItem.EnqueuedOn = createdOn;
             nextItem.PopReceipt = possibleNextItem.Name;
+
             return true;
         }
 
@@ -246,40 +269,18 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <inheritdoc />
         public void Delete(T message)
         {
-            string blobName = message.PopReceipt;
-            CloudBlockBlob outputBlob = _outputContainer.GetBlockBlobReference(message.PopReceipt);
-            Stream outputStream;
-
-            try
-            {
-                outputStream = outputBlob.OpenRead();
-            }
-            catch (StorageException exception)
-            {
-                if (!exception.IsNotFound())
-                {
-                    throw;
-                }
-                else
-                {
-                    // The output blob no longer exists; someone else finished processing it.
-                    return;
-                }
-            }
-
-            // Before archiving the blob, remove the metadata containing the processing virtual lock.
-            // Calling SetMetadata afterwards is not required since we're doing a client-side blob copy.
-            outputBlob.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
+            ICloudBlob outputBlob = message.Blob;
 
             // Do a client-side blob copy. Note that StartCopyFromBlob is another option, but that would require polling to
             // wait for completion.
             CloudBlockBlob archiveBlob = _archiveContainer.GetBlockBlobReference(message.PopReceipt);
             CopyProperties(outputBlob, archiveBlob);
             CopyMetadata(outputBlob, archiveBlob);
+            archiveBlob.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
 
             try
             {
-                archiveBlob.UploadFromStream(outputStream);
+                archiveBlob.UploadText(message.BlobText);
             }
             catch (StorageException exception)
             {
@@ -290,8 +291,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 else
                 {
                     _archiveContainer.CreateIfNotExists();
-                    outputStream.Position = 0;
-                    archiveBlob.UploadFromStream(outputStream);
+                    archiveBlob.UploadText(message.BlobText);
                 }
             }
 
