@@ -307,6 +307,7 @@
     <Compile Include="Blobs\Listeners\ScanContainersStrategy.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
+    <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="ConnectionStringNames.cs" />
     <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
     <Compile Include="Converters\IAsyncConverter.cs" />

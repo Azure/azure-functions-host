@@ -85,6 +85,8 @@
     <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
     <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamExtensions.cs" />
+    <Compile Include="Blobs\TaskExtensions.cs" />
+    <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />

@@ -1,8 +1,11 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Protocols;
 
@@ -10,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
 {
     internal class WatchableReadStream : DelegatingStream, IWatcher
     {
-        private volatile int _countRead;
+        private long _countRead;
 
         private readonly Stopwatch _timeRead = new Stopwatch();
         private readonly long _totalLength;
@@ -21,18 +24,18 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             _totalLength = inner.Length;
         }
 
-        public override int ReadByte()
+        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback,
+            object state)
         {
-            try
-            {
-                _timeRead.Start();
-                _countRead++;
-                return base.ReadByte();
-            }
-            finally
-            {
-                _timeRead.Stop();
-            }
+            Task<int> baseTask = Task<int>.Factory.FromAsync(base.BeginRead, base.EndRead, buffer, offset, count,
+                state: null);
+            return new TaskAsyncResult<int>(ReadAsyncCore(baseTask), callback, state);
+        }
+
+        public override int EndRead(IAsyncResult asyncResult)
+        {
+            TaskAsyncResult<int> taskResult = (TaskAsyncResult<int>)asyncResult;
+            return taskResult.End();
         }
 
         public override int Read(byte[] buffer, int offset, int count)
@@ -40,14 +43,47 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             try
             {
                 _timeRead.Start();
-                var actualRead = base.Read(buffer, offset, count);
-                _countRead += actualRead;
-                return actualRead;
+                var bytesRead = base.Read(buffer, offset, count);
+                _countRead += bytesRead;
+                return bytesRead;
             }
             finally
             {
                 _timeRead.Stop();
             }
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Task<int> baseTask = base.ReadAsync(buffer, offset, count, cancellationToken);
+            return ReadAsyncCore(baseTask);
+        }
+
+        private async Task<int> ReadAsyncCore(Task<int> baseTask)
+        {
+            try
+            {
+                _timeRead.Start();
+                int bytesRead = await baseTask;
+                _countRead += bytesRead;
+                return bytesRead;
+            }
+            finally
+            {
+                _timeRead.Stop();
+            }
+        }
+
+        public override int ReadByte()
+        {
+            int read = base.ReadByte();
+
+            if (read != -1)
+            {
+                _countRead++;
+            }
+
+            return read;
         }
 
         public ParameterLog GetStatus()
