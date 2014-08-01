@@ -95,6 +95,7 @@
     <Compile Include="Tables\TableEntityValueBinderTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
+    <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommandTests.cs" />
     <Compile Include="Timers\IntervalSeparationCommandExtensions.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />

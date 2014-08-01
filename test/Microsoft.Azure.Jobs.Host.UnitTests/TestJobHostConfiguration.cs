@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.Jobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.TestCommon
+namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     internal class TestJobHostConfiguration : IServiceProvider
     {

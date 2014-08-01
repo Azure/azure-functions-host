@@ -20,11 +20,20 @@ namespace Microsoft.Azure.Jobs
     /// </summary>
     public class JobHost : IDisposable
     {
+        private const int StateNotStarted = 0;
+        private const int StateStarting = 1;
+        private const int StateStarted = 2;
+        private const int StateStoppingOrStopped = 3;
+
         private readonly JobHostContextFactory _contextFactory;
 
         private Task<JobHostContext> _contextTask;
         private bool _contextTaskInitialized;
         private object _contextTaskLock = new object();
+
+        private int _state;
+        private Task _stopTask;
+        private object _stopTaskLock = new object();
 
         private IRunner _runner;
         private bool _disposed;
@@ -74,6 +83,13 @@ namespace Microsoft.Azure.Jobs
                 credentialsValidator, typeLocator, nameResolver);
         }
 
+        // Test hook only.
+        internal IRunner Runner
+        {
+            get { return _runner; }
+            set { _runner = value; }
+        }
+
         /// <summary>Starts the host.</summary>
         public void Start()
         {
@@ -87,9 +103,9 @@ namespace Microsoft.Azure.Jobs
         {
             ThrowIfDisposed();
 
-            if (_runner != null)
+            if (Interlocked.CompareExchange(ref _state, StateStarting, StateNotStarted) != StateNotStarted)
             {
-                return Task.FromResult(0);
+                throw new InvalidOperationException("Start has already been called.");
             }
 
             return StartAsyncCore(cancellationToken);
@@ -98,10 +114,11 @@ namespace Microsoft.Azure.Jobs
         private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
             JobHostContext context = await EnsureHostStartedAsync(cancellationToken);
+
             _runner = await context.RunnerFactory.CreateAndStartAsync(listenForAbortOnly: false,
                 cancellationToken: cancellationToken);
-
             Console.WriteLine("Job host started");
+            _state = StateStarted;
         }
 
         /// <summary>Stops the host.</summary>
@@ -116,12 +133,23 @@ namespace Microsoft.Azure.Jobs
         {
             ThrowIfDisposed();
 
-            if (_runner == null)
+            Interlocked.CompareExchange(ref _state, StateStoppingOrStopped, StateStarted);
+
+            if (_state != StateStoppingOrStopped)
             {
-                return Task.FromResult(0);
+                throw new InvalidOperationException("The host has not yet started.");
             }
 
-            return StopAsyncCore(CancellationToken.None);
+            // Multiple threads may call StopAsync concurrently. Both need to return the same task instance.
+            lock (_stopTaskLock)
+            {
+                if (_stopTask == null)
+                {
+                    _stopTask = StopAsyncCore(CancellationToken.None);
+                }
+            }
+
+            return _stopTask;
         }
 
         private async Task StopAsyncCore(CancellationToken cancellationToken)
