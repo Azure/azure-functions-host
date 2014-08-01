@@ -20,30 +20,34 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         [Fact]
         public void TestQueue()
         {
-            var host = JobHostFactory.Create<ProgramQueues>();
-
-            var account = TestStorage.GetAccount();
-            string container = @"daas-test-input";
-            TestBlobClient.DeleteContainer(account, container);
-            TestQueueClient.DeleteQueue(account, "queuetest");
-
-            TestBlobClient.WriteBlob(account, container, "foo.csv", "15");
-
-            using (CancellationTokenSource source = new CancellationTokenSource())
+            // Arrange
+            using (var host = JobHostFactory.Create<ProgramQueues>())
             {
-                source.CancelAfter(3000);
+                var account = TestStorage.GetAccount();
+                string container = @"daas-test-input";
+                TestBlobClient.DeleteContainer(account, container);
+                TestQueueClient.DeleteQueue(account, "queuetest");
+
+                TestBlobClient.WriteBlob(account, container, "foo.csv", "15");
                 ICloudBlob blob = account.CreateCloudBlobClient()
                     .GetContainerReference(container).GetBlockBlobReference("foo.output");
-                Action updateTokenSource = () => CancelWhenBlobExists(source, blob);
-                RunAndBlock(host, source.Token, updateTokenSource);
+
+                host.Start();
+
+                // Act
+                Wait(3 * 1000, () => DoesBlobExist(blob));
+
+                // Assert
+                string output = TestBlobClient.ReadBlob(account, container, "foo.output");
+                // Ensure blob output has been written
+                Assert.NotNull(output);
+                Assert.Equal("16", output);
+
+                TestQueueClient.DeleteQueue(account, "queuetest");
+
+                // Cleanup
+                host.Stop();
             }
-
-            string output = TestBlobClient.ReadBlob(account, container, "foo.output");
-            // Ensure blob output has been written
-            Assert.NotNull(output);
-            Assert.Equal("16", output);
-
-            TestQueueClient.DeleteQueue(account, "queuetest");
         }
 
         [Fact]
@@ -58,12 +62,13 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             try
             {
                 queue.AddMessage(new CloudQueueMessage(expectedMessageText));
-                var host = JobHostFactory.Create<PoisonQueueProgram>();
-                host.Start();
 
                 using (CancellationTokenSource source = new CancellationTokenSource())
+                using (JobHost host = JobHostFactory.Create<PoisonQueueProgram>())
                 {
                     PoisonQueueProgram.SignalOnPoisonMessage = source;
+
+                    host.Start();
 
                     // Act
                     source.Token.WaitHandle.WaitOne(3000);
@@ -83,150 +88,161 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             }
         }
 
-        private static void CancelWhenBlobExists(CancellationTokenSource source, ICloudBlob blob)
+        private static bool DoesBlobExist(ICloudBlob blob)
         {
-            if (blob.Exists())
-            {
-                source.Cancel();
-            }
+            return blob.Exists();
         }
 
-        private static void CancelWhenBlobsExists(CancellationTokenSource source, params ICloudBlob[] blobs)
+        private static bool DoBlobsExist(params ICloudBlob[] blobs)
         {
-            if (blobs.All(b => b.Exists()))
-            {
-                source.Cancel();
-            }
+            return blobs.All(b => b.Exists());
         }
 
         // Test basic propagation between blobs. 
         [Fact]
         public void TestAggressiveBlobChaining()
         {
+            // Arrange
             var account = TestStorage.GetAccount();
-            JobHost host = JobHostFactory.Create<Program>(account);
-
             string container = @"daas-test-input";
-            TestBlobClient.DeleteContainer(account, container);
 
-            // Nothing written yet.
-            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.2")); // Guard
-            Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.3")); // Guard
-
-            // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
-            TestBlobClient.WriteBlob(account, container, "foo.1", "abc");
-
-            using (CancellationTokenSource source = new CancellationTokenSource())
+            using (JobHost host = JobHostFactory.Create<Program>(account))
             {
-                source.CancelAfter(3000);
+                TestBlobClient.DeleteContainer(account, container);
+
+                // Nothing written yet.
+                Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.2")); // Guard
+                Assert.False(TestBlobClient.DoesBlobExist(account, container, "foo.3")); // Guard
+
+                // Now provide an input and poll again. That should trigger Func1, which produces foo.middle.csv
+                TestBlobClient.WriteBlob(account, container, "foo.1", "abc");
+
                 CloudBlobContainer containerReference =
                     account.CreateCloudBlobClient().GetContainerReference(container);
                 ICloudBlob middleBlob = containerReference.GetBlockBlobReference("foo.2");
                 ICloudBlob outputBlob = containerReference.GetBlockBlobReference("foo.3");
-                Action updateTokenSource = () => CancelWhenBlobsExists(source, middleBlob, outputBlob);
-                RunAndBlock(host, source.Token, updateTokenSource);
+
+                host.Start();
+
+                // Act
+                Wait(3 * 1000, () => DoBlobsExist(middleBlob, outputBlob));
+
+                // Assert
+                // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
+                string middle = TestBlobClient.ReadBlob(account, container, "foo.2");
+                // blob should be written
+                Assert.NotNull(middle);
+                Assert.Equal("foo", middle);
+
+                // The polling a few lines up waits for *both* actions to run as they are chained.
+                // this makes sure that our chaining optimization works correctly!
+                string output = TestBlobClient.ReadBlob(account, container, "foo.3");
+                // blob should be written
+                Assert.NotNull(output);
+                Assert.Equal("*foo*", output);
+
+                // Cleanup
+                host.Stop();
             }
-
-            // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
-            string middle = TestBlobClient.ReadBlob(account, container, "foo.2");
-            // blob should be written
-            Assert.NotNull(middle);
-            Assert.Equal("foo", middle);
-
-            // The polling a few lines up waits for *both* actions to run as they are chained.
-            // this makes sure that our chaining optimization works correctly!
-            string output = TestBlobClient.ReadBlob(account, container, "foo.3");
-            // blob should be written
-            Assert.NotNull(output);
-            Assert.Equal("*foo*", output);
         }
 
         [Fact]
         public void TestQueueToTableEntityWithRouteParameter()
         {
             var account = TestStorage.GetAccount();
-            var host = JobHostFactory.Create<ProgramQueues>();
 
-            var queueClient = account.CreateCloudQueueClient();
-            var queue = queueClient.GetQueueReference("queuetest2");
-            string tableName = "tabletest";
-            string partitionKey = "PK";
-            string rowKey = "RK";
-            var tableClient = account.CreateCloudTableClient();
-            var table = tableClient.GetTableReference(tableName);
-
-            try
+            using (JobHost host = JobHostFactory.Create<ProgramQueues>())
             {
-                if (queue.Exists())
-                {
-                    queue.Delete();
-                }
-                queue.CreateIfNotExists();
-                queue.AddMessage(new CloudQueueMessage(JsonCustom.SerializeObject(new ProgramQueues.TableEntityPayload
-                {
-                    TableName = tableName,
-                    PartitionKey = partitionKey,
-                    RowKey = rowKey
-                })));
-                table.DeleteIfExists();
-                table.Create();
-                table.Execute(TableOperation.Insert(new SimpleEntity
-                {
-                    PartitionKey = partitionKey,
-                    RowKey = rowKey,
-                    Value = 123
-                }));
+                var queueClient = account.CreateCloudQueueClient();
+                var queue = queueClient.GetQueueReference("queuetest2");
+                string tableName = "tabletest";
+                string partitionKey = "PK";
+                string rowKey = "RK";
+                var tableClient = account.CreateCloudTableClient();
+                var table = tableClient.GetTableReference(tableName);
 
-                using (CancellationTokenSource source = new CancellationTokenSource())
+                try
                 {
-                    source.CancelAfter(3000);
-                    Action updateTokenSource = () => CancelWhenRowUpdated<SimpleEntity>(source, table, partitionKey, rowKey,
-                        (current) => current.Value == 456);
-                    RunAndBlock(host, source.Token, updateTokenSource);
-                }
-
-                SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()
-                                       where item.PartitionKey == partitionKey && item.RowKey == rowKey
-                                       select item).FirstOrDefault();
-                Assert.Equal(456, entity.Value);
-            }
-            finally
-            {
-                if (queue.Exists())
-                {
-                    queue.Delete();
-                }
-                table.DeleteIfExists();
-            }
-        }
-
-        private static void RunAndBlock(JobHost host, CancellationToken cancellationToken, Action pollAction)
-        {
-            cancellationToken.Register(host.Stop);
-            Thread pollThread = new Thread(() =>
-            {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    pollAction();
-
-                    if (!cancellationToken.IsCancellationRequested)
+                    if (queue.Exists())
                     {
-                        Thread.Sleep(2 * 1000);
+                        queue.Delete();
                     }
+                    queue.CreateIfNotExists();
+                    queue.AddMessage(new CloudQueueMessage(JsonCustom.SerializeObject(
+                        new ProgramQueues.TableEntityPayload
+                        {
+                            TableName = tableName,
+                            PartitionKey = partitionKey,
+                            RowKey = rowKey
+                        })));
+                    table.DeleteIfExists();
+                    table.Create();
+                    table.Execute(TableOperation.Insert(new SimpleEntity
+                    {
+                        PartitionKey = partitionKey,
+                        RowKey = rowKey,
+                        Value = 123
+                    }));
+
+                    host.Start();
+
+                    // Act
+                    Wait(3 * 1000, () => IsRowUpdated<SimpleEntity>(table, partitionKey, rowKey, (current) =>
+                        current.Value == 456));
+
+                    // Assert
+                    SimpleEntity entity = (from item in table.CreateQuery<SimpleEntity>()
+                                           where item.PartitionKey == partitionKey && item.RowKey == rowKey
+                                           select item).FirstOrDefault();
+                    Assert.Equal(456, entity.Value);
+
+                    // Cleanup
+                    host.Stop();
                 }
-            });
-            host.RunAndBlock();
+                finally
+                {
+                    if (queue.Exists())
+                    {
+                        queue.Delete();
+                    }
+                    table.DeleteIfExists();
+                }
+            }
         }
 
-        private static void CancelWhenRowUpdated<TElement>(CancellationTokenSource source, CloudTable table,
-            string partitionKey, string rowKey, Func<TElement, bool> watcher) where TElement : ITableEntity
+        private static void Wait(int millisecondsTimeout, Func<bool> completed)
+        {
+            using (CancellationTokenSource source = new CancellationTokenSource())
+            {
+                source.CancelAfter(millisecondsTimeout);
+
+                Thread pollUntilCanceledThread = new Thread(() =>
+                {
+                    while (!source.IsCancellationRequested)
+                    {
+                        if (completed.Invoke())
+                        {
+                            source.Cancel();
+                        }
+
+                        if (!source.IsCancellationRequested)
+                        {
+                            Thread.Sleep(1 * 1000);
+                        }
+                    }
+                });
+
+                pollUntilCanceledThread.Start();
+                pollUntilCanceledThread.Join();
+            }
+        }
+
+        private static bool IsRowUpdated<TElement>(CloudTable table, string partitionKey, string rowKey,
+            Func<TElement, bool> watcher) where TElement : ITableEntity
         {
             TableOperation retrieve = TableOperation.Retrieve<TElement>(partitionKey, rowKey);
             TableResult result = table.Execute(retrieve);
-            if (watcher.Invoke((TElement)result.Result))
-            {
-                source.Cancel();
-            }
+            return watcher.Invoke((TElement)result.Result);
         }
     }
 
