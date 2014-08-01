@@ -21,6 +21,17 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
 
             string parameterName = "Parameter";
             Type parameterType = typeof(int).MakeByRefType();
+            BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
+
+            // Act
+            IBinding binding = product.TryCreateAsync(context).Result;
+
+            // Assert
+            Assert.Null(binding);
+        }
+
+        private static BindingProviderContext CreateBindingContext(string parameterName, Type parameterType)
+        {
             ParameterInfo parameter = new StubParameterInfo(parameterName, parameterType);
             Dictionary<string, Type> bindingDataContract = new Dictionary<string, Type>
             {
@@ -28,12 +39,41 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
             };
             BindingProviderContext context =
                 new BindingProviderContext(null, null, null, parameter, bindingDataContract, CancellationToken.None);
+            return context;
+        }
+
+        [Fact]
+        public void Create_ReturnsNull_IfContainsUnresolvedGenericParameter()
+        {
+            // Arrange
+            IBindingProvider product = new DataBindingProvider();
+
+            string parameterName = "Parameter";
+            Type parameterType = typeof(IEnumerable<>);
+            BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
 
             // Act
             IBinding binding = product.TryCreateAsync(context).Result;
 
             // Assert
             Assert.Null(binding);
+        }
+
+        [Fact]
+        public void Create_ReturnsBinding_IfContainsResolvedGenericParameter()
+        {
+            // Arrange
+            IBindingProvider product = new DataBindingProvider();
+
+            string parameterName = "Parameter";
+            Type parameterType = typeof(IEnumerable<int>);
+            BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
+
+            // Act
+            IBinding binding = product.TryCreateAsync(context).Result;
+
+            // Assert
+            Assert.NotNull(binding);
         }
 
         private class StubParameterInfo : ParameterInfo

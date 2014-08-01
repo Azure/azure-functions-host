@@ -28,6 +28,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 return Task.FromResult<IBinding>(null);
             }
 
+            if (bindingDataType.ContainsGenericParameters)
+            {
+                return Task.FromResult<IBinding>(null);
+            }
+
             IBindingProvider typedProvider = CreateTypedBindingProvider(bindingDataType);
             return typedProvider.TryCreateAsync(context);
         }

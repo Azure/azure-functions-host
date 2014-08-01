@@ -109,6 +109,7 @@
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />
+    <Compile Include="ServiceBusIndexer.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="StrictEncodings.cs" />
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />

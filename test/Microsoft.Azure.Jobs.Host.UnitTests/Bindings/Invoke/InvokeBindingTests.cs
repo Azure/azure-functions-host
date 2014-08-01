@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
 using Xunit;
@@ -22,6 +23,34 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Invoke
 
             // Assert
             Assert.Null(binding);
+        }
+
+        [Fact]
+        public void Create_ReturnsNull_IfContainsUnresolvedGenericParameter()
+        {
+            // Arrange
+            string parameterName = "Parameter";
+            Type parameterType = typeof(IEnumerable<>);
+
+            // Act
+            IBinding binding = InvokeBinding.Create(parameterName, parameterType);
+
+            // Assert
+            Assert.Null(binding);
+        }
+
+        [Fact]
+        public void Create_ReturnsBinding_IfContainsResolvedGenericParameter()
+        {
+            // Arrange
+            string parameterName = "Parameter";
+            Type parameterType = typeof(IEnumerable<int>);
+
+            // Act
+            IBinding binding = InvokeBinding.Create(parameterName, parameterType);
+
+            // Assert
+            Assert.NotNull(binding);
         }
     }
 }

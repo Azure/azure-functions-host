@@ -26,7 +26,41 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Tables
             Assert.Null(binding);
         }
 
+        [Fact]
+        public void Create_ReturnsNull_IfContainsUnresolvedGenericParameter()
+        {
+            // Arrange
+            ITableEntityArgumentBindingProvider product = new TableEntityArgumentBindingProvider();
+
+            Type parameterType = typeof(GenericClass<>);
+
+            // Act
+            IArgumentBinding<TableEntityContext> binding = product.TryCreate(parameterType);
+
+            // Assert
+            Assert.Null(binding);
+        }
+
+        [Fact]
+        public void Create_ReturnsBinding_IfContainsResolvedGenericParameter()
+        {
+            // Arrange
+            ITableEntityArgumentBindingProvider product = new TableEntityArgumentBindingProvider();
+
+            Type parameterType = typeof(GenericClass<int>);
+
+            // Act
+            IArgumentBinding<TableEntityContext> binding = product.TryCreate(parameterType);
+
+            // Assert
+            Assert.NotNull(binding);
+        }
+
         private class SimpleTableEntity : TableEntity
+        {
+        }
+
+        private class GenericClass<TArgument> : TableEntity
         {
         }
     }

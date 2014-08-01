@@ -14,6 +14,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
                 return null;
             }
 
+            if (parameterType.ContainsGenericParameters)
+            { 
+                return null; 
+            }
+
             Type genericTypeDefinition;
 
             if (!parameterType.IsValueType)

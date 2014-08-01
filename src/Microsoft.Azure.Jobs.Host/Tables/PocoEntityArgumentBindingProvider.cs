@@ -15,6 +15,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 return null;
             }
 
+            if (parameterType.ContainsGenericParameters)
+            {
+                return null;
+            }
+
             TableClient.VerifyDefaultConstructor(parameterType);
 
             return CreateBinding(parameterType);

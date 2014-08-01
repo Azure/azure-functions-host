@@ -10,6 +10,11 @@ namespace Microsoft.Azure.Jobs.Host.Tables
     {
         public IArgumentBinding<TableEntityContext> TryCreate(Type parameterType)
         {
+            if (parameterType.ContainsGenericParameters)
+            {
+                return null;
+            }
+
             if (!TableClient.ImplementsITableEntity(parameterType))
             {
                 return null;
