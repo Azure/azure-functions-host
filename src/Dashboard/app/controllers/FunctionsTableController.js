@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionsTableController',
-    function FunctionsTableController($scope, $rootScope, $http, api, FunctionDefinition) {
+    function FunctionsTableController($scope, $rootScope, $location, $http, api, FunctionDefinition) {
 
         if (!$scope.functionDefinitions || !$scope.functionDefinitions.endpoint) {
             throw Error("Parent scope must define 'functionDefinitions' object, with an 'endpoint' property pointing at the server endpoint for retrieving FunctionDefinition objects.");
@@ -180,6 +180,9 @@
                 if (data === "true") {
                     functionDefinitions.hasNew = true;
                 }
+            }).error(function (res, code) {
+                $rootScope.errors.push('Error occurred while getting functions (Error code: ' + code + ')');
+                $location.url('/');
             });
         }
     }

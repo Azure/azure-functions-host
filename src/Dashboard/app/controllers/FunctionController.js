@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionController',
-    function ($scope, $routeParams, $interval, $http, stringUtils, FunctionInvocationSummary, api, urls, isUsingSdk) {
+    function ($rootScope, $scope, $routeParams, $interval, $http, $location, stringUtils, FunctionInvocationSummary, api, urls, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
@@ -23,8 +23,17 @@
         };
 
         function loadFunctionDetails() {
-            return $http.get(functionDataUrl).success(function (res) {
-                $scope.functionName = res.functionName;
+            return $http.get(functionDataUrl)
+                .success(function (res) {
+                    $scope.functionName = res.functionName;
+                }).error(function (res, code, data) {
+                    if (code === 404) {
+                        $rootScope.errors.push('Invalid function');
+                    } else {
+                        $rootScope.errors.push('Invalid function (Error code: ' + code + ')');
+                    }
+
+                    $location.url('/functions');
                 });
         }
 

@@ -91,4 +91,10 @@
             return input.slice(start);
         };
     });
+
+    app.run(function ($rootScope) {
+        // Initialize errors / warnings
+        $rootScope.errors = [];
+        $rootScope.warnings = [];
+    });
 })();

@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('FunctionInvocationController',
-    function ($scope, $routeParams, $interval, $http, $q, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls, isUsingSdk) {
+    function ($rootScope, $scope, $routeParams, $location, $interval, $http, $q, stringUtils, invocationUtils, api, FunctionInvocationModel, FunctionInvocationSummary, urls, isUsingSdk) {
         var poll,
             pollInterval = 10 * 1000,
             lastPoll = 0,
@@ -69,6 +69,14 @@
                                 }];
                         }
                     }
+                }).error(function (res, code) {
+                    if (code === 404) {
+                        $rootScope.errors.push('Invalid function invocation');
+                    } else {
+                        $rootScope.errors.push('Invalid function invocation (Error code: ' + code + ')');
+                    }
+
+                    $location.url('/functions');
                 });
             } else {
                 var deferred = $q.defer();

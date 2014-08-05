@@ -1,5 +1,5 @@
 ﻿angular.module('dashboard').controller('InvocationsTableController',
-    function InvocationsTableController($scope, $rootScope, $http, api, FunctionInvocationSummary) {
+    function InvocationsTableController($scope, $rootScope, $location, $http, api, FunctionInvocationSummary) {
 
         if (!$scope.invocations || !$scope.invocations.endpoint) {
             throw Error("Parent scope must define 'invocations' object, with an 'endpoint' property pointing at the server endpoint for retrieving Invocation objects.");
@@ -214,6 +214,9 @@
                 if (entries != null && entries.length > 0 && entries[0].whenUtc > invocations.page[0].whenUtc) {
                     invocations.hasNew = true;
                 }
+            }).error(function (res, code, data) {
+                $rootScope.errors.push('Error while getting function invocations (Error code: ' + code + ')');
+                $location.url('/');
             });
         }
 
@@ -245,6 +248,8 @@
                         }
                     }
                 }
+            }).error(function (res, code) {
+                $rootScope.errors.push('Error while updating data (Error code: ' + code + ')');
             });
         }
     }
