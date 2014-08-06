@@ -353,7 +353,7 @@ namespace Dashboard.ApiControllers
                 FunctionInstanceArgument argument = parameter.Value;
                 ParameterLog log;
 
-                if (parameterLogs.ContainsKey(name))
+                if (parameterLogs != null && parameterLogs.ContainsKey(name))
                 {
                     log = parameterLogs[name];
                 }
