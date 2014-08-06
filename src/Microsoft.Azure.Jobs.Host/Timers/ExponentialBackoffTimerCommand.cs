@@ -9,15 +9,19 @@ namespace Microsoft.Azure.Jobs.Host.Timers
 {
     internal class ExponentialBackoffTimerCommand : IIntervalSeparationCommand
     {
+        public const double RandomizationFactor = 0.2;
+
         private readonly ICanFailCommand _innerCommand;
         private readonly TimeSpan _minimumInterval;
         private readonly TimeSpan _maximumInterval;
+        private readonly TimeSpan _deltaBackoff;
 
         private TimeSpan _currentInterval;
         private uint _backoffExponent;
+        private Random _random;
 
         public ExponentialBackoffTimerCommand(ICanFailCommand innerCommand, TimeSpan minimumInterval,
-            TimeSpan maximumInterval)
+            TimeSpan maximumInterval, TimeSpan deltaBackoff)
         {
             if (innerCommand == null)
             {
@@ -43,6 +47,7 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             _innerCommand = innerCommand;
             _minimumInterval = minimumInterval;
             _maximumInterval = maximumInterval;
+            _deltaBackoff = deltaBackoff;
 
             _currentInterval = TimeSpan.Zero; // Don't delay initial execution
         }
@@ -59,13 +64,26 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             if (succeeded)
             {
                 _currentInterval = _minimumInterval;
-                _backoffExponent = 0;
+                _backoffExponent = 1;
             }
             else
             {
-                TimeSpan backoffInterval = new TimeSpan(_minimumInterval.Ticks * (long)Math.Pow(2, _backoffExponent));
+                TimeSpan backoffInterval = _minimumInterval;
 
-                if (backoffInterval.Ticks < _maximumInterval.Ticks)
+                if (_backoffExponent > 0)
+                {
+                    if (_random == null)
+                    {
+                        _random = new Random();
+                    }
+
+                    double incrementMsec = _random.Next(1.0 - RandomizationFactor, 1.0 + RandomizationFactor) * 
+                        Math.Pow(2.0, _backoffExponent - 1) * 
+                        _deltaBackoff.TotalMilliseconds;
+                    backoffInterval += TimeSpan.FromMilliseconds(incrementMsec);
+                }
+
+                if (backoffInterval < _maximumInterval)
                 {
                     _currentInterval = backoffInterval;
                     _backoffExponent++;
@@ -80,8 +98,14 @@ namespace Microsoft.Azure.Jobs.Host.Timers
         public static IntervalSeparationTimer CreateTimer(ICanFailCommand command, TimeSpan minimumInterval,
             TimeSpan maximumInterval)
         {
+            return CreateTimer(command, minimumInterval, maximumInterval, minimumInterval);
+        }
+
+        public static IntervalSeparationTimer CreateTimer(ICanFailCommand command, TimeSpan minimumInterval,
+            TimeSpan maximumInterval, TimeSpan deltaBackoff)
+        {
             return new IntervalSeparationTimer(new ExponentialBackoffTimerCommand(command, minimumInterval,
-                maximumInterval));
+                maximumInterval, deltaBackoff));
         }
     }
 }

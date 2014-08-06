@@ -366,6 +366,7 @@
     <Compile Include="Timers\FixedIntervalsTimerCommand.cs" />
     <Compile Include="Timers\ITimerFactory.cs" />
     <Compile Include="Timers\NullCanFailCommand.cs" />
+    <Compile Include="Timers\RandomExtensions.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />
     <Compile Include="Executors\IBindingSource.cs" />

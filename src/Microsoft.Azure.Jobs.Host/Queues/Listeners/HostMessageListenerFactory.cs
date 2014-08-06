@@ -15,7 +15,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
     internal class HostMessageListenerFactory : IListenerFactory
     {
-        private static readonly TimeSpan maxmimum = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan Minimum = QueuePollingIntervals.Minimum;
+        private static readonly TimeSpan Maxmimum = TimeSpan.FromMinutes(1);
 
         private readonly CloudQueue _queue;
         private readonly IFunctionIndexLookup _functionLookup;
@@ -35,8 +36,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                 _functionInstanceLogger);
             ICanFailCommand command = new PollQueueCommand(_queue, poisonQueue: null, triggerExecutor: triggerExecutor);
             // Use a shorter maximum polling interval for run/abort from dashboard.
-            IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command,
-                QueuePollingIntervals.Minimum, maxmimum);
+            IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command, Minimum, Maxmimum);
             IListener listener = new TimerListener(timer);
             return Task.FromResult(listener);
         }

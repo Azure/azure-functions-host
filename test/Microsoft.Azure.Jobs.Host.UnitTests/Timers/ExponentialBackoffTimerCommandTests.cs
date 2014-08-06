@@ -138,7 +138,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         }
 
         [Fact]
-        public void SeparationInterval_AfterTryExecuteReturnsFalseTwice_ReturnsDoubleMinimumInterval()
+        public void SeparationInterval_AfterTryExecuteReturnsFalseTwice_ReturnsApproximatelyDoubleMinimumInterval()
         {
             // Arrange
             ICanFailCommand command = CreateStubCommand(false);
@@ -152,12 +152,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            TimeSpan expectedSeparationInterval = new TimeSpan(minimumInterval.Ticks * 2);
-            Assert.Equal(expectedSeparationInterval, separationInterval);
+            AssertInRandomizationRange(separationInterval, minimumInterval, 1);
         }
 
         [Fact]
-        public void SeparationInterval_AfterTryExecuteReturnsFalseThrice_ReturnsQuadrupleMinimumInterval()
+        public void SeparationInterval_AfterTryExecuteReturnsFalseThrice_ReturnsApproximatelyQuadrupleMinimumInterval()
         {
             // Arrange
             ICanFailCommand command = CreateStubCommand(false);
@@ -172,8 +171,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            TimeSpan expectedSeparationInterval = new TimeSpan(minimumInterval.Ticks * 4);
-            Assert.Equal(expectedSeparationInterval, separationInterval);
+            AssertInRandomizationRange(separationInterval, minimumInterval, 2);
         }
 
         [Fact]
@@ -201,31 +199,19 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         }
 
         [Fact]
-        public void SeparationInterval_AfterTryExecuteStartsReturningFalseAgain_ReturnsMinimumInterval()
+        public void SeparationInterval_AfterTryExecuteReturnsFalseAfterReturningTrue_ReturnsApproximatelyDoubleMinimumInterval()
         {
             // Arrange
-            int call = 0;
+            bool firstCall = true;
             ICanFailCommand command = CreateLambdaCommand(() =>
             {
-                if (call == 0)
-                {
-                    call++;
-                    return false;
-                }
-                else if (call == 1)
-                {
-                    call++;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                bool succeeded = firstCall;
+                firstCall = false;
+                return succeeded;
             });
             TimeSpan minimumInterval = TimeSpan.FromMilliseconds(123);
             TimeSpan maximumInterval = TimeSpan.FromSeconds(4);
             IIntervalSeparationCommand product = CreateProductUnderTest(command, minimumInterval, maximumInterval);
-            product.Execute();
             product.Execute();
             product.Execute();
 
@@ -233,7 +219,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             TimeSpan separationInterval = product.SeparationInterval;
 
             // Assert
-            Assert.Equal(minimumInterval, separationInterval);
+            AssertInRandomizationRange(separationInterval, minimumInterval, 1);
         }
 
         [Fact]
@@ -244,6 +230,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             TimeSpan minimumInterval = TimeSpan.FromMilliseconds(123);
             TimeSpan maximumInterval = TimeSpan.FromSeconds(4);
             IIntervalSeparationCommand product = CreateProductUnderTest(command, minimumInterval, maximumInterval);
+            product.Execute();
             product.Execute();
             product.Execute();
             product.Execute();
@@ -275,7 +262,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         private static ExponentialBackoffTimerCommand CreateProductUnderTest(ICanFailCommand innerCommand,
             TimeSpan minimumInterval, TimeSpan maximumInterval)
         {
-            return new ExponentialBackoffTimerCommand(innerCommand, minimumInterval, maximumInterval);
+            return new ExponentialBackoffTimerCommand(innerCommand, minimumInterval, maximumInterval, minimumInterval);
         }
 
         private static ICanFailCommand CreateStubCommand(bool result)
@@ -284,6 +271,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             mock.Setup(m => m.TryExecuteAsync(It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(result));
             return mock.Object;
+        }
+
+        private static void AssertInRandomizationRange(TimeSpan separationInterval, TimeSpan minimumInterval, int retryCount)
+        {
+            Assert.InRange(separationInterval.Ticks,
+                minimumInterval.Ticks * (1 - ExponentialBackoffTimerCommand.RandomizationFactor) *
+                (Math.Pow(2, retryCount-1) + 1),
+                minimumInterval.Ticks * (1 + ExponentialBackoffTimerCommand.RandomizationFactor) *
+                (Math.Pow(2, retryCount-1) + 1));
         }
     }
 }
