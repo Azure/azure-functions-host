@@ -13,6 +13,8 @@ namespace Dashboard.Data
 
         ConcurrentMetadata ReadMetadata(string id);
 
+        void CreateOrUpdate(string id, IDictionary<string, string> metadata, string text);
+
         bool TryCreate(string id, IDictionary<string, string> metadata, string text);
 
         bool TryUpdate(string id, string eTag, IDictionary<string, string> metadata, string text);

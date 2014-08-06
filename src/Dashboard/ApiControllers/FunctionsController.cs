@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Caching;
@@ -231,7 +232,7 @@ namespace Dashboard.ApiControllers
 
         private IEnumerable<InvocationLogViewModel> CreateInvocationEntries(IEnumerable<RecentInvocationEntry> indexEntries)
         {
-            return CreateInvocationEntries(indexEntries.Select(e => e.Id));
+            return indexEntries.Select(e => CreateInvocationEntry(e)).ToList();
         }
 
         private IEnumerable<InvocationLogViewModel> CreateInvocationEntries(IEnumerable<Guid> ids)
@@ -242,6 +243,41 @@ namespace Dashboard.ApiControllers
                                                              select model;
 
             return enumerable.ToList();
+        }
+
+        private InvocationLogViewModel CreateInvocationEntry(RecentInvocationEntry entry)
+        {
+            Debug.Assert(entry.Metadata != null);
+
+            var metadataSnapshot = new FunctionInstanceSnapshot();
+            metadataSnapshot.Id = entry.Id;
+            metadataSnapshot.DisplayTitle = entry.Metadata[FunctionInstanceMetadata.DisplayTitle];
+
+            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.StartTime))
+            {
+                metadataSnapshot.StartTime = FunctionInstanceMetadata.DeserializeDateTimeOffset(entry.Metadata[FunctionInstanceMetadata.StartTime]);
+            }
+            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.EndTime))
+            {
+                metadataSnapshot.EndTime = FunctionInstanceMetadata.DeserializeDateTimeOffset(entry.Metadata[FunctionInstanceMetadata.EndTime]);
+            }
+            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.Succeeded))
+            {
+                metadataSnapshot.Succeeded = Boolean.Parse(entry.Metadata[FunctionInstanceMetadata.Succeeded]);
+            }
+
+            bool? heartbeatIsValid = null;
+            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatContainer) &&
+                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatDirectory) &&
+                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatExpiration))
+            {
+                heartbeatIsValid = HostHasHeartbeat(
+                    entry.Metadata[FunctionInstanceMetadata.HeartbeatContainer],
+                    entry.Metadata[FunctionInstanceMetadata.HeartbeatDirectory],
+                    Int32.Parse(entry.Metadata[FunctionInstanceMetadata.HeartbeatExpiration]));
+            }
+
+            return new InvocationLogViewModel(metadataSnapshot, heartbeatIsValid);
         }
 
         private InvocationLogViewModel CreateInvocationEntry(Guid id)
@@ -480,18 +516,12 @@ namespace Dashboard.ApiControllers
 
         private bool? HostHasHeartbeat(FunctionSnapshot function)
         {
-            string hostId = function.HeartbeatSharedContainerName + "/" + function.HeartbeatSharedDirectoryName;
+            if (!function.HeartbeatExpirationInSeconds.HasValue)
+            {
+                return null;
+            }
 
-            if (_cachedHostHeartbeats.ContainsKey(hostId))
-            {
-                return _cachedHostHeartbeats[hostId];
-            }
-            else
-            {
-                bool? heartbeat = HostHasHeartbeat(_heartbeatMonitor, function);
-                _cachedHostHeartbeats.AddOrUpdate(hostId, heartbeat, (ignore1, ignore2) => heartbeat);
-                return heartbeat;
-            }
+            return HostHasHeartbeat(function.HeartbeatSharedContainerName, function.HeartbeatSharedDirectoryName, function.HeartbeatExpirationInSeconds.Value);
         }
 
         internal static bool? HostHasHeartbeat(IHeartbeatValidityMonitor heartbeatMonitor, FunctionSnapshot snapshot)
@@ -516,8 +546,23 @@ namespace Dashboard.ApiControllers
                 return null;
             }
 
-            return _heartbeatMonitor.IsSharedHeartbeatValid(heartbeat.SharedContainerName,
-                heartbeat.SharedDirectoryName, heartbeat.ExpirationInSeconds);
+            return HostHasHeartbeat(heartbeat.SharedContainerName, heartbeat.SharedDirectoryName, heartbeat.ExpirationInSeconds);
+        }
+
+        private bool? HostHasHeartbeat(string sharedContainerName, string sharedDirectoryName, int expirationInSeconds)
+        {
+            string hostId = sharedContainerName + "/" + sharedDirectoryName;
+
+            if (_cachedHostHeartbeats.ContainsKey(hostId))
+            {
+                return _cachedHostHeartbeats[hostId];
+            }
+            else
+            {
+                bool? heartbeat = _heartbeatMonitor.IsSharedHeartbeatValid(sharedContainerName, sharedDirectoryName, expirationInSeconds);
+                _cachedHostHeartbeats.AddOrUpdate(hostId, heartbeat, (ignore1, ignore2) => heartbeat);
+                return heartbeat;
+            }
         }
 
         private bool? HostInstanceHasHeartbeat(FunctionInstanceSnapshot snapshot)

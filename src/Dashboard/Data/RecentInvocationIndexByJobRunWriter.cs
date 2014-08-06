@@ -9,7 +9,7 @@ namespace Dashboard.Data
 {
     public class RecentInvocationIndexByJobRunWriter : IRecentInvocationIndexByJobRunWriter
     {
-        private readonly IConcurrentTextStore _store;
+        private readonly IConcurrentMetadataTextStore _store;
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByJobRunWriter(CloudBlobClient client)
@@ -18,15 +18,16 @@ namespace Dashboard.Data
         {
         }
 
-        private RecentInvocationIndexByJobRunWriter(IConcurrentTextStore store)
+        private RecentInvocationIndexByJobRunWriter(IConcurrentMetadataTextStore store)
         {
             _store = store;
         }
 
-        public void CreateOrUpdate(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id)
+        public void CreateOrUpdate(FunctionInstanceSnapshot snapshot, WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp)
         {
-            string innerId = CreateInnerId(webJobRunId, timestamp, id);
-            _store.CreateOrUpdate(innerId, String.Empty);
+            var innerId = CreateInnerId(webJobRunId, timestamp, snapshot.Id);
+            var metadata = FunctionInstanceMetadata.CreateFromSnapshot(snapshot);
+            _store.CreateOrUpdate(innerId, metadata, String.Empty);
         }
 
         public void DeleteIfExists(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id)

@@ -1072,6 +1072,11 @@ namespace Dashboard.UnitTests.Data
                 throw new NotImplementedException();
             }
 
+            public void CreateOrUpdate(string id, IDictionary<string, string> metadata, string text)
+            {
+                throw new NotImplementedException();
+            }
+
             public void DeleteIfExists(string id)
             {
                 throw new NotImplementedException();
@@ -1201,6 +1206,11 @@ namespace Dashboard.UnitTests.Data
             }
 
             public void CreateOrUpdate(string id, string text)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void CreateOrUpdate(string id, IDictionary<string, string> metadata, string text)
             {
                 throw new NotImplementedException();
             }

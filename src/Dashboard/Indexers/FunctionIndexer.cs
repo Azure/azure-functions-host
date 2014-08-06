@@ -60,7 +60,7 @@ namespace Dashboard.Indexers
             // Race to write index entries for function started.
             if (!HasLoggedFunctionCompleted(functionInstanceId))
             {
-                CreateOrUpdateIndexEntries(functionInstanceId, startTime, functionId, parentId, webJobRunId);
+                CreateOrUpdateIndexEntries(snapshot, startTime, webJobRunId);
             }
 
             // If the function has since completed, we lost the race.
@@ -92,20 +92,19 @@ namespace Dashboard.Indexers
             return primaryLog != null ? primaryLog.EndTime : null;
         }
 
-        private void CreateOrUpdateIndexEntries(Guid functionInstanceId, DateTimeOffset timestamp, string functionId,
-            Guid? parentId, WebJobRunIdentifier webJobRunId)
+        private void CreateOrUpdateIndexEntries(FunctionInstanceSnapshot snapshot, DateTimeOffset timestamp, WebJobRunIdentifier webJobRunId)
         {
-            _recentInvocationsWriter.CreateOrUpdate(timestamp, functionInstanceId);
-            _recentInvocationsByFunctionWriter.CreateOrUpdate(functionId, timestamp, functionInstanceId);
+            _recentInvocationsWriter.CreateOrUpdate(snapshot, timestamp);
+            _recentInvocationsByFunctionWriter.CreateOrUpdate(snapshot, timestamp);
 
             if (webJobRunId != null)
             {
-                _recentInvocationsByJobRunWriter.CreateOrUpdate(webJobRunId, timestamp, functionInstanceId);
+                _recentInvocationsByJobRunWriter.CreateOrUpdate(snapshot, webJobRunId, timestamp);
             }
 
-            if (parentId.HasValue)
+            if (snapshot.ParentId.HasValue)
             {
-                _recentInvocationsByParentWriter.CreateOrUpdate(parentId.Value, timestamp, functionInstanceId);
+                _recentInvocationsByParentWriter.CreateOrUpdate(snapshot, timestamp);
             }
         }
 
@@ -151,7 +150,7 @@ namespace Dashboard.Indexers
             DeleteFunctionStartedIndexEntriesIfNeeded(functionInstanceId, message.StartTime, endTime, functionId,
                 parentId, webJobRunId);
 
-            CreateOrUpdateIndexEntries(functionInstanceId, endTime, functionId, parentId, webJobRunId);
+            CreateOrUpdateIndexEntries(snapshot, endTime, webJobRunId);
 
             // Increment is non-idempotent. If the process dies before deleting the message that triggered it, it can
             // occur multiple times.

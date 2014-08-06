@@ -8,7 +8,7 @@ namespace Dashboard.Data
 {
     public interface IRecentInvocationIndexByJobRunWriter
     {
-        void CreateOrUpdate(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id);
+        void CreateOrUpdate(FunctionInstanceSnapshot snapshot, WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp);
 
         void DeleteIfExists(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id);
     }

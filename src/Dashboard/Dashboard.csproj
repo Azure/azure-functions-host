@@ -202,6 +202,7 @@
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
     <Compile Include="Data\FunctionIndexReader.cs" />
+    <Compile Include="Data\FunctionInstanceMetadata.cs" />
     <Compile Include="Data\IFunctionIndexReader.cs" />
     <Compile Include="Data\HeartbeatValidityMonitor.cs" />
     <Compile Include="Data\FunctionIndexVersionManager.cs" />

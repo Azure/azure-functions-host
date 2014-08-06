@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace Dashboard.Data
@@ -10,11 +11,13 @@ namespace Dashboard.Data
     {
         private readonly DateTimeOffset _timestamp;
         private readonly Guid _id;
+        private readonly IDictionary<string, string> _metadata;
 
-        public RecentInvocationEntry(DateTimeOffset timestamp, Guid id)
+        public RecentInvocationEntry(DateTimeOffset timestamp, Guid id, IDictionary<string, string> metadata)
         {
             _timestamp = timestamp;
             _id = id;
+            _metadata = metadata;
         }
 
         public DateTimeOffset Timestamp
@@ -25,6 +28,11 @@ namespace Dashboard.Data
         public Guid Id
         {
             get { return _id; }
+        }
+
+        public IDictionary<string, string> Metadata
+        {
+            get { return _metadata; }
         }
 
         public override string ToString()
@@ -42,11 +50,11 @@ namespace Dashboard.Data
             return String.Format(CultureInfo.InvariantCulture, "{0:D19}_{1:N}", reverseTicks, id);
         }
 
-        public static RecentInvocationEntry Parse(string input)
+        public static RecentInvocationEntry Parse(string input, IDictionary<string, string> metadata)
         {
             RecentInvocationEntry parsed;
 
-            if (!TryParse(input, out parsed))
+            if (!TryParse(input, metadata, out parsed))
             {
                 throw new FormatException("Recent function instance blob names must be in the format timestamp_guid.");
             }
@@ -54,7 +62,7 @@ namespace Dashboard.Data
             return parsed;
         }
 
-        private static bool TryParse(string input, out RecentInvocationEntry parsed)
+        private static bool TryParse(string input, IDictionary<string, string> metadata, out RecentInvocationEntry parsed)
         {
             if (input == null)
             {
@@ -93,7 +101,7 @@ namespace Dashboard.Data
             long ticks = DateTimeOffset.MaxValue.Ticks - reverseTicks; // Recompute the original ticks.
             DateTimeOffset timestamp = new DateTimeOffset(reverseTicks, TimeSpan.Zero); // Ticks must be UTC-relative.
 
-            parsed = new RecentInvocationEntry(timestamp, id);
+            parsed = new RecentInvocationEntry(timestamp, id, metadata);
             return true;
         }
     }

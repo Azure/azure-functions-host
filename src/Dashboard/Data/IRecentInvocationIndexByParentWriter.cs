@@ -7,7 +7,7 @@ namespace Dashboard.Data
 {
     public interface IRecentInvocationIndexByParentWriter
     {
-        void CreateOrUpdate(Guid parentId, DateTimeOffset timestamp, Guid id);
+        void CreateOrUpdate(FunctionInstanceSnapshot snapshot, DateTimeOffset timestamp);
 
         void DeleteIfExists(Guid parentId, DateTimeOffset timestamp, Guid id);
     }

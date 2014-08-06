@@ -39,7 +39,7 @@ namespace Dashboard.Data
                 blobSegment = _container.ListBlobsSegmented(
                     prefix: prefix,
                     useFlatBlobListing: true,
-                    blobListingDetails: BlobListingDetails.None,
+                    blobListingDetails: BlobListingDetails.Metadata,
                     maxResults: maximumResults,
                     currentToken: blobContinuationToken,
                     options: null,
@@ -68,7 +68,7 @@ namespace Dashboard.Data
             foreach (ICloudBlob blob in blobSegment.Results)
             {
                 string nameWithoutPrefix = blob.Name.Substring(prefix.Length);
-                results.Add(RecentInvocationEntry.Parse(nameWithoutPrefix));
+                results.Add(RecentInvocationEntry.Parse(nameWithoutPrefix, blob.Metadata));
             }
 
             string nextContinuationToken = BlobContinuationTokenSerializer.Serialize(blobSegment.ContinuationToken);

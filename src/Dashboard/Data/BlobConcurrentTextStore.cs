@@ -105,7 +105,13 @@ namespace Dashboard.Data
 
         public void CreateOrUpdate(string id, string text)
         {
+            CreateOrUpdate(id, metadata: null, text: text);
+        }
+
+        public void CreateOrUpdate(string id, IDictionary<string, string> metadata, string text)
+        {
             CloudBlockBlob blob = _directory.GetBlockBlobReference(id);
+            CopyMetadata(metadata, blob);
 
             try
             {

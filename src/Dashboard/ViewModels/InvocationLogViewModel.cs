@@ -19,7 +19,7 @@ namespace Dashboard.ViewModels
             FunctionName = snapshot.FunctionShortName;
             FunctionId = snapshot.FunctionId;
             FunctionFullName = snapshot.FunctionFullName;
-            FunctionDisplayTitle = BuildFunctionDisplayTitle(snapshot);
+            FunctionDisplayTitle = snapshot.DisplayTitle;
             HostInstanceId = snapshot.HostInstanceId;
             InstanceQueueName = snapshot.InstanceQueueName;
             if (snapshot.WebSiteName != null
@@ -60,28 +60,6 @@ namespace Dashboard.ViewModels
         }
 
         public WebJobRunIdentifierViewModel ExecutingJobRunId { get; set; }
-
-        internal static string BuildFunctionDisplayTitle(FunctionInstanceSnapshot snapshot)
-        {
-            var name = new StringBuilder(snapshot.FunctionShortName);
-            IEnumerable<string> argumentValues = snapshot.Arguments.Values.Select(v => v.Value);
-            string parametersDisplayText = String.Join(", ", argumentValues);
-            if (parametersDisplayText != null)
-            {
-                name.Append(" (");
-                if (parametersDisplayText.Length > 20)
-                {
-                    name.Append(parametersDisplayText.Substring(0, 18))
-                        .Append(" ...");
-                }
-                else
-                {
-                    name.Append(parametersDisplayText);
-                }
-                name.Append(")");
-            }
-            return name.ToString();
-        }
 
         public Guid Id { get; set; }
         public string FunctionId { get; set; }

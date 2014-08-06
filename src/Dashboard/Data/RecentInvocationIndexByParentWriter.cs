@@ -8,7 +8,7 @@ namespace Dashboard.Data
 {
     public class RecentInvocationIndexByParentWriter : IRecentInvocationIndexByParentWriter
     {
-        private readonly IConcurrentTextStore _store;
+        private readonly IConcurrentMetadataTextStore _store;
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByParentWriter(CloudBlobClient client)
@@ -17,15 +17,16 @@ namespace Dashboard.Data
         {
         }
 
-        private RecentInvocationIndexByParentWriter(IConcurrentTextStore store)
+        private RecentInvocationIndexByParentWriter(IConcurrentMetadataTextStore store)
         {
             _store = store;
         }
 
-        public void CreateOrUpdate(Guid parentId, DateTimeOffset timestamp, Guid id)
+        public void CreateOrUpdate(FunctionInstanceSnapshot snapshot, DateTimeOffset timestamp)
         {
-            string innerId = CreateInnerId(parentId, timestamp, id);
-            _store.CreateOrUpdate(innerId, String.Empty);
+            var innerId = CreateInnerId(snapshot.ParentId.Value, timestamp, snapshot.Id);
+            var metadata = FunctionInstanceMetadata.CreateFromSnapshot(snapshot);
+            _store.CreateOrUpdate(innerId, metadata, String.Empty);
         }
 
         public void DeleteIfExists(Guid parentId, DateTimeOffset timestamp, Guid id)
