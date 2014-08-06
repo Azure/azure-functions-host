@@ -15,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
     {
         IReadOnlyDictionary<string, Type> BindingDataContract { get; }
 
-        Task<ITriggerData> BindAsync(object value, FunctionBindingContext context);
+        Task<ITriggerData> BindAsync(object value, ValueBindingContext context);
 
         IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             FunctionDescriptor functionDescriptor, MethodInfo method);

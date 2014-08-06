@@ -18,6 +18,10 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             return Task.FromResult(0);
         }
 
+        public void Cancel()
+        {
+        }
+
         public void Dispose()
         {
         }

@@ -32,22 +32,6 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             _timer = new Timer(RunTimer);
         }
 
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                if (_started && !_stopped)
-                {
-                    // Don't leave a runaway thread when Dispose is called.
-                    // That means we need to signal the thread to stop and wait for the thread to finish (before we
-                    // dispose of the event that the thread is waiting on).
-                    Stop();
-                }
-
-                _disposed = true;
-            }
-        }
-
         public void Start()
         {
             ThrowIfDisposed();
@@ -87,6 +71,27 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             }
 
             _stopped = true;
+        }
+
+        public void Cancel()
+        {
+            // async TODO: Cancel running tasks.
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                if (_started && !_stopped)
+                {
+                    // Don't leave a runaway thread when Dispose is called.
+                    // That means we need to signal the thread to stop and wait for the thread to finish (before we
+                    // dispose of the event that the thread is waiting on).
+                    Stop();
+                }
+
+                _disposed = true;
+            }
         }
 
         private void RunTimer(object state)

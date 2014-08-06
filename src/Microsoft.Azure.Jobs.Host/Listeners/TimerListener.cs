@@ -33,6 +33,12 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             return Task.FromResult(0);
         }
 
+        public void Cancel()
+        {
+            ThrowIfDisposed();
+            _timer.Cancel();
+        }
+
         public void Dispose()
         {
             if (!_disposed)

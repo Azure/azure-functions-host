@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return typeof(T); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudQueueMessage value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(CloudQueueMessage value, ValueBindingContext context)
             {
                 object converted = _converter.Convert(value);
                 IValueProvider provider = new QueueMessageValueProvider(value, converted, typeof(T));

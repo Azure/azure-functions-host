@@ -41,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 get { return typeof(CloudBlobStream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 

@@ -70,15 +70,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 RowKey = boundPath.RowKey
             };
 
-            return BindAsync(entityContext, context.FunctionContext);
+            return BindAsync(entityContext, context.ValueContext);
         }
 
-        private Task<IValueProvider> BindAsync(TableEntityContext entityContext, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TableEntityContext entityContext, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(entityContext, context);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             TableEntityContext entityContext = null;
 

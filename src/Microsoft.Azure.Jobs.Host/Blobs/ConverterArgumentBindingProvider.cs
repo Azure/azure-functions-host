@@ -55,7 +55,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(T); }
             }
 
-            public Task<IValueProvider> BindAsync(ICloudBlob value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(ICloudBlob value, ValueBindingContext context)
             {
                 IValueProvider provider = new BlobValueProvider(value, _converter.Convert(value), typeof(T));
                 return Task.FromResult(provider);

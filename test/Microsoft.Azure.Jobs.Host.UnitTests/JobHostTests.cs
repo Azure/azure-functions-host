@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
@@ -84,14 +85,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 host.Start();
 
                 // Replace (and cleanup) the exsiting runner to hook StopAsync.
-                IRunner oldRunner = host.Runner;
-                oldRunner.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+                IListener oldListener = host.Listener;
+                oldListener.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                 TaskCompletionSource<object> stopTaskSource = new TaskCompletionSource<object>();
-                Mock<IRunner> runnerMock = new Mock<IRunner>(MockBehavior.Strict);
-                runnerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
-                runnerMock.Setup(r => r.Dispose());
-                host.Runner = runnerMock.Object;
+                Mock<IListener> listenerMock = new Mock<IListener>(MockBehavior.Strict);
+                listenerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
+                listenerMock.Setup(r => r.Dispose());
+                host.Listener = listenerMock.Object;
 
                 Task stopping = host.StopAsync();
 
@@ -172,15 +173,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             {
                 host.Start();
 
-                // Replace (and cleanup) the exsiting runner to hook StopAsync.
-                IRunner oldRunner = host.Runner;
-                oldRunner.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
+                // Replace (and cleanup) the existing listener to hook StopAsync.
+                IListener oldListener = host.Listener;
+                oldListener.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                 TaskCompletionSource<object> stopTaskSource = new TaskCompletionSource<object>();
-                Mock<IRunner> runnerMock = new Mock<IRunner>(MockBehavior.Strict);
-                runnerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
-                runnerMock.Setup(r => r.Dispose());
-                host.Runner = runnerMock.Object;
+                Mock<IListener> listenerMock = new Mock<IListener>(MockBehavior.Strict);
+                listenerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
+                listenerMock.Setup(r => r.Dispose());
+                host.Listener = listenerMock.Object;
 
                 // Act
                 Task stopping = host.StopAsync();
@@ -202,15 +203,15 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
             {
                 host.Start();
 
-                // Replace (and cleanup) the exsiting runner to hook StopAsync.
-                IRunner oldRunner = host.Runner;
+                // Replace (and cleanup) the existing listener to hook StopAsync.
+                IListener oldRunner = host.Listener;
                 oldRunner.StopAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                 TaskCompletionSource<object> stopTaskSource = new TaskCompletionSource<object>();
-                Mock<IRunner> runnerMock = new Mock<IRunner>(MockBehavior.Strict);
-                runnerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
-                runnerMock.Setup(r => r.Dispose());
-                host.Runner = runnerMock.Object;
+                Mock<IListener> listenerMock = new Mock<IListener>(MockBehavior.Strict);
+                listenerMock.Setup(r => r.StopAsync(It.IsAny<CancellationToken>())).Returns(stopTaskSource.Task);
+                listenerMock.Setup(r => r.Dispose());
+                host.Listener = listenerMock.Object;
                 Task alreadyStopping = host.StopAsync();
 
                 // Act

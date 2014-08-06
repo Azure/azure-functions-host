@@ -46,8 +46,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             _entityPath = queueName;
         }
 
-        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account,
-            string topicName, string subscriptionName)
+        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding,
+            ServiceBusAccount account, string topicName, string subscriptionName)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             get { return _entityPath; }
         }
 
-        public async Task<ITriggerData> BindAsync(BrokeredMessage value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
         {
             BrokeredMessage clonedMessage = value.Clone();
             IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
+        public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             BrokeredMessage message = null;
 

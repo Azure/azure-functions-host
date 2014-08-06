@@ -21,13 +21,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(IAttributeBindingSource binding, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(IAttributeBindingSource binding, ValueBindingContext context)
         {
             IValueProvider provider = new RuntimeValueProvider(binding);
             return Task.FromResult(provider);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             IAttributeBindingSource binding = value as IAttributeBindingSource;
 
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(new AttributeBindingSource(context), context.FunctionContext);
+            return BindAsync(new AttributeBindingSource(context.AmbientContext), context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

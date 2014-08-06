@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
                 get { return typeof(CloudTable); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudTable value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
             {
                 await value.CreateIfNotExistsAsync(context.CancellationToken);
                 return new TableValueProvider(value, value, typeof(CloudTable));

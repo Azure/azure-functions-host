@@ -60,15 +60,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
             CloudQueue queue = _client.GetQueueReference(_queueName);
-            return BindAsync(queue, context.FunctionContext);
+            return BindAsync(queue, context.ValueContext);
         }
 
-        private Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             CloudQueue queue = null;
 

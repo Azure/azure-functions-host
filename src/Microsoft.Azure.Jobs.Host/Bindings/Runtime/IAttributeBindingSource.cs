@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal interface IAttributeBindingSource
     {
-        BindingContext BindingContext { get; }
+        AmbientBindingContext AmbientBindingContext { get; }
 
         Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken);
     }

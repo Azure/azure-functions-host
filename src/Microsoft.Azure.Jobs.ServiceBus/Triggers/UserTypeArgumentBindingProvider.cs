@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return _valueType; }
             }
 
-            public async Task<IValueProvider> BindAsync(BrokeredMessage value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(BrokeredMessage value, ValueBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 string contents;

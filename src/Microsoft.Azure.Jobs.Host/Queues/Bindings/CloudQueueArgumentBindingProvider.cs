@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 get { return typeof(CloudQueue); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
             {
                 await value.CreateIfNotExistsAsync(context.CancellationToken);
                 return new QueueValueProvider(value, value, typeof(CloudQueue));

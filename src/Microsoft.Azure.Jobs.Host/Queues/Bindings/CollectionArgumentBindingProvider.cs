@@ -81,7 +81,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 get { return typeof(ICollection<TItem>); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
             {
                 IValueBinder itemBinder = (IValueBinder)await _itemBinding.BindAsync(value, context);
                 return new CollectionValueBinder(value, itemBinder);

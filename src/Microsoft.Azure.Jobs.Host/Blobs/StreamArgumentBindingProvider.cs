@@ -48,7 +48,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
                 Stream rawStream = await blob.OpenReadAsync(context.CancellationToken);
                 WatchableReadStream watchableStream = new WatchableReadStream(rawStream);
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
                 CloudBlockBlob blockBlob = blob as CloudBlockBlob;
 

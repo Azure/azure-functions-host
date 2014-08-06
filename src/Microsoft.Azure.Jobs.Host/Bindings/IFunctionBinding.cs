@@ -8,7 +8,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
 {
     internal interface IFunctionBinding
     {
-        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context,
             IDictionary<string, object> parameters);
     }
 }

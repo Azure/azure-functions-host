@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
             get { return _valueType; }
         }
 
-        public Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
         {
             IValueProvider provider = new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
             return Task.FromResult(provider);

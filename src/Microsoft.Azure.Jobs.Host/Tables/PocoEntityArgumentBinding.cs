@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             get { return typeof(TElement); }
         }
 
-        public async Task<IValueProvider> BindAsync(TableEntityContext value, FunctionBindingContext context)
+        public async Task<IValueProvider> BindAsync(TableEntityContext value, ValueBindingContext context)
         {
             TableOperation retrieve = TableOperation.Retrieve<DynamicTableEntity>(value.PartitionKey, value.RowKey);
             TableResult result = await value.Table.ExecuteAsync(retrieve, context.CancellationToken);

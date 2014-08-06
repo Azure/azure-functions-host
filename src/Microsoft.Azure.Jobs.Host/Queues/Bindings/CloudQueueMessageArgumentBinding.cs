@@ -16,7 +16,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             get { return typeof(CloudQueueMessage); }
         }
 
-        public Task<IValueProvider> BindAsync(CloudQueue value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
         {
             IValueProvider provider = new MessageValueBinder(value);
             return Task.FromResult(provider);

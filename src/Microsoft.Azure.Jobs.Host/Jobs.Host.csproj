@@ -271,6 +271,8 @@
     <Compile Include="..\Microsoft.Azure.Jobs.Storage\Table\RowKeyLessThanQueryModifier.cs">
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
+    <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\ValueBindingContext.cs" />
     <Compile Include="Bindings\IWatcher.cs" />
     <Compile Include="Bindings\Runtime\AttributeBindingSource.cs" />
     <Compile Include="Bindings\BindingDataPath.cs" />
@@ -317,16 +319,16 @@
     <Compile Include="Converters\AsyncIdentityConverter.cs" />
     <Compile Include="Converters\ConversionResult.cs" />
     <Compile Include="Converters\IAsyncObjectToTypeConverter.cs" />
-    <Compile Include="Executors\FunctionExecutorContextFactory.cs" />
     <Compile Include="Executors\FunctionInstanceFactory.cs" />
     <Compile Include="Executors\FunctionOutputIntervals.cs" />
     <Compile Include="Executors\FunctionParameterLogIntervals.cs" />
-    <Compile Include="Executors\HostBindingContextFactory.cs" />
-    <Compile Include="Executors\IFunctionExecutorFactory.cs" />
-    <Compile Include="Executors\Runner.cs" />
-    <Compile Include="Executors\IRunner.cs" />
-    <Compile Include="Executors\RunnerFactory.cs" />
-    <Compile Include="Executors\IRunnerFactory.cs" />
+    <Compile Include="Executors\AbortListenerFunctionExecutor.cs" />
+    <Compile Include="Listeners\HeartbeatListener.cs" />
+    <Compile Include="Listeners\ShutdownListener.cs" />
+    <Compile Include="Listeners\ListenerFactoryListener.cs" />
+    <Compile Include="Executors\ShutdownFunctionExecutor.cs" />
+    <Compile Include="Executors\HeartbeatFunctionExecutor.cs" />
+    <Compile Include="Executors\HeartbeatTimerFactory.cs" />
     <Compile Include="Executors\IStorageAccountProvider.cs" />
     <Compile Include="Executors\IFunctionInstanceFactory.cs" />
     <Compile Include="Executors\DefaultStorageCredentialsValidator.cs" />
@@ -362,6 +364,7 @@
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommand.cs" />
     <Compile Include="Timers\FixedIntervalsTimerCommand.cs" />
+    <Compile Include="Timers\ITimerFactory.cs" />
     <Compile Include="Timers\NullCanFailCommand.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />

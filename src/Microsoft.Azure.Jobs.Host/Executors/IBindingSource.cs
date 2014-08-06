@@ -9,6 +9,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal interface IBindingSource
     {
-        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context);
+        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context);
     }
 }

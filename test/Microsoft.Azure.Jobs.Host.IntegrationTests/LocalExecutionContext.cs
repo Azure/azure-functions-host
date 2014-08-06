@@ -36,7 +36,6 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             _blobClient = account.CreateCloudBlobClient();
             _context = new HostBindingContext(
                 bindingProvider: index.BindingProvider,
-                hostCancellationToken: CancellationToken.None,
                 nameResolver: null,
                 storageAccount: account,
                 serviceBusConnectionString: null);
@@ -71,8 +70,8 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
 
         private void Execute(IFunctionInstance instance)
         {
-            FunctionBindingContext context = new FunctionBindingContext(_context, instance.Id, TextWriter.Null,
-                CancellationToken.None);
+            ValueBindingContext context = new ValueBindingContext(new FunctionBindingContext(_context, instance.Id,
+                CancellationToken.None, TextWriter.Null), CancellationToken.None);
             FunctionExecutor.ExecuteWithWatchersAsync(instance.Method, instance.Method.GetParameters(),
                 instance.BindingSource.BindAsync(context).Result, TextWriter.Null,
                 CancellationToken.None).GetAwaiter().GetResult();

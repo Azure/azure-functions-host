@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return typeof(T); }
             }
 
-            public async Task<IValueProvider> BindAsync(BrokeredMessage value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(BrokeredMessage value, ValueBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 object converted = await _converter.ConvertAsync(value, context.CancellationToken);

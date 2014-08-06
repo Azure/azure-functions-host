@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 
@@ -26,16 +27,21 @@ namespace Microsoft.Azure.Jobs
         private const int StateStoppingOrStopped = 3;
 
         private readonly JobHostContextFactory _contextFactory;
+        private readonly CancellationTokenSource _shutdownTokenSource;
+        private readonly WebJobsShutdownWatcher _shutdownWatcher;
+        private readonly CancellationTokenSource _stoppingTokenSource;
 
         private Task<JobHostContext> _contextTask;
         private bool _contextTaskInitialized;
         private object _contextTaskLock = new object();
 
+        private JobHostContext _context;
+        private IListener _listener;
+        private object _contextLock = new object();
+
         private int _state;
         private Task _stopTask;
         private object _stopTaskLock = new object();
-
-        private IRunner _runner;
         private bool _disposed;
 
         /// <summary>
@@ -79,15 +85,19 @@ namespace Microsoft.Azure.Jobs
             ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
 
+            _shutdownTokenSource = new CancellationTokenSource();
+            _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
+            _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
+
             _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
-                credentialsValidator, typeLocator, nameResolver);
+                credentialsValidator, typeLocator, nameResolver, _shutdownTokenSource.Token);
         }
 
         // Test hook only.
-        internal IRunner Runner
+        internal IListener Listener
         {
-            get { return _runner; }
-            set { _runner = value; }
+            get { return _listener; }
+            set { _listener = value; }
         }
 
         /// <summary>Starts the host.</summary>
@@ -113,11 +123,11 @@ namespace Microsoft.Azure.Jobs
 
         private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            JobHostContext context = await EnsureHostStartedAsync(cancellationToken);
+            await EnsureHostStartedAsync(cancellationToken);
 
-            _runner = await context.RunnerFactory.CreateAndStartAsync(listenForAbortOnly: false,
-                cancellationToken: cancellationToken);
+            await _listener.StartAsync(cancellationToken);
             Console.WriteLine("Job host started");
+
             _state = StateStarted;
         }
 
@@ -145,6 +155,7 @@ namespace Microsoft.Azure.Jobs
             {
                 if (_stopTask == null)
                 {
+                    _stoppingTokenSource.Cancel();
                     _stopTask = StopAsyncCore(CancellationToken.None);
                 }
             }
@@ -154,13 +165,9 @@ namespace Microsoft.Azure.Jobs
 
         private async Task StopAsyncCore(CancellationToken cancellationToken)
         {
-            if (_runner != null)
-            {
-                await _runner.StopAsync(cancellationToken);
+            await _listener.StopAsync(cancellationToken);
 
-                Console.WriteLine("Job host stopped");
-                _runner = null;
-            }
+            Console.WriteLine("Job host stopped");
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>
@@ -168,8 +175,8 @@ namespace Microsoft.Azure.Jobs
         {
             Start();
 
-            // Wait for someone to begin shut down (either Stop or _shutdownWatcher).
-            _runner.HostCancellationToken.WaitHandle.WaitOne();
+            // Wait for someone to begin stopping (_shutdownWatcher, Stop, or Dispose).
+            _stoppingTokenSource.Token.WaitHandle.WaitOne();
 
             // Don't return until all executing functions have completed.
             Stop();
@@ -249,19 +256,11 @@ namespace Microsoft.Azure.Jobs
         private async Task CallAsyncCore(MethodInfo method, IDictionary<string, object> arguments,
             CancellationToken cancellationToken)
         {
-            JobHostContext hostContext = await EnsureHostStartedAsync(cancellationToken);
-            IFunctionDefinition function = ResolveFunctionDefinition(method, hostContext.FunctionLookup);
+            await EnsureHostStartedAsync(cancellationToken);
+            IFunctionDefinition function = ResolveFunctionDefinition(method, _context.FunctionLookup);
             IFunctionInstance instance = CreateFunctionInstance(function, arguments);
-            IDelayedException exception;
 
-            using (IRunner runner = await hostContext.RunnerFactory.CreateAndStartAsync(listenForAbortOnly: true,
-                cancellationToken: cancellationToken))
-            using (cancellationToken.Register(runner.Cancel))
-            {
-                IFunctionExecutor executor = runner.Executor;
-                exception = await executor.TryExecuteAsync(instance, runner.HostCancellationToken);
-                await runner.StopAsync(cancellationToken);
-            }
+            IDelayedException exception = await _context.Executor.TryExecuteAsync(instance, cancellationToken);
 
             if (exception != null)
             {
@@ -274,10 +273,22 @@ namespace Microsoft.Azure.Jobs
         {
             if (!_disposed)
             {
-                if (_runner != null)
+                // Running callers might still be using this cancellation token.
+                // Mark it canceled but don't dispose of the source while the callers are running.
+                // Otherwise, callers would receive ObjectDisposedException when calling token.Register.
+                // For now, rely on finalization to clean up _shutdownTokenSource's wait handle (if allocated).
+                _shutdownTokenSource.Cancel();
+
+                _stoppingTokenSource.Dispose();
+
+                if (_shutdownWatcher != null)
                 {
-                    _runner.Dispose();
-                    _runner = null;
+                    _shutdownWatcher.Dispose();
+                }
+
+                if (_context != null)
+                {
+                    _context.Dispose();
                 }
 
                 _disposed = true;
@@ -290,7 +301,8 @@ namespace Microsoft.Azure.Jobs
             return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
         }
 
-        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
+        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method,
+            IFunctionIndexLookup functionLookup)
         {
             IFunctionDefinition function = functionLookup.Lookup(method);
 
@@ -314,12 +326,23 @@ namespace Microsoft.Azure.Jobs
             return configuration;
         }
 
-        private Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
+        private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            return _contextFactory.CreateAndLogHostStartedAsync(cancellationToken);
+            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(cancellationToken);
+
+            lock (_contextLock)
+            {
+                if (_context == null)
+                {
+                    _context = context;
+                    _listener = context.Listener;
+                }
+            }
+
+            return _context;
         }
 
-        private Task<JobHostContext> EnsureHostStartedAsync(CancellationToken cancellationToken)
+        private Task EnsureHostStartedAsync(CancellationToken cancellationToken)
         {
             return LazyInitializer.EnsureInitialized<Task<JobHostContext>>(ref _contextTask,
                 ref _contextTaskInitialized,

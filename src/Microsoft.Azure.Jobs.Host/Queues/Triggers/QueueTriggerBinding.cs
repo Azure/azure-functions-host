@@ -76,7 +76,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return contract;
         }
 
-        public async Task<ITriggerData> BindAsync(CloudQueueMessage value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
         {
             IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
+        public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             CloudQueueMessage message = null;
 

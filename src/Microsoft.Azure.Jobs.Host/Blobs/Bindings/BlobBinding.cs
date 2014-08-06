@@ -64,7 +64,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
                 new OutputConverter<string>(new StringToCloudBlobConverter(client, path, argumentType)));
         }
 
-        private Task<IValueProvider> BindAsync(ICloudBlob value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(ICloudBlob value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
@@ -80,10 +80,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
             ICloudBlob blob = await container.GetBlobReferenceForArgumentTypeAsync(blobName, argumentType,
                 context.CancellationToken);
 
-            return await BindAsync(blob, context.FunctionContext);
+            return await BindAsync(blob, context.ValueContext);
         }
 
-        public async Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             ConversionResult<ICloudBlob> conversionResult =
                 await _converter.TryConvertAsync(value, context.CancellationToken);

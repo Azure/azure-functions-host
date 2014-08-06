@@ -23,13 +23,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(TextWriter writer, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TextWriter writer, ValueBindingContext context)
         {
             IValueProvider provider = new ConsoleOutputValueProvider(writer);
             return Task.FromResult(provider);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             TextWriter writer = value as TextWriter;
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(context.ConsoleOutput, context.FunctionContext);
+            return BindAsync(context.ConsoleOutput, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

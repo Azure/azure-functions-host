@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             _value = value;
         }
 
-        public Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context)
+        public Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context)
         {
             return _functionBinding.BindAsync(context, _value);
         }

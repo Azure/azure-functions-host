@@ -10,14 +10,14 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
 {
     internal class AttributeBindingSource : IAttributeBindingSource
     {
-        private readonly BindingContext _context;
+        private readonly AmbientBindingContext _context;
 
-        public AttributeBindingSource(BindingContext context)
+        public AttributeBindingSource(AmbientBindingContext context)
         {
             _context = context;
         }
 
-        public BindingContext BindingContext
+        public AmbientBindingContext AmbientBindingContext
         {
             get { return _context; }
         }
@@ -25,8 +25,9 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
         public Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
         {
             return _context.BindingProvider.TryCreateAsync(BindingProviderContext.Create(
-                _context, new FakeParameterInfo(typeof(TValue), attribute), bindingDataContract: null,
-                cancellationToken: cancellationToken));
+                new BindingContext(_context, cancellationToken),
+                new FakeParameterInfo(typeof(TValue), attribute),
+                bindingDataContract: null));
         }
 
         // A non-reflection based implementation

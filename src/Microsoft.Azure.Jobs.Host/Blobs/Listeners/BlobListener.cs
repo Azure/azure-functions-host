@@ -53,6 +53,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             return Task.FromResult(0);
         }
 
+        public void Cancel()
+        {
+            ThrowIfDisposed();
+            _sharedListener.EnsureAllCanceled();
+        }
+
         public void Dispose()
         {
             if (!_disposed)

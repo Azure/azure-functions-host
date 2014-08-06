@@ -42,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(TextReader); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
                 Stream rawStream;
 

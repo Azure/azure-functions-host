@@ -57,6 +57,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             }
         }
 
+        public void EnsureAllCanceled()
+        {
+            _timer.Cancel();
+        }
+
         public void EnsureAllDisposed()
         {
             Dispose();

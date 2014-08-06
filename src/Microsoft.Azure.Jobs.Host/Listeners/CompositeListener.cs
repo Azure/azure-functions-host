@@ -39,6 +39,16 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             }
         }
 
+        public void Cancel()
+        {
+            ThrowIfDisposed();
+
+            foreach (IListener listener in _listeners)
+            {
+                listener.Cancel();
+            }
+        }
+
         public void Dispose()
         {
             if (!_disposed)

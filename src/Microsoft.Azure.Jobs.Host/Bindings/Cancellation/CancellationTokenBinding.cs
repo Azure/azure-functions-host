@@ -22,13 +22,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(CancellationToken token, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CancellationToken token, ValueBindingContext context)
         {
             IValueProvider provider = new CancellationTokenValueProvider(token);
             return Task.FromResult(provider);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             if (value is CancellationToken)
             {
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(context.HostCancellationToken, context.FunctionContext);
+            return BindAsync(context.FunctionCancellationToken, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

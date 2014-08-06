@@ -82,10 +82,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         }
 
         public static BindingProviderContext Create(BindingContext bindingContext, ParameterInfo parameter,
-            IReadOnlyDictionary<string, Type> bindingDataContract, CancellationToken cancellationToken)
+            IReadOnlyDictionary<string, Type> bindingDataContract)
         {
             return new BindingProviderContext(bindingContext.NameResolver, bindingContext.StorageAccount,
-                bindingContext.ServiceBusConnectionString, parameter, bindingDataContract, cancellationToken);
+                bindingContext.ServiceBusConnectionString, parameter, bindingDataContract,
+                bindingContext.CancellationToken);
         }
     }
 }

@@ -20,147 +20,220 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
-    internal class JobHostContext
+    internal sealed class JobHostContext : IDisposable
     {
         private readonly IFunctionIndexLookup _functionLookup;
-        private readonly IRunnerFactory _runnerFactory;
+        private readonly IFunctionExecutor _executor;
+        private readonly IListener _listener;
+
+        private bool _disposed;
 
         public JobHostContext(IFunctionIndexLookup functionLookup,
-            IRunnerFactory runnerFactory)
+            IFunctionExecutor executor,
+            IListener listener)
         {
             _functionLookup = functionLookup;
-            _runnerFactory = runnerFactory;
+            _executor = executor;
+            _listener = listener;
         }
 
         public IFunctionIndexLookup FunctionLookup
         {
-            get { return _functionLookup; }
+            get
+            {
+                ThrowIfDisposed();
+                return _functionLookup;
+            }
         }
 
-        public IRunnerFactory RunnerFactory
+        public IFunctionExecutor Executor
         {
-            get { return _runnerFactory; }
+            get
+            {
+                ThrowIfDisposed();
+                return _executor;
+            }
+        }
+
+        public IListener Listener
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return _listener;
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                _listener.Dispose();
+
+                _disposed = true;
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(null);
+            }
         }
 
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(CloudStorageAccount dashboardAccount,
             CloudStorageAccount storageAccount, string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
-            CancellationToken cancellationToken)
+            CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
-            // This will make a network call to verify the credentials work.
-            await credentialsValidator.ValidateCredentialsAsync(storageAccount, cancellationToken);
-
-            // Avoid double-validating the same credentials.
-            if (storageAccount != null && storageAccount.Credentials != null && dashboardAccount != null &&
-                !storageAccount.Credentials.Equals(dashboardAccount.Credentials))
+            using (CancellationTokenSource combinedCancellationSource =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
+                CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
+
                 // This will make a network call to verify the credentials work.
-                await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, cancellationToken);
-            }
+                await credentialsValidator.ValidateCredentialsAsync(storageAccount, combinedCancellationToken);
 
-            CloudBlobClient blobClient;
-            IHostInstanceLogger hostInstanceLogger;
-            IFunctionInstanceLogger functionInstanceLogger;
-            IFunctionOutputLogger functionOutputLogger;
-
-            if (dashboardAccount != null)
-            {
-                // Create logging against a live Azure account.
-                blobClient = dashboardAccount.CreateCloudBlobClient();
-                IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
-                    new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
-                PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
-                hostInstanceLogger = queueLogger;
-                functionInstanceLogger = new CompositeFunctionInstanceLogger(
-                    queueLogger,
-                    new ConsoleFunctionInstanceLogger());
-                functionOutputLogger = new BlobFunctionOutputLogger(blobClient);
-            }
-            else
-            {
-                // No auxillary logging. Logging interfaces are nops or in-memory.
-                blobClient = null;
-                hostInstanceLogger = new NullHostInstanceLogger();
-                functionInstanceLogger = new ConsoleFunctionInstanceLogger();
-                functionOutputLogger = new ConsoleFunctionOutputLogger();
-            }
-
-            FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
-                serviceBusConnectionString, cancellationToken);
-            FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
-            HostBindingContextFactory bindingContextFactory = new HostBindingContextFactory(functions.BindingProvider,
-                nameResolver, storageAccount, serviceBusConnectionString);
-
-            IListenerFactory sharedQueueListenerFactory;
-            IListenerFactory instanceQueueListenerFactory;
-            ICanFailCommand heartbeatCommand;
-            HostOutputMessage hostOutputMessage;
-
-            if (dashboardAccount != null)
-            {
-                // Determine the host name from the method list
-                Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
-                string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
-
-                IHostIdManager hostIdManager = new HostIdManager(blobClient);
-                Guid hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, cancellationToken);
-
-                string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
-                CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-                CloudQueue sharedQueue = queueClient.GetQueueReference(sharedQueueName);
-                sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
-                    functionInstanceLogger);
-
-                Guid id = Guid.NewGuid();
-                string instanceQueueName = HostQueueNames.GetHostQueueName(id);
-                CloudQueue instanceQueue = queueClient.GetQueueReference(instanceQueueName);
-                instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
-                    functionInstanceLogger);
-
-                HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
+                // Avoid double-validating the same credentials.
+                if (storageAccount != null && storageAccount.Credentials != null && dashboardAccount != null &&
+                    !storageAccount.Credentials.Equals(dashboardAccount.Credentials))
                 {
-                    SharedContainerName = HostContainerNames.Hosts,
-                    SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId.ToString("N"),
-                    InstanceBlobName = id.ToString("N"),
-                    ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
-                };
-                heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(dashboardAccount,
-                    heartbeatDescriptor.SharedContainerName,
-                    heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
+                    // This will make a network call to verify the credentials work.
+                    await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, combinedCancellationToken);
+                }
 
-                string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+                CloudBlobClient blobClient;
+                IHostInstanceLogger hostInstanceLogger;
+                IFunctionInstanceLogger functionInstanceLogger;
+                IFunctionOutputLogger functionOutputLogger;
 
-                hostOutputMessage = new DataOnlyHostOutputMessage
+                if (dashboardAccount != null)
                 {
-                    HostInstanceId = id,
-                    HostDisplayName = displayName,
-                    SharedQueueName = sharedQueueName,
-                    InstanceQueueName = instanceQueueName,
-                    Heartbeat = heartbeatDescriptor,
-                    WebJobRunIdentifier = WebJobRunIdentifier.Current
-                };
+                    // Create logging against a live Azure account.
+                    blobClient = dashboardAccount.CreateCloudBlobClient();
+                    IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
+                        new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
+                    PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
+                    hostInstanceLogger = queueLogger;
+                    functionInstanceLogger = new CompositeFunctionInstanceLogger(
+                        queueLogger,
+                        new ConsoleFunctionInstanceLogger());
+                    functionOutputLogger = new BlobFunctionOutputLogger(blobClient);
+                }
+                else
+                {
+                    // No auxillary logging. Logging interfaces are nops or in-memory.
+                    blobClient = null;
+                    hostInstanceLogger = new NullHostInstanceLogger();
+                    functionInstanceLogger = new ConsoleFunctionInstanceLogger();
+                    functionOutputLogger = new ConsoleFunctionOutputLogger();
+                }
 
-                // Publish this to Azure logging account so that a web dashboard can see it. 
-                await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, cancellationToken);
+                FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
+                    serviceBusConnectionString, combinedCancellationToken);
+                FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
+                HostBindingContext bindingContext = new HostBindingContext(functions.BindingProvider, nameResolver,
+                    storageAccount, serviceBusConnectionString);
+
+                IListenerFactory sharedQueueListenerFactory;
+                IListenerFactory instanceQueueListenerFactory;
+                ICanFailCommand heartbeatCommand;
+                HostOutputMessage hostOutputMessage;
+
+                if (dashboardAccount != null)
+                {
+                    // Determine the host name from the method list
+                    Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
+                    string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
+                    string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
+
+                    IHostIdManager hostIdManager = new HostIdManager(blobClient);
+                    Guid hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, combinedCancellationToken);
+
+                    string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
+                    CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+                    CloudQueue sharedQueue = queueClient.GetQueueReference(sharedQueueName);
+                    sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
+                        functionInstanceLogger);
+
+                    Guid id = Guid.NewGuid();
+                    string instanceQueueName = HostQueueNames.GetHostQueueName(id);
+                    CloudQueue instanceQueue = queueClient.GetQueueReference(instanceQueueName);
+                    instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
+                        functionInstanceLogger);
+
+                    HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
+                    {
+                        SharedContainerName = HostContainerNames.Hosts,
+                        SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId.ToString("N"),
+                        InstanceBlobName = id.ToString("N"),
+                        ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
+                    };
+                    heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(dashboardAccount,
+                        heartbeatDescriptor.SharedContainerName,
+                        heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
+
+                    string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
+
+                    hostOutputMessage = new DataOnlyHostOutputMessage
+                    {
+                        HostInstanceId = id,
+                        HostDisplayName = displayName,
+                        SharedQueueName = sharedQueueName,
+                        InstanceQueueName = instanceQueueName,
+                        Heartbeat = heartbeatDescriptor,
+                        WebJobRunIdentifier = WebJobRunIdentifier.Current
+                    };
+
+                    // Publish this to Azure logging account so that a web dashboard can see it. 
+                    await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger,
+                        combinedCancellationToken);
+                }
+                else
+                {
+                    sharedQueueListenerFactory = new NullListenerFactory();
+                    instanceQueueListenerFactory = new NullListenerFactory();
+                    heartbeatCommand = new NullCanFailCommand();
+                    hostOutputMessage = new DataOnlyHostOutputMessage();
+                }
+
+                IFunctionExecutor executor = new FunctionExecutor(new FunctionExecutorContext(functionInstanceLogger,
+                    functionOutputLogger, bindingContext, hostOutputMessage));
+                IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
+                    sharedQueueListenerFactory, instanceQueueListenerFactory);
+
+                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, bindingContext,
+                    heartbeatCommand, shutdownToken, executor);
+
+                IListener listener = CreateHostListener(allFunctionsListenerFactory, bindingContext, heartbeatCommand,
+                    shutdownToken, executor);
+
+                return new JobHostContext(functions, hostCallExecutor, listener);
             }
-            else
-            {
-                sharedQueueListenerFactory = new NullListenerFactory();
-                instanceQueueListenerFactory = new NullListenerFactory();
-                heartbeatCommand = new NullCanFailCommand();
-                hostOutputMessage = new DataOnlyHostOutputMessage();
-            }
+        }
 
-            IFunctionExecutorFactory executorFactory = new FunctionExecutorFactory(functionInstanceLogger,
-                functionOutputLogger, hostOutputMessage);
-            IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
-                sharedQueueListenerFactory, instanceQueueListenerFactory);
+        private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
+            HostBindingContext bindingContext, ICanFailCommand heartbeatCommand, CancellationToken shutdownToken,
+            IFunctionExecutor innerExecutor)
+        {
+            IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand, innerExecutor);
+            IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
+                innerExecutor, bindingContext, heartbeatExecutor);
+            IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
+                abortListenerExecutor);
+            return shutdownFunctionExecutor;
+        }
 
-            IRunnerFactory runnerFactory = new RunnerFactory(heartbeatCommand, bindingContextFactory, executorFactory,
-                allFunctionsListenerFactory, instanceQueueListenerFactory);
-
-            return new JobHostContext(functions, runnerFactory);
+        private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
+            HostBindingContext bindingContext, ICanFailCommand heartbeatCommand, CancellationToken shutdownToken,
+            IFunctionExecutor executor)
+        {
+            IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
+                bindingContext);
+            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, factoryListener);
+            IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
+            return shutdownListener;
         }
 
         private static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)

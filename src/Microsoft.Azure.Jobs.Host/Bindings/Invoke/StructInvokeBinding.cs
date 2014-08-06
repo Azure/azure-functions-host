@@ -27,13 +27,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(TValue value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TValue value, ValueBindingContext context)
         {
             IValueProvider provider = new ObjectValueProvider(value, typeof(TValue));
             return Task.FromResult(provider);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             TValue typedValue = default(TValue);
 

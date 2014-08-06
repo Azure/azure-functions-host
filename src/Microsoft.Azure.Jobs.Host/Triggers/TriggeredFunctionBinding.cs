@@ -22,7 +22,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             _nonTriggerBindings = nonTriggerBindings;
         }
 
-        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context,
             TTriggerValue value)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
             return results;
         }
 
-        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context,
             IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();

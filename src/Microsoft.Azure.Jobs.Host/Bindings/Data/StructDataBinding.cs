@@ -31,12 +31,12 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(TBindingData bindingDataItem, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(TBindingData bindingDataItem, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(bindingDataItem, context);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             TBindingData typedValue;
 
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
             }
 
             TBindingData typedValue = (TBindingData)untypedValue;
-            return BindAsync(typedValue, context.FunctionContext);
+            return BindAsync(typedValue, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

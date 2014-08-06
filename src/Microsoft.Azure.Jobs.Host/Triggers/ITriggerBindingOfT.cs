@@ -8,6 +8,6 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 {
     internal interface ITriggerBinding<TTriggerValue> : ITriggerBinding
     {
-        Task<ITriggerData> BindAsync(TTriggerValue value, FunctionBindingContext context);
+        Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context);
     }
 }

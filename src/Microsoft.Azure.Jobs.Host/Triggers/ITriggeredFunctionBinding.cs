@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Jobs.Host.Triggers
 {
     internal interface ITriggeredFunctionBinding<TTriggerValue> : IFunctionBinding
     {
-        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+        Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context,
             TTriggerValue value);
     }
 }

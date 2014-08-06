@@ -9,6 +9,8 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal interface IListener : IDisposable
     {
+        void Cancel();
+
         Task StartAsync(CancellationToken cancellationToken);
 
         Task StopAsync(CancellationToken cancellationToken);

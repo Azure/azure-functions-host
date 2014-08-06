@@ -87,15 +87,16 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
-                    new FunctionBindingContext(_context.BindingContext, instance.Id, consoleOutput, cancellationToken);
+                    new FunctionBindingContext(_context.BindingContext, instance.Id, cancellationToken, consoleOutput);
 
                 // Must bind before logging (bound invoke string is included in log message).
                 IReadOnlyDictionary<string, IValueProvider> parameters =
-                    await instance.BindingSource.BindAsync(functionContext);
+                    await instance.BindingSource.BindAsync(new ValueBindingContext(functionContext, cancellationToken));
 
                 using (ValueProviderDisposable.Create(parameters))
                 {
-                    startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
+                    startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters,
+                        cancellationToken);
 
                     try
                     {

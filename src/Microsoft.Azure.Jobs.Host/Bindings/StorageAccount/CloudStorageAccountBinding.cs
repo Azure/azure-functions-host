@@ -30,13 +30,13 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(CloudStorageAccount account, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudStorageAccount account, ValueBindingContext context)
         {
             IValueProvider provider = new CloudStorageAccountValueProvider(account);
             return Task.FromResult(provider);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             CloudStorageAccount account = null;
 
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(context.StorageAccount, context.FunctionContext);
+            return BindAsync(context.StorageAccount, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

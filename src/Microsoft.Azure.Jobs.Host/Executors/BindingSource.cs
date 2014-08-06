@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _parameters = parameters;
         }
 
-        public Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context)
+        public Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context)
         {
             return _binding.BindAsync(context, _parameters);
         }

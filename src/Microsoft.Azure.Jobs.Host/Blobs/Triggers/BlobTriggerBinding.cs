@@ -75,7 +75,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
                 new OutputConverter<string>(new StringToCloudBlobConverter(client)));
         }
 
-        public async Task<ITriggerData> BindAsync(ICloudBlob value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(ICloudBlob value, ValueBindingContext context)
         {
             IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public async Task<ITriggerData> BindAsync(object value, FunctionBindingContext context)
+        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             ConversionResult<ICloudBlob> conversionResult = await _converter.TryConvertAsync(value,
                 context.CancellationToken);

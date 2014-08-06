@@ -63,15 +63,15 @@ namespace Microsoft.Azure.Jobs.Host.Tables
             string boundTableName = _path.Bind(context.BindingData);
             CloudTable table = _client.GetTableReference(boundTableName);
 
-            return BindAsync(table, context.FunctionContext);
+            return BindAsync(table, context.ValueContext);
         }
 
-        private Task<IValueProvider> BindAsync(CloudTable value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
 
-        public Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             CloudTable table = null;
 

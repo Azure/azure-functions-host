@@ -71,6 +71,12 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
             _receiver = null;
         }
 
+        public void Cancel()
+        {
+            ThrowIfDisposed();
+            _cancellationTokenSource.Cancel();
+        }
+
         public void Dispose()
         {
             if (!_disposed)

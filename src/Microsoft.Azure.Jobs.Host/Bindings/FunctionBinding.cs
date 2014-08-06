@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
             _bindings = bindings;
         }
 
-        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(FunctionBindingContext context,
+        public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context,
             IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();

@@ -51,15 +51,15 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 Account = _account,
                 MessageSender = messageSender
             };
-            return await BindAsync(entity, context.FunctionContext);
+            return await BindAsync(entity, context.ValueContext);
         }
 
-        private Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
+        private Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
 
-        public async Task<IValueProvider> BindAsync(object value, FunctionBindingContext context)
+        public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
             ConversionResult<ServiceBusEntity> conversionResult = await _converter.TryConvertAsync(value,
                 context.CancellationToken);

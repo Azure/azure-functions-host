@@ -41,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
                 get { return typeof(string); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
                 string value;
                 ParameterLog status;

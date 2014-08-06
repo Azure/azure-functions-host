@@ -40,7 +40,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return _valueType; }
             }
 
-            public Task<IValueProvider> BindAsync(TBindingData value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(TBindingData value, ValueBindingContext context)
             {
                 string text = value.ToString(); // Really (string)input, but the compiler can't verify that's possible.
                 object converted = ObjectBinderHelpers.BindFromString(text, _valueType);

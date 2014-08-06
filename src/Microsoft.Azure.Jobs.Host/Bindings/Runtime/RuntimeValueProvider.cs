@@ -62,7 +62,8 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
                 throw new InvalidOperationException("No binding found for attribute '" + attribute.GetType() + "'.");
             }
 
-            IValueProvider provider = await binding.BindAsync(_bindingSource.BindingContext);
+            IValueProvider provider = await binding.BindAsync(new BindingContext(
+                _bindingSource.AmbientBindingContext, cancellationToken));
 
             if (provider == null)
             {

@@ -41,7 +41,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings.Data
                 get { return typeof(T); }
             }
 
-            public Task<IValueProvider> BindAsync(TBindingData value, FunctionBindingContext context)
+            public Task<IValueProvider> BindAsync(TBindingData value, ValueBindingContext context)
             {
                 object converted = _converter.Convert(value);
                 IValueProvider provider = new ObjectValueProvider(converted, typeof(T));

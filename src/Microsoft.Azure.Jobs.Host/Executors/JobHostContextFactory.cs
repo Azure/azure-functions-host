@@ -15,13 +15,15 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         private readonly IStorageCredentialsValidator _credentialsValidator;
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
+        private readonly CancellationToken _shutdownToken;
 
         public JobHostContextFactory(CloudStorageAccount dashboardAccount,
             CloudStorageAccount storageAccount,
             string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator,
             ITypeLocator typeLocator,
-            INameResolver nameResolver)
+            INameResolver nameResolver,
+            CancellationToken shutdownToken)
         {
             _dashboardAccount = dashboardAccount;
             _storageAccount = storageAccount;
@@ -29,12 +31,14 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             _credentialsValidator = credentialsValidator;
             _typeLocator = typeLocator;
             _nameResolver = nameResolver;
+            _shutdownToken = shutdownToken;
         }
 
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
             return JobHostContext.CreateAndLogHostStartedAsync(_dashboardAccount, _storageAccount,
-                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, cancellationToken);
+                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, _shutdownToken,
+                cancellationToken);
         }
     }
 }

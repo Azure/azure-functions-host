@@ -80,7 +80,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
                 get { return typeof(ICollection<T>); }
             }
 
-            public async Task<IValueProvider> BindAsync(ServiceBusEntity value, FunctionBindingContext context)
+            public async Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
             {
                 IValueBinder itemBinder = (IValueBinder)await _itemBinding.BindAsync(value, context);
                 return new CollectionValueBinder(value, itemBinder);

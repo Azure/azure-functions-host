@@ -10,6 +10,6 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         Type ValueType { get; }
 
-        Task<IValueProvider> BindAsync(TArgument value, FunctionBindingContext context);
+        Task<IValueProvider> BindAsync(TArgument value, ValueBindingContext context);
     }
 }

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
     {
         bool FromAttribute { get; }
 
-        Task<IValueProvider> BindAsync(object value, FunctionBindingContext context);
+        Task<IValueProvider> BindAsync(object value, ValueBindingContext context);
 
         Task<IValueProvider> BindAsync(BindingContext context);
 
