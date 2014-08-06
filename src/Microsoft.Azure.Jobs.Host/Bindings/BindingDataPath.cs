@@ -40,107 +40,85 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         // If blob names matches actual pattern; null if no match.
         public static IReadOnlyDictionary<string, object> CreateBindingData(string pattern, string actualPath)
         {
-            string container1;
-            string blob1;
+            string containerPattern;
+            string blobPattern;
 
-            string container2;
-            string blob2;
+            string containerActual;
+            string blobActual;
 
-            SplitBlobPath(pattern, out container1, out blob1); // may just bec container
-            SplitBlobPath(actualPath, out container2, out blob2); // should always be full
+            SplitBlobPath(pattern, out containerPattern, out blobPattern);
+            SplitBlobPath(actualPath, out containerActual, out blobActual);
 
             // Containers must match
-            if (!String.Equals(container1, container2, StringComparison.OrdinalIgnoreCase))
+            if (!String.Equals(containerPattern, containerActual, StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
 
             // Pattern is container only. 
-            if (blob1 == null)
+            if (blobPattern == null)
             {
                 return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase); // empty dict, no blob parameters                    
             }
 
-            // Special case for extensions 
-            // Let "{name}.csv" match against "a.b.csv", where name = "a.b"
-            // $$$ This is getting close to a regular expression...
-            {
-                if (pattern.Length > 4 && actualPath.Length > 4)
-                {
-                    string ext = pattern.Substring(pattern.Length - 4);
-                    if (ext[0] == '.')
-                    {
-                        if (actualPath.EndsWith(ext, StringComparison.OrdinalIgnoreCase))
-                        {
-                            pattern = pattern.Substring(0, pattern.Length - 4);
-                            actualPath = actualPath.Substring(0, actualPath.Length - 4);
-
-                            return CreateBindingData(pattern, actualPath);
-                        }
-                    }
-                }
-            }
-
-            // Now see if the actual input matches against the pattern
-
             Dictionary<string, object> namedParams = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
-            int iPattern = 0;
-            int iActual = 0;
+            int iPattern = blobPattern.Length - 1;
+            int iActual = blobActual.Length - 1;
             while (true)
             {
-                if ((iActual == blob2.Length) && (iPattern == blob1.Length))
+                if ((iActual == blobActual.Length) && (iPattern == blobPattern.Length))
                 {
                     // Success
                     return namedParams;
                 }
-                if ((iActual == blob2.Length) || (iPattern == blob1.Length))
+                if ((iActual == blobActual.Length) || (iPattern == blobPattern.Length))
                 {
                     // Finished at different times. Mismatched
                     return null;
                 }
 
-
-                char ch = blob1[iPattern];
-                if (ch == '{')
+                char ch = blobPattern[iPattern];
+                if (ch == '}')
                 {
-                    // Start of a named parameter. 
-                    int iEnd = blob1.IndexOf('}', iPattern);
-                    if (iEnd == -1)
+                    // End of a named parameter. 
+                    int iStart = blobPattern.LastIndexOf('{', iPattern);
+                    if (iStart == -1)
                     {
-                        throw new InvalidOperationException("Missing closing bracket");
+                        throw new InvalidOperationException("Missing Opening bracket");
                     }
-                    string name = blob1.Substring(iPattern + 1, iEnd - iPattern - 1);
+                    string name = blobPattern.Substring(iStart + 1, iPattern - iStart - 1);
 
-                    if (iEnd + 1 == blob1.Length)
+                    if (iStart == 0)
                     {
-                        // '}' was the last character. Match to end of string
-                        string valueRestOfLine = blob2.Substring(iActual);
+                        // '{' was the last character. Match to end of string
+                        string valueRestOfLine = blobActual.Substring(0, iActual + 1);
                         namedParams[name] = valueRestOfLine;
                         return namedParams; // Success
                     }
-                    char closingCh = blob1[iEnd + 1];
 
-                    // Scan actual 
-                    int iActualEnd = blob2.IndexOf(closingCh, iActual);
-                    if (iActualEnd == -1)
+                    char startingCh = blobPattern[iStart - 1];
+
+                    // Scan actual
+                    int iActualStart = blobActual.LastIndexOf(startingCh, iActual);
+                    if (iActualStart == -1)
                     {
                         // Don't match
                         return null;
                     }
-                    string value = blob2.Substring(iActual, iActualEnd - iActual);
+                    string value = blobActual.Substring(iActualStart + 1, iActual - iActualStart);
                     namedParams[name] = value;
 
-                    iPattern = iEnd + 1; // +1 to move past }
-                    iActual = iActualEnd;
+                    iPattern = iStart - 1; // -1 to move before }
+                    iActual = iActualStart;
                 }
                 else
                 {
-                    if (ch == blob2[iActual])
+                    if (ch == blobActual[iActual])
                     {
                         // Match
-                        iActual++;
-                        iPattern++;
+                        iActual--;
+                        iPattern--;
                         continue;
                     }
                     else
