@@ -8,16 +8,16 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs
 {
-    internal sealed class TaskAsyncResult : IAsyncResult, IDisposable
+    internal sealed class TaskAsyncResult<TResult> : IAsyncResult, IDisposable
     {
-        private readonly Task _task;
+        private readonly Task<TResult> _task;
         private readonly object _state;
         private readonly bool _completedSynchronously;
         private readonly AsyncCallback _callback;
 
         private bool _disposed;
 
-        public TaskAsyncResult(Task task, AsyncCallback callback, object state)
+        public TaskAsyncResult(Task<TResult> task, AsyncCallback callback, object state)
         {
             _task = task;
             _state = state;
@@ -80,10 +80,10 @@ namespace Microsoft.Azure.Jobs.Host.Blobs
             }
         }
 
-        public void End()
+        public TResult End()
         {
             ThrowIfDisposed();
-            _task.GetAwaiter().GetResult();
+            return _task.GetAwaiter().GetResult();
         }
 
         private void InvokeCallback(Task ignore)

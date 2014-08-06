@@ -219,13 +219,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             innerStreamMock
                 .Setup(s => s.BeginRead(expectedBuffer, expectedOffset, expectedCount, It.IsAny<AsyncCallback>(),
                     It.IsAny<object>()))
-                .Returns(CreateStubAsyncResult)
+                .ReturnsUncompleted()
                 .Verifiable();
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
 
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             // Act
             product.BeginRead(expectedBuffer, expectedOffset, expectedCount, callback, state);
@@ -241,8 +241,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             Exception expectedException = new Exception();
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
             innerStreamMock
-                .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<AsyncCallback>(),
-                    It.IsAny<object>()))
+                .SetupBeginRead()
                 .Throws(expectedException);
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
@@ -250,8 +249,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             // Act & Assert
             Exception exception = Assert.Throws<Exception>(() => product.BeginRead(buffer, offset, count, callback,
@@ -263,35 +262,33 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
         public void BeginRead_WhenNotYetCompleted_ReturnsUncompletedResult()
         {
             // Arrange
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: false))
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock
+                .SetupBeginRead()
+                .ReturnsUncompleted();
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
+            AsyncCallback callback = null;
+            object expectedState = new object();
+
+            // Act
+            IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
+
+            // Assert
+            ExpectedAsyncResult expectedResult = new ExpectedAsyncResult
             {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                innerStreamMock
-                    .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, innerCallback, innerState) =>
-                        CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: false));
-                Stream innerStream = innerStreamMock.Object;
-                Stream product = CreateProductUnderTest(innerStream);
+                AsyncState = expectedState,
+                CompletedSynchronously = false,
+                IsCompleted = false
+            };
+            AssertEqual(expectedResult, result, disposeActual: false);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
-                AsyncCallback callback = (_) => { };
-                object expectedState = new object();
-
-                // Act
-                IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
-
-                // Assert
-                ExpectedAsyncResult expectedResult = new ExpectedAsyncResult
-                {
-                    AsyncState = expectedState,
-                    CompletedSynchronously = false,
-                    IsCompleted = false
-                };
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Cleanup
+            result.AsyncWaitHandle.Dispose();
         }
 
         [Fact]
@@ -312,43 +309,33 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             AsyncCallback callback = (ar) =>
             {
-                callbackCalled = true;
                 callbackResult = ar;
                 AssertEqual(expectedResult, ar);
+                callbackCalled = true;
             };
 
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: true))
-            {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                IAsyncResult innerResult = null;
-                innerStreamMock
-                    .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, innerCallback, innerState) =>
-                        {
-                            innerResult = CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: true);
-                            innerCallback(innerResult);
-                            return innerResult;
-                        });
-                innerStreamMock
-                    .Setup(s => s.EndRead(It.IsAny<IAsyncResult>()))
-                    .Returns(-1);
-                Stream innerStream = innerStreamMock.Object;
-                product = CreateProductUnderTest(innerStream);
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock
+                .SetupBeginRead()
+                .ReturnsCompletedSynchronously();
+            innerStreamMock
+                .SetupEndRead()
+                .Returns(-1);
+            Stream innerStream = innerStreamMock.Object;
+            product = CreateProductUnderTest(innerStream);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
 
-                // Act
-                IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
+            // Act
+            IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
 
-                // Assert
-                Assert.True(callbackCalled);
-                // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
-                Assert.Same(result, callbackResult);
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Assert
+            Assert.True(callbackCalled);
+            // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
+            Assert.Same(result, callbackResult);
+            AssertEqual(expectedResult, result, disposeActual: true);
         }
 
         [Fact]
@@ -369,66 +356,51 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             AsyncCallback callback = (ar) =>
             {
-                callbackCalled = true;
                 callbackResult = ar;
                 AssertEqual(expectedResult, ar);
+                callbackCalled = true;
             };
 
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: false))
-            {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                AsyncCallback innerCallback = null;
-                IAsyncResult innerResult = null;
-                innerStreamMock
-                    .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, c, innerState) =>
-                    {
-                        innerCallback = c;
-                        innerResult = CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: false);
-                        return innerResult;
-                    });
-                innerStreamMock
-                    .Setup(s => s.EndRead(It.IsAny<IAsyncResult>()))
-                    .Returns(-1);
-                Stream innerStream = innerStreamMock.Object;
-                product = CreateProductUnderTest(innerStream);
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
+            innerStreamMock
+                .SetupBeginRead()
+                .ReturnsCompletingAsynchronously(completion);
+            innerStreamMock
+                .SetupEndRead()
+                .Returns(-1);
+            Stream innerStream = innerStreamMock.Object;
+            product = CreateProductUnderTest(innerStream);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
 
-                IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
+            IAsyncResult result = product.BeginRead(buffer, offset, count, callback, expectedState);
 
-                asyncWaitHandle.Set();
+            // Act
+            completion.Complete();
 
-                // Act
-                innerCallback.Invoke(innerResult);
-
-                // Assert
-                Assert.True(callbackCalled);
-                // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
-                Assert.Same(result, callbackResult);
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Assert
+            Assert.True(callbackCalled);
+            // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
+            Assert.Same(result, callbackResult);
+            AssertEqual(expectedResult, result, disposeActual: true);
         }
 
         [Fact]
         public void EndRead_DelegatesToInnerStreamEndRead()
         {
             // Arrange
-            IAsyncResult expectedResult = CreateStubAsyncResult();
             int expectedBytesRead = 789;
 
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
-            AsyncCallback innerCallback = null;
+            AsyncCompletionSource completion = new AsyncCompletionSource();
             innerStreamMock
-                .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                    It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                .Callback<byte[], int, int, AsyncCallback, object>((i1, i2, i3, c, i4) => innerCallback = c)
-                .Returns(expectedResult);
+                .SetupBeginRead()
+                .ReturnsCompletingAsynchronously(completion);
             innerStreamMock
-                .Setup(s => s.EndRead(expectedResult))
+                .Setup(s => s.EndRead(It.Is<IAsyncResult>(ar => ar == completion.AsyncResult)))
                 .Returns(expectedBytesRead)
                 .Verifiable();
             Stream innerStream = innerStreamMock.Object;
@@ -437,15 +409,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             IAsyncResult result = product.BeginRead(buffer, offset, count, callback, state);
-
-            if (innerCallback != null)
-            {
-                innerCallback.Invoke(expectedResult);
-            }
+            completion.Complete();
 
             // Act
             int bytesRead = product.EndRead(result);
@@ -456,20 +424,59 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
         }
 
         [Fact]
+        public void EndRead_DuringCallback_DelegatesToInnerStreamEndRead()
+        {
+            // Arrange
+            int expectedBytesRead = 789;
+
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
+            innerStreamMock
+                .SetupBeginRead()
+                .ReturnsCompletingAsynchronously(completion);
+            innerStreamMock
+                .Setup(s => s.EndRead(It.Is<IAsyncResult>(ar => ar == completion.AsyncResult)))
+                .Returns(expectedBytesRead)
+                .Verifiable();
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
+            int bytesRead = 0;
+
+            bool callbackCalled = false;
+            AsyncCallback callback = (ar) =>
+            {
+                bytesRead = product.EndRead(ar);
+                callbackCalled = true;
+            };
+            object state = null;
+
+            IAsyncResult result = product.BeginRead(buffer, offset, count, callback, state);
+
+            // Act
+            completion.Complete();
+
+            // Assert
+            Assert.True(callbackCalled);
+            Assert.Equal(expectedBytesRead, bytesRead);
+            innerStreamMock.Verify();
+        }
+
+        [Fact]
         public void EndRead_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
-            IAsyncResult innerResult = CreateStubAsyncResult();
-            AsyncCallback innerCallback = null;
+            AsyncCompletionSource completion = new AsyncCompletionSource();
             innerStreamMock
-                .Setup(s => s.BeginRead(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<AsyncCallback>(),
-                    It.IsAny<object>()))
-                .Callback<byte[], int, int, AsyncCallback, object>((i1, i2, i3, c, i4) => innerCallback = c)
-                .Returns(innerResult);
+                .SetupBeginRead()
+                .ReturnsCompletingAsynchronously(completion);
             innerStreamMock
-                .Setup(s => s.EndRead(It.IsAny<IAsyncResult>()))
+                .SetupEndRead()
                 .Throws(expectedException);
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
@@ -477,14 +484,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
             IAsyncResult result = product.BeginRead(buffer, offset, count, callback, state);
-
-            if (innerCallback != null)
-            {
-                innerCallback.Invoke(innerResult);
-            }
+            completion.Complete();
 
             // Act & Assert
             Exception exception = Assert.Throws<Exception>(() => product.EndRead(result));
@@ -503,13 +506,13 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             innerStreamMock
                 .Setup(s => s.BeginWrite(expectedBuffer, expectedOffset, expectedCount, It.IsAny<AsyncCallback>(),
                     It.IsAny<object>()))
-                .Returns(CreateStubAsyncResult)
+                .ReturnsUncompleted()
                 .Verifiable();
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
 
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             // Act
             product.BeginWrite(expectedBuffer, expectedOffset, expectedCount, callback, state);
@@ -525,8 +528,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             Exception expectedException = new Exception();
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
             innerStreamMock
-                .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<AsyncCallback>(),
-                    It.IsAny<object>()))
+                .SetupBeginWrite()
                 .Throws(expectedException);
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
@@ -534,8 +536,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             // Act & Assert
             Exception exception = Assert.Throws<Exception>(() => product.BeginWrite(buffer, offset, count, callback,
@@ -547,35 +549,33 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
         public void BeginWrite_WhenNotYetCompleted_ReturnsUncompletedResult()
         {
             // Arrange
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: false))
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock
+                .SetupBeginWrite()
+                .ReturnsUncompleted();
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
+            AsyncCallback callback = null;
+            object expectedState = new object();
+
+            // Act
+            IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
+
+            // Assert
+            ExpectedAsyncResult expectedResult = new ExpectedAsyncResult
             {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                innerStreamMock
-                    .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, innerCallback, innerState) =>
-                        CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: false));
-                Stream innerStream = innerStreamMock.Object;
-                Stream product = CreateProductUnderTest(innerStream);
+                AsyncState = expectedState,
+                CompletedSynchronously = false,
+                IsCompleted = false
+            };
+            AssertEqual(expectedResult, result, disposeActual: false);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
-                AsyncCallback callback = (_) => { };
-                object expectedState = new object();
-
-                // Act
-                IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
-
-                // Assert
-                ExpectedAsyncResult expectedResult = new ExpectedAsyncResult
-                {
-                    AsyncState = expectedState,
-                    CompletedSynchronously = false,
-                    IsCompleted = false
-                };
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Cleanup
+            result.AsyncWaitHandle.Dispose();
         }
 
         [Fact]
@@ -596,41 +596,31 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             AsyncCallback callback = (ar) =>
             {
-                callbackCalled = true;
                 callbackResult = ar;
                 AssertEqual(expectedResult, ar);
+                callbackCalled = true;
             };
 
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: true))
-            {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                IAsyncResult innerResult = null;
-                innerStreamMock
-                    .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, innerCallback, innerState) =>
-                    {
-                        innerResult = CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: true);
-                        innerCallback(innerResult);
-                        return innerResult;
-                    });
-                innerStreamMock.Setup(s => s.EndWrite(It.IsAny<IAsyncResult>()));
-                Stream innerStream = innerStreamMock.Object;
-                product = CreateProductUnderTest(innerStream);
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock
+                .SetupBeginWrite()
+                .ReturnsCompletedSynchronously();
+            innerStreamMock.SetupEndWrite();
+            Stream innerStream = innerStreamMock.Object;
+            product = CreateProductUnderTest(innerStream);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
 
-                // Act
-                IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
+            // Act
+            IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
 
-                // Assert
-                Assert.True(callbackCalled);
-                // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
-                Assert.Same(result, callbackResult);
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Assert
+            Assert.True(callbackCalled);
+            // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
+            Assert.Same(result, callbackResult);
+            AssertEqual(expectedResult, result, disposeActual: true);
         }
 
         [Fact]
@@ -651,61 +641,47 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             AsyncCallback callback = (ar) =>
             {
-                callbackCalled = true;
                 callbackResult = ar;
                 AssertEqual(expectedResult, ar);
+                callbackCalled = true;
             };
 
-            using (EventWaitHandle asyncWaitHandle = new ManualResetEvent(initialState: false))
-            {
-                Mock<Stream> innerStreamMock = CreateMockInnerStream();
-                AsyncCallback innerCallback = null;
-                IAsyncResult innerResult = null;
-                innerStreamMock
-                    .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                        It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                    .Returns<byte[], int, int, AsyncCallback, object>((i1, i2, i3, c, innerState) =>
-                    {
-                        innerCallback = c;
-                        innerResult = CreateAsyncResult(innerState, asyncWaitHandle, completedSynchronously: false);
-                        return innerResult;
-                    });
-                innerStreamMock.Setup(s => s.EndWrite(It.IsAny<IAsyncResult>()));
-                Stream innerStream = innerStreamMock.Object;
-                product = CreateProductUnderTest(innerStream);
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
+            innerStreamMock
+                .SetupBeginWrite()
+                .ReturnsCompletingAsynchronously(completion);
+            innerStreamMock.SetupEndWrite();
+            Stream innerStream = innerStreamMock.Object;
+            product = CreateProductUnderTest(innerStream);
 
-                byte[] buffer = new byte[0];
-                int offset = 123;
-                int count = 456;
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
 
-                IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
+            IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, expectedState);
 
-                asyncWaitHandle.Set();
+            // Act
+            completion.Complete();
 
-                // Act
-                innerCallback.Invoke(innerResult);
-
-                // Assert
-                Assert.True(callbackCalled);
-                // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
-                Assert.Same(result, callbackResult);
-                AssertEqual(expectedResult, result, disposeWaitHandle: true);
-            }
+            // Assert
+            Assert.True(callbackCalled);
+            // An AsyncCallback must be called with the same IAsyncResult instance as the Begin method returned.
+            Assert.Same(result, callbackResult);
+            AssertEqual(expectedResult, result, disposeActual: true);
         }
 
         [Fact]
         public void EndWrite_DelegatesToInnerStreamEndWrite()
         {
             // Arrange
-            IAsyncResult expectedResult = CreateStubAsyncResult();
-
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
             innerStreamMock
-                .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
-                    It.IsAny<AsyncCallback>(), It.IsAny<object>()))
-                .Returns(expectedResult);
+                .SetupBeginWrite()
+                .ReturnsCompletingAsynchronously(completion);
             innerStreamMock
-                .Setup(s => s.EndWrite(expectedResult))
+                .Setup(s => s.EndWrite(It.Is<IAsyncResult>((ar) => ar == completion.AsyncResult)))
                 .Verifiable();
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
@@ -713,10 +689,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
 
             IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, state);
+            completion.Complete();
 
             // Act
             product.EndWrite(result);
@@ -726,17 +703,54 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
         }
 
         [Fact]
+        public void EndWrite_DuringCallback_DelegatesToInnerStreamEndWrite()
+        {
+            // Arrange
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
+            innerStreamMock
+                .SetupBeginWrite()
+                .ReturnsCompletingAsynchronously(completion);
+            innerStreamMock
+                .Setup(s => s.EndWrite(It.Is<IAsyncResult>((ar) => ar == completion.AsyncResult)))
+                .Verifiable();
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            byte[] buffer = new byte[0];
+            int offset = 123;
+            int count = 456;
+
+            bool callbackCalled = false;
+            AsyncCallback callback = (ar) =>
+            {
+                product.EndWrite(ar);
+                callbackCalled = true;
+            };
+            object state = null;
+
+            IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, state);
+
+            // Act
+            completion.Complete();
+
+            // Assert
+            Assert.True(callbackCalled);
+            innerStreamMock.Verify();
+        }
+
+        [Fact]
         public void EndWrite_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            AsyncCompletionSource completion = new AsyncCompletionSource();
             innerStreamMock
-                .Setup(s => s.BeginWrite(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<AsyncCallback>(),
-                    It.IsAny<object>()))
-                .Returns(CreateStubAsyncResult);
+                .SetupBeginWrite()
+                .ReturnsCompletingAsynchronously(completion);
             innerStreamMock
-                .Setup(s => s.EndWrite(It.IsAny<IAsyncResult>()))
+                .SetupEndWrite()
                 .Throws(expectedException);
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
@@ -744,9 +758,10 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             byte[] buffer = new byte[0];
             int offset = 123;
             int count = 456;
-            AsyncCallback callback = (_) => { };
-            object state = new object();
+            AsyncCallback callback = null;
+            object state = null;
             IAsyncResult result = product.BeginWrite(buffer, offset, count, callback, state);
+            completion.Complete();
 
             // Act & Assert
             Exception exception = Assert.Throws<Exception>(() => product.EndWrite(result));
@@ -960,7 +975,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.RanToCompletion, task.Status);
             Assert.Equal(expectedBytesRead, task.Result);
         }
@@ -989,7 +1003,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.Canceled, task.Status);
         }
 
@@ -1018,7 +1031,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.Faulted, task.Status);
             Assert.NotNull(task.Exception);
             Assert.Same(expectedException, task.Exception.InnerException);
@@ -1202,7 +1214,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.RanToCompletion, task.Status);
         }
 
@@ -1230,7 +1241,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.Canceled, task.Status);
         }
 
@@ -1259,7 +1269,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
 
             // Assert
             Assert.NotNull(task);
-            task.WaitUntilCompleted(1000);
             Assert.Equal(TaskStatus.Faulted, task.Status);
             Assert.NotNull(task.Exception);
             Assert.Same(expectedException, task.Exception.InnerException);
@@ -1425,18 +1434,23 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
         }
 
         private static void AssertEqual(ExpectedAsyncResult expected, IAsyncResult actual,
-            bool disposeWaitHandle = false)
+            bool disposeActual = false)
         {
             Assert.NotNull(actual);
             Assert.Same(expected.AsyncState, actual.AsyncState);
             Assert.Equal(expected.CompletedSynchronously, actual.CompletedSynchronously);
             Assert.Equal(expected.IsCompleted, actual.IsCompleted);
 
-            IDisposable disposable = disposeWaitHandle ? actual.AsyncWaitHandle : null;
-
-            using (disposable)
+            try
             {
                 Assert.Equal(expected.IsCompleted, actual.AsyncWaitHandle.WaitOne(0));
+            }
+            finally
+            {
+                if (disposeActual)
+                {
+                    actual.Dispose();
+                }
             }
         }
 
@@ -1445,12 +1459,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             Assert.IsType<ReadBlobParameterLog>(actual);
             ReadBlobParameterLog actualBlobLog = (ReadBlobParameterLog)actual;
             Assert.Equal(expected, actualBlobLog.BytesRead);
-        }
-
-        private static IAsyncResult CreateAsyncResult(object asyncState, EventWaitHandle asyncWaitHandle,
-            bool completedSynchronously)
-        {
-            return new FakeAsyncResult(asyncState, asyncWaitHandle, completedSynchronously);
         }
 
         private static MemoryStream CreateInnerStream(string contents)
@@ -1475,50 +1483,11 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             return new WatchableReadStream(inner);
         }
 
-        private static IAsyncResult CreateStubAsyncResult()
-        {
-            return new Mock<IAsyncResult>().Object;
-        }
-
         private struct ExpectedAsyncResult
         {
             public object AsyncState;
             public bool CompletedSynchronously;
             public bool IsCompleted;
-        }
-
-        private class FakeAsyncResult : IAsyncResult
-        {
-            private readonly object _asyncState;
-            private readonly EventWaitHandle _asyncWaitHandle;
-            private readonly bool _completedSynchronously;
-
-            public FakeAsyncResult(object asyncState, EventWaitHandle asyncWaitHandle, bool completedSynchronously)
-            {
-                _asyncState = asyncState;
-                _asyncWaitHandle = asyncWaitHandle;
-                _completedSynchronously = completedSynchronously;
-            }
-
-            public object AsyncState
-            {
-                get { return _asyncState; }
-            }
-
-            public WaitHandle AsyncWaitHandle
-            {
-                get { return _asyncWaitHandle; }
-            }
-
-            public bool CompletedSynchronously
-            {
-                get { return _completedSynchronously; }
-            }
-
-            public bool IsCompleted
-            {
-                get { return _asyncWaitHandle.WaitOne(0); }
-            }
         }
     }
 }

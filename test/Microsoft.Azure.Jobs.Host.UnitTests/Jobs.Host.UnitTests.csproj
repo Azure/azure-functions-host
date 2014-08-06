@@ -55,8 +55,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\packages\WindowsAzure.Storage.4.0.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
     </Reference>
-    <Reference Include="Moq">
-      <HintPath>..\..\packages\Moq.4.2.1312.1622\lib\net40\Moq.dll</HintPath>
+    <Reference Include="Moq, Version=4.2.1402.2112, Culture=neutral, PublicKeyToken=69f491c39445e920, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\Moq.4.2.1402.2112\lib\net40\Moq.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -84,8 +85,23 @@
     </Compile>
     <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
-    <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamExtensions.cs" />
-    <Compile Include="Blobs\TaskExtensions.cs" />
+    <Compile Include="Blobs\AsyncCompletionSource.cs" />
+    <Compile Include="Blobs\AsyncResultExtensions.cs" />
+    <Compile Include="Blobs\Bindings\CompletedCancellationSpy.cs" />
+    <Compile Include="Blobs\Bindings\CancellableAsyncCompletionSource.cs" />
+    <Compile Include="Blobs\Bindings\CompletedCancellableAsyncResult.cs" />
+    <Compile Include="Blobs\Bindings\CompletingCancellableAsyncResult.cs" />
+    <Compile Include="Blobs\Bindings\FakeCloudBlobStream.cs" />
+    <Compile Include="Blobs\Bindings\MockOfCloudBlobStreamExtensions.cs" />
+    <Compile Include="Blobs\Bindings\ReturnsThrowsOfCloudBlobStreamICancellableAsyncResultExtensions.cs" />
+    <Compile Include="Blobs\Bindings\SetupOfCloudBlobStreamICancellableAsyncResultExtensions.cs" />
+    <Compile Include="Blobs\Bindings\SetupOfCloudBlobStreamIAsyncResultExtensions.cs" />
+    <Compile Include="Blobs\Bindings\UncompletedCancellableAsyncResult.cs" />
+    <Compile Include="Blobs\CompletingAsyncResult.cs" />
+    <Compile Include="Blobs\SetupOfStreamIAsyncResultExtensions.cs" />
+    <Compile Include="Blobs\MockOfStreamExtensions.cs" />
+    <Compile Include="Blobs\UncompletedAsyncResult.cs" />
+    <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />

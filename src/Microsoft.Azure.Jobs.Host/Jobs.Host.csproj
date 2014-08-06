@@ -297,6 +297,8 @@
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Blobs\Bindings\CancellableTaskFactory.cs" />
+    <Compile Include="Blobs\Bindings\TaskCancellableAsyncResult.cs" />
     <Compile Include="Blobs\Listeners\BlobListener.cs" />
     <Compile Include="Blobs\Listeners\BlobListenerFactory.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerExecutor.cs" />
@@ -307,6 +309,7 @@
     <Compile Include="Blobs\Listeners\ScanContainersStrategy.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
+    <Compile Include="Blobs\TaskAsyncResultOfTResult.cs" />
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="ConnectionStringNames.cs" />
     <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
