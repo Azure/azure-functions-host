@@ -360,6 +360,7 @@
     <Content Include="app\models\IndexerLogEntry.js" />
     <Content Include="app\models\JobDefinition.js" />
     <Content Include="app\services\consoleOutput.js" />
+    <Content Include="app\controllers\IndexerProgressController.js" />
     <Content Include="app\services\isUsingSdk.js" />
     <Content Include="app\services\urls.js" />
     <Content Include="app\services\api.js" />
@@ -376,6 +377,7 @@
     <Content Include="app\views\ContinuousJob.html" />
     <Content Include="app\views\shared\FunctionInvocationsTable.html" />
     <Content Include="app\views\shared\Errors.html" />
+    <Content Include="app\views\shared\IndexerProgress.html" />
     <Content Include="app\views\shared\SdkTeaser.html" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.css" />
     <Content Include="Content\bootstrap\css\bootstrap-theme.min.css" />

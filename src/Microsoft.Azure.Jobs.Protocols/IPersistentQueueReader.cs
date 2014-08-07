@@ -10,7 +10,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
     /// <summary>Defines a persistent queue reader.</summary>
     /// <typeparam name="T">The type of messages in the queue.</typeparam>
 #if PUBLICPROTOCOL
-    public interface    IPersistentQueueReader<T>
+    public interface IPersistentQueueReader<T>
 #else
     internal interface IPersistentQueueReader<T>
 #endif
@@ -23,5 +23,13 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         /// <summary>Deletes a message from the queue.</summary>
         /// <param name="message">The message to delete.</param>
         void Delete(T message);
+
+        /// <summary>
+        /// Gets the number of messages in the queue
+        /// </summary>
+        /// <param name="limit">Only counts up to a certain limit. If <see langword="null" />, counts all.</param>
+        /// <returns>A positive value</returns>
+        /// <remarks>Expensive operation when there are a lot of messages</remarks>
+        int Count(int? limit);
     }
 }

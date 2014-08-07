@@ -97,6 +97,49 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             return nextItem;
         }
 
+        /// <summary>
+        /// Gets the number of messages in the queue
+        /// </summary>
+        /// <param name="limit">Only counts up to a certain limit. If zero, counts all</param>
+        /// <returns>A positive value</returns>
+        /// <remarks>Expensive operation when there are a lot of messages</remarks>
+        public int Count(int? limit)
+        {
+            BlobResultSegment results = null;
+            BlobContinuationToken continuationToken = null;
+
+            int blobCount = 0;
+
+            try
+            {
+                do
+                {
+                    results = _outputContainer.ListBlobsSegmented(
+                        prefix: null,
+                        useFlatBlobListing: true,
+                        blobListingDetails: BlobListingDetails.None,
+                        currentToken: continuationToken,
+                        maxResults: limit,
+                        options: null,
+                        operationContext: null);
+
+                    blobCount += results.Results.Count();
+                    continuationToken = results.ContinuationToken;
+                }
+                while (continuationToken != null &&
+                       (limit == null || blobCount < limit.Value));
+            }
+            catch (StorageException exception)
+            {
+                if (!exception.IsNotFound())
+                {
+                    throw;
+                }
+            }
+
+            return blobCount;
+        }
+
         private void EnqueueNextVisibleItems(ConcurrentQueue<ICloudBlob> results)
         {
             BlobContinuationToken currentToken = null;
@@ -180,7 +223,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             {
                 createdOn = GetCreatedOn(item);
             }
-            else{
+            else
+            {
                 createdOn = item.Properties.LastModified.GetValueOrDefault(DateTimeOffset.UtcNow);
                 item.Metadata.Add(CreatedKey, createdOn.ToString("o", CultureInfo.InvariantCulture));
             }

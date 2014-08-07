@@ -37,7 +37,7 @@
             functionDefinitions: function () {
                 return "api/functions/definitions";
             },
-            functionNewerDefinitions: function(version) {
+            functionNewerDefinitions: function (version) {
                 return "api/functions/newerDefinitions?version=" + encodeURIComponent(version);
             },
             invocationByIds: function () {
@@ -69,6 +69,9 @@
             },
             indexerLogEntry: function (entryId) {
                 return "api/diagnostics/indexerLogEntry?entryId=" + encodeURIComponent(entryId);
+            },
+            indexingQueueLength: function (limit) {
+                return "api/diagnostics/indexingQueueLength" + (limit !== null ? "?limit=" + limit : "");
             }
         }
     };

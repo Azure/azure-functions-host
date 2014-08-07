@@ -101,8 +101,11 @@ namespace Dashboard
             // Explicitly set a value to allow nulls/empty without throwing.
             provider.DashboardConnectionString = provider.DashboardConnectionString;
             CloudStorageAccount account = provider.GetAccount(ConnectionStringNames.Dashboard);
-            DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
-            validator.ValidateCredentialsAsync(account, CancellationToken.None).GetAwaiter().GetResult();
+            if (account != null)
+            {
+                DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
+                validator.ValidateCredentialsAsync(account, CancellationToken.None).GetAwaiter().GetResult();
+            }
             return account;
         }
     }

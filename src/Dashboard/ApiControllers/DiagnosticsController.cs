@@ -9,21 +9,35 @@ using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.ViewModels;
+using Microsoft.Azure.Jobs.Protocols;
 
 namespace Dashboard.ApiControllers
 {
     public class DiagnosticsController : ApiController
     {
+        private readonly IPersistentQueueReader<PersistentQueueMessage> _queueReader;
         private readonly IIndexerLogReader _indexerLogReader;
 
-        public DiagnosticsController(IIndexerLogReader indexerLogReader)
+        public DiagnosticsController(IIndexerLogReader indexerLogReader, IPersistentQueueReader<PersistentQueueMessage> queueReader)
         {
             if (indexerLogReader == null)
             {
                 throw new ArgumentNullException("indexerLogReader");
             }
+            if (queueReader == null)
+            {
+                throw new ArgumentNullException("queueReader");
+            }
 
             _indexerLogReader = indexerLogReader;
+            _queueReader = queueReader;
+        }
+
+        [HttpGet]
+        [Route("api/diagnostics/indexingQueueLength/{limit?}")]
+        public IHttpActionResult IndexingQueueLength(int? limit = null)
+        {
+            return Ok(_queueReader.Count(limit));
         }
 
         [HttpGet]
