@@ -364,6 +364,8 @@
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Timers\ExponentialBackoffTimerCommand.cs" />
     <Compile Include="Timers\FixedIntervalsTimerCommand.cs" />
+    <Compile Include="Timers\BackgroundExceptionDispatcher.cs" />
+    <Compile Include="Timers\IBackgroundExceptionDispatcher.cs" />
     <Compile Include="Timers\ITimerFactory.cs" />
     <Compile Include="Timers\NullCanFailCommand.cs" />
     <Compile Include="Timers\RandomExtensions.cs" />

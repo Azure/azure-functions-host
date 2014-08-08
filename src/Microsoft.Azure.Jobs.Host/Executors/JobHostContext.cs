@@ -203,8 +203,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
                     sharedQueueListenerFactory, instanceQueueListenerFactory);
 
-                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, bindingContext,
-                    heartbeatCommand, shutdownToken, executor);
+                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory,
+                    bindingContext, heartbeatCommand, shutdownToken, executor);
 
                 IListener listener = CreateHostListener(allFunctionsListenerFactory, bindingContext, heartbeatCommand,
                     shutdownToken, executor);
