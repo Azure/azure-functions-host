@@ -72,7 +72,12 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             if (!_disposed)
             {
                 _cancellationRegistration.Dispose();
-                _cancellationSource.Dispose();
+
+                // StartAsync might still be using this cancellation token.
+                // Mark it canceled but don't dispose of the source while the callers are running.
+                // Otherwise, callers would receive ObjectDisposedException when calling token.Register.
+                // For now, rely on finalization to clean up _shutdownTokenSource's wait handle (if allocated).
+                _cancellationSource.Cancel();
 
                 if (_listener != null)
                 {

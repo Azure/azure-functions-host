@@ -21,12 +21,12 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _innerListener = innerListener;
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(
                 cancellationToken, _shutdownToken))
             {
-                return _innerListener.StartAsync(combinedCancellationSource.Token);
+                await _innerListener.StartAsync(combinedCancellationSource.Token);
             }
         }
 
