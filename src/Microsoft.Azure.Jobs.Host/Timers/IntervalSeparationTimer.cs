@@ -112,8 +112,6 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                 // Allow Start to return immediately without waiting for the first command to execute.
                 await Task.Yield();
 
-                List<Task> runningCommands = new List<Task>();
-
                 // Schedule another execution until stopped.
                 while (!cancellationToken.IsCancellationRequested)
                 {
@@ -148,13 +146,12 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                             _backgroundExceptionDispatcher.Throw(exceptionInfo);
                         }
 
-                        // Just allow the continuation task to run to completion if t.Status is Canceled or RanToCompletion.
+                        // Just allow the continuation task to run to completion if t.Status is Canceled or
+                        // RanToCompletion.
                     }, TaskContinuationOptions.ExecuteSynchronously);
 
-                    runningCommands.Add(continuationTask);
+                    await continuationTask;
                 }
-
-                await Task.WhenAll(runningCommands);
             }
             catch (Exception exception)
             {

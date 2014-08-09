@@ -63,44 +63,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         }
 
         [Fact]
-        public void Start_IfCommandExecuteAsyncReturnsUncompletedTask_StartsExecuteAsyncAgain()
-        {
-            // Arrange
-            TaskCompletionSource<object> firstTaskSource = new TaskCompletionSource<object>();
-            bool executedOnce = false;
-            TimeSpan interval = TimeSpan.Zero;
-
-            using (EventWaitHandle waitForSecondExecution = new ManualResetEvent(initialState: false))
-            {
-                IIntervalSeparationCommand command = CreateCommand(() =>
-                {
-                    if (!executedOnce)
-                    {
-                        executedOnce = true;
-                        return firstTaskSource.Task;
-                    }
-                    else
-                    {
-                        waitForSecondExecution.Set();
-                        return Task.FromResult(0);
-                    }
-                }, interval);
-
-                using (IntervalSeparationTimer product = CreateProductUnderTest(command))
-                {
-                    // Act
-                    product.Start();
-
-                    // Assert
-                    Assert.True(waitForSecondExecution.WaitOne(1000));
-
-                    // Cleanup
-                    firstTaskSource.SetResult(null);
-                }
-            }
-        }
-
-        [Fact]
         public void Start_AfterSeparationInternalChanges_WaitsForNewInterval()
         {
             // Arrange
@@ -140,7 +102,9 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
                     waitForSecondExecution.WaitOne();
 
                     // Assert
-                    Assert.True(stopwatch.ElapsedMilliseconds >= subsequentInterval.TotalMilliseconds, String.Format("{0} >= {1}", stopwatch.ElapsedMilliseconds, subsequentInterval.TotalMilliseconds));
+                    Assert.True(stopwatch.ElapsedMilliseconds >= subsequentInterval.TotalMilliseconds,
+                        String.Format("{0} >= {1}", stopwatch.ElapsedMilliseconds,
+                        subsequentInterval.TotalMilliseconds));
                 }
             }
         }
