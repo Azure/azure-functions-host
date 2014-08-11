@@ -88,7 +88,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 // 1. We tried to mark the item as invisible, and failed (409, someone else won the race)
                 // 2. We then tried to download the item and failed (404, someone else finished processing an item, even
                 // though we owned it).
-                if (TryMakeItemInvisible(possibleNextItem, out createdOn) && TryDownloadItem(possibleNextItem, createdOn, out nextItem))
+                if (TryMakeItemInvisible(possibleNextItem, out createdOn) && TryDownloadItem(possibleNextItem,
+                    createdOn, out nextItem))
                 {
                     break;
                 }
@@ -161,7 +162,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                     // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true in GetSegment.
                     foreach (ICloudBlob blob in segment.Results)
                     {
-                        if (!blob.Metadata.ContainsKey(NextVisibleTimeKey) || IsInPast(blob.Metadata[NextVisibleTimeKey]))
+                        if (!blob.Metadata.ContainsKey(NextVisibleTimeKey) ||
+                            IsInPast(blob.Metadata[NextVisibleTimeKey]))
                         {
                             results.Enqueue(blob);
                         }
@@ -236,7 +238,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             }
             catch (StorageException exception)
             {
-                if (exception.IsPreconditionFailed())
+                if (exception.IsPreconditionFailed() || exception.IsNotFoundBlobNotFound())
                 {
                     return false;
                 }
@@ -315,8 +317,8 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
         {
             ICloudBlob outputBlob = message.Blob;
 
-            // Do a client-side blob copy. Note that StartCopyFromBlob is another option, but that would require polling to
-            // wait for completion.
+            // Do a client-side blob copy. Note that StartCopyFromBlob is another option, but that would require polling
+            // to wait for completion.
             CloudBlockBlob archiveBlob = _archiveContainer.GetBlockBlobReference(message.PopReceipt);
             CopyProperties(outputBlob, archiveBlob);
             CopyMetadata(outputBlob, archiveBlob);

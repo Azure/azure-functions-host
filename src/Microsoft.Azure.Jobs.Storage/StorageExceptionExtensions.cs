@@ -249,6 +249,43 @@ namespace Microsoft.Azure.Jobs.Host.Storage
         }
 
         /// <summary>
+        /// Determines whether the exception is due to a 404 Not Found error with the error code BlobNotFound.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 404 Not Found error with the error code BlobNotFound;
+        /// otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsNotFoundBlobNotFound(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 404)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "BlobNotFound";
+        }
+
+        /// <summary>
         /// Determines whether the exception is due to a 404 Not Found error with the error code ContainerNotFound.
         /// </summary>
         /// <param name="exception">The storage exception.</param>
