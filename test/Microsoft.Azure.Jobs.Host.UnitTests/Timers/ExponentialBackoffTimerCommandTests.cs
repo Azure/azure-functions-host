@@ -199,7 +199,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
         }
 
         [Fact]
-        public void SeparationInterval_AfterTryExecuteReturnsFalseAfterReturningTrue_ReturnsApproximatelyDoubleMinimumInterval()
+        public void SeparationInterval_AfterTryExecuteReturnsFalseAfterTrue_ReturnsApproximatelyDoubleMinimumInterval()
         {
             // Arrange
             bool firstCall = true;
@@ -230,14 +230,27 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             TimeSpan minimumInterval = TimeSpan.FromMilliseconds(123);
             TimeSpan maximumInterval = TimeSpan.FromSeconds(4);
             IIntervalSeparationCommand product = CreateProductUnderTest(command, minimumInterval, maximumInterval);
-            product.Execute();
-            product.Execute();
-            product.Execute();
-            product.Execute();
-            product.Execute();
-            product.Execute();
-            product.Execute();
-            product.Execute();
+
+            double randomizationMinimum = 1 - ExponentialBackoffTimerCommand.RandomizationFactor;
+            TimeSpan minimumDeltaInterval = new TimeSpan((long)(minimumInterval.Ticks * randomizationMinimum));
+            // minimumBackoffInterval = minimumInterval + minimumDeltaInterval * 2 ^ (deltaIteration - 1)
+            // when is minimumBackOffInterval first >= maximumInterval?
+            // maximumInterval <= minimumInterval + minimumDeltaInterval * 2 ^ (deltaIteration - 1)
+            // minimumInterval + minimumDeltaInterval * 2 ^ (deltaIteration - 1) >= maximumInterval
+            // minimumDeltaInterval * 2 ^ (deltaIteration - 1) >= maximumInterval - minimumInterval
+            // 2 ^ (deltaIteration - 1) >= (maximumInterval - minimumInterval) / minimumDeltaInterval
+            // deltaIteration - 1 >= log2(maximumInterval - minimumInterval) / minimumDeltaInterval
+            // deltaIteration >= (log2(maximumInterval - minimumInterval) / minimumDeltaInterval) + 1
+            int deltaIterationsNeededForMaximumInterval = (int)Math.Ceiling(Math.Log(
+                (maximumInterval - minimumInterval).Ticks / minimumDeltaInterval.Ticks, 2)) + 1;
+
+            // Add one for initial minimumInterval interation (before deltaIterations start).
+            int iterationsNeededForMaximumInterval = deltaIterationsNeededForMaximumInterval + 1;
+
+            for (int iteration = 0; iteration < iterationsNeededForMaximumInterval; ++iteration)
+            {
+                product.Execute();
+            }
 
             // Act
             TimeSpan separationInterval = product.SeparationInterval;
@@ -273,7 +286,8 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             return mock.Object;
         }
 
-        private static void AssertInRandomizationRange(TimeSpan separationInterval, TimeSpan minimumInterval, int retryCount)
+        private static void AssertInRandomizationRange(TimeSpan separationInterval, TimeSpan minimumInterval,
+            int retryCount)
         {
             Assert.InRange(separationInterval.Ticks,
                 minimumInterval.Ticks * (1 - ExponentialBackoffTimerCommand.RandomizationFactor) *
