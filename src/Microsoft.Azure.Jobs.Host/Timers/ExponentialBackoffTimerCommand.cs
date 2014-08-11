@@ -66,7 +66,7 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                 _currentInterval = _minimumInterval;
                 _backoffExponent = 1;
             }
-            else
+            else if (_currentInterval != _maximumInterval)
             {
                 TimeSpan backoffInterval = _minimumInterval;
 
@@ -93,6 +93,7 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                     _currentInterval = _maximumInterval;
                 }
             }
+            // else do nothing and keep current interval equal to max
         }
 
         public static IntervalSeparationTimer CreateTimer(ICanFailCommand command, TimeSpan minimumInterval,
