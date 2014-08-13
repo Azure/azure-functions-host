@@ -68,7 +68,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             
             if (loggedStartedEvent)
             {
-                // If function started was logged, don't cancel cals to log function completed.
+                // If function started was logged, don't cancel calls to log function completed.
                 logCompletedCancellationToken = CancellationToken.None;
             }
             else
