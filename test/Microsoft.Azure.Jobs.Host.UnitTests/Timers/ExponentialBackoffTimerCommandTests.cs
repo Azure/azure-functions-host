@@ -247,7 +247,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
             // Add one for initial minimumInterval interation (before deltaIterations start).
             int iterationsNeededForMaximumInterval = deltaIterationsNeededForMaximumInterval + 1;
 
-            for (int iteration = 0; iteration < iterationsNeededForMaximumInterval; ++iteration)
+            for (int iteration = 0; iteration < iterationsNeededForMaximumInterval; iteration++)
             {
                 product.Execute();
             }

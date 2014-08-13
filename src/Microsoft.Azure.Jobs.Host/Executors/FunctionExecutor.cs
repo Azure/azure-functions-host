@@ -43,10 +43,6 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     cancellationToken);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
             catch (Exception exception)
             {
                 if (completedMessage == null)
@@ -65,8 +61,29 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             completedMessage.ParameterLogs = parameterLogCollector;
             completedMessage.EndTime = DateTimeOffset.UtcNow;
-            await _context.FunctionInstanceLogger.LogFunctionCompletedAsync(completedMessage, cancellationToken);
-            await _context.FunctionInstanceLogger.DeleteLogFunctionStartedAsync(startedMessageId, cancellationToken);
+
+            bool loggedStartedEvent = startedMessageId != null;
+
+            CancellationToken logCompletedCancellationToken;
+            
+            if (loggedStartedEvent)
+            {
+                // If function started was logged, don't cancel cals to log function completed.
+                logCompletedCancellationToken = CancellationToken.None;
+            }
+            else
+            {
+                logCompletedCancellationToken = cancellationToken;
+            }
+
+            await _context.FunctionInstanceLogger.LogFunctionCompletedAsync(completedMessage,
+                logCompletedCancellationToken);
+
+            if (loggedStartedEvent)
+            {
+                await _context.FunctionInstanceLogger.DeleteLogFunctionStartedAsync(startedMessageId,
+                    cancellationToken);
+            }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
