@@ -34,8 +34,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
-            IRecurrentCommand command = new PollQueueCommand(_queue, poisonQueue: null,
-                triggerExecutor: triggerExecutor);
+            IAlertingRecurrentCommand command = new PollQueueCommand(_queue, poisonQueue: null,
+                triggerExecutor: triggerExecutor, sharedWatcher: null);
             // Use a shorter maximum polling interval for run/abort from dashboard.
             ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command, Minimum, Maxmimum);
             IListener listener = new TimerListener(timer);

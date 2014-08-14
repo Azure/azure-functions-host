@@ -10,18 +10,18 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
     {
         private readonly IDictionary<Type, object> _items = new Dictionary<Type, object>();
 
-        public TListener GetOrCreate<TListener>(IFactory<TListener> factory)
+        public T GetOrCreate<T>(IFactory<T> factory)
         {
-            Type listenerType = typeof(TListener);
+            Type factoryItemType = typeof(T);
 
-            if (_items.ContainsKey(listenerType))
+            if (_items.ContainsKey(factoryItemType))
             {
-                return (TListener)_items[listenerType];
+                return (T)_items[factoryItemType];
             }
             else
             {
-                TListener listener = factory.Create();
-                _items.Add(listenerType, listener);
+                T listener = factory.Create();
+                _items.Add(factoryItemType, listener);
                 return listener;
             }
         }

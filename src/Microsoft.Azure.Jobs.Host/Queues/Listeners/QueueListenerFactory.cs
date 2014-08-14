@@ -40,7 +40,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
-            IRecurrentCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor);
+            SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
+                new SharedQueueWatcherFactory(context));
+            IAlertingRecurrentCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor,
+                sharedWatcher);
             ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command,
                 QueuePollingIntervals.Minimum, QueuePollingIntervals.Maximum);
             IListener listener = new TimerListener(timer);

@@ -12,28 +12,49 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal sealed class PollQueueCommand : IRecurrentCommand
+    internal sealed class PollQueueCommand : IAlertingRecurrentCommand, INotificationCommand
     {
         private const int PoisonThreshold = 5;
 
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly ITriggerExecutor<CloudQueueMessage> _triggerExecutor;
+        private readonly IMessageEnqueuedWatcher _sharedWatcher;
+        private readonly object _stopWaitingTaskSourceLock = new object();
+
+        private TaskCompletionSource<object> _stopWaitingTaskSource;
 
         public PollQueueCommand(CloudQueue queue, CloudQueue poisonQueue,
-            ITriggerExecutor<CloudQueueMessage> triggerExecutor)
+            ITriggerExecutor<CloudQueueMessage> triggerExecutor, SharedQueueWatcher sharedWatcher)
         {
             _queue = queue;
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
+
+            if (sharedWatcher != null)
+            {
+                // Call Notify whenever a function adds a message to this queue.
+                sharedWatcher.Register(queue.Name, this);
+                _sharedWatcher = sharedWatcher;
+            }
         }
 
-        public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
+        public async Task<AlertingRecurrentCommandResult> TryExecuteAsync(CancellationToken cancellationToken)
         {
+            lock (_stopWaitingTaskSourceLock)
+            {
+                if (_stopWaitingTaskSource != null)
+                {
+                    _stopWaitingTaskSource.TrySetResult(null);
+                }
+
+                _stopWaitingTaskSource = new TaskCompletionSource<object>();
+            }
+
             if (!await _queue.ExistsAsync(cancellationToken))
             {
                 // Back off when no message is available.
-                return false;
+                return new AlertingRecurrentCommandResult(succeeded: false, stopWaiting: _stopWaitingTaskSource.Task);
             }
 
             // What if job takes longer. Call CloudQueue.UpdateMessage
@@ -57,7 +78,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                         exception.IsServerSideError())
                     {
                         // Back off when no message is available.
-                        return false;
+                        return new AlertingRecurrentCommandResult(succeeded: false,
+                            stopWaiting: _stopWaitingTaskSource.Task);
                     }
                     else
                     {
@@ -107,7 +129,19 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             } while (message != null);
 
             // Back off when no message was found.
-            return foundMessage;
+            return new AlertingRecurrentCommandResult(succeeded: foundMessage,
+                stopWaiting: _stopWaitingTaskSource.Task);
+        }
+
+        public void Notify()
+        {
+            lock (_stopWaitingTaskSourceLock)
+            {
+                if (_stopWaitingTaskSource != null)
+                {
+                    _stopWaitingTaskSource.TrySetResult(null);
+                }
+            }
         }
 
         private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
@@ -173,9 +207,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             }
         }
 
-        private Task CopyToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+        private async Task CopyToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
         {
-            return _poisonQueue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
+            await _poisonQueue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
+
+            if (_sharedWatcher != null)
+            {
+                _sharedWatcher.Notify(_poisonQueue.Name);
+            }
         }
     }
 }

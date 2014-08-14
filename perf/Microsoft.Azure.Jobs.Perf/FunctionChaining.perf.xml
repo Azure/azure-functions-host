@@ -12,7 +12,7 @@
     </trackingVariation>
     <trackingVariation name="QueueChain">
       <metric name="TotalElapsedTime" selection="Median" units="Milliseconds">
-        <target value="41000" labConfig="default" priority = "1" />
+        <target value="7500" labConfig="default" priority = "1" />
       </metric>
     </trackingVariation>
   </metadata>

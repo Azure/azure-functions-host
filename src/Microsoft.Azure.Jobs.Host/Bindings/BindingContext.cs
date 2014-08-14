@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
@@ -60,6 +61,11 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _functionContext.BlobWrittenWatcher; }
+        }
+
+        public IMessageEnqueuedWatcher MessageEnqueuedWatcher
+        {
+            get { return _functionContext.MessageEnqueuedWatcher; }
         }
 
         public Guid FunctionInstanceId

@@ -4,6 +4,7 @@
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Blobs;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Listeners
@@ -31,6 +32,12 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
         {
             get { return _hostContext.BlobWrittenWatcher; }
             set { _hostContext.BlobWrittenWatcher = value; }
+        }
+
+        public IMessageEnqueuedWatcher MessageEnqueuedWatcher
+        {
+            get { return _hostContext.MessageEnqueuedWatcher; }
+            set { _hostContext.MessageEnqueuedWatcher = value; }
         }
 
         public SharedListenerContainer SharedListeners

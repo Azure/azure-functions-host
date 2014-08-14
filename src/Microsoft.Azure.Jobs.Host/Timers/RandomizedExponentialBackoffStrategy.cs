@@ -81,12 +81,12 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             return _currentInterval;
         }
 
-        public static ITaskSeriesTimer CreateTimer(IRecurrentCommand command, TimeSpan minimumInterval,
+        public static ITaskSeriesTimer CreateTimer(IAlertingRecurrentCommand command, TimeSpan minimumInterval,
             TimeSpan maximumInterval)
         {
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(minimumInterval, maximumInterval,
                 minimumInterval);
-            ITaskSeriesCommand timerCommand = new RecurrentTaskSeriesCommand(command, delayStrategy);
+            ITaskSeriesCommand timerCommand = new AlertingRecurrentTaskSeriesCommand(command, delayStrategy);
             return new TaskSeriesTimer(timerCommand, Task.Delay(minimumInterval));
         }
     }

@@ -25,7 +25,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
         public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
         {
-            IValueProvider provider = new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId);
+            IValueProvider provider = new UserTypeValueBinder(value, _valueType, context.FunctionInstanceId,
+                context.MessageEnqueuedWatcher);
             return Task.FromResult(provider);
         }
 
@@ -34,12 +35,15 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
             private readonly CloudQueue _queue;
             private readonly Type _valueType;
             private readonly Guid _functionInstanceId;
+            private readonly IMessageEnqueuedWatcher _messageEnqueuedWatcher;
 
-            public UserTypeValueBinder(CloudQueue queue, Type valueType, Guid functionInstanceId)
+            public UserTypeValueBinder(CloudQueue queue, Type valueType, Guid functionInstanceId,
+                IMessageEnqueuedWatcher messageEnqueuedWatcher)
             {
                 _queue = queue;
                 _valueType = valueType;
                 _functionInstanceId = functionInstanceId;
+                _messageEnqueuedWatcher = messageEnqueuedWatcher;
             }
 
             public int StepOrder
@@ -62,11 +66,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return _queue.Name;
             }
 
-            public Task SetValueAsync(object value, CancellationToken cancellationToken)
+            public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 CloudQueueMessage message = QueueCausalityManager.EncodePayload(_functionInstanceId, value);
 
-                return _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
+                await _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
+                _messageEnqueuedWatcher.Notify(_queue.Name);
             }
         }
     }

@@ -4,6 +4,7 @@
 using System.Threading;
 using Microsoft.Azure.Jobs.Host.Blobs;
 using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Bindings
@@ -48,5 +49,7 @@ namespace Microsoft.Azure.Jobs.Host.Bindings
         }
 
         public IBlobWrittenWatcher BlobWrittenWatcher { get; set; }
+
+        public IMessageEnqueuedWatcher MessageEnqueuedWatcher { get; set; }
     }
 }

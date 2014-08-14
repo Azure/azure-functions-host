@@ -356,12 +356,17 @@
     <Compile Include="Loggers\IFunctionOutputDefinition.cs" />
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
+    <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
+    <Compile Include="Queues\Listeners\INotificationCommand.cs" />
     <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />
+    <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
+    <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
     <Compile Include="Tables\PocoEntityValueBinder.cs" />
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Timers\FixedDelayStrategy.cs" />
+    <Compile Include="Timers\IAlertingRecurrentCommand.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategy.cs" />
     <Compile Include="Timers\BackgroundExceptionDispatcher.cs" />
     <Compile Include="Timers\IBackgroundExceptionDispatcher.cs" />
@@ -371,7 +376,8 @@
     <Compile Include="Timers\ITaskSeriesTimer.cs" />
     <Compile Include="Timers\NullRecurrentCommand.cs" />
     <Compile Include="Timers\RandomExtensions.cs" />
-    <Compile Include="Timers\RecurrentCommandResult.cs" />
+    <Compile Include="Timers\AlertingRecurrentCommandResult.cs" />
+    <Compile Include="Timers\AlertingRecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\TaskSeriesCommandResult.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />

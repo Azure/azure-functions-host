@@ -5,7 +5,9 @@
 // - Startup time for host (from the moment RunAndBlock is called, to the moment when the first function is invoked)
 // - Execution time for a number of functions that are triggerd by queue messages
 
+using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.TestCommon;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 using Microsoft.WindowsAzure.Storage;
@@ -58,8 +60,10 @@ namespace Microsoft.Azure.Jobs.Perf
 
                 JobHost host = new JobHost(hostConfig);
                 _tokenSource = new CancellationTokenSource();
-                _tokenSource.Token.Register(host.Stop);
+                Task stopTask = null;
+                _tokenSource.Token.Register(() => stopTask = host.StopAsync());
                 host.RunAndBlock();
+                stopTask.GetAwaiter().GetResult();
             }
             finally
             {
@@ -82,6 +86,7 @@ namespace Microsoft.Azure.Jobs.Perf
         {
             // When we reach here, it means that all functions have completed and we can stop the timer
             _functionsExecutionBlock.Dispose();
+            Console.WriteLine(_functionsExecutionBlock.Elapsed);
 
             _tokenSource.Cancel();
         }

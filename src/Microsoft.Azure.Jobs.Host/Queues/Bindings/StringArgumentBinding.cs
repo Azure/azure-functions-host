@@ -18,17 +18,19 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
 
         public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
         {
-            IValueProvider provider = new StringValueBinder(value);
+            IValueProvider provider = new StringValueBinder(value, context.MessageEnqueuedWatcher);
             return Task.FromResult(provider);
         }
 
         private class StringValueBinder : IOrderedValueBinder
         {
             private readonly CloudQueue _queue;
+            private readonly IMessageEnqueuedWatcher _messageEnqueuedWatcher;
 
-            public StringValueBinder(CloudQueue queue)
+            public StringValueBinder(CloudQueue queue, IMessageEnqueuedWatcher messageEnqueuedWatcher)
             {
                 _queue = queue;
+                _messageEnqueuedWatcher = messageEnqueuedWatcher;
             }
 
             public int StepOrder
@@ -51,11 +53,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 return _queue.Name;
             }
 
-            public Task SetValueAsync(object value, CancellationToken cancellationToken)
+            public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
                 string text = (string)value;
 
-                return _queue.AddMessageAndCreateIfNotExistsAsync(new CloudQueueMessage(text), cancellationToken);
+                await _queue.AddMessageAndCreateIfNotExistsAsync(new CloudQueueMessage(text), cancellationToken);
+                _messageEnqueuedWatcher.Notify(_queue.Name);
             }
         }
     }
