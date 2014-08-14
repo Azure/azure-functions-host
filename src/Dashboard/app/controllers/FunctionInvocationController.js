@@ -35,7 +35,7 @@
         function loadInvocationDetails() {
             var runId;
             if (!$scope.model || !$scope.model.invocation.isFinal()) {
-                return $http.get(functionInvocationDataUrl).success(function(res) {
+                return $http.get(functionInvocationDataUrl).success(function (res) {
                     var initialLoad = !$scope.model;
                     $scope.model = FunctionInvocationModel.fromJson(res);
                     if (initialLoad) {
@@ -72,6 +72,8 @@
                 }).error(function (res, code) {
                     if (code === 404) {
                         $rootScope.errors.push('Invalid function invocation');
+                    } else if (res.exceptionMessage) {
+                        $rootScope.errors.push(res.exceptionMessage);
                     } else {
                         $rootScope.errors.push('Invalid function invocation (Error code: ' + code + ')');
                     }

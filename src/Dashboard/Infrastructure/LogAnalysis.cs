@@ -92,13 +92,21 @@ namespace Dashboard
                 return null;
             }
 
-            CloudBlockBlob blob = CloudStorageAccount.Parse(argument.GetStorageConnectionString())
+            var blobParam = new BlobBoundParamModel();
+            blobParam.IsOutput = argument.IsBlobOutput;
+            blobParam.ConnectionStringKey = AmbientConnectionStringProvider.GetPrefixedConnectionStringName(argument.AccountName);
+
+            string storageConnectionString = argument.GetStorageConnectionString();
+            if (String.IsNullOrEmpty(storageConnectionString))
+            {
+                blobParam.IsConnectionStringMissing = true;
+                return blobParam;
+            }
+
+            CloudBlockBlob blob = CloudStorageAccount.Parse(storageConnectionString)
                 .CreateCloudBlobClient()
                 .GetContainerReference(components[0])
                 .GetBlockBlobReference(components[1]);
-
-            var blobParam = new BlobBoundParamModel();
-            blobParam.IsOutput = argument.IsBlobOutput;
 
             Guid? blobWriter = GetBlobWriter(blob);
 
@@ -114,6 +122,7 @@ namespace Dashboard
                     blobParam.IsBlobOwnedByCurrentFunctionInstance = true;
                 }
             }
+
             return blobParam;
         }
 

@@ -347,6 +347,7 @@
   <ItemGroup>
     <Content Include="app\controllers\ConsoleOutputController.js" />
     <Content Include="app\controllers\AboutController.js" />
+    <Content Include="app\controllers\ErrorsController.js" />
     <Content Include="app\controllers\FunctionsHomeController.js" />
     <Content Include="app\controllers\FunctionController.js" />
     <Content Include="app\controllers\IndexerLogEntryController.js" />

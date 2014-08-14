@@ -8,7 +8,7 @@
     <p class="alert alert-warning" ng-if="isOldHost">
         Jobs from an earlier version of the Azure WebJobs SDK have been detected. Please upgrade the jobs to the latest version in order to see their status in the dashboard. Please visit <a href="http://go.microsoft.com/fwlink/?LinkID=401520">this article</a> for more information about the Azure WebJobs SDK.
     </p>
-    <p class="alert alert-danger" ng-repeat="warning in warnings">
+    <p class="alert alert-warning" ng-repeat="warning in warnings">
         {{warning}}
     </p>
 
