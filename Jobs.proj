@@ -119,6 +119,7 @@
   <Target Name="UnitTest" DependsOnTargets="Build">
     <ItemGroup>
         <UnitTestProjects Include="test\Microsoft.Azure.Jobs.Host.UnitTests\Jobs.Host.UnitTests.csproj"/>
+        <UnitTestProjects Include="test\Microsoft.Azure.Jobs.ServiceBus.UnitTests\Jobs.ServiceBus.UnitTests.csproj"/>
         <UnitTestProjects Include="test\Dashboard.UnitTests\Dashboard.UnitTests.csproj"/>
     </ItemGroup>
 

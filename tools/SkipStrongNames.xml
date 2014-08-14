@@ -13,4 +13,5 @@
   <assembly name="Microsoft.Azure.Jobs.Host.TestCommon"/>
   <assembly name="Microsoft.Azure.Jobs.Host.IntegrationTests"/>
   <assembly name="Microsoft.Azure.Jobs.Host.UnitTests"/>
+  <assembly name="Microsoft.Azure.Jobs.ServiceBus.UnitTests"/>
 </assemblies>
