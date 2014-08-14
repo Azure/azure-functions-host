@@ -4,9 +4,9 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
+namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
-    internal static class TaskExtensions
+    public static class TaskExtensions
     {
         public static bool WaitUntilCompleted(this Task task, int millisecondsTimeout)
         {

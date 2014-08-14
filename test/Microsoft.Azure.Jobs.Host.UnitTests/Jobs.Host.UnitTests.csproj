@@ -113,7 +113,6 @@
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
     <Compile Include="TestJobHostConfiguration.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategyTests.cs" />
-    <Compile Include="Timers\TaskExtensions.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />

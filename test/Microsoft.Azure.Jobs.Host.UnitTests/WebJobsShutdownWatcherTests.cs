@@ -4,18 +4,18 @@
 using System;
 using System.IO;
 using System.Threading;
+using Microsoft.Azure.Jobs.Host.TestCommon;
 using Xunit;
 
 namespace Microsoft.Azure.Jobs.Host.UnitTests
 {
     // Unit test the static parameter bindings. This primarily tests the indexer.
-    public class WebJobsShutdownWatcherTests : IDisposable
+    public class WebJobsShutdownWatcherTests
     {
         [Fact]
         public void InvalidPath()
         {
-            WriteEnvVar(@"C:\This\path\should\not\exist");
-
+            using (new WebJobsShutdownContext(@"C:\This\path\should\not\exist"))
             using (var watcher = new WebJobsShutdownWatcher())
             {
                 var token = watcher.Token;
@@ -29,15 +29,14 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void Signaled()
         {
-            string path = WriteEnvVar();
-
+            using (WebJobsShutdownContext shutdownContext = new WebJobsShutdownContext())
             using (var watcher = new WebJobsShutdownWatcher())
             {
                 var token = watcher.Token;
                 Assert.True(!token.IsCancellationRequested);
 
                 // Write the file
-                File.WriteAllText(path, "x");
+                shutdownContext.NotifyShutdown();
 
                 // Token should be signaled very soon 
                 Assert.True(token.WaitHandle.WaitOne(500));
@@ -47,26 +46,27 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void NotSignaledAfterDisposed()
         {
-            string path = WriteEnvVar();
-
-            CancellationToken token;
-            using (var watcher = new WebJobsShutdownWatcher())
+            using (WebJobsShutdownContext shutdownContext = new WebJobsShutdownContext())
             {
-                token = watcher.Token;
+
+                CancellationToken token;
+                using (var watcher = new WebJobsShutdownWatcher())
+                {
+                    token = watcher.Token;
+                    Assert.True(!token.IsCancellationRequested);
+                }
+                // Write the file
+                shutdownContext.NotifyShutdown();
+
                 Assert.True(!token.IsCancellationRequested);
             }
-            // Write the file
-            File.WriteAllText(path, "x");
-
-            Assert.True(!token.IsCancellationRequested);
         }
 
         [Fact]
         public void None()
         {
             // Env var not set
-            RemoveEnvVar();
-
+            using (new WebJobsShutdownContext(null))
             using (var watcher = new WebJobsShutdownWatcher())
             {
                 var token = watcher.Token;
@@ -75,27 +75,6 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 Assert.True(!token.CanBeCanceled);
                 Assert.True(!token.IsCancellationRequested);
             }
-        }
-
-        public void Dispose()
-        {
-            RemoveEnvVar();
-        }
-
-        private static string WriteEnvVar()
-        {
-            return WriteEnvVar(Path.GetTempFileName());
-        }
-
-        private static string WriteEnvVar(string path)
-        {
-            Environment.SetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE", path);
-            return path;
-        }
-
-        private static void RemoveEnvVar()
-        {
-            Environment.SetEnvironmentVariable("WEBJOBS_SHUTDOWN_FILE", null);
         }
     }
 }

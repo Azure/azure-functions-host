@@ -79,7 +79,9 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="WebJobsShutdownContext.cs" />
     <Compile Include="ExceptionAssert.cs" />
+    <Compile Include="TaskExtensions.cs" />
     <Compile Include="TestJobHost.cs" />
     <Compile Include="NullConnectionStringProvider.cs" />
     <Compile Include="RandomNameResolver.cs" />
