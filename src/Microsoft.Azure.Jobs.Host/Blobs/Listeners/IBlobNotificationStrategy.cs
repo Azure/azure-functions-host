@@ -7,7 +7,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
 {
-    internal interface IBlobNotificationStrategy : IIntervalSeparationCommand, IBlobWrittenWatcher
+    internal interface IBlobNotificationStrategy : ITaskSeriesCommand, IBlobWrittenWatcher
     {
         void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor);
     }

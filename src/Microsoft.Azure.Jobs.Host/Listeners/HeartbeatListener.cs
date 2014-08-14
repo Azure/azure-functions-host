@@ -10,13 +10,13 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal class HeartbeatListener : IListener
     {
-        private readonly ICanFailCommand _heartbeatCommand;
+        private readonly IRecurrentCommand _heartbeatCommand;
         private readonly IListener _innerListener;
-        private readonly IntervalSeparationTimer _timer;
+        private readonly ITaskSeriesTimer _timer;
 
         private bool _disposed;
 
-        public HeartbeatListener(ICanFailCommand heartbeatCommand, IListener innerListener)
+        public HeartbeatListener(IRecurrentCommand heartbeatCommand, IListener innerListener)
         {
             _heartbeatCommand = heartbeatCommand;
             _innerListener = innerListener;
@@ -31,11 +31,10 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _timer.Start();
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _timer.Stop();
-
-            return _innerListener.StopAsync(cancellationToken);
+            await _timer.StopAsync(cancellationToken);
+            await _innerListener.StopAsync(cancellationToken);
         }
 
         public void Cancel()
@@ -55,9 +54,9 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             }
         }
 
-        private IntervalSeparationTimer CreateTimer()
+        private ITaskSeriesTimer CreateTimer()
         {
-            return LinearSpeedupTimerCommand.CreateTimer(_heartbeatCommand,
+            return LinearSpeedupStrategy.CreateTimer(_heartbeatCommand,
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }
     }

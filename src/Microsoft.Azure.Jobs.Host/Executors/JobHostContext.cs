@@ -138,7 +138,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;
-                ICanFailCommand heartbeatCommand;
+                IRecurrentCommand heartbeatCommand;
                 HostOutputMessage hostOutputMessage;
 
                 if (dashboardAccount != null)
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 {
                     sharedQueueListenerFactory = new NullListenerFactory();
                     instanceQueueListenerFactory = new NullListenerFactory();
-                    heartbeatCommand = new NullCanFailCommand();
+                    heartbeatCommand = new NullRecurrentCommand();
                     hostOutputMessage = new DataOnlyHostOutputMessage();
                 }
 
@@ -214,7 +214,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         }
 
         private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
-            HostBindingContext bindingContext, ICanFailCommand heartbeatCommand, CancellationToken shutdownToken,
+            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand, innerExecutor);
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         }
 
         private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
-            HostBindingContext bindingContext, ICanFailCommand heartbeatCommand, CancellationToken shutdownToken,
+            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor executor)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,

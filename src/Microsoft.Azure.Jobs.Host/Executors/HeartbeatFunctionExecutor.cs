@@ -9,10 +9,10 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class HeartbeatFunctionExecutor : IFunctionExecutor
     {
-        private readonly ICanFailCommand _heartbeatCommand;
+        private readonly IRecurrentCommand _heartbeatCommand;
         private readonly IFunctionExecutor _innerExecutor;
 
-        public HeartbeatFunctionExecutor(ICanFailCommand heartbeatCommand, IFunctionExecutor innerExecutor)
+        public HeartbeatFunctionExecutor(IRecurrentCommand heartbeatCommand, IFunctionExecutor innerExecutor)
         {
             _heartbeatCommand = heartbeatCommand;
             _innerExecutor = innerExecutor;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         {
             IDelayedException result;
 
-            using (IntervalSeparationTimer timer = CreateHeartbeatTimer())
+            using (ITaskSeriesTimer timer = CreateHeartbeatTimer())
             {
 
                 await _heartbeatCommand.TryExecuteAsync(cancellationToken);
@@ -31,15 +31,15 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 result = await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
 
-                timer.Stop();
+                await timer.StopAsync(cancellationToken);
             }
 
             return result;
         }
 
-        private IntervalSeparationTimer CreateHeartbeatTimer()
+        private ITaskSeriesTimer CreateHeartbeatTimer()
         {
-            return LinearSpeedupTimerCommand.CreateTimer(_heartbeatCommand,
+            return LinearSpeedupStrategy.CreateTimer(_heartbeatCommand,
                 HeartbeatIntervals.NormalSignalInterval, HeartbeatIntervals.MinimumSignalInterval);
         }
     }

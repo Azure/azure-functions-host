@@ -48,7 +48,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             return await UpdateOutputLogCommand.CreateAsync(blob, existingContents, cancellationToken);
         }
 
-        public ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
+        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
             TextWriter consoleOutput)
         {
             return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), consoleOutput);

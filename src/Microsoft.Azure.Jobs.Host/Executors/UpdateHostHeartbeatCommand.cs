@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs.Host.Executors
 {
-    internal class UpdateHostHeartbeatCommand : ICanFailCommand
+    internal class UpdateHostHeartbeatCommand : IRecurrentCommand
     {
         private readonly IHeartbeatCommand _heartbeatCommand;
 

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
     // Flush will come on a different thread, so we need to have thread-safe
     // access between the Reader (ToString)  and the Writers (which are happening as our
     // caller uses the textWriter that we return).
-    internal sealed class UpdateOutputLogCommand : ICanFailCommand, IDisposable, IFunctionOutput
+    internal sealed class UpdateOutputLogCommand : IRecurrentCommand, IDisposable, IFunctionOutput
     {
         private readonly CloudBlockBlob _outputBlob;
 
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             _uploadCommand = uploadCommand;
         }
 
-        public ICanFailCommand UpdateCommand
+        public IRecurrentCommand UpdateCommand
         {
             get
             {

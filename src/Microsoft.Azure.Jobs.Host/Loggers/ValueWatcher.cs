@@ -17,23 +17,25 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 {
     internal class ValueWatcher
     {
-        private readonly IIntervalSeparationCommand _command;
-        private readonly IntervalSeparationTimer _timer;
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            _timer.Stop();
-
-            // Flush remaining. do this after timer has been shutdown to avoid races. 
-            return _command.ExecuteAsync(cancellationToken);
-        }
+        private readonly ITaskSeriesCommand _command;
+        private readonly ITaskSeriesTimer _timer;
 
         // Begin watchers.
-        public ValueWatcher(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
+        public ValueWatcher(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob blobResults,
+            TextWriter consoleOutput)
         {
-            _command = new ValueWatcherCommand(watches, blobResults, consoleOutput);
-            _timer = new IntervalSeparationTimer(_command);
+            ValueWatcherCommand command = new ValueWatcherCommand(watches, blobResults, consoleOutput);
+            _command = command;
+            _timer = ValueWatcherCommand.CreateTimer(command);
             _timer.Start();
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await _timer.StopAsync(cancellationToken);
+
+            // Flush remaining. do this after timer has been shutdown to avoid races. 
+            await _command.ExecuteAsync(cancellationToken);
         }
 
         public static void AddLogs(IReadOnlyDictionary<string, IWatcher> watches,
@@ -59,34 +61,31 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             }
         }
 
-        private class ValueWatcherCommand : IIntervalSeparationCommand
+        private class ValueWatcherCommand : ITaskSeriesCommand
         {
-            private readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3); // Wait before first Log, small for initial quick log
-            private readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);  // Wait inbetween logs
+            // Wait before first Log, small for initial quick log
+            private static readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3);
+            // Wait in between logs
+            private static readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);
+
             private readonly IReadOnlyDictionary<string, IWatcher> _watches;
             private readonly CloudBlockBlob _blobResults;
             private readonly TextWriter _consoleOutput;
 
-            private TimeSpan _currentDelay;
             private string _lastContent;
 
-            public ValueWatcherCommand(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob blobResults, TextWriter consoleOutput)
+            public ValueWatcherCommand(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob blobResults,
+                TextWriter consoleOutput)
             {
-                _currentDelay = _intialDelay;
                 _blobResults = blobResults;
                 _consoleOutput = consoleOutput;
                 _watches = watches;
             }
 
-            public TimeSpan SeparationInterval
-            {
-                get { return _currentDelay; }
-            }
-
-            public async Task ExecuteAsync(CancellationToken cancellationToken)
+            public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
             {
                 await LogStatusWorkerAsync(cancellationToken);
-                _currentDelay = _refreshRate;
+                return new TaskSeriesCommandResult(wait: Task.Delay(_refreshRate));
             }
 
             private async Task LogStatusWorkerAsync(CancellationToken cancellationToken)
@@ -123,6 +122,11 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     _consoleOutput.WriteLine(e.ToDetails());
                     _consoleOutput.WriteLine("-------------------------");
                 }
+            }
+
+            public static ITaskSeriesTimer CreateTimer(ValueWatcherCommand command)
+            {
+                return new TaskSeriesTimer(command, Task.Delay(_intialDelay));
             }
         }
     }

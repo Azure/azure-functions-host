@@ -10,11 +10,11 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
 {
     internal sealed class TimerListener : IListener
     {
-        private readonly IntervalSeparationTimer _timer;
+        private readonly ITaskSeriesTimer _timer;
 
         private bool _disposed;
 
-        public TimerListener(IntervalSeparationTimer timer)
+        public TimerListener(ITaskSeriesTimer timer)
         {
             _timer = timer;
         }
@@ -29,8 +29,7 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
         public Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            _timer.Stop();
-            return Task.FromResult(0);
+            return _timer.StopAsync(cancellationToken);
         }
 
         public void Cancel()

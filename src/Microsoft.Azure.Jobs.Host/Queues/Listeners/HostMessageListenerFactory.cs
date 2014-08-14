@@ -34,9 +34,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
-            ICanFailCommand command = new PollQueueCommand(_queue, poisonQueue: null, triggerExecutor: triggerExecutor);
+            IRecurrentCommand command = new PollQueueCommand(_queue, poisonQueue: null,
+                triggerExecutor: triggerExecutor);
             // Use a shorter maximum polling interval for run/abort from dashboard.
-            IntervalSeparationTimer timer = ExponentialBackoffTimerCommand.CreateTimer(command, Minimum, Maxmimum);
+            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command, Minimum, Maxmimum);
             IListener listener = new TimerListener(timer);
             return Task.FromResult(listener);
         }

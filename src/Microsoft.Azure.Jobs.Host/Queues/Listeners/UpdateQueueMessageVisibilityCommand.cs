@@ -10,7 +10,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal class UpdateQueueMessageVisibilityCommand : ICanFailCommand
+    internal class UpdateQueueMessageVisibilityCommand : IRecurrentCommand
     {
         private readonly CloudQueue _queue;
         private readonly CloudQueueMessage _message;

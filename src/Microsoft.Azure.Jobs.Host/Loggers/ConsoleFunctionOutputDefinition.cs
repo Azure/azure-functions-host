@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
             return Task.FromResult(output);
         }
 
-        public ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
+        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
             TextWriter consoleOutput)
         {
             return null;
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
                 get { return Console.Out; }
             }
 
-            public ICanFailCommand UpdateCommand
+            public IRecurrentCommand UpdateCommand
             {
                 get { return null; }
             }

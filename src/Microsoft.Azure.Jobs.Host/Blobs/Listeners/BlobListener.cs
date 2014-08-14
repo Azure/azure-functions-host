@@ -46,11 +46,15 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                     "The listener has not yet been started or has already been stopped.");
             }
 
+            return StopAsyncCore(cancellationToken);
+        }
+
+        private async Task StopAsyncCore(CancellationToken cancellationToken)
+        {
             // Stops the entire shared listener (if not yet stopped).
             // There is currently no scenario for controlling a single blob listener independently.
-            _sharedListener.EnsureAllStopped();
+            await _sharedListener.EnsureAllStopped(cancellationToken);
             _started = false;
-            return Task.FromResult(0);
         }
 
         public void Cancel()

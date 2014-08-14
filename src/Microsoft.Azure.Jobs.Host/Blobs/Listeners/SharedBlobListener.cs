@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
@@ -13,7 +14,7 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
     internal sealed class SharedBlobListener : ISharedListener<CloudBlobContainer, ICloudBlob>
     {
         private readonly IBlobNotificationStrategy _strategy;
-        private readonly IntervalSeparationTimer _timer;
+        private readonly ITaskSeriesTimer _timer;
 
         private bool _started;
         private bool _disposed;
@@ -21,7 +22,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         public SharedBlobListener(CloudStorageAccount storageAccount)
         {
             _strategy = CreateStrategy(storageAccount);
-            _timer = new IntervalSeparationTimer(_strategy);
+            // Start the first iteration immediately.
+            _timer = new TaskSeriesTimer(_strategy, initialWait: Task.Delay(0));
         }
 
         public IBlobWrittenWatcher BlobWritterWatcher
@@ -48,11 +50,11 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             }
         }
 
-        public void EnsureAllStopped()
+        public async Task EnsureAllStopped(CancellationToken cancellationToken)
         {
             if (_started)
             {
-                _timer.Stop();
+                await _timer.StopAsync(cancellationToken);
                 _started = false;
             }
         }

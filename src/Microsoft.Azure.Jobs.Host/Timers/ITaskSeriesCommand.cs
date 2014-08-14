@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Timers
 {
-    internal class NullCanFailCommand : ICanFailCommand
+    internal interface ITaskSeriesCommand
     {
-        public Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
-        {
-            return Task.FromResult(true);
-        }
+        Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken);
     }
 }

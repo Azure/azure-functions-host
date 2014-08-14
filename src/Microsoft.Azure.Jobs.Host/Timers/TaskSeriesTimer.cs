@@ -2,23 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Timers
 {
-    /// <summary>
-    /// Represents a timer that keeps a heartbeat running at a specified interval using a separate thread.
-    /// </summary>
-    internal sealed class IntervalSeparationTimer : IDisposable
+    /// <summary>Represents a timer that executes one task after another in a series.</summary>
+    internal sealed class TaskSeriesTimer : ITaskSeriesTimer
     {
-        private static readonly TimeSpan infiniteTimeout = TimeSpan.FromMilliseconds(-1);
-
-        private readonly IIntervalSeparationCommand _command;
+        private readonly ITaskSeriesCommand _command;
+        private readonly Task _initialWait;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
@@ -27,17 +21,22 @@ namespace Microsoft.Azure.Jobs.Host.Timers
         private Task _run;
         private bool _disposed;
 
-        public IntervalSeparationTimer(IIntervalSeparationCommand command)
-            : this(command, BackgroundExceptionDispatcher.Instance)
+        public TaskSeriesTimer(ITaskSeriesCommand command, Task initialWait)
+            : this(command, initialWait, BackgroundExceptionDispatcher.Instance)
         {
         }
 
-        public IntervalSeparationTimer(IIntervalSeparationCommand command,
+        public TaskSeriesTimer(ITaskSeriesCommand command, Task initialWait,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (command == null)
             {
                 throw new ArgumentNullException("command");
+            }
+
+            if (initialWait == null)
+            {
+                throw new ArgumentNullException("initialWait");
             }
 
             if (backgroundExceptionDispatcher == null)
@@ -46,6 +45,7 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             }
 
             _command = command;
+            _initialWait = initialWait;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _cancellationTokenSource = new CancellationTokenSource();
         }
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             _started = true;
         }
 
-        public void Stop()
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
 
@@ -78,9 +78,19 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             }
 
             _cancellationTokenSource.Cancel();
+            return StopAsyncCore(cancellationToken);
+        }
 
-            // Wait for all pending command tasks to complete before returning.
-            _run.GetAwaiter().GetResult();
+        private async Task StopAsyncCore(CancellationToken cancellationToken)
+        {
+            await Task.Delay(0);
+            TaskCompletionSource<object> cancellationTaskSource = new TaskCompletionSource<object>();
+
+            using (cancellationToken.Register(() => cancellationTaskSource.SetCanceled()))
+            {
+                // Wait for all pending command tasks to complete (or cancellation of the token) before returning.
+                await Task.WhenAny(_run, cancellationTaskSource.Task);
+            }
 
             _stopped = true;
         }
@@ -109,48 +119,42 @@ namespace Microsoft.Azure.Jobs.Host.Timers
         {
             try
             {
-                // Allow Start to return immediately without waiting for the first command to execute.
+                // Allow Start to return immediately without waiting for any initial iteration work to start.
                 await Task.Yield();
 
-                // Schedule another execution until stopped.
+                Task wait = _initialWait;
+
+                // Execute tasks one at a time (in a series) until stopped.
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    try
+                    TaskCompletionSource<object> cancellationTaskSource = new TaskCompletionSource<object>();
+
+                    using (cancellationToken.Register(() => cancellationTaskSource.SetCanceled()))
                     {
-                        await Task.Delay(_command.SeparationInterval, cancellationToken);
+                        try
+                        {
+                            await Task.WhenAny(wait, cancellationTaskSource.Task);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // When Stop fires, don't make it wait for wait before it can return.
+                        }
                     }
-                    catch (OperationCanceledException)
+
+                    if (cancellationToken.IsCancellationRequested)
                     {
-                        // When Stop fires, don't make it wait for _command.SeparationInterval before it can return.
                         break;
                     }
 
-                    Task commandTask = _command.ExecuteAsync(cancellationToken);
-                    Task continuationTask = commandTask.ContinueWith((t) =>
+                    try
                     {
-                        if (t.Status == TaskStatus.Faulted)
-                        {
-                            ExceptionDispatchInfo exceptionInfo;
-
-                            try
-                            {
-                                t.GetAwaiter().GetResult();
-                                throw new InvalidOperationException(
-                                    "Getting the result of a faulted task should throw an exception.");
-                            }
-                            catch (Exception exception)
-                            {
-                                exceptionInfo = ExceptionDispatchInfo.Capture(exception);
-                            }
-
-                            _backgroundExceptionDispatcher.Throw(exceptionInfo);
-                        }
-
-                        // Just allow the continuation task to run to completion if t.Status is Canceled or
-                        // RanToCompletion.
-                    }, TaskContinuationOptions.ExecuteSynchronously);
-
-                    await continuationTask;
+                        TaskSeriesCommandResult result = await _command.ExecuteAsync(cancellationToken);
+                        wait = result.Wait;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Don't fail the task, throw a background exception, or stop looping when a task cancels.
+                    }
                 }
             }
             catch (Exception exception)

@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Timers
 {
-    /// <summary>Defines a command that may fail gracefully.</summary>
-    internal interface ICanFailCommand
+    /// <summary>Defines a recurring command that may fail gracefully.</summary>
+    internal interface IRecurrentCommand
     {
         /// <summary>Attempts to execute the command.</summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>
-        /// A <see cref="Task"/> that will execute the command. The task's result is <see langword="false"/> if the command
-        /// fails gracefully; otherwise <see langword="true"/>.
+        /// A <see cref="Task"/> that will execute the command. The task's result is <see langword="false"/> if the
+        /// command fails gracefully; otherwise <see langword="true"/>.
         /// </returns>
         /// <remarks>
         /// The task completes successfully with a <see langword="false"/> result rather than faulting to indicate a

@@ -112,8 +112,8 @@
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\PocoEntityValueBinderTests.cs" />
     <Compile Include="TestJobHostConfiguration.cs" />
-    <Compile Include="Timers\ExponentialBackoffTimerCommandTests.cs" />
-    <Compile Include="Timers\IntervalSeparationCommandExtensions.cs" />
+    <Compile Include="Timers\RandomizedExponentialBackoffStrategyTests.cs" />
+    <Compile Include="Timers\TaskExtensions.cs" />
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />
@@ -122,9 +122,9 @@
     <Compile Include="Indexers\FunctionIndexerIntegrationErrorTests.cs" />
     <Compile Include="Indexers\FunctionIndexerIntegrationTests.cs" />
     <Compile Include="JobHostTests.cs" />
-    <Compile Include="Timers\IntervalSeparationTimerTests.cs" />
+    <Compile Include="Timers\TaskSeriesTimerTests.cs" />
     <Compile Include="Protocols\JsonTypeNameAttributeTests.cs" />
-    <Compile Include="Timers\LinearSpeedupTimerCommandTests.cs" />
+    <Compile Include="Timers\LinearSpeedupStrategyTests.cs" />
     <Compile Include="Indexers\NameResolverTests.cs" />
     <Compile Include="ObjectBinderHelpersTests.cs" />
     <Compile Include="Protocols\PolymorphicJsonConverterTests.cs" />

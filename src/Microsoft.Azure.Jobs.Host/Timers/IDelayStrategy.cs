@@ -2,14 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Timers;
 
-namespace Microsoft.Azure.Jobs.Host.Loggers
+namespace Microsoft.Azure.Jobs.Host.Timers
 {
-    internal interface IFunctionParameterLog : IDisposable
+    internal interface IDelayStrategy
     {
-        IRecurrentCommand UpdateCommand { get; }
-
-        void Close();
+        TimeSpan GetNextDelay(bool executionSucceeded);
     }
 }

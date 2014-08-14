@@ -2,33 +2,25 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Jobs.Host.Timers
 {
-    internal class LinearSpeedupTimerCommand : IIntervalSeparationCommand
+    internal class LinearSpeedupStrategy : IDelayStrategy
     {
-        private readonly ICanFailCommand _innerCommand;
         private readonly TimeSpan _normalInterval;
         private readonly TimeSpan _minimumInterval;
         private readonly int _failureSpeedupDivisor;
 
         private TimeSpan _currentInterval;
 
-        public LinearSpeedupTimerCommand(ICanFailCommand innerCommand, TimeSpan normalInterval, TimeSpan minimumInterval)
-            : this(innerCommand, normalInterval, minimumInterval, 2)
+        public LinearSpeedupStrategy(TimeSpan normalInterval, TimeSpan minimumInterval)
+            : this(normalInterval, minimumInterval, 2)
         {
         }
 
-        public LinearSpeedupTimerCommand(ICanFailCommand innerCommand, TimeSpan normalInterval, TimeSpan minimumInterval,
-            int failureSpeedupDivisor)
+        public LinearSpeedupStrategy(TimeSpan normalInterval, TimeSpan minimumInterval, int failureSpeedupDivisor)
         {
-            if (innerCommand == null)
-            {
-                throw new ArgumentNullException("innerCommand");
-            }
-
             if (normalInterval.Ticks < 0)
             {
                 throw new ArgumentOutOfRangeException("normalInterval", "The TimeSpan must not be negative.");
@@ -51,24 +43,15 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                     "The failureSpeedupDivisor must not be less than 1.");
             }
 
-            _innerCommand = innerCommand;
             _normalInterval = normalInterval;
             _minimumInterval = minimumInterval;
             _failureSpeedupDivisor = failureSpeedupDivisor;
-
             _currentInterval = normalInterval;
         }
 
-        public TimeSpan SeparationInterval
+        public TimeSpan GetNextDelay(bool executionSucceeded)
         {
-            get { return _currentInterval; }
-        }
-
-        public async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            bool succeeded = await _innerCommand.TryExecuteAsync(cancellationToken);
-
-            if (succeeded)
+            if (executionSucceeded)
             {
                 _currentInterval = _normalInterval;
             }
@@ -77,6 +60,8 @@ namespace Microsoft.Azure.Jobs.Host.Timers
                 TimeSpan speedupInterval = new TimeSpan(_currentInterval.Ticks / _failureSpeedupDivisor);
                 _currentInterval = Max(speedupInterval, _minimumInterval);
             }
+
+            return _currentInterval;
         }
 
         private static TimeSpan Max(TimeSpan x, TimeSpan y)
@@ -84,9 +69,12 @@ namespace Microsoft.Azure.Jobs.Host.Timers
             return x.Ticks > y.Ticks ? x : y;
         }
 
-        public static IntervalSeparationTimer CreateTimer(ICanFailCommand command, TimeSpan normalInterval, TimeSpan minimumInterval)
+        public static ITaskSeriesTimer CreateTimer(IRecurrentCommand command, TimeSpan normalInterval,
+            TimeSpan minimumInterval)
         {
-            return new IntervalSeparationTimer(new LinearSpeedupTimerCommand(command, normalInterval, minimumInterval));
+            IDelayStrategy delayStrategy = new LinearSpeedupStrategy(normalInterval, minimumInterval);
+            ITaskSeriesCommand timerCommand = new RecurrentTaskSeriesCommand(command, delayStrategy);
+            return new TaskSeriesTimer(timerCommand, Task.Delay(normalInterval));
         }
     }
 }

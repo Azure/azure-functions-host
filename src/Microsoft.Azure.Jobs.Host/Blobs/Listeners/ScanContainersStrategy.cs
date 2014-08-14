@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -22,20 +23,12 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         private readonly IDictionary<CloudBlobContainer, DateTime> _lastModifiedTimestamps;
         private readonly ConcurrentQueue<ICloudBlob> _blobWrittenNotifications;
 
-        // Start the first iteration immediately.
-        private TimeSpan _separationInterval = TimeSpan.Zero;
-
         public ScanContainersStrategy()
         {
             _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>>(
                 new CloudContainerComparer());
             _lastModifiedTimestamps = new Dictionary<CloudBlobContainer, DateTime>(new CloudContainerComparer());
             _blobWrittenNotifications = new ConcurrentQueue<ICloudBlob>();
-        }
-
-        public TimeSpan SeparationInterval
-        {
-            get { return _separationInterval; }
         }
 
         public void Notify(ICloudBlob blobWritten)
@@ -67,11 +60,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             }
         }
 
-        public async Task ExecuteAsync(CancellationToken cancellationToken)
+        public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Run subsequent iterations at 2 second intervals.
-            _separationInterval = _twoSeconds;
-
             // Drain the background queue of blob written notifications.
             while (true)
             {
@@ -101,6 +91,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                     await NotifyRegistrationsAsync(newBlob, cancellationToken);
                 }
             }
+
+            // Run subsequent iterations at 2 second intervals.
+            return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
         }
 
         private async Task NotifyRegistrationsAsync(ICloudBlob blob, CancellationToken cancellationToken)

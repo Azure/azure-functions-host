@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 
         Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken);
 
-        ICanFailCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
+        IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
             TextWriter consoleOutput);
     }
 }

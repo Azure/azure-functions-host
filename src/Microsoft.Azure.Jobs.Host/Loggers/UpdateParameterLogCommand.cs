@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.Jobs.Host.Loggers
 {
-    internal sealed class UpdateParameterLogCommand : ICanFailCommand
+    internal sealed class UpdateParameterLogCommand : IRecurrentCommand
     {
         private readonly IReadOnlyDictionary<string, IWatcher> _watches;
         private readonly CloudBlockBlob _parameterLogBlob;

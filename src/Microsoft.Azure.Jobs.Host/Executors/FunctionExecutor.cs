@@ -100,7 +100,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                 cancellationToken);
 
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
-            using (IntervalSeparationTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
+            using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
                 if (updateOutputLogTimer != null)
                 {
-                    updateOutputLogTimer.Stop();
+                    await updateOutputLogTimer.StopAsync(cancellationToken);
                 }
 
                 await outputLog.SaveAndCloseAsync(cancellationToken);
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             return _context.FunctionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
         }
 
-        private static IntervalSeparationTimer StartOutputTimer(ICanFailCommand updateCommand)
+        private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand)
         {
             if (updateCommand == null)
             {
@@ -167,13 +167,12 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             TimeSpan initialDelay = FunctionOutputIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionOutputIntervals.RefreshRate;
-            IntervalSeparationTimer timer =
-                FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate);
             timer.Start();
             return timer;
         }
 
-        private static IntervalSeparationTimer StartParameterLogTimer(ICanFailCommand updateCommand)
+        private static ITaskSeriesTimer StartParameterLogTimer(IRecurrentCommand updateCommand)
         {
             if (updateCommand == null)
             {
@@ -182,8 +181,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
 
             TimeSpan initialDelay = FunctionParameterLogIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionParameterLogIntervals.RefreshRate;
-            IntervalSeparationTimer timer =
-                FixedIntervalsTimerCommand.CreateTimer(updateCommand, initialDelay, refreshRate);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate);
             timer.Start();
             return timer;
         }
@@ -198,10 +196,10 @@ namespace Microsoft.Azure.Jobs.Host.Executors
             MethodInfo method = instance.Method;
             ParameterInfo[] parameterInfos = method.GetParameters();
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
-            ICanFailCommand updateParameterLogCommand =
+            IRecurrentCommand updateParameterLogCommand =
                 outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
 
-            using (IntervalSeparationTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand))
+            using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand))
             {
                 try
                 {
@@ -214,7 +212,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                         // the watches).
                         // Also, IValueBinder.SetValue could also take a long time (flushing large caches), and so it's
                         // useful to have watches still running.
-                        updateParameterLogTimer.Stop();
+                        await updateParameterLogTimer.StopAsync(cancellationToken);
                     }
                 }
                 finally

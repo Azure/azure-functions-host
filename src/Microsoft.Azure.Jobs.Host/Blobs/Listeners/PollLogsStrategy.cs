@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -24,9 +25,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
         private readonly Thread _initialScanThread;
         private readonly ConcurrentQueue<ICloudBlob> _blobsFoundFromScanOrNotification;
 
-        // Start the first iteration immediately.
-        private TimeSpan _separationInterval = TimeSpan.Zero;
-
         public PollLogsStrategy()
         {
             _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>>(
@@ -34,11 +32,6 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _logListeners = new Dictionary<CloudBlobClient, BlobLogListener>(new CloudBlobClientComparer());
             _initialScanThread = new Thread(ScanContainers);
             _blobsFoundFromScanOrNotification =  new ConcurrentQueue<ICloudBlob>();
-        }
-
-        public TimeSpan SeparationInterval
-        {
-            get { return _separationInterval; }
         }
 
         public void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor)
@@ -78,11 +71,8 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
             _blobsFoundFromScanOrNotification.Enqueue(blobWritten);
         }
 
-        public async Task ExecuteAsync(CancellationToken cancellationToken)
+        public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Run subsequent iterations at 2 second intervals.
-            _separationInterval = _twoSeconds;
-
             // Start a background scan of the container on first execution. Later writes will be found via polling logs.
             if (_initialScanThread.ThreadState == ThreadState.Unstarted)
             {
@@ -115,6 +105,9 @@ namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
                     await NotifyRegistrationsAsync(blob, cancellationToken);
                 }
             }
+
+            // Run subsequent iterations at 2 second intervals.
+            return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
         }
 
         private async Task NotifyRegistrationsAsync(ICloudBlob blob, CancellationToken cancellationToken)

@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Jobs.Host.Loggers
 {
     internal interface IFunctionOutput : IDisposable
     {
-        ICanFailCommand UpdateCommand { get; }
+        IRecurrentCommand UpdateCommand { get; }
 
         TextWriter Output { get; }
 

@@ -12,7 +12,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
-    internal sealed class PollQueueCommand : ICanFailCommand
+    internal sealed class PollQueueCommand : IRecurrentCommand
     {
         private const int PoisonThreshold = 5;
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                     foundMessage = true;
                     bool succeeded;
 
-                    using (IntervalSeparationTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message,
+                    using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message,
                         visibilityTimeout))
                     {
                         timer.Start();
@@ -110,14 +110,14 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             return foundMessage;
         }
 
-        private static IntervalSeparationTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
+        private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
             CloudQueueMessage message, TimeSpan visibilityTimeout)
         {
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
 
-            ICanFailCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
-            return LinearSpeedupTimerCommand.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
+            IRecurrentCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
+            return LinearSpeedupStrategy.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
         }
 
         private async Task DeleteMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
