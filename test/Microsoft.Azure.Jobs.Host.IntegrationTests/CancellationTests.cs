@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     Program.MonitoringCancellationToken = monitoringCancellationToken;
                     host.Start();
 
-                    bool monitoring = monitoringCancellationToken.WaitOne(2000);
+                    bool monitoring = monitoringCancellationToken.WaitOne(5000);
                     Assert.True(monitoring); // Guard
 
                     // Act

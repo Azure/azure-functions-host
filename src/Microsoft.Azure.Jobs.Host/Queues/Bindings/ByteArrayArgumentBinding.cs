@@ -58,7 +58,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 byte[] bytes = (byte[])value;
 
                 await _queue.AddMessageAndCreateIfNotExistsAsync(new CloudQueueMessage(bytes), cancellationToken);
-                _messageEnqueuedWatcher.Notify(_queue.Name);
+
+                if (_messageEnqueuedWatcher != null)
+                {
+                    _messageEnqueuedWatcher.Notify(_queue.Name);
+                }
             }
         }
     }

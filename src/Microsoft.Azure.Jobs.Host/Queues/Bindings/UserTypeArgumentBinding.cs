@@ -71,7 +71,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
                 CloudQueueMessage message = QueueCausalityManager.EncodePayload(_functionInstanceId, value);
 
                 await _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
-                _messageEnqueuedWatcher.Notify(_queue.Name);
+
+                if (_messageEnqueuedWatcher != null)
+                {
+                    _messageEnqueuedWatcher.Notify(_queue.Name);
+                }
             }
         }
     }
