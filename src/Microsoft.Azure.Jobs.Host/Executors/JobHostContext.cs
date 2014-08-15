@@ -12,6 +12,7 @@ using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Loggers;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.Azure.Jobs.Host.Queues.Listeners;
 using Microsoft.Azure.Jobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
@@ -85,7 +86,8 @@ namespace Microsoft.Azure.Jobs.Host.Executors
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(CloudStorageAccount dashboardAccount,
             CloudStorageAccount storageAccount, string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
-            CancellationToken shutdownToken, CancellationToken cancellationToken)
+            IQueueConfiguration queueConfiguration, CancellationToken shutdownToken,
+            CancellationToken cancellationToken)
         {
             using (CancellationTokenSource combinedCancellationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
@@ -134,7 +136,7 @@ namespace Microsoft.Azure.Jobs.Host.Executors
                     serviceBusConnectionString, combinedCancellationToken);
                 FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
                 HostBindingContext bindingContext = new HostBindingContext(functions.BindingProvider, nameResolver,
-                    storageAccount, serviceBusConnectionString);
+                    queueConfiguration, storageAccount, serviceBusConnectionString);
 
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;

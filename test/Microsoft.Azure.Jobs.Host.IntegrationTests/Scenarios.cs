@@ -71,9 +71,10 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    source.Token.WaitHandle.WaitOne(3000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(3000);
 
                     // Assert
+                    Assert.True(poisonMessageReceived); // Guard
                     Assert.Equal(expectedMessageText, PoisonQueueProgram.PoisonMessageText);
 
                     // Cleanup
@@ -84,6 +85,45 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 PoisonQueueProgram.SignalOnPoisonMessage = null;
                 PoisonQueueProgram.PoisonMessageText = null;
+                queue.DeleteIfExists();
+            }
+        }
+
+        [Fact]
+        public void TestMaxDequeueCount()
+        {
+            // Arrange
+            var account = TestStorage.GetAccount();
+            var queue = account.CreateCloudQueueClient().GetQueueReference("bad");
+            queue.CreateIfNotExists();
+            int expectedDequeueCount = 7;
+
+            try
+            {
+                queue.AddMessage(new CloudQueueMessage("fail"));
+
+                using (CancellationTokenSource source = new CancellationTokenSource())
+                using (JobHost host = JobHostFactory.Create<MaxDequeueCountProgram>(maxDequeueCount: expectedDequeueCount))
+                {
+                    MaxDequeueCountProgram.SignalOnPoisonMessage = source;
+
+                    host.Start();
+
+                    // Act
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(3000);
+
+                    // Assert
+                    Assert.True(poisonMessageReceived); // Guard
+                    Assert.Equal(expectedDequeueCount, MaxDequeueCountProgram.DequeueCount);
+
+                    // Cleanup
+                    host.Stop();
+                }
+            }
+            finally
+            {
+                MaxDequeueCountProgram.SignalOnPoisonMessage = null;
+                MaxDequeueCountProgram.DequeueCount = 0;
                 queue.DeleteIfExists();
             }
         }
@@ -310,6 +350,29 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
         public static void ReceiveFromPoisonQueue([QueueTrigger("bad-poison")] string message)
         {
             PoisonMessageText = message;
+            CancellationTokenSource source = SignalOnPoisonMessage;
+
+            if (source != null)
+            {
+                source.Cancel();
+            }
+        }
+    }
+
+    public class MaxDequeueCountProgram
+    {
+        public static CancellationTokenSource SignalOnPoisonMessage { get; set; }
+
+        public static int DequeueCount { get; set; }
+
+        public static void PutInPoisonQueue([QueueTrigger("bad")] string message)
+        {
+            DequeueCount++;
+            throw new InvalidOperationException();
+        }
+
+        public static void ReceiveFromPoisonQueue([QueueTrigger("bad-poison")] string message)
+        {
             CancellationTokenSource source = SignalOnPoisonMessage;
 
             if (source != null)

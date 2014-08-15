@@ -14,18 +14,17 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
 {
     internal sealed class PollQueueCommand : IAlertingRecurrentCommand, INotificationCommand
     {
-        private const int PoisonThreshold = 5;
-
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
         private readonly ITriggerExecutor<CloudQueueMessage> _triggerExecutor;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
+        private readonly int _maxDequeueCount;
         private readonly object _stopWaitingTaskSourceLock = new object();
 
         private TaskCompletionSource<object> _stopWaitingTaskSource;
 
         public PollQueueCommand(CloudQueue queue, CloudQueue poisonQueue,
-            ITriggerExecutor<CloudQueueMessage> triggerExecutor, SharedQueueWatcher sharedWatcher)
+            ITriggerExecutor<CloudQueueMessage> triggerExecutor, SharedQueueWatcher sharedWatcher, int maxDequeueCount)
         {
             _queue = queue;
             _poisonQueue = poisonQueue;
@@ -37,6 +36,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                 sharedWatcher.Register(queue.Name, this);
                 _sharedWatcher = sharedWatcher;
             }
+
+            _maxDequeueCount = maxDequeueCount;
         }
 
         public async Task<AlertingRecurrentCommandResult> TryExecuteAsync(CancellationToken cancellationToken)
@@ -107,9 +108,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                     }
                     else if (_poisonQueue != null)
                     {
-                        if (message.DequeueCount >= PoisonThreshold)
+                        if (message.DequeueCount >= _maxDequeueCount)
                         {
-                            Console.WriteLine("Queue poison message threshold exceeded. Moving message to queue '{0}'.",
+                            Console.WriteLine(
+                                "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
+                                _maxDequeueCount,
                                 _poisonQueue.Name);
                             await CopyToPoisonQueueAsync(message, cancellationToken);
                             await DeleteMessageAsync(message, cancellationToken);

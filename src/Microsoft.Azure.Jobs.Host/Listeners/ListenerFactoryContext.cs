@@ -23,6 +23,11 @@ namespace Microsoft.Azure.Jobs.Host.Listeners
             _cancellationToken = cancellationToken;
         }
 
+        public IQueueConfiguration QueueConfiguration
+        {
+            get { return _hostContext.QueueConfiguration; }
+        }
+
         public CloudStorageAccount StorageAccount
         {
             get { return _hostContext.StorageAccount; }

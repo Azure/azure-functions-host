@@ -65,6 +65,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
                 "ConnectionStringNames",
                 "JobHost", 
                 "JobHostConfiguration", 
+                "JobHostQueuesConfiguration",
                 "ITypeLocator", 
                 "INameResolver", 
                 "WebJobsShutdownWatcher" 

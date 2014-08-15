@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Queues;
 
 namespace Microsoft.Azure.Jobs.Host.TestCommon
 {
@@ -15,6 +16,8 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
         public IStorageCredentialsValidator StorageCredentialsValidator { get; set; }
 
         public ITypeLocator TypeLocator { get; set; }
+
+        public IQueueConfiguration Queues { get; set; }
 
         public object GetService(Type serviceType)
         {
@@ -33,6 +36,10 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
             else if (serviceType == typeof(ITypeLocator))
             {
                 return TypeLocator;
+            }
+            else if (serviceType == typeof(IQueueConfiguration))
+            {
+                return Queues;
             }
             else
             {

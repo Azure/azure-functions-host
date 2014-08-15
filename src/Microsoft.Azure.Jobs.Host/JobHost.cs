@@ -11,6 +11,7 @@ using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
 using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.Jobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.Jobs
@@ -84,13 +85,14 @@ namespace Microsoft.Azure.Jobs
             IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
             ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
+            IQueueConfiguration queueConfiguration = serviceProvider.GetJobHostQueuesConfiguration();
 
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
 
             _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
-                credentialsValidator, typeLocator, nameResolver, _shutdownTokenSource.Token);
+                credentialsValidator, typeLocator, nameResolver, queueConfiguration, _shutdownTokenSource.Token);
         }
 
         // Test hook only.

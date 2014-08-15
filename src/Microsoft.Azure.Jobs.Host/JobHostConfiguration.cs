@@ -6,15 +6,17 @@ using System.IO;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.Jobs.Host.Queues;
 
 namespace Microsoft.Azure.Jobs
 {
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
-    public class JobHostConfiguration : IServiceProvider
+    public sealed class JobHostConfiguration : IServiceProvider
     {
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly IStorageCredentialsValidator _storageCredentialsValidator =
             new DefaultStorageCredentialsValidator();
+        private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
@@ -100,6 +102,12 @@ namespace Microsoft.Azure.Jobs
             }
         }
 
+        /// <summary>Gets the configuration used by <see cref="QueueTriggerAttribute"/>.</summary>
+        public JobHostQueuesConfiguration Queues
+        {
+            get { return _queueConfiguration; }
+        }
+
         /// <summary>Gets the service object of the specified type.</summary>
         /// <param name="serviceType">The type of service object to get.</param>
         /// <returns>
@@ -126,6 +134,10 @@ namespace Microsoft.Azure.Jobs
             else if (serviceType == typeof(INameResolver))
             {
                 return _nameResolver;
+            }
+            else if (serviceType == typeof(IQueueConfiguration))
+            {
+                return _queueConfiguration;
             }
             else
             {

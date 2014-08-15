@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.Jobs.Host.Queues;
 
 namespace Microsoft.Azure.Jobs.Host
 {
@@ -32,6 +33,11 @@ namespace Microsoft.Azure.Jobs.Host
         public static INameResolver GetNameResolver(this IServiceProvider serviceProvider)
         {
             return GetService<INameResolver>(serviceProvider);
+        }
+
+        public static IQueueConfiguration GetJobHostQueuesConfiguration(this IServiceProvider serviceProvider)
+        {
+            return GetService<IQueueConfiguration>(serviceProvider);
         }
 
         private static T GetService<T>(this IServiceProvider serviceProvider) where T : class

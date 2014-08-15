@@ -42,10 +42,11 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
             SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
+            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
             IAlertingRecurrentCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor,
-                sharedWatcher);
+                sharedWatcher, queueConfiguration.MaxDequeueCount);
             ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command,
-                QueuePollingIntervals.Minimum, QueuePollingIntervals.Maximum);
+                QueuePollingIntervals.Minimum, queueConfiguration.MaxPollingInterval);
             IListener listener = new TimerListener(timer);
             return Task.FromResult(listener);
         }

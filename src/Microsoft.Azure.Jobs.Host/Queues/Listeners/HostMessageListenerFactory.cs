@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Host.Indexers;
 using Microsoft.Azure.Jobs.Host.Listeners;
@@ -16,7 +15,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
     internal class HostMessageListenerFactory : IListenerFactory
     {
         private static readonly TimeSpan Minimum = QueuePollingIntervals.Minimum;
-        private static readonly TimeSpan Maxmimum = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan DefaultMaximum = TimeSpan.FromMinutes(1);
 
         private readonly CloudQueue _queue;
         private readonly IFunctionIndexLookup _functionLookup;
@@ -34,10 +33,17 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
         {
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
-            IAlertingRecurrentCommand command = new PollQueueCommand(_queue, poisonQueue: null,
-                triggerExecutor: triggerExecutor, sharedWatcher: null);
+            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
+            IAlertingRecurrentCommand command = new PollQueueCommand(_queue,
+                poisonQueue: null,
+                triggerExecutor: triggerExecutor,
+                sharedWatcher: null,
+                maxDequeueCount: queueConfiguration.MaxDequeueCount);
+            TimeSpan configuredMaximum = queueConfiguration.MaxPollingInterval;
             // Use a shorter maximum polling interval for run/abort from dashboard.
-            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command, Minimum, Maxmimum);
+            // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
+            TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
+            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command, Minimum, maximum);
             IListener listener = new TimerListener(timer);
             return Task.FromResult(listener);
         }

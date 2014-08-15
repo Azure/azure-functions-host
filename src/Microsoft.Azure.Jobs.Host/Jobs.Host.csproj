@@ -323,6 +323,7 @@
     <Compile Include="Executors\FunctionOutputIntervals.cs" />
     <Compile Include="Executors\FunctionParameterLogIntervals.cs" />
     <Compile Include="Executors\AbortListenerFunctionExecutor.cs" />
+    <Compile Include="JobHostQueuesConfiguration.cs" />
     <Compile Include="Listeners\HeartbeatListener.cs" />
     <Compile Include="Listeners\ShutdownListener.cs" />
     <Compile Include="Listeners\ListenerFactoryListener.cs" />
@@ -356,6 +357,7 @@
     <Compile Include="Loggers\IFunctionOutputDefinition.cs" />
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
+    <Compile Include="Queues\IQueueConfiguration.cs" />
     <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
     <Compile Include="Queues\Listeners\INotificationCommand.cs" />
     <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />

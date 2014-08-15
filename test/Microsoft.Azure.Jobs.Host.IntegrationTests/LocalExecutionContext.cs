@@ -37,6 +37,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             _context = new HostBindingContext(
                 bindingProvider: index.BindingProvider,
                 nameResolver: null,
+                queueConfiguration: null,
                 storageAccount: account,
                 serviceBusConnectionString: null);
         }

@@ -82,6 +82,7 @@
     <Compile Include="WebJobsShutdownContext.cs" />
     <Compile Include="ExceptionAssert.cs" />
     <Compile Include="TaskExtensions.cs" />
+    <Compile Include="SimpleQueueConfiguration.cs" />
     <Compile Include="TestJobHost.cs" />
     <Compile Include="NullConnectionStringProvider.cs" />
     <Compile Include="RandomNameResolver.cs" />

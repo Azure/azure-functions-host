@@ -9,10 +9,20 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
     {
         public static TestJobHost<TProgram> Create<TProgram>()
         {
-            return Create<TProgram>(CloudStorageAccount.DevelopmentStorageAccount);
+            return Create<TProgram>(CloudStorageAccount.DevelopmentStorageAccount, maxDequeueCount: 5);
+        }
+
+        public static TestJobHost<TProgram> Create<TProgram>(int maxDequeueCount)
+        {
+            return Create<TProgram>(CloudStorageAccount.DevelopmentStorageAccount, maxDequeueCount);
         }
 
         public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount)
+        {
+            return Create<TProgram>(storageAccount, maxDequeueCount : 5);
+        }
+
+        public static TestJobHost<TProgram> Create<TProgram>(CloudStorageAccount storageAccount, int maxDequeueCount)
         {
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
@@ -24,7 +34,8 @@ namespace Microsoft.Azure.Jobs.Host.TestCommon
                     DashboardAccount = null
                 },
                 StorageCredentialsValidator = new NullStorageCredentialsValidator(),
-                ConnectionStringProvider = new NullConnectionStringProvider()
+                ConnectionStringProvider = new NullConnectionStringProvider(),
+                Queues = new SimpleQueueConfiguration(maxDequeueCount)
             };
 
             return new TestJobHost<TProgram>(configuration);
