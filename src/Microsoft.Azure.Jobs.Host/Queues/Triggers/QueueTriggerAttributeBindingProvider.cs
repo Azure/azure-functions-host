@@ -33,7 +33,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             string queueName = context.Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
-            IArgumentBinding<CloudQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {

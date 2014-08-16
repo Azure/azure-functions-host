@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
@@ -19,7 +21,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             _converter = converter;
         }
 
-        public IArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(T))
             {
@@ -29,7 +31,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             return new ConverterArgumentBinding(_converter);
         }
 
-        internal class ConverterArgumentBinding : IArgumentBinding<BrokeredMessage>
+        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<BrokeredMessage>
         {
             private readonly IAsyncConverter<BrokeredMessage, T> _converter;
 
@@ -43,12 +45,18 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return typeof(T); }
             }
 
-            public async Task<IValueProvider> BindAsync(BrokeredMessage value, ValueBindingContext context)
+            public IReadOnlyDictionary<string, Type> BindingDataContract
+            {
+                get { return null; }
+            }
+
+            public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
             {
                 BrokeredMessage clone = value.Clone();
                 object converted = await _converter.ConvertAsync(value, context.CancellationToken);
-                return await BrokeredMessageValueProvider.CreateAsync(clone, converted, typeof(T),
+                IValueProvider provider = await BrokeredMessageValueProvider.CreateAsync(clone, converted, typeof(T),
                     context.CancellationToken);
+                return new TriggerData(provider, null);
             }
         }
     }

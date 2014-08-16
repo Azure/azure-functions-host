@@ -83,6 +83,7 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\BindingDataPathTests.cs" />
     <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
     <Compile Include="Blobs\AsyncCompletionSource.cs" />
@@ -107,6 +108,7 @@
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamTests.cs" />
+    <Compile Include="Queues\QueueTriggerBindingIntegrationTests.cs" />
     <Compile Include="Tables\PocoEntityArgumentBindingProviderTests.cs" />
     <Compile Include="Tables\TableEntityValueBinderTests.cs" />
     <Compile Include="Tables\TableEntityArgumentBindingProviderTests.cs" />
@@ -116,7 +118,7 @@
     <Compile Include="WebJobsShutdownWatcherTests.cs" />
     <Compile Include="Blobs\BlobPathSourceTests.cs" />
     <Compile Include="Blobs\BlobPathTests.cs" />
-    <Compile Include="Bindings\BindingDataTests.cs" />
+    <Compile Include="Bindings\BindingDataProviderTests.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommandTests.cs" />
     <Compile Include="Indexers\FunctionIndexerIntegrationErrorTests.cs" />
     <Compile Include="Indexers\FunctionIndexerIntegrationTests.cs" />

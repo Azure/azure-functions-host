@@ -272,6 +272,7 @@
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\IBindingDataProvider.cs" />
     <Compile Include="Bindings\ValueBindingContext.cs" />
     <Compile Include="Bindings\IWatcher.cs" />
     <Compile Include="Bindings\Runtime\AttributeBindingSource.cs" />
@@ -382,6 +383,7 @@
     <Compile Include="Timers\AlertingRecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\TaskSeriesCommandResult.cs" />
+    <Compile Include="Triggers\ITriggerDataArgumentBinding.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />
     <Compile Include="Executors\IBindingSource.cs" />
@@ -431,7 +433,7 @@
     <Compile Include="Bindings\Runtime\IAttributeBindingSource.cs" />
     <Compile Include="Bindings\FunctionBindingContext.cs" />
     <Compile Include="Bindings\BindingContext.cs" />
-    <Compile Include="Bindings\BindingData.cs" />
+    <Compile Include="Bindings\BindingDataProvider.cs" />
     <Compile Include="Bindings\BindingProviderContext.cs" />
     <Compile Include="Bindings\CompositeBindingProvider.cs" />
     <Compile Include="Bindings\IArgumentBinding.cs" />

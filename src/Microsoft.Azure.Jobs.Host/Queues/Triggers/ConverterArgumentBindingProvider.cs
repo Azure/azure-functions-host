@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
 using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
@@ -19,7 +21,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             _converter = converter;
         }
 
-        public IArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(T))
             {
@@ -29,7 +31,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             return new ConverterArgumentBinding(_converter);
         }
 
-        internal class ConverterArgumentBinding : IArgumentBinding<CloudQueueMessage>
+        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<CloudQueueMessage>
         {
             private readonly IConverter<CloudQueueMessage, T> _converter;
 
@@ -43,11 +45,16 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return typeof(T); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudQueueMessage value, ValueBindingContext context)
+            public IReadOnlyDictionary<string, Type> BindingDataContract
+            {
+                get { return null; }
+            }
+
+            public Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
             {
                 object converted = _converter.Convert(value);
                 IValueProvider provider = new QueueMessageValueProvider(value, converted, typeof(T));
-                return Task.FromResult(provider);
+                return Task.FromResult<ITriggerData>(new TriggerData(provider, null));
             }
         }
     }
