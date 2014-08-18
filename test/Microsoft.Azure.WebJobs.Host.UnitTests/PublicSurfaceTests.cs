@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
-        public void JobsPublicSurface_LimitedToSpecificTypes()
+        public void WebJobsPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(QueueTriggerAttribute).Assembly;
 
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         }
 
         [Fact]
-        public void JobsHostPublicSurface_LimitedToSpecificTypes()
+        public void WebJobsHostPublicSurface_LimitedToSpecificTypes()
         {
             var assembly = typeof(Microsoft.Azure.WebJobs.JobHost).Assembly;
 

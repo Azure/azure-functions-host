@@ -15,8 +15,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         private static Type[] EmptyTypeArray = new Type[0];
 
-        // Helper to filter out assemblies that don't even reference SimpleBatch.
-        private static bool DoesAssemblyReferenceAzureJobs(Assembly a)
+        // Helper to filter out assemblies that don't even reference this SDK.
+        private static bool DoesAssemblyReferenceSdk(Assembly a)
         {
             // Don't index methods in our Host or ServiceBus assemblies.
             if (typeof(DefaultTypeLocator).Assembly == a)
@@ -70,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public Type[] FindTypes(Assembly a)
         {
-            // Only try to index assemblies that reference Azure Jobs.
+            // Only try to index assemblies that reference this SDK.
             // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
-            if (!DoesAssemblyReferenceAzureJobs(a))
+            if (!DoesAssemblyReferenceSdk(a))
             {
                 return null;
             }

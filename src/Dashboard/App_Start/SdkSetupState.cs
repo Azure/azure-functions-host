@@ -16,7 +16,7 @@ namespace Dashboard
 
         public static string DashboardConnectionStringName
         {
-            get { return "AzureJobsDashboard"; }
+            get { return "AzureWebJobsDashboard"; }
         }
 
         public enum ConnectionStringStates

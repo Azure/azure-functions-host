@@ -311,7 +311,8 @@ namespace Microsoft.Azure.WebJobs
             if (function == null)
             {
                 string msg = String.Format(
-                    "'{0}' can't be invoked from Azure Jobs. Is it missing Azure Jobs bindings?", method);
+                    "'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?",
+                    method);
                 throw new InvalidOperationException(msg);
             }
 

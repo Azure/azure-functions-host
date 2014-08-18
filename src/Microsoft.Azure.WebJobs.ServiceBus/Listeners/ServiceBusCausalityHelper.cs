@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
     internal static class ServiceBusCausalityHelper
     {
-        private const string _parentGuidFieldName = "$AzureJobsParentId";
+        private const string _parentGuidFieldName = "$AzureWebJobsParentId";
 
         public static void EncodePayload(Guid functionOwner, BrokeredMessage msg)
         {

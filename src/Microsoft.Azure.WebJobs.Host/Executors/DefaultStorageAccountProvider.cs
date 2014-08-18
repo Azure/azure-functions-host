@@ -233,10 +233,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         internal static string FormatConnectionStringError(string type, string name, string coreMessage)
         {
             return String.Format(CultureInfo.CurrentCulture,
-                "Failed to validate Microsoft Azure Jobs {0} connection string: {2}" + Environment.NewLine +
-                "The Microsoft Azure Jobs connection string is specified by setting a connection string named '{1}' " +
-                "in the connectionStrings section of the .config file, or with an environment variable named '{1}', " +
-                "or through JobHostConfiguration.",
+                "Failed to validate Microsoft Azure WebJobs SDK {0} connection string: {2}" + Environment.NewLine +
+                "The Microsoft Azure WebJobs SDK connection string is specified by setting a connection string named " +
+                "'{1}' in the connectionStrings section of the .config file, or with an environment variable named " +
+                "'{1}', or through JobHostConfiguration.",
                 type,
                 AmbientConnectionStringProvider.GetPrefixedConnectionStringName(name),
                 coreMessage);

@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             Type serviceBusIndexerType = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.WebJobs.ServiceBus.ServiceBusIndexer");
             if (serviceBusIndexerType != null)
             {
-                MethodInfo serviceBusIndexerMethod = serviceBusIndexerType.GetMethod("HasAzureJobsAttribute", new Type[] { typeof(MethodInfo) });
+                MethodInfo serviceBusIndexerMethod = serviceBusIndexerType.GetMethod("HasSdkAttribute", new Type[] { typeof(MethodInfo) });
                 Debug.Assert(serviceBusIndexerMethod != null);
                 _hasServiceBusAttribute = (Func<MethodInfo, bool>)serviceBusIndexerMethod.CreateDelegate(
                     typeof(Func<MethodInfo, bool>));
@@ -50,13 +50,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public async Task IndexTypeAsync(Type type, IFunctionIndex index, CancellationToken cancellationToken)
         {
-            foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags).Where(IsAzureJobsMethod))
+            foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags).Where(IsSdkMethod))
             {
                 await IndexMethodAsync(method, index, cancellationToken);
             }
         }
 
-        public bool IsAzureJobsMethod(MethodInfo method)
+        public bool IsSdkMethod(MethodInfo method)
         {
             if (method.ContainsGenericParameters)
             {
@@ -68,12 +68,12 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 return false;
             }
 
-            if (method.GetCustomAttributesData().Any(HasAzureJobsAttribute))
+            if (method.GetCustomAttributesData().Any(HasSdkAttribute))
             {
                 return true;
             }
 
-            if (method.GetParameters().Any(p => p.GetCustomAttributesData().Any(HasAzureJobsAttribute)))
+            if (method.GetParameters().Any(p => p.GetCustomAttributesData().Any(HasSdkAttribute)))
             {
                 return true;
             }
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return false;
         }
 
-        private static bool HasAzureJobsAttribute(CustomAttributeData attributeData)
+        private static bool HasSdkAttribute(CustomAttributeData attributeData)
         {
             return attributeData.AttributeType.Assembly == typeof(BlobAttribute).Assembly;
         }
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                         {
                             // This function might not have any attribute, in which case we shouldn't throw an
                             // exception when we can't bind it. Instead, save this exception for later once we determine
-                            // whether or not it is an Azure Jobs function.
+                            // whether or not it is an SDK function.
                             invalidInvokeBindingException = new InvalidOperationException("Cannot bind parameter '" +
                                 parameterName + "' to type " + parameterType.Name + ".");
                         }

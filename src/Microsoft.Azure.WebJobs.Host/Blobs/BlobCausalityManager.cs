@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
     {
         // Metadata names must adehere to C# identifier rules
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
-        const string MetadataKeyName = "AzureJobsParentId";
+        const string MetadataKeyName = "AzureWebJobsParentId";
 
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
         public static async Task SetWriterAsync(ICloudBlob blob, Guid function, CancellationToken cancellationToken)

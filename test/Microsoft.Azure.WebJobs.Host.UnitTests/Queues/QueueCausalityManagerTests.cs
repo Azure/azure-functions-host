@@ -69,13 +69,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         [Fact]
         public void GetOwner_IfMessageOwnerIsNotString_ReturnsNull()
         {
-            TestOwnerReturnsNull("{'$AzureJobsParentId':null}");
+            TestOwnerReturnsNull("{'$AzureWebJobsParentId':null}");
         }
 
         [Fact]
         public void GetOwner_IfMessageOwnerIsNotGuid_ReturnsNull()
         {
-            TestOwnerReturnsNull("{'$AzureJobsParentId':'abc'}");
+            TestOwnerReturnsNull("{'$AzureWebJobsParentId':'abc'}");
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         {
             Guid expected = Guid.NewGuid();
             JObject json = new JObject();
-            json.Add("$AzureJobsParentId", new JValue(expected.ToString()));
+            json.Add("$AzureWebJobsParentId", new JValue(expected.ToString()));
 
             TestOwner(expected, json.ToString());
         }

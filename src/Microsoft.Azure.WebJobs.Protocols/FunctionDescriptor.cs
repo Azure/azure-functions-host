@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents an Azure Jobs function.</summary>
+    /// <summary>Represents an Azure WebJobs SDK function.</summary>
 #if PUBLICPROTOCOL
     public class FunctionDescriptor
 #else

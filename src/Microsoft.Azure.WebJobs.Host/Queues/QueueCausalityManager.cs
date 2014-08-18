@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     internal static class QueueCausalityManager
     {
         // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
-        const string parentGuidFieldName = "$AzureJobsParentId";
+        const string parentGuidFieldName = "$AzureWebJobsParentId";
 
         // When we enqueue, add the 
         public static CloudQueueMessage EncodePayload(Guid functionOwner, object payload)

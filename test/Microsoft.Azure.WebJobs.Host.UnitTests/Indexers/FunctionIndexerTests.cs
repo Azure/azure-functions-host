@@ -71,70 +71,70 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Fact]
-        public void IsAzureJobsMethod_ReturnsFalse_IfMethodHasUnresolvedGenericParameter()
+        public void IsSdkMethod_ReturnsFalse_IfMethodHasUnresolvedGenericParameter()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsAzureJobsMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"));
 
             // Verify
             Assert.Equal(false, actual);
         }
 
         [Fact]
-        public void IsAzureJobsMethod_ReturnsFalse_IfMethodHasNoParameters()
+        public void IsSdkMethod_ReturnsFalse_IfMethodHasNoParameters()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsAzureJobsMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithNoParameters"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithNoParameters"));
 
             // Verify
             Assert.Equal(false, actual);
         }
 
         [Fact]
-        public void IsAzureJobsMethod_ReturnsTrue_IfMethodHasAzureJobsAttribute()
+        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkAttribute()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsAzureJobsMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithAzureJobsAttribute"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkAttribute"));
 
             // Verify
             Assert.Equal(true, actual);
         }
 
         [Fact]
-        public void IsAzureJobsMethod_ReturnsTrue_IfMethodHasAzureJobsParameterAttributes()
+        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkParameterAttributes()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsAzureJobsMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithAzureJobsParameterAttributes"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkParameterAttributes"));
 
             // Verify
             Assert.Equal(true, actual);
         }
 
         [Fact]
-        public void IsAzureJobsMethod_ReturnsFalse_IfMethodHasNoAzureJobsAttributes()
+        public void IsSdkMethod_ReturnsFalse_IfMethodHasNoSdkAttributes()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsAzureJobsMethod(typeof(FunctionIndexerTests).GetMethod("TryParse"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("TryParse"));
 
             // Verify
             Assert.Equal(false, actual);
@@ -172,12 +172,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [NoAutomaticTrigger]
-        public static bool MethodWithAzureJobsAttribute(string input, out string output)
+        public static bool MethodWithSdkAttribute(string input, out string output)
         {
             throw new NotImplementedException();
         }
 
-        public static void MethodWithAzureJobsParameterAttributes([QueueTrigger("queue")] string input, [Blob("container/output")] TextWriter writer)
+        public static void MethodWithSdkParameterAttributes([QueueTrigger("queue")] string input, [Blob("container/output")] TextWriter writer)
         {
             throw new NotImplementedException();
         }

@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     internal static class ServiceBusIndexer
     {
-        public static bool HasAzureJobsAttribute (MethodInfo method)
+        public static bool HasSdkAttribute (MethodInfo method)
         {
             return method.GetParameters().Any(p => p.GetCustomAttributesData().Any(a => a.AttributeType.Assembly == typeof(ServiceBusIndexer).Assembly));
         }

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a parameter to an Azure Jobs function.</summary>
+    /// <summary>Represents a parameter to an Azure WebJobs SDK function.</summary>
     [JsonConverter(typeof(ParameterDescriptorConverter))]
 #if PUBLICPROTOCOL
     public class ParameterDescriptor

@@ -5,7 +5,7 @@ using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyProduct("Microsoft Azure Jobs")]
+[assembly: AssemblyProduct("Microsoft Azure WebJobs SDK")]
 [assembly: AssemblyCompany("Microsoft Corporation")]
 [assembly: AssemblyCopyright("© Microsoft Corporation. All rights reserved.")]
 
