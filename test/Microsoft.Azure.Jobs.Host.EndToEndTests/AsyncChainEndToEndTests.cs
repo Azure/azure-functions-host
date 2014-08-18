@@ -6,13 +6,13 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.EndToEndTests
+namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     public class AsyncChainEndToEndTests
     {

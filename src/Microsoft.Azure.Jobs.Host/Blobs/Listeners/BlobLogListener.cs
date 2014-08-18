@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     // Scans storage logs for blob writes
     internal class BlobLogListener

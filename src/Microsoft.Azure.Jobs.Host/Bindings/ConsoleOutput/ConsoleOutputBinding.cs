@@ -5,9 +5,9 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
+namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
 {
     internal class ConsoleOutputBinding : IBinding
     {

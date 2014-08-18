@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class CollectionArgumentBindingProvider : IQueueArgumentBindingProvider
     {

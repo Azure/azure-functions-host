@@ -3,9 +3,9 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     internal class ConsoleFunctionOutputLogger : IFunctionOutputLogger
     {

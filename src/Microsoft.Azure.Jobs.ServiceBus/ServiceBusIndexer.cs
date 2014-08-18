@@ -4,7 +4,7 @@
 using System.Linq;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.ServiceBus
+namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     internal static class ServiceBusIndexer
     {

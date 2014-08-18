@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Represents an attribute that binds a parameter to an Azure Table or Table entity.</summary>
     /// <remarks>

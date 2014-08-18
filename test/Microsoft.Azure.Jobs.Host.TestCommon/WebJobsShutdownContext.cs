@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 
-namespace Microsoft.Azure.Jobs.Host.TestCommon
+namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     /// <summary>
     /// A context that can be used to simulate the webjobs shutdown mechanism

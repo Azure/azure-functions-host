@@ -7,7 +7,7 @@ using System.Diagnostics;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.Jobs.Host.Queues
+namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     // This tracks causality via the queue message payload. 
     // Important that this can interoperate with external queue messages, so be resilient to a missing guid marker. 

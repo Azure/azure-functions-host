@@ -3,7 +3,7 @@
 
 using System;
 using Dashboard.Data;
-using Microsoft.Azure.Jobs;
+using Microsoft.Azure.WebJobs;
 
 namespace Dashboard.ViewModels
 {

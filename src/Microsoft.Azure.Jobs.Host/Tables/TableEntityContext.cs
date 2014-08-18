@@ -3,7 +3,7 @@
 
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableEntityContext
     {

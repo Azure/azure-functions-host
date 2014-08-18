@@ -4,7 +4,7 @@
 using System;
 using System.Globalization;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     // Describes an entry in the storage log
     internal class LogRow

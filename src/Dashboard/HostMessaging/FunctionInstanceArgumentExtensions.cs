@@ -4,9 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.Jobs.Protocols;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs;
+using Microsoft.Azure.WebJobs.Protocols;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs;
 using Microsoft.WindowsAzure.Storage;
 using Dashboard.Data;
 

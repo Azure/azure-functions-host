@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Represents an attribute binder.</summary>
     /// <remarks>This interface enables imperative binding with attribute information specified at runtime.</remarks>

@@ -3,9 +3,9 @@
 
 using System;
 #if PUBLICPROTOCOL
-using Microsoft.Azure.Jobs.Storage;
+using Microsoft.Azure.WebJobs.Storage;
 #else
-using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -14,9 +14,9 @@ using System.Threading;
 using System.Diagnostics;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Represents a command that signals a heartbeat from a running host instance.</summary>

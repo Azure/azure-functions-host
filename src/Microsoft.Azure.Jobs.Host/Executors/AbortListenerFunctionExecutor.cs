@@ -3,10 +3,10 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 
-namespace Microsoft.Azure.Jobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class AbortListenerFunctionExecutor : IFunctionExecutor
     {

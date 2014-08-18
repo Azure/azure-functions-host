@@ -3,17 +3,17 @@
 
 using System;
 #if PUBLICSTORAGE
-using Microsoft.Azure.Jobs.Storage.Queue;
-using Microsoft.Azure.Jobs.Storage.Table;
+using Microsoft.Azure.WebJobs.Storage.Queue;
+using Microsoft.Azure.WebJobs.Storage.Table;
 #else
-using Microsoft.Azure.Jobs.Host.Storage.Queue;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage
+namespace Microsoft.Azure.WebJobs.Storage
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage
+namespace Microsoft.Azure.WebJobs.Host.Storage
 #endif
 {
 #if PUBLICSTORAGE

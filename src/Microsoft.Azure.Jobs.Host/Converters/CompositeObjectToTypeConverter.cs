@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.Jobs.Host.Converters
+namespace Microsoft.Azure.WebJobs.Host.Converters
 {
     internal class CompositeObjectToTypeConverter<T> : IObjectToTypeConverter<T>
     {

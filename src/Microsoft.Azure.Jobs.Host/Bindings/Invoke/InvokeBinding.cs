@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
 {
     internal static class InvokeBinding
     {

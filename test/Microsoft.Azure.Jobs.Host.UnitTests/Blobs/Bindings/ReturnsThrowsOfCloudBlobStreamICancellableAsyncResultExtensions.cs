@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Moq.Language.Flow;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
 {
     internal static class ReturnsThrowsOfCloudBlobStreamICancellableAsyncResultExtensions
     {

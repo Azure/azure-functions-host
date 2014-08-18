@@ -4,11 +4,11 @@
 using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Blobs;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class FunctionBindingContext
     {

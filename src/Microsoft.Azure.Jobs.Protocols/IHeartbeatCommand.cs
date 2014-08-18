@@ -5,9 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Defines a command that signals a heartbeat from a running host instance.</summary>

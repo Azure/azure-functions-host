@@ -6,10 +6,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
+namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class BrokeredMessageValueProvider : IValueProvider
     {

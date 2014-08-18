@@ -10,9 +10,9 @@ using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <remarks>

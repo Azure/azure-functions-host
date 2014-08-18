@@ -7,7 +7,7 @@
     <ProjectGuid>{28BC5EE0-9227-4124-AA8F-1C0CAA218D12}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.ServiceBus.UnitTests</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.ServiceBus.UnitTests</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.ServiceBus.UnitTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

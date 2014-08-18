@@ -6,15 +6,15 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Triggers;
-using Microsoft.Azure.Jobs.ServiceBus.Triggers;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
 using Xunit.Extensions;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.UnitTests.Triggers
+namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
 {
     public class ServiceBusTriggerBindingIntegrationTests
     {

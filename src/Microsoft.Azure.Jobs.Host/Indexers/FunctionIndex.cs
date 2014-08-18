@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal class FunctionIndex : IFunctionIndex
     {

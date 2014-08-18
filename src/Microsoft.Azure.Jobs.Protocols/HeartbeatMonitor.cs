@@ -3,11 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Storage;
+using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 {
     /// <summary>Represents a monitor for running host heartbeats.</summary>
     public class HeartbeatMonitor : IHeartbeatMonitor

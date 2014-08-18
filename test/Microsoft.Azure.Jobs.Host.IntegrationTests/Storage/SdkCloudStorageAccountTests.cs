@@ -2,17 +2,17 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Storage;
-using Microsoft.Azure.Jobs.Host.Storage.Queue;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests.Storage
+namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
 {
     public class SdkCloudStorageAccountTests
     {

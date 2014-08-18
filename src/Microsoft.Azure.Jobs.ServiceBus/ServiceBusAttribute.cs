@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Binds to Azure Service Bus Queues and Topics.</summary>
     /// <remarks>

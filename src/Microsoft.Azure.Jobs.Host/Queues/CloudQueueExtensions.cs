@@ -5,11 +5,11 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues
+namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal static class CloudQueueExtensions
     {

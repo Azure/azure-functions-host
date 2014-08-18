@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.Jobs.Host.TestCommon
+namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class SimpleTypeLocator : ITypeLocator
     {

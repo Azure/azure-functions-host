@@ -3,15 +3,15 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
 {
     public class PolymorphicJsonConverterTests
     {

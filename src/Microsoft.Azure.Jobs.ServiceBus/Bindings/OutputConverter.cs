@@ -3,9 +3,9 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Converters;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class OutputConverter<TInput> : IAsyncObjectToTypeConverter<ServiceBusEntity>
         where TInput : class

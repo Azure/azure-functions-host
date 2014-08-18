@@ -6,7 +6,7 @@ using System.Diagnostics;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 {
     /// <summary>Represents a host message sender.</summary>
     public class HostMessageSender : IHostMessageSender

@@ -4,7 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal interface IBlobCommitedAction
     {

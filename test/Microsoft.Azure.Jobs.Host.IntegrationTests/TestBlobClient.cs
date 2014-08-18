@@ -6,7 +6,7 @@ using System.IO;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 {
     internal static class TestBlobClient
     {

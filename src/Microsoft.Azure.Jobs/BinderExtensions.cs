@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Provides extension methods for the <see cref="IBinder"/> interface.</summary>
     public static class BinderExtensions

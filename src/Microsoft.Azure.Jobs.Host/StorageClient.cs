@@ -5,7 +5,7 @@ using System;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class StorageClient
     {

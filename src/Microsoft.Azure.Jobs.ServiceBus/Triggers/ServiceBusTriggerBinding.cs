@@ -8,16 +8,16 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Triggers;
-using Microsoft.Azure.Jobs.ServiceBus.Listeners;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.ServiceBus.Listeners;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
+namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class ServiceBusTriggerBinding : ITriggerBinding<BrokeredMessage>
     {

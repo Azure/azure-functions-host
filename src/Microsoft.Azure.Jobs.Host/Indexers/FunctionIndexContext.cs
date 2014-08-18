@@ -4,7 +4,7 @@
 using System.Threading;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal class FunctionIndexContext
     {

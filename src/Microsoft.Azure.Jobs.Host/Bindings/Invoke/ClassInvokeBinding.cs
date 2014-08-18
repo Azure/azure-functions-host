@@ -3,10 +3,10 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Invoke
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
 {
     class ClassInvokeBinding<TValue> : IBinding
         where TValue : class

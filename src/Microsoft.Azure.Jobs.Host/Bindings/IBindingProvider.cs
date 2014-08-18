@@ -3,7 +3,7 @@
 
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal interface IBindingProvider
     {

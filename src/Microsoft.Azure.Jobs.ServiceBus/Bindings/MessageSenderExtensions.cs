@@ -5,11 +5,11 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.ServiceBus.Listeners;
+using Microsoft.Azure.WebJobs.ServiceBus.Listeners;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal static class MessageSenderExtensions
     {

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal sealed class CompositeListener : IListener
     {

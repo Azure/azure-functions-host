@@ -4,10 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Data
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
     internal class StructDataBinding<TBindingData> : IBinding
         where TBindingData : struct

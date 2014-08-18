@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
+namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 {
     internal class CloudStorageAccountBindingProvider : IBindingProvider
     {

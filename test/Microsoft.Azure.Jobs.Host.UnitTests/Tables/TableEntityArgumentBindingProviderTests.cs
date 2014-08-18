@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Tables
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
     public class TableEntityArgumentBindingProviderTests
     {

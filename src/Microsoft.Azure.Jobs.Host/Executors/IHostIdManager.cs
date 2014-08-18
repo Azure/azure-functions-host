@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     /// <summary>Defines a manager that maps a shared host name to an ID.</summary>
     /// <remarks>

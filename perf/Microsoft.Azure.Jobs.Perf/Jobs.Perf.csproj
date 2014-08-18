@@ -7,7 +7,7 @@
     <ProjectGuid>{34D23554-5482-4B3D-B65F-46DFF5AF1684}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.Perf</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.Perf</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.Perf</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

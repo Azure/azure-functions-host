@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class BoundTableEntityPath : IBindableTableEntityPath
     {

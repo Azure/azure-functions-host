@@ -6,15 +6,15 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Defines properties and methods to locate Job methods and listen to trigger events in order

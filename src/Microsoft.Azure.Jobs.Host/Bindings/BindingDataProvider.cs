@@ -9,7 +9,7 @@ using System.Reflection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class BindingDataProvider : IBindingDataProvider
     {

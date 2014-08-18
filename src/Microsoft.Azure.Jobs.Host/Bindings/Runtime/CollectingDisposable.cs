@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal sealed class CollectingDisposable : IDisposable
     {

@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal static class BindableTablePath
     {

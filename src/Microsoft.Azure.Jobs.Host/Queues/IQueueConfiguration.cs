@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Host.Queues
+namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal interface IQueueConfiguration
     {

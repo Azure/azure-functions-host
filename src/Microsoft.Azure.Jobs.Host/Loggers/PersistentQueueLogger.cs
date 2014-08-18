@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     internal class PersistentQueueLogger : IHostInstanceLogger, IFunctionInstanceLogger
     {

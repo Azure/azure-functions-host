@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Dashboard.Data;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.HostMessaging
 {

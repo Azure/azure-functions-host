@@ -7,9 +7,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table.Queryable;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage.Table
+namespace Microsoft.Azure.WebJobs.Storage.Table
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage.Table
+namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 #endif
 {
     /// <summary>Represents a query modifier that adds an entity resolver.</summary>

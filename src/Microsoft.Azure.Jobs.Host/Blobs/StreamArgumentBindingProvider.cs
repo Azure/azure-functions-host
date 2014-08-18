@@ -6,11 +6,11 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class StreamArgumentBindingProvider : IBlobArgumentBindingProvider
     {

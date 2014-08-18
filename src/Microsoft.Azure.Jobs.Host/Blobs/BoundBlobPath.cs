@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class BoundBlobPath : IBindableBlobPath
     {

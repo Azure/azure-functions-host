@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
     internal interface ITriggerBinding
     {

@@ -5,9 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Converters;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Data
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
     internal class DataBindingProvider : IBindingProvider
     {

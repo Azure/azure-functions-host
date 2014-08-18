@@ -4,9 +4,9 @@
 using System.IO;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Represents a parameter bound to a <see cref="TextWriter"/> for console ouput.</summary>

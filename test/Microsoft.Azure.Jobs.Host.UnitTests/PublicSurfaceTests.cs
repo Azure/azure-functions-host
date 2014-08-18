@@ -7,7 +7,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class PublicSurfaceTests
     {
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests
         [Fact]
         public void JobsHostPublicSurface_LimitedToSpecificTypes()
         {
-            var assembly = typeof(Microsoft.Azure.Jobs.JobHost).Assembly;
+            var assembly = typeof(Microsoft.Azure.WebJobs.JobHost).Assembly;
 
             var expected = new[] { 
                 "ConnectionStringNames",

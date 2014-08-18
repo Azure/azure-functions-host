@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class ServiceBusEntity
     {

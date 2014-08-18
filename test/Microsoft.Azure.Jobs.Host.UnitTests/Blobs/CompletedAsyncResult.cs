@@ -4,7 +4,7 @@
 using System;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 {
     internal sealed class CompletedAsyncResult : IAsyncResult, IDisposable
     {

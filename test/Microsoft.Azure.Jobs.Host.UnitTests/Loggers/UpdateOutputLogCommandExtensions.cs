@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 {
     internal static class UpdateOutputLogCommandExtensions
     {

@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
 

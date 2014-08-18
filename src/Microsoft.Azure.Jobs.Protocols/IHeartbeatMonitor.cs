@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 {
     /// <summary>Defines a monitor for running host heartbeats.</summary>
     public interface IHeartbeatMonitor

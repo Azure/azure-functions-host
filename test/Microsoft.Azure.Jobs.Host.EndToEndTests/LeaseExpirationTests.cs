@@ -4,12 +4,12 @@
 using System;
 using System.Configuration;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.EndToEndTests
+namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     /// <summary>
     /// Tests for the lease expiration tests

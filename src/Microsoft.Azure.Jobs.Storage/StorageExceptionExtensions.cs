@@ -5,9 +5,9 @@ using System;
 using Microsoft.WindowsAzure.Storage;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage
+namespace Microsoft.Azure.WebJobs.Storage
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage
+namespace Microsoft.Azure.WebJobs.Host.Storage
 #endif
 {
     /// <summary>Provides extension methods for the <see cref="StorageException"/> class.</summary>

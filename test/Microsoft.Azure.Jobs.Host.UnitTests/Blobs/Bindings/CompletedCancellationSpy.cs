@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
 {
     internal class CompletedCancellationSpy
     {

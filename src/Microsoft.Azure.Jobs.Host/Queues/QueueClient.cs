@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues
+namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal static class QueueClient
     {

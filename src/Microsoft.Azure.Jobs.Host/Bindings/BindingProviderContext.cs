@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class BindingProviderContext
     {

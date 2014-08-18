@@ -10,10 +10,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace Microsoft.Azure.Jobs.Host.EndToEndTests
+namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     /// <summary>
-    /// Converts blobs to/from <see cref="Microsoft.Azure.Jobs.Host.EndToEndTests.CustomObject"/>
+    /// Converts blobs to/from <see cref="Microsoft.Azure.WebJobs.Host.EndToEndTests.CustomObject"/>
     /// </summary>
     public class BlobToCustomObjectBinder : ICloudBlobStreamBinder<CustomObject>
     {

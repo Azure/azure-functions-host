@@ -12,9 +12,9 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs;
-using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host.Blobs;
+using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 

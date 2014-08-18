@@ -5,9 +5,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Defines constants for reasons a function is executed.</summary>

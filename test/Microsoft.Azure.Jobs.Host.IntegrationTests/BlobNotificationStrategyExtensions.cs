@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 {
     internal static class BlobNotificationStrategyExtensions
     {

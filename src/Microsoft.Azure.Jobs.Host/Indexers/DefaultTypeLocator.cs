@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     // Default policy for locating types. 
     internal class DefaultTypeLocator : ITypeLocator

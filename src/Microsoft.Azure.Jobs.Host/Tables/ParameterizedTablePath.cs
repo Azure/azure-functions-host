@@ -3,9 +3,9 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class ParameterizedTablePath : IBindableTablePath
     {

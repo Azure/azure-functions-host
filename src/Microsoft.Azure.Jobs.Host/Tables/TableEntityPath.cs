@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableEntityPath
     {

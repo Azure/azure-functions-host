@@ -5,9 +5,9 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
-namespace Microsoft.Azure.Jobs.Host.Loggers
+namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     internal interface IFunctionOutput : IDisposable
     {

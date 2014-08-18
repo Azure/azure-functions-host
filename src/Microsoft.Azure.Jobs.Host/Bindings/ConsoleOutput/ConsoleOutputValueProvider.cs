@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
+namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
 {
     internal sealed class ConsoleOutputValueProvider : IValueProvider
     {

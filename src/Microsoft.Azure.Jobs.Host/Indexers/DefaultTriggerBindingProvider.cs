@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Triggers;
-using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs.Triggers;
+using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultTriggerBindingProvider
     {
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(cloudBlobStreamBinderTypes));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.Jobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
+                "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
 
             if (serviceBusProviderType != null)
             {

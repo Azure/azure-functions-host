@@ -7,17 +7,17 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
-using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
-using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
     internal class BlobTriggerBinding : ITriggerBinding<ICloudBlob>
     {

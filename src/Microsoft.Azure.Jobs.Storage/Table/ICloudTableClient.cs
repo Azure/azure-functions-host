@@ -4,9 +4,9 @@
 using System;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage.Table
+namespace Microsoft.Azure.WebJobs.Storage.Table
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage.Table
+namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 #endif
 {
     /// <summary>Defines a table client.</summary>

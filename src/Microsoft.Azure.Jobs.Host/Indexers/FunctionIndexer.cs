@@ -8,14 +8,14 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
-using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
+using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     // Go down and build an index
     internal class FunctionIndexer
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             _context = context;
             _triggerBindingProvider = context.TriggerBindingProvider;
             _bindingProvider = context.BindingProvider;
-            Type serviceBusIndexerType = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.Jobs.ServiceBus.ServiceBusIndexer");
+            Type serviceBusIndexerType = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.WebJobs.ServiceBus.ServiceBusIndexer");
             if (serviceBusIndexerType != null)
             {
                 MethodInfo serviceBusIndexerMethod = serviceBusIndexerType.GetMethod("HasAzureJobsAttribute", new Type[] { typeof(MethodInfo) });

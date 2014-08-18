@@ -4,13 +4,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
-using Microsoft.Azure.Jobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 {
     public class BlobListenerTests
     {

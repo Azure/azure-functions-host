@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 {
     internal static class AsyncResultExtensions
     {

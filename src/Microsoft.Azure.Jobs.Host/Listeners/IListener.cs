@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal interface IListener : IDisposable
     {

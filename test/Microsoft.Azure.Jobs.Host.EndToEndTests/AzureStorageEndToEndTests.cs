@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -14,7 +14,7 @@ using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.EndToEndTests
+namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     /// <summary>
     /// Various E2E tests that use only the public surface and the real Azure storage

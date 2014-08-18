@@ -4,7 +4,7 @@
 using System.IO;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal interface IBlobArgumentBindingProvider
     {

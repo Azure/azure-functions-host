@@ -5,11 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.Data;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Data;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
 {
     public class DataBindingProviderTests
     {

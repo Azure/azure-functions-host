@@ -4,10 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
     internal class TriggeredFunctionInstanceFactory<TTriggerValue> : ITriggeredFunctionInstanceFactory<TTriggerValue>
     {

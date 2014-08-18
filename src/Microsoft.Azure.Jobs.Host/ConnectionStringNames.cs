@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Defines connection string names used by <see cref="IConnectionStringProvider"/>.</summary>
     public static class ConnectionStringNames

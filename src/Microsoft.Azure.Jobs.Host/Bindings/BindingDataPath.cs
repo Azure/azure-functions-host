@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal static class BindingDataPath
     {

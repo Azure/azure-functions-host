@@ -3,10 +3,10 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.TestCommon
+namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class NullStorageCredentialsValidator : IStorageCredentialsValidator
     {

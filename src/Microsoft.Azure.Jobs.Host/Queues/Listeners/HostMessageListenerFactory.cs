@@ -3,14 +3,14 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Loggers;
-using Microsoft.Azure.Jobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal class HostMessageListenerFactory : IListenerFactory
     {

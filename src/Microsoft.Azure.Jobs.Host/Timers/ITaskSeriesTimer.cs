@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Timers
+namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     internal interface ITaskSeriesTimer : IDisposable
     {

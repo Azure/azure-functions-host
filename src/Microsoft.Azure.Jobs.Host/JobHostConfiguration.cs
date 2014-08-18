@@ -3,12 +3,12 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public sealed class JobHostConfiguration : IServiceProvider

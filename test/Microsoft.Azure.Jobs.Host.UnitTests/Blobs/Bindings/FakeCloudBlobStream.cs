@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
 {
     internal class FakeCloudBlobStream : CloudBlobStream
     {

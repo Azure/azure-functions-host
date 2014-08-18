@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal static class CloudBlobContainerExtensions
     {

@@ -4,10 +4,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal class ListenerFactoryListener : IListener
     {

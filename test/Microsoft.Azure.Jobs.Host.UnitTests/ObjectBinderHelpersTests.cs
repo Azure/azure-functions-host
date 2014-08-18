@@ -7,7 +7,7 @@ using System.ComponentModel;
 using System.Text;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class ObjectBinderHelpersTests
     {

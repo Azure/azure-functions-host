@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Perf
+namespace Microsoft.Azure.WebJobs.Perf
 {
     public class Program
     {

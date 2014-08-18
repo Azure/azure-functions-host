@@ -6,9 +6,9 @@ using System.Linq;
 using Microsoft.WindowsAzure.Storage.Table;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage.Table
+namespace Microsoft.Azure.WebJobs.Storage.Table
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage.Table
+namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 #endif
 {
     /// <summary>Represents a query modifier that filters by row keys less than a value.</summary>

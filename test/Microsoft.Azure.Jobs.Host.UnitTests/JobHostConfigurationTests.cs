@@ -3,13 +3,13 @@
 
 using System;
 using System.IO;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class JobHostConfigurationTests
     {

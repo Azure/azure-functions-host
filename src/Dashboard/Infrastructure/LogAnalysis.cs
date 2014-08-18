@@ -11,13 +11,13 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Protocols;
-using Microsoft.Azure.Jobs.Storage;
+using Microsoft.Azure.WebJobs.Host.Blobs;
+using Microsoft.Azure.WebJobs.Protocols;
+using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using System.Threading;
 using Dashboard.Infrastructure;
 

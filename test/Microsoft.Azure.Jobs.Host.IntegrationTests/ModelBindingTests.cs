@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 {
     /// <summary>
     /// Summary description for ModelbindingTests

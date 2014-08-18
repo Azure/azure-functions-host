@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 {
     public class NameResolverTests
     {

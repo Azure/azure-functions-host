@@ -4,12 +4,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Listeners;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal class QueueTriggerExecutor : ITriggerExecutor<CloudQueueMessage>
     {

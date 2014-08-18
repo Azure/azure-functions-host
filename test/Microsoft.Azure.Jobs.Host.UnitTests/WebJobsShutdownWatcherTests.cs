@@ -4,10 +4,10 @@
 using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests
+namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     // Unit test the static parameter bindings. This primarily tests the indexer.
     public class WebJobsShutdownWatcherTests

@@ -4,7 +4,7 @@
 using System;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class StorageExceptionExtensions
     {

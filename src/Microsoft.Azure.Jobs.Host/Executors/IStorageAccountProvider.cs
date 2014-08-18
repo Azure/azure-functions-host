@@ -3,7 +3,7 @@
 
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IStorageAccountProvider
     {

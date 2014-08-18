@@ -5,7 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Data
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
     internal class StringToTArgumentBindingProvider<TBindingData> : IDataArgumentBindingProvider<TBindingData>
     {

@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.WindowsAzure.Storage.Table;
 
-namespace Microsoft.Azure.Jobs.Host.Tables
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     // Functions for working with azure tables.
     // See http://msdn.microsoft.com/en-us/library/windowsazure/dd179338.aspx

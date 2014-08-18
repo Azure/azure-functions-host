@@ -4,7 +4,7 @@
 using System;
 using System.Globalization;
 using System.Web.Caching;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Data
 {

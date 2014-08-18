@@ -6,12 +6,12 @@ using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.TestCommon;
-using Microsoft.Azure.Jobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 {
     public class TaskSeriesTimerTests
     {

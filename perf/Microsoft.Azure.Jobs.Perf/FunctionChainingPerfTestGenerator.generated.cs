@@ -1,4 +1,4 @@
-﻿namespace Microsoft.Azure.Jobs.Perf
+﻿namespace Microsoft.Azure.WebJobs.Perf
 {
 	public static partial class FunctionChainingPerfTest
 	{

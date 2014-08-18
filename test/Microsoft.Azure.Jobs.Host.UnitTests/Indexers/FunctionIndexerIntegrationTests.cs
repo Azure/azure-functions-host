@@ -5,14 +5,14 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Indexers;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 {
     public class FunctionIndexerIntegrationTests
     {

@@ -4,7 +4,7 @@
 using System;
 using System.Linq;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class CloudBlobStreamObjectBinder
     {

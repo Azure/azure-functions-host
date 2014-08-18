@@ -4,7 +4,7 @@
 <#@ import namespace="System.Collections.Generic" #>
 <#@ output extension=".generated.cs" #>
 <# const int NumberOfMethodsToGenerate = 20; #>
-namespace Microsoft.Azure.Jobs.Perf
+namespace Microsoft.Azure.WebJobs.Perf
 {
 	public static partial class FunctionChainingPerfTest
 	{

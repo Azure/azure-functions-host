@@ -5,9 +5,9 @@ using System;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage.Queue
+namespace Microsoft.Azure.WebJobs.Storage.Queue
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage.Queue
+namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
 #endif
 {
     /// <summary>Defines a queue.</summary>

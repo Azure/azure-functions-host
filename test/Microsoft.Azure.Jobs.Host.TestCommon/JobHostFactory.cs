@@ -3,7 +3,7 @@
 
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.TestCommon
+namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public static class JobHostFactory
     {

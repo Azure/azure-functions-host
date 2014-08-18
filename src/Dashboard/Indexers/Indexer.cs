@@ -3,7 +3,7 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 using Dashboard.Data.Logs;
 
 namespace Dashboard.Indexers

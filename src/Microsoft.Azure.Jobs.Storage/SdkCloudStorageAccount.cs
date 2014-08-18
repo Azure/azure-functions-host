@@ -6,20 +6,20 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 #if PUBLICSTORAGE
-using Microsoft.Azure.Jobs.Storage.Queue;
-using Microsoft.Azure.Jobs.Storage.Table;
+using Microsoft.Azure.WebJobs.Storage.Queue;
+using Microsoft.Azure.WebJobs.Storage.Table;
 #else
-using Microsoft.Azure.Jobs.Host.Storage.Queue;
-using Microsoft.Azure.Jobs.Host.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage
+namespace Microsoft.Azure.WebJobs.Storage
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage
+namespace Microsoft.Azure.WebJobs.Host.Storage
 #endif
 {
     /// <summary>Represents a cloud storage account.</summary>

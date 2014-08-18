@@ -3,10 +3,10 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Queues;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ServiceProviderExtensions
     {

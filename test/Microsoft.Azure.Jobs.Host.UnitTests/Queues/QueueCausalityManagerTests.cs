@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Queues
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueCausalityManagerTests
     {

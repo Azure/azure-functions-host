@@ -12,10 +12,10 @@ using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using InternalWebJobTypes = Microsoft.Azure.Jobs.Protocols.WebJobTypes;
+using InternalWebJobTypes = Microsoft.Azure.WebJobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
 namespace Dashboard.ApiControllers

@@ -3,13 +3,13 @@
 
 using System;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Queues.Triggers;
-using Microsoft.Azure.Jobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 using Xunit.Extensions;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Queues
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueTriggerBindingIntegrationTests
     {

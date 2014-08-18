@@ -9,12 +9,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.EndToEndTests
+namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     public class ServiceBusEndToEndTests
     {

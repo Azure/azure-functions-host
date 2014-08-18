@@ -8,12 +8,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Perf
+namespace Microsoft.Azure.WebJobs.Perf
 {
     public static partial class FunctionChainingPerfTest
     {

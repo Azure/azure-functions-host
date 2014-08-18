@@ -4,7 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Converters
+namespace Microsoft.Azure.WebJobs.Host.Converters
 {
     internal interface IAsyncObjectToTypeConverter<TOutput>
     {

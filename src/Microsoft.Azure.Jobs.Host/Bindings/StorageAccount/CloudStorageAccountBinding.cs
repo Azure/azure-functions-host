@@ -3,11 +3,11 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
+namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 {
     internal class CloudStorageAccountBinding : IBinding
     {

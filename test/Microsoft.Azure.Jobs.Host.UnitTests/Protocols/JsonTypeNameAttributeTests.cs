@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.Protocols;
-using Microsoft.Azure.Jobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
 {
     public class JsonTypeNameAttributeTests
     {

@@ -4,7 +4,7 @@
 using System;
 using System.Text;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>Contains extension methods for INameResolver.</summary>
     internal static class NameResolverExtensions

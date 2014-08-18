@@ -4,7 +4,7 @@
 using System;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Protocols
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
 {
     public class HostQueueNamesTest
     {

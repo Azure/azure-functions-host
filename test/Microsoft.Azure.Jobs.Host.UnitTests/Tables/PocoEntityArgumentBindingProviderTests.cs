@@ -3,11 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Tables
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
     public class PocoEntityArgumentBindingProviderTests
     {

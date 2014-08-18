@@ -4,7 +4,7 @@
 using System;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus
+namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     internal static class ServiceBusClient
     {

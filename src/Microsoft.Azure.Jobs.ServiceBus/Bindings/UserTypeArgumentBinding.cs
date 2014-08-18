@@ -5,11 +5,11 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class UserTypeArgumentBinding : IArgumentBinding<ServiceBusEntity>
     {

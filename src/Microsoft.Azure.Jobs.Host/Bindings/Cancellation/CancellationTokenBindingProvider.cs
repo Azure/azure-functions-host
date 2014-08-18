@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Cancellation
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
 {
     internal class CancellationTokenBindingProvider : IBindingProvider
     {

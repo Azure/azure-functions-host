@@ -5,7 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput
+namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
 {
     internal class ConsoleOutputBindingProvider : IBindingProvider
     {

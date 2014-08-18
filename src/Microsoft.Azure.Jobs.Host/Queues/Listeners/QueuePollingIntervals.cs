@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal static class QueuePollingIntervals
     {

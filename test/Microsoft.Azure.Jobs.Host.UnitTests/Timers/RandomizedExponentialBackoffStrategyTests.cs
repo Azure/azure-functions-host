@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.TestCommon;
-using Microsoft.Azure.Jobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Timers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 {
     public class RandomizedExponentialBackoffStrategyTests
     {

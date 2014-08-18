@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     // Tracks which function wrote each blob via blob metadata. 
     // This may be risky because it does interfere with the function (and the user could tamper with it

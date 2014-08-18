@@ -3,10 +3,10 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.Jobs.Host.Queues;
-using Microsoft.Azure.Jobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>Represents configuration for <see cref="QueueTriggerAttribute"/>.</summary>
     public sealed class JobHostQueuesConfiguration : IQueueConfiguration

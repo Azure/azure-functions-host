@@ -4,9 +4,9 @@
 using System;
 using System.Collections;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Bindings
+namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class UserTypeArgumentBindingProvider : IQueueArgumentBindingProvider
     {

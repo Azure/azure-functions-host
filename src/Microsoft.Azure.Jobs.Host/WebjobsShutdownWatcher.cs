@@ -5,7 +5,7 @@
 using System.IO;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Helper class for providing a cancellation token for when this WebJob's shutdown is signaled.

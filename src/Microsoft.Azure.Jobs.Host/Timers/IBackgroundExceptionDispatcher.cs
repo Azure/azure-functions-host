@@ -3,7 +3,7 @@
 
 using System.Runtime.ExceptionServices;
 
-namespace Microsoft.Azure.Jobs.Host.Timers
+namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     internal interface IBackgroundExceptionDispatcher
     {

@@ -3,11 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Tables
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
     public class TableEntityValueBinderTests
     {

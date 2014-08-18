@@ -9,9 +9,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 #if PUBLICPROTOCOL
-using Microsoft.Azure.Jobs.Storage;
+using Microsoft.Azure.WebJobs.Storage;
 #else
-using Microsoft.Azure.Jobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -19,9 +19,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 #if PUBLICPROTOCOL
-namespace Microsoft.Azure.Jobs.Protocols
+namespace Microsoft.Azure.WebJobs.Protocols
 #else
-namespace Microsoft.Azure.Jobs.Host.Protocols
+namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Represents a persistent queue reader.</summary>

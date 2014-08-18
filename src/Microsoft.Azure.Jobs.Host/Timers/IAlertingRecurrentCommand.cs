@@ -4,7 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Timers
+namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     /// <summary>
     /// Defines a recurring command that may fail gracefully as well as short-circuit the delay between excecutions.

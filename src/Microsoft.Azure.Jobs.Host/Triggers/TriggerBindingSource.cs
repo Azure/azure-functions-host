@@ -3,10 +3,10 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
     internal class TriggerBindingSource<TTriggerValue> : IBindingSource
     {

@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class StringToCloudQueueConverter : IConverter<string, CloudQueue>
     {

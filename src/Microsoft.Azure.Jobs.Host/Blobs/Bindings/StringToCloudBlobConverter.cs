@@ -4,10 +4,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.Jobs.Host.Blobs.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class StringToCloudBlobConverter : IAsyncConverter<string, ICloudBlob>
     {

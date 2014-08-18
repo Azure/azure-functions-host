@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using Moq.Language.Flow;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 {
     internal static class SetupOfStreamIAsyncResultExtensions
     {

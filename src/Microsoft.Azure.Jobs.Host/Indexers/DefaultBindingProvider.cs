@@ -3,17 +3,17 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.Cancellation;
-using Microsoft.Azure.Jobs.Host.Bindings.ConsoleOutput;
-using Microsoft.Azure.Jobs.Host.Bindings.Data;
-using Microsoft.Azure.Jobs.Host.Bindings.Runtime;
-using Microsoft.Azure.Jobs.Host.Bindings.StorageAccount;
-using Microsoft.Azure.Jobs.Host.Blobs.Bindings;
-using Microsoft.Azure.Jobs.Host.Queues.Bindings;
-using Microsoft.Azure.Jobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Cancellation;
+using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
+using Microsoft.Azure.WebJobs.Host.Bindings.Data;
+using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
+using Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount;
+using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Queues.Bindings;
+using Microsoft.Azure.WebJobs.Host.Tables;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.Jobs.Host.Indexers
             innerProviders.Add(new TableAttributeBindingProvider());
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.Jobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
+                "Microsoft.Azure.WebJobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
 
             if (serviceBusProviderType != null)
             {

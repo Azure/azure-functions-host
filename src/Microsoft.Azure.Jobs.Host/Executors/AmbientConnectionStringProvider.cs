@@ -4,7 +4,7 @@
 using System;
 using System.Configuration;
 
-namespace Microsoft.Azure.Jobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class AmbientConnectionStringProvider : IConnectionStringProvider
     {

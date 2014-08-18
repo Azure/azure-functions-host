@@ -7,7 +7,7 @@
     <ProjectGuid>{7B396753-F2D9-4655-929B-BE7E665A4C7E}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.ServiceBus</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.ServiceBus</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.ServiceBus</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

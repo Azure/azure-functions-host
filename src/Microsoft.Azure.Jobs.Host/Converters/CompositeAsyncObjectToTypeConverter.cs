@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Converters
+namespace Microsoft.Azure.WebJobs.Host.Converters
 {
     internal class CompositeAsyncObjectToTypeConverter<T> : IAsyncObjectToTypeConverter<T>
     {

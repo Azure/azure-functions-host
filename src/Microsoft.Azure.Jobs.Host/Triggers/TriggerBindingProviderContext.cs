@@ -3,10 +3,10 @@
 
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
     internal class TriggerBindingProviderContext
     {

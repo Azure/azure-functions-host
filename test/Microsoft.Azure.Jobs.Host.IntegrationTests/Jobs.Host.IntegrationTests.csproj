@@ -7,7 +7,7 @@
     <ProjectGuid>{31BAB10E-B319-4F4E-9898-EA7A2740AA19}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.Host.IntegrationTests</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.Host.IntegrationTests</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.Host.IntegrationTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

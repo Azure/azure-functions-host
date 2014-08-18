@@ -4,10 +4,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.ServiceBus.Messaging;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.Listeners
+namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
     internal sealed class ServiceBusListener : IListener
     {

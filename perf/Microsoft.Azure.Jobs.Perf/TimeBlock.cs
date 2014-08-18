@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs.Perf
+namespace Microsoft.Azure.WebJobs.Perf
 {
     internal class TimeBlock
     {

@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using Microsoft.WindowsAzure.Storage.Table;
 
 #if PUBLICSTORAGE
-namespace Microsoft.Azure.Jobs.Storage.Table
+namespace Microsoft.Azure.WebJobs.Storage.Table
 #else
-namespace Microsoft.Azure.Jobs.Host.Storage.Table
+namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 #endif
 {
     /// <summary>Provides extension methods for <see cref="ICloudTable"/>.</summary>

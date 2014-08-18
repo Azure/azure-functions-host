@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.TestCommon;
-using Microsoft.Azure.Jobs.ServiceBus.Listeners;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.ServiceBus.Listeners;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.ServiceBus.UnitTests.Listeners
+namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
 {
     public class NamespaceManagerExtensionsTests
     {

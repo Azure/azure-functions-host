@@ -5,7 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal interface IAttributeBindingSource
     {

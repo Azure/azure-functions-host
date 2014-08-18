@@ -3,11 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.Jobs.Host.Bindings;
-using Microsoft.Azure.Jobs.Host.Bindings.Invoke;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Invoke
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Invoke
 {
     public class InvokeBindingTests
     {

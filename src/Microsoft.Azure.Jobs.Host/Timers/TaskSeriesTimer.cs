@@ -6,7 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs.Host.Timers
+namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     /// <summary>Represents a timer that executes one task after another in a series.</summary>
     internal sealed class TaskSeriesTimer : ITaskSeriesTimer

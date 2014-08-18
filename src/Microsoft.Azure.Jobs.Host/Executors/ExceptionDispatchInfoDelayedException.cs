@@ -3,7 +3,7 @@
 
 using System.Runtime.ExceptionServices;
 
-namespace Microsoft.Azure.Jobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class ExceptionDispatchInfoDelayedException : IDelayedException
     {

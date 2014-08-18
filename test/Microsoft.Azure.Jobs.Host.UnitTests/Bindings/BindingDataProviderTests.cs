@@ -4,11 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 {
     public class BindingDataProviderTests
     {

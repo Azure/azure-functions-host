@@ -4,10 +4,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class ByteArrayArgumentBinding : IArgumentBinding<CloudQueue>
     {

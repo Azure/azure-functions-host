@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 
-namespace Microsoft.Azure.Jobs.Host.Timers
+namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     internal class BackgroundExceptionDispatcher : IBackgroundExceptionDispatcher
     {

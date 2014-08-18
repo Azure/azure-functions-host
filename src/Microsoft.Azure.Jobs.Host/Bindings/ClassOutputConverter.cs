@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Jobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Converters;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class ClassOutputConverter<TInput, TOutput> : IObjectToTypeConverter<TOutput>
         where TInput : class

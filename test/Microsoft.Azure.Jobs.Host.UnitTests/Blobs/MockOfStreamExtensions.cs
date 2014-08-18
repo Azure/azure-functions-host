@@ -6,7 +6,7 @@ using System.IO;
 using Moq;
 using Moq.Language.Flow;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 {
     internal static class MockOfStreamExtensions
     {

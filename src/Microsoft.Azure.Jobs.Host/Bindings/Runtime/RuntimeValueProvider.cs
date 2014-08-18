@@ -6,9 +6,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Runtime
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal sealed class RuntimeValueProvider : IValueBinder, IWatchable, IDisposable, IBinder
     {

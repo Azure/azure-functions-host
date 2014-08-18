@@ -9,7 +9,7 @@ using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.ViewModels;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.ApiControllers
 {

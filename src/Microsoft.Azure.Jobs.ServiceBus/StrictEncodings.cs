@@ -3,7 +3,7 @@
 
 using System.Text;
 
-namespace Microsoft.Azure.Jobs.ServiceBus
+namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     internal static class StrictEncodings
     {

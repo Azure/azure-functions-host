@@ -5,12 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.Jobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 {
     // Test failure cases for indexing
     public class FunctionIndexerIntegrationErrorTests

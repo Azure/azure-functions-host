@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Defines a blob binder for a custom type.</summary>
     /// <typeparam name="T">The type of object the binder can bind.</typeparam>

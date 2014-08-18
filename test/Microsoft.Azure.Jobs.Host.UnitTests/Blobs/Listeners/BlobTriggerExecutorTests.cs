@@ -5,12 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Blobs;
-using Microsoft.Azure.Jobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Blobs;
+using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Listeners
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 {
     public class BlobTriggerExecutorTests
     {

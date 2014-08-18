@@ -3,7 +3,7 @@
 
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal interface IFunctionIndexLookup
     {

@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.Jobs
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Represents an attribute that indicates a function for which no automatic trigger listening is performed.

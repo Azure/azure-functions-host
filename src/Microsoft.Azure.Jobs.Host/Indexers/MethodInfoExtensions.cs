@@ -5,7 +5,7 @@ using System;
 using System.Globalization;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class MethodInfoExtensions
     {

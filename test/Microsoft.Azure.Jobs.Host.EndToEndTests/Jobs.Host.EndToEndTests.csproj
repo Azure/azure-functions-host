@@ -7,7 +7,7 @@
     <ProjectGuid>{340AB554-5482-4B3D-B65F-46DFF5AF1684}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.Host.EndToEndTests</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.Host.EndToEndTests</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.Host.EndToEndTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

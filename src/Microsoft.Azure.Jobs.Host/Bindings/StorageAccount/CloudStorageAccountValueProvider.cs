@@ -4,7 +4,7 @@
 using System;
 using Microsoft.WindowsAzure.Storage;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.StorageAccount
+namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 {
     internal class CloudStorageAccountValueProvider : IValueProvider
     {

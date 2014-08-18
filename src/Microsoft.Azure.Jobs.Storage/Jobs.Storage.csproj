@@ -7,7 +7,7 @@
     <ProjectGuid>{543EDC53-3B68-49A8-9C3F-FC2ED27515AA}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Microsoft.Azure.Jobs.Storage</RootNamespace>
+    <RootNamespace>Microsoft.Azure.WebJobs.Storage</RootNamespace>
     <AssemblyName>Microsoft.Azure.Jobs.Storage</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

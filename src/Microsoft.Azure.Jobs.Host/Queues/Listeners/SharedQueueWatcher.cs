@@ -3,7 +3,7 @@
 
 using System.Collections.Concurrent;
 
-namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal class SharedQueueWatcher : IMessageEnqueuedWatcher
     {

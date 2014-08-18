@@ -4,7 +4,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host.Bindings.Data
+namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
     internal class CompositeArgumentBindingProvider<TBindingData> : IDataArgumentBindingProvider<TBindingData>
     {

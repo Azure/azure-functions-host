@@ -2,9 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Jobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
-namespace Microsoft.Azure.Jobs.Host.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
     internal interface ITriggeredFunctionInstanceFactory<TTriggerValue> : IFunctionInstanceFactory
     {

@@ -6,7 +6,7 @@ using System.Globalization;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
-using Microsoft.Azure.Jobs.Storage;
+using Microsoft.Azure.WebJobs.Storage;
 using System.Collections.Generic;
 
 namespace Dashboard.Data.Logs

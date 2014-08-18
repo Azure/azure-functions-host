@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Web.Caching;
 using Dashboard.Data;
-using Microsoft.Azure.Jobs.Protocols;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Indexers
 {

@@ -7,7 +7,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 
-namespace Microsoft.Azure.Jobs.Host
+namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ObjectBinderHelpers
     {

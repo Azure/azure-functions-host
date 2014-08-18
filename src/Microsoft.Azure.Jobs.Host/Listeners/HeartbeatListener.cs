@@ -3,10 +3,10 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Executors;
-using Microsoft.Azure.Jobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
-namespace Microsoft.Azure.Jobs.Host.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal class HeartbeatListener : IListener
     {

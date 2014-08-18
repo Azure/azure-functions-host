@@ -3,9 +3,9 @@
 
 using System.Collections.Generic;
 using System.Reflection;
-using Microsoft.Azure.Jobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.Jobs.Host.Indexers
+namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal interface IFunctionIndex : IFunctionIndexLookup
     {

@@ -4,11 +4,11 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Jobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
 {
     public class UpdateOutputLogCommandTests
     {
