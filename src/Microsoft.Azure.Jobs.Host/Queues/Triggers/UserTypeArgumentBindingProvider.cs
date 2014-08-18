@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
@@ -12,20 +14,22 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 {
     internal class UserTypeArgumentBindingProvider : IQueueTriggerArgumentBindingProvider
     {
-        public IArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
         {
             // At indexing time, attempt to bind all types.
             // (Whether or not actual binding is possible depends on the message shape at runtime.)
             return new UserTypeArgumentBinding(parameter.ParameterType);
         }
 
-        private class UserTypeArgumentBinding : IArgumentBinding<CloudQueueMessage>
+        private class UserTypeArgumentBinding : ITriggerDataArgumentBinding<CloudQueueMessage>
         {
             private readonly Type _valueType;
+            private readonly IBindingDataProvider _bindingDataProvider;
 
             public UserTypeArgumentBinding(Type valueType)
             {
                 _valueType = valueType;
+                _bindingDataProvider = BindingDataProvider.FromType(_valueType);
             }
 
             public Type ValueType
@@ -33,13 +37,18 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                 get { return _valueType; }
             }
 
-            public Task<IValueProvider> BindAsync(CloudQueueMessage value, ValueBindingContext context)
+            public IReadOnlyDictionary<string, Type> BindingDataContract 
+            {
+                get { return _bindingDataProvider != null ? _bindingDataProvider.Contract : null; }
+            }
+
+            public Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
             {
                 object convertedValue;
 
                 try
                 {
-                    convertedValue = JsonCustom.DeserializeObject(value.AsString, _valueType);
+                    convertedValue = JsonCustom.DeserializeObject(value.AsString, ValueType);
                 }
                 catch (JsonException e)
                 {
@@ -52,8 +61,12 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-                IValueProvider provider = new QueueMessageValueProvider(value, convertedValue, _valueType);
-                return Task.FromResult(provider);
+                IValueProvider provider = new QueueMessageValueProvider(value, convertedValue, ValueType);
+
+                IReadOnlyDictionary<string, object> bindingData = (_bindingDataProvider != null) 
+                    ? _bindingDataProvider.GetBindingData(convertedValue) : null;
+
+                return Task.FromResult<ITriggerData>(new TriggerData(provider, bindingData));
             }
         }
     }

@@ -2,11 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.Jobs.Host;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json;
 
@@ -14,20 +16,22 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 {
     internal class UserTypeArgumentBindingProvider : IQueueTriggerArgumentBindingProvider
     {
-        public IArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
         {
             // At indexing time, attempt to bind all types.
             // (Whether or not actual binding is possible depends on the message shape at runtime.)
             return new UserTypeArgumentBinding(parameter.ParameterType);
         }
 
-        private class UserTypeArgumentBinding : IArgumentBinding<BrokeredMessage>
+        private class UserTypeArgumentBinding : ITriggerDataArgumentBinding<BrokeredMessage>
         {
             private readonly Type _valueType;
+            private readonly IBindingDataProvider _bindingDataProvider;
 
             public UserTypeArgumentBinding(Type valueType)
             {
                 _valueType = valueType;
+                _bindingDataProvider = BindingDataProvider.FromType(_valueType);
             }
 
             public Type ValueType
@@ -35,8 +39,14 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 get { return _valueType; }
             }
 
-            public async Task<IValueProvider> BindAsync(BrokeredMessage value, ValueBindingContext context)
+            public IReadOnlyDictionary<string, Type> BindingDataContract
             {
+                get { return _bindingDataProvider != null ? _bindingDataProvider.Contract : null; }
+            }
+
+            public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
+            {
+                IValueProvider provider;
                 BrokeredMessage clone = value.Clone();
                 string contents;
 
@@ -44,8 +54,9 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 {
                     if (stream == null)
                     {
-                        return await BrokeredMessageValueProvider.CreateAsync(clone, null, _valueType,
+                        provider = await BrokeredMessageValueProvider.CreateAsync(clone, null, ValueType,
                             context.CancellationToken);
+                        return new TriggerData(provider, null);
                     }
 
                     using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
@@ -59,7 +70,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
                 try
                 {
-                    convertedValue = JsonCustom.DeserializeObject(contents, _valueType);
+                    convertedValue = JsonCustom.DeserializeObject(contents, ValueType);
                 }
                 catch (JsonException e)
                 {
@@ -72,8 +83,13 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                     throw new InvalidOperationException(msg);
                 }
 
-                return await BrokeredMessageValueProvider.CreateAsync(clone, convertedValue, _valueType,
+                provider = await BrokeredMessageValueProvider.CreateAsync(clone, convertedValue, ValueType,
                     context.CancellationToken);
+
+                IReadOnlyDictionary<string, object> bindingData = (_bindingDataProvider != null) 
+                    ? _bindingDataProvider.GetBindingData(convertedValue) : null;
+
+                return new TriggerData(provider, bindingData);
             }
         }
     }

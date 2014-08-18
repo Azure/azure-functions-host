@@ -44,7 +44,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 subscriptionName = context.Resolve(serviceBusTrigger.SubscriptionName);
             }
 
-            IArgumentBinding<BrokeredMessage> argumentBinding = _innerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = _innerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {

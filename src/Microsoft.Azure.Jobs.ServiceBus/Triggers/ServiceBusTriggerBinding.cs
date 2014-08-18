@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 new OutputConverter<string>(new StringToBrokeredMessageConverter()));
 
         private readonly string _parameterName;
-        private readonly IArgumentBinding<BrokeredMessage> _argumentBinding;
+        private readonly ITriggerDataArgumentBinding<BrokeredMessage> _argumentBinding;
         private readonly ServiceBusAccount _account;
         private readonly string _namespaceName;
         private readonly string _queueName;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
         private readonly string _subscriptionName;
         private readonly string _entityPath;
 
-        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding,
+        public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding,
             ServiceBusAccount account, string queueName)
         {
             _parameterName = parameterName;
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             _entityPath = queueName;
         }
 
-        public ServiceBusTriggerBinding(string parameterName, IArgumentBinding<BrokeredMessage> argumentBinding,
+        public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding,
             ServiceBusAccount account, string topicName, string subscriptionName)
         {
             _parameterName = parameterName;
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
         {
-            get { return BindingData.GetContract(_argumentBinding.ValueType); }
+            get { return _argumentBinding.BindingDataContract; }
         }
 
         public string QueueName
@@ -85,12 +85,8 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
 
         public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
         {
-            BrokeredMessage clonedMessage = value.Clone();
-            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
-            IReadOnlyDictionary<string, object> bindingData = await CreateBindingDataAsync(clonedMessage,
-                context.CancellationToken);
-
-            return new TriggerData(valueProvider, bindingData);
+            ITriggerData triggerData = await _argumentBinding.BindAsync(value, context);
+            return triggerData;
         }
 
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
@@ -137,35 +133,6 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
                 TopicName = _topicName,
                 SubscriptionName = _subscriptionName
             };
-        }
-
-        private async Task<IReadOnlyDictionary<string, object>> CreateBindingDataAsync(BrokeredMessage clonedMessage,
-            CancellationToken cancellationToken)
-        {
-            string contents;
-
-            using (Stream stream = clonedMessage.GetBody<Stream>())
-            {
-                if (stream == null)
-                {
-                    return null;
-                }
-
-                try
-                {
-                    using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        contents = await reader.ReadToEndAsync();
-                    }
-                }
-                catch (DecoderFallbackException)
-                {
-                    return null;
-                }
-            }
-
-            return BindingData.GetBindingData(contents, BindingDataContract);
         }
     }
 }

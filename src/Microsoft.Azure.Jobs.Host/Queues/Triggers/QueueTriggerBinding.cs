@@ -25,13 +25,13 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
 
         private readonly string _parameterName;
-        private readonly IArgumentBinding<CloudQueueMessage> _argumentBinding;
+        private readonly ITriggerDataArgumentBinding<CloudQueueMessage> _argumentBinding;
         private readonly CloudStorageAccount _account;
         private readonly string _accountName;
         private readonly string _queueName;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
-        public QueueTriggerBinding(string parameterName, IArgumentBinding<CloudQueueMessage> argumentBinding,
+        public QueueTriggerBinding(string parameterName, ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding,
             CloudStorageAccount account, string queueName)
         {
             _parameterName = parameterName;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             _account = account;
             _accountName = StorageClient.GetAccountName(account);
             _queueName = queueName;
-            _bindingDataContract = CreateBindingDataContract(argumentBinding.ValueType);
+            _bindingDataContract = CreateBindingDataContract(argumentBinding);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
@@ -52,7 +52,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             get { return _queueName; }
         }
 
-        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(Type valueType)
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(
+            ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("DequeueCount", typeof(int));
@@ -62,11 +63,9 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             contract.Add("NextVisibleTime", typeof(DateTimeOffset));
             contract.Add("PopReceipt", typeof(string));
 
-            IReadOnlyDictionary<string, Type> contractFromValueType = BindingData.GetContract(valueType);
-
-            if (contractFromValueType != null)
+            if (argumentBinding.BindingDataContract != null)
             {
-                foreach (KeyValuePair<string, Type> item in contractFromValueType)
+                foreach (KeyValuePair<string, Type> item in argumentBinding.BindingDataContract)
                 {
                     // In case of conflict, binding data from the value type overrides the built-in binding data above.
                     contract[item.Key] = item.Value;
@@ -78,10 +77,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
 
         public async Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
         {
-            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
-            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
+            ITriggerData triggerData = await _argumentBinding.BindAsync(value, context);
+            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value, triggerData.BindingData);
 
-            return new TriggerData(valueProvider, bindingData);
+            return new TriggerData(triggerData.ValueProvider, bindingData);
         }
 
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
@@ -119,7 +118,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(CloudQueueMessage value)
+        private IReadOnlyDictionary<string, object> CreateBindingData(CloudQueueMessage value,
+            IReadOnlyDictionary<string, object> bindingDataFromValueType)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
             bindingData.Add("DequeueCount", value.DequeueCount);
@@ -129,9 +129,6 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Triggers
             bindingData.Add("NextVisibleTime", value.NextVisibleTime.GetValueOrDefault(DateTimeOffset.MaxValue));
             bindingData.Add("PopReceipt", value.PopReceipt);
             
-            IReadOnlyDictionary<string, object> bindingDataFromValueType = BindingData.GetBindingData(value.AsString,
-                _bindingDataContract);
-
             if (bindingDataFromValueType != null)
             {
                 foreach (KeyValuePair<string, object> item in bindingDataFromValueType)

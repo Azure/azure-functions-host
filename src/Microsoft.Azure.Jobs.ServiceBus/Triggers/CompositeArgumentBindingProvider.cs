@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.Jobs.Host.Bindings;
+using Microsoft.Azure.Jobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
@@ -17,11 +18,11 @@ namespace Microsoft.Azure.Jobs.ServiceBus.Triggers
             _providers = providers;
         }
 
-        public IArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<BrokeredMessage> TryCreate(ParameterInfo parameter)
         {
             foreach (IQueueTriggerArgumentBindingProvider provider in _providers)
             {
-                IArgumentBinding<BrokeredMessage> binding = provider.TryCreate(parameter);
+                ITriggerDataArgumentBinding<BrokeredMessage> binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {
