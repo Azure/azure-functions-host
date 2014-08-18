@@ -16,6 +16,7 @@ using Microsoft.Azure.Jobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.Jobs.Protocols
@@ -312,6 +313,26 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             return item.Properties.LastModified.GetValueOrDefault(DateTimeOffset.UtcNow);
         }
 
+        private string StripCredentials(string blobText)
+        {
+            try
+            {
+                var parsedMessage = JObject.Parse(blobText) as JObject;
+                JToken credentials = parsedMessage["Credentials"];
+                if (credentials != null)
+                {
+                    credentials.Remove();
+                    return parsedMessage.ToString();
+                }
+
+                return blobText;
+            }
+            catch
+            {
+                return blobText;
+            }
+        }
+
         /// <inheritdoc />
         public void Delete(T message)
         {
@@ -324,9 +345,11 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
             CopyMetadata(outputBlob, archiveBlob);
             archiveBlob.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
 
+            string blobText = StripCredentials(message.BlobText);
+
             try
             {
-                archiveBlob.UploadText(message.BlobText);
+                archiveBlob.UploadText(blobText);
             }
             catch (StorageException exception)
             {
@@ -337,7 +360,7 @@ namespace Microsoft.Azure.Jobs.Host.Protocols
                 else
                 {
                     _archiveContainer.CreateIfNotExists();
-                    archiveBlob.UploadText(message.BlobText);
+                    archiveBlob.UploadText(blobText);
                 }
             }
 
