@@ -109,7 +109,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs.Listeners
             ICloudBlob possibleTrigger = inputContainer.GetBlockBlobReference(input.BlobName);
 
             return BlobTriggerExecutor.ShouldExecuteTriggerAsync(possibleTrigger, new FixedBlobPathSource(input),
-                outputs, new LambdaTimestampReader(LookupTime), CancellationToken.None).Result;
+                outputs, new LambdaTimestampReader(LookupTime), CancellationToken.None).GetAwaiter().GetResult();
         }
 
         private static BlobPath CreateInput(string containerName, string blobName)

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
             string content = null;
             Func<string, CancellationToken, Task> fp = (x, _) => { content = x; return Task.FromResult(0); };
             UpdateOutputLogCommand writer = UpdateOutputLogCommand.CreateAsync(
-                new CloudBlockBlob(new Uri("aa://b/c")), null, fp, CancellationToken.None).Result;
+                new CloudBlockBlob(new Uri("aa://b/c")), null, fp, CancellationToken.None).GetAwaiter().GetResult();
 
             var tw = writer.Output;
             tw.Write("1");

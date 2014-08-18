@@ -13,7 +13,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Loggers
                 throw new ArgumentNullException("command");
             }
 
-            return command.TryExecuteAsync(CancellationToken.None).Result;
+            return command.TryExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
         public static void SaveAndClose(this UpdateOutputLogCommand command)

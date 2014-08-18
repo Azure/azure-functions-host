@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             _type = type;
             FunctionIndex index = FunctionIndex.CreateAsync(
                 new FunctionIndexContext(null, null, account, null, CancellationToken.None),
-                new Type[] { type }, cloudBlobStreamBinderTypes).Result;
+                new Type[] { type }, cloudBlobStreamBinderTypes).GetAwaiter().GetResult();
             _index = index;
 
             _blobClient = account.CreateCloudBlobClient();
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             ValueBindingContext context = new ValueBindingContext(new FunctionBindingContext(_context, instance.Id,
                 CancellationToken.None, TextWriter.Null), CancellationToken.None);
             FunctionExecutor.ExecuteWithWatchersAsync(instance.Method, instance.Method.GetParameters(),
-                instance.BindingSource.BindAsync(context).Result, TextWriter.Null,
+                instance.BindingSource.BindAsync(context).GetAwaiter().GetResult(), TextWriter.Null,
                 CancellationToken.None).GetAwaiter().GetResult();
         }
     }

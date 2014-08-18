@@ -64,7 +64,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Indexers
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"), indexMock.Object, CancellationToken.None).Wait();
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"), indexMock.Object, CancellationToken.None).GetAwaiter().GetResult();
 
             // Verify
             indexMock.Verify(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()), Times.Never);

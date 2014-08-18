@@ -303,6 +303,7 @@
     <Compile Include="Indexers\IHostIndexer.cs" />
     <Compile Include="Indexers\HostIndexer.cs" />
     <Compile Include="Indexers\FunctionIndexer.cs" />
+    <Compile Include="Infrastructure\AspNetTaskExecutor.cs" />
     <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />
     <Compile Include="ViewModels\BlobBoundParamModel.cs" />

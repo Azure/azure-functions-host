@@ -38,7 +38,7 @@ namespace Microsoft.Azure.Jobs.Host.IntegrationTests
             {
                 // $$$ Put this in its own unit test?
                 var blob = account.CreateCloudBlobClient().GetContainerReference("daas-test-input").GetBlockBlobReference("note.csv");
-                var guid = BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None).Result;
+                var guid = BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None).GetAwaiter().GetResult();
 
                 Assert.True(guid != Guid.Empty, "Blob is missing causality information");
             }

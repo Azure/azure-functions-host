@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
             BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
 
             // Act
-            IBinding binding = product.TryCreateAsync(context).Result;
+            IBinding binding = product.TryCreateAsync(context).GetAwaiter().GetResult();
 
             // Assert
             Assert.Null(binding);
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
             BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
 
             // Act
-            IBinding binding = product.TryCreateAsync(context).Result;
+            IBinding binding = product.TryCreateAsync(context).GetAwaiter().GetResult();
 
             // Assert
             Assert.Null(binding);
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Bindings.Data
             BindingProviderContext context = CreateBindingContext(parameterName, parameterType);
 
             // Act
-            IBinding binding = product.TryCreateAsync(context).Result;
+            IBinding binding = product.TryCreateAsync(context).GetAwaiter().GetResult();
 
             // Assert
             Assert.NotNull(binding);

@@ -1401,7 +1401,7 @@ namespace Microsoft.Azure.Jobs.Host.UnitTests.Blobs
             using (WatchableReadStream product = CreateProductUnderTest(innerStream))
             {
                 byte[] buffer = new byte[contents.Length];
-                int bytesRead = product.ReadAsync(buffer, 0, buffer.Length).Result;
+                int bytesRead = product.ReadAsync(buffer, 0, buffer.Length).GetAwaiter().GetResult();
                 Assert.Equal(bytesRead, buffer.Length); // Guard
 
                 // Act

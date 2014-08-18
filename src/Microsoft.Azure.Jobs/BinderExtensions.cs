@@ -20,7 +20,7 @@ namespace Microsoft.Azure.Jobs
                 throw new ArgumentNullException("binder");
             }
 
-            return binder.BindAsync<T>(attribute).Result;
+            return binder.BindAsync<T>(attribute).GetAwaiter().GetResult();
         }
     }
 }

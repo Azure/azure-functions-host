@@ -10,6 +10,7 @@ using System.Web.Mvc;
 using Dashboard.ApiControllers;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
+using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Blobs;
@@ -269,7 +270,8 @@ namespace Dashboard.Controllers
 
             try
             {
-                guid = BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None).Result;
+                guid = AspNetTaskExecutor.Execute(
+                    () => BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None));
             }
             catch
             {

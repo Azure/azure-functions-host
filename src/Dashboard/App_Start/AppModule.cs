@@ -9,6 +9,7 @@ using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
+using Dashboard.Infrastructure;
 using Microsoft.Azure.Jobs;
 using Microsoft.Azure.Jobs.Host.Executors;
 using Microsoft.Azure.Jobs.Protocols;
@@ -104,7 +105,7 @@ namespace Dashboard
             if (account != null)
             {
                 DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
-                validator.ValidateCredentialsAsync(account, CancellationToken.None).GetAwaiter().GetResult();
+                AspNetTaskExecutor.Execute(() => validator.ValidateCredentialsAsync(account, CancellationToken.None));
             }
             return account;
         }
