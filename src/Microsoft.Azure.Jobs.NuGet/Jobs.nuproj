@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), Jobs.sln))\tools\Jobs.settings.targets"/>
+  <Import Project="$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), WebJobs.sln))\tools\Jobs.settings.targets"/>
   <PropertyGroup>
     <NuSpecFile>$(MSBuildProjectName).nuspec</NuSpecFile>
     <NuGetPackageId>Microsoft.Azure.Jobs</NuGetPackageId>
@@ -8,17 +8,17 @@
     <NuGetPackSymbols>false</NuGetPackSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs.Host\Jobs.Host.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Host\WebJobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
-      <Name>Jobs.Host</Name>
+      <Name>WebJobs.Host</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.Host\bin\$(Configuration)\Microsoft.Azure.Jobs.Host.dll">
-      <Destination>lib\net45\Microsoft.Azure.Jobs.Host.dll</Destination>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.WebJobs.Host\bin\$(Configuration)\Microsoft.Azure.WebJobs.Host.dll">
+      <Destination>lib\net45\Microsoft.Azure.WebJobs.Host.dll</Destination>
     </NuGetContent>
-    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.Jobs.Host\bin\$(Configuration)\Microsoft.Azure.Jobs.Host.xml">
-      <Destination>lib\net45\Microsoft.Azure.Jobs.Host.xml</Destination>
+    <NuGetContent Include="$(JobsRootPath)\src\Microsoft.Azure.WebJobs.Host\bin\$(Configuration)\Microsoft.Azure.WebJobs.Host.xml">
+      <Destination>lib\net45\Microsoft.Azure.WebJobs.Host.xml</Destination>
     </NuGetContent>
   </ItemGroup>
   <Import Project="$(JobsToolsPath)NuGetProj.targets"/>

@@ -164,37 +164,37 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobCausalityManager.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobCausalityManager.cs">
       <Link>Data\BlobCausalityManager.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobClient.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobClient.cs">
       <Link>Data\BlobClient.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Blobs\BlobPath.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobPath.cs">
       <Link>Data\BlobPath.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\ConnectionStringNames.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\ConnectionStringNames.cs">
       <Link>Data\ConnectionStringNames.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\AmbientConnectionStringProvider.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\AmbientConnectionStringProvider.cs">
       <Link>Data\AmbientConnectionStringProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\DefaultStorageAccountProvider.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\DefaultStorageAccountProvider.cs">
       <Link>Data\DefaultStorageAccountProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\DefaultStorageCredentialsValidator.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\DefaultStorageCredentialsValidator.cs">
       <Link>Data\DefaultStorageCredentialsValidator.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IConnectionStringProvider.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IConnectionStringProvider.cs">
       <Link>Data\IConnectionStringProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IStorageAccountProvider.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IStorageAccountProvider.cs">
       <Link>Data\IStorageAccountProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\Executors\IStorageCredentialsValidator.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IStorageCredentialsValidator.cs">
       <Link>Data\IStorageCredentialsValidator.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.Jobs.Host\StorageClient.cs">
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\StorageClient.cs">
       <Link>Data\StorageClient.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
@@ -445,21 +445,21 @@
     <Content Include="Views\_ViewStart.cshtml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs.Protocols\Jobs.Protocols.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobs.Protocols.csproj">
       <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
-      <Name>Jobs.Protocols</Name>
+      <Name>WebJobs.Protocols</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs.ServiceBus\Jobs.ServiceBus.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.ServiceBus\WebJobs.ServiceBus.csproj">
       <Project>{7b396753-f2d9-4655-929b-be7e665a4c7e}</Project>
-      <Name>Jobs.ServiceBus</Name>
+      <Name>WebJobs.ServiceBus</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs.Storage\Jobs.Storage.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs.Storage\WebJobs.Storage.csproj">
       <Project>{543edc53-3b68-49a8-9c3f-fc2ed27515aa}</Project>
-      <Name>Jobs.Storage</Name>
+      <Name>WebJobs.Storage</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.Azure.Jobs\Jobs.csproj">
+    <ProjectReference Include="..\Microsoft.Azure.WebJobs\WebJobs.csproj">
       <Project>{e3f2b2c8-6b8d-4d6a-a3ae-98366c9f3b49}</Project>
-      <Name>Jobs</Name>
+      <Name>WebJobs</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
