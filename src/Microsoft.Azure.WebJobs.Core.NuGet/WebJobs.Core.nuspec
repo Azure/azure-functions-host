@@ -2,11 +2,11 @@
 <package>
   <metadata>
     <id>$NuGetPackageId$</id>
-    <title>Microsoft.Azure.Jobs.Core</title>
+    <title>Microsoft.Azure.WebJobs.Core</title>
     <version>$NuGetPackageVersion$</version>
     <authors>Microsoft</authors>
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
-    <summary>Microsoft.Azure.Jobs is a library for writing Jobs in Microsoft Azure. This package contains the runtime assemblies for Microsoft.Azure.Jobs.</summary>
+    <summary>Microsoft.Azure.WebJobs is a library for writing WebJobs in Microsoft Azure. This package contains the runtime assemblies for Microsoft.Azure.WebJobs.</summary>
     <description>This library simplifies the task of adding background processing to your Microsoft Azure Web Sites. The SDK uses Microsoft Azure Storage, triggering a function in your program when items are added to Queues and Blobs. A dashboard provides rich monitoring and diagnostics for the programs that you write by using the SDK. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
     <language>en-US</language>
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>

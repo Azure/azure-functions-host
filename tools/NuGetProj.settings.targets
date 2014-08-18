@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <WebJobsRootPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</WebJobsRootPath>
+    <WebJobsToolsPath>$(MSBuildThisFileDirectory)</WebJobsToolsPath>
+    
+    <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
+    <WebJobsPackageVersion>0.4.0-beta</WebJobsPackageVersion>
+  </PropertyGroup>
+</Project>

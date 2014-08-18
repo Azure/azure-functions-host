@@ -14,30 +14,30 @@
     <OutputPath>bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <NuGetProject Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
-      <Link>Jobs\Jobs.nuproj</Link>
+    <NuGetProject Include="..\Microsoft.Azure.WebJobs.NuGet\WebJobs.nuproj">
+      <Link>WebJobs\WebJobs.nuproj</Link>
     </NuGetProject>
-    <NuGetProject Include="..\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuproj">
-      <Link>Jobs.Core\Jobs.Core.nuproj</Link>
+    <NuGetProject Include="..\Microsoft.Azure.WebJobs.Core.NuGet\WebJobs.Core.nuproj">
+      <Link>WebJobs.Core\WebJobs.Core.nuproj</Link>
     </NuGetProject>
   </ItemGroup>
   <ItemGroup>
-    <NuGetSpec Include="..\Microsoft.Azure.Jobs.NuGet\Jobs.nuspec">
-      <Link>Jobs\Jobs.nuspec</Link>
+    <NuGetSpec Include="..\Microsoft.Azure.WebJobs.NuGet\WebJobs.nuspec">
+      <Link>WebJobs\WebJobs.nuspec</Link>
     </NuGetSpec>
-    <NuGetSpec Include="..\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuspec">
-      <Link>Jobs.Core\Jobs.Core.nuspec</Link>
+    <NuGetSpec Include="..\Microsoft.Azure.WebJobs.Core.NuGet\WebJobs.Core.nuspec">
+      <Link>WebJobs.Core\WebJobs.Core.nuspec</Link>
     </NuGetSpec>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\tools\Jobs.settings.targets">
-      <Link>Jobs.settings.targets</Link>
+    <None Include="..\..\tools\NuGetProj.settings.targets">
+      <Link>NuGetProj.settings.targets</Link>
     </None>
-    <NuGetProject Include="..\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuproj">
-      <Link>Jobs.ServiceBus\Jobs.ServiceBus.nuproj</Link>
+    <NuGetProject Include="..\Microsoft.Azure.WebJobs.ServiceBus.NuGet\WebJobs.ServiceBus.nuproj">
+      <Link>WebJobs.ServiceBus\WebJobs.ServiceBus.nuproj</Link>
     </NuGetProject>
-    <NuGetSpec Include="..\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuspec">
-      <Link>Jobs.ServiceBus\Jobs.ServiceBus.nuspec</Link>
+    <NuGetSpec Include="..\Microsoft.Azure.WebJobs.ServiceBus.NuGet\WebJobs.ServiceBus.nuspec">
+      <Link>WebJobs.ServiceBus\WebJobs.ServiceBus.nuspec</Link>
     </NuGetSpec>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

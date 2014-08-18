@@ -45,15 +45,15 @@
       <PublishType>Directory</PublishType>
       <PublishPath>$(PublishPath)\SiteExtensionsUnzipped\AzureJobs</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.Azure.Jobs.Core.NuGet\Jobs.Core.nuproj">
+    <Build Include="src\Microsoft.Azure.WebJobs.Core.NuGet\WebJobs.Core.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.Azure.Jobs.NuGet\Jobs.nuproj">
+    <Build Include="src\Microsoft.Azure.WebJobs.NuGet\WebJobs.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>
-    <Build Include="src\Microsoft.Azure.Jobs.ServiceBus.NuGet\Jobs.ServiceBus.nuproj">
+    <Build Include="src\Microsoft.Azure.WebJobs.ServiceBus.NuGet\WebJobs.ServiceBus.nuproj">
       <PublishType>File</PublishType>
       <PublishPath>$(PublishPath)\Packages</PublishPath>
     </Build>

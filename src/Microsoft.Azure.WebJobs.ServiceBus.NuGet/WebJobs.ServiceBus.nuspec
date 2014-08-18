@@ -2,19 +2,19 @@
 <package>
   <metadata>
     <id>$NuGetPackageId$</id>
-    <title>Microsoft.Azure.Jobs.ServiceBus</title>
+    <title>Microsoft.Azure.WebJobs.ServiceBus</title>
     <version>$NuGetPackageVersion$</version>
     <authors>Microsoft</authors>
     <copyright>&#169; Microsoft Corporation. All rights reserved.</copyright>
-    <summary>Microsoft.Azure.Jobs.ServiceBus is a library for writing Microsoft Azure Jobs using Service Bus. This package contains the runtime assemblies for Microsoft.Azure.Jobs.ServiceBus.</summary>
-    <description>This package contains the runtime assemblies for Microsoft.Azure.Jobs.ServiceBus. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
+    <summary>Microsoft.Azure.WebJobs.ServiceBus is a library for writing Microsoft Azure WebJobs using Service Bus. This package contains the runtime assemblies for Microsoft.Azure.WebJobs.ServiceBus.</summary>
+    <description>This package contains the runtime assemblies for Microsoft.Azure.WebJobs.ServiceBus. For more information, please visit http://go.microsoft.com/fwlink/?LinkID=320971</description>
     <language>en-US</language>
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <tags>Microsoft Azure WebJobs Jobs ServiceBus</tags>
     <dependencies>
-      <dependency id="Microsoft.Azure.Jobs" version="[$JobsPackageVersion$]" />
+      <dependency id="Microsoft.Azure.WebJobs" version="[$WebJobsPackageVersion$]" />
       <dependency id="Newtonsoft.Json" version="5.0.6"/>
       <dependency id="WindowsAzure.ServiceBus" version="2.3.1.0"/>
     </dependencies>
