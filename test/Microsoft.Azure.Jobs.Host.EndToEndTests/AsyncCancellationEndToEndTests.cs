@@ -83,11 +83,11 @@ namespace Microsoft.Azure.Jobs.Host.EndToEndTests
 
         private static void FunctionBody(CancellationToken token)
         {
-            _functionStarted.Set();
-
             // If the token is cancelled here, something is not right
             if (!token.IsCancellationRequested)
             {
+                _functionStarted.Set();
+
                 _invokeInFunction();
                 _invokeInFunctionInvoked = true;
 
