@@ -99,6 +99,8 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
                         timer.Start();
 
                         succeeded = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
+
+                        await timer.StopAsync(cancellationToken);
                     }
 
                     // Need to call Delete message only if function succeeded.
@@ -153,8 +155,10 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
 
-            IRecurrentCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout);
-            return LinearSpeedupStrategy.CreateTimer(command, normalUpdateInterval, TimeSpan.FromMinutes(1));
+            IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, TimeSpan.FromMinutes(1));
+            ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout,
+                speedupStrategy);
+            return new TaskSeriesTimer(command, Task.Delay(normalUpdateInterval));
         }
 
         private async Task DeleteMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
@@ -165,6 +169,7 @@ namespace Microsoft.Azure.Jobs.Host.Queues.Listeners
             }
             catch (StorageException exception)
             {
+                // For consistency, the exceptions handled here should match UpdateQueueMessageVisibilityCommand.
                 if (exception.IsBadRequestPopReceiptMismatch())
                 {
                     // If someone else took over the message; let them delete it.
