@@ -269,11 +269,12 @@ namespace Dashboard.ApiControllers
             bool? heartbeatIsValid = null;
             if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatContainer) &&
                 entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatDirectory) &&
+                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatName) &&
                 entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatExpiration))
             {
-                heartbeatIsValid = HostHasHeartbeat(
-                    entry.Metadata[FunctionInstanceMetadata.HeartbeatContainer],
+                heartbeatIsValid = HostInstanceHasHeartbeat(entry.Metadata[FunctionInstanceMetadata.HeartbeatContainer],
                     entry.Metadata[FunctionInstanceMetadata.HeartbeatDirectory],
+                    entry.Metadata[FunctionInstanceMetadata.HeartbeatName],
                     Int32.Parse(entry.Metadata[FunctionInstanceMetadata.HeartbeatExpiration]));
             }
 
@@ -521,7 +522,8 @@ namespace Dashboard.ApiControllers
                 return null;
             }
 
-            return HostHasHeartbeat(function.HeartbeatSharedContainerName, function.HeartbeatSharedDirectoryName, function.HeartbeatExpirationInSeconds.Value);
+            return HostHasHeartbeat(function.HeartbeatSharedContainerName, function.HeartbeatSharedDirectoryName,
+                function.HeartbeatExpirationInSeconds.Value);
         }
 
         internal static bool? HostHasHeartbeat(IHeartbeatValidityMonitor heartbeatMonitor, FunctionSnapshot snapshot)
@@ -546,7 +548,8 @@ namespace Dashboard.ApiControllers
                 return null;
             }
 
-            return HostHasHeartbeat(heartbeat.SharedContainerName, heartbeat.SharedDirectoryName, heartbeat.ExpirationInSeconds);
+            return HostHasHeartbeat(heartbeat.SharedContainerName, heartbeat.SharedDirectoryName,
+                heartbeat.ExpirationInSeconds);
         }
 
         private bool? HostHasHeartbeat(string sharedContainerName, string sharedDirectoryName, int expirationInSeconds)
@@ -559,7 +562,8 @@ namespace Dashboard.ApiControllers
             }
             else
             {
-                bool? heartbeat = _heartbeatMonitor.IsSharedHeartbeatValid(sharedContainerName, sharedDirectoryName, expirationInSeconds);
+                bool? heartbeat = _heartbeatMonitor.IsSharedHeartbeatValid(sharedContainerName, sharedDirectoryName,
+                    expirationInSeconds);
                 _cachedHostHeartbeats.AddOrUpdate(hostId, heartbeat, (ignore1, ignore2) => heartbeat);
                 return heartbeat;
             }
@@ -574,8 +578,15 @@ namespace Dashboard.ApiControllers
                 return null;
             }
 
-            return _heartbeatMonitor.IsInstanceHeartbeatValid(heartbeat.SharedContainerName,
-                heartbeat.SharedDirectoryName, heartbeat.InstanceBlobName, heartbeat.ExpirationInSeconds);
+            return HostInstanceHasHeartbeat(heartbeat.SharedContainerName, heartbeat.SharedDirectoryName,
+                heartbeat.InstanceBlobName, heartbeat.ExpirationInSeconds);
+        }
+
+        private bool? HostInstanceHasHeartbeat(string sharedContainerName, string sharedDirectoryName,
+            string instanceBlobName, int expirationInSeconds)
+        {
+            return _heartbeatMonitor.IsInstanceHeartbeatValid(sharedContainerName, sharedDirectoryName,
+                instanceBlobName, expirationInSeconds);
         }
     }
 }
