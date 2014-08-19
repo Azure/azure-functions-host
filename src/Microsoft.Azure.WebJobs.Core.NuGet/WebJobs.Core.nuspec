@@ -12,6 +12,6 @@
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <tags>Microsoft Azure WebJobs Jobs</tags>
+    <tags>Microsoft Azure WebJobs Jobs Storage Table Blob Queue windowsazureofficial Web</tags>
   </metadata>
 </package>

@@ -12,7 +12,7 @@
     <projectUrl>http://go.microsoft.com/fwlink/?LinkID=320972</projectUrl>
     <licenseUrl>$PackageEULA$</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
-    <tags>Microsoft Azure WebJobs Jobs ServiceBus</tags>
+    <tags>Microsoft Azure WebJobs Jobs ServiceBus windowsazureofficial Web Service Bus</tags>
     <dependencies>
       <dependency id="Microsoft.Azure.WebJobs" version="[$WebJobsPackageVersion$]" />
       <dependency id="Newtonsoft.Json" version="5.0.6"/>
