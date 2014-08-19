@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(3000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6000);
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(3000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6000);
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 host.Start();
 
                 // Act
-                Wait(3 * 1000, () => DoBlobsExist(middleBlob, outputBlob));
+                Wait(6 * 1000, () => DoBlobsExist(middleBlob, outputBlob));
 
                 // Assert
                 // TODO: do an exponential-backoff retry here to make the tests quick yet robust.
