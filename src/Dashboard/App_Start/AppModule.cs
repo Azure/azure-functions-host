@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
 using Ninject.Modules;
 
 namespace Dashboard
@@ -34,12 +33,10 @@ namespace Dashboard
 
             CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
             CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
-            CloudTableClient tableClient = sdkAccount.CreateCloudTableClient();
 
             Bind<CloudStorageAccount>().ToConstant(sdkAccount);
             Bind<CloudBlobClient>().ToConstant(blobClient);
             Bind<CloudQueueClient>().ToConstant(queueClient);
-            Bind<CloudTableClient>().ToConstant(tableClient);
 
             Bind<IHostVersionReader>().To<HostVersionReader>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();

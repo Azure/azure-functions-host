@@ -14,7 +14,7 @@ using Dashboard.HostMessaging;
 using Dashboard.ViewModels;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.WindowsAzure.Storage.Blob;
 using InternalWebJobTypes = Microsoft.Azure.WebJobs.Protocols.WebJobTypes;
 using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
 
@@ -23,7 +23,7 @@ namespace Dashboard.ApiControllers
     public class FunctionsController : ApiController
     {
         private readonly CloudStorageAccount _account;
-        private readonly CloudTableClient _tableClient;
+        private readonly CloudBlobClient _blobClient;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
         private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionIndexReader _functionIndexReader;
@@ -41,7 +41,7 @@ namespace Dashboard.ApiControllers
 
         internal FunctionsController(
             CloudStorageAccount account,
-            CloudTableClient tableClient,
+            CloudBlobClient blobClient,
             IFunctionInstanceLookup functionInstanceLookup,
             IFunctionLookup functionLookup,
             IFunctionIndexReader functionIndexReader,
@@ -54,7 +54,7 @@ namespace Dashboard.ApiControllers
             IFunctionStatisticsReader statisticsReader)
         {
             _account = account;
-            _tableClient = tableClient;
+            _blobClient = blobClient;
             _functionInstanceLookup = functionInstanceLookup;
             _functionLookup = functionLookup;
             _functionIndexReader = functionIndexReader;
@@ -86,13 +86,13 @@ namespace Dashboard.ApiControllers
         /// true if it is known that there are no records from a new host; false if unknown
         /// </param>
         /// <returns>True if warning should be shown; false otherwise</returns>
-        private bool OnlyAlpha2HostExists(bool alreadyFoundNoNewerEntries)
+        private bool OnlyBeta1HostExists(bool alreadyFoundNoNewerEntries)
         {
-            const string Alpha2TableName = "AzureJobsFunctionIndex5";
+            const string Beta1ContainerName = "azure-jobs-dashboard-hosts";
 
             try
             {
-                return _tableClient.GetTableReference(Alpha2TableName).Exists() &&
+                return _blobClient.GetContainerReference(Beta1ContainerName).Exists() &&
                     (alreadyFoundNoNewerEntries || !FunctionIndexHasEntry());
             }
             catch (Exception)
@@ -151,7 +151,7 @@ namespace Dashboard.ApiControllers
             {
                 results = new InvocationLogSegment
                 {
-                    IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: false)
+                    IsOldHost = OnlyBeta1HostExists(alreadyFoundNoNewerEntries: false)
                 };
             }
 
@@ -449,9 +449,9 @@ namespace Dashboard.ApiControllers
 
             model.StorageAccountName = _account.Credentials.AccountName;
 
-            if (foundItem)
+            if (!foundItem)
             {
-                model.IsOldHost = OnlyAlpha2HostExists(alreadyFoundNoNewerEntries: true);
+                model.IsOldHost = OnlyBeta1HostExists(alreadyFoundNoNewerEntries: true);
             }
 
             if (model.Entries != null)
