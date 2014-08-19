@@ -2,13 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Azure.WebJobs.Protocols;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs;
-using Microsoft.WindowsAzure.Storage;
 using Dashboard.Data;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Dashboard.HostMessaging
 {
@@ -34,20 +31,41 @@ namespace Dashboard.HostMessaging
 
             if (String.IsNullOrEmpty(connectionString))
             {
-                // If not found, try default storage connection string
-                string defaultConnectionString = provider.GetConnectionString(ConnectionStringNames.Storage);
-                if (!String.IsNullOrEmpty(defaultConnectionString))
-                {
-                    var storageAccount = CloudStorageAccount.Parse(defaultConnectionString);
+                // If not found, try the dashboard connection string
+                var account = GetAccount(provider, ConnectionStringNames.Dashboard);
 
-                    if (storageAccount.Credentials.AccountName.Equals(storageAccountName))
-                    {
-                        connectionString = defaultConnectionString;
-                    }
+                if (account != null && account.Credentials.AccountName.Equals(storageAccountName))
+                {
+                    connectionString = account.ToString(exportSecrets: true);
+                }
+            }
+
+            if (String.IsNullOrEmpty(connectionString))
+            {
+                // If still not found, try the default storage connection string
+                var account = GetAccount(provider, ConnectionStringNames.Storage);
+
+                if (account != null && account.Credentials.AccountName.Equals(storageAccountName))
+                {
+                    connectionString = account.ToString(exportSecrets: true);
                 }
             }
 
             return connectionString;
+        }
+
+        private static CloudStorageAccount GetAccount(IConnectionStringProvider provider, string connectionStringName)
+        {
+            string connectionString = provider.GetConnectionString(ConnectionStringNames.Dashboard);
+
+            if (String.IsNullOrEmpty(connectionString))
+            {
+                return null;
+            }
+            else
+            {
+                return CloudStorageAccount.Parse(connectionString);
+            }
         }
     }
 }
