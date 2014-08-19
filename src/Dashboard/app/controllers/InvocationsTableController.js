@@ -77,32 +77,26 @@
 
         function bindPage() {
             var invocations = $scope.invocations,
-                downloaded = invocations.downloaded,
-                downloadedLength = downloaded.length,
-                nonFinalInvocationsInPage = invocations.nonFinalInvocationsInPage,
-                page,
-                pageIndex = invocations.pageIndex,
-                length = Math.min(downloadedLength, (pageIndex + 1) * 10),
+                length = Math.min(invocations.downloaded.length, (invocations.pageIndex + 1) * 10),
                 index,
                 item;
 
             invocations.initializing = false;
             invocations.page = [];
-            page = invocations.page;
             invocations.nonFinalInvocationsInPage = {};
-            invocations.firstPage = pageIndex == 0;
+            invocations.firstPage = invocations.pageIndex == 0;
 
-            for (index = pageIndex * 10; index < length; ++index) {
-                item = downloaded[index];
+            for (index = invocations.pageIndex * 10; index < length; ++index) {
+                item = invocations.downloaded[index];
 
                 if (!item.isFinal()) {
-                    nonFinalInvocationsInPage[item.id] = item;
+                    invocations.nonFinalInvocationsInPage[item.id] = item;
                 }
 
-                page.push(item);
+                invocations.page.push(item);
             }
 
-            invocations.hasMore = downloadedLength > index;
+            invocations.hasMore = invocations.downloaded.length > index;
         }
 
         function getFunctionInvocations(params) {
