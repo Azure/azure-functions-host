@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -140,16 +141,71 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             {
                 foreach (KeyValuePair<string, object> item in bindingData)
                 {
-                    string value = item.Value as string;
+                    string stringParamValue = ConvertParameterValueToString(item.Value);
 
-                    if (value != null)
+                    if (stringParamValue != null)
                     {
-                        parameters.Add(item.Key, value);
+                        parameters.Add(item.Key, stringParamValue);
                     }
                 }
             }
 
             return parameters;
+        }
+
+        /// <summary>
+        /// Convert a parameter value of supported type into path compatible string value.
+        /// List of supported types is limited to built-in signed/unsigned integer types, 
+        /// strings, and Guid. The latter one is translated in canonical form without curly braces.
+        /// </summary>
+        /// <param name="parameterValue">Any parameter value</param>
+        /// <returns>Path compatible string representation of the given parameter or null if its type is not supported.</returns>
+        public static string ConvertParameterValueToString(object parameterValue)
+        {
+            if (parameterValue != null)
+            {
+                switch (Type.GetTypeCode(parameterValue.GetType()))
+                {
+                    case TypeCode.String:
+                        return (string)parameterValue;
+
+                    case TypeCode.Int16:
+                        return ((Int16)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.Int32:
+                        return ((Int32)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.Int64:
+                        return ((Int64)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.UInt16:
+                        return ((UInt16)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.UInt32:
+                        return ((UInt32)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.UInt64:
+                        return ((UInt64)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.Char:
+                        return ((Char)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.Byte:
+                        return ((Byte)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.SByte:
+                        return ((SByte)parameterValue).ToString(CultureInfo.InvariantCulture);
+
+                    case TypeCode.Object:
+                        if (parameterValue is Guid)
+                        {
+                            return parameterValue.ToString();
+                        }
+                        return null;
+                }
+            }
+
+            return null;
         }
 
         public static string Resolve(string path, IReadOnlyDictionary<string, string> parameters)
