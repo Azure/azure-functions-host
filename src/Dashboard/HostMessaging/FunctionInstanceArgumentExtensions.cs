@@ -34,7 +34,7 @@ namespace Dashboard.HostMessaging
                 // If not found, try the dashboard connection string
                 var account = GetAccount(provider, ConnectionStringNames.Dashboard);
 
-                if (account != null && account.Credentials.AccountName.Equals(storageAccountName))
+                if (account != null && String.Equals(storageAccountName, account.Credentials.AccountName))
                 {
                     connectionString = account.ToString(exportSecrets: true);
                 }
@@ -45,7 +45,7 @@ namespace Dashboard.HostMessaging
                 // If still not found, try the default storage connection string
                 var account = GetAccount(provider, ConnectionStringNames.Storage);
 
-                if (account != null && account.Credentials.AccountName.Equals(storageAccountName))
+                if (account != null && String.Equals(storageAccountName, account.Credentials.AccountName))
                 {
                     connectionString = account.ToString(exportSecrets: true);
                 }

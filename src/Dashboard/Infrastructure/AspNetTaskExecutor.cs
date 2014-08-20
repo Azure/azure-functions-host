@@ -34,7 +34,7 @@ namespace Dashboard.Infrastructure
         {
             if (taskFactory == null)
             {
-                throw new ArgumentNullException("task");
+                throw new ArgumentNullException("taskFactory");
             }
 
             CultureInfo capturedCulture = CultureInfo.CurrentCulture;
