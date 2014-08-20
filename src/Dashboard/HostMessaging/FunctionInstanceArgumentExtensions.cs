@@ -34,7 +34,7 @@ namespace Dashboard.HostMessaging
                 // If not found, try the dashboard connection string
                 var account = GetAccount(provider, ConnectionStringNames.Dashboard);
 
-                if (account != null && String.Equals(storageAccountName, account.Credentials.AccountName))
+                if (AccountNameMatches(storageAccountName, account))
                 {
                     connectionString = account.ToString(exportSecrets: true);
                 }
@@ -45,7 +45,7 @@ namespace Dashboard.HostMessaging
                 // If still not found, try the default storage connection string
                 var account = GetAccount(provider, ConnectionStringNames.Storage);
 
-                if (account != null && String.Equals(storageAccountName, account.Credentials.AccountName))
+                if (AccountNameMatches(storageAccountName, account))
                 {
                     connectionString = account.ToString(exportSecrets: true);
                 }
@@ -66,6 +66,16 @@ namespace Dashboard.HostMessaging
             {
                 return CloudStorageAccount.Parse(connectionString);
             }
+        }
+
+        private static bool AccountNameMatches(string accountName, CloudStorageAccount account)
+        {
+            if (account == null || account.Credentials == null)
+            {
+                return false;
+            }
+
+            return String.Equals(accountName, account.Credentials.AccountName, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
