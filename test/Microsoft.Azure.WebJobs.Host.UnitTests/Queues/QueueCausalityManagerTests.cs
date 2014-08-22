@@ -3,8 +3,8 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -12,70 +12,67 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueCausalityManagerTests
     {
-        // Internal and external queuing are important for interoping between simpleBatch (on the cloud)
-        // and client code. 
         [Fact]
-        public void ExternalProducerInternalConsumer()
+        public void SetOwner_IfEmptyOwner_DoesNotAddOwner()
         {
-            // Queue outside of SimpleBatch, consume from within SimpleBatch
-            string val = "abc"; // not even valid JSON. 
-            CloudQueueMessage msg = new CloudQueueMessage(val);
+            // Arrange
+            var jobject = CreateJsonObject(new Payload { Val = 123 });
+            Guid g = Guid.Empty;
 
-            Guid? g = QueueCausalityManager.GetOwner(msg);
-            Assert.Null(g);
+            // Act
+            QueueCausalityManager.SetOwner(g, jobject);
 
-            string payload = msg.AsString;
-            Assert.Equal(val, payload);
+            // Assert
+            AssertOwnerIsNull(jobject.ToString());
         }
 
         [Fact]
-        public void InternalProducerExternalConsumer()
+        public void SetOwner_IfValidOwner_AddsOwner()
         {
-            // Queue from inside of SimpleBatch, consume outside of SimpleBatch
-            var msg = QueueCausalityManager.EncodePayload(Guid.Empty, new Payload { Val = 123 });
-
-            var json = msg.AsString;
-            var obj = JsonConvert.DeserializeObject<Payload>(json);
-            Assert.Equal(123, obj.Val);
-        }
-
-        [Fact]
-        public void InternalProducerInternalConsumer()
-        {
-            // Test that we can 
+            // Arrange
+            var jobject = CreateJsonObject(new Payload { Val = 123 });
             Guid g = Guid.NewGuid();
-            var msg = QueueCausalityManager.EncodePayload(g, new Payload { Val = 123 });
 
-            var payload = msg.AsString;
-            var result = JsonCustom.DeserializeObject<Payload>(payload);
-            Assert.Equal(result.Val, 123);
+            // Act
+            QueueCausalityManager.SetOwner(g, jobject);
 
-            var owner = QueueCausalityManager.GetOwner(msg);
-            Assert.Equal(g, owner);
+            // Assert
+            AssertOwnerEqual(g, jobject.ToString());
+        }
+
+        [Fact]
+        public void SetOwner_IfUnsupportedValueType_Throws()
+        {
+            // Arrange
+            var jobject = CreateJsonObject(123);
+            Guid g = Guid.NewGuid();
+
+            // Act & Assert
+            ExceptionAssert.ThrowsArgumentNull(() => QueueCausalityManager.SetOwner(g, jobject), "token");
         }
 
         [Fact]
         public void GetOwner_IfMessageIsNotValidJsonObject_ReturnsNull()
         {
-            TestOwnerReturnsNull("non-json");
+            TestOwnerIsNull("non-json");
         }
 
         [Fact]
         public void GetOwner_IfMessageDoesNotHaveOwnerProperty_ReturnsNull()
         {
-            TestOwnerReturnsNull("{'nonparent':null}");
+            TestOwnerIsNull("{'nonparent':null}");
         }
 
         [Fact]
         public void GetOwner_IfMessageOwnerIsNotString_ReturnsNull()
         {
-            TestOwnerReturnsNull("{'$AzureWebJobsParentId':null}");
+            TestOwnerIsNull("{'$AzureWebJobsParentId':null}");
         }
 
         [Fact]
         public void GetOwner_IfMessageOwnerIsNotGuid_ReturnsNull()
         {
-            TestOwnerReturnsNull("{'$AzureWebJobsParentId':'abc'}");
+            TestOwnerIsNull("{'$AzureWebJobsParentId':'abc'}");
         }
 
         [Fact]
@@ -85,33 +82,47 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             JObject json = new JObject();
             json.Add("$AzureWebJobsParentId", new JValue(expected.ToString()));
 
-            TestOwner(expected, json.ToString());
+            TestOwnerEqual(expected, json.ToString());
         }
 
-        private static void TestOwner(Guid expectedOwner, string message)
+        private static void AssertOwnerEqual(Guid expectedOwner, string message)
         {
+            Guid? owner = GetOwner(message);
+            Assert.Equal(expectedOwner, owner);
+        }
+
+        private static void TestOwnerEqual(Guid expectedOwner, string message)
+        {
+            // Act
             Guid? owner = GetOwner(message);
 
             // Assert
             Assert.Equal(expectedOwner, owner);
         }
 
-
-        private static void TestOwnerReturnsNull(string message)
+        private static void TestOwnerIsNull(string message)
         {
+            // Act
             Guid? owner = GetOwner(message);
 
             // Assert
             Assert.Null(owner);
         }
 
+        private static void AssertOwnerIsNull(string message)
+        {
+            Guid? owner = GetOwner(message);
+            Assert.Null(owner);
+        }
+
         private static Guid? GetOwner(string message)
         {
-            // Arrange
-            CloudQueueMessage queueMessage = new CloudQueueMessage(message);
+            return QueueCausalityManager.GetOwner(new CloudQueueMessage(message));
+        }
 
-            // Act
-            return QueueCausalityManager.GetOwner(queueMessage);
+        private static JObject CreateJsonObject(object value)
+        {
+            return JToken.FromObject(value) as JObject;
         }
 
         public class Payload

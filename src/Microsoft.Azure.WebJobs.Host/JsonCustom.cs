@@ -3,6 +3,7 @@
 
 using System;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public static string SerializeObject(object o)
         {
-            return JsonConvert.SerializeObject(o, _settings);
+            return (o != null) ? JsonConvert.SerializeObject(o, _settings) : new JValue(o).ToString();
         }
 
         public static T DeserializeObject<T>(string json)

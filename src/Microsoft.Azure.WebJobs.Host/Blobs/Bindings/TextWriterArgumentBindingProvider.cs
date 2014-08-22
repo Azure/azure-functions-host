@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -93,6 +94,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
+                    Debug.Assert(value == null || value == GetValue(),
+                        "The value argument should be either the same instance as returned by GetValue() or null");
+
                     // Not ByRef, so can ignore value argument.
                     cancellationToken.ThrowIfCancellationRequested();
                     await _value.FlushAsync();

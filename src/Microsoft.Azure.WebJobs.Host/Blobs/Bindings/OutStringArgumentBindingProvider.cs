@@ -86,8 +86,37 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     return null;
                 }
 
+                /// <summary>
+                /// Stores content of a string in utf-8 encoded format into the bound CloudBLob.
+                /// </summary>
+                /// <param name="value">string object as retrieved from user's WebJobs method argument.</param>
+                /// <param name="cancellationToken">a cancellation token</param>
+                /// <remarks>As this method handles out string parameter it distinguishes following possible scenarios:
+                /// <list type="bullet">
+                /// <item>
+                /// <description>
+                /// the value is null - no CloudBlob will be created;
+                /// </description>
+                /// </item>
+                /// <item>
+                /// <description>
+                /// the value is an empty string - a CloudBlob with empty content will be created;
+                /// </description>
+                /// </item>
+                /// <item>
+                /// <description>
+                /// the value is a non-empty string - a CloudBlob with content from given string will be created.
+                /// </description>
+                /// </item>
+                /// </list>
+                /// </remarks>
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
+                    if (value == null)
+                    {
+                        return;
+                    }
+
                     string text = (string)value;
 
                     const int defaultBufferSize = 1024;

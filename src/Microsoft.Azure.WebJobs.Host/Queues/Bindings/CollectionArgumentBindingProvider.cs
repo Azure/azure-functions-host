@@ -4,7 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -121,6 +121,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
+                    Debug.Assert(value == null || value == GetValue(),
+                        "The value argument should be either the same instance as returned by GetValue() or null");
+
                     // Not ByRef, so can ignore value argument.
                     foreach (TItem item in _value)
                     {

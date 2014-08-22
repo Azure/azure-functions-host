@@ -2,10 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
@@ -68,7 +70,20 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
-                CloudQueueMessage message = QueueCausalityManager.EncodePayload(_functionInstanceId, value);
+                CloudQueueMessage message;
+
+                if (value != null)
+                {
+                    JObject jobject = JToken.FromObject(value) as JObject;
+                    Debug.Assert(jobject != null, "Specified value object should support JSON serialization to a JObject");
+                    QueueCausalityManager.SetOwner(_functionInstanceId, jobject);
+                    message = new CloudQueueMessage(jobject.ToString());
+                }
+                else
+                {
+                    JValue nullValue = new JValue(value);
+                    message = new CloudQueueMessage(nullValue.ToString());
+                }
 
                 await _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
 

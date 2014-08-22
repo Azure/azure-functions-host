@@ -4,32 +4,38 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
-    // This tracks causality via the queue message payload. 
-    // Important that this can interoperate with external queue messages, so be resilient to a missing guid marker. 
-    // Can we switch to some auxillary table? Beware, CloudQueueMessage.Id is not 
-    // filled out until after the message is queued, but then there's a race between updating 
-    // the aux storage and another function picking up the message.
+    /// <summary>
+    /// Tracks causality via JSON formatted queue message content. 
+    /// Adds an extra field to the JSON object for the parent guid name.
+    /// </summary>
+    /// <remarks>
+    /// Important that this class can interoperate with external queue messages, 
+    /// so be resilient to a missing guid marker. 
+    /// Can we switch to some auxillary table? Beware, CloudQueueMessage. 
+    /// Id is not filled out until after the message is queued, 
+    /// but then there's a race between updating the aux storage and another function picking up the message.
+    /// </remarks>
     internal static class QueueCausalityManager
     {
-        // Serialize Payloads as JSON. Add an extra field to the JSON object for the parent guid name.
         const string parentGuidFieldName = "$AzureWebJobsParentId";
 
-        // When we enqueue, add the 
-        public static CloudQueueMessage EncodePayload(Guid functionOwner, object payload)
+        public static void SetOwner(Guid functionOwner, JObject token)
         {
-            JToken token = JToken.FromObject(payload);
-            token[parentGuidFieldName] = functionOwner.ToString();
+            if (token == null)
+            {
+                throw new ArgumentNullException("token");
+            }
 
-            string json = token.ToString();
-
-            CloudQueueMessage msg = new CloudQueueMessage(json);
-            // Beware, msg.id is not filled out yet. 
-            return msg;
+            if (!Guid.Equals(Guid.Empty, functionOwner))
+            {
+                token[parentGuidFieldName] = functionOwner.ToString();
+            }
         }
 
         [DebuggerNonUserCode]

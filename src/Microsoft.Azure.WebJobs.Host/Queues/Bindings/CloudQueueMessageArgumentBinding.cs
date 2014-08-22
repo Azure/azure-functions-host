@@ -53,8 +53,35 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return _queue.Name;
             }
 
+            /// <summary>
+            /// Sends a CloudQueueMessage to the bound queue.
+            /// </summary>
+            /// <param name="value">CloudQueueMessage instance as retrieved from user's WebJobs method argument.</param>
+            /// <param name="cancellationToken">a cancellation token</param>
+            /// <remarks>As this method handles out message instance parameter it distinguishes following possible scenarios:
+            /// <item>
+            /// <description>
+            /// the value is null - no message will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is an instance with empty content - a message with empty content will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is an instance with non-empty content - a message with content from given argument will be sent.
+            /// </description>
+            /// </item>
+            /// </remarks>
             public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
+                if (value == null)
+                {
+                    return;
+                }
+
                 CloudQueueMessage message = (CloudQueueMessage)value;
 
                 await _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);

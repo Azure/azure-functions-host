@@ -13,6 +13,12 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             Assert.DoesNotThrow(() => action.Invoke());
         }
 
+        public static void ThrowsArgument(Action action, string expectedParameterName)
+        {
+            ArgumentException exception = Assert.Throws<ArgumentException>(() => action.Invoke());
+            Assert.Equal(expectedParameterName, exception.ParamName);
+        }
+
         public static void ThrowsArgument(Action action, string expectedParameterName, string expectedMessage)
         {
             ArgumentException exception = Assert.Throws<ArgumentException>(() => action.Invoke());

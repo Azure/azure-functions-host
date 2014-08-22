@@ -54,8 +54,35 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 return _entity.MessageSender.Path;
             }
 
+            /// <summary>
+            /// Creates and sends a BrokeredMessage with content provided in specified byte array.
+            /// </summary>
+            /// <param name="value">byte array as retrieved from user's WebJobs method argument.</param>
+            /// <param name="cancellationToken">a cancellation token</param>
+            /// <remarks>As this method handles out byte array parameter it distinguishes following possible scenarios:
+            /// <item>
+            /// <description>
+            /// the value is null - no message will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is an empty byte array - a message with empty content will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is a non-empty byte array - a message with content from given argument will be sent.
+            /// </description>
+            /// </item>
+            /// </remarks>
             public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
+                if (value == null)
+                {
+                    return;
+                }
+
                 byte[] bytes = (byte[])value;
 
                 using (MemoryStream stream = new MemoryStream(bytes, writable: false))

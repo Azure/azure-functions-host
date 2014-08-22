@@ -53,8 +53,35 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return _queue.Name;
             }
 
+            /// <summary>
+            /// Creates and sends a CloudQueueMessage with content provided in specified string.
+            /// </summary>
+            /// <param name="value">string as retrieved from user's WebJobs method argument.</param>
+            /// <param name="cancellationToken">a cancellation token</param>
+            /// <remarks>As this method handles out string parameter it distinguishes following possible scenarios:
+            /// <item>
+            /// <description>
+            /// the value is null - no message will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is an empty string - a message with empty content will be sent;
+            /// </description>
+            /// </item>
+            /// <item>
+            /// <description>
+            /// the value is a non-empty string - a message with content from given argument will be sent.
+            /// </description>
+            /// </item>
+            /// </remarks>
             public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {
+                if (value == null)
+                {
+                    return;
+                }
+
                 string text = (string)value;
 
                 await _queue.AddMessageAndCreateIfNotExistsAsync(new CloudQueueMessage(text), cancellationToken);
