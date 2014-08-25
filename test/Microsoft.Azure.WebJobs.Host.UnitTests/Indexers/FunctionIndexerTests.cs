@@ -10,31 +10,12 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Moq;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 {
     public class FunctionIndexerTests
     {
-        [Fact]
-        public void IndexMethod_IgnoresMethod_IfMethodHasUnboundOutParameterWithoutJobsAttribute()
-        {
-            // Arrange
-            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>(MockBehavior.Strict);
-            int calls = 0;
-            indexMock
-                .Setup(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()))
-                .Callback(() => calls++);
-            IFunctionIndex index = indexMock.Object;
-            FunctionIndexer product = CreateProductUnderTest();
-
-            // Act
-            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("TryParse"), index,
-                CancellationToken.None).GetAwaiter().GetResult();
-
-            // Assert
-            Assert.Equal(0, calls);
-        }
-
         [Fact]
         public void IndexMethod_Throws_IfMethodHasUnboundOutParameterWithJobsAttribute()
         {
@@ -56,15 +37,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.Equal("Cannot bind parameter 'parsed' to type Foo&.", innerException.Message);
         }
 
-        [Fact]
-        public void IndexMethod_IgnoresMethod_IfMethodHasUnresolvedGenericParameter()
+        [Theory]
+        [InlineData("MethodWithUnboundOutParameterAndNoSdkAttribute")]
+        [InlineData("MethodWithGenericParameter")]
+        [InlineData("MethodWithNoParameters")]
+        public void IndexMethod_IgnoresMethod_IfNonSdkMethod(string method)
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"), indexMock.Object, CancellationToken.None).GetAwaiter().GetResult();
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod(method), indexMock.Object, CancellationToken.None).GetAwaiter().GetResult();
 
             // Verify
             indexMock.Verify(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()), Times.Never);
@@ -113,6 +97,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Fact]
+        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkAttributeButNoParameters()
+        {
+            // Arrange
+            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkAttributeButNoParameters"));
+
+            // Verify
+            Assert.Equal(true, actual);
+        }
+
+        [Fact]
         public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkParameterAttributes()
         {
             // Arrange
@@ -134,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("TryParse"));
+            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithUnboundOutParameterAndNoSdkAttribute"));
 
             // Verify
             Assert.Equal(false, actual);
@@ -152,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             throw new NotImplementedException();
         }
 
-        public static bool TryParse(string input, out Foo parsed)
+        public static bool MethodWithUnboundOutParameterAndNoSdkAttribute(string input, out Foo parsed)
         {
             throw new NotImplementedException();
         }
@@ -173,6 +171,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
         [NoAutomaticTrigger]
         public static bool MethodWithSdkAttribute(string input, out string output)
+        {
+            throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static bool MethodWithSdkAttributeButNoParameters()
         {
             throw new NotImplementedException();
         }

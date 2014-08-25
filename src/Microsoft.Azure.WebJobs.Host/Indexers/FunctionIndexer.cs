@@ -63,14 +63,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 return false;
             }
 
-            if (method.GetParameters().Length == 0)
-            {
-                return false;
-            }
-
             if (method.GetCustomAttributesData().Any(HasSdkAttribute))
             {
                 return true;
+            }
+
+            if (method.GetParameters().Length == 0)
+            {
+                return false;
             }
 
             if (method.GetParameters().Any(p => p.GetCustomAttributesData().Any(HasSdkAttribute)))
