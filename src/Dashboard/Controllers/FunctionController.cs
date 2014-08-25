@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Dashboard.Controllers
 {
@@ -236,7 +237,9 @@ namespace Dashboard.Controllers
                 return View();
             }
 
-            ICloudBlob blob;
+            ICloudBlob blob = null;
+
+            DefaultStorageAccountProvider provider = new DefaultStorageAccountProvider();
 
             try
             {
@@ -246,7 +249,28 @@ namespace Dashboard.Controllers
                     ContainerName = parsed.ContainerName,
                     BlobName = parsed.BlobName
                 };
-                blob = descriptor.GetBlockBlob(_account);
+
+                var connectionStrings = provider.GetConnectionStrings().Select(c =>
+                {
+                    CloudStorageAccount account;
+                    CloudStorageAccount.TryParse(c.Value, out account);
+                    return account;
+                })
+                .Where(c => c != null)
+                .ToList();
+                connectionStrings.Add(_account);
+                foreach (var connectionString in connectionStrings)
+                {
+                    blob = descriptor.GetBlockBlob(connectionString);
+                    if (blob.Exists())
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        blob = null;
+                    }
+                }
             }
             catch (FormatException e)
             {

@@ -3,12 +3,18 @@
 
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.WindowsAzure.Storage;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class NullConnectionStringProvider : IConnectionStringProvider
     {
         public string GetConnectionString(string connectionStringName)
+        {
+            return null;
+        }
+
+        public IReadOnlyDictionary<string, string> GetConnectionStrings()
         {
             return null;
         }

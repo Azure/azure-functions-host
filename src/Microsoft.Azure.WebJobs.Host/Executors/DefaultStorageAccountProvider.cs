@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using Microsoft.WindowsAzure.Storage;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -152,6 +153,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 return _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
             }
+        }
+
+        public IReadOnlyDictionary<string, string> GetConnectionStrings()
+        {
+            return _ambientConnectionStringProvider.GetConnectionStrings();
         }
 
         private CloudStorageAccount ValidateDashboardAccount(string connectionString, bool explicitlySet)
