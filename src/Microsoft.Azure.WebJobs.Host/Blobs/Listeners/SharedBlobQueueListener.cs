@@ -6,32 +6,26 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal sealed class SharedBlobListener : ISharedListener
+    internal sealed class SharedBlobQueueListener : ISharedListener
     {
-        private readonly IBlobNotificationStrategy _strategy;
         private readonly ITaskSeriesTimer _timer;
+        private readonly BlobQueueTriggerExecutor _executor;
 
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobListener(CloudStorageAccount storageAccount)
+        public SharedBlobQueueListener(ITaskSeriesTimer timer, BlobQueueTriggerExecutor executor)
         {
-            _strategy = CreateStrategy(storageAccount);
-            // Start the first iteration immediately.
-            _timer = new TaskSeriesTimer(_strategy, initialWait: Task.Delay(0));
+            _timer = timer;
+            _executor = executor;
         }
 
-        public IBlobWrittenWatcher BlobWritterWatcher
-        {
-            get { return _strategy; }
-        }
-
-        public void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor)
+        public void Register(string functionId, ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory)
         {
             if (_started)
             {
@@ -39,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     "Registrations may not be added while the shared listener is running.");
             }
 
-            _strategy.Register(container, triggerExecutor);
+            _executor.Register(functionId, instanceFactory);
         }
 
         public void EnsureAllStarted()
@@ -76,18 +70,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 _timer.Dispose();
                 _disposed = true;
-            }
-        }
-
-        private static IBlobNotificationStrategy CreateStrategy(CloudStorageAccount account)
-        {
-            if (!StorageClient.IsDevelopmentStorageAccount(account))
-            {
-                return new PollLogsStrategy();
-            }
-            else
-            {
-                return new ScanContainersStrategy();
             }
         }
     }

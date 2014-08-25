@@ -7,9 +7,21 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class HostQueueNames
     {
-        private const string Prefix = "azure-jobs-";
+        private const string Prefix = "azure-webjobs-";
 
+        private const string HostBlobTriggerQueuePrefix = Prefix + "blobtrigger-";
         private const string HostQueuePrefix = Prefix + "host-";
+
+        // The standard prefix is too long here; this queue is bound by customers.
+        public static string BlobTriggerPoisonQueue = "webjobs-blobtrigger-poison";
+
+        /// <summary>Gets the shared host blob trigger queue name.</summary>
+        /// <param name="hostId">The host ID.</param>
+        /// <returns>The shared host blob trigger queue name.</returns>
+        public static string GetHostBlobTriggerQueueName(Guid hostId)
+        {
+            return HostBlobTriggerQueuePrefix + hostId.ToString("N");
+        }
 
         /// <summary>Gets the host instance queue name.</summary>
         /// <param name="hostId">The host ID.</param>

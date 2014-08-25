@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -42,11 +43,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public static async Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)
         {
-            await blob.FetchAttributesAsync(cancellationToken);
+            if (!await blob.TryFetchAttributesAsync(cancellationToken))
+            {
+                return null;
+            }
+
             if (!blob.Metadata.ContainsKey(MetadataKeyName))
             {
                 return null;
             }
+
             string val = blob.Metadata[MetadataKeyName];
             Guid result;
             if (Guid.TryParse(val, out result))

@@ -14,17 +14,20 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly IListenerFactory _factory;
         private readonly IFunctionExecutor _executor;
         private readonly HostBindingContext _context;
+        private readonly Guid _hostId;
         private readonly CancellationTokenSource _cancellationSource;
 
         private IListener _listener;
         private CancellationTokenRegistration _cancellationRegistration;
         private bool _disposed;
 
-        public ListenerFactoryListener(IListenerFactory factory, IFunctionExecutor executor, HostBindingContext context)
+        public ListenerFactoryListener(IListenerFactory factory, IFunctionExecutor executor, HostBindingContext context,
+            Guid hostId)
         {
             _factory = factory;
             _executor = executor;
             _context = context;
+            _hostId = hostId;
             _cancellationSource = new CancellationTokenSource();
         }
 
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            ListenerFactoryContext factoryContext = new ListenerFactoryContext(_context,
+            ListenerFactoryContext factoryContext = new ListenerFactoryContext(_context, _hostId,
                 new SharedListenerContainer(), cancellationToken);
             _listener = await _factory.CreateAsync(_executor, factoryContext);
             _cancellationRegistration = _cancellationSource.Token.Register(_listener.Cancel);

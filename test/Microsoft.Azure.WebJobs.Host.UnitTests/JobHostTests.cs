@@ -284,8 +284,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 TypeLocator = new SimpleTypeLocator(),
                 StorageAccountProvider = new SimpleStorageAccountProvider
                 {
-                    StorageAccount = CloudStorageAccount.DevelopmentStorageAccount,
-                    // use null logging string since unit tests don't need logs.
+                    // Nse null connection strings since unit tests shouldn't make wire requests.
+                    StorageAccount = null,
                     DashboardAccount = null
                 },
                 StorageCredentialsValidator = credentialsValidator,

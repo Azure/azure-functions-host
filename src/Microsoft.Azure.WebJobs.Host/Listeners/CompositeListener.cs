@@ -14,6 +14,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         private bool _disposed;
 
+        public CompositeListener(params IListener[] listeners)
+            : this((IEnumerable<IListener>)listeners)
+        {
+        }
+
         public CompositeListener(IEnumerable<IListener> listeners)
         {
             _listeners = listeners;

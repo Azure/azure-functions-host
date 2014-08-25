@@ -105,7 +105,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, combinedCancellationToken);
                 }
 
-                CloudBlobClient blobClient;
                 IHostInstanceLogger hostInstanceLogger;
                 IFunctionInstanceLogger functionInstanceLogger;
                 IFunctionOutputLogger functionOutputLogger;
@@ -113,20 +112,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (dashboardAccount != null)
                 {
                     // Create logging against a live Azure account.
-                    blobClient = dashboardAccount.CreateCloudBlobClient();
+                    CloudBlobClient dashboardBlobClient = dashboardAccount.CreateCloudBlobClient();
                     IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
-                        new PersistentQueueWriter<PersistentQueueMessage>(blobClient);
+                        new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                     PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
                     hostInstanceLogger = queueLogger;
                     functionInstanceLogger = new CompositeFunctionInstanceLogger(
                         queueLogger,
                         new ConsoleFunctionInstanceLogger());
-                    functionOutputLogger = new BlobFunctionOutputLogger(blobClient);
+                    functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
                 }
                 else
                 {
                     // No auxillary logging. Logging interfaces are nops or in-memory.
-                    blobClient = null;
                     hostInstanceLogger = new NullHostInstanceLogger();
                     functionInstanceLogger = new ConsoleFunctionInstanceLogger();
                     functionOutputLogger = new ConsoleFunctionOutputLogger();
@@ -138,6 +136,26 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 HostBindingContext bindingContext = new HostBindingContext(functions.BindingProvider, nameResolver,
                     queueConfiguration, storageAccount, serviceBusConnectionString);
 
+                Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
+
+                Guid hostId;
+
+                if (storageAccount != null)
+                {
+                    // Determine the host name from the method list
+                    string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
+                    string sharedHostName = storageAccount.Credentials.AccountName + "/" + hostName;
+
+                    CloudBlobClient storageBlobClient = storageAccount.CreateCloudBlobClient();
+                    IHostIdManager hostIdManager = new HostIdManager(storageBlobClient);
+                    hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, combinedCancellationToken);
+                }
+                else
+                {
+                    // Test only
+                    hostId = Guid.Empty;
+                }
+
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;
                 IRecurrentCommand heartbeatCommand;
@@ -145,23 +163,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (dashboardAccount != null)
                 {
-                    // Determine the host name from the method list
-                    Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
-                    string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                    string sharedHostName = dashboardAccount.Credentials.AccountName + "/" + hostName;
-
-                    IHostIdManager hostIdManager = new HostIdManager(blobClient);
-                    Guid hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, combinedCancellationToken);
-
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
-                    CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-                    CloudQueue sharedQueue = queueClient.GetQueueReference(sharedQueueName);
+                    CloudQueueClient dashboardQueueClient = dashboardAccount.CreateCloudQueueClient();
+                    CloudQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
                         functionInstanceLogger);
 
-                    Guid id = Guid.NewGuid();
-                    string instanceQueueName = HostQueueNames.GetHostQueueName(id);
-                    CloudQueue instanceQueue = queueClient.GetQueueReference(instanceQueueName);
+                    Guid hostInstanceId = Guid.NewGuid();
+                    string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId);
+                    CloudQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
                         functionInstanceLogger);
 
@@ -169,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     {
                         SharedContainerName = HostContainerNames.Hosts,
                         SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId.ToString("N"),
-                        InstanceBlobName = id.ToString("N"),
+                        InstanceBlobName = hostInstanceId.ToString("N"),
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
                     heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(dashboardAccount,
@@ -180,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                     hostOutputMessage = new DataOnlyHostOutputMessage
                     {
-                        HostInstanceId = id,
+                        HostInstanceId = hostInstanceId,
                         HostDisplayName = displayName,
                         SharedQueueName = sharedQueueName,
                         InstanceQueueName = instanceQueueName,
@@ -205,34 +215,34 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
                     sharedQueueListenerFactory, instanceQueueListenerFactory);
 
-                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory,
+                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(hostId, instanceQueueListenerFactory,
                     bindingContext, heartbeatCommand, shutdownToken, executor);
 
-                IListener listener = CreateHostListener(allFunctionsListenerFactory, bindingContext, heartbeatCommand,
-                    shutdownToken, executor);
+                IListener listener = CreateHostListener(hostId, allFunctionsListenerFactory, bindingContext,
+                    heartbeatCommand, shutdownToken, executor);
 
                 return new JobHostContext(functions, hostCallExecutor, listener);
             }
         }
 
-        private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
-            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
-            IFunctionExecutor innerExecutor)
+        private static IFunctionExecutor CreateHostCallExecutor(Guid hostId,
+            IListenerFactory instanceQueueListenerFactory, HostBindingContext bindingContext,
+            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
-                innerExecutor, bindingContext, heartbeatExecutor);
+                innerExecutor, bindingContext, hostId, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
                 abortListenerExecutor);
             return shutdownFunctionExecutor;
         }
 
-        private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
+        private static IListener CreateHostListener(Guid hostId, IListenerFactory allFunctionsListenerFactory,
             HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor executor)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
-                bindingContext);
+                bindingContext, hostId);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;

@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
-    internal interface ISharedListener<TFilter, TTriggerValue> : IDisposable
+    internal interface ISharedListener : IDisposable
     {
-        void Register(TFilter listenData, ITriggerExecutor<TTriggerValue> triggerExecutor);
+        void EnsureAllCanceled();
 
         void EnsureAllStarted();
 

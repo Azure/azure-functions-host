@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Host
     // may point to blobs stored here).
     internal static class HostDirectoryNames
     {
+        public const string BlobReceipts = "blobreceipts";
+
         public const string Heartbeats = "heartbeats";
 
         public const string Ids = "ids";

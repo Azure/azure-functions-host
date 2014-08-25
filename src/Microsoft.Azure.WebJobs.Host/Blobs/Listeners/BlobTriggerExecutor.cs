@@ -3,117 +3,129 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobTriggerExecutor : ITriggerExecutor<ICloudBlob>
     {
+        private readonly Guid _hostId;
+        private readonly string _functionId;
         private readonly IBlobPathSource _input;
-        private readonly IEnumerable<IBindableBlobPath> _outputs;
-        private readonly ITriggeredFunctionInstanceFactory<ICloudBlob> _instanceFactory;
-        private readonly IFunctionExecutor _innerExecutor;
-        private readonly IBlobTimestampReader _timestampReader;
+        private readonly IBlobTriggerQueueWriter _queueWriter;
+        private readonly IBlobETagReader _eTagReader;
+        private readonly IBlobReceiptManager _receiptManager;
 
-        public BlobTriggerExecutor(IBlobPathSource input, IEnumerable<IBindableBlobPath> outputs,
-            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory, IFunctionExecutor innerExecutor)
+        public BlobTriggerExecutor(Guid hostId, string functionId, IBlobPathSource input,
+            IBlobETagReader eTagReader, IBlobReceiptManager receiptManager, IBlobTriggerQueueWriter queueWriter)
         {
+            _hostId = hostId;
+            _functionId = functionId;
             _input = input;
-            _outputs = outputs;
-            _instanceFactory = instanceFactory;
-            _innerExecutor = innerExecutor;
-            _timestampReader = BlobTimestampReader.Instance;
+            _queueWriter = queueWriter;
+            _eTagReader = eTagReader;
+            _receiptManager = receiptManager;
         }
 
         public async Task<bool> ExecuteAsync(ICloudBlob value, CancellationToken cancellationToken)
         {
-            if (!await ShouldExecuteTriggerAsync(value, cancellationToken))
-            {
-                return true;
-            }
-
-            Guid? parentId = await BlobCausalityManager.GetWriterAsync(value, cancellationToken);
-            IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            IDelayedException exception = await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
-            return exception == null;
-        }
-
-        private Task<bool> ShouldExecuteTriggerAsync(ICloudBlob possibleTrigger, CancellationToken cancellationToken)
-        {
-            return ShouldExecuteTriggerAsync(possibleTrigger, _input, _outputs, _timestampReader, cancellationToken);
-        }
-
-        internal static async Task<bool> ShouldExecuteTriggerAsync(ICloudBlob possibleTrigger, IBlobPathSource input,
-            IEnumerable<IBindableBlobPath> outputs, IBlobTimestampReader timestampReader,
-            CancellationToken cancellationToken)
-        {
             // Avoid unnecessary network calls for non-matches. First, check to see if the blob matches this trigger.
-            IReadOnlyDictionary<string, object> bindingData = input.CreateBindingData(possibleTrigger.ToBlobPath());
+            IReadOnlyDictionary<string, object> bindingData = _input.CreateBindingData(value.ToBlobPath());
 
             if (bindingData == null)
             {
                 // Blob is not a match for this trigger.
-                return false;
+                return true;
             }
 
-            // Next, check to see if the blob currently exists.
-            DateTime? possibleInputTimestamp = await timestampReader.GetLastModifiedTimestampAsync(possibleTrigger,
-                cancellationToken);
+            // Next, check to see if the blob currently exists (and, if so, what the current ETag is).
+            string possibleETag = await _eTagReader.GetETagAsync(value, cancellationToken);
 
-            if (!possibleInputTimestamp.HasValue)
+            if (possibleETag == null)
             {
-                // If the blob doesn't exist and have a timestamp, don't trigger on it.
-                return false;
+                // If the blob doesn't exist and have an ETag, don't trigger on it.
+                return true;
             }
 
-            DateTime inputTimestamp = possibleInputTimestamp.Value;
-            CloudBlobClient client = possibleTrigger.ServiceClient;
+            CloudBlockBlob receiptBlob = _receiptManager.CreateReference(_hostId, _functionId, value.Container.Name,
+                value.Name, possibleETag);
 
-            // Finally, if there are outputs, check to see if they are all newer than the input.
-            if (outputs != null && outputs.Any())
+            // Check for the completed receipt. If it's already there, noop.
+            BlobReceipt unleasedReceipt = await _receiptManager.TryReadAsync(receiptBlob, cancellationToken);
+
+            if (unleasedReceipt != null && unleasedReceipt.IsCompleted)
             {
-                foreach (IBindableBlobPath output in outputs)
+                return true;
+            }
+            else if (unleasedReceipt == null)
+            {
+                // Try to create (if not exists) an incomplete receipt.
+                if (!await _receiptManager.TryCreateAsync(receiptBlob, cancellationToken))
                 {
-                    if (!await IsOutputNewerThanAsync(inputTimestamp, client, bindingData, output, timestampReader,
-                        cancellationToken))
-                    {
-                        return true;
-                    }
+                    // Someone else just created the receipt; wait to try to trigger until later.
+                    // Alternatively, we could just ignore the return result and see who wins the race to acquire the
+                    // lease.
+                    return false;
+                }
+            }
+
+            string leaseId = await _receiptManager.TryAcquireLeaseAsync(receiptBlob, cancellationToken);
+
+            if (leaseId == null)
+            {
+                // If someone else owns the lease and just took over this receipt or deleted it;
+                // wait to try to trigger until later.
+                return false;
+            }
+
+            ExceptionDispatchInfo exceptionInfo;
+
+            try
+            {
+                // Check again for the completed receipt. If it's already there, noop.
+                BlobReceipt receipt = await _receiptManager.TryReadAsync(receiptBlob, cancellationToken);
+                Debug.Assert(receipt != null); // We have a (30 second) lease on the blob; it should never disappear on us.
+
+                if (receipt.IsCompleted)
+                {
+                    await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
+                    return true;
                 }
 
-                return false;
+                // We've successfully acquired a lease to enqueue the message for this blob trigger. Enqueue the message,
+                // complete the receipt and release the lease.
+
+                // Enqueue a message: function ID + blob path + ETag
+                BlobTriggerMessage message = new BlobTriggerMessage
+                {
+                    FunctionId = _functionId,
+                    BlobType = value.BlobType,
+                    ContainerName = value.Container.Name,
+                    BlobName = value.Name,
+                    ETag = possibleETag
+                };
+                await _queueWriter.EnqueueAsync(message, cancellationToken);
+
+                // Complete the receipt & release the lease
+                await _receiptManager.MarkCompletedAsync(receiptBlob, leaseId, cancellationToken);
+                await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
+
+                return true;
             }
-
-            return true;
-        }
-
-        private static async Task<bool> IsOutputNewerThanAsync(DateTime inputTimestamp, CloudBlobClient client,
-            IReadOnlyDictionary<string, object> bindingData, IBindableBlobPath output,
-            IBlobTimestampReader timestampReader, CancellationToken cancellationToken)
-        {
-            BlobPath outputPath = output.Bind(bindingData);
-
-            // Assumes inputs and outputs are in the same storage account.
-            CloudBlobContainer outputContainer = client.GetContainerReference(outputPath.ContainerName);
-            CloudBlockBlob outputBlob = outputContainer.GetBlockBlobReference(outputPath.BlobName);
-            DateTime? possibleOutputTimestamp = await timestampReader.GetLastModifiedTimestampAsync(outputBlob,
-                cancellationToken);
-
-            if (!possibleOutputTimestamp.HasValue)
+            catch (Exception exception)
             {
-                // If the output blob has no timestamp, it's not newer than the input blob.
-                return false;
+                exceptionInfo = ExceptionDispatchInfo.Capture(exception);
             }
 
-            DateTime outputTimestamp = possibleOutputTimestamp.Value;
-
-            return outputTimestamp > inputTimestamp;
+            Debug.Assert(exceptionInfo != null);
+            await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
+            exceptionInfo.Throw();
+            return false; // Keep the compiler happy; we'll never get here.
         }
     }
 }

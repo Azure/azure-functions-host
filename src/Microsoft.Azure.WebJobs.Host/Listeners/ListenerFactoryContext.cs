@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -12,13 +13,15 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     internal class ListenerFactoryContext
     {
         private readonly HostBindingContext _hostContext;
+        private readonly Guid _hostId;
         private readonly SharedListenerContainer _sharedListeners;
         private readonly CancellationToken _cancellationToken;
 
-        public ListenerFactoryContext(HostBindingContext hostContext, SharedListenerContainer sharedListeners,
-            CancellationToken cancellationToken)
+        public ListenerFactoryContext(HostBindingContext hostContext, Guid hostId,
+            SharedListenerContainer sharedListeners, CancellationToken cancellationToken)
         {
             _hostContext = hostContext;
+            _hostId = hostId;
             _sharedListeners = sharedListeners;
             _cancellationToken = cancellationToken;
         }
@@ -43,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         {
             get { return _hostContext.MessageEnqueuedWatcher; }
             set { _hostContext.MessageEnqueuedWatcher = value; }
+        }
+
+        public Guid HostId
+        {
+            get { return _hostId; }
         }
 
         public SharedListenerContainer SharedListeners

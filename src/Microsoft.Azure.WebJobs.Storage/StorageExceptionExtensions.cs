@@ -115,6 +115,81 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         }
 
         /// <summary>
+        /// Determines whether the exception is due to a 409 Conflict error with the error code LeaseAlreadyPresent.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 409 Conflict error with the error code
+        /// LeaseAlreadyPresent; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsConflictLeaseAlreadyPresent(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 409)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "LeaseAlreadyPresent";
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 409 Conflict error with the error code
+        /// LeaseIdMismatchWithLeaseOperation.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 409 Conflict error with the error code
+        /// LeaseIdMismatchWithLeaseOperation; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsConflictLeaseIdMismatchWithLeaseOperation(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 409)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "LeaseIdMismatchWithLeaseOperation";
+        }
+
+        /// <summary>
         /// Determines whether the exception is due to a 409 Conflict error with the error code QueueBeingDeleted.
         /// </summary>
         /// <param name="exception">The storage exception.</param>
@@ -474,6 +549,29 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
             return extendedInformation.ErrorCode == "QueueNotFound";
         }
 
+        /// <summary>Determines whether the exception occurred despite a 200 OK response.</summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception occurred despite a 200 OK response; otherwise
+        /// <see langword="false"/>.
+        /// </returns>
+        public static bool IsOk(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            return result.HttpStatusCode == 200;
+        }
+
         /// <summary>Determines whether the exception is due to a 412 Precondition Failed error.</summary>
         /// <param name="exception">The storage exception.</param>
         /// <returns>
@@ -533,6 +631,81 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
             }
 
             return extendedInformation.ErrorCode == "ConditionNotMet";
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 412 Precondition Failed error with the error code
+        /// LeaseIdMissing.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 412 Precondition Failed error with the error code
+        /// LeaseIdMissing; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsPreconditionFailedLeaseIdMissing(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 412)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "LeaseIdMissing";
+        }
+
+        /// <summary>
+        /// Determines whether the exception is due to a 412 Precondition Failed error with the error code LeaseLost.
+        /// </summary>
+        /// <param name="exception">The storage exception.</param>
+        /// <returns>
+        /// <see langword="true"/> if the exception is due to a 412 Precondition Failed error with the error code
+        /// LeaseLost; otherwise <see langword="false"/>.
+        /// </returns>
+        public static bool IsPreconditionFailedLeaseLost(this StorageException exception)
+        {
+            if (exception == null)
+            {
+                throw new ArgumentNullException("exception");
+            }
+
+            RequestResult result = exception.RequestInformation;
+
+            if (result == null)
+            {
+                return false;
+            }
+
+            if (result.HttpStatusCode != 412)
+            {
+                return false;
+            }
+
+            StorageExtendedErrorInformation extendedInformation = result.ExtendedErrorInformation;
+
+            if (extendedInformation == null)
+            {
+                return false;
+            }
+
+            return extendedInformation.ErrorCode == "LeaseLost";
         }
     }
 }

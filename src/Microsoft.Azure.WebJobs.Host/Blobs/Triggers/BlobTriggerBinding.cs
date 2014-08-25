@@ -104,8 +104,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory =
                 new TriggeredFunctionInstanceFactory<ICloudBlob>(functionBinding, functionDescriptor, method);
             CloudBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
-            IEnumerable<IBindableBlobPath> blobOutputs = GetBlobOutputs(nonTriggerBindings.Values);
-            IListenerFactory listenerFactory = new BlobListenerFactory(container, _path, blobOutputs, instanceFactory);
+            IListenerFactory listenerFactory = new BlobListenerFactory(functionDescriptor.Id, container, _path,
+                instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
@@ -124,14 +124,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private IReadOnlyDictionary<string, object> CreateBindingData(ICloudBlob value)
         {
             return _path.CreateBindingData(value.ToBlobPath());
-        }
-
-        private IEnumerable<IBindableBlobPath> GetBlobOutputs(IEnumerable<IBinding> nonTriggerBindingValues)
-        {
-            return nonTriggerBindingValues
-                .OfType<BlobBinding>()
-                .Where(b => b.Access == FileAccess.Write)
-                .Select(b => b.Path);
         }
     }
 }

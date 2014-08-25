@@ -173,6 +173,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobPath.cs">
       <Link>Data\BlobPath.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\CloudBlobExtensions.cs">
+      <Link>Data\CloudBlobExtensions.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\ConnectionStringNames.cs">
       <Link>Data\ConnectionStringNames.cs</Link>
     </Compile>
@@ -196,6 +199,9 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\StorageClient.cs">
       <Link>Data\StorageClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
+      <Link>Data\StorageExceptionExtensions.cs</Link>
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\DiagnosticsController.cs" />

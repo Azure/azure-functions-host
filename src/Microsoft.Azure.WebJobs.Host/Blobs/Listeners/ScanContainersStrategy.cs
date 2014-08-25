@@ -62,6 +62,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
         {
+            List<ICloudBlob> failedNotifications = new List<ICloudBlob>();
+
             // Drain the background queue of blob written notifications.
             while (true)
             {
@@ -73,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     break;
                 }
 
-                await NotifyRegistrationsAsync(blob, cancellationToken);
+                await NotifyRegistrationsAsync(blob, failedNotifications, cancellationToken);
             }
 
             foreach (CloudBlobContainer container in _registrations.Keys)
@@ -88,15 +90,22 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 foreach (ICloudBlob newBlob in newBlobs)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    await NotifyRegistrationsAsync(newBlob, cancellationToken);
+                    await NotifyRegistrationsAsync(newBlob, failedNotifications, cancellationToken);
                 }
+            }
+
+            // Re-add any failed notifications for the next iteration.
+            foreach (ICloudBlob failedNotification in failedNotifications)
+            {
+                _blobWrittenNotifications.Enqueue(failedNotification);
             }
 
             // Run subsequent iterations at 2 second intervals.
             return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
         }
 
-        private async Task NotifyRegistrationsAsync(ICloudBlob blob, CancellationToken cancellationToken)
+        private async Task NotifyRegistrationsAsync(ICloudBlob blob, ICollection<ICloudBlob> failedNotifications,
+            CancellationToken cancellationToken)
         {
             CloudBlobContainer container = blob.Container;
 
@@ -109,7 +118,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             foreach (ITriggerExecutor<ICloudBlob> registration in _registrations[container])
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await registration.ExecuteAsync(blob, cancellationToken);
+
+                if (!await registration.ExecuteAsync(blob, cancellationToken))
+                {
+                    // If notification failed, try again on the next iteration.
+                    failedNotifications.Add(blob);
+                }
             }
         }
 

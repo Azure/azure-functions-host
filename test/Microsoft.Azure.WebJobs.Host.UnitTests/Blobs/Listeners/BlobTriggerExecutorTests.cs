@@ -2,160 +2,463 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 {
     public class BlobTriggerExecutorTests
     {
-        // Sequential times.
-        static DateTime TimeOld = new DateTime(1900, 1, 1);
-        static DateTime TimeMiddle = new DateTime(1900, 1, 2);
-        static DateTime TimeNew = new DateTime(1900, 1, 3);
+        // Note: The tests that return true consume the notification.
+        // The tests that return false reset the notification (to be provided again later).
 
         [Fact]
-        public void NoOutputs()
+        public void ExecuteAsync_IfBlobDoesNotMatchPattern_ReturnsTrue()
         {
-            var input = CreateInput("container", "skip");
-            IEnumerable<IBindableBlobPath> outputs = null;
+            // Arrange
+            CloudStorageAccount account = CreateAccount();
+            CloudBlobClient client = account.CreateCloudBlobClient();
+            string containerName = "container";
+            CloudBlobContainer container = client.GetContainerReference(containerName);
+            CloudBlobContainer otherContainer = client.GetContainerReference("other");
 
-            bool invoke = ShouldInvokeTrigger(input, outputs);
+            IBlobPathSource input = BlobPathSource.Create(containerName + "/{name}");
 
-            Assert.True(invoke);
-        }
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input);
 
-        [Fact]
-        public void NoOutputsEmptyArray()
-        {
-            var input = CreateInput("container", "skip");
-            var outputs = new IBindableBlobPath[0];
+            ICloudBlob blob = otherContainer.GetBlockBlobReference("nonmatch");
 
-            bool invoke = ShouldInvokeTrigger(input, outputs);
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
 
-            Assert.True(invoke);
-        }
-
-        [Fact]
-        public void NewerInput()
-        {
-            var input = CreateInput("container", "new");
-            var outputs = new IBindableBlobPath[]
-            {
-                CreateOutput("container", "old")
-            };
-
-            bool invoke = ShouldInvokeTrigger(input, outputs);
-
-            Assert.True(invoke);
+            // Assert
+            Assert.True(task.Result);
         }
 
         [Fact]
-        public void MissingOutput()
+        public void ExecuteAsync_IfBlobDoesNotExist_ReturnsTrue()
         {
-            var input = CreateInput("container", "old");
-            var outputs = new IBindableBlobPath[]
-            {
-                CreateOutput("container", "missing")
-            };
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader(null);
 
-            bool invoke = ShouldInvokeTrigger(input, outputs);
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader);
 
-            Assert.True(invoke);
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            Assert.True(task.Result);
         }
 
         [Fact]
-        public void OlderInput()
+        public void ExecuteAsync_IfCompletedBlobReceiptExists_ReturnsTrue()
         {
-            var input = CreateInput("container", "old");
-            var outputs = new IBindableBlobPath[]
-            {
-                CreateOutput("container", "new")
-            };
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+            IBlobReceiptManager receiptManager = CreateCompletedReceiptManager();
 
-            bool invoke = ShouldInvokeTrigger(input, outputs);
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
-            Assert.False(invoke);
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            Assert.True(task.Result);
         }
 
         [Fact]
-        public void StrippedInput()
+        public void ExecuteAsync_IfIncompleteBlobReceiptExists_TriesToAcquireLease()
         {
-            // Input is newer than one of the outputs
-            var input = CreateInput("container", "middle");
-            var outputs = new IBindableBlobPath[]
-            {
-                CreateOutput("container", "old"),
-                CreateOutput("container", "new")
-            };
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
-            bool invoke = ShouldInvokeTrigger(input, outputs);
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(BlobReceipt.Incomplete));
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<string>(null))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = mock.Object;
 
-            Assert.True(invoke);
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.GetAwaiter().GetResult();
+            mock.Verify();
         }
 
-        bool ShouldInvokeTrigger(BlobPath input, IEnumerable<IBindableBlobPath> outputs)
+        [Fact]
+        public void ExecuteAsync_IfBlobReceiptDoesNotExist_TriesToCreateReceipt()
         {
-            var nvc = new Dictionary<string, object>();
-            var inputTime = LookupTime(input);
-            Assert.True(inputTime.HasValue);
-            CloudBlobClient client = new CloudBlobClient(new Uri("http://ignore"));
-            CloudBlobContainer inputContainer = client.GetContainerReference(input.ContainerName);
-            ICloudBlob possibleTrigger = inputContainer.GetBlockBlobReference(input.BlobName);
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
-            return BlobTriggerExecutor.ShouldExecuteTriggerAsync(possibleTrigger, new FixedBlobPathSource(input),
-                outputs, new LambdaTimestampReader(LookupTime), CancellationToken.None).GetAwaiter().GetResult();
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<BlobReceipt>(null));
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.GetAwaiter().GetResult();
+            mock.Verify();
         }
 
-        private static BlobPath CreateInput(string containerName, string blobName)
+        [Fact]
+        public void ExecuteAsync_IfTryCreateReceiptFails_ReturnsFalse()
         {
-            return new BlobPath(containerName, blobName);
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<BlobReceipt>(null));
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false));
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            Assert.False(task.Result);
         }
 
-        private static IBindableBlobPath CreateOutput(string containerName, string blobName)
+        [Fact]
+        public void ExecuteAsync_IfTryCreateReceiptSucceeds_TriesToAcquireLease()
         {
-            return new BoundBlobPath(new BlobPath(containerName, blobName));
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<BlobReceipt>(null));
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(true));
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<string>(null))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.GetAwaiter().GetResult();
+            mock.Verify();
         }
 
-        private static DateTime? LookupTime(ICloudBlob blob)
+        [Fact]
+        public void ExecuteAsync_IfTryAcquireLeaseFails_ReturnsFalse()
         {
-            return LookupTime(new BlobPath(blob.Container.Name, blob.Name));
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(BlobReceipt.Incomplete));
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult<string>(null));
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            Assert.False(task.Result);
         }
 
-        private static DateTime? LookupTime(BlobPath path)
+        [Fact]
+        public void ExecuteAsync_IfTryAcquireLeaseSucceeds_ReadsLatestReceipt()
         {
-            if (path.BlobName.EndsWith("missing"))
-            {
-                return null;
-            }
-            switch (path.BlobName)
-            {
-                case "skip": return TimeOld;
-                case "old": return TimeOld;
-                case "middle": return TimeMiddle;
-                case "new": return TimeNew;
-            }
-            throw new InvalidOperationException("Unexpected blob name: " + path.ToString());
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            int calls = 0;
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                    {
+                        return Task.FromResult(calls++ == 0 ? BlobReceipt.Incomplete : BlobReceipt.Complete);
+                    });
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult("LeaseId"));
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0));
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.GetAwaiter().GetResult();
+            Assert.Equal(2, calls);
         }
 
-        private class LambdaTimestampReader : IBlobTimestampReader
+        [Fact]
+        public void ExecuteAsync_IfLeasedReceiptBecameCompleted_ReleasesLeaseAndReturnsTrue()
         {
-            private readonly Func<ICloudBlob, DateTime?> _getLastModifiedTimestamp;
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
-            public LambdaTimestampReader(Func<ICloudBlob, DateTime?> getLastModifiedTimestamp)
-            {
-                _getLastModifiedTimestamp = getLastModifiedTimestamp;
-            }
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            int calls = 0;
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    int call = calls++;
+                    return Task.FromResult(call == 0 ? BlobReceipt.Incomplete : BlobReceipt.Complete);
+                });
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult("LeaseId"));
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = mock.Object;
 
-            public Task<DateTime?> GetLastModifiedTimestampAsync(ICloudBlob blob, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(_getLastModifiedTimestamp.Invoke(blob));
-            }
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.WaitUntilCompleted();
+            mock.Verify();
+            Assert.True(task.Result);
+        }
+
+        [Fact]
+        public void ExecuteAsync_IfEnqueueAsyncThrows_ReleasesLease()
+        {
+            // Arrange
+            CloudBlockBlob blob = CreateBlobReference();
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader("ETag");
+            InvalidOperationException expectedException = new InvalidOperationException();
+
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(BlobReceipt.Incomplete));
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult("LeaseId"));
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = mock.Object;
+
+            Mock<IBlobTriggerQueueWriter> queueWriterMock = new Mock<IBlobTriggerQueueWriter>(MockBehavior.Strict);
+            queueWriterMock
+                .Setup(w => w.EnqueueAsync(It.IsAny<BlobTriggerMessage>(), It.IsAny<CancellationToken>()))
+                .Throws(expectedException);
+            IBlobTriggerQueueWriter queueWriter = queueWriterMock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager,
+                queueWriter);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.WaitUntilCompleted();
+            mock.Verify();
+            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                () => task.GetAwaiter().GetResult());
+            Assert.Same(expectedException, exception);
+        }
+
+        [Fact]
+        public void ExecuteAsync_IfLeasedIncompleteReceipt_EnqueuesMessageMarksCompletedReleasesLeaseAndReturnsTrue()
+        {
+            // Arrange
+            string expectedFunctionId = "FunctionId";
+            string expectedETag = "ETag";
+            CloudBlockBlob blob = CreateBlobReference("container", "blob");
+            IBlobPathSource input = CreateBlobPath(blob);
+            IBlobETagReader eTagReader = CreateStubETagReader(expectedETag);
+
+            Mock<IBlobReceiptManager> managerMock = CreateReceiptManagerReferenceMock();
+            managerMock
+                .Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(BlobReceipt.Incomplete));
+            managerMock
+                .Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult("LeaseId"));
+            managerMock
+                .Setup(m => m.MarkCompletedAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+            managerMock
+                .Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+            IBlobReceiptManager receiptManager = managerMock.Object;
+
+            Mock<IBlobTriggerQueueWriter> queueWriterMock = new Mock<IBlobTriggerQueueWriter>(MockBehavior.Strict);
+            queueWriterMock
+                .Setup(w => w.EnqueueAsync(It.IsAny<BlobTriggerMessage>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(0));
+            IBlobTriggerQueueWriter queueWriter = queueWriterMock.Object;
+
+            ITriggerExecutor<ICloudBlob> product = CreateProductUnderTest(expectedFunctionId, input, eTagReader,
+                receiptManager, queueWriter);
+
+            // Act
+            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+
+            // Assert
+            task.WaitUntilCompleted();
+            queueWriterMock
+                .Verify(
+                    w => w.EnqueueAsync(It.Is<BlobTriggerMessage>(m =>
+                        m != null && m.FunctionId == expectedFunctionId && m.BlobType == BlobType.BlockBlob &&
+                        m.BlobName == blob.Name && m.ContainerName == blob.Container.Name && m.ETag == expectedETag),
+                        It.IsAny<CancellationToken>()),
+                    Times.Once());
+            managerMock.Verify();
+            Assert.True(task.Result);
+        }
+
+        private static CloudStorageAccount CreateAccount()
+        {
+            return CloudStorageAccount.DevelopmentStorageAccount;
+        }
+
+        private static CloudBlockBlob CreateBlobReference()
+        {
+            return CreateBlobReference("container", "blob");
+        }
+
+        private static CloudBlockBlob CreateBlobReference(string containerName, string blobName)
+        {
+            CloudStorageAccount account = CreateAccount();
+            CloudBlobClient client = account.CreateCloudBlobClient();
+            CloudBlobContainer container = client.GetContainerReference(containerName);
+            return container.GetBlockBlobReference(blobName);
+        }
+
+        private static IBlobPathSource CreateBlobPath(ICloudBlob blob)
+        {
+            return new FixedBlobPathSource(blob.ToBlobPath());
+        }
+
+        private static IBlobReceiptManager CreateCompletedReceiptManager()
+        {
+            Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
+            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(BlobReceipt.Complete));
+            return mock.Object;
+        }
+
+        private static IBlobETagReader CreateDummyETagReader()
+        {
+            return new Mock<IBlobETagReader>(MockBehavior.Strict).Object;
+        }
+
+        private static IBlobReceiptManager CreateDummyReceiptManager()
+        {
+            return new Mock<IBlobReceiptManager>(MockBehavior.Strict).Object;
+        }
+
+        private static IBlobTriggerQueueWriter CreateDummyQueueWriter()
+        {
+            return new Mock<IBlobTriggerQueueWriter>(MockBehavior.Strict).Object;
+        }
+
+        private static BlobTriggerExecutor CreateProductUnderTest(IBlobPathSource input)
+        {
+            return CreateProductUnderTest(input, CreateDummyETagReader());
+        }
+
+        private static BlobTriggerExecutor CreateProductUnderTest(IBlobPathSource input, IBlobETagReader eTagReader)
+        {
+            return CreateProductUnderTest(input, eTagReader, CreateDummyReceiptManager());
+        }
+
+        private static BlobTriggerExecutor CreateProductUnderTest(IBlobPathSource input, IBlobETagReader eTagReader,
+            IBlobReceiptManager receiptManager)
+        {
+            return CreateProductUnderTest("FunctionId", input, eTagReader, receiptManager, CreateDummyQueueWriter());
+        }
+
+        private static BlobTriggerExecutor CreateProductUnderTest(IBlobPathSource input, IBlobETagReader eTagReader,
+            IBlobReceiptManager receiptManager, IBlobTriggerQueueWriter queueWriter)
+        {
+            return CreateProductUnderTest("FunctionId", input, eTagReader, receiptManager, queueWriter);
+        }
+
+        private static BlobTriggerExecutor CreateProductUnderTest(string functionId, IBlobPathSource input,
+            IBlobETagReader eTagReader, IBlobReceiptManager receiptManager, IBlobTriggerQueueWriter queueWriter)
+        {
+            return new BlobTriggerExecutor(Guid.Empty, functionId, input, eTagReader, receiptManager, queueWriter);
+        }
+
+        private static Mock<IBlobReceiptManager> CreateReceiptManagerReferenceMock()
+        {
+            CloudBlockBlob receiptBlob = CreateAccount().CreateCloudBlobClient()
+                .GetContainerReference("receipts").GetBlockBlobReference("item");
+            Mock<IBlobReceiptManager> mock = new Mock<IBlobReceiptManager>(MockBehavior.Strict);
+            mock.Setup(m => m.CreateReference(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(receiptBlob);
+            return mock;
+        }
+
+        private static IBlobETagReader CreateStubETagReader(string eTag)
+        {
+            Mock<IBlobETagReader> mock = new Mock<IBlobETagReader>(MockBehavior.Strict);
+            mock
+                .Setup(r => r.GetETagAsync(It.IsAny<ICloudBlob>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(eTag));
+            return mock.Object;
         }
     }
 }

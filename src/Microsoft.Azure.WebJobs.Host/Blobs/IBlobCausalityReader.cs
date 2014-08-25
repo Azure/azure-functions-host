@@ -6,10 +6,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
+namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    internal interface IBlobTimestampReader
+    internal interface IBlobCausalityReader
     {
-        Task<DateTime?> GetLastModifiedTimestampAsync(ICloudBlob blob, CancellationToken cancellationToken);
+        Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken);
     }
 }

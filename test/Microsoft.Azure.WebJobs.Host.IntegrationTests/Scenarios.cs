@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
     {
         // Test basic propagation between blobs. 
         [Fact]
-        public void TestQueue()
+        public void TestBlob()
         {
             // Arrange
             using (var host = JobHostFactory.Create<ProgramQueues>())
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6 * 1000);
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
@@ -110,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6 * 1000);
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
@@ -125,6 +126,52 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 MaxDequeueCountProgram.SignalOnPoisonMessage = null;
                 MaxDequeueCountProgram.DequeueCount = 0;
                 queue.DeleteIfExists();
+            }
+        }
+
+        [Fact]
+        public void TestPoisonBlob()
+        {
+            // Arrange
+            var account = TestStorage.GetAccount();
+            string expectedContainerName = PoisonBlobProgram.ContainerName;
+            var container = account.CreateCloudBlobClient().GetContainerReference(expectedContainerName);
+            container.CreateIfNotExists();
+            string expectedBlobName = "fail";
+            var blob = container.GetBlockBlobReference(expectedBlobName);
+
+            try
+            {
+                blob.UploadText(String.Empty);
+
+                using (CancellationTokenSource source = new CancellationTokenSource())
+                using (JobHost host = JobHostFactory.Create<PoisonBlobProgram>())
+                {
+                    PoisonBlobProgram.SignalOnPoisonMessage = source;
+
+                    host.Start();
+
+                    // Act
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6 * 1000);
+
+                    // Assert
+                    Assert.True(poisonMessageReceived); // Guard
+                    BlobTriggerMessage message = JsonCustom.DeserializeObject<BlobTriggerMessage>(PoisonBlobProgram.PoisonMessageText);
+                    Assert.NotNull(message);
+                    Assert.Equal(BlobType.BlockBlob, message.BlobType);
+                    Assert.Equal(expectedContainerName, message.ContainerName);
+                    Assert.Equal(expectedBlobName, message.BlobName);
+                    Assert.False(String.IsNullOrEmpty(message.ETag));
+
+                    // Cleanup
+                    host.Stop();
+                }
+            }
+            finally
+            {
+                PoisonBlobProgram.SignalOnPoisonMessage = null;
+                PoisonBlobProgram.PoisonMessageText = null;
+                container.DeleteIfExists();
             }
         }
 
@@ -373,6 +420,31 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
         public static void ReceiveFromPoisonQueue([QueueTrigger("bad-poison")] string message)
         {
+            CancellationTokenSource source = SignalOnPoisonMessage;
+
+            if (source != null)
+            {
+                source.Cancel();
+            }
+        }
+    }
+
+    public class PoisonBlobProgram
+    {
+        public const string ContainerName = "bad";
+
+        public static CancellationTokenSource SignalOnPoisonMessage { get; set; }
+
+        public static string PoisonMessageText { get; set; }
+
+        public static void PutInPoisonQueue([BlobTrigger(ContainerName + "/{name}")] string message)
+        {
+            throw new InvalidOperationException();
+        }
+
+        public static void ReceiveFromPoisonQueue([QueueTrigger("webjobs-blobtrigger-poison")] string message)
+        {
+            PoisonMessageText = message;
             CancellationTokenSource source = SignalOnPoisonMessage;
 
             if (source != null)

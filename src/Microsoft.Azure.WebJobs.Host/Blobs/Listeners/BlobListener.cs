@@ -5,17 +5,18 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class BlobListener : IListener
     {
-        private readonly SharedBlobListener _sharedListener;
+        private readonly ISharedListener _sharedListener;
 
         private bool _started;
         private bool _disposed;
 
-        public BlobListener(SharedBlobListener sharedListener)
+        public BlobListener(ISharedListener sharedListener)
         {
             _sharedListener = sharedListener;
         }

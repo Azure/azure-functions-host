@@ -124,7 +124,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             foreach (ITriggerExecutor<ICloudBlob> registration in _registrations[container])
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await registration.ExecuteAsync(blob, cancellationToken);
+
+                if (!await registration.ExecuteAsync(blob, cancellationToken))
+                {
+                    // If notification failed, try again on the next iteration.
+                    _blobsFoundFromScanOrNotification.Enqueue(blob);
+                }
             }
         }
 
