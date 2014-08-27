@@ -17,8 +17,9 @@ namespace Dashboard.ApiControllers
     {
         private readonly IPersistentQueueReader<PersistentQueueMessage> _queueReader;
         private readonly IIndexerLogReader _indexerLogReader;
+        private readonly IDashboardVersionManager _dashboardVersionManager;
 
-        public DiagnosticsController(IIndexerLogReader indexerLogReader, IPersistentQueueReader<PersistentQueueMessage> queueReader)
+        public DiagnosticsController(IIndexerLogReader indexerLogReader, IPersistentQueueReader<PersistentQueueMessage> queueReader, IDashboardVersionManager dashboardVersionManager)
         {
             if (indexerLogReader == null)
             {
@@ -28,9 +29,14 @@ namespace Dashboard.ApiControllers
             {
                 throw new ArgumentNullException("queueReader");
             }
+            if (dashboardVersionManager == null)
+            {
+                throw new ArgumentNullException("dashboardVersionManager");
+            }
 
             _indexerLogReader = indexerLogReader;
             _queueReader = queueReader;
+            _dashboardVersionManager = dashboardVersionManager;
         }
 
         [HttpGet]
@@ -50,6 +56,13 @@ namespace Dashboard.ApiControllers
             }
 
             return GetIndexerLogEntry(entryId);
+        }
+
+        [HttpGet]
+        [Route("api/diagnostics/upgrading")]
+        public IHttpActionResult Upgrading()
+        {
+            return Ok(_dashboardVersionManager.Read());
         }
 
         [HttpGet]

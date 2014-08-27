@@ -26,7 +26,7 @@ namespace Dashboard.Indexers
             _logWriter = logWriter;
         }
 
-        public void Update()
+        public virtual void Update()
         {
             const int ExceptionTitleMaxLength = 64;
 

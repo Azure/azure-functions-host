@@ -39,6 +39,7 @@ namespace Dashboard
             Bind<CloudQueueClient>().ToConstant(queueClient);
 
             Bind<IHostVersionReader>().To<HostVersionReader>();
+            Bind<IDashboardVersionManager>().To<DashboardVersionManager>();
             Bind<IFunctionInstanceLookup>().To<FunctionInstanceLookup>();
             Bind<IFunctionInstanceLogger>().To<FunctionInstanceLogger>();
             Bind<IHostIndexManager>().To<HostIndexManager>();
@@ -63,7 +64,7 @@ namespace Dashboard
             Bind<IFunctionQueuedLogger>().To<FunctionInstanceLogger>();
             Bind<IHostIndexer>().To<HostIndexer>();
             Bind<IFunctionIndexer>().To<FunctionIndexer>();
-            Bind<IIndexer>().To<Indexer>();
+            Bind<IIndexer>().To<UpgradeIndexer>();
             Bind<IInvoker>().To<Invoker>();
             Bind<IAbortRequestLogger>().To<AbortRequestLogger>();
             Bind<IAborter>().To<Aborter>();

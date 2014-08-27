@@ -203,11 +203,14 @@
     <Compile Include="Data\BlobParameterSnapshot.cs" />
     <Compile Include="Data\FunctionIndexReader.cs" />
     <Compile Include="Data\FunctionInstanceMetadata.cs" />
+    <Compile Include="Data\DashboardVersionManager.cs" />
+    <Compile Include="Data\DashboardVersion.cs" />
     <Compile Include="Data\IFunctionIndexReader.cs" />
     <Compile Include="Data\HeartbeatValidityMonitor.cs" />
     <Compile Include="Data\FunctionIndexVersionManager.cs" />
     <Compile Include="Data\IHeartbeatValidityMonitor.cs" />
     <Compile Include="Data\IFunctionIndexVersionManager.cs" />
+    <Compile Include="Data\IDashboardVersionManager.cs" />
     <Compile Include="Data\Logs\BlobLogEntryKeys.cs" />
     <Compile Include="Data\Logs\IndexerBlobLogReader.cs" />
     <Compile Include="Data\Logs\IndexerBlobLogWriter.cs" />
@@ -303,6 +306,7 @@
     <Compile Include="Indexers\IHostIndexer.cs" />
     <Compile Include="Indexers\HostIndexer.cs" />
     <Compile Include="Indexers\FunctionIndexer.cs" />
+    <Compile Include="Indexers\UpgradeIndexer.cs" />
     <Compile Include="Infrastructure\AspNetTaskExecutor.cs" />
     <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />

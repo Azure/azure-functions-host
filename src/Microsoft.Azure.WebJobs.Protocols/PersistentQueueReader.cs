@@ -99,6 +99,12 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             return nextItem;
         }
 
+        /// <inheritdoc />
+        public void Enqueue(T message)
+        {
+            _outputBlobs.Enqueue(message.Blob);
+        }
+
         /// <summary>
         /// Gets the number of messages in the queue
         /// </summary>

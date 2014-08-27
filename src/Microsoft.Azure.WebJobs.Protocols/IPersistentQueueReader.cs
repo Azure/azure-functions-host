@@ -24,6 +24,10 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <param name="message">The message to delete.</param>
         void Delete(T message);
 
+        /// <summary>Adds a message from the queue.</summary>
+        /// <param name="message">The item to add.</param>
+        void Enqueue(T message);
+
         /// <summary>
         /// Gets the number of messages in the queue
         /// </summary>

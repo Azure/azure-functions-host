@@ -15,16 +15,21 @@
     $scope._indexerProgress = {};
 
     function updateIndexingStatus(callback) {
-        checkIndexingQueueLengthIsSignificant(function (isSignificant) {
-            setIndexingFlag(isSignificant);
-            if (isSignificant) {
-                getRemainingItemsToIndex(null, function (remainingItems) {
-                    setRemainingItems(remainingItems);
+        isUpgrading(function (upgrading) {
+            setUpgradingFlag(upgrading);
+            if (!upgrading) {
+                checkIndexingQueueLengthIsSignificant(function (isSignificant) {
+                    setIndexingFlag(isSignificant);
+                    if (isSignificant) {
+                        getRemainingItemsToIndex(null, function (remainingItems) {
+                            setRemainingItems(remainingItems);
+                        });
+                    }
+
+                    callback(isSignificant)
                 });
             }
-
-            callback(isSignificant)
-        });
+        })
     }
 
     function checkIndexingQueueLengthIsSignificant(callback) {
@@ -50,12 +55,23 @@
             });
     }
 
+    function isUpgrading(callback) {
+        return $http.get(api.sdk.upgrading())
+            .then(function (res) {
+                callback(res.data.upgraded !== 3);
+            });
+    }
+
     function setIndexingFlag(displayProgress) {
         if ($scope._indexerProgressShow === displayProgress) {
             return;
         }
 
         setRemainingItems(undefined);
+        $scope._indexerProgressShow = displayProgress;
+    }
+
+    function setUpgradingFlag(displayProgress) {
         $scope._indexerProgressShow = displayProgress;
     }
 

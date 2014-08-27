@@ -42,7 +42,12 @@ namespace Dashboard.Data
             foreach (ICloudBlob blob in items)
             {
                 // Remove the combined prefix and slash before the ID.
-                string id = blob.Name.Substring(combinedPrefix.Length + 1);
+                string id = blob.Name.Substring(combinedPrefix.Length);
+                if (id.StartsWith("/"))
+                {
+                    id = id.Substring(1);
+                }
+
                 returnValue.Add(new ConcurrentMetadata(id, blob.Properties.ETag, blob.Metadata));
             }
 
