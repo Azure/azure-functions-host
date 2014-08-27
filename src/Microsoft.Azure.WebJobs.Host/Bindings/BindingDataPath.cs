@@ -66,19 +66,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 
             int iPattern = blobPattern.Length - 1;
             int iActual = blobActual.Length - 1;
-            while (true)
+            while (iActual >= 0 && iPattern >= 0)
             {
-                if ((iActual == blobActual.Length) && (iPattern == blobPattern.Length))
-                {
-                    // Success
-                    return namedParams;
-                }
-                if ((iActual == blobActual.Length) || (iPattern == blobPattern.Length))
-                {
-                    // Finished at different times. Mismatched
-                    return null;
-                }
-
                 char ch = blobPattern[iPattern];
                 if (ch == '}')
                 {
@@ -130,7 +119,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 }
             }
 
-            throw new NotImplementedException();
+            if (iActual == iPattern)
+            {
+                // Success
+                return namedParams;
+            }
+
+            // Finished at different times. Mismatched
+            return null;
         }
 
         public static IReadOnlyDictionary<string, string> GetParameters(IReadOnlyDictionary<string, object> bindingData)

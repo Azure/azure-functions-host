@@ -18,12 +18,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             Assert.Equal("a.b", namedParams["name"]);
         }
 
-        [Fact]
-        public void CreateBindingData_IfChainedExtensions_ReturnsLongest()
+        [Theory]
+        [InlineData("input/{name}.{extension}", "input/foo.txt", "foo")]
+        [InlineData("input/{name}.{extension}", "input/foo.bar.txt", "foo.bar")]
+        [InlineData("input/foo/{name}.{extension}", "input/foo/foo.bar.txt", "foo.bar")]
+        [InlineData("input/{name}/foo/{skip}.{extension}", "input/foo/foo/bar.txt", "foo")]
+        public void CreateBindingData_IfNameExtensionCombination_ReturnsNamedParams(
+            string pattern, string actualPath, string expectedName)
         {
-            var namedParams = BindingDataPath.CreateBindingData("input/{name}.{extension}", "input/foo.bar.txt");
+            // Act
+            var namedParams = BindingDataPath.CreateBindingData(pattern, actualPath);
 
-            Assert.Equal("foo.bar", namedParams["name"]);
+            // Assert
+            Assert.NotNull(namedParams);
+            Assert.Equal(expectedName, namedParams["name"]);
             Assert.Equal("txt", namedParams["extension"]);
         }
 
@@ -47,19 +55,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         }
 
         [Fact]
-        public void CreateBindingData_IfExtension_ReturnsNamedParams()
-        {
-            var namedParams = BindingDataPath.CreateBindingData("input/{name}.{extension}", "input/foo.txt");
-
-            Assert.Equal("foo", namedParams["name"]);
-            Assert.Equal("txt", namedParams["extension"]);
-        }
-
-        [Fact]
         public void CreateBindingData_IfNoMatch_ReturnsNull()
         {
             var namedParams = BindingDataPath.CreateBindingData("input/{name}.-/", "input/foo.bar.-/txt");
 
+            Assert.Null(namedParams);
+        }
+
+        [Theory]
+        [InlineData("input/{name}/foo/{skip}.{extension}", "input/name/foo/skip/bar.txt")]
+        public void CreateBindingData_ShouldMatchBut_ReturnsNull(string pattern, string actualPath)
+        {
+            // Act
+            var namedParams = BindingDataPath.CreateBindingData(pattern, actualPath);
+
+            // Assert
             Assert.Null(namedParams);
         }
 
