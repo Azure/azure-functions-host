@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,34 +12,32 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    // Tracks which function wrote each blob via blob metadata. 
-    // This may be risky because it does interfere with the function (and the user could tamper with it
-    // or accidentally remove it).
-    // An alternative mechanism would be to have a look-aside table. But that's risky because it's
-    // a separate object to manage and could get out of sync.
+    /// <summary>
+    /// Tracks which function wrote each blob via blob metadata. 
+    /// </summary>
+    /// <remarks>
+    /// This may be risky because it does interfere with the function (and the user could tamper with it
+    /// or accidentally remove it).
+    /// An alternative mechanism would be to have a look-aside table. But that's risky because it's
+    /// a separate object to manage and could get out of sync.
+    /// </remarks>
     internal static class BlobCausalityManager
     {
         // Metadata names must adehere to C# identifier rules
         // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
-        const string MetadataKeyName = "AzureWebJobsParentId";
+        internal const string MetadataKeyName = "AzureWebJobsParentId";
 
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
-        public static async Task SetWriterAsync(ICloudBlob blob, Guid function, CancellationToken cancellationToken)
+        public static void SetWriter(IDictionary<string, string> metadata, Guid function)
         {
-            // Beware, SetMetadata() is like a POST, not a PUT, so must
-            // fetch existing attributes to preserve them. 
-            try
+            if (metadata == null)
             {
-                await blob.FetchAttributesAsync(cancellationToken);
-            }
-            catch (StorageException)
-            {
-                // blob has been deleted. 
-                return;
+                throw new ArgumentNullException("metadata");
             }
 
-            blob.Metadata[MetadataKeyName] = function.ToString();
-            await blob.SetMetadataAsync(cancellationToken);
+            Debug.Assert(!Guid.Equals(Guid.Empty, function));
+            
+            metadata[MetadataKeyName] = function.ToString();
         }
 
         public static async Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)

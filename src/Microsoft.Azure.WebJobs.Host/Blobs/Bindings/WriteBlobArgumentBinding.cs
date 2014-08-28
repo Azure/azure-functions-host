@@ -19,9 +19,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 throw new InvalidOperationException("Cannot bind a page blob using an out string.");
             }
 
+            BlobCausalityManager.SetWriter(blob.Metadata, context.FunctionInstanceId);
+
             CloudBlobStream rawStream = await blockBlob.OpenWriteAsync(context.CancellationToken);
-            IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
-                context.BlobWrittenWatcher);
+            IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.BlobWrittenWatcher);
             return new WatchableCloudBlobStream(rawStream, committedAction);
         }
     }

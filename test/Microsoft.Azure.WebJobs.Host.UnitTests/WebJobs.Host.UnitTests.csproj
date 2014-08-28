@@ -98,6 +98,7 @@
     <Compile Include="Blobs\Bindings\SetupOfCloudBlobStreamICancellableAsyncResultExtensions.cs" />
     <Compile Include="Blobs\Bindings\SetupOfCloudBlobStreamIAsyncResultExtensions.cs" />
     <Compile Include="Blobs\Bindings\UncompletedCancellableAsyncResult.cs" />
+    <Compile Include="Blobs\BlobCausalityManagerTests.cs" />
     <Compile Include="Blobs\CompletingAsyncResult.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerExecutorTests.cs" />

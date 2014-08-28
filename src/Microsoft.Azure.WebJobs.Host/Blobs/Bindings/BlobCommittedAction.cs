@@ -11,27 +11,22 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
     internal class BlobCommittedAction : IBlobCommitedAction
     {
         private readonly ICloudBlob _blob;
-        private readonly Guid _functionInstanceId;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
-        public BlobCommittedAction(ICloudBlob blob, Guid functionInstanceId, IBlobWrittenWatcher blobWrittenWatcher)
+        public BlobCommittedAction(ICloudBlob blob, IBlobWrittenWatcher blobWrittenWatcher)
         {
             _blob = blob;
-            _functionInstanceId = functionInstanceId;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
-        public async Task ExecuteAsync(CancellationToken cancellationToken)
+        public Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            // This is the critical call to record causality. 
-            // This must be called after the blob is written, since it may stamp the blob. 
-            await BlobCausalityManager.SetWriterAsync(_blob, _functionInstanceId, cancellationToken);
-
-            // Notify that blob is available. 
             if (_blobWrittenWatcher != null)
             {
                 _blobWrittenWatcher.Notify(_blob);
             }
+
+            return Task.FromResult(0);
         }
     }
 }
