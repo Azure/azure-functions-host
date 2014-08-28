@@ -44,11 +44,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
-                Stream rawStream;
+                WatchableReadStream watchableStream;
 
                 try
                 {
-                    rawStream = await blob.OpenReadAsync(context.CancellationToken);
+                    watchableStream = await ReadBlobArgumentBinding.BindStreamAsync(blob, context);
                 }
                 catch (StorageException exception)
                 {
@@ -62,8 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     }
                 }
 
-                WatchableReadStream watchableStream = new WatchableReadStream(rawStream);
-                TextReader reader = new StreamReader(watchableStream);
+                TextReader reader = ReadBlobArgumentBinding.CreateTextReader(watchableStream);
                 return new BlobWatchableDisposableValueProvider(blob, reader, typeof(TextReader),
                     watcher: watchableStream, disposable: reader);
             }

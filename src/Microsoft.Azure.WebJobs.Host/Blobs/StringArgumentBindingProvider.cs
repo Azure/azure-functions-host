@@ -46,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 string value;
                 ParameterLog status;
 
-                using (Stream rawStream = await blob.OpenReadAsync(context.CancellationToken))
-                using (WatchableReadStream watchableStream = new WatchableReadStream(rawStream))
-                using (TextReader reader = new StreamReader(watchableStream))
+                using (WatchableReadStream watchableStream = await ReadBlobArgumentBinding.BindStreamAsync(blob,
+                    context))
+                using (TextReader reader = ReadBlobArgumentBinding.CreateTextReader(watchableStream))
                 {
                     context.CancellationToken.ThrowIfCancellationRequested();
                     value = await reader.ReadToEndAsync();

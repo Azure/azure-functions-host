@@ -61,17 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
-                CloudBlockBlob blockBlob = blob as CloudBlockBlob;
-
-                if (blockBlob == null)
-                {
-                    throw new InvalidOperationException("Cannot bind a page blob using an ICloudBlobStreamBinder.");
-                }
-
-                CloudBlobStream rawStream = await blockBlob.OpenWriteAsync(context.CancellationToken);
-                IBlobCommitedAction committedAction = new BlobCommittedAction(blob, context.FunctionInstanceId,
-                    context.BlobWrittenWatcher);
-                WatchableCloudBlobStream watchableStream = new WatchableCloudBlobStream(rawStream, committedAction);
+                WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob, context);
                 return new ObjectValueBinder(blob, watchableStream, _objectBinder, _valueType);
             }
 
