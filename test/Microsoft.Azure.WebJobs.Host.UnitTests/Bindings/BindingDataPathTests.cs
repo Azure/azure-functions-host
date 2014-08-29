@@ -20,9 +20,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 
         [Theory]
         [InlineData("input/{name}.{extension}", "input/foo.txt", "foo")]
-        [InlineData("input/{name}.{extension}", "input/foo.bar.txt", "foo.bar")]
-        [InlineData("input/foo/{name}.{extension}", "input/foo/foo.bar.txt", "foo.bar")]
+        [InlineData("input/foo/{name}.{extension}", "input/foo/foo.txt", "foo")]
         [InlineData("input/{name}/foo/{skip}.{extension}", "input/foo/foo/bar.txt", "foo")]
+        [InlineData("input/{name}.{extension}/foo/{part}", "input/foo.txt/foo/part", "foo")]
+        [InlineData("input/{name}/{extension}", "input/foo/txt", "foo")]
+        [InlineData("input/{name}/foo/{skip}.{extension}", "input/name/foo/skip/bar.txt", "name")]
+        [InlineData("input/foo/{name}.{extension}", "input/foo/skip/bar.txt", "skip/bar")]
         public void CreateBindingData_IfNameExtensionCombination_ReturnsNamedParams(
             string pattern, string actualPath, string expectedName)
         {
@@ -40,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         {
             var namedParams = BindingDataPath.CreateBindingData("input/{name}.{extension}-/{other}", "input/foo.bar.txt-/asd-/ijij");
 
-            Assert.Equal("foo.bar", namedParams["name"]);
-            Assert.Equal("txt-/asd", namedParams["extension"]);
-            Assert.Equal("ijij", namedParams["other"]);
+            Assert.Equal("foo", namedParams["name"]);
+            Assert.Equal("bar.txt", namedParams["extension"]);
+            Assert.Equal("asd-/ijij", namedParams["other"]);
         }
 
         [Fact]
@@ -59,17 +62,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         {
             var namedParams = BindingDataPath.CreateBindingData("input/{name}.-/", "input/foo.bar.-/txt");
 
-            Assert.Null(namedParams);
-        }
-
-        [Theory]
-        [InlineData("input/{name}/foo/{skip}.{extension}", "input/name/foo/skip/bar.txt")]
-        public void CreateBindingData_ShouldMatchBut_ReturnsNull(string pattern, string actualPath)
-        {
-            // Act
-            var namedParams = BindingDataPath.CreateBindingData(pattern, actualPath);
-
-            // Assert
             Assert.Null(namedParams);
         }
 

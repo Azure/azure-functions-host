@@ -92,15 +92,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         }
 
         [Fact]
-        public void TestGreedy()
+        public void TestNonGreedy()
         {
             // Test non-greedy matching. May want to change the policy here. 
 
             var d = Match(@"container/{a}.{b}", @"container/foo.alpha.beta.csv");
             Assert.NotNull(d);
             Assert.Equal(2, d.Count);
-            Assert.Equal("foo.alpha.beta", d["a"]);
-            Assert.Equal("csv", d["b"]);
+            Assert.Equal("foo", d["a"]);
+            Assert.Equal("alpha.beta.csv", d["b"]);
         }
 
         [Fact]
