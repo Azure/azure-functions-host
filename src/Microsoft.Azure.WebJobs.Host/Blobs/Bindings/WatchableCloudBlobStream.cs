@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
         {
             CancellationTokenSource cancellationSource = new CancellationTokenSource();
+            _committed = true;
             Task baseTask = CancellableTaskFactory.FromAsync(base.BeginCommit, base.EndCommit,
                 cancellationSource.Token);
             return new TaskCancellableAsyncResult(CommitAsyncCore(baseTask, cancellationSource.Token),
@@ -89,8 +90,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
         public override void Commit()
         {
-            base.Commit();
             _committed = true;
+            base.Commit();
 
             if (_committedAction != null)
             {
@@ -100,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
         public Task CommitAsync(CancellationToken cancellationToken)
         {
+            _committed = true;
             Task baseTask = CancellableTaskFactory.FromAsync(base.BeginCommit, base.EndCommit, cancellationToken);
             return CommitAsyncCore(baseTask, cancellationToken);
         }
@@ -107,7 +109,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private async Task CommitAsyncCore(Task task, CancellationToken cancellationToken)
         {
             await task;
-            _committed = true;
 
             if (_committedAction != null)
             {

@@ -2268,17 +2268,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void Close_WhenCommitCommitedButCommitedActionThrew_DoesNotCommitAgain()
+        public void Close_WhenInnerStreamCommitThrewOnPreviousCommit_DoesNotTryToCommitAgain()
         {
             // Arrange
             int commitCalls = 0;
             Mock<CloudBlobStream> innerStreamMock = CreateMockInnerStream();
             innerStreamMock.Setup(s => s.Close());
-            innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
-            CloudBlobStream innerStream = innerStreamMock.Object;
             InvalidOperationException expectedException = new InvalidOperationException();
-            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(expectedException);
-            CloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
+            innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++).Throws(expectedException);
+            CloudBlobStream innerStream = innerStreamMock.Object;
+            CloudBlobStream product = CreateProductUnderTest(innerStream);
             InvalidOperationException committedActionException = Assert.Throws<InvalidOperationException>(
                 () => product.Commit()); // Guard
             Assert.Same(expectedException, committedActionException); // Guard
@@ -2292,24 +2291,51 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void Close_WhenCommitAsyncCommitedButCommitedActionThrew_DoesNotCommitAgain()
+        public void Close_WhenInnerStreamBeginCommitThrewOnPreviousCommitAsync_DoesNotTryToCommitAgain()
         {
             // Arrange
             int commitCalls = 0;
             Mock<CloudBlobStream> innerStreamMock = CreateMockInnerStream();
             innerStreamMock.Setup(s => s.Close());
+            InvalidOperationException expectedException = new InvalidOperationException();
             innerStreamMock
                 .SetupBeginCommit()
                 .Callback(() => commitCalls++)
-                .ReturnsCompletedSynchronously();
+                .Throws(expectedException);
             innerStreamMock.SetupEndCommit();
             innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
             CloudBlobStream innerStream = innerStreamMock.Object;
-            InvalidOperationException expectedException = new InvalidOperationException();
-            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(expectedException);
-            WatchableCloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
+            WatchableCloudBlobStream product = CreateProductUnderTest(innerStream);
             InvalidOperationException committedActionException = Assert.Throws<InvalidOperationException>(
                 () => product.CommitAsync(CancellationToken.None).GetAwaiter().GetResult()); // Guard
+            Assert.Same(expectedException, committedActionException); // Guard
+            Assert.Equal(1, commitCalls); // Guard
+
+            // Act
+            product.Close();
+
+            // Assert
+            Assert.Equal(1, commitCalls);
+        }
+
+        [Fact]
+        public void Close_WhenInnerStreamBeginCommitThrewOnPreviousBeginCommit_DoesNotTryToCommitAgain()
+        {
+            // Arrange
+            int commitCalls = 0;
+            Mock<CloudBlobStream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock.Setup(s => s.Close());
+            InvalidOperationException expectedException = new InvalidOperationException();
+            innerStreamMock
+                .SetupBeginCommit()
+                .Callback(() => commitCalls++)
+                .Throws(expectedException);
+            innerStreamMock.SetupEndCommit();
+            innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
+            CloudBlobStream innerStream = innerStreamMock.Object;
+            WatchableCloudBlobStream product = CreateProductUnderTest(innerStream);
+            InvalidOperationException committedActionException = Assert.Throws<InvalidOperationException>(
+                () => product.BeginCommit(callback: null, state: null)); // Guard
             Assert.Same(expectedException, committedActionException); // Guard
             Assert.Equal(1, commitCalls); // Guard
 
@@ -3258,14 +3284,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             WriteBlobParameterLog actualBlobLog = (WriteBlobParameterLog)actual;
             Assert.False(actualBlobLog.WasWritten);
             Assert.Equal(0, actualBlobLog.BytesWritten);
-        }
-
-        private static IBlobCommitedAction CreateThrowingCommittedAction(Exception exception)
-        {
-            Mock<IBlobCommitedAction> mock = new Mock<IBlobCommitedAction>(MockBehavior.Strict);
-            mock.Setup(a => a.ExecuteAsync(It.IsAny<CancellationToken>()))
-                .Throws(exception);
-            return mock.Object;
         }
 
         private static Stream CreateDummyStream()
