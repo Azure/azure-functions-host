@@ -301,8 +301,8 @@ namespace Dashboard
         {
             Debug.Assert(log != null);
 
-            return String.Format(CultureInfo.CurrentCulture, "Updated {0} {1}", log.EntitiesUpdated,
-                log.EntitiesUpdated == 1 ? "entity" : "entities");
+            return String.Format(CultureInfo.CurrentCulture, "Wrote {0} {1}. ({2})", log.EntitiesWritten,
+                log.EntitiesWritten == 1 ? "entity" : "entities", log.ElapsedWriteTime);
         }
     }
 }

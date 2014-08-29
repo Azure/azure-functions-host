@@ -13,7 +13,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         private static readonly ITableArgumentBindingProvider _tableProvider = new CompositeArgumentBindingProvider(
             new CloudTableArgumentBindingProvider(),
-            new QueryableArgumentBindingProvider());
+            new QueryableArgumentBindingProvider(),
+            new CollectorArgumentBindingProvider(),
+            new AsyncCollectorArgumentBindingProvider());
 
         private static readonly ITableEntityArgumentBindingProvider _entityProvider =
             new CompositeEntityArgumentBindingProvider(
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTablePath path = BindableTablePath.Create(tableName);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                IArgumentBinding<CloudTable> argumentBinding = _tableProvider.TryCreate(parameterType);
+                ITableArgumentBinding argumentBinding = _tableProvider.TryCreate(parameterType);
 
                 if (argumentBinding == null)
                 {

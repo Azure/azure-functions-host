@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -11,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class QueryableArgumentBindingProvider : ITableArgumentBindingProvider
     {
-        public IArgumentBinding<CloudTable> TryCreate(Type parameterType)
+        public ITableArgumentBinding TryCreate(Type parameterType)
         {
             if (!parameterType.IsGenericType || parameterType.GetGenericTypeDefinition() != typeof(IQueryable<>))
             {
@@ -37,13 +38,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return itemType;
         }
 
-        private static IArgumentBinding<CloudTable> CreateBinding(Type entityType)
+        private static ITableArgumentBinding CreateBinding(Type entityType)
         {
             Type genericType = typeof(QueryableArgumentBinding<>).MakeGenericType(entityType);
-            return (IArgumentBinding<CloudTable>)Activator.CreateInstance(genericType);
+            return (ITableArgumentBinding)Activator.CreateInstance(genericType);
         }
 
-        private class QueryableArgumentBinding<TElement> : IArgumentBinding<CloudTable>
+        private class QueryableArgumentBinding<TElement> : ITableArgumentBinding
             where TElement : ITableEntity, new()
         {
             public Type ValueType
@@ -65,6 +66,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 }
 
                 return new TableValueProvider(value, queryable, typeof(IQueryable<TElement>));
+            }
+
+            public FileAccess Access
+            {
+                get
+                {
+                    return FileAccess.Read;
+                }
             }
         }
     }

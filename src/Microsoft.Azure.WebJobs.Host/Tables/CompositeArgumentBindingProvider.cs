@@ -17,11 +17,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _providers = providers;
         }
 
-        public IArgumentBinding<CloudTable> TryCreate(Type parameterType)
+        public ITableArgumentBinding TryCreate(Type parameterType)
         {
             foreach (ITableArgumentBindingProvider provider in _providers)
             {
-                IArgumentBinding<CloudTable> binding = provider.TryCreate(parameterType);
+                ITableArgumentBinding binding = provider.TryCreate(parameterType);
 
                 if (binding != null)
                 {

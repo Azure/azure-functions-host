@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public ParameterLog GetStatus()
         {
-            return HasChanged ? new TableParameterLog { EntitiesUpdated = 1 } : null;
+            return HasChanged ? new TableParameterLog { EntitiesWritten = 1 } : null;
         }
 
         public bool HasChanged
@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        private static IDictionary<string, EntityProperty> DeepClone(IDictionary<string, EntityProperty> value)
+        internal static IDictionary<string, EntityProperty> DeepClone(IDictionary<string, EntityProperty> value)
         {
             if (value == null)
             {

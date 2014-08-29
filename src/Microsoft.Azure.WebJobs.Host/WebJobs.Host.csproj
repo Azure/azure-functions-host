@@ -393,10 +393,17 @@
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
     <Compile Include="Queues\ParameterizedQueuePath.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageExtensions.cs" />
+    <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\CollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\ITableArgumentBinding.cs" />
     <Compile Include="Tables\PocoEntityValueBinder.cs" />
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
+    <Compile Include="Tables\PocoEntityCollectorBinder.cs" />
+    <Compile Include="Tables\PocoEntityWriter.cs" />
+    <Compile Include="Tables\TableEntityCollectorBinder.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
+    <Compile Include="Tables\TableEntityWriter.cs" />
     <Compile Include="Timers\FixedDelayStrategy.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategy.cs" />
     <Compile Include="Timers\BackgroundExceptionDispatcher.cs" />

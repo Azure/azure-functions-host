@@ -50,7 +50,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "NoAutomaticTriggerAttribute",
                 "QueueAttribute",
                 "QueueTriggerAttribute",
-                "TableAttribute"
+                "TableAttribute",
+                "ICollector`1",
+                "IAsyncCollector`1"
             };
 
             AssertPublicTypes(expected, assembly);

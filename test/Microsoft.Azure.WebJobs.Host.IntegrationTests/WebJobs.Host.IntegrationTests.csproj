@@ -94,12 +94,14 @@
     <Compile Include="BlobNotificationStrategyExtensions.cs" />
     <Compile Include="LocalExecutionContext.cs" />
     <Compile Include="CancellationTests.cs" />
+    <Compile Include="TableCollectorBindingTests.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="LocalOrchestratorTests.cs" />
     <Compile Include="ModelBindingTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Scenarios.cs" />
     <Compile Include="Storage\SdkCloudStorageAccountTests.cs" />
+    <Compile Include="TestTableWriter.cs" />
     <Compile Include="TestBlobClient.cs" />
     <Compile Include="TestQueueClient.cs" />
   </ItemGroup>

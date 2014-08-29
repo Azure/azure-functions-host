@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private const string HostStartQueueName = "e2estart%rnd%";
         private const string TestQueueName = "e2equeue%rnd%";
+        private const string TestQueueNameEtag = "etag2equeue%rnd%";
         private const string DoneQueueName = "e2edone%rnd%";
 
         private static EventWaitHandle _startWaitHandle;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public static void BlobToQueue(
             [BlobTrigger(ContainerName + @"/{name}")] CustomObject input,
             string name,
-            [Queue(TestQueueName)] out CustomObject output)
+            [Queue(TestQueueNameEtag)] out CustomObject output)
         {
             CustomObject result = new CustomObject()
             {
@@ -66,6 +67,39 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             };
 
             output = result;
+        }
+
+        /// <summary>
+        /// Covers:
+        /// - queue binding to custom object
+        /// - queue trigger
+        /// - table writing
+        /// </summary>
+        public static void QueueToICollectorAndQueue(
+            [QueueTrigger(TestQueueNameEtag)] CustomObject e2equeue,
+            [Table(TableName)] ICollector<ITableEntity> table,
+            [Queue(TestQueueName)] out CustomObject output)
+        {
+            const string tableKeys = "testETag";
+
+            DynamicTableEntity result = new DynamicTableEntity
+            {
+                PartitionKey = tableKeys,
+                RowKey = tableKeys,
+                Properties = new Dictionary<string, EntityProperty>()
+                {
+                    { "Text", new EntityProperty("before") },
+                    { "Number", new EntityProperty("1") }
+                }
+            };
+
+            table.Add(result);
+
+            result.Properties["Text"] = new EntityProperty("after");
+            result.ETag = "*";
+            table.Add(result);
+
+            output = e2equeue;
         }
 
         /// <summary>
@@ -245,7 +279,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             Assert.True(table.Exists(), "Result table not found");
 
-            TableQuery query = new TableQuery().Take(1);
+            TableQuery query = new TableQuery()
+                .Where(TableQuery.CombineFilters(
+                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "test"),
+                    TableOperators.And,
+                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "test")))
+                .Take(1);
             DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
             // Ensure expected row found
@@ -253,6 +292,19 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             Assert.Equal("Test testblob QueueToTable", result.Properties["Text"].StringValue);
             Assert.Equal(44, result.Properties["Number"].Int32Value);
+
+            query = new TableQuery()
+                .Where(TableQuery.CombineFilters(
+                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "testETag"),
+                    TableOperators.And,
+                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "testETag")))
+                .Take(1);
+            result = table.ExecuteQuery(query).FirstOrDefault();
+
+            // Ensure expected row found
+            Assert.NotNull(result);
+
+            Assert.Equal("after", result.Properties["Text"].StringValue);
         }
 
         private class CustomTableEntity : TableEntity

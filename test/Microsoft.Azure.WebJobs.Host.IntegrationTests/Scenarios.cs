@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,6 +18,38 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 {
     public class Scenarios
     {
+        [Fact]
+        public void TestsTableWriter()
+        {
+            // Arrange
+            var account = TestStorage.GetAccount();
+
+            DynamicTableEntity value = new DynamicTableEntity
+            {
+                PartitionKey = "PK",
+                RowKey = "RK",
+                Properties = new Dictionary<string, EntityProperty> { { "Item", new EntityProperty("Foo") } }
+            };
+
+            CloudTable table = account.CreateCloudTableClient().GetTableReference("table");
+            table.DeleteIfExists();
+
+            TestTableWriter.FlushTable(account, "table", value);
+
+            Assert.True(table.Exists());
+
+            TableQuery query = new TableQuery()
+                .Where(TableQuery.CombineFilters(
+                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "PK"),
+                    TableOperators.And,
+                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "RK")))
+                .Take(1);
+            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+
+            // Ensure expected row found
+            Assert.NotNull(result);
+        }
+
         // Test basic propagation between blobs. 
         [Fact]
         public void TestBlob()

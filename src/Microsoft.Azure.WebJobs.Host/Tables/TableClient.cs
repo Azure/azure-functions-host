@@ -62,11 +62,25 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return entityType.GetInterfaces().Any(t => t == typeof(ITableEntity));
         }
 
+        public static bool ImplementsOrEqualsITableEntity(Type entityType)
+        {
+            Debug.Assert(entityType != null);
+            return entityType == typeof(ITableEntity) || entityType.GetInterfaces().Any(t => t == typeof(ITableEntity));
+        }
+
         public static void VerifyDefaultConstructor(Type entityType)
         {
             if (entityType.GetConstructor(Type.EmptyTypes) == null)
             {
                 throw new InvalidOperationException("Table entity types must provide a default constructor.");
+            }
+        }
+
+        public static void VerifyContainsProperty(Type entityType, string propertyName)
+        {
+            if (entityType.GetProperty(propertyName) == null)
+            {
+                throw new InvalidOperationException(String.Format("Table entity types must implement the property {0}.", propertyName));
             }
         }
 

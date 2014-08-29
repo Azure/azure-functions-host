@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class TableBinding : IBinding
     {
         private readonly string _parameterName;
-        private readonly IArgumentBinding<CloudTable> _argumentBinding;
+        private readonly ITableArgumentBinding _argumentBinding;
         private readonly CloudTableClient _client;
         private readonly string _accountName;
         private readonly IBindableTablePath _path;
         private readonly IObjectToTypeConverter<CloudTable> _converter;
 
-        public TableBinding(string parameterName, IArgumentBinding<CloudTable> argumentBinding, CloudTableClient client,
+        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, CloudTableClient client,
             IBindableTablePath path)
         {
             _parameterName = parameterName;
@@ -45,8 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             get
             {
-                return _argumentBinding.ValueType == typeof(CloudTable)
-                    ? FileAccess.ReadWrite : FileAccess.Read;
+                return _argumentBinding.Access;
             }
         }
 

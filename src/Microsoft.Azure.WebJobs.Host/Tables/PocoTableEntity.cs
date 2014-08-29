@@ -16,10 +16,51 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return ObjectBinderHelpers.ConvertDictToObject<TValue>(data);
         }
 
+        public static ITableEntity ToTableEntity(object pocoEntity)
+        {
+            IDictionary<string, string> data = ObjectBinderHelpers.ConvertObjectToDict(pocoEntity);
+            if (!data.ContainsKey("PartitionKey"))
+            {
+                throw new InvalidOperationException("Table entity types must implement the property PartitionKey.");
+            }
+
+            if (!data.ContainsKey("RowKey"))
+            {
+                throw new InvalidOperationException("Table entity types must implement the property RowKey.");
+            }
+
+            return ToTableEntity(data["PartitionKey"], data["RowKey"], data);
+        }
+
         public static ITableEntity ToTableEntity(string partitionKey, string rowKey, object pocoEntity)
         {
             IDictionary<string, string> data = ObjectBinderHelpers.ConvertObjectToDict(pocoEntity);
             return ToTableEntity(partitionKey, rowKey, data);
+        }
+
+        private static DynamicTableEntity ToTableEntity(string partitionKey, string rowKey, IDictionary<string, string> values)
+        {
+            DynamicTableEntity entity = new DynamicTableEntity(partitionKey, rowKey);
+
+            foreach (KeyValuePair<string, string> property in values)
+            {
+                string propertyName = property.Key;
+
+                if (!IsSystemProperty(propertyName))
+                {
+                    entity.Properties.Add(propertyName, new EntityProperty(property.Value));
+                }
+                else if (propertyName.Equals("Timestamp", StringComparison.OrdinalIgnoreCase))
+                {
+                    entity.Timestamp = DateTimeOffset.Parse(property.Value);
+                }
+                else if (propertyName.Equals("ETag", StringComparison.OrdinalIgnoreCase))
+                {
+                    entity.ETag = property.Value;
+                }
+            }
+
+            return entity;
         }
 
         private static IDictionary<string, string> Normalize(DynamicTableEntity item)
@@ -65,23 +106,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 default:
                     throw new InvalidOperationException(String.Format(CultureInfo.InvariantCulture, "Unsupported EDM property type {0}", property.PropertyType));
             }
-        }
-
-        private static DynamicTableEntity ToTableEntity(string partitionKey, string rowKey, IDictionary<string, string> values)
-        {
-            DynamicTableEntity entity = new DynamicTableEntity(partitionKey, rowKey);
-
-            foreach (KeyValuePair<string, string> property in values)
-            {
-                string propertyName = property.Key;
-
-                if (!IsSystemProperty(propertyName))
-                {
-                    entity.Properties.Add(propertyName, new EntityProperty(property.Value));
-                }
-            }
-
-            return entity;
         }
 
         private static bool IsSystemProperty(string name)

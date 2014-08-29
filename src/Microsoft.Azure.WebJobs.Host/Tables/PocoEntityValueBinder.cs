@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public ParameterLog GetStatus()
         {
-            return HasChanged ? new TableParameterLog { EntitiesUpdated = 1 } : null;
+            return HasChanged ? new TableParameterLog { EntitiesWritten = 1 } : null;
         }
 
         public bool HasChanged
