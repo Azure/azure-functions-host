@@ -2276,9 +2276,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             innerStreamMock.Setup(s => s.Close());
             innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
             CloudBlobStream innerStream = innerStreamMock.Object;
-            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(new InvalidOperationException());
+            InvalidOperationException expectedException = new InvalidOperationException();
+            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(expectedException);
             CloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
-            Assert.Throws<InvalidOperationException>(() => product.Commit()); // Guard
+            InvalidOperationException committedActionException = Assert.Throws<InvalidOperationException>(
+                () => product.Commit()); // Guard
+            Assert.Same(expectedException, committedActionException); // Guard
             Assert.Equal(1, commitCalls); // Guard
 
             // Act
@@ -2302,10 +2305,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             innerStreamMock.SetupEndCommit();
             innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
             CloudBlobStream innerStream = innerStreamMock.Object;
-            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(new InvalidOperationException());
+            InvalidOperationException expectedException = new InvalidOperationException();
+            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(expectedException);
             WatchableCloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
-            Assert.Throws<InvalidOperationException>(
+            InvalidOperationException committedActionException = Assert.Throws<InvalidOperationException>(
                 () => product.CommitAsync(CancellationToken.None).GetAwaiter().GetResult()); // Guard
+            Assert.Same(expectedException, committedActionException); // Guard
             Assert.Equal(1, commitCalls); // Guard
 
             // Act
