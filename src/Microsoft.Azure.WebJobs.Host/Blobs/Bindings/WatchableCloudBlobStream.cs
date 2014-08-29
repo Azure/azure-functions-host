@@ -90,13 +90,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public override void Commit()
         {
             base.Commit();
+            _committed = true;
 
             if (_committedAction != null)
             {
                 _committedAction.ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
             }
-
-            _committed = true;
         }
 
         public Task CommitAsync(CancellationToken cancellationToken)
@@ -108,13 +107,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private async Task CommitAsyncCore(Task task, CancellationToken cancellationToken)
         {
             await task;
+            _committed = true;
 
             if (_committedAction != null)
             {
                 await _committedAction.ExecuteAsync(cancellationToken);
             }
-
-            _committed = true;
         }
 
         public override void Flush()

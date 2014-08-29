@@ -2268,6 +2268,54 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
+        public void Close_WhenCommitCommitedButCommitedActionThrew_DoesNotCommitAgain()
+        {
+            // Arrange
+            int commitCalls = 0;
+            Mock<CloudBlobStream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock.Setup(s => s.Close());
+            innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
+            CloudBlobStream innerStream = innerStreamMock.Object;
+            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(new InvalidOperationException());
+            CloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
+            Assert.Throws<InvalidOperationException>(() => product.Commit()); // Guard
+            Assert.Equal(1, commitCalls); // Guard
+
+            // Act
+            product.Close();
+
+            // Assert
+            Assert.Equal(1, commitCalls);
+        }
+
+        [Fact]
+        public void Close_WhenCommitAsyncCommitedButCommitedActionThrew_DoesNotCommitAgain()
+        {
+            // Arrange
+            int commitCalls = 0;
+            Mock<CloudBlobStream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock.Setup(s => s.Close());
+            innerStreamMock
+                .SetupBeginCommit()
+                .Callback(() => commitCalls++)
+                .ReturnsCompletedSynchronously();
+            innerStreamMock.SetupEndCommit();
+            innerStreamMock.Setup(s => s.Commit()).Callback(() => commitCalls++);
+            CloudBlobStream innerStream = innerStreamMock.Object;
+            IBlobCommitedAction committedAction = CreateThrowingCommittedAction(new InvalidOperationException());
+            WatchableCloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
+            Assert.Throws<InvalidOperationException>(
+                () => product.CommitAsync(CancellationToken.None).GetAwaiter().GetResult()); // Guard
+            Assert.Equal(1, commitCalls); // Guard
+
+            // Act
+            product.Close();
+
+            // Assert
+            Assert.Equal(1, commitCalls);
+        }
+
+        [Fact]
         public void Commit_IfCommittedActionIsNotNull_CallsCommittedAction()
         {
             // Arrange
@@ -3205,6 +3253,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             WriteBlobParameterLog actualBlobLog = (WriteBlobParameterLog)actual;
             Assert.False(actualBlobLog.WasWritten);
             Assert.Equal(0, actualBlobLog.BytesWritten);
+        }
+
+        private static IBlobCommitedAction CreateThrowingCommittedAction(Exception exception)
+        {
+            Mock<IBlobCommitedAction> mock = new Mock<IBlobCommitedAction>(MockBehavior.Strict);
+            mock.Setup(a => a.ExecuteAsync(It.IsAny<CancellationToken>()))
+                .Throws(exception);
+            return mock.Object;
         }
 
         private static Stream CreateDummyStream()
