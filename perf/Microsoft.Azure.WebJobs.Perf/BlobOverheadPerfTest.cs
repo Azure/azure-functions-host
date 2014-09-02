@@ -13,13 +13,16 @@ namespace Microsoft.Azure.WebJobs.Perf
 {
     public static partial class BlobOverheadPerfTest
     {
-        private const string BlobOverheadMetric = "Overhead";
+        private const string NamePrefix = "Overhead";
+
+        private const string BlobLoggingOverheadMetric = NamePrefix + "-Logging";
+        private const string BlobNoLoggingOverheadMetric = NamePrefix + "-NoLogging";
 
         private const string ContainerName = "blob-overhead-%rnd%";
-        private const string TestBlobNameIn = BlobOverheadMetric + ".in";
+        private const string TestBlobNameIn = NamePrefix + ".in";
 
-        private const string TestWebJobsBlobNameOut = BlobOverheadMetric + ".webjobsSDK.out";
-        private const string TestAzureBlobNameOut = BlobOverheadMetric + ".azureSDK.out";
+        private const string TestWebJobsBlobNameOut = NamePrefix + ".webjobsSDK.out";
+        private const string TestAzureBlobNameOut = NamePrefix + ".azureSDK.out";
 
         private static RandomNameResolver _nameResolver = new RandomNameResolver();
 
@@ -50,7 +53,9 @@ namespace Microsoft.Azure.WebJobs.Perf
 
                 Console.WriteLine("Perf ratio (x100, long): {0}", perfRatio);
 
-                MeasurementBlock.Mark(perfRatio, BlobOverheadMetric + ";Ratio;Percent");
+                MeasurementBlock.Mark(
+                    perfRatio,
+                    disableLogging ? BlobNoLoggingOverheadMetric : BlobLoggingOverheadMetric + ";Ratio;Percent");
             }
             finally
             {
