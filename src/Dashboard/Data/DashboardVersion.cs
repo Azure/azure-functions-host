@@ -5,11 +5,11 @@ namespace Dashboard.Data
 {
     public enum DashboardUpgradeState
     {
-        DeletingOldData,
+        DeletingOldData = 0,
 
-        RestoringArchive,
+        RestoringArchive = 1,
 
-        Finished
+        Finished = 2
     }
 
     public enum Version

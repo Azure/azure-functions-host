@@ -56,9 +56,13 @@
     }
 
     function isUpgrading(callback) {
+        var dashboardUpgradeState = {
+            finished: 2
+        };
+
         return $http.get(api.sdk.upgrading())
             .then(function (res) {
-                callback(res.data.upgraded !== 3);
+                callback(res.data.upgraded !== dashboardUpgradeState.finished);
             });
     }
 
