@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.microsoft.com/2011/12/aaptperffun#1">
   <metadata
-      testName ="BlobOverhead"
+      testName ="QueueOverhead"
       teamName ="SimpleBatch"
-      description="The overhead added by the WebJobs SDK to blobs">
+      description="The overhead added by the WebJobs SDK to queues">
 
     <trackingVariation name="Overhead-NoLogging">
       <metric name="Ratio" selection="Median" units="Percent">
@@ -19,10 +19,10 @@
 
   <commands>
     <command name="Overhead-NoLogging" wait="Exit">
-      Microsoft.Azure.WebJobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=BlobOverhead-NoLogging
+      Microsoft.Azure.WebJobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=QueueOverhead-NoLogging
     </command>
     <command name="Overhead-Logging" wait="Exit">
-      Microsoft.Azure.WebJobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=BlobOverhead-Logging
+      Microsoft.Azure.WebJobs.Perf.exe /StorageConnectionString={ConnectionString} /Scenario=QueueOverhead-Logging
     </command>
   </commands>
 

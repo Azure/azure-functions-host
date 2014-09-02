@@ -9,6 +9,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon.AzureSdk;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -93,47 +94,31 @@ namespace Microsoft.Azure.WebJobs.Perf
 
         private static void CreateTestQueues(CloudQueueClient queueClient)
         {
-            CreateQueueOrClearIfExists(FunctionChainingPerfTest.FirstQueueName, queueClient);
-            CreateQueueOrClearIfExists(FunctionChainingPerfTest.LastQueueName, queueClient);
+            queueClient.CreateQueueOrClearIfExists(ResolveName(FunctionChainingPerfTest.FirstQueueName));
+            queueClient.CreateQueueOrClearIfExists(ResolveName(FunctionChainingPerfTest.LastQueueName));
 
             // Create the queues to pass messages around
             for (int i = 1; i <= FunctionChainingPerfTest.NumberOfGeneratedMethods; i++)
             {
-                CreateQueueOrClearIfExists(FunctionChainingPerfTest.PerfQueuePrefix + i, queueClient);
+                queueClient.CreateQueueOrClearIfExists(ResolveName(FunctionChainingPerfTest.PerfQueuePrefix + i));
             }
         }
 
         private static void DeleteTestQueues(CloudQueueClient queueClient)
         {
-            DeleteQueueIfExists(FirstQueueName, queueClient);
-            DeleteQueueIfExists(LastQueueName, queueClient);
+             queueClient.DeleteQueueIfExists(ResolveName(FirstQueueName));
+             queueClient.DeleteQueueIfExists(ResolveName(LastQueueName));
 
             // Create the queues to pass messages around
             for (int i = 1; i <= FunctionChainingPerfTest.NumberOfGeneratedMethods; i++)
             {
-                DeleteQueueIfExists(FunctionChainingPerfTest.PerfQueuePrefix + i, queueClient);
+                queueClient.DeleteQueueIfExists(ResolveName(FunctionChainingPerfTest.PerfQueuePrefix + i));
             }
         }
 
-        private static void CreateQueueOrClearIfExists(string queueName, CloudQueueClient queueClient)
+        private static string ResolveName(string name)
         {
-            CloudQueue queue = queueClient.GetQueueReference(_nameResolver.ResolveInString(queueName));
-
-            bool wasCreatedNow = queue.CreateIfNotExists();
-            if (!wasCreatedNow)
-            {
-                queue.Clear();
-            }
-        }
-
-        private static void DeleteQueueIfExists(string queueName, CloudQueueClient queueClient)
-        {
-            CloudQueue queue = queueClient.GetQueueReference(_nameResolver.ResolveInString(queueName));
-
-            if (queue.Exists())
-            {
-                queue.Delete();
-            }
+            return _nameResolver.ResolveInString(name);
         }
     }
 }

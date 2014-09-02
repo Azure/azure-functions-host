@@ -2,39 +2,42 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.TestCommon.AzureSdk;
 using Microsoft.VisualStudio.Diagnostics.Measurement;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Perf
 {
-    public static partial class BlobOverheadPerfTest
+    public class QueueOverheadPerfTest
     {
-        private const string BlobOverheadMetric = "Overhead";
+        private const string QueueLoggingOverheadMetric = "Overhead-Logging";
+        private const string QueueNoLoggingOverheadMetric = "Overhead-NoLogging";
 
-        private const string ContainerName = "blob-overhead-%rnd%";
-        private const string TestBlobNameIn = BlobOverheadMetric + ".in";
-
-        private const string TestWebJobsBlobNameOut = BlobOverheadMetric + ".webjobsSDK.out";
-        private const string TestAzureBlobNameOut = BlobOverheadMetric + ".azureSDK.out";
+        private const string QueueName = "overhead-%rnd%";
+        private const int NumberOfMessages = 50;
 
         private static RandomNameResolver _nameResolver = new RandomNameResolver();
 
         private static string _connectionString;
         private static CloudStorageAccount _storageAccount;
-        private static CloudBlobClient _blobClient;
+        private static CloudQueueClient _queueClient;
+
+        private static int _receivedMessages;
+       
+        private static ManualResetEvent _allMessagesReceivedEvent;
 
         public static void Run(string connectionString, bool disableLogging)
         {
             _connectionString = connectionString;
             _storageAccount = CloudStorageAccount.Parse(connectionString);
-            _blobClient = _storageAccount.CreateCloudBlobClient();
-
-            Console.WriteLine("Creating the test blob...");
-            CreateTestBlob();
+            _queueClient = _storageAccount.CreateCloudQueueClient();
 
             try
             {
@@ -50,7 +53,9 @@ namespace Microsoft.Azure.WebJobs.Perf
 
                 Console.WriteLine("Perf ratio (x100, long): {0}", perfRatio);
 
-                MeasurementBlock.Mark(perfRatio, BlobOverheadMetric + ";Ratio;Percent");
+                MeasurementBlock.Mark(
+                    perfRatio,
+                    disableLogging ? QueueNoLoggingOverheadMetric : QueueLoggingOverheadMetric + ";Ratio;Percent");
             }
             finally
             {
@@ -60,9 +65,11 @@ namespace Microsoft.Azure.WebJobs.Perf
 
         #region Azure SDK test
 
-        private static TimeSpan RunAzureSDKTest()
+        public static TimeSpan RunAzureSDKTest()
         {
             Console.WriteLine("Running the Azure SDK test...");
+
+            WriteTestMessages();
 
             TimeBlock block = new TimeBlock();
 
@@ -74,13 +81,16 @@ namespace Microsoft.Azure.WebJobs.Perf
 
         private static void RunAzureSDKTestInternal()
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference(_nameResolver.ResolveInString(ContainerName));
-            CloudBlockBlob inBlob = container.GetBlockBlobReference(TestBlobNameIn);
+            CloudQueue queue = _queueClient.GetQueueReference(ResolveName(QueueName));
 
-            string blobContent = inBlob.DownloadText();
-
-            CloudBlockBlob outBlob = container.GetBlockBlobReference(TestAzureBlobNameOut);
-            outBlob.UploadText(blobContent);
+            int messagesReceived = 0;
+            while (messagesReceived < NumberOfMessages)
+            {
+                if (queue.GetMessage() != null)
+                {
+                    ++messagesReceived;
+                }
+            }
         }
 
         #endregion
@@ -90,6 +100,8 @@ namespace Microsoft.Azure.WebJobs.Perf
         private static TimeSpan RunWebJobsSDKTest(bool disableLogging)
         {
             Console.WriteLine("Running the WebJobs SDK test...");
+
+            WriteTestMessages();
 
             TimeBlock block = new TimeBlock();
 
@@ -103,58 +115,54 @@ namespace Microsoft.Azure.WebJobs.Perf
         {
             JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString);
             hostConfig.NameResolver = _nameResolver;
-            hostConfig.TypeLocator = new SimpleTypeLocator(typeof(BlobOverheadPerfTest));
+            hostConfig.TypeLocator = new SimpleTypeLocator(typeof(QueueOverheadPerfTest));
 
             if (disableLogging)
             {
                 hostConfig.DashboardConnectionString = null;
             }
 
-            JobHost host = new JobHost(hostConfig);
-            host.Call(typeof(BlobOverheadPerfTest).GetMethod("BlobToBlob"));
+            _receivedMessages = 0;
+
+            using (_allMessagesReceivedEvent = new ManualResetEvent(initialState: false))
+            using (JobHost host = new JobHost(hostConfig))
+            {
+                host.Start();
+                _allMessagesReceivedEvent.WaitOne();
+            }
         }
 
-        [NoAutomaticTrigger]
-        public static void BlobToBlob(
-            [Blob(ContainerName + "/" + TestBlobNameIn)] string input,
-            [Blob(ContainerName + "/" + TestWebJobsBlobNameOut)] out string output)
+        public static void QueueListener([QueueTrigger(QueueName)] string message)
         {
-            output = input;
+            _receivedMessages++;
+            if (_receivedMessages == NumberOfMessages)
+            {
+                _allMessagesReceivedEvent.Set();
+            }
         }
 
         #endregion
 
-        private static void CreateTestBlob()
+        private static void WriteTestMessages()
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference(_nameResolver.ResolveInString(ContainerName));
-            container.CreateIfNotExists();
+            string resolvedQueueName = ResolveName(QueueName);
 
-            CloudBlockBlob blob = container.GetBlockBlobReference(TestBlobNameIn);
-
-            using (Stream ms = GenerateRandomText(sizeInMb: 1))
+            _queueClient.CreateQueueOrClearIfExists(ResolveName(QueueName));
+            CloudQueue queue = _queueClient.GetQueueReference(ResolveName(QueueName));
+            for (int i = 0; i < NumberOfMessages; i++)
             {
-                blob.UploadFromStream(ms);
+                queue.AddMessage(new CloudQueueMessage("x"));
             }
         }
 
         private static void Cleanup()
         {
-            CloudBlobContainer container = _blobClient.GetContainerReference(_nameResolver.ResolveInString(ContainerName));
-            container.DeleteIfExists();
+            _queueClient.DeleteQueueIfExists(ResolveName(QueueName));
         }
 
-        private static Stream GenerateRandomText(long sizeInMb)
+        private static string ResolveName(string name)
         {
-            byte[] data = new byte[sizeInMb * 1024 * 1024];
-
-            Random rnd = new Random();
-
-            for (int i = 0; i < data.Length; i++)
-            {
-                data[i] = (byte)rnd.Next('A', 'Z');
-            }
-
-            return new MemoryStream(data);
+            return _nameResolver.ResolveInString(name);
         }
     }
 }

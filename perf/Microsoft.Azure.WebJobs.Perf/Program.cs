@@ -28,8 +28,17 @@ namespace Microsoft.Azure.WebJobs.Perf
                     case "FunctionChaining":
                         FunctionChainingPerfTest.Run(storageConnectionString);
                         break;
-                    case "BlobOverhead":
-                        BlobOverheadPerfTest.Run(storageConnectionString);
+                    case "BlobOverhead-NoLogging":
+                        BlobOverheadPerfTest.Run(storageConnectionString, disableLogging: true);
+                        break;
+                    case "BlobOverhead-Logging":
+                        BlobOverheadPerfTest.Run(storageConnectionString, disableLogging: false);
+                        break;
+                    case "QueueOverhead-NoLogging":
+                        QueueOverheadPerfTest.Run(storageConnectionString, disableLogging: true);
+                        break;
+                    case "QueueOverhead-Logging":
+                        QueueOverheadPerfTest.Run(storageConnectionString, disableLogging: false);
                         break;
                     default:
                         throw new ArgumentException("Invalid scenario");
