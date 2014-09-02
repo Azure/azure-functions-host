@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Perf
 
                 MeasurementBlock.Mark(
                     perfRatio,
-                    disableLogging ? QueueNoLoggingOverheadMetric : QueueLoggingOverheadMetric + ";Ratio;Percent");
+                    (disableLogging ? QueueNoLoggingOverheadMetric : QueueLoggingOverheadMetric) + ";Ratio;Percent");
             }
             finally
             {
