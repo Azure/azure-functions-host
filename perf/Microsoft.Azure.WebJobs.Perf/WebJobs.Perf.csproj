@@ -91,20 +91,6 @@
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="QueueOverhead.perf.xml">
-      <SubType>Designer</SubType>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="FunctionChaining.perf.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="BlobOverhead.perf.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Host\WebJobs.Host.csproj">
       <Project>{0e095cb2-3030-49ff-966c-785f1a55f0c1}</Project>
       <Name>WebJobs.Host</Name>
