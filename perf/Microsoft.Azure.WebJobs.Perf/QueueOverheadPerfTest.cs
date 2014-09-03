@@ -30,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Perf
         private static CloudQueueClient _queueClient;
 
         private static int _receivedMessages;
-       
+
+        private static ManualResetEvent _firstMessagesReceivedEvent;
         private static ManualResetEvent _allMessagesReceivedEvent;
 
         public static void Run(string connectionString, bool disableLogging)
@@ -103,15 +104,11 @@ namespace Microsoft.Azure.WebJobs.Perf
 
             WriteTestMessages();
 
-            TimeBlock block = new TimeBlock();
-
-            RunWebJobsSDKTestInternal(disableLogging);
-
-            block.End();
+            TimeBlock block = RunWebJobsSDKTestInternal(disableLogging);
             return block.ElapsedTime;
         }
 
-        private static void RunWebJobsSDKTestInternal(bool disableLogging)
+        private static TimeBlock RunWebJobsSDKTestInternal(bool disableLogging)
         {
             JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString);
             hostConfig.NameResolver = _nameResolver;
@@ -124,17 +121,26 @@ namespace Microsoft.Azure.WebJobs.Perf
 
             _receivedMessages = 0;
 
+            using (_firstMessagesReceivedEvent = new ManualResetEvent(initialState: false))
             using (_allMessagesReceivedEvent = new ManualResetEvent(initialState: false))
             using (JobHost host = new JobHost(hostConfig))
             {
                 host.Start();
+
+                _firstMessagesReceivedEvent.WaitOne();
+                TimeBlock block = new TimeBlock();
                 _allMessagesReceivedEvent.WaitOne();
+                block.End();
+
+                return block;
             }
         }
 
         public static void QueueListener([QueueTrigger(QueueName)] string message)
         {
-            _receivedMessages++;
+            _firstMessagesReceivedEvent.Set();
+
+            Interlocked.Increment(ref _receivedMessages);
             if (_receivedMessages == NumberOfMessages)
             {
                 _allMessagesReceivedEvent.Set();
