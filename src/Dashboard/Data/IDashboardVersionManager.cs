@@ -3,23 +3,20 @@
 
 namespace Dashboard.Data
 {
-    /// <summary>Defines a reader that provides dashbard version information.</summary>
+    /// <summary>Defines a manager that manages dashboard version information.</summary>
     public interface IDashboardVersionManager
     {
         /// <summary>Reads the data dashboard version.</summary>
         /// <returns>The dashboard version.</returns>
-        DashboardVersion Read();
+        IConcurrentDocument<DashboardVersion> Read();
 
         /// <summary>Start the process of deleting old statistics.</summary>
-        /// <returns>The dashboard version.</returns>
-        DashboardVersion StartDeletingOldData(DashboardVersion previousVersion);
+        void StartDeletingOldData(string etag);
 
         /// <summary>Start the process of restoring the archive.</summary>
-        /// <returns>The dashboard version.</returns>
-        DashboardVersion StartRestoringArchive(DashboardVersion previousVersion);
+        void StartRestoringArchive(string etag);
 
         /// <summary>Finishes the upgrade process.</summary>
-        /// <returns>The dashboard version.</returns>
-        DashboardVersion FinishUpgrade(DashboardVersion previousVersion);
+        void FinishUpgrade(string etag);
     }
 }

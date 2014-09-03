@@ -9,6 +9,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Web;
 
 namespace Dashboard.Indexers
@@ -16,10 +17,10 @@ namespace Dashboard.Indexers
     internal class UpgradeIndexer : Indexer
     {
         private readonly IPersistentQueueReader<PersistentQueueMessage> _upgradeQueueReader;
-        private readonly IDashboardVersionManager _dasboardVersionReader;
+        private readonly IDashboardVersionManager _dashboardVersionManager;
         private readonly CloudBlobClient _client;
-        private readonly IConcurrentMetadataTextStore _store;
-        private const Data.Version CurrentVersion = Data.Version.Version1;
+        private readonly IConcurrentMetadataTextStore _functionsStore;
+        private readonly IConcurrentMetadataTextStore _logsStore;
 
         public UpgradeIndexer(IPersistentQueueReader<PersistentQueueMessage> queueReader,
             IHostIndexer hostIndexer,
@@ -29,10 +30,10 @@ namespace Dashboard.Indexers
             CloudBlobClient client)
             : base(queueReader, hostIndexer, functionIndexer, logWriter)
         {
-            _dasboardVersionReader = dashboardVersionReader;
+            _dashboardVersionManager = dashboardVersionReader;
             _client = client;
-            _store = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Functions);
-
+            _functionsStore = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Functions);
+            _logsStore = ConcurrentTextStore.CreateBlobStore(_client, DashboardContainerNames.Dashboard, DashboardDirectoryNames.Logs);
 
             // From archive back to output
             _upgradeQueueReader = new PersistentQueueReader<PersistentQueueMessage>(client.GetContainerReference(ContainerNames.HostArchive),
@@ -41,24 +42,26 @@ namespace Dashboard.Indexers
 
         public override void Update()
         {
-            DashboardVersion version = _dasboardVersionReader.Read();
+            IConcurrentDocument<DashboardVersion> version = _dashboardVersionManager.Read();
 
-            if (version.Upgraded != DashboardUpgradeState.Finished)
+            if (version.Document.UpgradeState != DashboardUpgradeState.Finished ||
+                version.Document.Version != DashboardVersionManager.CurrentDashboardVersion)
             {
-                if (version.Upgraded == DashboardUpgradeState.DeletingOldData ||
-                    (version.Version != CurrentVersion &&
-                     version.Upgraded == DashboardUpgradeState.Finished))
+                if (version.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
+                    (version.Document.Version != DashboardVersionManager.CurrentDashboardVersion &&
+                     version.Document.UpgradeState == DashboardUpgradeState.Finished))
                 {
-                    version = StartDeletingOldData(version);
+                    version = StartDeletingOldData(_functionsStore, version);
+                    version = StartDeletingOldData(_logsStore, version);
                 }
 
-                if (version.Upgraded == DashboardUpgradeState.DeletingOldData ||
-                    version.Upgraded == DashboardUpgradeState.RestoringArchive)
+                if (version.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
+                    version.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
                 {
                     version = StartRestoringArchive(version);
                 }
 
-                if (version.Upgraded == DashboardUpgradeState.RestoringArchive)
+                if (version.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
                 {
                     FinishUpdate(version);
                 }
@@ -67,20 +70,23 @@ namespace Dashboard.Indexers
             base.Update();
         }
 
-        private DashboardVersion StartDeletingOldData(DashboardVersion version)
+        private IConcurrentDocument<DashboardVersion> StartDeletingOldData(IConcurrentMetadataTextStore store, IConcurrentDocument<DashboardVersion> version)
         {
             // Set status to deletion status (using etag)
-            version = _dasboardVersionReader.StartDeletingOldData(version);
+            _dashboardVersionManager.StartDeletingOldData(version.ETag);
 
-            while (version.Upgraded == DashboardUpgradeState.DeletingOldData)
+            // Refresh version
+            version = _dashboardVersionManager.Read();
+
+            while (version.Document.UpgradeState == DashboardUpgradeState.DeletingOldData)
             {
-                var items = _store.List(null);
+                var items = store.List(null);
 
                 // Refresh version
-                version = _dasboardVersionReader.Read();
+                version = _dashboardVersionManager.Read();
 
                 // Return once everything's deleted
-                if (items.Count() == 0 || version.Upgraded != DashboardUpgradeState.DeletingOldData)
+                if (items.Count() == 0 || version.Document.UpgradeState != DashboardUpgradeState.DeletingOldData)
                 {
                     return version;
                 }
@@ -88,39 +94,88 @@ namespace Dashboard.Indexers
                 // Delete blobs
                 foreach (var blob in items)
                 {
-                    _store.TryDelete(blob.Id, blob.ETag);
+                    DeleteIfLatest(store, blob);
                 }
             }
 
             return version;
         }
 
-        private DashboardVersion StartRestoringArchive(DashboardVersion version)
+        private void DeleteIfLatest(IConcurrentMetadataTextStore store, ConcurrentMetadata blob)
         {
-            version = _dasboardVersionReader.StartRestoringArchive(version);
+            bool deleted = false;
+            string previousETag = null;
+            ConcurrentMetadata currentItem;
+
+            for (currentItem = blob;
+                !deleted && currentItem != null;
+                currentItem = store.ReadMetadata(blob.Id))
+            {
+                string currentETag = currentItem.ETag;
+
+                // Prevent an infinite loop if _innerStore erroneously returns false from TryDelete when a retry won't
+                // help. (The inner store should throw rather than return false in that case.)
+                if (currentETag == previousETag)
+                {
+                    throw new InvalidOperationException("The operation stopped making progress.");
+                }
+
+                previousETag = currentETag;
+                deleted = _functionsStore.TryDelete(blob.Id, blob.ETag);
+            }
+        }
+
+        private IConcurrentDocument<DashboardVersion> StartRestoringArchive(IConcurrentDocument<DashboardVersion> version)
+        {
+            const int IndexerPollIntervalMilliseconds = 5000;
+
+            _dashboardVersionManager.StartRestoringArchive(version.ETag);
 
             PersistentQueueMessage message = _upgradeQueueReader.Dequeue();
 
-            while (message != null)
+            int count = 0;
+
+            do
             {
-                version = _dasboardVersionReader.Read();
-                if (version.Upgraded != DashboardUpgradeState.RestoringArchive)
+                while (message != null)
                 {
-                    _upgradeQueueReader.Enqueue(message);
+                    version = _dashboardVersionManager.Read();
+                    if (version.Document.UpgradeState != DashboardUpgradeState.RestoringArchive)
+                    {
+                        _upgradeQueueReader.TryMakeItemVisible(message);
+                        return version;
+                    }
+
+                    // Delete auto-"archives" from host-archive back to host-output.
+                    _upgradeQueueReader.Delete(message);
+
+                    message = _upgradeQueueReader.Dequeue();
+                }
+
+                version = _dashboardVersionManager.Read();
+                if (version.Document.UpgradeState != DashboardUpgradeState.RestoringArchive)
+                {
                     return version;
                 }
 
-                _upgradeQueueReader.Delete(message);
-
-                message = _upgradeQueueReader.Dequeue();
+                // Get items left
+                // while limiting pagination to first page since we're only interested in
+                // knowing if we're out of items.
+                count = _upgradeQueueReader.Count(1);
+                if (count > 0)
+                {
+                    // wait for a while before resuming
+                    Thread.Sleep(IndexerPollIntervalMilliseconds);
+                }
             }
+            while (count > 0 );
 
             return version;
         }
 
-        private void FinishUpdate(DashboardVersion version)
+        private void FinishUpdate(IConcurrentDocument<DashboardVersion> version)
         {
-            _dasboardVersionReader.FinishUpgrade(version);
+            _dashboardVersionManager.FinishUpgrade(version.ETag);
         }
     }
 }

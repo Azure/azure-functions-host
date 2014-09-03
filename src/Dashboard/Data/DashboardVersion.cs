@@ -12,7 +12,7 @@ namespace Dashboard.Data
         Finished = 2
     }
 
-    public enum Version
+    public enum DashboardVersionNumber
     {
         Version1
     }
@@ -20,13 +20,10 @@ namespace Dashboard.Data
     /// <summary>Represents a dashboard version.</summary>
     public class DashboardVersion
     {
-        /// <summary>Gets or sets the etag.</summary>
-        public string ETag { get; set; }
-
         /// <summary>Gets or sets a version.</summary>
-        public Version Version { get; set; }
+        public DashboardVersionNumber Version { get; set; }
 
         /// <summary>Gets or sets the state of the upgrade.</summary>
-        public DashboardUpgradeState Upgraded { get; set; }
+        public DashboardUpgradeState UpgradeState { get; set; }
     }
 }

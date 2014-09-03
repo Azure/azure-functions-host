@@ -59,10 +59,10 @@ namespace Dashboard.ApiControllers
         }
 
         [HttpGet]
-        [Route("api/diagnostics/upgrading")]
-        public IHttpActionResult Upgrading()
+        [Route("api/diagnostics/upgradeStatus")]
+        public IHttpActionResult UpgradeStatus()
         {
-            return Ok(_dashboardVersionManager.Read());
+            return Ok(_dashboardVersionManager.Read().Document);
         }
 
         [HttpGet]

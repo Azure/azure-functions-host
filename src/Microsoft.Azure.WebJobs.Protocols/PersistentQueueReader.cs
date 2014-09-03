@@ -100,9 +100,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         }
 
         /// <inheritdoc />
-        public void Enqueue(T message)
+        public void TryMakeItemVisible(T message)
         {
-            _outputBlobs.Enqueue(message.Blob);
+            TryMakeItemVisible(message.Blob);
         }
 
         /// <summary>
@@ -218,6 +218,28 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             }
 
             return DateTimeOffset.UtcNow > nextVisibleTime;
+        }
+
+        private static bool TryMakeItemVisible(ICloudBlob item)
+        {
+            item.Metadata.RemoveIfContainsKey(NextVisibleTimeKey);
+
+            try
+            {
+                item.SetMetadata(new AccessCondition { IfMatchETag = item.Properties.ETag });
+                return true;
+            }
+            catch (StorageException exception)
+            {
+                if (exception.IsPreconditionFailed() || exception.IsNotFoundBlobNotFound())
+                {
+                    return false;
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         private static bool TryMakeItemInvisible(ICloudBlob item, out DateTimeOffset createdOn)

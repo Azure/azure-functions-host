@@ -62,7 +62,7 @@
 
         return $http.get(api.sdk.upgrading())
             .then(function (res) {
-                callback(res.data.upgraded !== dashboardUpgradeState.finished);
+                callback(res.data.upgradeState !== dashboardUpgradeState.finished);
             });
     }
 

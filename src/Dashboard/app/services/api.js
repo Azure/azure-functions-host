@@ -65,7 +65,7 @@
                 return 'api/jobs/continuous/' + jobName + '/functions';
             },
             upgrading: function () {
-                return "api/diagnostics/upgrading";
+                return "api/diagnostics/upgradeStatus";
             },
             indexerLogs: function () {
                 return "api/diagnostics/indexerLogs";

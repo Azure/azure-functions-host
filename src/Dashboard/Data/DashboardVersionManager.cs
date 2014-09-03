@@ -17,156 +17,84 @@ namespace Dashboard.Data
     /// <summary>Represents a reader that provides dashboard version information.</summary>
     public class DashboardVersionManager : IDashboardVersionManager
     {
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented
-        };
+        public const DashboardVersionNumber CurrentDashboardVersion = DashboardVersionNumber.Version1;
 
-        private readonly CloudBlobContainer _dashboardContainer;
+        private readonly JsonConcurrentDocumentStore<DashboardVersion> _store;
 
         /// <summary>
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>
-        /// <param name="account">The cloud storage account.</param>
+        /// <param name="client">The cloud storage client.</param>
         [CLSCompliant(false)]
         public DashboardVersionManager(CloudBlobClient client)
-            : this(client.GetContainerReference(DashboardContainerNames.Dashboard))
         {
-        }
-
-        private DashboardVersionManager(CloudBlobContainer dashboardContainer)
-        {
-            if (dashboardContainer == null)
+            if (client == null)
             {
-                throw new ArgumentNullException("dashboardContainer");
+                throw new ArgumentNullException("client");
             }
 
-            _dashboardContainer = dashboardContainer;
+            IConcurrentMetadataTextStore innerStore = ConcurrentTextStore.CreateBlobStore(client, DashboardContainerNames.Dashboard, string.Empty);
+            _store = new JsonConcurrentDocumentStore<DashboardVersion>(innerStore); 
         }
 
         /// <inheritdoc />
         [DebuggerNonUserCode]
-        public DashboardVersion Read()
+        public IConcurrentDocument<DashboardVersion> Read()
         {
-            var versionBlob = _dashboardContainer.GetBlockBlobReference(DashboardDirectoryNames.Version);
-            if (versionBlob.Exists())
+            var version = _store.Read(DashboardBlobNames.Version);
+            if (version == null)
             {
-                return GetDashboardVersion(versionBlob);
-            }
-
-            return new DashboardVersion() { Upgraded = DashboardUpgradeState.DeletingOldData };
-        }
-
-        public DashboardVersion StartDeletingOldData(DashboardVersion previousVersion)
-        {
-            try
-            {
-                var version = new DashboardVersion();
-                version.ETag = previousVersion.ETag;
-                version.Upgraded = DashboardUpgradeState.DeletingOldData;
-                TryUpdateVersion(version);
-
-                return version;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public DashboardVersion StartRestoringArchive(DashboardVersion previousVersion)
-        {
-            try
-            {
-                var version = new DashboardVersion();
-                version.ETag = previousVersion.ETag;
-                version.Upgraded = DashboardUpgradeState.RestoringArchive;
-                TryUpdateVersion(version);
-
-                return version;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public DashboardVersion FinishUpgrade(DashboardVersion previousVersion)
-        {
-            try
-            {
-                var version = new DashboardVersion();
-                // Set the new version and the upgrade state
-                version.Version = Data.Version.Version1;
-                version.ETag = previousVersion.ETag;
-                version.Upgraded = DashboardUpgradeState.Finished;
-                TryUpdateVersion(version);
-
-                return version;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private void TryUpdateVersion(DashboardVersion version)
-        {
-            try
-            {
-                _dashboardContainer.CreateIfNotExists();
-            }
-            catch (StorageException e)
-            {
-                // Conflicts should be ignored
-                if (e.RequestInformation.HttpStatusCode != 409)
-                {
-                    throw e;
-                }
-            }
-
-            try
-            {
-                var versionBlob = _dashboardContainer.GetBlockBlobReference(DashboardDirectoryNames.Version);
-                string messageBody = JsonConvert.SerializeObject(version, _settings);
-                versionBlob.Properties.ContentType = "application/json";
-                versionBlob.UploadText(messageBody, accessCondition: new AccessCondition { IfMatchETag = version.ETag });
-            }
-            catch (StorageException e)
-            {
-                // Conflicts should be ignored
-                if (e.RequestInformation.HttpStatusCode != 409)
-                {
-                    throw;
-                }
-            }
-        }
-
-        private static DashboardVersion GetDashboardVersion(ICloudBlob blob)
-        {
-            DashboardVersion version = null;
-
-            if (blob.Properties.ContentType == "application/json")
-            {
-                Encoding utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-                string value;
-
-                using (Stream stream = blob.OpenRead())
-                using (TextReader textReader = new StreamReader(stream, utf8))
-                {
-                    value = textReader.ReadToEnd();
-                }
-
-                version = JsonConvert.DeserializeObject<DashboardVersion>(value);
-                version.ETag = blob.Properties.ETag;
-            }
-            else
-            {
-                throw new NotSupportedException();
+                StartDeletingOldData(null);
+                return _store.Read(DashboardBlobNames.Version);
             }
 
             return version;
+        }
+
+        public void StartDeletingOldData(string eTag)
+        {
+            var version = new DashboardVersion
+            {
+                Version = CurrentDashboardVersion,
+                UpgradeState = DashboardUpgradeState.DeletingOldData
+            };
+
+            TryCreateOrUpdateVersion(version, eTag);
+        }
+
+        public void StartRestoringArchive(string eTag)
+        {
+            var version = new DashboardVersion
+            {
+                Version = CurrentDashboardVersion,
+                UpgradeState = DashboardUpgradeState.RestoringArchive
+            };
+
+            TryCreateOrUpdateVersion(version, eTag);
+        }
+
+        public void FinishUpgrade(string eTag)
+        {
+            // Set the new version and the upgrade state
+            var version = new DashboardVersion
+            {
+                Version = CurrentDashboardVersion,
+                UpgradeState = DashboardUpgradeState.Finished
+            };
+
+            TryCreateOrUpdateVersion(version, eTag);
+        }
+
+        private void TryCreateOrUpdateVersion(DashboardVersion version, string eTag)
+        {
+            if (!String.IsNullOrEmpty(eTag))
+            {
+                _store.TryUpdate(DashboardBlobNames.Version, eTag, version);
+            }
+            else
+            {
+                _store.TryCreate(DashboardBlobNames.Version, version);
+            }
         }
     }
 }

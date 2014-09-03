@@ -24,7 +24,5 @@ namespace Dashboard.Data
 
         /// <summary>The name of the container where version compatibility warnings are stored.</summary>
         public const string Versions = "versions";
-
-        public const string Version = "version";
     }
 }
