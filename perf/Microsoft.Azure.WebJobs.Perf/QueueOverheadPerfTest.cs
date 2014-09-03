@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Perf
 {
     public class QueueOverheadPerfTest
     {
+        private const int BatchSize = 16;
         private const string QueueLoggingOverheadMetric = "Overhead-Logging";
         private const string QueueNoLoggingOverheadMetric = "Overhead-NoLogging";
 
@@ -87,9 +88,11 @@ namespace Microsoft.Azure.WebJobs.Perf
             int messagesReceived = 0;
             while (messagesReceived < NumberOfMessages)
             {
-                if (queue.GetMessage() != null)
+                IEnumerable<CloudQueueMessage> messages = queue.GetMessages(BatchSize);
+                if (messages != null)
                 {
-                    ++messagesReceived;
+                    Parallel.ForEach(messages, (message) => queue.DeleteMessage(message));
+                    messagesReceived += messages.Count();
                 }
             }
         }
@@ -111,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Perf
         private static TimeBlock RunWebJobsSDKTestInternal(bool disableLogging)
         {
             JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString);
+            hostConfig.Queues.BatchSize = BatchSize;
             hostConfig.NameResolver = _nameResolver;
             hostConfig.TypeLocator = new SimpleTypeLocator(typeof(QueueOverheadPerfTest));
 

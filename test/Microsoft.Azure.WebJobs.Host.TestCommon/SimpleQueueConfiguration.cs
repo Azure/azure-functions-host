@@ -15,6 +15,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             _maxDequeueCount = maxDequeueCount;
         }
 
+        public int BatchSize
+        {
+            get { return 16; }
+        }
+
         public TimeSpan MaxPollingInterval
         {
             get { return TimeSpan.FromMinutes(10); }

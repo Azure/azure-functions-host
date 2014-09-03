@@ -40,14 +40,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
+            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
+            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
+                queueConfiguration.MaxPollingInterval);
             SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
-            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
-            IAlertingRecurrentCommand command = new PollQueueCommand(_queue, _poisonQueue, triggerExecutor,
-                sharedWatcher, queueConfiguration.MaxDequeueCount);
-            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command,
-                QueuePollingIntervals.Minimum, queueConfiguration.MaxPollingInterval);
-            IListener listener = new TimerListener(timer);
+            IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
+                sharedWatcher, queueConfiguration.BatchSize, queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }
 

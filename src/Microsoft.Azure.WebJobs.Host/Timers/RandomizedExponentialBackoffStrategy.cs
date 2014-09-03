@@ -18,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
         private uint _backoffExponent;
         private Random _random;
 
+        public RandomizedExponentialBackoffStrategy(TimeSpan minimumInterval, TimeSpan maximumInterval)
+            : this(minimumInterval, maximumInterval, minimumInterval)
+        {
+        }
+
         public RandomizedExponentialBackoffStrategy(TimeSpan minimumInterval, TimeSpan maximumInterval,
             TimeSpan deltaBackoff)
         {
@@ -60,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
                         _random = new Random();
                     }
 
-                    double incrementMsec = _random.Next(1.0 - RandomizationFactor, 1.0 + RandomizationFactor) * 
-                        Math.Pow(2.0, _backoffExponent - 1) * 
+                    double incrementMsec = _random.Next(1.0 - RandomizationFactor, 1.0 + RandomizationFactor) *
+                        Math.Pow(2.0, _backoffExponent - 1) *
                         _deltaBackoff.TotalMilliseconds;
                     backoffInterval += TimeSpan.FromMilliseconds(incrementMsec);
                 }
@@ -79,15 +84,6 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
             // else do nothing and keep current interval equal to max
 
             return _currentInterval;
-        }
-
-        public static ITaskSeriesTimer CreateTimer(IAlertingRecurrentCommand command, TimeSpan minimumInterval,
-            TimeSpan maximumInterval)
-        {
-            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(minimumInterval, maximumInterval,
-                minimumInterval);
-            ITaskSeriesCommand timerCommand = new AlertingRecurrentTaskSeriesCommand(command, delayStrategy);
-            return new TaskSeriesTimer(timerCommand, Task.Delay(minimumInterval));
         }
     }
 }

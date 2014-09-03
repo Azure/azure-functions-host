@@ -13,15 +13,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class SharedBlobQueueListener : ISharedListener
     {
-        private readonly ITaskSeriesTimer _timer;
+        private readonly IListener _listener;
         private readonly BlobQueueTriggerExecutor _executor;
 
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobQueueListener(ITaskSeriesTimer timer, BlobQueueTriggerExecutor executor)
+        public SharedBlobQueueListener(IListener listener, BlobQueueTriggerExecutor executor)
         {
-            _timer = timer;
+            _listener = listener;
             _executor = executor;
         }
 
@@ -36,27 +36,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _executor.Register(functionId, instanceFactory);
         }
 
-        public void EnsureAllStarted()
+        public async Task EnsureAllStartedAsync(CancellationToken cancellationToken)
         {
             if (!_started)
             {
-                _timer.Start();
+                await _listener.StartAsync(cancellationToken);
                 _started = true;
             }
         }
 
-        public async Task EnsureAllStopped(CancellationToken cancellationToken)
+        public async Task EnsureAllStoppedAsync(CancellationToken cancellationToken)
         {
             if (_started)
             {
-                await _timer.StopAsync(cancellationToken);
+                await _listener.StopAsync(cancellationToken);
                 _started = false;
             }
         }
 
         public void EnsureAllCanceled()
         {
-            _timer.Cancel();
+            _listener.Cancel();
         }
 
         public void EnsureAllDisposed()
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             if (!_disposed)
             {
-                _timer.Dispose();
+                _listener.Dispose();
                 _disposed = true;
             }
         }

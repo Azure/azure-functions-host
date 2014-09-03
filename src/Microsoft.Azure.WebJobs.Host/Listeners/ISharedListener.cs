@@ -11,9 +11,9 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     {
         void EnsureAllCanceled();
 
-        void EnsureAllStarted();
+        Task EnsureAllStartedAsync(CancellationToken cancellationToken);
 
-        Task EnsureAllStopped(CancellationToken cancellationToken);
+        Task EnsureAllStoppedAsync(CancellationToken cancellationToken);
 
         void EnsureAllDisposed();
     }

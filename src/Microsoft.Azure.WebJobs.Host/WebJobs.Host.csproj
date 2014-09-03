@@ -382,7 +382,6 @@
     <Compile Include="Tables\TableEntityValueBinder.cs" />
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Timers\FixedDelayStrategy.cs" />
-    <Compile Include="Timers\IAlertingRecurrentCommand.cs" />
     <Compile Include="Timers\RandomizedExponentialBackoffStrategy.cs" />
     <Compile Include="Timers\BackgroundExceptionDispatcher.cs" />
     <Compile Include="Timers\IBackgroundExceptionDispatcher.cs" />
@@ -392,8 +391,6 @@
     <Compile Include="Timers\ITaskSeriesTimer.cs" />
     <Compile Include="Timers\NullRecurrentCommand.cs" />
     <Compile Include="Timers\RandomExtensions.cs" />
-    <Compile Include="Timers\AlertingRecurrentCommandResult.cs" />
-    <Compile Include="Timers\AlertingRecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\TaskSeriesCommandResult.cs" />
     <Compile Include="Triggers\ITriggerDataArgumentBinding.cs" />
@@ -425,7 +422,7 @@
     <Compile Include="Indexers\IFunctionDefinition.cs" />
     <Compile Include="Listeners\IListener.cs" />
     <Compile Include="Listeners\IListenerFactory.cs" />
-    <Compile Include="Queues\Listeners\PollQueueCommand.cs" />
+    <Compile Include="Queues\Listeners\QueueListener.cs" />
     <Compile Include="Listeners\TimerListener.cs" />
     <Compile Include="Executors\ExceptionExtensions.cs" />
     <Compile Include="Executors\IFunctionExecutor.cs" />

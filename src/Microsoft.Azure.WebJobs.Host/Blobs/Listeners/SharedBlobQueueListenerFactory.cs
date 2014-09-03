@@ -40,15 +40,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public SharedBlobQueueListener Create()
         {
+            CloudQueue blobTriggerPoisonQueue = _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
             BlobQueueTriggerExecutor triggerExecutor =
                 new BlobQueueTriggerExecutor(_blobClient, _executor, _blobWrittenWatcher);
             IQueueConfiguration queueConfiguration = _context.QueueConfiguration;
-            CloudQueue blobTriggerPoisonQueue = _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
-            IAlertingRecurrentCommand command = new PollQueueCommand(_hostBlobTriggerQueue, blobTriggerPoisonQueue,
-                triggerExecutor, _sharedQueueWatcher, queueConfiguration.MaxDequeueCount);
-            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command,
-                QueuePollingIntervals.Minimum, queueConfiguration.MaxPollingInterval);
-            return new SharedBlobQueueListener(timer, triggerExecutor);
+            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
+                queueConfiguration.MaxPollingInterval);
+            IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
+                delayStrategy, _sharedQueueWatcher, queueConfiguration.BatchSize, queueConfiguration.MaxDequeueCount);
+            return new SharedBlobQueueListener(listener, triggerExecutor);
         }
     }
 }

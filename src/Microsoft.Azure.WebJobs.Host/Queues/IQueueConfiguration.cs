@@ -7,6 +7,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal interface IQueueConfiguration
     {
+        int BatchSize { get; }
+
         TimeSpan MaxPollingInterval { get; }
 
         int MaxDequeueCount { get; }

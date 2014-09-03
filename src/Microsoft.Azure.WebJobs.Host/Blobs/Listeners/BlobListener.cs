@@ -30,11 +30,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new InvalidOperationException("The listener has already been started.");
             }
 
+            return StartAsyncCore(cancellationToken);
+        }
+
+        private async Task StartAsyncCore(CancellationToken cancellationToken)
+        {
             // Starts the entire shared listener (if not yet started).
             // There is currently no scenario for controlling a single blob listener independently.
-            _sharedListener.EnsureAllStarted();
+            await _sharedListener.EnsureAllStartedAsync(cancellationToken);
             _started = true;
-            return Task.FromResult(0);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -54,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             // Stops the entire shared listener (if not yet stopped).
             // There is currently no scenario for controlling a single blob listener independently.
-            await _sharedListener.EnsureAllStopped(cancellationToken);
+            await _sharedListener.EnsureAllStoppedAsync(cancellationToken);
             _started = false;
         }
 

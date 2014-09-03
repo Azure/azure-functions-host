@@ -42,16 +42,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _strategy.Register(container, triggerExecutor);
         }
 
-        public void EnsureAllStarted()
+        public Task EnsureAllStartedAsync(CancellationToken cancellationToken)
         {
             if (!_started)
             {
                 _timer.Start();
                 _started = true;
             }
+
+            return Task.FromResult(0);
         }
 
-        public async Task EnsureAllStopped(CancellationToken cancellationToken)
+        public async Task EnsureAllStoppedAsync(CancellationToken cancellationToken)
         {
             if (_started)
             {

@@ -34,17 +34,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
             IQueueConfiguration queueConfiguration = context.QueueConfiguration;
-            IAlertingRecurrentCommand command = new PollQueueCommand(_queue,
-                poisonQueue: null,
-                triggerExecutor: triggerExecutor,
-                sharedWatcher: null,
-                maxDequeueCount: queueConfiguration.MaxDequeueCount);
             TimeSpan configuredMaximum = queueConfiguration.MaxPollingInterval;
             // Use a shorter maximum polling interval for run/abort from dashboard.
             // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
             TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
-            ITaskSeriesTimer timer = RandomizedExponentialBackoffStrategy.CreateTimer(command, Minimum, maximum);
-            IListener listener = new TimerListener(timer);
+            IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(Minimum, maximum);
+            IListener listener = new QueueListener(_queue,
+                poisonQueue: null,
+                triggerExecutor: triggerExecutor,
+                delayStrategy: delayStrategy,
+                sharedWatcher: null,
+                batchSize: queueConfiguration.BatchSize,
+                maxDequeueCount: queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }
     }

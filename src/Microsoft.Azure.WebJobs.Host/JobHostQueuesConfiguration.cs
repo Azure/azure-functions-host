@@ -12,7 +12,9 @@ namespace Microsoft.Azure.WebJobs.Host
     public sealed class JobHostQueuesConfiguration : IQueueConfiguration
     {
         private const int DefaultMaxDequeueCount = 5;
+        private const int DefaultBatchSize = 16;
 
+        private int _batchSize = DefaultBatchSize;
         private TimeSpan _maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
         private int _maxDequeueCount = DefaultMaxDequeueCount;
 
@@ -22,7 +24,26 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// When a queue remains empty, the longest period of time to wait before checking for a message to arrive.
+        /// Gets or sets the number of queue messages to retrieve and process in parallel (per job method).
+        /// </summary>
+        public int BatchSize
+        {
+            get { return _batchSize; }
+
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _batchSize = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the longest period of time to wait before checking for a message to arrive when a queue remains
+        /// empty.
         /// </summary>
         public TimeSpan MaxPollingInterval
         {
@@ -30,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
             set
             {
-                if (_maxPollingInterval < QueuePollingIntervals.Minimum)
+                if (value < QueuePollingIntervals.Minimum)
                 {
                     string message = String.Format(CultureInfo.CurrentCulture,
                         "MaxPollingInterval must not be less than {0}.", QueuePollingIntervals.Minimum);
@@ -42,7 +63,8 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         /// <summary>
-        /// The number of times to try processing a message before moving it to the poison queue (where possible).
+        /// Gets or sets the number of times to try processing a message before moving it to the poison queue (where
+        /// possible).
         /// </summary>
         /// <remarks>
         /// Some queues do not have corresponding poison queues, and this property does not apply to them. Specifically,
