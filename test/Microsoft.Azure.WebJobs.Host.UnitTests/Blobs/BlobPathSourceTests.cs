@@ -133,35 +133,5 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             Assert.Equal("name", names[0]);
             Assert.Equal("date", names[1]);
         }
-
-        [Fact]
-        public void Resolve1()
-        {
-            var d = new Dictionary<string, string> {{"name", "value"}};
-            string result = BindingDataPath.Resolve("container", d);
-            Assert.Equal("container", result);
-        }
-
-        [Fact]
-        public void Resolve2()
-        {
-            var d = new Dictionary<string, string> {{"name", "value"}};
-            string result = BindingDataPath.Resolve(@"container/{name}", d);
-            Assert.Equal(@"container/value", result);
-        }
-
-        [Fact]
-        public void Resolve3()
-        {
-            var d = new Dictionary<string, string> {{"name", "value"}};
-            Assert.Throws<InvalidOperationException>(() => BindingDataPath.Resolve(@"container/{missing}", d));
-        }
-
-        [Fact]
-        public void Resolve4()
-        {
-            var d = new Dictionary<string, string> {{"name", "value"}};
-            Assert.Throws<InvalidOperationException>(() => BindingDataPath.Resolve(@"container/{missing", d));
-        }
     }
 }

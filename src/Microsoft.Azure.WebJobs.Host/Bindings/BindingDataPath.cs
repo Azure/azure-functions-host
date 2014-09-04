@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     int endIndex = path.IndexOf('}', index);
                     if (endIndex == -1)
                     {
-                        throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket");
+                        throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket.");
                     }
                     string name = path.Substring(index + 1, endIndex - index - 1);
                     parameterNames.Add(name);
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     int endIndex = path.IndexOf('}', index);
                     if (endIndex == -1)
                     {
-                        throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket");
+                        throw new InvalidOperationException("Input pattern is not well formed. Missing a closing bracket.");
                     }
                     string name = path.Substring(index + 1, endIndex - index - 1);
                     string value = null;

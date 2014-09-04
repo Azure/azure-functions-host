@@ -10,12 +10,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
     internal class StringToCloudQueueConverter : IConverter<string, CloudQueue>
     {
         private readonly CloudQueueClient _client;
-        private readonly string _defaultQueueName;
+        private readonly IBindableQueuePath _defaultPath;
 
-        public StringToCloudQueueConverter(CloudQueueClient client, string defaultQueueName)
+        public StringToCloudQueueConverter(CloudQueueClient client, IBindableQueuePath defaultPath)
         {
             _client = client;
-            _defaultQueueName = defaultQueueName;
+            _defaultPath = defaultPath;
         }
 
         public CloudQueue Convert(string input)
@@ -23,13 +23,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             string queueName;
 
             // For convenience, treat an an empty string as a request for the default value.
-            if (String.IsNullOrEmpty(input))
+            if (String.IsNullOrEmpty(input) && _defaultPath.IsBound)
             {
-                queueName = _defaultQueueName;
+                queueName = _defaultPath.Bind(null);
             }
             else
             {
-                queueName = input;
+                queueName = BindableQueuePath.NormalizeAndValidate(input);
             }
 
             return _client.GetQueueReference(queueName);

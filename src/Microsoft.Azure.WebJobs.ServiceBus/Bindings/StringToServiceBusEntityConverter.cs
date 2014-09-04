@@ -12,12 +12,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     internal class StringToServiceBusEntityConverter : IAsyncConverter<string, ServiceBusEntity>
     {
         private readonly ServiceBusAccount _account;
-        private readonly string _defaultQueueOrTopicName;
+        private readonly IBindableServiceBusPath _defaultPath;
 
-        public StringToServiceBusEntityConverter(ServiceBusAccount account, string defaultQueueOrTopicName)
+        public StringToServiceBusEntityConverter(ServiceBusAccount account, IBindableServiceBusPath defaultPath)
         {
             _account = account;
-            _defaultQueueOrTopicName = defaultQueueOrTopicName;
+            _defaultPath = defaultPath;
         }
 
         public async Task<ServiceBusEntity> ConvertAsync(string input, CancellationToken cancellationToken)
@@ -25,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             string queueOrTopicName;
 
             // For convenience, treat an an empty string as a request for the default value.
-            if (String.IsNullOrEmpty(input))
+            if (String.IsNullOrEmpty(input) && _defaultPath.IsBound)
             {
-                queueOrTopicName = _defaultQueueOrTopicName;
+                queueOrTopicName = _defaultPath.Bind(null);
             }
             else
             {

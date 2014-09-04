@@ -85,8 +85,12 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Bindings\BindableServiceBusPath.cs" />
+    <Compile Include="Bindings\BoundServiceBusPath.cs" />
     <Compile Include="Bindings\ByteArrayArgumentBinding.cs" />
     <Compile Include="Bindings\CollectionArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\IBindableServiceBusPath.cs" />
+    <Compile Include="Bindings\ParameterizedServiceBusPath.cs" />
     <Compile Include="Bindings\StringArgumentBinding.cs" />
     <Compile Include="Bindings\BrokeredMessageArgumentBinding.cs" />
     <Compile Include="Bindings\ByteArrayArgumentBindingProvider.cs" />

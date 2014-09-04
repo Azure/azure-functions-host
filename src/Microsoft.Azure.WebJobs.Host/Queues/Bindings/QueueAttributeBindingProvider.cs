@@ -30,25 +30,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             string queueName = context.Resolve(queueAttribute.QueueName);
-            queueName = NormalizeAndValidate(queueName);
+            IBindableQueuePath path = BindableQueuePath.Create(queueName);
+            path.ValidateContractCompatibility(context.BindingDataContract);
 
             IArgumentBinding<CloudQueue> argumentBinding = _innerProvider.TryCreate(parameter);
-
             if (argumentBinding == null)
             {
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
             IBinding binding = new QueueBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateCloudQueueClient(), queueName);
+                context.StorageAccount.CreateCloudQueueClient(), path);
             return Task.FromResult(binding);
-        }
-
-        private static string NormalizeAndValidate(string queueName)
-        {
-            queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
-            QueueClient.ValidateQueueName(queueName);
-            return queueName;
         }
     }
 }

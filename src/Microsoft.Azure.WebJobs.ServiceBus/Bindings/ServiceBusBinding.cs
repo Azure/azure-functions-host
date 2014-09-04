@@ -16,18 +16,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private readonly IArgumentBinding<ServiceBusEntity> _argumentBinding;
         private readonly ServiceBusAccount _account;
         private readonly string _namespaceName;
-        private readonly string _queueOrTopicName;
+        private readonly IBindableServiceBusPath _path;
         private readonly IAsyncObjectToTypeConverter<ServiceBusEntity> _converter;
 
         public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding,
-            ServiceBusAccount account, string queueOrTopicName)
+            ServiceBusAccount account, IBindableServiceBusPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
-            _queueOrTopicName = queueOrTopicName;
-            _converter = CreateConverter(account, queueOrTopicName);
+            _path = path;
+            _converter = CreateConverter(account, path);
         }
 
         public bool FromAttribute
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         }
 
         private static IAsyncObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusAccount account,
-            string queueOrTopicName)
+            IBindableServiceBusPath queueOrTopicName)
         {
             return new OutputConverter<string>(new StringToServiceBusEntityConverter(account, queueOrTopicName));
         }
@@ -44,7 +44,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            MessageSender messageSender = await _account.MessagingFactory.CreateMessageSenderAsync(_queueOrTopicName);
+            string boundQueueName = _path.Bind(context.BindingData);
+            MessageSender messageSender = await _account.MessagingFactory.CreateMessageSenderAsync(boundQueueName);
 
             ServiceBusEntity entity = new ServiceBusEntity
             {
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Name = _parameterName,
                 NamespaceName = _namespaceName,
-                QueueOrTopicName = _queueOrTopicName
+                QueueOrTopicName = _path.QueueOrTopicNamePattern
             };
         }
     }

@@ -29,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             }
 
             string queueOrTopicName = context.Resolve(serviceBusAttribute.QueueOrTopicName);
+            IBindableServiceBusPath path = BindableServiceBusPath.Create(queueOrTopicName);
+            path.ValidateContractCompatibility(context.BindingDataContract);
 
             IArgumentBinding<ServiceBusEntity> argumentBinding = _innerProvider.TryCreate(parameter);
 
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
                 context.ServiceBusConnectionString);
 
-            IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, queueOrTopicName);
+            IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path);
             return Task.FromResult(binding);
         }
     }

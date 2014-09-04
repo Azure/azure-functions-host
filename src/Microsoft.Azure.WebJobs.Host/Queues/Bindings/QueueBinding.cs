@@ -17,18 +17,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
         private readonly IArgumentBinding<CloudQueue> _argumentBinding;
         private readonly CloudQueueClient _client;
         private readonly string _accountName;
-        private readonly string _queueName;
+        private readonly IBindableQueuePath _path;
         private readonly IObjectToTypeConverter<CloudQueue> _converter;
 
         public QueueBinding(string parameterName, IArgumentBinding<CloudQueue> argumentBinding, CloudQueueClient client,
-            string queueName)
+            IBindableQueuePath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _client = client;
             _accountName = QueueClient.GetAccountName(client);
-            _queueName = queueName;
-            _converter = CreateConverter(client, queueName);
+            _path = path;
+            _converter = CreateConverter(client, path);
         }
 
         public bool FromAttribute
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
         public string QueueName
         {
-            get { return _queueName; }
+            get { return _path.QueueNamePattern; }
         }
 
         private FileAccess Access
@@ -50,16 +50,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
         }
 
-        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueueClient client, string queueName)
+        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueueClient client, IBindableQueuePath path)
         {
             return new CompositeObjectToTypeConverter<CloudQueue>(
                 new OutputConverter<CloudQueue>(new IdentityConverter<CloudQueue>()),
-                new OutputConverter<string>(new StringToCloudQueueConverter(client, queueName)));
+                new OutputConverter<string>(new StringToCloudQueueConverter(client, path)));
         }
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            CloudQueue queue = _client.GetQueueReference(_queueName);
+            string boundQueueName = _path.Bind(context.BindingData);
+            CloudQueue queue = _client.GetQueueReference(boundQueueName);
+
             return BindAsync(queue, context.ValueContext);
         }
 
@@ -86,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             {
                 Name = _parameterName,
                 AccountName = _accountName,
-                QueueName = _queueName,
+                QueueName = _path.QueueNamePattern,
                 Access = Access
             };
         }

@@ -371,12 +371,16 @@
     <Compile Include="Loggers\IFunctionOutputDefinition.cs" />
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
+    <Compile Include="Queues\BindableQueuePath.cs" />
+    <Compile Include="Queues\BoundQueuePath.cs" />
+    <Compile Include="Queues\IBindableQueuePath.cs" />
     <Compile Include="Queues\IQueueConfiguration.cs" />
     <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
     <Compile Include="Queues\Listeners\INotificationCommand.cs" />
     <Compile Include="Queues\Listeners\QueuePollingIntervals.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
+    <Compile Include="Queues\ParameterizedQueuePath.cs" />
     <Compile Include="Tables\PocoEntityValueBinder.cs" />
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />

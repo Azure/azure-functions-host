@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 using Xunit.Extensions;
 
@@ -129,6 +131,86 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 
             // Assert
             Assert.Null(stringParamValue);
+        }
+
+        [Fact]
+        public void Resolve_IfNonParameterizedPath_ReturnsResolvedPath()
+        {
+            // Arrange
+            var d = new Dictionary<string, string> { { "name", "value" } };
+
+            // Act
+            string result = BindingDataPath.Resolve("container", d);
+
+            // Assert
+            Assert.Equal("container", result);
+        }
+
+        [Fact]
+        public void Resolve_IfParameterizedPath_ReturnsResolvedPath()
+        {
+            // Arrange
+            var d = new Dictionary<string, string> { { "name", "value" } };
+
+            // Act
+            string result = BindingDataPath.Resolve(@"container/{name}", d);
+
+            // Assert
+            Assert.Equal(@"container/value", result);
+        }
+
+        [Fact]
+        public void Resolve_IfMissingParameter_Throws()
+        {
+            // Arrange
+            var d = new Dictionary<string, string> { { "name", "value" } };
+
+            // Act and Assert
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => BindingDataPath.Resolve(@"container/{missing}", d),
+                "No value for name parameter 'missing'");
+        }
+
+        [Fact]
+        public void Resolve_IfMalformedPath_Throws()
+        {
+            // Arrange
+            var d = new Dictionary<string, string> { { "name", "value" } };
+
+            // Act and Assert
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => BindingDataPath.Resolve(@"container/{missing", d),
+                "Input pattern is not well formed. Missing a closing bracket.");
+        }
+
+        [Fact]
+        public void AddParameterNames_IfPathWithNoParameters_LeavesEmptyCollection()
+        {
+            List<string> parameterNames = new List<string>();
+
+            BindingDataPath.AddParameterNames("path-with-no-parameters", parameterNames);
+
+            Assert.Empty(parameterNames);
+        }
+
+        [Fact]
+        public void AddParameterNames_IfPathContainsParameters_PopulatesParametersCollection()
+        {
+            List<string> parameterNames = new List<string>();
+
+            BindingDataPath.AddParameterNames("{path}-with-{parameters}", parameterNames);
+
+            Assert.Equal(new List<string> { "path", "parameters" }, parameterNames);
+        }
+
+        [Fact]
+        public void AddParameterNames_IfMalformedPath_Throws()
+        {
+            List<string> parameterNames = new List<string>();
+
+            ExceptionAssert.ThrowsInvalidOperation(
+                () => BindingDataPath.AddParameterNames("malformed-{{path", parameterNames), 
+                "Input pattern is not well formed. Missing a closing bracket.");
         }
     }
 }
