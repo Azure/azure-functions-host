@@ -107,6 +107,7 @@
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
+    <Compile Include="Indexers\DefaultTypeLocatorTests.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />
     <Compile Include="Protocols\HostStartedMessageTests.cs" />
     <Compile Include="Blobs\Bindings\WatchableCloudBlobStreamTests.cs" />

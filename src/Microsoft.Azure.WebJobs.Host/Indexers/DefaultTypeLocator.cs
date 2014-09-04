@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
@@ -56,11 +57,26 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
                 if (assemblyTypes != null)
                 {
-                    allTypes.AddRange(assemblyTypes);
+                    allTypes.AddRange(assemblyTypes.Where(IsJobClass));
                 }
             }
 
             return allTypes;
+        }
+
+        public static bool IsJobClass(Type type)
+        {
+            if (type == null)
+            {
+                return false;
+            }
+
+            return type.IsClass
+                && !type.IsAbstract
+                // We only consider public top-level classes as job classes. IsPublic returns false for nested classes,
+                // regardless of visibility modifiers. 
+                && type.IsPublic
+                && !type.ContainsGenericParameters;
         }
 
         private static IEnumerable<Assembly> GetUserAssemblies()
