@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -13,18 +12,18 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly Guid? _parentId;
         private readonly ExecutionReason _reason;
         private readonly IBindingSource _bindingSource;
+        private readonly IInvoker _invoker;
         private readonly FunctionDescriptor _functionDescriptor;
-        private readonly MethodInfo _method;
 
         public FunctionInstance(Guid id, Guid? parentId, ExecutionReason reason, IBindingSource bindingSource,
-            FunctionDescriptor functionDescriptor, MethodInfo method)
+            IInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             _id = id;
             _parentId = parentId;
             _reason = reason;
             _bindingSource = bindingSource;
+            _invoker = invoker;
             _functionDescriptor = functionDescriptor;
-            _method = method;
         }
 
         public Guid Id
@@ -47,14 +46,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             get { return _bindingSource; }
         }
 
+        public IInvoker Invoker
+        {
+            get { return _invoker; }
+        }
+
         public FunctionDescriptor FunctionDescriptor
         {
             get { return _functionDescriptor; }
-        }
-
-        public MethodInfo Method
-        {
-            get { return _method; }
         }
     }
 }

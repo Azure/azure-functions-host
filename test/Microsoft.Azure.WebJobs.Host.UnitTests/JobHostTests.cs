@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -272,6 +274,33 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
+        [Fact]
+        public void Call_WhenMethodThrows_PreservesStackTrace()
+        {
+            try
+            {
+                // Arrange
+                InvalidOperationException expectedException = new InvalidOperationException();
+                ExceptionDispatchInfo expectedExceptionInfo = CreateExceptionInfo(expectedException);
+                string expectedStackTrace = expectedExceptionInfo.SourceException.StackTrace;
+                ThrowingProgram.ExceptionInfo = expectedExceptionInfo;
+
+                var host = JobHostFactory.Create<ThrowingProgram>(null);
+                MethodInfo methodInfo = typeof(ThrowingProgram).GetMethod("Throw");
+
+                // Act & Assert
+                InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                    () => host.Call(methodInfo));
+                Assert.Same(exception, expectedException);
+                Assert.NotNull(exception.StackTrace);
+                Assert.True(exception.StackTrace.StartsWith(expectedStackTrace));
+            }
+            finally
+            {
+                ThrowingProgram.ExceptionInfo = null;
+            }
+        }
+
         private static TestJobHostConfiguration CreateConfiguration()
         {
             return CreateConfiguration(new NullStorageCredentialsValidator());
@@ -291,6 +320,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 StorageCredentialsValidator = credentialsValidator,
                 ConnectionStringProvider = new NullConnectionStringProvider()
             };
+        }
+
+        private static ExceptionDispatchInfo CreateExceptionInfo(Exception exception)
+        {
+            try
+            {
+                throw exception;
+            }
+            catch (Exception caught)
+            {
+                return ExceptionDispatchInfo.Capture(caught);
+            }
         }
 
         private class ProgramSimple
@@ -337,6 +378,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 CancellationTokenSource.Cancel();
                 IsCancellationRequested = cancellationToken.IsCancellationRequested;
+            }
+        }
+
+        private class ThrowingProgram
+        {
+            public static ExceptionDispatchInfo ExceptionInfo { get; set; }
+
+            [NoAutomaticTrigger]
+            public static void Throw()
+            {
+                ExceptionInfo.Throw();
             }
         }
     }

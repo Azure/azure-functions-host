@@ -107,6 +107,9 @@
     <Compile Include="Blobs\UncompletedAsyncResult.cs" />
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
+    <Compile Include="Executors\TaskInvokerTests.cs" />
+    <Compile Include="Executors\VoidInvokerTests.cs" />
+    <Compile Include="Executors\InvokerFactoryTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Indexers\DefaultTypeLocatorTests.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommandExtensions.cs" />

@@ -20,9 +20,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
     internal class QueueTriggerBinding : ITriggerBinding<CloudQueueMessage>
     {
-        private static readonly IObjectToTypeConverter<CloudQueueMessage> _converter = new CompositeObjectToTypeConverter<CloudQueueMessage>(
-            new OutputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
-            new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
+        private static readonly IObjectToTypeConverter<CloudQueueMessage> _converter =
+            new CompositeObjectToTypeConverter<CloudQueueMessage>(
+                new OutputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
+                new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
 
         private readonly string _parameterName;
         private readonly ITriggerDataArgumentBinding<CloudQueueMessage> _argumentBinding;
@@ -96,12 +97,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            FunctionDescriptor functionDescriptor, MethodInfo method)
+            IInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             ITriggeredFunctionBinding<CloudQueueMessage> functionBinding =
                 new TriggeredFunctionBinding<CloudQueueMessage>(_parameterName, this, nonTriggerBindings);
             ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory =
-                new TriggeredFunctionInstanceFactory<CloudQueueMessage>(functionBinding, functionDescriptor, method);
+                new TriggeredFunctionInstanceFactory<CloudQueueMessage>(functionBinding, invoker, functionDescriptor);
             CloudQueueClient client = _account.CreateCloudQueueClient();
             CloudQueue queue = client.GetQueueReference(_queueName);
             IListenerFactory listenerFactory = new QueueListenerFactory(queue, instanceFactory);

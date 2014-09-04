@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             bool loggedStartedEvent = startedMessageId != null;
 
             CancellationToken logCompletedCancellationToken;
-            
+
             if (loggedStartedEvent)
             {
                 // If function started was logged, don't cancel calls to log function completed.
@@ -193,8 +193,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IDictionary<string, ParameterLog> parameterLogCollector,
             CancellationToken cancellationToken)
         {
-            MethodInfo method = instance.Method;
-            ParameterInfo[] parameterInfos = method.GetParameters();
+            IInvoker invoker = instance.Invoker;
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
             IRecurrentCommand updateParameterLogCommand =
                 outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
@@ -203,8 +202,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 try
                 {
-                    await ExecuteWithWatchersAsync(method, parameterInfos, parameters, consoleOutput,
-                        cancellationToken);
+                    await ExecuteWithWatchersAsync(invoker, parameters, consoleOutput, cancellationToken);
 
                     if (updateParameterLogTimer != null)
                     {
@@ -251,14 +249,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return new ValueWatcher(watches, parameterLogBlob, consoleOutput);
         }
 
-        internal static async Task ExecuteWithWatchersAsync(MethodInfo method,
-            ParameterInfo[] parameterInfos,
+        internal static async Task ExecuteWithWatchersAsync(IInvoker invoker,
             IReadOnlyDictionary<string, IValueProvider> parameters,
             TextWriter consoleOutput,
             CancellationToken cancellationToken)
         {
+            IReadOnlyList<string> parameterNames = invoker.ParameterNames;
             IDelayedException delayedBindingException;
-            object[] reflectionParameters = PrepareParameters(parameterInfos, parameters, out delayedBindingException);
+            object[] invokeParameters = PrepareParameters(parameterNames, parameters, out delayedBindingException);
 
             if (delayedBindingException != null)
             {
@@ -267,26 +265,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 delayedBindingException.Throw();
             }
 
-            Exception methodException = null;
+            // Cancellation token is provide by invokeParameters (if the method binds to CancellationToken).
+            await invoker.InvokeAsync(invokeParameters);
 
-            try
-            {
-                object returnValue = method.Invoke(null, reflectionParameters);
-                Task returnTask = GetTaskFromReturnValue(method, returnValue);
-                // Cancellation token is provide by reflectionParameters (if the method binds to CancellationToken).
-                await returnTask;
-            }
-            catch (TargetInvocationException exception)
-            {
-                // $$$ Beware, this loses the stack trace from the user's invocation
-                // Print stacktrace to console now while we have it.
-                consoleOutput.WriteLine(exception.InnerException.StackTrace);
-
-                methodException = exception.InnerException;
-            }
-
-            // Process any out parameters, do any cleanup
-            // For update, do any cleanup work.
+            // Process any out parameters and persist any pending values.
 
             // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
             // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
@@ -300,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (binder != null)
                 {
-                    object argument = reflectionParameters[GetParameterIndex(parameterInfos, name)];
+                    object argument = invokeParameters[GetParameterIndex(parameterNames, name)];
 
                     try
                     {
@@ -319,22 +301,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     }
                 }
             }
-
-            if (methodException != null)
-            {
-                throw methodException;
-            }
         }
 
-        private static object[] PrepareParameters(ParameterInfo[] parameterInfos,
+        private static object[] PrepareParameters(IReadOnlyList<string> parameterNames,
             IReadOnlyDictionary<string, IValueProvider> parameters, out IDelayedException delayedBindingException)
         {
-            object[] reflectionParameters = new object[parameterInfos.Length];
+            object[] reflectionParameters = new object[parameterNames.Count];
             List<Exception> bindingExceptions = new List<Exception>();
 
-            for (int index = 0; index < parameterInfos.Length; index++)
+            for (int index = 0; index < parameterNames.Count; index++)
             {
-                string name = parameterInfos[index].Name;
+                string name = parameterNames[index];
                 IValueProvider provider = parameters[name];
 
                 BindingExceptionValueProvider exceptionProvider = provider as BindingExceptionValueProvider;
@@ -417,11 +394,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return arguments;
         }
 
-        private static int GetParameterIndex(ParameterInfo[] parameters, string name)
+        private static int GetParameterIndex(IReadOnlyList<string> parameterNames, string name)
         {
-            for (int index = 0; index < parameters.Length; index++)
+            for (int index = 0; index < parameterNames.Count; index++)
             {
-                if (parameters[index].Name == name)
+                if (parameterNames[index] == name)
                 {
                     return index;
                 }

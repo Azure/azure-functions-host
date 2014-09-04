@@ -53,6 +53,12 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             Assert.Equal(expectedMessage, exception.Message);
         }
 
+        public static void ThrowsNotSupported(Action action, string expectedMessage)
+        {
+            NotSupportedException exception = Assert.Throws<NotSupportedException>(() => action.Invoke());
+            Assert.Equal(expectedMessage, exception.Message);
+        }
+
         public static void ThrowsObjectDisposed(Action action)
         {
             Assert.Throws<ObjectDisposedException>(() => action.Invoke());

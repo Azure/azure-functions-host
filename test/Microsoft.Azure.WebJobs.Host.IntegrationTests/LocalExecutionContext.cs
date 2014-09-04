@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         {
             ValueBindingContext context = new ValueBindingContext(new FunctionBindingContext(_context, instance.Id,
                 CancellationToken.None, TextWriter.Null), CancellationToken.None);
-            FunctionExecutor.ExecuteWithWatchersAsync(instance.Method, instance.Method.GetParameters(),
+            FunctionExecutor.ExecuteWithWatchersAsync(instance.Invoker,
                 instance.BindingSource.BindAsync(context).GetAwaiter().GetResult(), TextWriter.Null,
                 CancellationToken.None).GetAwaiter().GetResult();
         }
