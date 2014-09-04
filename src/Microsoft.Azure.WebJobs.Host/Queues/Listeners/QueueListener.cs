@@ -223,43 +223,50 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private async Task ProcessMessageAsync(CloudQueueMessage message, TimeSpan visibilityTimeout,
             CancellationToken cancellationToken)
         {
-            bool succeeded;
-
-            using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout))
+            try
             {
-                timer.Start();
+                bool succeeded;
 
-                succeeded = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
-
-                await timer.StopAsync(cancellationToken);
-            }
-
-            // Need to call Delete message only if function succeeded.
-            if (succeeded)
-            {
-                await DeleteMessageAsync(message, cancellationToken);
-            }
-            else if (_poisonQueue != null)
-            {
-                if (message.DequeueCount >= _maxDequeueCount)
+                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout))
                 {
-                    Console.WriteLine(
-                        "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
-                        _maxDequeueCount,
-                        _poisonQueue.Name);
-                    await CopyToPoisonQueueAsync(message, cancellationToken);
+                    timer.Start();
+
+                    succeeded = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
+
+                    await timer.StopAsync(cancellationToken);
+                }
+
+                // Need to call Delete message only if function succeeded.
+                if (succeeded)
+                {
                     await DeleteMessageAsync(message, cancellationToken);
+                }
+                else if (_poisonQueue != null)
+                {
+                    if (message.DequeueCount >= _maxDequeueCount)
+                    {
+                        Console.WriteLine(
+                            "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
+                            _maxDequeueCount,
+                            _poisonQueue.Name);
+                        await CopyToPoisonQueueAsync(message, cancellationToken);
+                        await DeleteMessageAsync(message, cancellationToken);
+                    }
+                    else
+                    {
+                        await ReleaseMessageAsync(message, cancellationToken);
+                    }
                 }
                 else
                 {
-                    await ReleaseMessageAsync(message, cancellationToken);
+                    // For queues without a corresponding poison queue, leave the message invisible when processing
+                    // fails to prevent a fast infinite loop.
+                    // Specifically, don't call ReleaseMessage(message)
                 }
             }
-            else
+            catch (OperationCanceledException)
             {
-                // For queues without a corresponding poison queue, leave the message invisible when processing
-                // fails to prevent a fast infinite loop.
-                // Specifically, don't call ReleaseMessage(message)
+                // Don't fail the top-level task when an inner task cancels.
             }
         }
 
