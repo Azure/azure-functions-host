@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     host.Start();
 
                     // Act
-                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(6 * 1000);
+                    bool poisonMessageReceived = source.Token.WaitHandle.WaitOne(12 * 1000);
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
