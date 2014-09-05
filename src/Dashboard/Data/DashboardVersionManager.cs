@@ -21,6 +21,8 @@ namespace Dashboard.Data
 
         private readonly JsonConcurrentDocumentStore<DashboardVersion> _store;
 
+        public IConcurrentDocument<DashboardVersion> CurrentVersion { get; set; }
+
         /// <summary>
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>

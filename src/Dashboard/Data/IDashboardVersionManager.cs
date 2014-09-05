@@ -6,6 +6,8 @@ namespace Dashboard.Data
     /// <summary>Defines a manager that manages dashboard version information.</summary>
     public interface IDashboardVersionManager
     {
+        IConcurrentDocument<DashboardVersion> CurrentVersion { get; set; }
+
         /// <summary>Reads the data dashboard version.</summary>
         /// <returns>The dashboard version.</returns>
         IConcurrentDocument<DashboardVersion> Read();

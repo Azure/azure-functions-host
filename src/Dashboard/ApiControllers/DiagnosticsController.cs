@@ -10,6 +10,7 @@ using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.ViewModels;
 using Microsoft.Azure.WebJobs.Protocols;
+using Dashboard.Indexers;
 
 namespace Dashboard.ApiControllers
 {
@@ -19,7 +20,9 @@ namespace Dashboard.ApiControllers
         private readonly IIndexerLogReader _indexerLogReader;
         private readonly IDashboardVersionManager _dashboardVersionManager;
 
-        public DiagnosticsController(IIndexerLogReader indexerLogReader, IPersistentQueueReader<PersistentQueueMessage> queueReader, IDashboardVersionManager dashboardVersionManager)
+        public DiagnosticsController(IIndexerLogReader indexerLogReader,
+            IPersistentQueueReader<PersistentQueueMessage> queueReader,
+            IDashboardVersionManager dashboardVersionManager)
         {
             if (indexerLogReader == null)
             {
@@ -62,7 +65,12 @@ namespace Dashboard.ApiControllers
         [Route("api/diagnostics/upgradeStatus")]
         public IHttpActionResult UpgradeStatus()
         {
-            return Ok(_dashboardVersionManager.Read().Document);
+            if (_dashboardVersionManager.CurrentVersion == null)
+            {
+                _dashboardVersionManager.CurrentVersion = _dashboardVersionManager.Read();
+            }
+
+            return Ok(_dashboardVersionManager.CurrentVersion.Document);
         }
 
         [HttpGet]

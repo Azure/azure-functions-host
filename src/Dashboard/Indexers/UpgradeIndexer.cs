@@ -42,28 +42,31 @@ namespace Dashboard.Indexers
 
         public override void Update()
         {
-            IConcurrentDocument<DashboardVersion> version = _dashboardVersionManager.Read();
-
-            if (version.Document.UpgradeState != DashboardUpgradeState.Finished ||
-                version.Document.Version != DashboardVersionManager.CurrentDashboardVersion)
+            if (_dashboardVersionManager.CurrentVersion == null)
             {
-                if (version.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
-                    (version.Document.Version != DashboardVersionManager.CurrentDashboardVersion &&
-                     version.Document.UpgradeState == DashboardUpgradeState.Finished))
+                _dashboardVersionManager.CurrentVersion = _dashboardVersionManager.Read();
+            }
+
+            if (_dashboardVersionManager.CurrentVersion.Document.UpgradeState != DashboardUpgradeState.Finished ||
+                _dashboardVersionManager.CurrentVersion.Document.Version != DashboardVersionManager.CurrentDashboardVersion)
+            {
+                if (_dashboardVersionManager.CurrentVersion.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
+                    (_dashboardVersionManager.CurrentVersion.Document.Version != DashboardVersionManager.CurrentDashboardVersion &&
+                     _dashboardVersionManager.CurrentVersion.Document.UpgradeState == DashboardUpgradeState.Finished))
                 {
-                    version = StartDeletingOldData(_functionsStore, version);
-                    version = StartDeletingOldData(_logsStore, version);
+                    _dashboardVersionManager.CurrentVersion = StartDeletingOldData(_functionsStore, _dashboardVersionManager.CurrentVersion);
+                    _dashboardVersionManager.CurrentVersion = StartDeletingOldData(_logsStore, _dashboardVersionManager.CurrentVersion);
                 }
 
-                if (version.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
-                    version.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
+                if (_dashboardVersionManager.CurrentVersion.Document.UpgradeState == DashboardUpgradeState.DeletingOldData ||
+                    _dashboardVersionManager.CurrentVersion.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
                 {
-                    version = StartRestoringArchive(version);
+                    _dashboardVersionManager.CurrentVersion = StartRestoringArchive(_dashboardVersionManager.CurrentVersion);
                 }
 
-                if (version.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
+                if (_dashboardVersionManager.CurrentVersion.Document.UpgradeState == DashboardUpgradeState.RestoringArchive)
                 {
-                    FinishUpdate(version);
+                    FinishUpdate(_dashboardVersionManager.CurrentVersion);
                 }
             }
 
