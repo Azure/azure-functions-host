@@ -105,6 +105,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.True(result);
         }
 
+        [Fact]
+        public void IsJobClass_IfNormalStaticClass_ReturnsTrue()
+        {
+            Type type = typeof(StaticClass);
+
+            // Act
+            bool result = DefaultTypeLocator.IsJobClass(type);
+
+            // Assert
+            Assert.True(result);
+        }
+
         public class NestedPublicClass { }
 
         private class PrivateClass { }
@@ -119,4 +131,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
     public class GenericClass<T> { }
 
     public class PublicClass { }
+
+    public static class StaticClass { }
 }
