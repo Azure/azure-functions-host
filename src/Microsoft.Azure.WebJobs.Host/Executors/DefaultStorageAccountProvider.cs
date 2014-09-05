@@ -2,9 +2,8 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
-using Microsoft.WindowsAzure.Storage;
 using System.Collections.Generic;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -19,16 +18,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private string _serviceBusConnectionString;
         private bool _serviceBusConnectionStringSet;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
-        /// Storage connection string for both reading and writing data as well as logging.
-        /// </summary>
         public DefaultStorageAccountProvider()
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
+        /// Initializes a new instance of the class, using a single Microsoft Azure
         /// Storage connection string for both reading and writing data as well as logging.
         /// </summary>
         /// <param name="dashboardAndStorageConnectionString">
@@ -36,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </param>
         public DefaultStorageAccountProvider(string dashboardAndStorageConnectionString)
         {
-            CloudStorageAccount account = ValidateStorageAccount(dashboardAndStorageConnectionString);
+            CloudStorageAccount account = ParseStorageAccount(dashboardAndStorageConnectionString);
             _dashboardAccount = account;
             _dashboardAccountSet = true;
             _storageAccount = account;
@@ -57,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             set
             {
-                _dashboardAccount = ValidateDashboardAccount(value, explicitlySet: true);
+                _dashboardAccount = ParseDashboardAccount(value, explicitlySet: true);
                 _dashboardAccountSet = true;
             }
         }
@@ -76,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             set
             {
-                _storageAccount = ValidateStorageAccount(value);
+                _storageAccount = ParseStorageAccount(value);
                 _storageAccountSet = true;
             }
         }
@@ -106,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 if (!_dashboardAccountSet)
                 {
-                    _dashboardAccount = ValidateDashboardAccount(
+                    _dashboardAccount = ParseDashboardAccount(
                         _ambientConnectionStringProvider.GetConnectionString(connectionStringName),
                         explicitlySet: false);
                     _dashboardAccountSet = true;
@@ -118,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 if (!_storageAccountSet)
                 {
-                    _storageAccount = ValidateStorageAccount(
+                    _storageAccount = ParseStorageAccount(
                         _ambientConnectionStringProvider.GetConnectionString(connectionStringName));
                     _storageAccountSet = true;
                 }
@@ -160,92 +155,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return _ambientConnectionStringProvider.GetConnectionStrings();
         }
 
-        private CloudStorageAccount ValidateDashboardAccount(string connectionString, bool explicitlySet)
+        private CloudStorageAccount ParseDashboardAccount(string connectionString, bool explicitlySet)
         {
-            if (String.IsNullOrEmpty(connectionString))
+            if (explicitlySet && String.IsNullOrEmpty(connectionString))
             {
-                if (!explicitlySet)
-                {
-                    var msg = FormatConnectionStringError("dashboard", ConnectionStringNames.Dashboard,
-                        "Microsoft Azure Storage account connection string is missing or empty.");
-                    throw new InvalidOperationException(msg);
-                }
-                else
-                {
-                    return null;
-                }
+                return null;
             }
 
-            return ValidateAccount(connectionString, "dashboard", ConnectionStringNames.Dashboard);
+            return StorageAccountParser.ParseAccount(connectionString, ConnectionStringNames.Dashboard);
         }
 
-        private CloudStorageAccount ValidateStorageAccount(string connectionString)
+        private CloudStorageAccount ParseStorageAccount(string connectionString)
         {
-            return ValidateAccount(connectionString, "storage", ConnectionStringNames.Storage);
-        }
-
-        private static CloudStorageAccount ValidateAccount(string connectionString, string type, string name)
-        {
-            CloudStorageAccount account;
-            string coreMessage;
-
-            if (!TryParseAndValidateAccount(connectionString, out account, out coreMessage))
-            {
-                string message = FormatConnectionStringError(type, name, coreMessage);
-                throw new InvalidOperationException(message);
-            }
-
-            return account;
-        }
-
-        /// <summary>
-        /// Validate a Microsoft Azure Storage connection string, by parsing it, and placing
-        /// a call to Azure to assert the credentials validity as well.
-        /// </summary>
-        internal static bool TryParseAndValidateAccount(string connectionString, out CloudStorageAccount account,
-            out string errorMessage)
-        {
-            if (String.IsNullOrEmpty(connectionString))
-            {
-                errorMessage = "Microsoft Azure Storage account connection string is missing or empty.";
-                account = null;
-                return false;
-            }
-
-            // Will throw on parser errors.
-            CloudStorageAccount possibleAccount;
-            if (!CloudStorageAccount.TryParse(connectionString, out possibleAccount))
-            {
-                errorMessage = "Microsoft Azure Storage account connection string is not formatted " +
-                    "correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for " +
-                    "details about configuring Microsoft Azure Storage connection strings.";
-                account = null;
-                return false;
-            }
-
-            if (StorageClient.IsDevelopmentStorageAccount(possibleAccount))
-            {
-                errorMessage = "The Microsoft Azure Storage Emulator is not supported, please use a " +
-                    "Microsoft Azure Storage account hosted in Microsoft Azure.";
-                account = null;
-                return false;
-            }
-
-            account = possibleAccount;
-            errorMessage = null;
-            return true;
-        }
-
-        internal static string FormatConnectionStringError(string type, string name, string coreMessage)
-        {
-            return String.Format(CultureInfo.CurrentCulture,
-                "Failed to validate Microsoft Azure WebJobs SDK {0} connection string: {2}" + Environment.NewLine +
-                "The Microsoft Azure WebJobs SDK connection string is specified by setting a connection string named " +
-                "'{1}' in the connectionStrings section of the .config file, or with an environment variable named " +
-                "'{1}', or through JobHostConfiguration.",
-                type,
-                AmbientConnectionStringProvider.GetPrefixedConnectionStringName(name),
-                coreMessage);
+            return StorageAccountParser.ParseAccount(connectionString, ConnectionStringNames.Storage);
         }
     }
 }

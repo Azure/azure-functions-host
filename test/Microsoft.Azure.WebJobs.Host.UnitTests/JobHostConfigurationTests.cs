@@ -33,7 +33,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 // Act & Assert
                 ExceptionAssert.ThrowsInvalidOperation(() =>
                     connectionStringProvider.GetConnectionString(ConnectionStringNames.Dashboard),
-                    "Failed to validate Microsoft Azure WebJobs SDK dashboard connection string: Microsoft Azure Storage account connection string is missing or empty." + Environment.NewLine + "The Microsoft Azure WebJobs SDK connection string is specified by setting a connection string named 'AzureWebJobsDashboard' in the connectionStrings section of the .config file, or with an environment variable named 'AzureWebJobsDashboard', or through JobHostConfiguration.");
+                    "Microsoft Azure WebJobs SDK Dashboard connection string is missing or empty. The Microsoft Azure Storage account connection string can be set in the following ways:" + Environment.NewLine +
+                    "1. Set the connection string named 'AzureWebJobsDashboard' in the connectionStrings section of the .config file in the following format " +
+                    "<add name=\"AzureWebJobsDashboard\" connectionString=\"DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY\" />, or" + Environment.NewLine +
+                    "2. Set the environment variable named 'AzureWebJobsDashboard', or" + Environment.NewLine +
+                    "3. Set corresponding property of JobHostConfiguration.");
             }
             finally
             {

@@ -224,6 +224,12 @@
     <Compile Include="Data\Logs\IIndexerLogReader.cs" />
     <Compile Include="Data\Logs\IIndexerLogWriter.cs" />
     <Compile Include="Data\Logs\IndexerLogEntry.cs" />
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\StorageAccountParseResult.cs">
+      <Link>Data\StorageAccountParseResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\StorageAccountParser.cs">
+      <Link>Data\StorageAccountParser.cs</Link>
+    </Compile>
     <Compile Include="Data\VersionedMetadataDocument.cs" />
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />

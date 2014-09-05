@@ -337,6 +337,8 @@
     <Compile Include="Executors\FunctionOutputIntervals.cs" />
     <Compile Include="Executors\FunctionParameterLogIntervals.cs" />
     <Compile Include="Executors\AbortListenerFunctionExecutor.cs" />
+    <Compile Include="Executors\StorageAccountParseResult.cs" />
+    <Compile Include="Executors\StorageAccountParser.cs" />
     <Compile Include="JobHostQueuesConfiguration.cs" />
     <Compile Include="Listeners\HeartbeatListener.cs" />
     <Compile Include="Listeners\ShutdownListener.cs" />

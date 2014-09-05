@@ -141,7 +141,7 @@
     <Compile Include="Protocols\HostMessageTests.cs" />
     <Compile Include="Queues\QueueCausalityManagerTests.cs" />
     <Compile Include="JobHostConfigurationTests.cs" />
-    <Compile Include="Executors\DefaultStorageAccountProviderTests.cs" />
+    <Compile Include="Executors\StorageAccountParserTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">
