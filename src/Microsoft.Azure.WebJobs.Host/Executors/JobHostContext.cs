@@ -221,6 +221,24 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IListener listener = CreateHostListener(hostId, allFunctionsListenerFactory, bindingContext,
                     heartbeatCommand, shutdownToken, executor);
 
+                IEnumerable<FunctionDescriptor> descriptors = functions.ReadAllDescriptors();
+                int descriptorsCount = descriptors.Count();
+
+                if (descriptorsCount == 0)
+                {
+                    Console.WriteLine(
+                        "No functions found. Try making job classes public and methods public static.");
+                }
+                else
+                {
+                    Console.WriteLine("Found the following function{0}:", descriptorsCount == 1 ? String.Empty : "s");
+
+                    foreach (FunctionDescriptor descriptor in descriptors)
+                    {
+                        Console.WriteLine(descriptor.FullName);
+                    }
+                }
+
                 return new JobHostContext(functions, hostCallExecutor, listener);
             }
         }

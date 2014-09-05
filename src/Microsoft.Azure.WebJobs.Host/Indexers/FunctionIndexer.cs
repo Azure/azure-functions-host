@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly Func<MethodInfo, bool> _hasServiceBusAttribute;
-        
 
         public FunctionIndexer(FunctionIndexerContext context)
         {
@@ -92,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         }
 
         public async Task IndexMethodAsync(MethodInfo method, IFunctionIndex index, CancellationToken cancellationToken)
-{
+        {
             try
             {
                 await IndexMethodAsyncCore(method, index, cancellationToken);
