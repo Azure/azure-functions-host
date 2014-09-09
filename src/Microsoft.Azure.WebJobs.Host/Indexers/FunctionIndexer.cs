@@ -109,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndex index,
             CancellationToken cancellationToken)
         {
+            Debug.Assert(method != null);
             bool hasNoAutomaticTrigger = method.GetCustomAttribute<NoAutomaticTriggerAttribute>() != null;
 
             ITriggerBinding triggerBinding = null;
@@ -202,6 +203,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 {
                     return;
                 }
+            }
+
+            Type returnType = method.ReturnType;
+
+            if (returnType != typeof(void) && returnType != typeof(Task))
+            {
+                throw new InvalidOperationException("Functions must return Task or void.");
             }
 
             if (invalidInvokeBindingException != null)

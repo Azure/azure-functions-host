@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Moq;
@@ -52,6 +53,62 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
             // Verify
             indexMock.Verify(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()), Times.Never);
+        }
+
+        [Fact]
+        public void IndexMethod_IfMethodReturnsNonTask_Throws()
+        {
+            // Arrange
+            IFunctionIndex index = CreateDummyFunctionIndex();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(
+                () => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnNonTask"), index,
+                    CancellationToken.None).GetAwaiter().GetResult());
+            InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
+            Assert.NotNull(innerException);
+            Assert.Equal("Functions must return Task or void.", innerException.Message);
+        }
+
+        [Fact]
+        public void IndexMethod_IfMethodReturnsTaskOfTResult_Throws()
+        {
+            // Arrange
+            IFunctionIndex index = CreateDummyFunctionIndex();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            FunctionIndexingException exception = Assert.Throws<FunctionIndexingException>(
+                () => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnGenericTask"), index,
+                    CancellationToken.None).GetAwaiter().GetResult());
+            InvalidOperationException innerException = exception.InnerException as InvalidOperationException;
+            Assert.NotNull(innerException);
+            Assert.Equal("Functions must return Task or void.", innerException.Message);
+        }
+
+        [Fact]
+        public void IndexMethod_IfMethodReturnsVoid_DoesNotThrow()
+        {
+            // Arrange
+            IFunctionIndex index = CreateStubFunctionIndex();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnVoid"),
+                index, CancellationToken.None).GetAwaiter().GetResult());
+        }
+
+        [Fact]
+        public void IndexMethod_IfMethodReturnsTask_DoesNotThrow()
+        {
+            // Arrange
+            IFunctionIndex index = CreateStubFunctionIndex();
+            FunctionIndexer product = CreateProductUnderTest();
+
+            // Act & Assert
+            Assert.DoesNotThrow(() => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnTask"),
+                index, CancellationToken.None).GetAwaiter().GetResult());
         }
 
         [Fact]
@@ -138,19 +195,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.Equal(false, actual);
         }
 
+        private static IFunctionIndex CreateDummyFunctionIndex()
+        {
+            return new Mock<IFunctionIndex>(MockBehavior.Strict).Object;
+        }
+
         private static FunctionIndexer CreateProductUnderTest()
         {
             FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null, null, null, null);
             return new FunctionIndexer(context);
         }
 
+        private static IFunctionIndex CreateStubFunctionIndex()
+        {
+            return new Mock<IFunctionIndex>().Object;
+        }
+
         [NoAutomaticTrigger]
-        public static bool FailIndexing(string input, out Foo parsed)
+        public static void FailIndexing(string input, out Foo parsed)
         {
             throw new NotImplementedException();
         }
 
-        public static bool MethodWithUnboundOutParameterAndNoSdkAttribute(string input, out Foo parsed)
+        public static void MethodWithUnboundOutParameterAndNoSdkAttribute(string input, out Foo parsed)
         {
             throw new NotImplementedException();
         }
@@ -164,24 +231,48 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             throw new NotImplementedException();
         }
 
-        public static bool MethodWithNoParameters()
+        public static void MethodWithNoParameters()
         {
             throw new NotImplementedException();
         }
 
         [NoAutomaticTrigger]
-        public static bool MethodWithSdkAttribute(string input, out string output)
+        public static void MethodWithSdkAttribute(string input, out string output)
         {
             throw new NotImplementedException();
         }
 
         [NoAutomaticTrigger]
-        public static bool MethodWithSdkAttributeButNoParameters()
+        public static void MethodWithSdkAttributeButNoParameters()
         {
             throw new NotImplementedException();
         }
 
         public static void MethodWithSdkParameterAttributes([QueueTrigger("queue")] string input, [Blob("container/output")] TextWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static int ReturnNonTask()
+        {
+            throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static Task<int> ReturnGenericTask()
+        {
+            throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static void ReturnVoid()
+        {
+            throw new NotImplementedException();
+        }
+
+        [NoAutomaticTrigger]
+        public static Task ReturnTask()
         {
             throw new NotImplementedException();
         }
