@@ -12,6 +12,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public BlobPath(string containerName, string blobName)
         {
+            if (containerName == null)
+            {
+                throw new ArgumentNullException("containerName");
+            }
+
+            if (blobName == null)
+            {
+                throw new ArgumentNullException("blobName");
+            }
+
             _containerName = containerName;
             _blobName = blobName;
         }

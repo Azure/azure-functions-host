@@ -3,7 +3,11 @@
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal enum ServiceType
+    /// <summary>
+    /// Enumerates possible values of the requested storage service field declared by
+    /// Storage Analytics Log format.
+    /// </summary>
+    internal enum StorageServiceType
     {
         Blob,
         Table,

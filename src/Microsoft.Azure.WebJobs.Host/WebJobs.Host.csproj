@@ -323,6 +323,7 @@
     <Compile Include="Blobs\Listeners\SharedBlobQueueListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
+    <Compile Include="Blobs\Listeners\StorageAnalyticsLogParser.cs" />
     <Compile Include="Blobs\TaskAsyncResultOfTResult.cs" />
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
@@ -631,10 +632,10 @@
     <Compile Include="Queues\QueueClient.cs" />
     <Compile Include="Tables\TableClient.cs" />
     <Compile Include="Executors\FunctionExecutor.cs" />
-    <Compile Include="Blobs\Listeners\ServiceType.cs" />
-    <Compile Include="Blobs\Listeners\LogRow.cs" />
-    <Compile Include="Blobs\Listeners\OperationType.cs" />
-    <Compile Include="Blobs\Listeners\LogColumnId.cs" />
+    <Compile Include="Blobs\Listeners\StorageServiceType.cs" />
+    <Compile Include="Blobs\Listeners\StorageAnalyticsLogEntry.cs" />
+    <Compile Include="Blobs\Listeners\StorageServiceOperationType.cs" />
+    <Compile Include="Blobs\Listeners\StorageAnalyticsLogColumnId.cs" />
     <Compile Include="Blobs\Listeners\BlobLogListener.cs" />
     <Compile Include="Blobs\Listeners\CloudBlobClientComparer.cs" />
     <Compile Include="WebSitesKnownKeyNames.cs" />

@@ -102,6 +102,8 @@
     <Compile Include="Blobs\CompletingAsyncResult.cs" />
     <Compile Include="Blobs\Listeners\BlobQueueTriggerExecutorTests.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerExecutorTests.cs" />
+    <Compile Include="Blobs\Listeners\StorageAnalyticsLogEntryTests.cs" />
+    <Compile Include="Blobs\Listeners\StorageAnalyticsLogParserTests.cs" />
     <Compile Include="Blobs\SetupOfStreamIAsyncResultExtensions.cs" />
     <Compile Include="Blobs\MockOfStreamExtensions.cs" />
     <Compile Include="Blobs\UncompletedAsyncResult.cs" />

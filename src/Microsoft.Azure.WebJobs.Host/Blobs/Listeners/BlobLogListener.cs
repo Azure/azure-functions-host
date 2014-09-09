@@ -3,8 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,8 +19,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         const string LogEndTime = "EndTime";
         const string LogType = "LogType";
 
+        private const int DefaultScanHoursWindow = 2;
+
         private readonly CloudBlobClient _blobClient;
         private readonly HashSet<string> _scannedBlobNames = new HashSet<string>();
+        private readonly StorageAnalyticsLogParser _parser = new StorageAnalyticsLogParser();
 
         // This will throw if the client credentials are not valid. 
         public BlobLogListener(CloudBlobClient blobClient)
@@ -38,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         }
 
         public async Task<IEnumerable<ICloudBlob>> GetRecentBlobWritesAsync(CancellationToken cancellationToken,
-            int hoursWindow = 2)
+            int hoursWindow = DefaultScanHoursWindow)
         {
             List<ICloudBlob> blobs = new List<ICloudBlob>();
 
@@ -57,35 +59,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     _scannedBlobNames.Clear();
                 }
 
-                foreach (var row in await ParseLogAsync(blob, cancellationToken))
-                {
-                    bool isBlobWrite = IsBlobWrite(row);
+                var parsedBlobPaths = from entry in await _parser.ParseLogAsync(blob, cancellationToken)
+                                      where entry.IsBlobWrite
+                                      select entry.ToBlobPath();
 
-                    if (isBlobWrite)
-                    {
-                        var path = row.ToPath();
-                        if (path != null)
-                        {
-                            CloudBlobContainer container = _blobClient.GetContainerReference(path.ContainerName);
-                            blobs.Add(container.GetBlockBlobReference(path.BlobName));
-                        }
-                    }
+                foreach (BlobPath path in parsedBlobPaths.Where(p => p != null))
+                {
+                    CloudBlobContainer container = _blobClient.GetContainerReference(path.ContainerName);
+                    blobs.Add(container.GetBlockBlobReference(path.BlobName));
                 }
             }
 
             return blobs;
-        }
-
-        private static bool IsBlobWrite(LogRow row)
-        {
-            bool isBlobWrite =
-               ((row.OperationType == OperationType.PutBlob) ||
-                (row.OperationType == OperationType.CopyBlob) ||
-                (row.OperationType == OperationType.CopyBlobDestination) ||
-                (row.OperationType == OperationType.CopyBlobSource) ||
-                (row.OperationType == OperationType.SetBlobMetadata) ||
-                (row.OperationType == OperationType.SetBlobProperties));
-            return isBlobWrite;
         }
 
         // Return a search prefix for the given start,end time. 
@@ -139,8 +124,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         // This lets us use prefix scans. $logs/Blob/YYYY/MM/DD/HH00/nnnnnn.log
         // Logs are about 6 an hour, so we're only scanning about 12 logs total. 
         // $$$ If logs are large, we can even have a cache of "already scanned" logs that we skip. 
-        public static async Task<List<ICloudBlob>> ListRecentLogFilesAsync(CloudBlobClient blobClient,
-            DateTime startTimeForSearch, CancellationToken cancellationToken, int hoursWindow = 2)
+        private static async Task<List<ICloudBlob>> ListRecentLogFilesAsync(CloudBlobClient blobClient,
+            DateTime startTimeForSearch, CancellationToken cancellationToken, int hoursWindow)
         {
             string serviceName = "blob";
 
@@ -185,28 +170,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             return Task.FromResult(0);
-        }
-
-        // Given a log file (as a blob), parse it and return a series of LogRows. 
-        public static async Task<IEnumerable<LogRow>> ParseLogAsync(ICloudBlob blob, CancellationToken cancellationToken)
-        {
-            List<LogRow> rows = new List<LogRow>();
-
-            using (TextReader tr = new StreamReader(await blob.OpenReadAsync(cancellationToken)))
-            {
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string line = await tr.ReadLineAsync();
-                    if (line == null)
-                    {
-                        break;
-                    }
-                    rows.Add(LogRow.Parse(line));
-                }
-            }
-
-            return rows;
         }
 
         public static void EnableLogging(CloudBlobClient blobClient)

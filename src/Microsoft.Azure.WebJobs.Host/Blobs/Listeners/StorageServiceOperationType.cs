@@ -3,10 +3,14 @@
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    // See list at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx
-    internal enum OperationType
+    /// <summary>
+    /// Enumerates the operations that are logged for the corresponding storage service.
+    /// See full list of possible operations at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx.
+    /// </summary>
+    internal enum StorageServiceOperationType
     {
         AcquireLease,
+        AcquireBlobLease,
         BreakLease,
         ClearPage,
         CopyBlob,
@@ -31,8 +35,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         PutBlockList,
         PutBlock,
         PutPage,
-        ReleaseLease,
-        RenewLease,
+        ReleaseLease, 
+        ReleaseBlobLease,
+        RenewLease, 
+        RenewBlobLease,
         SetBlobMetadata,
         SetBlobProperties,
         SetContainerACL,
