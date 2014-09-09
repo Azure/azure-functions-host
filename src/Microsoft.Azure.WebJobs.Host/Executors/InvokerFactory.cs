@@ -46,6 +46,18 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Post-Call, copy from local variables back to arguments array.
             List<Expression> localsToArrayAssignments = new List<Expression>();
 
+            // If the method returns a value: T returnValue
+            ParameterExpression returnValue;
+
+            if (returnType == typeof(void))
+            {
+                returnValue = null;
+            }
+            else
+            {
+                returnValue = Expression.Parameter(returnType);
+            }
+
             ParameterInfo[] parameterInfos = method.GetParameters();
             Debug.Assert(parameterInfos != null);
 
@@ -83,6 +95,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // Static call:
             // method(param0, param1, ...);
             Expression call = Expression.Call(null, method, localVariables);
+            Expression callResult;
+
+            if (returnType == typeof(void))
+            {
+                callResult = call;
+            }
+            else
+            {
+                // T returnValue = method(param0, param1, ...);
+                callResult = Expression.Assign(returnValue, call);
+            }
 
             List<Expression> blockExpressions = new List<Expression>();
             // T0 argument0 = (T0)arguments[0];
@@ -90,13 +113,29 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             // ...
             blockExpressions.AddRange(arrayToLocalsAssignments);
             // Call(argument0, argument1, ...);
-            blockExpressions.Add(call);
+            // or
+            // T returnValue = Call(param0, param1, ...);
+            blockExpressions.Add(callResult);
             // arguments[0] = (object)argument0;
             // arguments[1] = (object)argument1;
             // ...
             blockExpressions.AddRange(localsToArrayAssignments);
 
-            Expression block = Expression.Block(localVariables, blockExpressions);
+            if (returnValue != null)
+            {
+                // return returnValue;
+                blockExpressions.Add(returnValue);
+            }
+
+            List<ParameterExpression> blockVariables = new List<ParameterExpression>();
+            blockVariables.AddRange(localVariables);
+
+            if (returnValue != null)
+            {
+                blockVariables.Add(returnValue);
+            }
+
+            Expression block = Expression.Block(blockVariables, blockExpressions);
 
             if (call.Type == typeof(void))
             {

@@ -197,6 +197,38 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
+        public void Create_IfInOutByRefMethodReturnsTask_RoundtripsArguments()
+        {
+            // Arrange
+            MethodInfo method = GetMethodInfo("TestInOutByRefReturnTask");
+            int expectedA = 1;
+            string expectedInitialB = "B";
+            string expectedFinalB = "b";
+            object[] expectedC = new object[] { new object(), default(int), String.Empty };
+
+            // Act
+            IInvoker invoker = InvokerFactory.Create(method);
+
+            // Assert
+            Assert.NotNull(invoker);
+            bool callbackCalled = false;
+            InOutRefTaskFunc callback = delegate(int a, ref string b, out object[] c)
+            {
+                callbackCalled = true;
+                Assert.Equal(expectedA, a);
+                Assert.Same(expectedInitialB, b);
+                b = expectedFinalB;
+                c = expectedC;
+                return Task.FromResult(0);
+            };
+            object[] arguments = new object[] { expectedA, expectedInitialB, null, callback };
+            invoker.InvokeAsync(arguments).GetAwaiter().GetResult();
+            Assert.True(callbackCalled);
+            Assert.Same(expectedFinalB, arguments[1]);
+            Assert.Same(expectedC, arguments[2]);
+        }
+
+        [Fact]
         public void Create_IfReturnsTaskAndTaskCanceled_ReturnsCanceledTask()
         {
             // Arrange
@@ -280,6 +312,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         private static void ParameterlessMethod()
         {
             _parameterlessMethodCalled = true;
+        }
+
+        private delegate Task InOutRefTaskFunc(int a, ref string b, out object[] c);
+
+        private static Task TestInOutByRefReturnTask(int a, ref string b, out object[] c, InOutRefTaskFunc callback)
+        {
+            return callback.Invoke(a, ref b, out c);
         }
     }
 }

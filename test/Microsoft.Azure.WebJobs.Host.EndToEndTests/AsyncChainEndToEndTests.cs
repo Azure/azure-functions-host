@@ -145,18 +145,21 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private void Cleanup()
         {
-            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-            blobClient
-                .GetContainerReference(_resolver.ResolveInString(ContainerName))
-                .DeleteIfExists();
+            if (_storageAccount != null)
+            {
+                CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
+                blobClient
+                    .GetContainerReference(_resolver.ResolveInString(ContainerName))
+                    .DeleteIfExists();
 
-            CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            queueClient
-                .GetQueueReference(_resolver.ResolveInString(Queue1Name))
-                .DeleteIfExists();
-            queueClient
-                .GetQueueReference(_resolver.ResolveInString(Queue2Name))
-                .DeleteIfExists();
+                CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
+                queueClient
+                    .GetQueueReference(_resolver.ResolveInString(Queue1Name))
+                    .DeleteIfExists();
+                queueClient
+                    .GetQueueReference(_resolver.ResolveInString(Queue2Name))
+                    .DeleteIfExists();
+            }
         }
     }
 }
