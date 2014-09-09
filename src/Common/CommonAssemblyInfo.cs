@@ -11,3 +11,6 @@ using System.Runtime.InteropServices;
 
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(true)]
+
+// Opt in to centralized servicing
+[assembly: AssemblyMetadata("Serviceable", "True")]
