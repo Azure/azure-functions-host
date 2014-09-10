@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobTriggerMessage
     {
+        public string Type { get { return "BlobTrigger"; } }
+
         public string FunctionId { get; set; }
 
         [JsonConverter(typeof(StringEnumConverter))]
