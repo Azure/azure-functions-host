@@ -327,6 +327,10 @@
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
+    <Compile Include="Executors\FixedHostIdProvider.cs" />
+    <Compile Include="Executors\HostIdValidator.cs" />
+    <Compile Include="Executors\IHostIdProvider.cs" />
+    <Compile Include="Executors\DynamicHostIdProvider.cs" />
     <Compile Include="Executors\TaskInvoker.cs" />
     <Compile Include="Executors\VoidInvoker.cs" />
     <Compile Include="ConnectionStringNames.cs" />
@@ -596,8 +600,6 @@
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Loggers\PersistentQueueLogger.cs" />
     <Compile Include="NativeMethods.cs" />
-    <Compile Include="Executors\HostIdManager.cs" />
-    <Compile Include="Executors\IHostIdManager.cs" />
     <Compile Include="Executors\DefaultStorageAccountProvider.cs" />
     <Compile Include="Indexers\FunctionIndexer.cs" />
     <Compile Include="Executors\IConnectionStringProvider.cs" />

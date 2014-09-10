@@ -2,7 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -11,17 +14,18 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class HostIdManager : IHostIdManager
+    // Negotiates host ID based on the assembly name of the first indexed method (persists a GUID for this purpose).
+    internal class DynamicHostIdProvider : IHostIdProvider
     {
         private readonly CloudBlobDirectory _directory;
 
-        public HostIdManager(CloudBlobClient client)
-            : this(VerifyNotNull(client).GetContainerReference(HostContainerNames.Hosts).GetDirectoryReference(
-            HostDirectoryNames.Ids))
+        public DynamicHostIdProvider(CloudStorageAccount account)
+            : this(VerifyNotNull(account).CreateCloudBlobClient().GetContainerReference(
+                HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.Ids))
         {
         }
 
-        public HostIdManager(CloudBlobDirectory directory)
+        private DynamicHostIdProvider(CloudBlobDirectory directory)
         {
             if (directory == null)
             {
@@ -31,12 +35,23 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _directory = directory;
         }
 
-        public CloudBlobDirectory Directory
+        public Task<string> GetHostIdAsync(IEnumerable<MethodInfo> indexedMethods, CancellationToken cancellationToken)
         {
-            get { return _directory; }
+            string sharedHostName = GetSharedHostName(indexedMethods);
+            return GetOrCreateHostIdAsync(sharedHostName, cancellationToken);
         }
 
-        public async Task<Guid> GetOrCreateHostIdAsync(string sharedHostName, CancellationToken cancellationToken)
+        private string GetSharedHostName(IEnumerable<MethodInfo> indexedMethods)
+        {
+            // Determine the host name from the method list
+            MethodInfo firstMethod = indexedMethods.FirstOrDefault();
+            Assembly hostAssembly = firstMethod != null ? firstMethod.DeclaringType.Assembly : null;
+            string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
+            string sharedHostName = _directory.ServiceClient.Credentials.AccountName + "/" + hostName;
+            return sharedHostName;
+        }
+
+        private async Task<string> GetOrCreateHostIdAsync(string sharedHostName, CancellationToken cancellationToken)
         {
             Debug.Assert(_directory != null);
 
@@ -45,21 +60,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (possibleHostId.HasValue)
             {
-                return possibleHostId.Value;
+                return possibleHostId.Value.ToString("N");
             }
 
             Guid newHostId = Guid.NewGuid();
 
             if (await TryInitializeIdAsync(blob, newHostId, cancellationToken))
             {
-                return newHostId;
+                return newHostId.ToString("N");
             }
 
             possibleHostId = await TryGetExistingIdAsync(blob, cancellationToken);
 
             if (possibleHostId.HasValue)
             {
-                return possibleHostId.Value;
+                return possibleHostId.Value.ToString("N");
             }
 
             // Not expected - valid host ID didn't exist before, couldn't be created, and still didn't exist after.
@@ -164,14 +179,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static CloudBlobClient VerifyNotNull(CloudBlobClient client)
+        private static CloudStorageAccount VerifyNotNull(CloudStorageAccount account)
         {
-            if (client == null)
+            if (account == null)
             {
-                throw new ArgumentNullException("client");
+                throw new ArgumentNullException("account");
             }
 
-            return client;
+            return account;
         }
     }
 }

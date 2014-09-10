@@ -438,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         private static BlobTriggerExecutor CreateProductUnderTest(string functionId, IBlobPathSource input,
             IBlobETagReader eTagReader, IBlobReceiptManager receiptManager, IBlobTriggerQueueWriter queueWriter)
         {
-            return new BlobTriggerExecutor(Guid.Empty, functionId, input, eTagReader, receiptManager, queueWriter);
+            return new BlobTriggerExecutor(String.Empty, functionId, input, eTagReader, receiptManager, queueWriter);
         }
 
         private static Mock<IBlobReceiptManager> CreateReceiptManagerReferenceMock()
@@ -446,7 +446,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             CloudBlockBlob receiptBlob = CreateAccount().CreateCloudBlobClient()
                 .GetContainerReference("receipts").GetBlockBlobReference("item");
             Mock<IBlobReceiptManager> mock = new Mock<IBlobReceiptManager>(MockBehavior.Strict);
-            mock.Setup(m => m.CreateReference(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(),
+            mock.Setup(m => m.CreateReference(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(receiptBlob);
             return mock;

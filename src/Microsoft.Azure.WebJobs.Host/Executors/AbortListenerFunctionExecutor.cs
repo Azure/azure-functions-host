@@ -14,11 +14,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IListenerFactory _abortListenerFactory;
         private readonly IFunctionExecutor _abortExecutor;
         private readonly HostBindingContext _abortContext;
-        private readonly Guid _hostId;
+        private readonly string _hostId;
         private readonly IFunctionExecutor _innerExecutor;
 
         public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor,
-            HostBindingContext abortContext, Guid hostId, IFunctionExecutor innerExecutor)
+            HostBindingContext abortContext, string hostId, IFunctionExecutor innerExecutor)
         {
             _abortListenerFactory = abortListenerFactory;
             _abortExecutor = abortExecutor;

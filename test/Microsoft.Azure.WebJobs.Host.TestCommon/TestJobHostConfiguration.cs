@@ -37,6 +37,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 return TypeLocator;
             }
+            else if (serviceType == typeof(IHostIdProvider))
+            {
+                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
+            }
             else if (serviceType == typeof(IQueueConfiguration))
             {
                 return Queues;

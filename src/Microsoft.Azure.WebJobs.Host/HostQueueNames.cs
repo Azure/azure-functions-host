@@ -18,17 +18,17 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <summary>Gets the shared host blob trigger queue name.</summary>
         /// <param name="hostId">The host ID.</param>
         /// <returns>The shared host blob trigger queue name.</returns>
-        public static string GetHostBlobTriggerQueueName(Guid hostId)
+        public static string GetHostBlobTriggerQueueName(string hostId)
         {
-            return HostBlobTriggerQueuePrefix + hostId.ToString("N");
+            return HostBlobTriggerQueuePrefix + hostId;
         }
 
         /// <summary>Gets the host instance queue name.</summary>
         /// <param name="hostId">The host ID.</param>
         /// <returns>The host instance queue name.</returns>
-        public static string GetHostQueueName(Guid hostId)
+        public static string GetHostQueueName(string hostId)
         {
-            return HostQueuePrefix + hostId.ToString("N");
+            return HostQueuePrefix + hostId;
         }
     }
 }

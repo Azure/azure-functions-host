@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(CloudStorageAccount dashboardAccount,
             CloudStorageAccount storageAccount, string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
-            IQueueConfiguration queueConfiguration, CancellationToken shutdownToken,
+            IHostIdProvider hostIdProvider, IQueueConfiguration queueConfiguration, CancellationToken shutdownToken,
             CancellationToken cancellationToken)
         {
             using (CancellationTokenSource combinedCancellationSource =
@@ -133,28 +133,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
                     serviceBusConnectionString, combinedCancellationToken);
                 FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
+                IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
+
+                string hostId = await hostIdProvider.GetHostIdAsync(indexedMethods, cancellationToken);
+
+                if (!HostIdValidator.IsValid(hostId))
+                {
+                    throw new InvalidOperationException(HostIdValidator.ValidationMessage);
+                }
+
                 HostBindingContext bindingContext = new HostBindingContext(functions.BindingProvider, nameResolver,
                     queueConfiguration, storageAccount, serviceBusConnectionString);
-
-                Assembly hostAssembly = GetHostAssembly(functions.ReadAllMethods());
-
-                Guid hostId;
-
-                if (storageAccount != null)
-                {
-                    // Determine the host name from the method list
-                    string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-                    string sharedHostName = storageAccount.Credentials.AccountName + "/" + hostName;
-
-                    CloudBlobClient storageBlobClient = storageAccount.CreateCloudBlobClient();
-                    IHostIdManager hostIdManager = new HostIdManager(storageBlobClient);
-                    hostId = await hostIdManager.GetOrCreateHostIdAsync(sharedHostName, combinedCancellationToken);
-                }
-                else
-                {
-                    // Test only
-                    hostId = Guid.Empty;
-                }
 
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;
@@ -170,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
-                    string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId);
+                    string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     CloudQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
                         functionInstanceLogger);
@@ -178,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                     {
                         SharedContainerName = HostContainerNames.Hosts,
-                        SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId.ToString("N"),
+                        SharedDirectoryName = HostDirectoryNames.Heartbeats + "/" + hostId,
                         InstanceBlobName = hostInstanceId.ToString("N"),
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
@@ -186,6 +175,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         heartbeatDescriptor.SharedContainerName,
                         heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 
+                    Assembly hostAssembly = GetHostAssembly(indexedMethods);
                     string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
 
                     hostOutputMessage = new DataOnlyHostOutputMessage
@@ -243,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static IFunctionExecutor CreateHostCallExecutor(Guid hostId,
+        private static IFunctionExecutor CreateHostCallExecutor(string hostId,
             IListenerFactory instanceQueueListenerFactory, HostBindingContext bindingContext,
             IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
         {
@@ -255,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return shutdownFunctionExecutor;
         }
 
-        private static IListener CreateHostListener(Guid hostId, IListenerFactory allFunctionsListenerFactory,
+        private static IListener CreateHostListener(string hostId, IListenerFactory allFunctionsListenerFactory,
             HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor executor)
         {
@@ -266,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return shutdownListener;
         }
 
-        private static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
+        internal static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
         {
             // 1. Try to get the assembly name from the first method.
             MethodInfo firstMethod = methods.FirstOrDefault();

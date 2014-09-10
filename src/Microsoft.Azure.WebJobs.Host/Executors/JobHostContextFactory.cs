@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IStorageCredentialsValidator _credentialsValidator;
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
+        private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly CancellationToken _shutdownToken;
 
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IStorageCredentialsValidator credentialsValidator,
             ITypeLocator typeLocator,
             INameResolver nameResolver,
+            IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
             CancellationToken shutdownToken)
         {
@@ -34,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _credentialsValidator = credentialsValidator;
             _typeLocator = typeLocator;
             _nameResolver = nameResolver;
+            _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
             _shutdownToken = shutdownToken;
         }
@@ -41,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
             return JobHostContext.CreateAndLogHostStartedAsync(_dashboardAccount, _storageAccount,
-                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, _queueConfiguration,
-                _shutdownToken, cancellationToken);
+                _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, _hostIdProvider,
+                _queueConfiguration, _shutdownToken, cancellationToken);
         }
     }
 }

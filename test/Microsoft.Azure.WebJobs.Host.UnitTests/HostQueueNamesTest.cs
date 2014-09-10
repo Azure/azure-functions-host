@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void GetHostBlobTriggerQueueName_ReturnsExpectedValue()
         {
             // Arrange
-            Guid hostId = CreateGuid();
+            string hostId = CreateGuid().ToString("N");
 
             // Act
             string queueName = HostQueueNames.GetHostBlobTriggerQueueName(hostId);
 
             // Assert
-            string expectedQueueName = "azure-webjobs-blobtrigger-" + hostId.ToString("N");
+            string expectedQueueName = "azure-webjobs-blobtrigger-" + hostId;
             Assert.Equal(expectedQueueName, queueName);
         }
 
@@ -36,13 +36,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void GetHostQueueName_ReturnsExpectedValue()
         {
             // Arrange
-            Guid hostId = CreateGuid();
+            string hostId = CreateGuid().ToString("N");
 
             // Act
             string queueName = HostQueueNames.GetHostQueueName(hostId);
 
             // Assert
-            string expectedQueueName = "azure-webjobs-host-" + hostId.ToString("N");
+            string expectedQueueName = "azure-webjobs-host-" + hostId;
             Assert.Equal(expectedQueueName, queueName);
         }
 

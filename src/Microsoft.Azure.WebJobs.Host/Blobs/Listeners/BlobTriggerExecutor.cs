@@ -14,14 +14,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobTriggerExecutor : ITriggerExecutor<ICloudBlob>
     {
-        private readonly Guid _hostId;
+        private readonly string _hostId;
         private readonly string _functionId;
         private readonly IBlobPathSource _input;
         private readonly IBlobTriggerQueueWriter _queueWriter;
         private readonly IBlobETagReader _eTagReader;
         private readonly IBlobReceiptManager _receiptManager;
 
-        public BlobTriggerExecutor(Guid hostId, string functionId, IBlobPathSource input,
+        public BlobTriggerExecutor(string hostId, string functionId, IBlobPathSource input,
             IBlobETagReader eTagReader, IBlobReceiptManager receiptManager, IBlobTriggerQueueWriter queueWriter)
         {
             _hostId = hostId;

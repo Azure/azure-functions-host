@@ -85,6 +85,7 @@ namespace Microsoft.Azure.WebJobs
             IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
             ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
+            IHostIdProvider hostIdProvider = serviceProvider.GetHostIdProvider();
             IQueueConfiguration queueConfiguration = serviceProvider.GetJobHostQueuesConfiguration();
 
             _shutdownTokenSource = new CancellationTokenSource();
@@ -92,7 +93,8 @@ namespace Microsoft.Azure.WebJobs
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
 
             _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
-                credentialsValidator, typeLocator, nameResolver, queueConfiguration, _shutdownTokenSource.Token);
+                credentialsValidator, typeLocator, nameResolver, hostIdProvider, queueConfiguration,
+                _shutdownTokenSource.Token);
         }
 
         // Test hook only.

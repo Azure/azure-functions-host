@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs
             new DefaultStorageCredentialsValidator();
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
 
+        private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
 
@@ -47,6 +48,38 @@ namespace Microsoft.Azure.WebJobs
             _storageAccountProvider = storageAccountProvider;
 
             WriteSiteExtensionManifest();
+        }
+
+        /// <summary>Gets or sets the host ID.</summary>
+        /// <remarks>
+        /// <para>
+        /// All host instances that share the same host ID must be homogeneous. For example, they must use the same
+        /// storage accounts and have the same list of functions. Host instances with the same host ID will scale out
+        /// and share handling of work such as BlobTrigger and run from dashboard processing and providing a heartbeat
+        /// to the dashboard indicating that an instance of the host running.
+        /// </para>
+        /// <para>
+        /// If this value is <see langword="null"/>, a host ID will automatically be generated based on the assembly
+        /// name of the first function.
+        /// </para>
+        /// <para>
+        /// If non-homogeneous host instances share the same first function assembly,
+        /// this property must be set explicitly; otherwise, the host instances will incorectly try to share work as if
+        /// they were homogeneous.
+        /// </para>
+        /// </remarks>
+        public string HostId
+        {
+            get { return _hostId; }
+            set
+            {
+                if (value != null && !HostIdValidator.IsValid(value))
+                {
+                    throw new ArgumentException(HostIdValidator.ValidationMessage, "value");
+                }
+
+                _hostId = value;
+            }
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
@@ -84,7 +117,7 @@ namespace Microsoft.Azure.WebJobs
                 _typeLocator = value;
             }
         }
-                
+
         /// <summary>
         /// Gets or sets the name resolver used during indexing. 
         /// </summary>
@@ -139,9 +172,25 @@ namespace Microsoft.Azure.WebJobs
             {
                 return _queueConfiguration;
             }
+            else if (serviceType == typeof(IHostIdProvider))
+            {
+                return GetHostIdProvider();
+            }
             else
             {
                 return null;
+            }
+        }
+
+        private IHostIdProvider GetHostIdProvider()
+        {
+            if (_hostId != null)
+            {
+                return new FixedHostIdProvider(_hostId);
+            }
+            else
+            {
+                return new DynamicHostIdProvider(_storageAccountProvider.GetAccount(ConnectionStringNames.Storage));
             }
         }
 

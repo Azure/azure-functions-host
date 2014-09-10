@@ -66,6 +66,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                 return false;
             }
 
+            Char previousCharacter = 'a';
+
             // A queue name must start with a letter or number, and may 
             // contain only letters, numbers and the dash (-) character
             // All letters in a queue name must be lowercase.
@@ -82,6 +84,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                         "A queue name can contain only letters, numbers, and and dash(-) characters - \"" + name + "\"";
                     return false;
                 }
+                if (ch == '-' && previousCharacter == '-')
+                {
+                    errorMessage = "A queue name cannot contain consecutive dash(-) characters.";
+                    return false;
+                }
+                previousCharacter = ch;
             }
 
             errorMessage = null;

@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal interface IBlobReceiptManager
     {
-        CloudBlockBlob CreateReference(Guid hostId, string functionId, string containerName, string blobName,
+        CloudBlockBlob CreateReference(string hostId, string functionId, string containerName, string blobName,
             string eTag);
 
         Task<BlobReceipt> TryReadAsync(CloudBlockBlob blob, CancellationToken cancellationToken);

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private readonly IListenerFactory _factory;
         private readonly IFunctionExecutor _executor;
         private readonly HostBindingContext _context;
-        private readonly Guid _hostId;
+        private readonly string _hostId;
         private readonly CancellationTokenSource _cancellationSource;
 
         private IListener _listener;
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         private bool _disposed;
 
         public ListenerFactoryListener(IListenerFactory factory, IFunctionExecutor executor, HostBindingContext context,
-            Guid hostId)
+            string hostId)
         {
             _factory = factory;
             _executor = executor;
