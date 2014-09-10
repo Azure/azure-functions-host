@@ -391,6 +391,7 @@
     <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
     <Compile Include="Queues\ParameterizedQueuePath.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageExtensions.cs" />
     <Compile Include="Tables\PocoEntityValueBinder.cs" />
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />

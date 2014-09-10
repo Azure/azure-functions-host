@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
         private readonly IAsyncObjectToTypeConverter<ICloudBlob> _converter;
+        private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
         public BlobTriggerBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding,
             CloudBlobClient client, IBlobPathSource path)
@@ -35,11 +36,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _accountName = BlobClient.GetAccountName(client);
             _path = path;
             _converter = CreateConverter(client);
+            _bindingDataContract = CreateBindingDataContract(path);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
         {
-            get { return _path.CreateBindingDataContract(); }
+            get { return _bindingDataContract; }
         }
 
         public string ContainerName
@@ -64,6 +66,25 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 return typeof(ICloudBlob).IsAssignableFrom(_argumentBinding.ValueType)
                     ? FileAccess.ReadWrite : FileAccess.Read;
             }
+        }
+
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(IBlobPathSource path)
+        {
+            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            contract.Add("BlobTrigger", typeof(string));
+
+            IReadOnlyDictionary<string, Type> contractFromPath = path.CreateBindingDataContract();
+
+            if (contractFromPath != null)
+            {
+                foreach (KeyValuePair<string, Type> item in contractFromPath)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    contract[item.Key] = item.Value;
+                }
+            }
+
+            return contract;
         }
 
         private static IAsyncObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
@@ -121,7 +142,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         private IReadOnlyDictionary<string, object> CreateBindingData(ICloudBlob value)
         {
-            return _path.CreateBindingData(value.ToBlobPath());
+            Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            bindingData.Add("BlobTrigger", value.GetBlobPath());
+
+            IReadOnlyDictionary<string, object> bindingDataFromPath = _path.CreateBindingData(value.ToBlobPath());
+
+            if (bindingDataFromPath != null)
+            {
+                foreach (KeyValuePair<string, object> item in bindingDataFromPath)
+                {
+                    // In case of conflict, binding data from the value type overrides the built-in binding data above.
+                    bindingData[item.Key] = item.Value;
+                }
+            }
+            return bindingData;
         }
     }
 }

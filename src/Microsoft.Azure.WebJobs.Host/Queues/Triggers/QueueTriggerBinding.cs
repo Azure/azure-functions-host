@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -57,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            contract.Add("QueueTrigger", typeof(string));
             contract.Add("DequeueCount", typeof(int));
             contract.Add("ExpirationTime", typeof(DateTimeOffset));
             contract.Add("Id", typeof(string));
@@ -123,6 +125,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IReadOnlyDictionary<string, object> bindingDataFromValueType)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+            string queueMessageString = value.TryGetAsString();
+
+            // Don't provide the QueueTrigger binding data when the queue message is not a valid string.
+            if (queueMessageString != null)
+            {
+                bindingData.Add("QueueTrigger", queueMessageString);
+            }
+
             bindingData.Add("DequeueCount", value.DequeueCount);
             bindingData.Add("ExpirationTime", value.ExpirationTime.GetValueOrDefault(DateTimeOffset.MaxValue));
             bindingData.Add("Id", value.Id);

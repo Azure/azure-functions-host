@@ -37,7 +37,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
         public string ToInvokeString()
         {
-            return _message.AsString;
+            // Potential enhancement: Base64-encoded AsBytes might replay correctly when use to create a new message.
+            // return _message.TryGetAsString() ?? Convert.ToBase64String(_message.AsBytes);
+            return _message.TryGetAsString();
         }
     }
 }

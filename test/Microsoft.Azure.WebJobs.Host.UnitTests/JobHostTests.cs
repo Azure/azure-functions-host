@@ -5,12 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Moq;
 using Xunit;
 
@@ -301,6 +304,133 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
+        [Fact]
+        public void BlobTrigger_ProvidesBlobTriggerBindingData()
+        {
+            try
+            {
+                // Arrange
+                CloudStorageAccount account = CloudStorageAccount.DevelopmentStorageAccount;
+                var host = JobHostFactory.Create<BlobTriggerBindingDataProgram>(account);
+                MethodInfo methodInfo = typeof(BlobTriggerBindingDataProgram).GetMethod("OnBlob");
+                string containerName = "a";
+                string blobName = "b";
+                string expectedPath = containerName + "/" + blobName;
+                CloudBlobContainer container = account.CreateCloudBlobClient().GetContainerReference(containerName);
+                ICloudBlob blob = container.GetBlockBlobReference(blobName);
+
+                // Act
+                host.Call(methodInfo, new { blob = blob });
+
+                // Assert
+                Assert.Equal(expectedPath, BlobTriggerBindingDataProgram.BlobTrigger);
+            }
+            finally
+            {
+                BlobTriggerBindingDataProgram.BlobTrigger = null;
+            }
+        }
+
+        [Fact]
+        public void QueueTrigger_ProvidesQueueTriggerBindingData()
+        {
+            try
+            {
+                // Arrange
+                var host = JobHostFactory.Create<QueueTriggerBindingDataProgram>(
+                    CloudStorageAccount.DevelopmentStorageAccount);
+                MethodInfo methodInfo = typeof(QueueTriggerBindingDataProgram).GetMethod("OnQueue");
+                string expectedMessage = "a";
+
+                // Act
+                host.Call(methodInfo, new { message = expectedMessage });
+
+                // Assert
+                Assert.Equal(expectedMessage, QueueTriggerBindingDataProgram.QueueTrigger);
+            }
+            finally
+            {
+                QueueTriggerBindingDataProgram.QueueTrigger = null;
+            }
+        }
+
+        [Fact]
+        public void QueueTrigger_WithTextualByteArrayMessage_ProvidesQueueTriggerBindingData()
+        {
+            try
+            {
+                // Arrange
+                var host = JobHostFactory.Create<QueueTriggerBindingDataProgram>(
+                    CloudStorageAccount.DevelopmentStorageAccount);
+                MethodInfo methodInfo = typeof(QueueTriggerBindingDataProgram).GetMethod("OnQueue");
+                string expectedMessage = "abc";
+                byte[] contents = Encoding.UTF8.GetBytes(expectedMessage);
+                CloudQueueMessage message = new CloudQueueMessage(contents);
+                Assert.Equal(expectedMessage, message.AsString); // Guard
+
+                // Act
+                host.Call(methodInfo, new { message = message });
+
+                // Assert
+                Assert.Equal(expectedMessage, QueueTriggerBindingDataProgram.QueueTrigger);
+            }
+            finally
+            {
+                QueueTriggerBindingDataProgram.QueueTrigger = null;
+            }
+        }
+
+        [Fact]
+        public void QueueTrigger_WithNonTextualByteArrayMessageUsingQueueTriggerBindingData_Throws()
+        {
+            try
+            {
+                // Arrange
+                var host = JobHostFactory.Create<QueueTriggerBindingDataProgram>(
+                    CloudStorageAccount.DevelopmentStorageAccount);
+                MethodInfo methodInfo = typeof(QueueTriggerBindingDataProgram).GetMethod("OnQueue");
+                byte[] contents = new byte[] { 0x00, 0xFF }; // Not valid UTF-8
+                CloudQueueMessage message = new CloudQueueMessage(contents);
+
+                // Act & Assert
+                Exception exception = Assert.Throws<InvalidOperationException>(
+                    () => host.Call(methodInfo, new { message = message }));
+                // This exeption shape/message could be better, but it's meets a minimum acceptibility threshold.
+                Assert.Equal("Exception binding parameter 'queueTrigger'", exception.Message);
+                Exception innerException = exception.InnerException;
+                Assert.IsType<InvalidOperationException>(innerException);
+                Assert.Equal("Binding data does not contain expected value 'queueTrigger'.", innerException.Message);
+            }
+            finally
+            {
+                QueueTriggerBindingDataProgram.QueueTrigger = null;
+            }
+        }
+
+        [Fact]
+        public void QueueTrigger_WithNonTextualByteArrayMessageNotUsingQueueTriggerBindingData_DoesNotThrow()
+        {
+            try
+            {
+                // Arrange
+                var host = JobHostFactory.Create<QueueTriggerBindingDataProgram>(
+                    CloudStorageAccount.DevelopmentStorageAccount);
+                MethodInfo methodInfo = typeof(QueueTriggerBindingDataProgram).GetMethod("ProcessQueueAsBytes");
+                byte[] expectedBytes = new byte[] { 0x00, 0xFF }; // Not valid UTF-8
+                CloudQueueMessage message = new CloudQueueMessage(expectedBytes);
+
+                // Act
+                host.Call(methodInfo, new { message = message });
+
+                // Assert
+                Assert.Equal(QueueTriggerBindingDataProgram.Bytes, expectedBytes);
+            }
+            finally
+            {
+                QueueTriggerBindingDataProgram.QueueTrigger = null;
+            }
+        }
+
         private static TestJobHostConfiguration CreateConfiguration()
         {
             return CreateConfiguration(new NullStorageCredentialsValidator());
@@ -389,6 +519,32 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             public static void Throw()
             {
                 ExceptionInfo.Throw();
+            }
+        }
+
+        private class BlobTriggerBindingDataProgram
+        {
+            public static string BlobTrigger { get; set; }
+
+            public static void OnBlob([BlobTrigger("ignore/{name}")] ICloudBlob blob, string blobTrigger)
+            {
+                BlobTrigger = blobTrigger;
+            }
+        }
+
+        private class QueueTriggerBindingDataProgram
+        {
+            public static string QueueTrigger { get; set; }
+            public static byte[] Bytes { get; set; }
+
+            public static void OnQueue([QueueTrigger("ignore")] CloudQueueMessage message, string queueTrigger)
+            {
+                QueueTrigger = queueTrigger;
+            }
+
+            public static void ProcessQueueAsBytes([QueueTrigger("ignore")] byte[] message)
+            {
+                Bytes = message;
             }
         }
     }
