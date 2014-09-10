@@ -318,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                     DashboardAccount = null
                 },
                 StorageCredentialsValidator = credentialsValidator,
-                ConnectionStringProvider = new NullConnectionStringProvider(),
+                ConnectionStringProvider = new NullConnectionStringProvider()
             };
         }
 

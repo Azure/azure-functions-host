@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    Console.WriteLine("Found the following function{0}:", descriptorsCount == 1 ? String.Empty : "s");
+                    Console.WriteLine("Found the following functions:");
 
                     foreach (FunctionDescriptor descriptor in descriptors)
                     {
