@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (HasChanged)
             {
-                return _entityContext.Table.ExecuteAsync(TableOperation.InsertOrReplace(entity), cancellationToken);
+                return _entityContext.Table.ExecuteAsync(TableOperation.Replace(entity), cancellationToken);
             }
 
             return Task.FromResult(0);

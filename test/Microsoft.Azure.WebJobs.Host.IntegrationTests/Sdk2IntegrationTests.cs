@@ -205,6 +205,59 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             }
         }
 
+        [Fact]
+        public void TestITableEntityConcurrency()
+        {
+            TestTableEntityConcurrency(
+                tableName: "ITableEntityConcurrencyTest",
+                methodName: "TestITableEntityConcurrency",
+                expectedEntityType:
+                    "Microsoft.Azure.WebJobs.Host.IntegrationTests.Sdk2IntegrationTests+Program+ValueTableEntity");
+        }
+
+        [Fact]
+        public void TestPocoTableEntityConcurrency()
+        {
+            TestTableEntityConcurrency(
+                tableName: "PocoTableEntityConcurrencyTest",
+                methodName: "TestPocoTableEntityConcurrency",
+                expectedEntityType:
+                    "Microsoft.Azure.WebJobs.Host.IntegrationTests.Sdk2IntegrationTests+Program+PocoTableEntity");
+        }
+
+        private static void TestTableEntityConcurrency(string tableName, string methodName, string expectedEntityType)
+        {
+            var account = CloudStorageAccount.DevelopmentStorageAccount;
+
+            CloudTableClient client = account.CreateCloudTableClient();
+            CloudTable table = client.GetTableReference(tableName);
+            table.CreateIfNotExists();
+
+            try
+            {
+                DynamicTableEntity entity = new DynamicTableEntity("PK", "RK");
+                entity.Properties["Value"] = new EntityProperty("Foo");
+                table.Execute(TableOperation.Insert(entity));
+
+                var host = JobHostFactory.Create<Program>();
+
+                InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                    () => host.Call(methodName));
+                Assert.Equal("Error while handling parameter entity '" + expectedEntityType +
+                    "' after function returned:", exception.Message);
+
+                DynamicTableEntity updatedEntity =
+                    (DynamicTableEntity)table.Execute(TableOperation.Retrieve("PK", "RK")).Result;
+
+                Assert.Equal(1, updatedEntity.Properties.Count);
+                Assert.Equal(new EntityProperty("FooBackground"), updatedEntity.Properties["Value"]);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
+        }
+
         private static DynamicTableEntity CreateEntity(int row, string property)
         {
             return new DynamicTableEntity("PK", "RK" + row.ToString(), null, CreateProperties("StringProperty", property));
@@ -337,6 +390,26 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 entity.Value = "Bar";
             }
 
+            public static void TestITableEntityConcurrency(
+                [Table("ITableEntityConcurrencyTest", "PK", "RK")] ValueTableEntity entity,
+                [Table("ITableEntityConcurrencyTest")] CloudTable table)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+
+                // Update the entity to invalidate the version read by this method.
+                table.Execute(TableOperation.Replace(new ValueTableEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK",
+                    ETag = "*",
+                    Value = "FooBackground"
+                }));
+
+                // The attempted update by this method should now fail.
+                entity.Value = "Bar";
+            }
+
             public class PocoTableEntity
             {
                 public Fruit Fruit { get; set; }
@@ -360,6 +433,25 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
                 entity.Fruit = Fruit.Pear;
                 entity.Duration = TimeSpan.FromMinutes(2);
+                entity.Value = "Bar";
+            }
+
+            public static void TestPocoTableEntityConcurrency(
+                [Table("PocoTableEntityConcurrencyTest", "PK", "RK")] PocoTableEntity entity,
+                [Table("PocoTableEntityConcurrencyTest")] CloudTable table)
+            {
+                Assert.NotNull(entity);
+
+                // Update the entity to invalidate the version read by this method.
+                table.Execute(TableOperation.Replace(new ValueTableEntity
+                {
+                    PartitionKey = "PK",
+                    RowKey = "RK",
+                    ETag = "*",
+                    Value = "FooBackground"
+                }));
+
+                // The attempted update by this method should now fail.
                 entity.Value = "Bar";
             }
         }
