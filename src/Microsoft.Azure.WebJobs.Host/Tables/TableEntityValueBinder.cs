@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -124,10 +125,52 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             foreach (KeyValuePair<string, EntityProperty> item in value)
             {
-                clone.Add(item.Key, EntityProperty.CreateEntityPropertyFromObject(item.Value.PropertyAsObject));
+                clone.Add(item.Key, DeepClone(item.Value));
             }
 
             return clone;
+        }
+
+        internal static EntityProperty DeepClone(EntityProperty property)
+        {
+            EdmType propertyType = property.PropertyType;
+
+            switch (propertyType)
+            {
+                case EdmType.Binary:
+                    byte[] existingBytes = property.BinaryValue;
+                    byte[] clonedBytes;
+
+                    if (existingBytes == null)
+                    {
+                        clonedBytes = null;
+                    }
+                    else
+                    {
+                        clonedBytes = new byte[existingBytes.LongLength];
+                        Array.Copy(existingBytes, clonedBytes, existingBytes.LongLength);
+                    }
+
+                    return new EntityProperty(clonedBytes);
+                case EdmType.Boolean:
+                    return new EntityProperty(property.BooleanValue);
+                case EdmType.DateTime:
+                    return new EntityProperty(property.DateTime);
+                case EdmType.Double:
+                    return new EntityProperty(property.DoubleValue);
+                case EdmType.Guid:
+                    return new EntityProperty(property.GuidValue);
+                case EdmType.Int32:
+                    return new EntityProperty(property.Int32Value);
+                case EdmType.Int64:
+                    return new EntityProperty(property.Int64Value);
+                case EdmType.String:
+                    return new EntityProperty(property.StringValue);
+                default:
+                    string message = String.Format(CultureInfo.CurrentCulture, "Unknown PropertyType {0}.",
+                        propertyType);
+                    throw new NotSupportedException(message);
+            }
         }
     }
 }
