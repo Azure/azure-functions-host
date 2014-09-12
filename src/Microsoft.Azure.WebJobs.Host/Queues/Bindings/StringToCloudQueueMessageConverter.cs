@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
         {
             if (input == null)
             {
-                throw new InvalidOperationException("A queue message cannot contain a null byte array instance.");
+                throw new InvalidOperationException("A queue message cannot contain a null string instance.");
             }
 
             return new CloudQueueMessage(input);
