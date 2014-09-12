@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
@@ -30,49 +30,33 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             Type itemType = parameterType.GetGenericArguments()[0];
-            IArgumentBinding<CloudQueue> itemBinding = GetItemBinding(itemType);
-            return CreateCollectorArgumentBinding(itemType, itemBinding);
+            return CreateBinding(itemType);
         }
 
-        internal static IArgumentBinding<CloudQueue> GetItemBinding(Type itemType)
+        private static IArgumentBinding<CloudQueue> CreateBinding(Type itemType)
         {
-            if (itemType == typeof(CloudQueueMessage))
-            {
-                return new CloudQueueMessageArgumentBinding();
-            }
-            else if (itemType == typeof(string))
-            {
-                return new StringArgumentBinding();
-            }
-            else if (itemType == typeof(byte[]))
-            {
-                return new ByteArrayArgumentBinding();
-            }
-            else
-            {
-                if (typeof(IEnumerable).IsAssignableFrom(itemType))
-                {
-                    throw new InvalidOperationException("Nested collections are not supported.");
-                }
-
-                return new UserTypeArgumentBinding(itemType);
-            }
+            MethodInfo method = typeof(CollectorArgumentBindingProvider).GetMethod("CreateBindingGeneric",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(method != null);
+            MethodInfo genericMethod = method.MakeGenericMethod(itemType);
+            Debug.Assert(genericMethod != null);
+            Func<IArgumentBinding<CloudQueue>> lambda = (Func<IArgumentBinding<CloudQueue>>)Delegate.CreateDelegate(
+                typeof(Func<IArgumentBinding<CloudQueue>>), genericMethod);
+            return lambda.Invoke();
         }
 
-        private static IArgumentBinding<CloudQueue> CreateCollectorArgumentBinding(Type itemType,
-            IArgumentBinding<CloudQueue> itemBinding)
+        private static IArgumentBinding<CloudQueue> CreateBindingGeneric<TItem>()
         {
-            Type collectionGenericType = typeof(CollectorQueueArgumentBinding<>).MakeGenericType(itemType);
-            return (IArgumentBinding<CloudQueue>)Activator.CreateInstance(collectionGenericType, itemBinding);
+            return new CollectorQueueArgumentBinding<TItem>(MessageConverterFactory.Create<TItem>());
         }
 
         private class CollectorQueueArgumentBinding<TItem> : IArgumentBinding<CloudQueue>
         {
-            private readonly IArgumentBinding<CloudQueue> _itemBinding;
+            private readonly IMessageConverterFactory<TItem> _converterFactory;
 
-            public CollectorQueueArgumentBinding(IArgumentBinding<CloudQueue> itemBinding)
+            public CollectorQueueArgumentBinding(IMessageConverterFactory<TItem> converterFactory)
             {
-                _itemBinding = itemBinding;
+                _converterFactory = converterFactory;
             }
 
             public Type ValueType
@@ -80,13 +64,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 get { return typeof(ICollector<TItem>); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
             {
-                IValueBinder itemBinder = (IValueBinder)await _itemBinding.BindAsync(value, context);
-                ICollection<TItem> collection = new List<TItem>();
-                ICollector<TItem> collector = new CollectionCollector<TItem>(collection);
-                return new CollectorValueBinder<TItem>(value, collector, typeof(ICollector<TItem>), collection,
-                    itemBinder);
+                IConverter<TItem, CloudQueueMessage> converter = _converterFactory.Create(context.FunctionInstanceId);
+                ICollector<TItem> collector = new QueueCollector<TItem>(value, converter);
+                IValueProvider provider = new CollectorValueProvider(value, collector, typeof(ICollector<TItem>));
+                return Task.FromResult(provider);
             }
         }
     }

@@ -209,13 +209,31 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
                 Payload payload = JsonConvert.DeserializeObject<Payload>(data);
 
-                // Technically, ordering is not gauranteed.
+                // Technically, ordering is not guaranteed.
                 Assert.Equal(i, payload.Value);
             }
 
             {
                 var msg = queue.GetMessage();
                 Assert.Null(msg); // no more messages
+            }
+        }
+
+        [Fact]
+        public void TestQueueICollectorAdd_EnqueuesImmediately()
+        {
+            var account = TestStorage.GetAccount();
+            CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference("myoutputqueue");
+            TestQueueClient.DeleteQueue(queue);
+
+            try
+            {
+                var lc = TestStorage.New<Program>(account);
+                lc.Call("TestICollectorEnqueuesImmediately");
+            }
+            finally
+            {
+                TestQueueClient.DeleteQueue(queue);
             }
         }
 
@@ -370,6 +388,17 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 await myoutputqueue.AddAsync(new Payload { Value = 10 });
                 await myoutputqueue.AddAsync(new Payload { Value = 20 });
                 await myoutputqueue.AddAsync(new Payload { Value = 30 });
+            }
+
+            public static async Task TestICollectorEnqueuesImmediately(
+                [Queue("myoutputqueue")] IAsyncCollector<string> collector,
+                [Queue("myoutputqueue")] CloudQueue queue)
+            {
+                string expectedContents = "Enqueued immediately";
+                await collector.AddAsync(expectedContents);
+                CloudQueueMessage message = queue.GetMessage();
+                Assert.NotNull(message);
+                Assert.Equal(expectedContents, message.AsString);
             }
 
             public static void FuncCloudQueueEnqueue(
