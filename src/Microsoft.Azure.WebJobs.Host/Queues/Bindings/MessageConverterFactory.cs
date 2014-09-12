@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
         {
             if (typeof(TInput) == typeof(CloudQueueMessage))
             {
-                return (IMessageConverterFactory<TInput>)new CloudQueueMessageArgumentBinding();
+                return (IMessageConverterFactory<TInput>)new CloudQueueMessageConverterFactory();
             }
             else if (typeof(TInput) == typeof(string))
             {
