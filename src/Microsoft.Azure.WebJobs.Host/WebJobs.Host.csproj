@@ -169,6 +169,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JsonTypeNameAttribute.cs">
       <Link>Protocols\JsonTypeNameAttribute.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\JTokenExtensions.cs">
+      <Link>Protocols\JTokenExtensions.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\LocalBlobDescriptor.cs">
       <Link>Protocols\LocalBlobDescriptor.cs</Link>
     </Compile>

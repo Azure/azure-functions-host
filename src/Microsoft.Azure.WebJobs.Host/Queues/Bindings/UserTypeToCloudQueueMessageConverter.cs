@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
@@ -34,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 token = objectToken;
             }
 
-            return new CloudQueueMessage(token.ToString());
+            string contents = token.ToJsonString();
+            return new CloudQueueMessage(contents);
         }
     }
 }

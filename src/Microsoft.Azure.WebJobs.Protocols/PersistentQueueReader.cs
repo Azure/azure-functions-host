@@ -350,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 if (credentials != null)
                 {
                     credentials.Remove();
-                    return parsedMessage.ToString();
+                    return parsedMessage.ToJsonString();
                 }
 
                 return blobText;
