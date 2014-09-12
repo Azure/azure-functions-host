@@ -15,13 +15,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class PocoEntityValueBinder : IValueBinder, IWatchable, IWatcher
     {
         private readonly TableEntityContext _entityContext;
+        private readonly string _eTag;
         private readonly object _value;
         private readonly Type _valueType;
         private readonly IDictionary<string, string> _originalProperties;
 
-        public PocoEntityValueBinder(TableEntityContext entityContext, object value, Type valueType)
+        public PocoEntityValueBinder(TableEntityContext entityContext, string eTag, object value, Type valueType)
         {
             _entityContext = entityContext;
+            _eTag = eTag;
             _value = value;
             _valueType = valueType;
             _originalProperties = ObjectBinderHelpers.ConvertObjectToDict(value);
@@ -47,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             // Not ByRef, so can ignore value argument.
             ITableEntity entity = PocoTableEntity.ToTableEntity(_entityContext.PartitionKey, _entityContext.RowKey,
                 _value);
+            entity.ETag = _eTag;
 
             if (HasChanged)
             {

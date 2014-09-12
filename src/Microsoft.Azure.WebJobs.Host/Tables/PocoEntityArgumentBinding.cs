@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             TElement userEntity = PocoTableEntity.ToPocoEntity<TElement>(entity);
 
-            return new PocoEntityValueBinder(value, userEntity, typeof(TElement));
+            return new PocoEntityValueBinder(value, entity.ETag, userEntity, typeof(TElement));
         }
     }
 }

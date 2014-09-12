@@ -36,18 +36,25 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             var lc = JobHostFactory.Create<Program>();
 
-            lc.Call("Collector");
+            try
+            {
+                lc.Call("Collector");
 
-            TableQuery query = new TableQuery()
-                .Where(TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollector),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollector)))
-                .Take(1);
-            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+                TableQuery query = new TableQuery()
+                    .Where(TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollector),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollector)))
+                    .Take(1);
+                DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            // Ensure expected row found
-            Assert.NotNull(result);
+                // Ensure expected row found
+                Assert.NotNull(result);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         [Fact]
@@ -60,18 +67,25 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             var lc = JobHostFactory.Create<Program>();
 
-            lc.Call("CollectorDynamic");
+            try
+            {
+                lc.Call("CollectorDynamic");
 
-            TableQuery query = new TableQuery()
-                .Where(TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollectorDynamic),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollectorDynamic)))
-                .Take(1);
-            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+                TableQuery query = new TableQuery()
+                    .Where(TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollectorDynamic),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollectorDynamic)))
+                    .Take(1);
+                DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            // Ensure expected row found
-            Assert.NotNull(result);
+                // Ensure expected row found
+                Assert.NotNull(result);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         [Fact]
@@ -82,20 +96,27 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             CloudTableClient client = account.CreateCloudTableClient();
             CloudTable table = client.GetTableReference(TableName);
 
-            var lc = JobHostFactory.Create<Program>();
+            try
+            {
+                var lc = JobHostFactory.Create<Program>();
 
-            lc.Call("AsyncCollector");
+                lc.Call("AsyncCollector");
 
-            TableQuery query = new TableQuery()
-                .Where(TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameAsyncCollector),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameAsyncCollector)))
-                .Take(1);
-            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+                TableQuery query = new TableQuery()
+                    .Where(TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameAsyncCollector),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameAsyncCollector)))
+                    .Take(1);
+                DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            // Ensure expected row found
-            Assert.NotNull(result);
+                // Ensure expected row found
+                Assert.NotNull(result);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         [Fact]
@@ -108,18 +129,25 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             var lc = JobHostFactory.Create<Program>();
 
-            lc.Call("CollectorPOCO");
+            try
+            {
+                lc.Call("CollectorPOCO");
 
-            TableQuery query = new TableQuery()
-                .Where(TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollectorPOCO),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollectorPOCO)))
-                .Take(1);
-            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+                TableQuery query = new TableQuery()
+                    .Where(TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameCollectorPOCO),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameCollectorPOCO)))
+                    .Take(1);
+                DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            // Ensure expected row found
-            Assert.NotNull(result);
+                // Ensure expected row found
+                Assert.NotNull(result);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         [Fact]
@@ -132,22 +160,29 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             var lc = JobHostFactory.Create<Program>();
 
-            lc.Call("AsyncCollectorPOCO");
+            try
+            {
+                lc.Call("AsyncCollectorPOCO");
 
-            TableQuery query = new TableQuery()
-                .Where(TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameAsyncCollectorPOCO),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameAsyncCollectorPOCO)))
-                .Take(1);
-            DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
+                TableQuery query = new TableQuery()
+                    .Where(TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, TableNameAsyncCollectorPOCO),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, TableNameAsyncCollectorPOCO)))
+                    .Take(1);
+                DynamicTableEntity result = table.ExecuteQuery(query).FirstOrDefault();
 
-            // Ensure expected row found
-            Assert.NotNull(result);
+                // Ensure expected row found
+                Assert.NotNull(result);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         [Fact]
-        public void TestCollectorWrongEtagThrows()
+        public void TestCollectorWrongETagThrows()
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
@@ -156,7 +191,21 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             var lc = JobHostFactory.Create<Program>();
 
-            Assert.Throws(typeof(StorageException), () => lc.Call("CollectorWrongEtagThrows"));
+            try
+            {
+                InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+                    () => lc.Call("CollectorWrongETagThrows"));
+                StorageException innerException = exception.InnerException as StorageException;
+                Assert.NotNull(innerException);
+                Assert.NotNull(innerException.RequestInformation);
+                Assert.Equal(412, innerException.RequestInformation.HttpStatusCode);
+                Assert.NotNull(innerException.RequestInformation.ExtendedErrorInformation);
+                Assert.Equal("ConditionNotMet", innerException.RequestInformation.ExtendedErrorInformation.ErrorCode);
+            }
+            finally
+            {
+                table.DeleteIfExists();
+            }
         }
 
         class Program
@@ -274,27 +323,47 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             /// Covers:
             /// - etag throws
             /// </summary>
-            public static void CollectorWrongEtagThrows(
-                [Table(TableName)] ICollector<ITableEntity> table)
+            public static void CollectorWrongETagThrows(
+                [Table(TableName)] ICollector<ITableEntity> collector,
+                [Table(TableName)] CloudTable table)
             {
                 const string tableKeys = "testETag";
 
+                // Create the initial version of the entity
+                table.Execute(TableOperation.Insert(new DynamicTableEntity
+                {
+                    PartitionKey = tableKeys,
+                    RowKey = tableKeys
+                }));
+
+                // Get the initial ETag.
+                string eTag = table.Execute(TableOperation.Retrieve(tableKeys, tableKeys)).Etag;
+
+                // Update the entity to invalidate the initial ETag.
+                table.Execute(TableOperation.Replace(new DynamicTableEntity
+                {
+                    PartitionKey = tableKeys,
+                    RowKey = tableKeys,
+                    ETag = "*",
+                    Properties = new Dictionary<string, EntityProperty>
+                    {
+                        { "Text", new EntityProperty("valid")}
+                    }
+                }));
+
+                // Add the item with the old ETag to the collector
                 DynamicTableEntity result = new DynamicTableEntity
                 {
                     PartitionKey = tableKeys,
                     RowKey = tableKeys,
+                    ETag = eTag,
                     Properties = new Dictionary<string, EntityProperty>()
-                {
-                    { "Text", new EntityProperty("before") },
-                    { "Number", new EntityProperty("1") }
-                }
+                    {
+                        { "Text", new EntityProperty("invalid") }
+                    }
                 };
 
-                table.Add(result);
-
-                result.Properties["Text"] = new EntityProperty("after");
-                result.ETag = "foo";
-                table.Add(result);
+                collector.Add(result);
             }
         }
 
