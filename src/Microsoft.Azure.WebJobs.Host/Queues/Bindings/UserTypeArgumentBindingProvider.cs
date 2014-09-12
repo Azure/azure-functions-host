@@ -22,7 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             if (typeof(IEnumerable).IsAssignableFrom(parameterType))
             {
-                throw new InvalidOperationException("Non-collection enumerable types are not supported.");
+                throw new InvalidOperationException(
+                    "Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
             }
             else if (typeof(object) == parameterType)
             {

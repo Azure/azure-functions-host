@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -177,7 +178,18 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         }
 
         [Fact]
-        public void TestMultiEnqueueMessage_ICollection()
+        public void TestEnqueueMultipleMessagesUsingICollector()
+        {
+            TestEnqueueMultipleMessages(methodName: "FuncMultiEnqueueICollector");
+        }
+
+        [Fact]
+        public void TestEnqueueMultipleMessagesUsingIAsyncCollector()
+        {
+            TestEnqueueMultipleMessages(methodName: "FuncMultiEnqueueIAsyncCollector");
+        }
+
+        private static void TestEnqueueMultipleMessages(string methodName)
         {
             var account = TestStorage.GetAccount();
 
@@ -185,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             TestQueueClient.DeleteQueue(queue);
 
             var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncMultiEnqueueICollection");
+            lc.Call(methodName);
 
             for (int i = 10; i <= 30; i += 10)
             {
@@ -344,12 +356,20 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 myoutputqueue = new Payload { Value = 15 };
             }
 
-            public static void FuncMultiEnqueueICollection(
-                [Queue("myoutputqueue")] ICollection<Payload> myoutputqueue)
+            public static void FuncMultiEnqueueICollector(
+                [Queue("myoutputqueue")] ICollector<Payload> myoutputqueue)
             {
                 myoutputqueue.Add(new Payload { Value = 10 });
                 myoutputqueue.Add(new Payload { Value = 20 });
                 myoutputqueue.Add(new Payload { Value = 30 });
+            }
+
+            public static async Task FuncMultiEnqueueIAsyncCollector(
+                [Queue("myoutputqueue")] IAsyncCollector<Payload> myoutputqueue)
+            {
+                await myoutputqueue.AddAsync(new Payload { Value = 10 });
+                await myoutputqueue.AddAsync(new Payload { Value = 20 });
+                await myoutputqueue.AddAsync(new Payload { Value = 30 });
             }
 
             public static void FuncCloudQueueEnqueue(

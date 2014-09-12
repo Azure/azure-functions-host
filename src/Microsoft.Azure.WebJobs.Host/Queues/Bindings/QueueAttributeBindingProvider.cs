@@ -16,8 +16,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             new CloudQueueMessageArgumentBindingProvider(),
             new StringArgumentBindingProvider(),
             new ByteArrayArgumentBindingProvider(),
-            new CollectionArgumentBindingProvider(),
-            new UserTypeArgumentBindingProvider()); // Must come after collection provider (IEnumerable checks).
+            new UserTypeArgumentBindingProvider(),
+            new CollectorArgumentBindingProvider(),
+            new AsyncCollectorArgumentBindingProvider());
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {

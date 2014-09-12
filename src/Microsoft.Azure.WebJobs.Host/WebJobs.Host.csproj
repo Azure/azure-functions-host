@@ -383,6 +383,10 @@
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
     <Compile Include="Queues\BindableQueuePath.cs" />
+    <Compile Include="Queues\Bindings\CollectionAsyncCollector.cs" />
+    <Compile Include="Queues\Bindings\CollectionCollector.cs" />
+    <Compile Include="Queues\Bindings\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\CollectorValueBinder.cs" />
     <Compile Include="Queues\BoundQueuePath.cs" />
     <Compile Include="Queues\IBindableQueuePath.cs" />
     <Compile Include="Queues\IQueueConfiguration.cs" />
@@ -531,7 +535,7 @@
     <Compile Include="Queues\Bindings\CloudQueueMessageArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\UserTypeArgumentBinding.cs" />
-    <Compile Include="Queues\Bindings\CollectionArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\ByteArrayArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\StringArgumentBinding.cs" />
     <Compile Include="Queues\Bindings\StringArgumentBindingProvider.cs" />
