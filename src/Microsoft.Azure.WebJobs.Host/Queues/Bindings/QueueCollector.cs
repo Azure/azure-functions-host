@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             if (message == null)
             {
-                throw new InvalidOperationException("Cannot enqueue a null queue message instance .");
+                throw new InvalidOperationException("Cannot enqueue a null queue message instance.");
             }
 
             _queue.AddMessageAndCreateIfNotExistsAsync(message, CancellationToken.None).GetAwaiter().GetResult();
