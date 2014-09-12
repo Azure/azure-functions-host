@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         [NoAutomaticTrigger]
         public static void WriteStartDataMessageToQueue(
-            [Queue(Queue1Name)] ICollection<string> queueMessages,
+            [Queue(Queue1Name)] ICollector<string> queueMessages,
             [Blob(ContainerName + "/" + NonWebJobsBlobName, FileAccess.Write)] Stream nonSdkBlob,
             CancellationToken token)
         {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public static async Task QueueToQueueAsync(
             [QueueTrigger(Queue1Name)] string message,
-            [Queue(Queue2Name)] ICollection<string> output,
+            [Queue(Queue2Name)] IAsyncCollector<string> output,
             CancellationToken token)
         {
             CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             CloudBlockBlob blob = container.GetBlockBlobReference(NonWebJobsBlobName);
             string blobContent = await blob.DownloadTextAsync();
 
-            output.Add(blobContent + message);
+            await output.AddAsync(blobContent + message);
         }
 
         public static async Task QueueToBlobAsync(
