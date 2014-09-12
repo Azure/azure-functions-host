@@ -1,4 +1,4 @@
-Azure WebJobs SDK
+﻿Azure WebJobs SDK
 ===
 Azure WebJobs SDK is a framework that simplifies the task of adding background processing in Azure WebJobs.
 
