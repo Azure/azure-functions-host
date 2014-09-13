@@ -43,9 +43,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Bindings
         [Fact]
         public void Create_IfMalformedPattern_PropagatesThrownException()
         {
-            const string queueNamePattern = "malformed-queue-{{name%";
+            const string queueNamePattern = "malformed-queue-{name%";
 
-            ExceptionAssert.ThrowsInvalidOperation(() => BindableServiceBusPath.Create(queueNamePattern), "Input pattern is not well formed. Missing a closing bracket.");
+            ExceptionAssert.ThrowsFormat(
+                () => BindableServiceBusPath.Create(queueNamePattern), 
+                "Invalid template 'malformed-queue-{name%'. Missing closing bracket at position 17.");
         }
     }
 }

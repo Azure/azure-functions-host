@@ -3,41 +3,42 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class ParameterizedTableEntityPath : IBindableTableEntityPath
     {
-        private readonly string _tableNamePattern;
-        private readonly string _partitionKeyPattern;
-        private readonly string _rowKeyPattern;
-        private readonly IReadOnlyList<string> _parameterNames;
+        private readonly BindingTemplate _tableNameTemplate;
+        private readonly BindingTemplate _partitionKeyTemplate;
+        private readonly BindingTemplate _rowKeyTemplate;
 
-        public ParameterizedTableEntityPath(string tableNamePattern, string partitionKeyPattern, string rowKeyPattern,
-            IReadOnlyList<string> parameterNames)
+        public ParameterizedTableEntityPath(BindingTemplate tableNameTemplate, BindingTemplate partitionKeyTemplate, 
+            BindingTemplate rowKeyTemplate)
         {
-            Debug.Assert(parameterNames.Count > 0);
+            Debug.Assert(tableNameTemplate.ParameterNames.Count() > 0 || partitionKeyTemplate.ParameterNames.Count() > 0
+                || rowKeyTemplate.ParameterNames.Count() > 0);
 
-            _tableNamePattern = tableNamePattern;
-            _partitionKeyPattern = partitionKeyPattern;
-            _rowKeyPattern = rowKeyPattern;
-            _parameterNames = parameterNames;
+            _tableNameTemplate = tableNameTemplate;
+            _partitionKeyTemplate = partitionKeyTemplate;
+            _rowKeyTemplate = rowKeyTemplate;
         }
 
         public string TableNamePattern
         {
-            get { return _tableNamePattern; }
+            get { return _tableNameTemplate.Pattern; }
         }
 
         public string PartitionKeyPattern
         {
-            get { return _partitionKeyPattern; }
+            get { return _partitionKeyTemplate.Pattern; }
         }
 
         public string RowKeyPattern
         {
-            get { return _rowKeyPattern; }
+            get { return _rowKeyTemplate.Pattern; }
         }
 
         public bool IsBound
@@ -47,15 +48,20 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public IEnumerable<string> ParameterNames
         {
-            get { return _parameterNames; }
+            get 
+            { 
+                return _tableNameTemplate.ParameterNames
+                    .Concat(_partitionKeyTemplate.ParameterNames)
+                    .Concat(_rowKeyTemplate.ParameterNames); 
+            }
         }
 
         public TableEntityPath Bind(IReadOnlyDictionary<string, object> bindingData)
         {
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.GetParameters(bindingData);
-            string tableName = BindingDataPath.Resolve(_tableNamePattern, parameters);
-            string partitionKey = BindingDataPath.Resolve(_partitionKeyPattern, parameters);
-            string rowKey = BindingDataPath.Resolve(_rowKeyPattern, parameters);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            string tableName = _tableNameTemplate.Bind(parameters);
+            string partitionKey = _partitionKeyTemplate.Bind(parameters);
+            string rowKey = _rowKeyTemplate.Bind(parameters);
 
             TableClient.ValidateAzureTableName(tableName);
             TableClient.ValidateAzureTableKeyValue(partitionKey);
@@ -66,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public override string ToString()
         {
-            return _tableNamePattern + "/" + _partitionKeyPattern + "/" + _rowKeyPattern;
+            return _tableNameTemplate.Pattern + "/" + _partitionKeyTemplate.Pattern + "/" + _rowKeyTemplate.Pattern;
         }
     }
 }

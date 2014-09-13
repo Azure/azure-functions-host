@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -26,12 +28,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new ArgumentNullException("queueOrTopicNamePattern");
             }
 
-            List<string> parameterNames = new List<string>();
-            BindingDataPath.AddParameterNames(queueOrTopicNamePattern, parameterNames);
+            BindingTemplate template = BindingTemplate.FromString(queueOrTopicNamePattern);
 
-            if (parameterNames.Count > 0)
+            if (template.ParameterNames.Count() > 0)
             {
-                return new ParameterizedServiceBusPath(queueOrTopicNamePattern, parameterNames);
+                return new ParameterizedServiceBusPath(template);
             }
 
             return new BoundServiceBusPath(queueOrTopicNamePattern);

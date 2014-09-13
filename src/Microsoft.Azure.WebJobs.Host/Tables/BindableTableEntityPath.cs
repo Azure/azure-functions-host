@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -11,16 +13,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         public static IBindableTableEntityPath Create(string tableNamePattern, string partitionKeyPattern,
             string rowKeyPattern)
         {
-            List<string> parameterNames = new List<string>();
+            BindingTemplate tableNameTemplate = BindingTemplate.FromString(tableNamePattern);
+            BindingTemplate partitionKeyTemplate = BindingTemplate.FromString(partitionKeyPattern);
+            BindingTemplate rowKeyTemplate = BindingTemplate.FromString(rowKeyPattern);
 
-            BindingDataPath.AddParameterNames(tableNamePattern, parameterNames);
-            BindingDataPath.AddParameterNames(partitionKeyPattern, parameterNames);
-            BindingDataPath.AddParameterNames(rowKeyPattern, parameterNames);
-
-            if (parameterNames.Count > 0)
+            if (tableNameTemplate.ParameterNames.Count() > 0 ||
+                partitionKeyTemplate.ParameterNames.Count() > 0 ||
+                rowKeyTemplate.ParameterNames.Count() > 0)
             {
-                return new ParameterizedTableEntityPath(tableNamePattern, partitionKeyPattern, rowKeyPattern,
-                    parameterNames);
+                return new ParameterizedTableEntityPath(tableNameTemplate, partitionKeyTemplate, rowKeyTemplate);
             }
 
             TableClient.ValidateAzureTableName(tableNamePattern);

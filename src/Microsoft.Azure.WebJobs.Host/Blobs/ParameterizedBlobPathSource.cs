@@ -1,9 +1,11 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Azure.WebJobs.Host.Bindings;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -11,16 +13,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
     {
         private readonly string _containerNamePattern;
         private readonly string _blobNamePattern;
-        private readonly IReadOnlyList<string> _parameterNames;
+        private readonly BindingTemplateSource _template;
 
         public ParameterizedBlobPathSource(string containerNamePattern, string blobNamePattern,
-            IReadOnlyList<string> parameterNames)
+            BindingTemplateSource template)
         {
-            Debug.Assert(parameterNames.Count > 0);
+            Debug.Assert(template != null, "template must not be null");
+            Debug.Assert(template.ParameterNames.Count() > 0, "template must contain one or more parameters");
 
             _containerNamePattern = containerNamePattern;
             _blobNamePattern = blobNamePattern;
-            _parameterNames = parameterNames;
+            _template = template;
         }
 
         public string ContainerNamePattern
@@ -35,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public IEnumerable<string> ParameterNames
         {
-            get { return _parameterNames; }
+            get { return _template.ParameterNames; }
         }
 
         public IReadOnlyDictionary<string, object> CreateBindingData(BlobPath actualBlobPath)
@@ -45,12 +48,24 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return null;
             }
 
-            return BindingDataPath.CreateBindingData(ToString(), actualBlobPath.ToString());
+            // Containers must match
+            if (!String.Equals(ContainerNamePattern, actualBlobPath.ContainerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            // Pattern is container only
+            if (String.IsNullOrEmpty(BlobNamePattern))
+            {
+                return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            return _template.CreateBindingData(actualBlobPath.ToString());
         }
 
         public override string ToString()
         {
-            return _containerNamePattern + "/" + _blobNamePattern;
+            return _template.Pattern;
         }
     }
 }

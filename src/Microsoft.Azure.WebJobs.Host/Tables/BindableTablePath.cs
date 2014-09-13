@@ -2,7 +2,9 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -10,13 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         public static IBindableTablePath Create(string tableNamePattern)
         {
-            List<string> parameterNames = new List<string>();
+            BindingTemplate template = BindingTemplate.FromString(tableNamePattern);
 
-            BindingDataPath.AddParameterNames(tableNamePattern, parameterNames);
-
-            if (parameterNames.Count > 0)
+            if (template.ParameterNames.Count() > 0)
             {
-                return new ParameterizedTablePath(tableNamePattern, parameterNames);
+                return new ParameterizedTablePath(template);
             }
 
             TableClient.ValidateAzureTableName(tableNamePattern);

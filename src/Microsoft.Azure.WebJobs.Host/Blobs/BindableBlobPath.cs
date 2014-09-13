@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Host.Bindings;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -11,21 +11,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         public static IBindableBlobPath Create(string pattern)
         {
             BlobPath parsedPattern = BlobPath.Parse(pattern);
-            string containerNamePattern = parsedPattern.ContainerName;
-            string blobNamePattern = parsedPattern.BlobName;
+            BindingTemplate containerNameTemplate = BindingTemplate.FromString(parsedPattern.ContainerName);
+            BindingTemplate blobNameTemplate = BindingTemplate.FromString(parsedPattern.BlobName);
 
-            List<string> parameterNames = new List<string>();
-
-            BindingDataPath.AddParameterNames(containerNamePattern, parameterNames);
-            BindingDataPath.AddParameterNames(blobNamePattern, parameterNames);
-
-            if (parameterNames.Count > 0)
+            if (containerNameTemplate.ParameterNames.Count() > 0 || blobNameTemplate.ParameterNames.Count() > 0)
             {
-                return new ParameterizedBlobPath(containerNamePattern, blobNamePattern, parameterNames);
+                return new ParameterizedBlobPath(containerNameTemplate, blobNameTemplate);
             }
 
-            BlobClient.ValidateContainerName(containerNamePattern);
-            BlobClient.ValidateBlobName(blobNamePattern);
+            BlobClient.ValidateContainerName(parsedPattern.ContainerName);
+            BlobClient.ValidateBlobName(parsedPattern.BlobName);
             return new BoundBlobPath(parsedPattern);
         }
     }

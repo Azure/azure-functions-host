@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
@@ -34,9 +35,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
         private static IBindableQueuePath CreateProductUnderTest(string queueNamePattern)
         {
-            List<string> parameterNames = new List<string>();
-            BindingDataPath.AddParameterNames(queueNamePattern, parameterNames);
-            IBindableQueuePath path = new ParameterizedQueuePath(queueNamePattern, parameterNames);
+            BindingTemplate template = BindingTemplate.FromString(queueNamePattern);
+            IBindableQueuePath path = new ParameterizedQueuePath(template);
             return path;
         }
     }

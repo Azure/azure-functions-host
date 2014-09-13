@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
@@ -25,12 +27,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                 throw new ArgumentNullException("queueNamePattern");
             }
 
-            List<string> parameterNames = new List<string>();
-            BindingDataPath.AddParameterNames(queueNamePattern, parameterNames);
-
-            if (parameterNames.Count > 0)
+            BindingTemplate template = BindingTemplate.FromString(queueNamePattern);
+            
+            if (template.ParameterNames.Count() > 0)
             {
-                return new ParameterizedQueuePath(queueNamePattern, parameterNames);
+                return new ParameterizedQueuePath(template);
             }
 
             return new BoundQueuePath(queueNamePattern);

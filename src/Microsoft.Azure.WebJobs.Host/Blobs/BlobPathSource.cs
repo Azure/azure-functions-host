@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -40,14 +42,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 blobNamePattern = String.Empty;
             }
 
-            List<string> parameterNames = new List<string>();
+            BindingTemplateSource template = BindingTemplateSource.FromString(pattern);
 
-            BindingDataPath.AddParameterNames(containerNamePattern, parameterNames);
-            BindingDataPath.AddParameterNames(blobNamePattern, parameterNames);
-
-            if (parameterNames.Count > 0)
+            if (template.ParameterNames.Count() > 0)
             {
-                return new ParameterizedBlobPathSource(containerNamePattern, blobNamePattern, parameterNames);
+                return new ParameterizedBlobPathSource(containerNamePattern, blobNamePattern, template);
             }
 
             BlobClient.ValidateContainerName(containerNamePattern);

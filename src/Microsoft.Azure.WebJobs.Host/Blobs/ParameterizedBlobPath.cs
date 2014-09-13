@@ -3,34 +3,34 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class ParameterizedBlobPath : IBindableBlobPath
     {
-        private readonly string _containerNamePattern;
-        private readonly string _blobNamePattern;
-        private readonly IReadOnlyList<string> _parameterNames;
+        private readonly BindingTemplate _containerNameTemplate;
+        private readonly BindingTemplate _blobNameTemplate;
 
-        public ParameterizedBlobPath(string containerNamePattern, string blobNamePattern,
-            IReadOnlyList<string> parameterNames)
+        public ParameterizedBlobPath(BindingTemplate containerNameTemplate, BindingTemplate blobNameTemplate)
         {
-            Debug.Assert(parameterNames.Count > 0);
+            Debug.Assert(containerNameTemplate != null);
+            Debug.Assert(blobNameTemplate != null);
 
-            _containerNamePattern = containerNamePattern;
-            _blobNamePattern = blobNamePattern;
-            _parameterNames = parameterNames;
+            _containerNameTemplate = containerNameTemplate;
+            _blobNameTemplate = blobNameTemplate;
         }
 
         public string ContainerNamePattern
         {
-            get { return _containerNamePattern; }
+            get { return _containerNameTemplate.Pattern; }
         }
 
         public string BlobNamePattern
         {
-            get { return _blobNamePattern; }
+            get { return _blobNameTemplate.Pattern; }
         }
 
         public bool IsBound
@@ -40,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public IEnumerable<string> ParameterNames
         {
-            get { return _parameterNames; }
+            get { return _containerNameTemplate.ParameterNames.Concat(_blobNameTemplate.ParameterNames); }
         }
 
         public BlobPath Bind(IReadOnlyDictionary<string, object> bindingData)
         {
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.GetParameters(bindingData);
-            string containerName = BindingDataPath.Resolve(_containerNamePattern, parameters);
-            string blobName = BindingDataPath.Resolve(_blobNamePattern, parameters);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            string containerName = _containerNameTemplate.Bind(parameters);
+            string blobName = _blobNameTemplate.Bind(parameters);
 
             BlobClient.ValidateContainerName(containerName);
             BlobClient.ValidateBlobName(blobName);
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public override string ToString()
         {
-            return _containerNamePattern + "/" + _blobNamePattern;
+            return _containerNameTemplate.Pattern + "/" + _blobNameTemplate.Pattern;
         }
     }
 }

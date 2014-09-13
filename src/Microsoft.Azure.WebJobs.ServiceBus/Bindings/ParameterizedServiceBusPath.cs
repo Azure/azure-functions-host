@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -14,21 +16,19 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     /// </summary>
     internal class ParameterizedServiceBusPath : IBindableServiceBusPath
     {
-        private readonly string _queueOrTopicNamePattern;
-        private readonly IReadOnlyList<string> _parameterNames;
+        private readonly BindingTemplate _template;
 
-        public ParameterizedServiceBusPath(string queueOrTopicNamePattern, IReadOnlyList<string> parameterNames)
+        public ParameterizedServiceBusPath(BindingTemplate template)
         {
-            Debug.Assert(parameterNames != null, "parameterNames must not be null");
-            Debug.Assert(parameterNames.Count > 0, "parameterNames must not be empty");
+            Debug.Assert(template != null, "template must not be null");
+            Debug.Assert(template.ParameterNames.Count() > 0, "template must contain one or more parameters");
 
-            _queueOrTopicNamePattern = queueOrTopicNamePattern;
-            _parameterNames = parameterNames;
+            _template = template;
         }
 
         public string QueueOrTopicNamePattern
         {
-            get { return _queueOrTopicNamePattern; }
+            get { return _template.Pattern; }
         }
 
         public bool IsBound
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         public IEnumerable<string> ParameterNames
         {
-            get { return _parameterNames; }
+            get { return _template.ParameterNames; }
         }
 
         public string Bind(IReadOnlyDictionary<string, object> bindingData)
@@ -48,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new ArgumentNullException("bindingData");
             }
                 
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.GetParameters(bindingData);
-            string queueOrTopicName = BindingDataPath.Resolve(QueueOrTopicNamePattern, parameters);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            string queueOrTopicName = _template.Bind(parameters);
             return queueOrTopicName;
         }
     }
