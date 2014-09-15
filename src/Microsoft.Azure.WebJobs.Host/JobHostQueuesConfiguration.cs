@@ -14,6 +14,10 @@ namespace Microsoft.Azure.WebJobs.Host
         private const int DefaultMaxDequeueCount = 5;
         private const int DefaultBatchSize = 16;
 
+        // Azure Queues currently limits the number of messages retrieved to 32. We enforce this constraint here because
+        // the runtime error message the user would receive from the SDK otherwise is not as helpful.
+        private const int MaxBatchSize = 32;
+
         private int _batchSize = DefaultBatchSize;
         private TimeSpan _maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
         private int _maxDequeueCount = DefaultMaxDequeueCount;
@@ -33,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host
             set
             {
                 if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                if (value > MaxBatchSize)
                 {
                     throw new ArgumentOutOfRangeException("value");
                 }
