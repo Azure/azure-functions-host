@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
     internal class HostMessageListenerFactory : IListenerFactory
     {
         private static readonly TimeSpan Minimum = QueuePollingIntervals.Minimum;
-        private static readonly TimeSpan DefaultMaximum = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan DefaultMaximum = QueuePollingIntervals.DefaultMaximum;
 
         private readonly CloudQueue _queue;
         private readonly IFunctionIndexLookup _functionLookup;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _functionInstanceLogger);
             IQueueConfiguration queueConfiguration = context.QueueConfiguration;
             TimeSpan configuredMaximum = queueConfiguration.MaxPollingInterval;
-            // Use a shorter maximum polling interval for run/abort from dashboard.
+            // Provide an upper bound on the maximum polling interval for run/abort from dashboard.
             // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
             TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(Minimum, maximum);

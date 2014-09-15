@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
     internal static class QueuePollingIntervals
     {
         public static readonly TimeSpan Minimum = TimeSpan.FromSeconds(2);
-        public static readonly TimeSpan DefaultMaximum = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan DefaultMaximum = TimeSpan.FromMinutes(1);
     }
 }
