@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         private readonly TableParameterLog _log;
 
-        private readonly Stopwatch watch = new Stopwatch();
+        private readonly Stopwatch _watch = new Stopwatch();
 
         public TableEntityWriter(CloudTable table, TableParameterLog log)
         {
@@ -137,13 +137,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             {
                 try
                 {
-                    watch.Start();
+                    _watch.Start();
                     await ExecuteBatchAndCreateTableIfNotExistsAsync(partition);
                 }
                 finally
                 {
-                    watch.Stop();
-                    _log.ElapsedWriteTime = watch.Elapsed;
+                    _watch.Stop();
+                    _log.ElapsedWriteTime = _watch.Elapsed;
                 }
             }
         }
