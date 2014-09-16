@@ -110,6 +110,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IReadOnlyDictionary<string, IValueProvider> parameters =
                     await instance.BindingSource.BindAsync(new ValueBindingContext(functionContext, cancellationToken));
 
+                ExceptionDispatchInfo exceptionInfo;
+
                 using (ValueProviderDisposable.Create(parameters))
                 {
                     startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters,
@@ -119,26 +121,34 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     {
                         await ExecuteWithOutputLogsAsync(instance, parameters, consoleOutput, outputDefinition,
                             parameterLogCollector, cancellationToken);
+                        exceptionInfo = null;
                     }
-                    catch (OperationCanceledException)
+                    catch (OperationCanceledException exception)
                     {
-                        throw;
+                        exceptionInfo = ExceptionDispatchInfo.Capture(exception);
                     }
                     catch (Exception exception)
                     {
                         consoleOutput.WriteLine("--------");
                         consoleOutput.WriteLine("Exception while executing:");
                         consoleOutput.Write(exception.ToDetails());
-                        throw;
+                        exceptionInfo = ExceptionDispatchInfo.Capture(exception);
                     }
                 }
 
-                if (updateOutputLogTimer != null)
+                if (exceptionInfo == null && updateOutputLogTimer != null)
                 {
                     await updateOutputLogTimer.StopAsync(cancellationToken);
                 }
 
+                // We save the exception info rather than doing throw; above to ensure we always write console output,
+                // even if the function fails or was canceled.
                 await outputLog.SaveAndCloseAsync(cancellationToken);
+
+                if (exceptionInfo != null)
+                {
+                    exceptionInfo.Throw();
+                }
 
                 return startedMessageId;
             }
