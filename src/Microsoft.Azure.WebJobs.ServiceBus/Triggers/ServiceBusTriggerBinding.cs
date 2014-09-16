@@ -18,12 +18,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class ServiceBusTriggerBinding : ITriggerBinding<BrokeredMessage>
     {
-        private static readonly IObjectToTypeConverter<BrokeredMessage> _converter =
-            new CompositeObjectToTypeConverter<BrokeredMessage>(
-                new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
-                new OutputConverter<string>(new StringToBrokeredMessageConverter()));
-
         private readonly string _parameterName;
+        private readonly IObjectToTypeConverter<BrokeredMessage> _converter;
         private readonly ITriggerDataArgumentBinding<BrokeredMessage> _argumentBinding;
         private readonly ServiceBusAccount _account;
         private readonly string _namespaceName;
@@ -32,10 +28,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         private readonly string _subscriptionName;
         private readonly string _entityPath;
 
-        public ServiceBusTriggerBinding(string parameterName,
+        public ServiceBusTriggerBinding(string parameterName, Type parameterType,
             ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName)
         {
             _parameterName = parameterName;
+            _converter = CreateConverter(parameterType);
             _argumentBinding = argumentBinding;
             _account = account;
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
@@ -131,6 +128,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 TopicName = _topicName,
                 SubscriptionName = _subscriptionName
             };
+        }
+
+        private static IObjectToTypeConverter<BrokeredMessage> CreateConverter(Type parameterType)
+        {
+            return new CompositeObjectToTypeConverter<BrokeredMessage>(
+                    new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
+                    new OutputConverter<string>(StringToBrokeredMessageConverterFactory.Create(parameterType)));
+
         }
     }
 }

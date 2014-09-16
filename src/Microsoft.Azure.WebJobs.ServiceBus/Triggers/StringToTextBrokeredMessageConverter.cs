@@ -7,11 +7,14 @@ using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
-    internal class StringToBrokeredMessageConverter : IConverter<string, BrokeredMessage>
+    internal class StringToTextBrokeredMessageConverter : IConverter<string, BrokeredMessage>
     {
         public BrokeredMessage Convert(string input)
         {
-            return new BrokeredMessage(new MemoryStream(StrictEncodings.Utf8.GetBytes(input), writable: false));
+            BrokeredMessage message = new BrokeredMessage(new MemoryStream(StrictEncodings.Utf8.GetBytes(input),
+                writable: false));
+            message.ContentType = ContentTypes.TextPlain;
+            return message;
         }
     }
 }

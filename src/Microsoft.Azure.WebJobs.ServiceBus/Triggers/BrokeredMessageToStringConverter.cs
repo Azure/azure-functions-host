@@ -13,18 +13,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         public Task<string> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
-            using (Stream stream = input.GetBody<Stream>())
+            if (input.ContentType == ContentTypes.TextPlain)
             {
-                if (stream == null)
+                using (Stream stream = input.GetBody<Stream>())
                 {
-                    return Task.FromResult<string>(null);
-                }
+                    if (stream == null)
+                    {
+                        return Task.FromResult<string>(null);
+                    }
 
-                using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return reader.ReadToEndAsync();
+                    using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        return reader.ReadToEndAsync();
+                    }
                 }
+            }
+            else
+            {
+                string contents = input.GetBody<string>();
+                return Task.FromResult(contents);
             }
         }
     }

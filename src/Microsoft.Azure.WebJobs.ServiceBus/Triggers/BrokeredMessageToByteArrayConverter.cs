@@ -13,17 +13,24 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         public async Task<byte[]> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
-            using (MemoryStream outputStream = new MemoryStream())
-            using (Stream inputStream = input.GetBody<Stream>())
+            if (input.ContentType == ContentTypes.ApplicationOctetStream)
             {
-                if (inputStream == null)
+                using (MemoryStream outputStream = new MemoryStream())
+                using (Stream inputStream = input.GetBody<Stream>())
                 {
-                    return null;
-                }
+                    if (inputStream == null)
+                    {
+                        return null;
+                    }
 
-                const int defaultBufferSize = 4096;
-                await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
-                return outputStream.ToArray();
+                    const int defaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
+                    return outputStream.ToArray();
+                }
+            }
+            else
+            {
+                return input.GetBody<byte[]>();
             }
         }
     }

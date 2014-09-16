@@ -51,7 +51,59 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             return new BrokeredMessageValueProvider(value, valueType, invokeString);
         }
 
-        private static async Task<string> CreateInvokeStringAsync(BrokeredMessage clonedMessage,
+        private static Task<string> CreateInvokeStringAsync(BrokeredMessage clonedMessage,
+            CancellationToken cancellationToken)
+        {
+            switch (clonedMessage.ContentType)
+            {
+                case ContentTypes.ApplicationJson:
+                case ContentTypes.TextPlain:
+                    return GetTextAsync(clonedMessage, cancellationToken);
+                case ContentTypes.ApplicationOctetStream:
+                    return GetBase64StringAsync(clonedMessage, cancellationToken);
+                default:
+                    return GetBytesLengthAsync(clonedMessage, cancellationToken);
+            }
+        }
+
+        private static async Task<string> GetBase64StringAsync(BrokeredMessage clonedMessage,
+            CancellationToken cancellationToken)
+        {
+            byte[] bytes;
+
+            using (MemoryStream outputStream = new MemoryStream())
+            {
+                using (Stream inputStream = clonedMessage.GetBody<Stream>())
+                {
+                    if (inputStream == null)
+                    {
+                        return null;
+                    }
+
+                    const int defaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
+                    bytes = outputStream.ToArray();
+                }
+            }
+
+            return Convert.ToBase64String(bytes);
+        }
+
+        private static Task<string> GetBytesLengthAsync(BrokeredMessage clonedMessage,
+            CancellationToken cancellationToken)
+        {
+            long length;
+
+            using (Stream inputStream = clonedMessage.GetBody<Stream>())
+            {
+                length = inputStream.Length;
+            }
+
+            string description = "byte[" + length + "]";
+            return Task.FromResult(description);
+        }
+
+        private static async Task<string> GetTextAsync(BrokeredMessage clonedMessage,
             CancellationToken cancellationToken)
         {
             using (MemoryStream outputStream = new MemoryStream())

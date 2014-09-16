@@ -57,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (queueName != null)
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, queueName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding,
+                    account, queueName);
             }
             else
             {

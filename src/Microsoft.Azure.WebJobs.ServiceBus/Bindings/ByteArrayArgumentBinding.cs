@@ -88,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 using (MemoryStream stream = new MemoryStream(bytes, writable: false))
                 using (BrokeredMessage message = new BrokeredMessage(stream))
                 {
+                    message.ContentType = ContentTypes.ApplicationOctetStream;
                     await _entity.SendAndCreateQueueIfNotExistsAsync(message, _functionInstanceId, cancellationToken);
                 }
             }

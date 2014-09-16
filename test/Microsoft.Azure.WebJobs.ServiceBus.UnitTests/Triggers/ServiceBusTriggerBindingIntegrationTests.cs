@@ -25,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
             IQueueTriggerArgumentBindingProvider provider = new UserTypeArgumentBindingProvider();
             ParameterInfo pi = new StubParameterInfo("parameterName", typeof(UserDataType));
             var argumentBinding = provider.TryCreate(pi);
-            _binding = new ServiceBusTriggerBinding("parameterName", argumentBinding, null, "queueName");
+            _binding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null,
+                "queueName");
         }
 
         [Theory]
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
             userProperty.SetValue(expectedObject, convertedPropertyValue);
             string messageContent = JsonCustom.SerializeObject(expectedObject);
             BrokeredMessage message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(messageContent)), true);
+            message.ContentType = ContentTypes.ApplicationJson;
 
             ValueBindingContext context = new ValueBindingContext(null, CancellationToken.None);
 

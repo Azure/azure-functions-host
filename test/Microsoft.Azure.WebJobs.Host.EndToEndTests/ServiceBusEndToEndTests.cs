@@ -57,7 +57,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             writer.Flush();
             stream.Position = 0;
 
-            output = new BrokeredMessage(stream);
+            output = new BrokeredMessage(stream)
+            {
+                ContentType = "text/plain"
+            };
         }
 
         // First listener for the topic
@@ -163,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 writer.Flush();
                 stream.Position = 0;
 
-                queueClient.Send(new BrokeredMessage(stream));
+                queueClient.Send(new BrokeredMessage(stream) { ContentType = "text/plain" });
             }
 
             queueClient.Close();
