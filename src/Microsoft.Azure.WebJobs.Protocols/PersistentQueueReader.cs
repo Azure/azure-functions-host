@@ -345,15 +345,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         {
             try
             {
-                var parsedMessage = JObject.Parse(blobText) as JObject;
-                JToken credentials = parsedMessage["Credentials"];
-                if (credentials != null)
-                {
-                    credentials.Remove();
-                    return parsedMessage.ToJsonString();
-                }
-
-                return blobText;
+                JObject parsedMessage = JsonParser.ParseWithDateTimeOffset(blobText);
+                parsedMessage.RemoveIfContainsKey("Credentials");
+                return parsedMessage.ToJsonString();
             }
             catch
             {
