@@ -101,7 +101,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
                     await _objectBinder.WriteToStreamAsync(_stream, value, cancellationToken);
-                    await _stream.CommitAsync(cancellationToken);
+
+                    if (!_stream.HasCommitted)
+                    {
+                        await _stream.CommitAsync(cancellationToken);
+                    }
+
                     _stream.Dispose();
                 }
 

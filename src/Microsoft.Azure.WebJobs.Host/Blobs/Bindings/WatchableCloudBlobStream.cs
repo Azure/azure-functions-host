@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
         }
 
+        public bool HasCommitted
+        {
+            get { return _committed; }
+        }
+
         public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
         {
             CancellationTokenSource cancellationSource = new CancellationTokenSource();
