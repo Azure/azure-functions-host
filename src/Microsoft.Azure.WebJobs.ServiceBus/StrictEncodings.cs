@@ -7,7 +7,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 {
     internal static class StrictEncodings
     {
-        private static UTF8Encoding _utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+        private static UTF8Encoding _utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false,
+            throwOnInvalidBytes: true);
 
         public static UTF8Encoding Utf8
         {

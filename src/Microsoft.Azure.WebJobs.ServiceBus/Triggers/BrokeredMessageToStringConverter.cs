@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             {
                 if (stream == null)
                 {
-                    return null;
+                    return Task.FromResult<string>(null);
                 }
 
                 using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
