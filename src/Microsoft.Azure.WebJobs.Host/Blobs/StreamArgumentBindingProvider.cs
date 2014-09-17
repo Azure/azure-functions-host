@@ -22,18 +22,24 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return null;
             }
 
-            if (access.HasValue && access.Value == FileAccess.ReadWrite)
+            if (!access.HasValue)
             {
-                throw new InvalidOperationException("Cannot bind blob to Stream using access ReadWrite.");
+                throw new InvalidOperationException(String.Format(
+                    "FileAccess must be specified when binding the parameter '{0}' to a blob Stream. " + 
+                    "Add a FileAccess argument to the BlobAttribute constructor " + 
+                    @"(for example, [Blob(""..."", FileAccess.Read)]).", 
+                    parameter.Name));
             }
 
-            if (!access.HasValue || access.Value == FileAccess.Read)
+            switch(access.Value)
             {
-                return new ReadStreamArgumentBinding();
-            }
-            else
-            {
-                return new WriteStreamArgumentBinding();
+                case FileAccess.ReadWrite:
+                    throw new InvalidOperationException("Cannot bind blob to Stream using access ReadWrite.");
+                case FileAccess.Read:
+                    return new ReadStreamArgumentBinding();
+                case FileAccess.Write:
+                default:
+                    return new WriteStreamArgumentBinding();
             }
         }
 

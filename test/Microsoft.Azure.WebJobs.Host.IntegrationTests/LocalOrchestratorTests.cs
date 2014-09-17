@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             public static void FuncWithBlob(
                 [Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob,
-                [Blob(@"daas-test-input/blob.csv")] Stream stream
+                [Blob(@"daas-test-input/blob.csv", FileAccess.Read)] Stream stream
                 )
             {
                 Assert.NotNull(blob);
@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 Assert.Equal("daas-test-input", blob.Container.Name);
             }
 
-            public static void FuncWithMissingBlobStream([Blob(@"daas-test-input/blob.csv")] Stream stream)
+            public static void FuncWithMissingBlobStream([Blob(@"daas-test-input/blob.csv", FileAccess.Read)] Stream stream)
             {
                 throw new InvalidOperationException();
             }

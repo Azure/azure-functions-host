@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
             IBlobPathSource path = BlobPathSource.Create(resolvedCombinedPath);
 
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
+            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, FileAccess.Read);
 
             if (argumentBinding == null)
             {
