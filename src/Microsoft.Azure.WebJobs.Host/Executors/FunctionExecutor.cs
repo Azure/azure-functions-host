@@ -306,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     catch (Exception exception)
                     {
                         string message = String.Format(CultureInfo.InvariantCulture,
-                            "Error while handling parameter {0} '{1}' after function returned:", name, argument);
+                            "Error while handling parameter {0} after function returned:", name);
                         throw new InvalidOperationException(message, exception);
                     }
                 }
