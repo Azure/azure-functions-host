@@ -441,24 +441,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return parameterNames;
         }
 
-        private static Task GetTaskFromReturnValue(MethodInfo method, object returnValue)
-        {
-            if (typeof(Task).IsAssignableFrom(method.ReturnType))
-            {
-                Task task = (Task)returnValue;
-
-                if (task is Task<Task>)
-                {
-                    throw new InvalidOperationException("Returning a nested Task is not supported. " +
-                        "Did you mean to await the task instead of returning it?");
-                }
-
-                return task;
-            }
-
-            return Task.FromResult(0);
-        }
-
         private class ValueBinderStepOrderComparer : IComparer<IValueProvider>
         {
             private static readonly ValueBinderStepOrderComparer _instance = new ValueBinderStepOrderComparer();

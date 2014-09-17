@@ -275,6 +275,7 @@
       <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
     <Compile Include="Bindings\ValueBindingContext.cs" />
     <Compile Include="Bindings\IWatcher.cs" />
@@ -296,7 +297,6 @@
     <Compile Include="Bindings\Data\StringToTArgumentBindingProvider.cs" />
     <Compile Include="Bindings\Data\StructDataBinding.cs" />
     <Compile Include="Bindings\Data\DataBindingProvider.cs" />
-    <Compile Include="Bindings\Data\TToStringConverter.cs" />
     <Compile Include="Bindings\BindablePathExtensions.cs" />
     <Compile Include="Bindings\IBindablePath.cs" />
     <Compile Include="Bindings\IFunctionBinding.cs" />
@@ -331,6 +331,17 @@
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
+    <Compile Include="Converters\UInt64ToStringConverter.cs" />
+    <Compile Include="Converters\Int64ToStringConverter.cs" />
+    <Compile Include="Converters\UInt32ToStringConverter.cs" />
+    <Compile Include="Converters\Int32ToStringConverter.cs" />
+    <Compile Include="Converters\UInt16ToStringConverter.cs" />
+    <Compile Include="Converters\Int16ToStringConverter.cs" />
+    <Compile Include="Converters\SByteToStringConverter.cs" />
+    <Compile Include="Converters\CharToStringConverter.cs" />
+    <Compile Include="Converters\GuidToStringConverter.cs" />
+    <Compile Include="Converters\ByteToStringConverter.cs" />
+    <Compile Include="Converters\TToStringConverterFactory.cs" />
     <Compile Include="Executors\FixedHostIdProvider.cs" />
     <Compile Include="Executors\HostIdValidator.cs" />
     <Compile Include="Executors\IHostIdProvider.cs" />

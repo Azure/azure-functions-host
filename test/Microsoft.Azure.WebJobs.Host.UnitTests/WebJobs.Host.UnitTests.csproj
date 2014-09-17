@@ -84,6 +84,7 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Bindings\BindingDataPathTests.cs" />
+    <Compile Include="Bindings\Data\DataBindingFunctionalTests.cs" />
     <Compile Include="Bindings\Data\DataBindingProviderTests.cs" />
     <Compile Include="Bindings\Invoke\InvokeBindingTests.cs" />
     <Compile Include="Blobs\AsyncCompletionSource.cs" />

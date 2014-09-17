@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
         private static readonly IDataArgumentBindingProvider<TBindingData> _innerProvider =
             new CompositeArgumentBindingProvider<TBindingData>(
                 new ConverterArgumentBindingProvider<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
-                new ConverterArgumentBindingProvider<TBindingData, string>(new TToStringConverter<TBindingData>()),
+                new TToStringArgumentBindingProvider<TBindingData>(),
                 new StringToTArgumentBindingProvider<TBindingData>());
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)

@@ -34,7 +34,7 @@ namespace Dashboard.Data
         public FunctionSnapshot Read(string functionId)
         {
             FunctionIdentifier functionIdentifier = FunctionIdentifier.Parse(functionId);
-            CloudBlockBlob blob = _directory.GetBlockBlobReference(functionIdentifier.HostId.ToString());
+            CloudBlockBlob blob = _directory.GetBlockBlobReference(functionIdentifier.HostId);
             HostSnapshot hostSnapshot = ReadJson<HostSnapshot>(blob);
 
             if (hostSnapshot == null)

@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
                 return null;
             }
 
-            return new StringToTArgumentBinding(parameterType);
+            return (IArgumentBinding<TBindingData>)new StringToTArgumentBinding(parameterType);
         }
 
-        private class StringToTArgumentBinding : IArgumentBinding<TBindingData>
+        private class StringToTArgumentBinding : IArgumentBinding<string>
         {
             private readonly Type _valueType;
 
@@ -40,10 +40,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
                 get { return _valueType; }
             }
 
-            public Task<IValueProvider> BindAsync(TBindingData value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(string value, ValueBindingContext context)
             {
-                string text = value.ToString(); // Really (string)input, but the compiler can't verify that's possible.
-                object converted = ObjectBinderHelpers.BindFromString(text, _valueType);
+                object converted = ObjectBinderHelpers.BindFromString(value, _valueType);
                 IValueProvider provider = new ObjectValueProvider(converted, _valueType);
                 return Task.FromResult(provider);
             }

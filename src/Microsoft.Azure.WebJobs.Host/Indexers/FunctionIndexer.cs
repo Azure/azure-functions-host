@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
         }
 
-        private async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndex index,
+        internal async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndex index,
             CancellationToken cancellationToken)
         {
             Debug.Assert(method != null);
