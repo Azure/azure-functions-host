@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             var settings = new JsonSerializerSettings()
             {
-                TypeNameHandling = TypeNameHandling.Auto,
                 NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore,
                 Formatting = Formatting.Indented
             };
@@ -21,14 +20,6 @@ namespace Microsoft.Azure.WebJobs.Host
             return settings;
         }
 
-        private static JsonSerializerSettings NewSettings2()
-        {
-            var settings = NewSettings();
-            settings.TypeNameHandling = TypeNameHandling.All;
-            return settings;
-        }
-
-        public static JsonSerializerSettings _settingsTypeNameAll = NewSettings2();
         public static JsonSerializerSettings _settings = NewSettings();
 
         public static JsonSerializerSettings SerializerSettings
@@ -39,20 +30,9 @@ namespace Microsoft.Azure.WebJobs.Host
             }
         }
 
-        // When serializing polymorphic objects, JSON won't emit type tags for top-level objects. 
-        // Ideally. Json.Net would have this hook, but the request was resolved won't-fix: 
-        // See http://json.codeplex.com/workitem/22202 
         public static string SerializeObject(object o, Type type)
         {
-            if (o.GetType() != type)
-            {
-                // For the $type tag to always be emitted.
-                return JsonConvert.SerializeObject(o, _settingsTypeNameAll);
-            }
-            else
-            {
-                return SerializeObject(o);
-            }
+            return SerializeObject(o);
         }
 
         public static string SerializeObject(object o)
