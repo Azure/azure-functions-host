@@ -87,13 +87,19 @@
     </Compile>
     <Compile Include="Bindings\BindableServiceBusPath.cs" />
     <Compile Include="Bindings\BoundServiceBusPath.cs" />
-    <Compile Include="Bindings\ByteArrayArgumentBinding.cs" />
-    <Compile Include="Bindings\CollectionArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\ByteArrayToBrokeredMessageConverter.cs" />
+    <Compile Include="Bindings\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\CollectorArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\CollectorValueProvider.cs" />
+    <Compile Include="Bindings\ConverterValueBinder.cs" />
     <Compile Include="Bindings\IBindableServiceBusPath.cs" />
+    <Compile Include="Bindings\MessageConverterFactory.cs" />
+    <Compile Include="Bindings\MessageSenderAsyncCollector.cs" />
+    <Compile Include="Bindings\NonNullConverterValueBinder.cs" />
     <Compile Include="Bindings\ParameterizedServiceBusPath.cs" />
-    <Compile Include="Bindings\StringArgumentBinding.cs" />
     <Compile Include="Bindings\BrokeredMessageArgumentBinding.cs" />
     <Compile Include="Bindings\ByteArrayArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\MessageSenderCollector.cs" />
     <Compile Include="Bindings\StringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\BrokeredMessageArgumentBindingProvider.cs" />
     <Compile Include="Bindings\MessageSenderExtensions.cs" />
@@ -102,6 +108,8 @@
     <Compile Include="Bindings\OutputConverter.cs" />
     <Compile Include="Bindings\ServiceBusBinding.cs" />
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
+    <Compile Include="Bindings\StringToBrokeredMessageConverter.cs" />
+    <Compile Include="Bindings\UserTypeToBrokeredMessageConverter.cs" />
     <Compile Include="ContentTypes.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />
@@ -110,7 +118,6 @@
     <Compile Include="ServiceBusAccount.cs" />
     <Compile Include="Bindings\ServiceBusEntity.cs" />
     <Compile Include="Bindings\StringToServiceBusEntityConverter.cs" />
-    <Compile Include="Bindings\UserTypeArgumentBinding.cs" />
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />

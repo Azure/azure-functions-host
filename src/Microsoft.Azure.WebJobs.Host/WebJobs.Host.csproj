@@ -386,8 +386,8 @@
     <Compile Include="Loggers\IFunctionParameterLog.cs" />
     <Compile Include="Loggers\IFunctionOutput.cs" />
     <Compile Include="Queues\BindableQueuePath.cs" />
-    <Compile Include="Queues\Bindings\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\ByteArrayToCloudQueueMessageConverter.cs" />
+    <Compile Include="Queues\Bindings\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\MessageConverterFactory.cs" />
     <Compile Include="Queues\Bindings\ConverterValueBinder.cs" />
     <Compile Include="Queues\Bindings\QueueAsyncCollector.cs" />
@@ -400,7 +400,7 @@
     <Compile Include="Queues\Bindings\IMessageConverterFactory.cs" />
     <Compile Include="Queues\Bindings\CollectorValueProvider.cs" />
     <Compile Include="Queues\Bindings\NonNullConverterValueBinder.cs" />
-    <Compile Include="Queues\Bindings\ByteArrayQueueArgumentBindingProvider.cs" />
+    <Compile Include="Queues\Bindings\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Queues\Bindings\StringToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Bindings\UserTypeToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\BoundQueuePath.cs" />

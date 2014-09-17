@@ -96,6 +96,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             using (Stream inputStream = clonedMessage.GetBody<Stream>())
             {
+                if (inputStream == null)
+                {
+                    return Task.FromResult<string>(null);
+                }
+
                 length = inputStream.Length;
             }
 

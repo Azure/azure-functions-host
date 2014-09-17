@@ -15,8 +15,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 new BrokeredMessageArgumentBindingProvider(),
                 new StringArgumentBindingProvider(),
                 new ByteArrayArgumentBindingProvider(),
-                new CollectionArgumentBindingProvider(),
-                new UserTypeArgumentBindingProvider()); // Must be after collection provider (IEnumerable checks).
+                new UserTypeArgumentBindingProvider(),
+                new CollectorArgumentBindingProvider(),
+                new AsyncCollectorArgumentBindingProvider());
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
