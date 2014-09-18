@@ -348,7 +348,7 @@ namespace Dashboard.ApiControllers
             }
 
             var model = new FunctionInstanceDetailsViewModel();
-            model.Invocation = new InvocationLogViewModel(func, HostHasHeartbeat(func));
+            model.Invocation = new InvocationLogViewModel(func, HostInstanceHasHeartbeat(func));
             model.TriggerReason = new TriggerReasonViewModel(func);
             model.Trigger = model.TriggerReason.ToString();
             model.IsAborted = model.Invocation.Status == ViewModels.FunctionInstanceStatus.Running
@@ -364,7 +364,7 @@ namespace Dashboard.ApiControllers
 
                 if (ancestor != null)
                 {
-                    hasValidHeartbeat = HostHasHeartbeat(ancestor);
+                    hasValidHeartbeat = HostInstanceHasHeartbeat(ancestor);
                 }
                 else
                 {
