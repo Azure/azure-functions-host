@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return null;
             }
 
-            if (access.HasValue && access.Value != FileAccess.Read)
+            if (access.HasValue && access.Value != ConverterArgumentBinding.DefaultAccess)
             {
                 throw new InvalidOperationException("Cannot bind blob to " + typeof(T).Name + " using access "
                     + access.Value.ToString() + ".");
@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         private class ConverterArgumentBinding : IBlobArgumentBinding
         {
+            internal const FileAccess DefaultAccess = FileAccess.ReadWrite;
+
             private readonly IConverter<ICloudBlob, T> _converter;
 
             public ConverterArgumentBinding(IConverter<ICloudBlob, T> converter)
@@ -47,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public FileAccess Access
             {
-                get { return FileAccess.Read; }
+                get { return DefaultAccess; }
             }
 
             public Type ValueType
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public Task<IValueProvider> BindAsync(ICloudBlob value, ValueBindingContext context)
             {
-                IValueProvider provider = new BlobValueProvider(value, _converter.Convert(value), typeof(T));
+                IValueProvider provider = BlobValueProvider.Create(value, _converter.Convert(value));
                 return Task.FromResult(provider);
             }
         }

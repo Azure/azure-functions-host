@@ -24,10 +24,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             List<IBlobArgumentBindingProvider> innerProviders = new List<IBlobArgumentBindingProvider>();
 
-            innerProviders.Add(new ConverterArgumentBindingProvider<ICloudBlob>(new IdentityConverter<ICloudBlob>()));
-            innerProviders.Add(new ConverterArgumentBindingProvider<CloudBlockBlob>(new CloudBlobToCloudBlockBlobConverter()));
-            innerProviders.Add(new ConverterArgumentBindingProvider<CloudPageBlob>(new CloudBlobToCloudPageBlobConverter()));
-            innerProviders.Add(new StreamArgumentBindingProvider());
+            innerProviders.Add(CreateConverterProvider<ICloudBlob, IdentityConverter<ICloudBlob>>());
+            innerProviders.Add(CreateConverterProvider<CloudBlockBlob, CloudBlobToCloudBlockBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudPageBlob, CloudBlobToCloudPageBlobConverter>());
+            innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: null));
             innerProviders.Add(new CloudBlobStreamArgumentBindingProvider());
             innerProviders.Add(new TextReaderArgumentBindingProvider());
             innerProviders.Add(new TextWriterArgumentBindingProvider());
@@ -48,6 +48,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
 
             return new CompositeArgumentBindingProvider(innerProviders);
+        }
+
+        private static IBlobArgumentBindingProvider CreateConverterProvider<TValue, TConverter>()
+            where TConverter : IConverter<ICloudBlob, TValue>, new()
+        {
+            return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)

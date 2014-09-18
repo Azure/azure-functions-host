@@ -26,6 +26,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _valueType = valueType;
         }
 
+        public static BlobValueProvider Create<T>(ICloudBlob blob, T value)
+        {
+            return new BlobValueProvider(blob, value: value, valueType: typeof(T));
+        }
+
+        public static BlobValueProvider CreateWithNull<T>(ICloudBlob blob) where T : class
+        {
+            return new BlobValueProvider(blob, value: null, valueType: typeof(T));
+        }
+
         public Type Type
         {
             get { return _valueType; }

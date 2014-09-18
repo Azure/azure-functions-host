@@ -15,14 +15,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class StreamArgumentBindingProvider : IBlobArgumentBindingProvider
     {
-        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
+        private readonly FileAccess? _defaultAccess;
+
+        public FileAccess? DefaultAccess
+        {
+            get { return _defaultAccess; }
+        }
+
+        public StreamArgumentBindingProvider(FileAccess? defaultAccess)
+        {
+            _defaultAccess = defaultAccess;
+        }
+
+        public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? attributeAccess)
         {
             if (parameter.ParameterType != typeof(Stream))
             {
                 return null;
             }
 
-            if (!access.HasValue)
+            FileAccess? actualAccess = attributeAccess.HasValue ? attributeAccess : DefaultAccess;
+            if (!actualAccess.HasValue)
             {
                 throw new InvalidOperationException(String.Format(
                     "FileAccess must be specified when binding the parameter '{0}' to a blob Stream. " + 
@@ -31,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     parameter.Name));
             }
 
-            switch(access.Value)
+            switch (actualAccess.Value)
             {
                 case FileAccess.ReadWrite:
                     throw new InvalidOperationException("Cannot bind blob to Stream using access ReadWrite.");
@@ -57,7 +70,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
-                WatchableReadStream watchableStream = await ReadBlobArgumentBinding.BindStreamAsync(blob, context);
+                WatchableReadStream watchableStream = await ReadBlobArgumentBinding.TryBindStreamAsync(blob, context);
+                if (watchableStream == null)
+                {
+                    return BlobValueProvider.CreateWithNull<Stream>(blob);
+                }
+
                 return new BlobWatchableDisposableValueProvider(blob, watchableStream, typeof(Stream),
                     watcher: watchableStream, disposable: watchableStream);
             }

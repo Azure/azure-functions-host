@@ -73,7 +73,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             BlobPath boundPath = _path.Bind(context.BindingData);
             CloudBlobContainer container = _client.GetContainerReference(boundPath.ContainerName);
-            container.CreateIfNotExists();
+            
+            if (_argumentBinding.Access != FileAccess.Read)
+            {
+                container.CreateIfNotExists();
+            }
 
             Type argumentType = _argumentBinding.ValueType;
             string blobName = boundPath.BlobName;

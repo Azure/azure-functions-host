@@ -43,11 +43,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
             {
+                WatchableReadStream watchableStream = await ReadBlobArgumentBinding.TryBindStreamAsync(blob, context);
+                if (watchableStream == null)
+                {
+                    return BlobValueProvider.CreateWithNull<string>(blob);
+                }
+
                 string value;
                 ParameterLog status;
 
-                using (WatchableReadStream watchableStream = await ReadBlobArgumentBinding.BindStreamAsync(blob,
-                    context))
+                using (watchableStream)
                 using (TextReader reader = ReadBlobArgumentBinding.CreateTextReader(watchableStream))
                 {
                     context.CancellationToken.ThrowIfCancellationRequested();

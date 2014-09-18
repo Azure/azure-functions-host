@@ -69,8 +69,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 object value;
                 ParameterLog status;
 
-                using (WatchableReadStream watchableStream = await ReadBlobArgumentBinding.BindStreamAsync(blob,
-                    context))
+                WatchableReadStream watchableStream = await ReadBlobArgumentBinding.TryBindStreamAsync(blob, context);
+                if (watchableStream == null)
+                {
+                    value = await _objectBinder.ReadFromStreamAsync(watchableStream, context.CancellationToken);
+                    return new BlobValueProvider(blob, value, _valueType);
+                }
+
+                using (watchableStream)
                 {
                     value = await _objectBinder.ReadFromStreamAsync(watchableStream, context.CancellationToken);
                     status = watchableStream.GetStatus();

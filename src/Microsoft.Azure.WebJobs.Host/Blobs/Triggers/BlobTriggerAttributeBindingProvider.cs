@@ -26,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         {
             List<IBlobArgumentBindingProvider> innerProviders = new List<IBlobArgumentBindingProvider>();
 
-            innerProviders.Add(new ConverterArgumentBindingProvider<ICloudBlob>(new IdentityConverter<ICloudBlob>()));
-            innerProviders.Add(new ConverterArgumentBindingProvider<CloudBlockBlob>(new CloudBlobToCloudBlockBlobConverter()));
-            innerProviders.Add(new ConverterArgumentBindingProvider<CloudPageBlob>(new CloudBlobToCloudPageBlobConverter()));
-            innerProviders.Add(new StreamArgumentBindingProvider());
+            innerProviders.Add(CreateConverterProvider<ICloudBlob, IdentityConverter<ICloudBlob>>());
+            innerProviders.Add(CreateConverterProvider<CloudBlockBlob, CloudBlobToCloudBlockBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudPageBlob, CloudBlobToCloudPageBlobConverter>());
+            innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: FileAccess.Read));
             innerProviders.Add(new TextReaderArgumentBindingProvider());
             innerProviders.Add(new StringArgumentBindingProvider());
 
@@ -42,6 +42,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             return new CompositeArgumentBindingProvider(innerProviders);
+        }
+
+        private static IBlobArgumentBindingProvider CreateConverterProvider<TValue, TConverter>()
+            where TConverter : IConverter<ICloudBlob, TValue>, new()
+        {
+            return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -57,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
             IBlobPathSource path = BlobPathSource.Create(resolvedCombinedPath);
 
-            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, FileAccess.Read);
+            IArgumentBinding<ICloudBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
 
             if (argumentBinding == null)
             {
