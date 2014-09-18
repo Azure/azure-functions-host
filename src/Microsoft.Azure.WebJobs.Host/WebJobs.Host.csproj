@@ -678,7 +678,7 @@
     <Compile Include="Indexers\FunctionIndexingException.cs" />
     <Compile Include="Blobs\BlobCausalityManager.cs" />
     <Compile Include="Queues\QueueCausalityManager.cs" />
-    <Compile Include="ObjectBinderHelpers.cs" />
+    <Compile Include="Tables\PocoTableEntityConverter.cs" />
     <Compile Include="Queues\QueueClient.cs" />
     <Compile Include="Tables\TableClient.cs" />
     <Compile Include="Executors\FunctionExecutor.cs" />

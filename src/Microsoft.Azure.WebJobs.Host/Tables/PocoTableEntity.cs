@@ -13,12 +13,12 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         public static TValue ToPocoEntity<TValue>(DynamicTableEntity tableEntity) where TValue : new()
         {
             IDictionary<string, string> data = Normalize(tableEntity);
-            return ObjectBinderHelpers.ConvertDictToObject<TValue>(data);
+            return PocoTableEntityConverter.ConvertDictToObject<TValue>(data);
         }
 
         public static ITableEntity ToTableEntity(object pocoEntity)
         {
-            IDictionary<string, string> data = ObjectBinderHelpers.ConvertObjectToDict(pocoEntity);
+            IDictionary<string, string> data = PocoTableEntityConverter.ConvertObjectToDict(pocoEntity);
             if (!data.ContainsKey("PartitionKey"))
             {
                 throw new InvalidOperationException("Table entity types must implement the property PartitionKey.");
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public static ITableEntity ToTableEntity(string partitionKey, string rowKey, object pocoEntity)
         {
-            IDictionary<string, string> data = ObjectBinderHelpers.ConvertObjectToDict(pocoEntity);
+            IDictionary<string, string> data = PocoTableEntityConverter.ConvertObjectToDict(pocoEntity);
             return ToTableEntity(partitionKey, rowKey, data);
         }
 

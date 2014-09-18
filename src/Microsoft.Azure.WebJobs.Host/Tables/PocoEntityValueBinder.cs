@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _eTag = eTag;
             _value = value;
             _valueType = valueType;
-            _originalProperties = ObjectBinderHelpers.ConvertObjectToDict(value);
+            _originalProperties = PocoTableEntityConverter.ConvertObjectToDict(value);
         }
 
         public Type Type
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             get
             {
-                IDictionary<string, string> newProperties = ObjectBinderHelpers.ConvertObjectToDict(_value);
+                IDictionary<string, string> newProperties = PocoTableEntityConverter.ConvertObjectToDict(_value);
 
                 if (_originalProperties.Keys.Count != newProperties.Keys.Count)
                 {

@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <returns>Path compatible string representation of the given parameter or null if its type is not supported.</returns>
         public static string ConvertParameterValueToString(object parameterValue)
         {
+            // Consider unifying with TToStringConverterFactory, though that selects a fixed conveter at indexing time
+            // and this waits until invocation time to decide how to convert.
             if (parameterValue != null)
             {
                 switch (Type.GetTypeCode(parameterValue.GetType()))

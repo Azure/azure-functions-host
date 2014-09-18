@@ -9,16 +9,16 @@ using System.Globalization;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Converters;
 
-namespace Microsoft.Azure.WebJobs.Host
+namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal static class ObjectBinderHelpers
+    internal static class PocoTableEntityConverter
     {
         // Beware, we deserializing, DateTimes may arbitrarily be Local or UTC time.
         // Callers can normalize via DateTime.ToUniversalTime()
         // Can't really normalize here because DateTimes could be embedded deep in the target type.
         private static object BindFromString(string input, Type target)
         {
-            MethodInfo method = typeof(ObjectBinderHelpers).GetMethod(
+            MethodInfo method = typeof(PocoTableEntityConverter).GetMethod(
                 "BindFromStringGeneric", BindingFlags.NonPublic | BindingFlags.Static);
             Debug.Assert(method != null);
             MethodInfo genericMethod = method.MakeGenericMethod(target);
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return d;
         }
 
-        static MethodInfo methodConvertDict = typeof(ObjectBinderHelpers).GetMethod("ConvertDict", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        static MethodInfo methodConvertDict = typeof(PocoTableEntityConverter).GetMethod("ConvertDict", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
         // Dictionary is a copy (immune if source object gets mutated)        
         public static IDictionary<string, string> ConvertObjectToDict(object obj)

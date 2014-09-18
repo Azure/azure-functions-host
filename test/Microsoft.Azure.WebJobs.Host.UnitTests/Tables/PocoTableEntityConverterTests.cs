@@ -5,16 +5,17 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Host.UnitTests
+namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
-    public class ObjectBinderHelpersTests
+    public class PocoTableEntityConverterTests
     {
         [Fact]
         public void ConvertAnonymousType()
         {
-            var d = ObjectBinderHelpers.ConvertObjectToDict(new { A = 'A', One = 1 });
+            var d = PocoTableEntityConverter.ConvertObjectToDict(new { A = 'A', One = 1 });
 
             Assert.Equal(2, d.Count);
             Assert.Equal("A", d["A"]);
@@ -46,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         
         private static DateTime RoundTripDateTime(DateTime now)
         {
-            var d = ObjectBinderHelpers.ConvertObjectToDict(new DateWrapper { Value = now });
+            var d = PocoTableEntityConverter.ConvertObjectToDict(new DateWrapper { Value = now });
 
             Assert.Equal(1, d.Count);
 
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var dateRaw = DateTime.Parse(rawVal);
             Assert.Equal(now.ToUniversalTime(), dateRaw.ToUniversalTime());
             
-            DateTime val = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d).Value;
+            DateTime val = PocoTableEntityConverter.ConvertDictToObject<DateWrapper>(d).Value;
 
             // should have normalized Kind to be UTC
             Assert.Equal(val.Kind, DateTimeKind.Utc);
@@ -69,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             // Empty
             var d = new Dictionary<string, string>();
-            var obj = ObjectBinderHelpers.ConvertDictToObject<NullableDateWrapper>(d);
+            var obj = PocoTableEntityConverter.ConvertDictToObject<NullableDateWrapper>(d);
 
             Assert.False(obj.Value.HasValue);
         }
@@ -79,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             // Empty
             NullableDateWrapper obj = new NullableDateWrapper();
-            var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
+            var d = PocoTableEntityConverter.ConvertObjectToDict(obj);
 
             // Nullable field shouldn't be written
             Assert.Equal(0, d.Count);
@@ -91,13 +92,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             // Empty
             var now = DateTime.UtcNow;
             NullableDateWrapper obj = new NullableDateWrapper { Value = now };
-            var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
+            var d = PocoTableEntityConverter.ConvertObjectToDict(obj);
 
             Assert.Equal(1, d.Count);
-            var obj2 = ObjectBinderHelpers.ConvertDictToObject<NullableDateWrapper>(d);
+            var obj2 = PocoTableEntityConverter.ConvertDictToObject<NullableDateWrapper>(d);
 
             // Verify structural type equivalance. 
-            var obj3 = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d);
+            var obj3 = PocoTableEntityConverter.ConvertDictToObject<DateWrapper>(d);
 
             Assert.Equal(obj.Value, obj2.Value);
             Assert.Equal(obj.Value, obj3.Value);
@@ -124,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var d = new Dictionary<string, string>();
             d["Value"] = raw;
 
-            DateTime val = ObjectBinderHelpers.ConvertDictToObject<DateWrapper>(d).Value;
+            DateTime val = PocoTableEntityConverter.ConvertDictToObject<DateWrapper>(d).Value;
 
             Assert.Equal(now.Kind, val.Kind);
             Assert.Equal(raw, val.ToString());
@@ -137,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var source = new Dictionary<string, object>();
             source["A"] = 'A';
             source["One"] = 1;
-            var d = ObjectBinderHelpers.ConvertObjectToDict(source);
+            var d = PocoTableEntityConverter.ConvertObjectToDict(source);
 
             Assert.Equal(2, d.Count);
             Assert.Equal("A", d["A"]);
@@ -150,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var obj = new StringBuilder("A");
             var source = new Dictionary<string, object>();
             source["A"] = obj;
-            var d = ObjectBinderHelpers.ConvertObjectToDict(source);
+            var d = PocoTableEntityConverter.ConvertObjectToDict(source);
 
             Assert.True(!object.ReferenceEquals(source, d)); // different instances
             Assert.Equal("A", d["A"]);
@@ -165,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void ConvertEnum()
         {
             var obj = new { Purchase = Fruit.Banana };
-            var d = ObjectBinderHelpers.ConvertObjectToDict(obj);
+            var d = PocoTableEntityConverter.ConvertObjectToDict(obj);
 
             Assert.Equal(1, d.Count);
             Assert.Equal("Banana", d["Purchase"]);
@@ -182,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public void ConvertWithTypeDescriptor()
         {
-            TestEnum x = (TestEnum)ObjectBinderHelpers.BindFromStringGeneric<TestEnum>("Frown");
+            TestEnum x = (TestEnum)PocoTableEntityConverter.BindFromStringGeneric<TestEnum>("Frown");
 
             // Converter overrides parse functionality
             Assert.Equal(x, TestEnum.Smile);
