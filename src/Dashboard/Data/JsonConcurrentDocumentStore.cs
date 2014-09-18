@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Protocols;
 using Newtonsoft.Json;
 
 namespace Dashboard.Data
@@ -9,11 +10,7 @@ namespace Dashboard.Data
     public class JsonConcurrentDocumentStore<TDocument> : IConcurrentDocumentStore<TDocument>,
         IConcurrentMetadataDocumentStore<TDocument>
     {
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            Formatting = Formatting.Indented
-        };
+        private static readonly JsonSerializerSettings _settings = JsonSerialization.Settings;
 
         private readonly IConcurrentMetadataTextStore _innerStore;
 

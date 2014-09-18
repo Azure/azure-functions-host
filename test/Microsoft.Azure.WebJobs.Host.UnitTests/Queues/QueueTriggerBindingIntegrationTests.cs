@@ -6,6 +6,7 @@ using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json;
 using Xunit;
 using Xunit.Extensions;
 
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
                 "Parse",new Type[]{typeof(string)});
             object convertedPropertyValue = parseMethod.Invoke(null, new object[]{userPropertyValue});
             userProperty.SetValue(expectedObject, convertedPropertyValue);
-            string messageContent = JsonCustom.SerializeObject(expectedObject);
+            string messageContent = JsonConvert.SerializeObject(expectedObject);
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
 
             // Act

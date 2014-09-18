@@ -193,7 +193,8 @@ namespace Dashboard
 
             try
             {
-                return JsonConvert.DeserializeObject<IDictionary<string, ParameterLog>>(contents);
+                return JsonConvert.DeserializeObject<IDictionary<string, ParameterLog>>(contents,
+                    JsonSerialization.Settings);
             }
             catch
             {

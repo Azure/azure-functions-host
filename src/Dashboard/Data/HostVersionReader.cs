@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
@@ -117,7 +118,8 @@ namespace Dashboard.Data
 
             try
             {
-                VersionBlobContent content = JsonConvert.DeserializeObject<VersionBlobContent>(value);
+                VersionBlobContent content = JsonConvert.DeserializeObject<VersionBlobContent>(value,
+                    JsonSerialization.Settings);
 
                 if (content == null)
                 {

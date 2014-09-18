@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         {
             Dictionary<string, ParameterLog> logs = new Dictionary<string, ParameterLog>();
             AddLogs(_watches, logs);
-            string content = JsonConvert.SerializeObject(logs);
+            string content = JsonConvert.SerializeObject(logs, JsonSerialization.Settings);
 
             try
             {

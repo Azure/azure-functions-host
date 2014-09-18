@@ -8,6 +8,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Microsoft.Azure.WebJobs.Storage;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Data.Logs
 {
@@ -62,7 +63,7 @@ namespace Dashboard.Data.Logs
                 CloudBlockBlob logBlob = _logsContainer.GetBlockBlobReference(fullBlobName);
                 string blobContent = logBlob.DownloadText();
 
-                return JsonConvert.DeserializeObject<IndexerLogEntry>(blobContent);
+                return JsonConvert.DeserializeObject<IndexerLogEntry>(blobContent, JsonSerialization.Settings);
             }
             catch (StorageException exception)
             {

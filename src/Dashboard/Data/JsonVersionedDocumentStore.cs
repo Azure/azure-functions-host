@@ -38,7 +38,7 @@ namespace Dashboard.Data
                 return null;
             }
 
-            TDocument document = JsonConvert.DeserializeObject<TDocument>(textItem.Text);
+            TDocument document = JsonConvert.DeserializeObject<TDocument>(textItem.Text, _settings);
 
             return new VersionedMetadataDocument<TDocument>(textItem.ETag, textItem.Metadata, textItem.Version,
                 document);

@@ -7,6 +7,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -91,7 +93,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
             else
             {
-                result = JsonCustom.SerializeObject(value, type);
+                result = (value == null) ? String.Empty :
+                    JsonConvert.SerializeObject(value, JsonSerialization.Settings);
             }
             return result;
         }
@@ -147,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
             else
             {
-                value = JsonCustom.DeserializeObject(str, type);
+                value = JsonConvert.DeserializeObject(str, type, JsonSerialization.Settings);
             }
             return value;
         }

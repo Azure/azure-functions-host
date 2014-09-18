@@ -6,11 +6,11 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
+using Newtonsoft.Json;
 using Xunit;
 using Xunit.Extensions;
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
                 "Parse",new Type[]{typeof(string)});
             object convertedPropertyValue = parseMethod.Invoke(null, new object[]{userPropertyValue});
             userProperty.SetValue(expectedObject, convertedPropertyValue);
-            string messageContent = JsonCustom.SerializeObject(expectedObject);
+            string messageContent = JsonConvert.SerializeObject(expectedObject);
             BrokeredMessage message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(messageContent)), true);
             message.ContentType = ContentTypes.ApplicationJson;
 

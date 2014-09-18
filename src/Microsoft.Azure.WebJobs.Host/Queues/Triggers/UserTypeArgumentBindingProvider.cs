@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -48,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
                 try
                 {
-                    convertedValue = JsonCustom.DeserializeObject(value.AsString, ValueType);
+                    convertedValue = JsonConvert.DeserializeObject(value.AsString, ValueType,
+                        JsonSerialization.Settings);
                 }
                 catch (JsonException e)
                 {

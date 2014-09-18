@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
             else
             {
-                JObject objectToken = JObject.FromObject(input);
+                JObject objectToken = JObject.FromObject(input, JsonSerialization.Serializer);
                 Debug.Assert(objectToken != null);
                 QueueCausalityManager.SetOwner(_functionInstanceId, objectToken);
                 token = objectToken;

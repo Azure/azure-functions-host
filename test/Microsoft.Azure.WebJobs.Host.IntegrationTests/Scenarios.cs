@@ -12,6 +12,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
@@ -189,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
                     // Assert
                     Assert.True(poisonMessageReceived); // Guard
-                    BlobTriggerMessage message = JsonCustom.DeserializeObject<BlobTriggerMessage>(PoisonBlobProgram.PoisonMessageText);
+                    BlobTriggerMessage message = JsonConvert.DeserializeObject<BlobTriggerMessage>(PoisonBlobProgram.PoisonMessageText);
                     Assert.NotNull(message);
                     Assert.Equal(BlobType.BlockBlob, message.BlobType);
                     Assert.Equal(expectedContainerName, message.ContainerName);
@@ -288,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                         queue.Delete();
                     }
                     queue.CreateIfNotExists();
-                    queue.AddMessage(new CloudQueueMessage(JsonCustom.SerializeObject(
+                    queue.AddMessage(new CloudQueueMessage(JsonConvert.SerializeObject(
                         new ProgramQueues.TableEntityPayload
                         {
                             TableName = tableName,

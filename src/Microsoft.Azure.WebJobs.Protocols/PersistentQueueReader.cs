@@ -345,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         {
             try
             {
-                JObject parsedMessage = JsonParser.ParseWithDateTimeOffset(blobText);
+                JObject parsedMessage = JsonSerialization.ParseJObject(blobText);
                 parsedMessage.RemoveIfContainsKey("Credentials");
                 return parsedMessage.ToJsonString();
             }

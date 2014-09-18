@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             // The following code is different from token.ToString(), which special-cases null to return "" instead of
             // "null".
             using (StringWriter stringWriter = new StringWriter())
-            using (JsonWriter jsonWriter = new JsonTextWriter(stringWriter))
+            using (JsonWriter jsonWriter = JsonSerialization.CreateJsonTextWriter(stringWriter))
             {
                 token.WriteTo(jsonWriter);
                 jsonWriter.Flush();

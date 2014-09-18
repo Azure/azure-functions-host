@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public async Task<bool> ExecuteAsync(CloudQueueMessage value, CancellationToken cancellationToken)
         {
-            HostMessage model = JsonCustom.DeserializeObject<HostMessage>(value.AsString);
+            HostMessage model = JsonConvert.DeserializeObject<HostMessage>(value.AsString, JsonSerialization.Settings);
 
             if (model == null)
             {

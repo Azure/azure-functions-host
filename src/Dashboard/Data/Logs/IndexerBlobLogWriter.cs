@@ -61,7 +61,7 @@ namespace Dashboard.Data.Logs
             string logBlobName = BlobNames.GetConflictFreeDateTimeBasedBlobName(entry.Date);
             entry.Id = logBlobName;
 
-            string logEntryAsJson = JsonConvert.SerializeObject(entry);
+            string logEntryAsJson = JsonConvert.SerializeObject(entry, JsonSerialization.Settings);
 
             _logsContainer.CreateIfNotExists();
 

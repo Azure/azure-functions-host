@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             IDictionary<string, JToken> json;
             try
             {
-                json = JObject.Parse(text);
+                json = JsonSerialization.ParseJObject(text);
             }
             catch (Exception)
             {

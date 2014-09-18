@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 
             // When JSON is a structured object, we can extract the fields as route parameters.
             string json = @"{ ""Name"" : 12, ""other"" : 13 }";
-            object value = JsonCustom.DeserializeObject(json, typeof(SimpleDataType));
+            object value = JsonConvert.DeserializeObject(json, typeof(SimpleDataType));
 
             // Act
             var bindingData = provider.GetBindingData(value);
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 ""b"":[1,2,3],
 ""c"":{}
 }";
-            object value = JsonCustom.DeserializeObject(json, typeof(ComplexDataType));
+            object value = JsonConvert.DeserializeObject(json, typeof(ComplexDataType));
 
             // Act
             var bindingData = provider.GetBindingData(value);
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             DateTime date = new DateTime(1950, 6, 1, 2, 3, 30);
 
             var json = JsonConvert.SerializeObject(new { date = date });
-            object value = JsonCustom.DeserializeObject(json, typeof(DataTypeWithDateProperty));
+            object value = JsonConvert.DeserializeObject(json, typeof(DataTypeWithDateProperty));
 
             // Act
             var bindingData = provider.GetBindingData(value);
