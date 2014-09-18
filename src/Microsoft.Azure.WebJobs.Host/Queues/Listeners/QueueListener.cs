@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly uint _maxDequeueCount;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher =
+            BackgroundExceptionDispatcher.Instance;
 
         private bool _foundMessageSinceLastDelay;
         private bool _disposed;
@@ -267,6 +269,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             catch (OperationCanceledException)
             {
                 // Don't fail the top-level task when an inner task cancels.
+            }
+            catch (Exception exception)
+            {
+                // Immediately report any unhandled exception from this background task.
+                // (Don't capture the exception as a fault of this Task; that would delay any exception reporting until
+                // Stop is called, which might never happen.)
+                _backgroundExceptionDispatcher.Throw(ExceptionDispatchInfo.Capture(exception));
             }
         }
 
