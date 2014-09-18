@@ -5,7 +5,7 @@ using System;
 using System.Text;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
+namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal static class CloudQueueMessageExtensions
     {

@@ -52,6 +52,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         }
 
         [Fact]
+        public void GetOwner_IfMessageIsNotValidString_ReturnsNull()
+        {
+            byte[] invalidUtf8 = new byte[] { 0x00, 0xFF };
+            TestOwnerIsNull(new CloudQueueMessage(invalidUtf8));
+        }
+
+        [Fact]
         public void GetOwner_IfMessageIsNotValidJsonObject_ReturnsNull()
         {
             TestOwnerIsNull("non-json");
@@ -102,8 +109,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
         private static void TestOwnerIsNull(string message)
         {
+            TestOwnerIsNull(new CloudQueueMessage(message));
+        }
+
+        private static void TestOwnerIsNull(CloudQueueMessage message)
+        {
             // Act
-            Guid? owner = GetOwner(message);
+            Guid? owner = QueueCausalityManager.GetOwner(message);
 
             // Assert
             Assert.Null(owner);

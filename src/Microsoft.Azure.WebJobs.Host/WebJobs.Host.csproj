@@ -441,7 +441,7 @@
     <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
     <Compile Include="Queues\ParameterizedQueuePath.cs" />
-    <Compile Include="Queues\Triggers\CloudQueueMessageExtensions.cs" />
+    <Compile Include="Queues\CloudQueueMessageExtensions.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\ITableArgumentBinding.cs" />

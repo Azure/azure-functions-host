@@ -41,23 +41,29 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         [DebuggerNonUserCode]
         public static Guid? GetOwner(CloudQueueMessage msg)
         {
-            string json = msg.AsString;
-            IDictionary<string, JToken> jsonObject;
+            string text = msg.TryGetAsString();
+
+            if (text == null)
+            {
+                return null;
+            }
+
+            IDictionary<string, JToken> json;
             try
             {
-                jsonObject = JObject.Parse(json);
+                json = JObject.Parse(text);
             }
             catch (Exception)
             {
                 return null;
             }
 
-            if (!jsonObject.ContainsKey(parentGuidFieldName) || jsonObject[parentGuidFieldName].Type != JTokenType.String)
+            if (!json.ContainsKey(parentGuidFieldName) || json[parentGuidFieldName].Type != JTokenType.String)
             {
                 return null;
             }
 
-            string val = (string)jsonObject[parentGuidFieldName];
+            string val = (string)json[parentGuidFieldName];
 
             Guid guid;
             if (Guid.TryParse(val, out guid))
