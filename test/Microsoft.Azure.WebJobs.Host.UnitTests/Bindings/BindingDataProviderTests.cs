@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             
             var names = provider.Contract.Keys.ToArray();
             Array.Sort(names);
-            var expected = new string[] { "IntProp", "StringProp" };
+            var expected = new string[] { "IntProp", "Nested", "StringProp" };
             Assert.Equal(expected, names);
         }
 
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
         }
 
         [Fact]
-        public void GetBindingData_IfComplexDataType_ReturnsBindingDataWithSimpleTypes()
+        public void GetBindingData_IfComplexDataType_ReturnsBindingDataWithAllTypes()
         {
             // Arrange
             IBindingDataProvider provider = BindingDataProvider.FromType(typeof(ComplexDataType));
@@ -89,8 +89,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             Assert.NotNull(bindingData);
 
             // Only take simple types
-            Assert.Equal(1, bindingData.Count);
+            Assert.Equal(3, bindingData.Count);
             Assert.Equal(1, bindingData["a"]);
+            Assert.Equal(new int[] { 1, 2, 3 }, bindingData["b"]);
+            Assert.Equal(new Dictionary<string, object>(), bindingData["c"]);
         }
 
         [Fact]
@@ -141,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 
             public string StringProp { get; set; } // Yes
 
-            public NestedDataType Nexted { get; set; } // skip: not simple type
+            public NestedDataType Nested { get; set; } // Yes
 
             public static int StaticIntProp { get; set; } // skip: not instance property
 

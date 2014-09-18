@@ -41,41 +41,6 @@ namespace Microsoft.Azure.WebJobs.Host
             return converter.Convert(input);
         }
 
-        // BCL implementation may get wrong converters
-        // It appears to use Type.GetType() to find a converter, and so has trouble looking up converters from different loader contexts.
-        static TypeConverter GetConverter(Type type)
-        {
-            // $$$ There has got to be a better way than this to make TypeConverters work.
-            foreach (TypeConverterAttribute attr in type.GetCustomAttributes(typeof(TypeConverterAttribute), false))
-            {
-                string assemblyQualifiedName = attr.ConverterTypeName;
-                if (!string.IsNullOrWhiteSpace(assemblyQualifiedName))
-                {
-                    // Type.GetType() may fail due to loader context issues.
-                    string assemblyName = type.Assembly.FullName;
-
-                    if (assemblyQualifiedName.EndsWith(assemblyName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        int i = assemblyQualifiedName.IndexOf(',');
-                        if (i > 0)
-                        {
-                            string typename = assemblyQualifiedName.Substring(0, i);
-
-                            var a = type.Assembly;
-                            var t2 = a.GetType(typename); // lookup type name relative to the 
-                            if (t2 != null)
-                            {
-                                var instance = Activator.CreateInstance(t2);
-                                return (TypeConverter)instance;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return TypeDescriptor.GetConverter(type);
-        }
-
         private static IDictionary<string, string> ConvertDict<TValue>(IDictionary<string, TValue> source)
         {
             Dictionary<string, string> d = new Dictionary<string, string>();
@@ -260,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Host
         // - JSON 
         // Make sure serialization/Deserialization agree on the types.
         // Parses are *not* compatible, especially for same types. 
-        public static bool UseToStringParser(Type t)
+        private static bool UseToStringParser(Type t)
         {
             // JOSN requires strings to be quoted. 
             // The practical effect of adding some of these types just means that the values don't need to be quoted. 

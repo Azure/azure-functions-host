@@ -3,23 +3,21 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class BindingDataProvider : IBindingDataProvider
     {
-        private Type _type;
-        private IReadOnlyDictionary<string, Type> _contract;
+        private readonly Type _type;
+        private readonly IReadOnlyDictionary<string, Type> _contract;
+        private readonly IEnumerable<PropertyHelper> _propertyHelpers;
 
-        public BindingDataProvider(Type type, IReadOnlyDictionary<string, Type> contract)
+        public BindingDataProvider(Type type, IReadOnlyDictionary<string, Type> contract,
+            IEnumerable<PropertyHelper> propertyHelpers)
         {
             _type = type;
             _contract = contract;
+            _propertyHelpers = propertyHelpers;
         }
 
         public Type ValueType
@@ -49,23 +47,20 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             // The properties on user-defined types are valid binding data.
-            IReadOnlyList<PropertyInfo> bindingDataProperties =
-                type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => ObjectBinderHelpers.UseToStringParser(p.PropertyType))
-                    .ToList();
+            IReadOnlyList<PropertyHelper> bindingDataProperties = PropertyHelper.GetProperties(type);
 
             if (bindingDataProperties.Count == 0)
             {
                 return null;
             }
 
-            Dictionary<string, Type> entries = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
-            foreach (PropertyInfo property in bindingDataProperties)
+            Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+            foreach (PropertyHelper property in bindingDataProperties)
             {
-                entries.Add(property.Name, property.PropertyType);
+                contract.Add(property.Name, property.PropertyType);
             }
 
-            return new BindingDataProvider(type, entries);
+            return new BindingDataProvider(type, contract, bindingDataProperties);
         }
 
         /// <summary>
@@ -87,10 +82,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-            foreach (var entry in Contract)
+            foreach (var propertyHelper in _propertyHelpers)
             {
-                var propertyValue = ValueType.GetProperty(entry.Key).GetValue(value, null);
-                bindingData.Add(entry.Key, propertyValue);
+                object propertyValue = propertyHelper.GetValue(value);
+                bindingData.Add(propertyHelper.Name, propertyValue);
             }
 
             return bindingData;

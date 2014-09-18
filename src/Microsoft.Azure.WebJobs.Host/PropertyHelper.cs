@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host
     {
         private static ConcurrentDictionary<Type, PropertyHelper[]> _reflectionCache = new ConcurrentDictionary<Type, PropertyHelper[]>();
 
+        private readonly Type _propertyType;
         private Func<object, object> _valueGetter;
 
         /// <summary>
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host
             Contract.Assert(property != null);
 
             Name = property.Name;
+            _propertyType = property.PropertyType;
             _valueGetter = MakeFastPropertyGetter(property);
         }
 
@@ -65,6 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public virtual string Name { get; protected set; }
 
+        public Type PropertyType
+        {
+            get { return _propertyType; }
+        }
+
         public object GetValue(object instance)
         {
             Contract.Assert(_valueGetter != null, "Must call Initialize before using this object");
@@ -79,7 +86,12 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <returns>a cached array of all public property getters from the underlying type of this instance.</returns>
         public static PropertyHelper[] GetProperties(object instance)
         {
-            return GetProperties(instance, CreateInstance, _reflectionCache);
+            return GetProperties(instance.GetType());
+        }
+
+        public static PropertyHelper[] GetProperties(Type type)
+        {
+            return GetProperties(type, CreateInstance, _reflectionCache);
         }
 
         /// <summary>
@@ -152,14 +164,12 @@ namespace Microsoft.Azure.WebJobs.Host
             setter((TDeclaringType)@this, (TValue)value);
         }
 
-        protected static PropertyHelper[] GetProperties(object instance,
+        protected static PropertyHelper[] GetProperties(Type type,
                                                         Func<PropertyInfo, PropertyHelper> createPropertyHelper,
                                                         ConcurrentDictionary<Type, PropertyHelper[]> cache)
         {
             // Using an array rather than IEnumerable, as this will be called on the hot path numerous times.
             PropertyHelper[] helpers;
-
-            Type type = instance.GetType();
 
             if (!cache.TryGetValue(type, out helpers))
             {
