@@ -13,7 +13,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>Provides the standard <see cref="JsonSerializerSettings"/> used by protocol data.</summary>
+#if PUBLICPROTOCOL
     public static class JsonSerialization
+#else
+    internal static class JsonSerialization
+#endif
     {
         private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
         {
