@@ -133,11 +133,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 
 
         [Fact]
-        public void ConvertStrongDictionary()
+        public void ConvertStringDictionary()
         {
-            var source = new Dictionary<string, object>();
-            source["A"] = 'A';
-            source["One"] = 1;
+            var source = new Dictionary<string, string>();
+            source["A"] = "A";
+            source["One"] = "1";
             var d = PocoTableEntityConverter.ConvertObjectToDict(source);
 
             Assert.Equal(2, d.Count);
@@ -148,16 +148,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         [Fact]
         public void TestMutate()
         {
-            var obj = new StringBuilder("A");
-            var source = new Dictionary<string, object>();
-            source["A"] = obj;
+            var source = new Dictionary<string, string>();
+            source["A"] = "A";
             var d = PocoTableEntityConverter.ConvertObjectToDict(source);
 
             Assert.True(!object.ReferenceEquals(source, d)); // different instances
             Assert.Equal("A", d["A"]);
             
             // Now mutate.
-            obj.Append("B");
+            source.Remove("A");
 
             Assert.Equal("A", d["A"]);
         }

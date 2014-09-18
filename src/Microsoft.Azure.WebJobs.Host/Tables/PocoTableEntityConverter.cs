@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
@@ -42,18 +41,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return converter.Convert(input);
         }
 
-        private static IDictionary<string, string> ConvertDict<TValue>(IDictionary<string, TValue> source)
-        {
-            Dictionary<string, string> d = new Dictionary<string, string>();
-            foreach (var kv in source)
-            {
-                d[kv.Key] = kv.Value.ToString();
-            }
-            return d;
-        }
-
-        static MethodInfo methodConvertDict = typeof(PocoTableEntityConverter).GetMethod("ConvertDict", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-
         // Dictionary is a copy (immune if source object gets mutated)        
         public static IDictionary<string, string> ConvertObjectToDict(object obj)
         {
@@ -61,28 +48,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             {
                 return new Dictionary<string, string>();
             }
-            Type objectType = obj.GetType();
 
-            // Does type implemnet IDictionary<string, TValue>?
-            // If so, run through and call
-            foreach (var typeInterface in objectType.GetInterfaces())
+            if (obj is IDictionary<string, string>)
             {
-                if (typeInterface.IsGenericType)
-                {
-                    if (typeInterface.GetGenericTypeDefinition() == typeof(IDictionary<,>))
-                    {
-                        var typeArgs = typeInterface.GetGenericArguments();
-                        if (typeArgs[0] == typeof(string))
-                        {
-                            var m = methodConvertDict.MakeGenericMethod(typeArgs[1]);
-                            IDictionary<string, string> result = (IDictionary<string, string>)m.Invoke(null, new object[] { obj });
-                            return result;
-                        }
-                    }
-                }
+                // Per contract above, clone.
+                return new Dictionary<string, string>((IDictionary<string, string>)obj);
             }
 
             Dictionary<string, string> d = new Dictionary<string, string>();
+            Type objectType = obj.GetType();
 
             foreach (var prop in objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
