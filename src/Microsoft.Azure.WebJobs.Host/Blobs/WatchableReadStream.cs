@@ -24,6 +24,26 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _totalLength = inner.Length;
         }
 
+        public override Task CopyToAsync(Stream destination, int bufferSize, CancellationToken cancellationToken)
+        {
+            Task baseTask = base.CopyToAsync(destination, bufferSize, cancellationToken);
+            return CopyToAsyncCore(baseTask);
+        }
+
+        private async Task CopyToAsyncCore(Task baseTask)
+        {
+            try
+            {
+                _timeRead.Start();
+                await baseTask;
+                _countRead += _totalLength;
+            }
+            finally
+            {
+                _timeRead.Stop();
+            }
+        }
+
         public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback,
             object state)
         {

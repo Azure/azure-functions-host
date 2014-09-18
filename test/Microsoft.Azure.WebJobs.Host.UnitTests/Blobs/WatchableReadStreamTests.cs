@@ -793,22 +793,144 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             Stream expectedDestination = CreateDummyStream();
             int expectedBufferSize = 123;
             CancellationToken expectedCancellationToken = new CancellationToken(canceled: true);
-            Task expectedTask = new Task(() => { });
 
             Mock<Stream> innerStreamMock = CreateMockInnerStream();
             innerStreamMock
                 .Setup(s => s.CopyToAsync(expectedDestination, expectedBufferSize, expectedCancellationToken))
-                .Returns(expectedTask)
+                .Returns(Task.FromResult(-1))
                 .Verifiable();
             Stream innerStream = innerStreamMock.Object;
             Stream product = CreateProductUnderTest(innerStream);
 
             // Act
-            Task task = product.CopyToAsync(expectedDestination, expectedBufferSize, expectedCancellationToken);
+            product.CopyToAsync(expectedDestination, expectedBufferSize, expectedCancellationToken);
 
             // Assert
-            Assert.Same(task, expectedTask);
             innerStreamMock.Verify();
+        }
+
+        [Fact]
+        public void CopyToAsync_WhenInnerStreamThrows_PropogatesException()
+        {
+            // Arrange
+            Exception expectedException = new Exception();
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            innerStreamMock
+                .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Throws(expectedException);
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            Stream destination = CreateDummyStream();
+            int bufferSize = 123;
+            CancellationToken cancellationToken = CancellationToken.None;
+
+            // Act & Assert
+            Exception exception = Assert.Throws<Exception>(
+                () => product.CopyToAsync(destination, bufferSize, cancellationToken));
+            Assert.Same(expectedException, exception);
+        }
+
+        [Fact]
+        public void CopyToAsync_WhenInnerStreamHasNotYetCompleted_ReturnsIncompleteTask()
+        {
+            // Arrange
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
+            innerStreamMock
+                .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Returns(taskSource.Task);
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            Stream destination = CreateDummyStream();
+            int bufferSize = 123;
+            CancellationToken cancellationToken = CancellationToken.None;
+
+            // Act
+            Task task = product.CopyToAsync(destination, bufferSize, cancellationToken);
+
+            // Assert
+            Assert.NotNull(task);
+            Assert.False(task.IsCompleted);
+        }
+
+        [Fact]
+        public void CopyToAsync_WhenInnerStreamHasCompleted_ReturnsRanToCompletionTask()
+        {
+            // Arrange
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
+            taskSource.SetResult(null);
+            innerStreamMock
+                .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Returns(taskSource.Task);
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            Stream destination = CreateDummyStream();
+            int bufferSize = 123;
+            CancellationToken cancellationToken = CancellationToken.None;
+
+            // Act
+            Task task = product.CopyToAsync(destination, bufferSize, cancellationToken);
+
+            // Assert
+            Assert.NotNull(task);
+            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+        }
+
+        [Fact]
+        public void CopyToAsync_WhenInnerStreamHasCanceled_ReturnsCanceledTask()
+        {
+            // Arrange
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
+            taskSource.SetCanceled();
+            innerStreamMock
+                .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Returns(taskSource.Task);
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            Stream destination = CreateDummyStream();
+            int bufferSize = 123;
+            CancellationToken cancellationToken = CancellationToken.None;
+
+            // Act
+            Task task = product.CopyToAsync(destination, bufferSize, cancellationToken);
+
+            // Assert
+            Assert.NotNull(task);
+            Assert.Equal(TaskStatus.Canceled, task.Status);
+        }
+
+        [Fact]
+        public void CopyToAsync_WhenInnerStreamHasFaulted_ReturnsFaultedTask()
+        {
+            // Arrange
+            Exception expectedException = new Exception();
+            Mock<Stream> innerStreamMock = CreateMockInnerStream();
+            TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
+            taskSource.SetException(expectedException);
+            innerStreamMock
+                .Setup(s => s.CopyToAsync(It.IsAny<Stream>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .Returns(taskSource.Task);
+            Stream innerStream = innerStreamMock.Object;
+            Stream product = CreateProductUnderTest(innerStream);
+
+            Stream destination = CreateDummyStream();
+            int bufferSize = 123;
+            CancellationToken cancellationToken = CancellationToken.None;
+
+            // Act
+            Task task = product.CopyToAsync(destination, bufferSize, cancellationToken);
+
+            // Assert
+            Assert.NotNull(task);
+            Assert.Equal(TaskStatus.Faulted, task.Status);
+            Assert.NotNull(task.Exception);
+            Assert.Same(expectedException, task.Exception.InnerException);
         }
 
         [Fact]
@@ -1424,6 +1546,27 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
                 byte[] buffer = new byte[contents.Length];
                 int bytesRead = product.EndRead(product.BeginRead(buffer, 0, buffer.Length, null, null));
                 Assert.Equal(bytesRead, buffer.Length); // Guard
+
+                // Act
+                ParameterLog status = product.GetStatus();
+
+                // Assert
+                AssertEqualBytesRead(contents.Length, status);
+            }
+        }
+
+        [Fact]
+        public void GetStatus_AfterCopyToAsync_ReturnsAllBytesRead()
+        {
+            // Arrange
+            string contents = "abc";
+
+            using (MemoryStream innerStream = CreateInnerStream(contents))
+            using (WatchableReadStream product = CreateProductUnderTest(innerStream))
+            using (MemoryStream output = new MemoryStream())
+            {
+                product.CopyToAsync(output).GetAwaiter().GetResult();
+                Assert.Equal(contents.Length, product.Position); // Guard
 
                 // Act
                 ParameterLog status = product.GetStatus();
