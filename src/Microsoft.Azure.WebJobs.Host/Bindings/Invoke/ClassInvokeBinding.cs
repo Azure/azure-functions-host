@@ -11,9 +11,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
     class ClassInvokeBinding<TValue> : IBinding
         where TValue : class
     {
-        private static readonly IObjectToTypeConverter<TValue> _converter = new CompositeObjectToTypeConverter<TValue>(
-            new ClassOutputConverter<TValue, TValue>(new IdentityConverter<TValue>()),
-            new ClassOutputConverter<string, TValue>(new StringToTConverter<TValue>()));
+        private static readonly IObjectToTypeConverter<TValue> _converter =
+            ObjectToTypeConverterFactory.CreateForClass<TValue>();
 
         private readonly string _parameterName;
 

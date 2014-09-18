@@ -13,9 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
         where TBindingData : class
     {
         private static readonly IObjectToTypeConverter<TBindingData> _converter =
-            new CompositeObjectToTypeConverter<TBindingData>(
-                new ClassOutputConverter<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
-                new ClassOutputConverter<string, TBindingData>(new StringToTConverter<TBindingData>()));
+            ObjectToTypeConverterFactory.CreateForClass<TBindingData>();
 
         private readonly string _parameterName;
         private readonly IArgumentBinding<TBindingData> _argumentBinding;

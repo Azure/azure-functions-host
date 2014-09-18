@@ -2,8 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Converters;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
@@ -18,32 +20,51 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
             Type parameterType = parameter.ParameterType;
 
-            if (!ObjectBinderHelpers.CanBindFromString(parameterType))
+            return (IArgumentBinding<TBindingData>)TryCreateBinding(parameterType);
+        }
+
+        private static IArgumentBinding<string> TryCreateBinding(Type itemType)
+        {
+            MethodInfo method = typeof(StringToTArgumentBindingProvider<TBindingData>).GetMethod(
+                "TryCreateBindingGeneric", BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(method != null);
+            MethodInfo genericMethod = method.MakeGenericMethod(itemType);
+            Debug.Assert(genericMethod != null);
+            Func<IArgumentBinding<string>> lambda = (Func<IArgumentBinding<string>>)Delegate.CreateDelegate(
+                typeof(Func<IArgumentBinding<string>>), genericMethod);
+            return lambda.Invoke();
+        }
+
+        private static IArgumentBinding<string> TryCreateBindingGeneric<TOutput>()
+        {
+            IConverter<string, TOutput> converter = StringToTConverterFactory.Instance.TryCreate<TOutput>();
+
+            if (converter == null)
             {
                 return null;
             }
 
-            return (IArgumentBinding<TBindingData>)new StringToTArgumentBinding(parameterType);
+            return new StringToTArgumentBinding<TOutput>(converter);
         }
 
-        private class StringToTArgumentBinding : IArgumentBinding<string>
+        private class StringToTArgumentBinding<TOutput> : IArgumentBinding<string>
         {
-            private readonly Type _valueType;
+            private readonly IConverter<string, TOutput> _converter;
 
-            public StringToTArgumentBinding(Type valueType)
+            public StringToTArgumentBinding(IConverter<string, TOutput> converter)
             {
-                _valueType = valueType;
+                _converter = converter;
             }
 
             public Type ValueType
             {
-                get { return _valueType; }
+                get { return typeof(TOutput); }
             }
 
             public Task<IValueProvider> BindAsync(string value, ValueBindingContext context)
             {
-                object converted = ObjectBinderHelpers.BindFromString(value, _valueType);
-                IValueProvider provider = new ObjectValueProvider(converted, _valueType);
+                TOutput converted = _converter.Convert(value);
+                IValueProvider provider = new ObjectValueProvider(converted, typeof(TOutput));
                 return Task.FromResult(provider);
             }
         }

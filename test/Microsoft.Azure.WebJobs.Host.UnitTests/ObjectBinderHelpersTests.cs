@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         [Fact]
         public void ConvertWithTypeDescriptor()
         {
-            TestEnum x = (TestEnum)ObjectBinderHelpers.BindFromString("Frown", typeof(TestEnum));
+            TestEnum x = (TestEnum)ObjectBinderHelpers.BindFromStringGeneric<TestEnum>("Frown");
 
             // Converter overrides parse functionality
             Assert.Equal(x, TestEnum.Smile);
@@ -210,6 +210,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                     }
                 }
                 return base.ConvertFrom(context, culture, value);
+            }
+            public override bool CanConvertTo(ITypeDescriptorContext context, Type destinationType)
+            {
+                return destinationType == typeof(TestEnum) || base.CanConvertTo(context, destinationType);
             }
         }
 

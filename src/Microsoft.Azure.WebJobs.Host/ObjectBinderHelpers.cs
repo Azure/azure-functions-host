@@ -4,90 +4,41 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Converters;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class ObjectBinderHelpers
     {
-        public static bool CanBindFromString(Type targetType)
-        {
-            if (targetType == typeof(string))
-            {
-                return true;
-            }
-
-            MethodInfo tryParseMethod = targetType.GetMethod("TryParse", new[] { typeof(string), targetType.MakeByRefType() });
-            if (tryParseMethod != null)
-            {
-                return true;
-            }
-
-            var converter = GetConverter(targetType);
-            if (converter != null)
-            {
-                if (converter.CanConvertFrom(typeof(string)))
-                {
-                    return true;
-
-                }
-            }
-
-            if (targetType.IsEnum)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
         // Beware, we deserializing, DateTimes may arbitrarily be Local or UTC time.
         // Callers can normalize via DateTime.ToUniversalTime()
         // Can't really normalize here because DateTimes could be embedded deep in the target type.
-        public static object BindFromString(string input, Type target)
+        private static object BindFromString(string input, Type target)
         {
-            if (target == typeof(string))
-            {
-                return input;
-            }
+            MethodInfo method = typeof(ObjectBinderHelpers).GetMethod(
+                "BindFromStringGeneric", BindingFlags.NonPublic | BindingFlags.Static);
+            Debug.Assert(method != null);
+            MethodInfo genericMethod = method.MakeGenericMethod(target);
+            Debug.Assert(genericMethod != null);
+            Func<object> lambda = (Func<object>)Delegate.CreateDelegate(typeof(Func<object>), genericMethod);
+            return lambda.Invoke();
+        }
 
-            // Invoke:  success = Target.TryParse(input, out value)
-            MethodInfo tryParseMethod = target.GetMethod("TryParse", new[] { typeof(string), target.MakeByRefType() });
-            if (tryParseMethod != null)
-            {
-                object[] args = new object[] { input, null };
-                bool success = (bool)tryParseMethod.Invoke(null, args);
-                if (!success)
-                {
-                    string msg = string.Format("Parameter is illegal format to parse as type '{0}'", target.FullName);
-                    throw new InvalidOperationException(msg);
-                }
-                return args[1];
-            }
-
-            // Look for a type converter. 
-            // Do this before Enums to give it higher precedence. 
-            var converter = GetConverter(target);
-            if (converter != null)
-            {
-                if (converter.CanConvertFrom(typeof(string)))
-                {
-                    return converter.ConvertFrom(input);
-                }
-            }
-
-            // Enum support 
-            if (target.IsEnum)
-            {
-                return Enum.Parse(target, input, ignoreCase: true);
-            }
+        internal static object BindFromStringGeneric<TOutput>(string input)
+        {
+            IConverter<string, TOutput> converter = StringToTConverterFactory.Instance.TryCreate<TOutput>();
 
             // It's possible we end up here if the string was JSON and we should have been using a JSON deserializer instead. 
+            if (converter == null)
             {
-                string msg = string.Format("Can't bind from string to type '{0}'", target.FullName);
+                string msg = string.Format("Can't bind from string to type '{0}'", typeof(TOutput).FullName);
                 throw new InvalidOperationException(msg);
             }
+
+            return converter.Convert(input);
         }
 
         // BCL implementation may get wrong converters
@@ -181,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return d;
         }
 
-        public static string SerializeObject(object value, Type type)
+        private static string SerializeObject(object value, Type type)
         {
             string result;
             if (type == typeof(DateTimeOffset?) ||
@@ -229,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return obj;
         }
 
-        public static object DeserializeObject(string str, Type type)
+        private static object DeserializeObject(string str, Type type)
         {
             object value;
             if (type == typeof(DateTimeOffset))
@@ -262,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Host
         }
 
         // DateTime.ToString() is not specific enough, so need better serialization functions.
-        public static string SerializeDateTime(DateTime date)
+        private static string SerializeDateTime(DateTime date)
         {
             // DateTime is tricky. It doesn't include TimeZone, but does include 
             // a DateTime.Kind property which controls the "view" exposed via ToString. 
@@ -280,12 +231,12 @@ namespace Microsoft.Azure.WebJobs.Host
             return date.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
         }
 
-        public static string SerializeDateTimeOffset(DateTimeOffset date)
+        private static string SerializeDateTimeOffset(DateTimeOffset date)
         {
             return date.UtcDateTime.ToString("o", CultureInfo.InvariantCulture);
         }
 
-        public static DateTime DeserializeDateTime(string s)
+        private static DateTime DeserializeDateTime(string s)
         {
             // Parse will read in a variety of formats (even ones not written without timezone info)
             var x = DateTime.Parse(s, CultureInfo.InvariantCulture);
@@ -298,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Host
             return x.ToUniversalTime();
         }
 
-        public static DateTimeOffset DeserializeDateTimeOffset(string s)
+        private static DateTimeOffset DeserializeDateTimeOffset(string s)
         {
             return DateTimeOffset.ParseExact(s, "o", CultureInfo.InvariantCulture);
         }
