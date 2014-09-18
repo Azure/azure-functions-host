@@ -23,8 +23,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             Debug.Assert(method != null);
             MethodInfo genericMethod = method.MakeGenericMethod(target);
             Debug.Assert(genericMethod != null);
-            Func<object> lambda = (Func<object>)Delegate.CreateDelegate(typeof(Func<object>), genericMethod);
-            return lambda.Invoke();
+            Func<string, object> lambda =
+                (Func<string, object>)Delegate.CreateDelegate(typeof(Func<string, object>), genericMethod);
+            return lambda.Invoke(input);
         }
 
         internal static object BindFromStringGeneric<TOutput>(string input)

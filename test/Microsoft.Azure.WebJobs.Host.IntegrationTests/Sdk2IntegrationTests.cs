@@ -210,9 +210,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         {
             TestTableEntityConcurrency(
                 tableName: "ITableEntityConcurrencyTest",
-                methodName: "TestITableEntityConcurrency",
-                expectedEntityType:
-                    "Microsoft.Azure.WebJobs.Host.IntegrationTests.Sdk2IntegrationTests+Program+ValueTableEntity");
+                methodName: "TestITableEntityConcurrency");
         }
 
         [Fact]
@@ -220,12 +218,10 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         {
             TestTableEntityConcurrency(
                 tableName: "PocoTableEntityConcurrencyTest",
-                methodName: "TestPocoTableEntityConcurrency",
-                expectedEntityType:
-                    "Microsoft.Azure.WebJobs.Host.IntegrationTests.Sdk2IntegrationTests+Program+PocoTableEntity");
+                methodName: "TestPocoTableEntityConcurrency");
         }
 
-        private static void TestTableEntityConcurrency(string tableName, string methodName, string expectedEntityType)
+        private static void TestTableEntityConcurrency(string tableName, string methodName)
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
 
@@ -243,8 +239,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
                 InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
                     () => host.Call(methodName));
-                Assert.Equal("Error while handling parameter entity '" + expectedEntityType +
-                    "' after function returned:", exception.Message);
+                Assert.Equal("Error while handling parameter entity after function returned:", exception.Message);
 
                 DynamicTableEntity updatedEntity =
                     (DynamicTableEntity)table.Execute(TableOperation.Retrieve("PK", "RK")).Result;

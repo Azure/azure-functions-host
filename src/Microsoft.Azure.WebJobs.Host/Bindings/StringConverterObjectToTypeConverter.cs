@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             string inputString = input as string;
 
-            if (inputString != null)
+            if (inputString == null)
             {
                 output = default(TOutput);
                 return false;

@@ -18,8 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
                 return null;
             }
 
-            Debug.Assert(typeConverter.CanConvertTo(typeof(TOutput)));
-
             if (!typeConverter.CanConvertFrom(typeof(string)))
             {
                 return null;

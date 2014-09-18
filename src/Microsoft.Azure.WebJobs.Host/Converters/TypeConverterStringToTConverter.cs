@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
         {
             _typeConverter = typeConverter;
             Debug.Assert(typeConverter.CanConvertFrom(typeof(string)));
-            Debug.Assert(typeConverter.CanConvertTo(typeof(TOutput)));
         }
 
         public TOutput Convert(string input)
