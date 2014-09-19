@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     {
         public IArgumentBinding<TBindingData> TryCreate(ParameterInfo parameter)
         {
+            if (parameter.ParameterType != typeof(string))
+            {
+                return null;
+            }
+
             IConverter<TBindingData, string> converter = TToStringConverterFactory.TryCreate<TBindingData>();
 
             if (converter == null)
