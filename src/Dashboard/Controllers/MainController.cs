@@ -9,6 +9,7 @@ namespace Dashboard.Controllers
     public class MainController : Controller
     {
         [Route("")]
+        [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Head)]
         public ActionResult Index()
         {
             if (!Request.Url.GetLeftPart(UriPartial.Path).EndsWith("/"))

@@ -50,6 +50,7 @@ namespace Dashboard.Controllers
             _invoker = invoker;
         }
 
+        [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Head)]
         public ActionResult Run(string functionId)
         {
             if (functionId == null)
@@ -78,6 +79,7 @@ namespace Dashboard.Controllers
             return Invoke(queue, form, function, ExecutionReason.Dashboard, null);
         }
 
+        [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Head)]
         public ActionResult Replay(string parentId)
         {
             if (parentId == null)
@@ -221,6 +223,7 @@ namespace Dashboard.Controllers
             return GetFunction(snapshot.FunctionId);
         }
 
+        [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Head)]
         public ActionResult SearchBlob(string path)
         {
             ViewBag.Path = path;
