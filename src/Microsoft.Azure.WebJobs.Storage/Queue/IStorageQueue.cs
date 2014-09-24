@@ -13,9 +13,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
     /// <summary>Defines a queue.</summary>
 #if PUBLICSTORAGE
     [CLSCompliant(false)]
-    public interface ICloudQueue
+    public interface IStorageQueue
 #else
-    internal interface ICloudQueue
+    internal interface IStorageQueue
 #endif
     {
         /// <summary>Adds a message to the queue.</summary>

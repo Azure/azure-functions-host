@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
     /// <summary>Defines a queue client.</summary>
 #if PUBLICSTORAGE
     [CLSCompliant(false)]
-    public interface ICloudQueueClient
+    public interface IStorageQueueClient
 #else
-    internal interface ICloudQueueClient
+    internal interface IStorageQueueClient
 #endif
     {
         /// <summary>Gets a queue reference.</summary>
         /// <param name="queueName">The queue name.</param>
         /// <returns>A queue reference.</returns>
-        ICloudQueue GetQueueReference(string queueName);
+        IStorageQueue GetQueueReference(string queueName);
     }
 }

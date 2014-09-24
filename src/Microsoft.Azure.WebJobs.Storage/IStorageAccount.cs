@@ -19,18 +19,18 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 #if PUBLICSTORAGE
     /// <summary>Defines a cloud storage account.</summary>
     [CLSCompliant(false)]
-    public interface ICloudStorageAccount
+    public interface IStorageAccount
 #else
-    internal interface ICloudStorageAccount
+    internal interface IStorageAccount
 #endif
     {
         /// <summary>Creates a queue client.</summary>
         /// <returns>A queue client.</returns>
-        ICloudQueueClient CreateCloudQueueClient();
+        IStorageQueueClient CreateQueueClient();
 
         /// <summary>
         /// Creates a table client.</summary>
         /// <returns>A table client.</returns>
-        ICloudTableClient CreateCloudTableClient();
+        IStorageTableClient CreateTableClient();
     }
 }

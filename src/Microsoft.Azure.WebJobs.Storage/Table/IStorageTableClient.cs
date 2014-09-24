@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
     /// <summary>Defines a table client.</summary>
 #if PUBLICSTORAGE
     [CLSCompliant(false)]
-    public interface ICloudTableClient
+    public interface IStorageTableClient
 #else
-    internal interface ICloudTableClient
+    internal interface IStorageTableClient
 #endif
     {
         /// <summary>Gets a table reference.</summary>
         /// <param name="tableName">The table name.</param>
         /// <returns>A table reference.</returns>
-        ICloudTable GetTableReference(string tableName);
+        IStorageTable GetTableReference(string tableName);
     }
 }

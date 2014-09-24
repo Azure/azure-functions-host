@@ -48,15 +48,15 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="ICloudStorageAccount.cs" />
+    <Compile Include="IStorageAccount.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Queue\ICloudQueue.cs" />
-    <Compile Include="Queue\ICloudQueueClient.cs" />
-    <Compile Include="SdkCloudStorageAccount.cs" />
+    <Compile Include="Queue\IStorageQueue.cs" />
+    <Compile Include="Queue\IStorageQueueClient.cs" />
+    <Compile Include="StorageAccount.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
     <Compile Include="Table\CloudTableExtensions.cs" />
-    <Compile Include="Table\ICloudTable.cs" />
-    <Compile Include="Table\ICloudTableClient.cs" />
+    <Compile Include="Table\IStorageTable.cs" />
+    <Compile Include="Table\IStorageTableClient.cs" />
     <Compile Include="Table\ResolverQueryModifier.cs" />
     <Compile Include="Table\RowKeyGreaterThanOrEqualQueryModifier.cs" />
     <Compile Include="Table\RowKeyGreaterThanQueryModifier.cs" />

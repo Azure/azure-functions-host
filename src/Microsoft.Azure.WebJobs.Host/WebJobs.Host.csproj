@@ -236,17 +236,17 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WriteBlobParameterLog.cs">
       <Link>Protocols\WriteBlobParameterLog.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\ICloudStorageAccount.cs">
-      <Link>Storage\ICloudStorageAccount.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\IStorageAccount.cs">
+      <Link>Storage\IStorageAccount.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\ICloudQueue.cs">
-      <Link>Storage\Queue\ICloudQueue.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueue.cs">
+      <Link>Storage\Queue\IStorageQueue.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\ICloudQueueClient.cs">
-      <Link>Storage\Queue\ICloudQueueClient.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueClient.cs">
+      <Link>Storage\Queue\IStorageQueueClient.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\SdkCloudStorageAccount.cs">
-      <Link>Storage\SdkCloudStorageAccount.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageAccount.cs">
+      <Link>Storage\StorageAccount.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
       <Link>Storage\StorageExceptionExtensions.cs</Link>
@@ -254,14 +254,14 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\CloudTableExtensions.cs">
       <Link>Storage\Table\CloudTableExtensions.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\ICloudTable.cs">
-      <Link>Storage\Table\ICloudTable.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\ICloudTableClient.cs">
-      <Link>Storage\Table\ICloudTableClient.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IQueryModifier.cs">
       <Link>Storage\Table\IQueryModifier.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTable.cs">
+      <Link>Storage\Table\IStorageTable.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableClient.cs">
+      <Link>Storage\Table\IStorageTableClient.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\PartitionKeyEqualsQueryModifier.cs">
       <Link>Storage\Table\PartitionKeyEqualsQueryModifier.cs</Link>

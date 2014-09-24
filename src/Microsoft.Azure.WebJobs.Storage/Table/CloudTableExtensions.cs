@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Storage.Table
 namespace Microsoft.Azure.WebJobs.Host.Storage.Table
 #endif
 {
-    /// <summary>Provides extension methods for <see cref="ICloudTable"/>.</summary>
+    /// <summary>Provides extension methods for <see cref="IStorageTable"/>.</summary>
 #if PUBLICSTORAGE
     [CLSCompliant(false)]
     public static class CloudTableExtensions
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <param name="partitionKey">The partition key by which to filter.</param>
         /// <param name="rowKeyPrefix">The row key prefix by which to filter.</param>
         /// <returns>The matching entities.</returns>
-        public static IEnumerable<TElement> QueryByRowKeyPrefix<TElement>(this ICloudTable table, string partitionKey,
+        public static IEnumerable<TElement> QueryByRowKeyPrefix<TElement>(this IStorageTable table, string partitionKey,
             string rowKeyPrefix)
             where TElement : ITableEntity, new()
         {
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <param name="rowKeyPrefix">The row key prefix by which to filter.</param>
         /// <param name="resolver">The entity resolver to use to resolve entities.</param>
         /// <returns>The matching entities.</returns>
-        public static IEnumerable<TElement> QueryByRowKeyPrefix<TElement>(this ICloudTable table, string partitionKey,
+        public static IEnumerable<TElement> QueryByRowKeyPrefix<TElement>(this IStorageTable table, string partitionKey,
             string rowKeyPrefix, EntityResolver<TElement> resolver)
             where TElement : ITableEntity, new()
         {
