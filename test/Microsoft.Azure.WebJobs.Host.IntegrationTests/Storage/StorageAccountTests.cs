@@ -2,11 +2,10 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
-using Microsoft.Azure.WebJobs.Host.Storage.Table;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -14,7 +13,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
 {
-    public class SdkCloudStorageAccountTests
+    public class StorageAccountTests
     {
         [Fact]
         public void CloudQueueCreate_IfNotExist_CreatesQueue()
@@ -34,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
                 Assert.NotNull(queue); // Guard
 
                 // Act
-                queue.CreateIfNotExists();
+                queue.CreateIfNotExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
 
                 // Assert
                 Assert.True(sdkQueue.Exists());
@@ -49,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
         }
 
         [Fact]
-        public void QueueAddMessage_AddsMessage()
+        public void CloudQueueAddMessage_AddsMessage()
         {
             // Arrange
             CloudStorageAccount sdkAccount = CreateSdkAccount();
@@ -68,11 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
                 IStorageQueue queue = client.GetQueueReference(queueName);
                 Assert.NotNull(queue); // Guard
 
-                CloudQueueMessage message = new CloudQueueMessage(expectedContent);
+                IStorageQueueMessage message = queue.CreateMessage(expectedContent);
                 Assert.NotNull(message); // Guard
 
                 // Act
-                queue.AddMessage(message);
+                queue.AddMessageAsync(message, CancellationToken.None).GetAwaiter().GetResult();
 
                 // Assert
                 CloudQueueMessage sdkMessage = sdkQueue.GetMessage();
@@ -85,9 +84,9 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
             }
         }
 
-        private static IStorageAccount CreateProductUnderTest(CloudStorageAccount sdkAccount)
+        private static IStorageAccount CreateProductUnderTest(CloudStorageAccount account)
         {
-            return new StorageAccount(sdkAccount);
+            return new StorageAccount(account);
         }
 
         private static CloudStorageAccount CreateSdkAccount()

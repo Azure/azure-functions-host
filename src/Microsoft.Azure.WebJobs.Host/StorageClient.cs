@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 
@@ -9,6 +10,16 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class StorageClient
     {
+        public static string GetAccountName(IStorageAccount account)
+        {
+            if (account == null)
+            {
+                return null;
+            }
+
+            return GetAccountName(account.Credentials);
+        }
+
         public static string GetAccountName(CloudStorageAccount account)
         {
             if (account == null)

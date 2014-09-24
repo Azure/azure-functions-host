@@ -3,12 +3,12 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IStorageCredentialsValidator
     {
-        Task ValidateCredentialsAsync(CloudStorageAccount account, CancellationToken cancellationToken);
+        Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken);
     }
 }

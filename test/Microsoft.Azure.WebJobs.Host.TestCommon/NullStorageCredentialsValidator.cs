@@ -4,13 +4,14 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class NullStorageCredentialsValidator : IStorageCredentialsValidator
     {
-        public Task ValidateCredentialsAsync(CloudStorageAccount account, CancellationToken cancellationToken)
+        Task IStorageCredentialsValidator.ValidateCredentialsAsync(IStorageAccount account,
+            CancellationToken cancellationToken)
         {
             return Task.FromResult(0);
         }

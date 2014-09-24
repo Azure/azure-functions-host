@@ -2,21 +2,21 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<CloudQueueMessage>
+    internal class OutputConverter<TInput> : IObjectToTypeConverter<IStorageQueueMessage>
         where TInput : class
     {
-        private readonly IConverter<TInput, CloudQueueMessage> _innerConverter;
+        private readonly IConverter<TInput, IStorageQueueMessage> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, CloudQueueMessage> innerConverter)
+        public OutputConverter(IConverter<TInput, IStorageQueueMessage> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out CloudQueueMessage output)
+        public bool TryConvert(object input, out IStorageQueueMessage output)
         {
             TInput typedInput = input as TInput;
 

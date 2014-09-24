@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
 
             string tableName = context.Resolve(tableAttribute.TableName);
-            CloudTableClient client = context.StorageAccount.CreateCloudTableClient();
+            CloudTableClient client = context.StorageAccount.SdkObject.CreateCloudTableClient();
             Type parameterType = parameter.ParameterType;
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;

@@ -19,16 +19,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// and throws an exception with formatted message in case of error
         /// </summary>
         /// <param name="connectionString">A Storage account connection string as retrieved from the config</param>
-        /// <param name="accountName">Friendly account name used to format error message</param>
+        /// <param name="connectionStringName">Friendly connection string name used to format error message</param>
         /// <returns>An instance of <see cref="CloudStorageAccount"/> associated with the given connection string</returns>
-        public static CloudStorageAccount ParseAccount(string connectionString, string accountName)
+        public static CloudStorageAccount ParseAccount(string connectionString, string connectionStringName)
         {
             CloudStorageAccount account;
             StorageAccountParseResult result = TryParseAccount(connectionString, out account);
 
             if (result != StorageAccountParseResult.Success)
             {
-                string message = FormatParseAccountErrorMessage(result, accountName);
+                string message = FormatParseAccountErrorMessage(result, connectionStringName);
                 throw new InvalidOperationException(message);
             }
 
@@ -70,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// Formats an error message corresponding to the provided error code and account.
         /// </summary>
         /// <param name="error">The error code as returned by <see cref="TryParseAccount"/> method call.</param>
-        /// <param name="accountName">Friendly account name used to format error message</param>
+        /// <param name="connectionStringName">Friendly connection string name used to format error message</param>
         /// <returns>Formatted error message with details about reason of the failure and possible ways of mitigation</returns>
-        public static string FormatParseAccountErrorMessage(StorageAccountParseResult error, string accountName)
+        public static string FormatParseAccountErrorMessage(StorageAccountParseResult error, string connectionStringName)
         {
             switch (error)
             {
@@ -84,8 +84,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         "<add name=\"{1}\" connectionString=\"DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY\" />, or" + Environment.NewLine +
                         "2. Set the environment variable named '{1}', or" + Environment.NewLine +
                         "3. Set corresponding property of JobHostConfiguration.",
-                        accountName,
-                        AmbientConnectionStringProvider.GetPrefixedConnectionStringName(accountName));
+                        connectionStringName,
+                        AmbientConnectionStringProvider.GetPrefixedConnectionStringName(connectionStringName));
 
                 case StorageAccountParseResult.MalformedConnectionStringError:
                     return String.Format(CultureInfo.CurrentCulture,
@@ -93,14 +93,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         "The Microsoft Azure Storage account connection string is not formatted " +
                         "correctly. Please visit http://msdn.microsoft.com/en-us/library/windowsazure/ee758697.aspx for " +
                         "details about configuring Microsoft Azure Storage connection strings.",
-                        accountName);
+                        connectionStringName);
 
                 case StorageAccountParseResult.EmulatorIsNotSupportedError:
                     return String.Format(CultureInfo.CurrentCulture,
                         "Failed to validate Microsoft Azure WebJobs SDK {0} account. " + 
                         "The Microsoft Azure Storage Emulator is not supported, please use a " +
                         "Microsoft Azure Storage account hosted in Microsoft Azure.",
-                        accountName);
+                        connectionStringName);
             }
 
             Debug.Assert(false, "Unsupported case of error message!");

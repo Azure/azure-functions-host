@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
@@ -39,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
             Assert.NotNull(method); // Guard
 
             FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null,
-                CloudStorageAccount.DevelopmentStorageAccount, null, null);
+                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
             FunctionIndexer indexer = new FunctionIndexer(context);
             IFunctionIndex stubIndex = new Mock<IFunctionIndex>().Object;
 

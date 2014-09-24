@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -15,7 +16,7 @@ using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal class BlobQueueTriggerExecutor : ITriggerExecutor<CloudQueueMessage>
+    internal class BlobQueueTriggerExecutor : ITriggerExecutor<IStorageQueueMessage>
     {
         private readonly CloudBlobClient _client;
         private readonly IBlobETagReader _eTagReader;
@@ -47,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _registrations.AddOrUpdate(functionId, instanceFactory, (i1, i2) => instanceFactory);
         }
 
-        public async Task<bool> ExecuteAsync(CloudQueueMessage value, CancellationToken cancellationToken)
+        public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             BlobTriggerMessage message = JsonConvert.DeserializeObject<BlobTriggerMessage>(value.AsString,
                 JsonSerialization.Settings);

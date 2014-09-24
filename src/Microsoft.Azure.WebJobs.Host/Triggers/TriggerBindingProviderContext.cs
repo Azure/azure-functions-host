@@ -4,7 +4,7 @@
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             get { return _indexerContext.NameResolver; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _indexerContext.StorageAccount; }
         }

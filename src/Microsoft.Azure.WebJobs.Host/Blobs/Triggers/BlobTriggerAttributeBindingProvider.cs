@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateCloudBlobClient(), path);
+                context.StorageAccount.SdkObject.CreateCloudBlobClient(), path);
             return Task.FromResult(binding);
         }
     }

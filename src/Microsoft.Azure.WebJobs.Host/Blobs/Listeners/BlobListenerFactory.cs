@@ -6,7 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
-using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -38,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
-            CloudQueueClient queueClient = context.StorageAccount.CreateCloudQueueClient();
-            CloudBlobClient blobClient = context.StorageAccount.CreateCloudBlobClient();
+            IStorageQueueClient queueClient = context.StorageAccount.CreateQueueClient();
+            CloudBlobClient blobClient = context.StorageAccount.SdkObject.CreateCloudBlobClient();
 
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(context.HostId);
-            CloudQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
+            IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
             IListener blobDiscoveryToQueueMessageListener = CreateBlobDiscoveryToQueueMessageListener(context,
                 sharedBlobListener, blobClient, hostBlobTriggerQueue, sharedQueueWatcher);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private IListener CreateBlobDiscoveryToQueueMessageListener(ListenerFactoryContext context,
             SharedBlobListener sharedBlobListener,
             CloudBlobClient blobClient,
-            CloudQueue hostBlobTriggerQueue,
+            IStorageQueue hostBlobTriggerQueue,
             IMessageEnqueuedWatcher messageEnqueuedWatcher)
         {
             BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(context.HostId, _functionId, _input,
@@ -71,8 +71,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private IListener CreateQueueMessageToTriggerExecutionListener(IFunctionExecutor executor,
             ListenerFactoryContext context,
             SharedQueueWatcher sharedQueueWatcher,
-            CloudQueueClient queueClient,
-            CloudQueue hostBlobTriggerQueue,
+            IStorageQueueClient queueClient,
+            IStorageQueue hostBlobTriggerQueue,
             CloudBlobClient blobClient,
             IBlobWrittenWatcher blobWrittenWatcher)
         {

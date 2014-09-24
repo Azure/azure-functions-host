@@ -50,6 +50,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.ServiceBus.UnitTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Packages", "test\Packages\Packages.csproj", "{0AFF4B92-6E8C-456B-A3F8-BF76CE55FFDF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Host.FunctionalTests", "test\Microsoft.Azure.WebJobs.Host.FunctionalTests\WebJobs.Host.FunctionalTests.csproj", "{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -116,6 +118,10 @@ Global
 		{0AFF4B92-6E8C-456B-A3F8-BF76CE55FFDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0AFF4B92-6E8C-456B-A3F8-BF76CE55FFDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AFF4B92-6E8C-456B-A3F8-BF76CE55FFDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -129,5 +135,6 @@ Global
 		{34D23554-5482-4B3D-B65F-46DFF5AF1684} = {FA608267-1272-4BD5-B230-0F41A48D18C8}
 		{28BC5EE0-9227-4124-AA8F-1C0CAA218D12} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 		{0AFF4B92-6E8C-456B-A3F8-BF76CE55FFDF} = {639967B0-0544-4C52-94AC-9A3D25E33256}
+		{C6B834AB-7B6A-47AE-A7C3-C102B0C861FF} = {639967B0-0544-4C52-94AC-9A3D25E33256}
 	EndGlobalSection
 EndGlobal

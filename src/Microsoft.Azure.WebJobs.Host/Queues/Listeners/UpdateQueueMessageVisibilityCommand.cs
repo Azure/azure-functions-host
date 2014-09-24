@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -13,12 +14,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
     internal class UpdateQueueMessageVisibilityCommand : ITaskSeriesCommand
     {
-        private readonly CloudQueue _queue;
-        private readonly CloudQueueMessage _message;
+        private readonly IStorageQueue _queue;
+        private readonly IStorageQueueMessage _message;
         private readonly TimeSpan _visibilityTimeout;
         private readonly IDelayStrategy _speedupStrategy;
 
-        public UpdateQueueMessageVisibilityCommand(CloudQueue queue, CloudQueueMessage message,
+        public UpdateQueueMessageVisibilityCommand(IStorageQueue queue, IStorageQueueMessage message,
             TimeSpan visibilityTimeout, IDelayStrategy speedupStrategy)
         {
             if (queue == null)

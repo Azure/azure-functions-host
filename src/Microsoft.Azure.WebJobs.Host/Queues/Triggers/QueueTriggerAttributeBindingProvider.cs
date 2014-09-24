@@ -4,8 +4,8 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -15,9 +15,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
     {
         private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
             new CompositeArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
-                new ConverterArgumentBindingProvider<string>(new CloudQueueMessageToStringConverter()),
-                new ConverterArgumentBindingProvider<byte[]>(new CloudQueueMessageToByteArrayConverter()),
+                new ConverterArgumentBindingProvider<IStorageQueueMessage>(
+                    new IdentityConverter<IStorageQueueMessage>()),
+                new ConverterArgumentBindingProvider<CloudQueueMessage>(
+                    new StorageQueueMessageToCloudQueueMessageConverter()),
+                new ConverterArgumentBindingProvider<string>(new StorageQueueMessageToStringConverter()),
+                new ConverterArgumentBindingProvider<byte[]>(new StorageQueueMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -33,15 +36,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             string queueName = context.Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
-            ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {
-                throw new InvalidOperationException("Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
+                throw new InvalidOperationException(
+                    "Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, argumentBinding, context.StorageAccount,
-                queueName);
+            IStorageQueueClient client = context.StorageAccount.CreateQueueClient();
+            IStorageQueue queue = client.GetQueueReference(queueName);
+
+            ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding);
             return Task.FromResult(binding);
         }
 

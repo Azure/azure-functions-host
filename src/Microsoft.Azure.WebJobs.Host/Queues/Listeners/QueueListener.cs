@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -18,9 +19,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
     {
         private readonly ITaskSeriesTimer _timer;
         private readonly IDelayStrategy _delayStrategy;
-        private readonly CloudQueue _queue;
-        private readonly CloudQueue _poisonQueue;
-        private readonly ITriggerExecutor<CloudQueueMessage> _triggerExecutor;
+        private readonly IStorageQueue _queue;
+        private readonly IStorageQueue _poisonQueue;
+        private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly int _batchSize;
         private readonly uint _newBatchThreshold;
@@ -34,9 +35,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private bool _disposed;
         private TaskCompletionSource<object> _stopWaitingTaskSource;
 
-        public QueueListener(CloudQueue queue,
-            CloudQueue poisonQueue,
-            ITriggerExecutor<CloudQueueMessage> triggerExecutor,
+        public QueueListener(IStorageQueue queue,
+            IStorageQueue poisonQueue,
+            ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IDelayStrategy delayStrategy,
             SharedQueueWatcher sharedWatcher,
             int batchSize,
@@ -121,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             // What if job takes longer. Call CloudQueue.UpdateMessage
             TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
-            IEnumerable<CloudQueueMessage> batch;
+            IEnumerable<IStorageQueueMessage> batch;
 
             try
             {
@@ -153,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             bool foundMessage = false;
 
-            foreach (CloudQueueMessage message in batch)
+            foreach (IStorageQueueMessage message in batch)
             {
                 if (message == null)
                 {
@@ -222,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private async Task ProcessMessageAsync(CloudQueueMessage message, TimeSpan visibilityTimeout,
+        private async Task ProcessMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout,
             CancellationToken cancellationToken)
         {
             try
@@ -279,8 +280,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(CloudQueue queue,
-            CloudQueueMessage message, TimeSpan visibilityTimeout)
+        private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
+            IStorageQueueMessage message, TimeSpan visibilityTimeout)
         {
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
@@ -291,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             return new TaskSeriesTimer(command, Task.Delay(normalUpdateInterval));
         }
 
-        private async Task DeleteMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+        private async Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
         {
             try
             {
@@ -318,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private async Task ReleaseMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+        private async Task ReleaseMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
         {
             try
             {
@@ -345,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private async Task CopyToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+        private async Task CopyToPoisonQueueAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
         {
             await _poisonQueue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
 

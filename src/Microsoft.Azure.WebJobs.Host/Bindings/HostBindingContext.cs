@@ -3,7 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly IBindingProvider _bindingProvider;
         private readonly INameResolver _nameResolver;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly CloudStorageAccount _storageAccount;
+        private readonly IStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
 
         public HostBindingContext(
             IBindingProvider bindingProvider,
             INameResolver nameResolver,
             IQueueConfiguration queueConfiguration,
-            CloudStorageAccount storageAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString)
         {
             _bindingProvider = bindingProvider;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _queueConfiguration; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _storageAccount; }
         }

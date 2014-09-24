@@ -7,17 +7,16 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class HostMessageExecutor : ITriggerExecutor<CloudQueueMessage>
+    internal class HostMessageExecutor : ITriggerExecutor<IStorageQueueMessage>
     {
         private readonly IFunctionExecutor _innerExecutor;
         private readonly IFunctionIndexLookup _functionLookup;
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _functionInstanceLogger = functionInstanceLogger;
         }
 
-        public async Task<bool> ExecuteAsync(CloudQueueMessage value, CancellationToken cancellationToken)
+        public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             HostMessage model = JsonConvert.DeserializeObject<HostMessage>(value.AsString, JsonSerialization.Settings);
 

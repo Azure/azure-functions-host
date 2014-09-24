@@ -245,6 +245,12 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueClient.cs">
       <Link>Storage\Queue\IStorageQueueClient.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\IStorageQueueMessage.cs">
+      <Link>Storage\Queue\IStorageQueueMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Queue\StorageQueueMessage.cs">
+      <Link>Storage\Queue\StorageQueueMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageAccount.cs">
       <Link>Storage\StorageAccount.cs</Link>
     </Compile>
@@ -436,6 +442,7 @@
     <Compile Include="Queues\Bindings\StringToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Bindings\UserTypeToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\BoundQueuePath.cs" />
+    <Compile Include="Queues\StorageQueueExtensions.cs" />
     <Compile Include="Queues\IBindableQueuePath.cs" />
     <Compile Include="Queues\IQueueConfiguration.cs" />
     <Compile Include="Queues\IMessageEnqueuedWatcher.cs" />
@@ -444,7 +451,9 @@
     <Compile Include="Queues\Listeners\SharedQueueWatcher.cs" />
     <Compile Include="Queues\Listeners\SharedQueueWatcherFactory.cs" />
     <Compile Include="Queues\ParameterizedQueuePath.cs" />
-    <Compile Include="Queues\CloudQueueMessageExtensions.cs" />
+    <Compile Include="Queues\StorageQueueMessageExtensions.cs" />
+    <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
+    <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\ITableArgumentBinding.cs" />
@@ -594,8 +603,8 @@
     <Compile Include="Queues\Triggers\ConverterArgumentBindingProvider.cs" />
     <Compile Include="Queues\Triggers\IQueueTriggerArgumentBindingProvider.cs" />
     <Compile Include="Queues\Triggers\OutputConverter.cs" />
-    <Compile Include="Queues\Triggers\CloudQueueMessageToByteArrayConverter.cs" />
-    <Compile Include="Queues\Triggers\CloudQueueMessageToStringConverter.cs" />
+    <Compile Include="Queues\Triggers\StorageQueueMessageToByteArrayConverter.cs" />
+    <Compile Include="Queues\Triggers\StorageQueueMessageToStringConverter.cs" />
     <Compile Include="Queues\Triggers\QueueMessageValueProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerAttributeBindingProvider.cs" />
     <Compile Include="Queues\Triggers\QueueTriggerBinding.cs" />
@@ -604,7 +613,7 @@
     <Compile Include="Executors\HeartbeatIntervals.cs" />
     <Compile Include="Executors\IDelayedException.cs" />
     <Compile Include="Executors\BindingSource.cs" />
-    <Compile Include="Queues\Triggers\StringToCloudQueueMessageConverter.cs" />
+    <Compile Include="Queues\Triggers\StringToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\EntityOutputConverter.cs" />
     <Compile Include="Tables\IBindableTablePath.cs" />
     <Compile Include="Tables\IBindableTableEntityPath.cs" />

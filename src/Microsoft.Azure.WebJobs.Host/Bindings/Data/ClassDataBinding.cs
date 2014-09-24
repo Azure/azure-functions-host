@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
         {
             IReadOnlyDictionary<string, object> bindingData = context.BindingData;
 
-            if (!bindingData.ContainsKey(_parameterName))
+            if (bindingData == null || !bindingData.ContainsKey(_parameterName))
             {
                 throw new InvalidOperationException(
                     "Binding data does not contain expected value '" + _parameterName + "'.");

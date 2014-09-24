@@ -6,24 +6,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
-    internal class QueueTriggerExecutor : ITriggerExecutor<CloudQueueMessage>
+    internal class QueueTriggerExecutor : ITriggerExecutor<IStorageQueueMessage>
     {
-        private readonly ITriggeredFunctionInstanceFactory<CloudQueueMessage> _instanceFactory;
+        private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
         private readonly IFunctionExecutor _innerExecutor;
 
-        public QueueTriggerExecutor(ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory,
+        public QueueTriggerExecutor(ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory,
             IFunctionExecutor innerExecutor)
         {
             _instanceFactory = instanceFactory;
             _innerExecutor = innerExecutor;
         }
 
-        public async Task<bool> ExecuteAsync(CloudQueueMessage value, CancellationToken cancellationToken)
+        public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             Guid? parentId = QueueCausalityManager.GetOwner(value);
             IFunctionInstance instance = _instanceFactory.Create(value, parentId);

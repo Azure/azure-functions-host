@@ -14,6 +14,8 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -83,12 +85,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(CloudStorageAccount dashboardAccount,
-            CloudStorageAccount storageAccount, string serviceBusConnectionString,
+        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(IStorageAccount dashboardAccount,
+            IStorageAccount storageAccount, string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
             IHostIdProvider hostIdProvider, IQueueConfiguration queueConfiguration, CancellationToken shutdownToken,
             CancellationToken cancellationToken)
         {
+            CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
+
             using (CancellationTokenSource combinedCancellationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
@@ -112,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (dashboardAccount != null)
                 {
                     // Create logging against a live Azure account.
-                    CloudBlobClient dashboardBlobClient = dashboardAccount.CreateCloudBlobClient();
+                    CloudBlobClient dashboardBlobClient = sdkDashboardAccount.CreateCloudBlobClient();
                     IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
                         new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                     PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
@@ -130,8 +134,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     functionOutputLogger = new ConsoleFunctionOutputLogger();
                 }
 
-                FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver, storageAccount,
-                    serviceBusConnectionString, combinedCancellationToken);
+                FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver,
+                    storageAccount, serviceBusConnectionString, combinedCancellationToken);
                 FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
                 IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
 
@@ -153,14 +157,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (dashboardAccount != null)
                 {
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
-                    CloudQueueClient dashboardQueueClient = dashboardAccount.CreateCloudQueueClient();
-                    CloudQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
+                    IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
+                    IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
                         functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
-                    CloudQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
+                    IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
                         functionInstanceLogger);
 
@@ -171,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         InstanceBlobName = hostInstanceId.ToString("N"),
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
-                    heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(dashboardAccount,
+                    heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(sdkDashboardAccount,
                         heartbeatDescriptor.SharedContainerName,
                         heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 

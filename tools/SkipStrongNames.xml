@@ -11,6 +11,7 @@
   <!-- Unit test assemblies -->
   <assembly name="Dashboard.UnitTests"/>
   <assembly name="Microsoft.Azure.WebJobs.Host.TestCommon"/>
+  <assembly name="Microsoft.Azure.WebJobs.Host.FunctionalTests"/>
   <assembly name="Microsoft.Azure.WebJobs.Host.IntegrationTests"/>
   <assembly name="Microsoft.Azure.WebJobs.Host.UnitTests"/>
   <assembly name="Microsoft.Azure.WebJobs.ServiceBus.UnitTests"/>

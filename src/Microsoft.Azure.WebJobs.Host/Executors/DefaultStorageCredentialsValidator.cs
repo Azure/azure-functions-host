@@ -5,17 +5,20 @@ using System;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
-        public async Task ValidateCredentialsAsync(CloudStorageAccount account, CancellationToken cancellationToken)
+        public async Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
         {
+            CloudStorageAccount sdkAccount = account.SdkObject;
+
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
-            var client = account.CreateCloudBlobClient();
+            var client = sdkAccount.CreateCloudBlobClient();
 
             try
             {

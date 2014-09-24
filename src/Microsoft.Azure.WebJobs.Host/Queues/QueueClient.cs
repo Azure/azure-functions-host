@@ -3,12 +3,23 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
     internal static class QueueClient
     {
+        public static string GetAccountName(IStorageQueueClient client)
+        {
+            if (client == null)
+            {
+                return null;
+            }
+
+            return StorageClient.GetAccountName(client.Credentials);
+        }
+
         public static string GetAccountName(CloudQueueClient client)
         {
             if (client == null)

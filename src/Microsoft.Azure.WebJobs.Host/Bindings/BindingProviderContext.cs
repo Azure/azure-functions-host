@@ -6,21 +6,21 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class BindingProviderContext
     {
         private readonly INameResolver _nameResolver;
-        private readonly CloudStorageAccount _storageAccount;
+        private readonly IStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
         private readonly ParameterInfo _parameter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
         private readonly CancellationToken _cancellationToken;
 
         public BindingProviderContext(INameResolver nameResolver,
-            CloudStorageAccount storageAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString,
             ParameterInfo parameter,
             IReadOnlyDictionary<string, Type> bindingDataContract,
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _nameResolver; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _storageAccount; }
         }

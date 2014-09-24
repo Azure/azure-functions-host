@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public SharedBlobListener Create()
         {
-            SharedBlobListener listener = new SharedBlobListener(_context.StorageAccount);
+            SharedBlobListener listener = new SharedBlobListener(_context.StorageAccount.SdkObject);
             _context.BlobWrittenWatcher = listener.BlobWritterWatcher;
             return listener;
         }

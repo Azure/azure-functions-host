@@ -9,6 +9,8 @@ using Microsoft.Azure.WebJobs.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Auth;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage
@@ -17,13 +19,19 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 #endif
 {
 #if PUBLICSTORAGE
-    /// <summary>Defines a cloud storage account.</summary>
+    /// <summary>Defines a storage account.</summary>
     [CLSCompliant(false)]
     public interface IStorageAccount
 #else
     internal interface IStorageAccount
 #endif
     {
+        /// <summary>Gets the credentials used to connect to the account.</summary>
+        StorageCredentials Credentials { get; }
+
+        /// <summary>Gets the underlying <see cref="CloudStorageAccount"/>.</summary>
+        CloudStorageAccount SdkObject { get; }
+
         /// <summary>Creates a queue client.</summary>
         /// <returns>A queue client.</returns>
         IStorageQueueClient CreateQueueClient();
@@ -32,5 +40,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         /// Creates a table client.</summary>
         /// <returns>A table client.</returns>
         IStorageTableClient CreateTableClient();
+
+        /// <summary>Gets the connection string for the storage account.</summary>
+        /// <param name="exportSecrets">
+        /// <see langword="true"/> to include credentials in the connection string; otherwise, <see langword="false"/>.
+        /// </param>
+        /// <returns>The connection string for the storage account.</returns>
+        string ToString(bool exportSecrets);
     }
 }

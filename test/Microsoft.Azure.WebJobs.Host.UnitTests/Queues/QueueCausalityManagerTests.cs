@@ -2,9 +2,12 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Text;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -54,8 +57,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         [Fact]
         public void GetOwner_IfMessageIsNotValidString_ReturnsNull()
         {
-            byte[] invalidUtf8 = new byte[] { 0x00, 0xFF };
-            TestOwnerIsNull(new CloudQueueMessage(invalidUtf8));
+            Mock<IStorageQueueMessage> mock = new Mock<IStorageQueueMessage>(MockBehavior.Strict);
+            mock.Setup(m => m.AsString).Throws<DecoderFallbackException>();
+            IStorageQueueMessage message = mock.Object;
+
+            TestOwnerIsNull(message);
         }
 
         [Fact]
@@ -109,10 +115,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
         private static void TestOwnerIsNull(string message)
         {
-            TestOwnerIsNull(new CloudQueueMessage(message));
+            TestOwnerIsNull(CreateMessage(message));
         }
 
-        private static void TestOwnerIsNull(CloudQueueMessage message)
+        private static void TestOwnerIsNull(IStorageQueueMessage message)
         {
             // Act
             Guid? owner = QueueCausalityManager.GetOwner(message);
@@ -129,12 +135,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 
         private static Guid? GetOwner(string message)
         {
-            return QueueCausalityManager.GetOwner(new CloudQueueMessage(message));
+            return QueueCausalityManager.GetOwner(CreateMessage(message));
         }
 
         private static JObject CreateJsonObject(object value)
         {
             return JToken.FromObject(value) as JObject;
+        }
+
+        private static IStorageQueueMessage CreateMessage(string content)
+        {
+            Mock<IStorageQueueMessage> mock = new Mock<IStorageQueueMessage>(MockBehavior.Strict);
+            mock.Setup(m => m.AsString).Returns(content);
+            return mock.Object;
         }
 
         public class Payload

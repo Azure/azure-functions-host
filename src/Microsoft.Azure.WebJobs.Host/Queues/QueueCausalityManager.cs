@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         }
 
         [DebuggerNonUserCode]
-        public static Guid? GetOwner(CloudQueueMessage msg)
+        public static Guid? GetOwner(IStorageQueueMessage msg)
         {
             string text = msg.TryGetAsString();
 

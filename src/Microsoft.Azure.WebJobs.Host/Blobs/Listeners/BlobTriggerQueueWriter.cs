@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 
@@ -13,10 +14,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobTriggerQueueWriter : IBlobTriggerQueueWriter
     {
-        private readonly CloudQueue _queue;
+        private readonly IStorageQueue _queue;
         private readonly IMessageEnqueuedWatcher _watcher;
 
-        public BlobTriggerQueueWriter(CloudQueue queue, IMessageEnqueuedWatcher watcher)
+        public BlobTriggerQueueWriter(IStorageQueue queue, IMessageEnqueuedWatcher watcher)
         {
             _queue = queue;
             Debug.Assert(watcher != null);
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         public async Task EnqueueAsync(BlobTriggerMessage message, CancellationToken cancellationToken)
         {
             string contents = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
-            await _queue.AddMessageAndCreateIfNotExistsAsync(new CloudQueueMessage(contents), cancellationToken);
+            await _queue.AddMessageAndCreateIfNotExistsAsync(_queue.CreateMessage(contents), cancellationToken);
             _watcher.Notify(_queue.Name);
         }
     }

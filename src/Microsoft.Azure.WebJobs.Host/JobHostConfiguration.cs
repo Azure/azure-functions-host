@@ -190,7 +190,8 @@ namespace Microsoft.Azure.WebJobs
             }
             else
             {
-                return new DynamicHostIdProvider(_storageAccountProvider.GetAccount(ConnectionStringNames.Storage));
+                return new DynamicHostIdProvider(
+                    _storageAccountProvider.GetAccount(ConnectionStringNames.Storage).SdkObject);
             }
         }
 

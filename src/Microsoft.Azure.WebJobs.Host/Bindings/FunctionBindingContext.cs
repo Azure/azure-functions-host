@@ -6,7 +6,7 @@ using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _hostContext.NameResolver; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _hostContext.StorageAccount; }
         }

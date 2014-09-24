@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
                 return Task.FromResult<IBinding>(null);
             }
 
-            IBinding binding = new CloudStorageAccountBinding(parameter.Name, context.StorageAccount);
+            IBinding binding = new CloudStorageAccountBinding(parameter.Name, context.StorageAccount.SdkObject);
             return Task.FromResult(binding);
         }
     }

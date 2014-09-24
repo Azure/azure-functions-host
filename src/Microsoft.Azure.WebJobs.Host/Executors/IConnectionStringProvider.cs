@@ -8,6 +8,5 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal interface IConnectionStringProvider
     {
         string GetConnectionString(string connectionStringName);
-        IReadOnlyDictionary<string, string> GetConnectionStrings();
     }
 }

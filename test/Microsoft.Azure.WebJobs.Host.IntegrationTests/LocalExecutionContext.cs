@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         {
             _type = type;
             FunctionIndex index = FunctionIndex.CreateAsync(
-                new FunctionIndexContext(null, null, account, null, CancellationToken.None),
+                new FunctionIndexContext(null, null, new StorageAccount(account), null, CancellationToken.None),
                 new Type[] { type }, cloudBlobStreamBinderTypes).GetAwaiter().GetResult();
             _index = index;
 
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 bindingProvider: index.BindingProvider,
                 nameResolver: null,
                 queueConfiguration: null,
-                storageAccount: account,
+                storageAccount: new StorageAccount(account),
                 serviceBusConnectionString: null);
         }
 

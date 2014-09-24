@@ -3,13 +3,13 @@
 
 using System;
 using System.Text;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
-    internal static class CloudQueueMessageExtensions
+    internal static class StorageQueueMessageExtensions
     {
-        public static string TryGetAsString(this CloudQueueMessage message)
+        public static string TryGetAsString(this IStorageQueueMessage message)
         {
             if (message == null)
             {

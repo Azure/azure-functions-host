@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Threading;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
@@ -10,14 +10,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
-        private readonly CloudStorageAccount _storageAccount;
+        private readonly IStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
         private readonly CancellationToken _cancellationToken;
 
         public FunctionIndexContext(
             ITypeLocator typeLocator,
             INameResolver nameResolver,
-            CloudStorageAccount storageAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString,
             CancellationToken cancellationToken)
         {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             get { return _nameResolver; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _storageAccount; }
         }

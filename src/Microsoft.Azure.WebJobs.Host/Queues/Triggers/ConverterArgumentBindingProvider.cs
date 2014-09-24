@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -14,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
     internal class ConverterArgumentBindingProvider<T> : IQueueTriggerArgumentBindingProvider
     {
-        private readonly IConverter<CloudQueueMessage, T> _converter;
+        private readonly IConverter<IStorageQueueMessage, T> _converter;
 
-        public ConverterArgumentBindingProvider(IConverter<CloudQueueMessage, T> converter)
+        public ConverterArgumentBindingProvider(IConverter<IStorageQueueMessage, T> converter)
         {
             _converter = converter;
         }
 
-        public ITriggerDataArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<IStorageQueueMessage> TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(T))
             {
@@ -31,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             return new ConverterArgumentBinding(_converter);
         }
 
-        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<CloudQueueMessage>
+        internal class ConverterArgumentBinding : ITriggerDataArgumentBinding<IStorageQueueMessage>
         {
-            private readonly IConverter<CloudQueueMessage, T> _converter;
+            private readonly IConverter<IStorageQueueMessage, T> _converter;
 
-            public ConverterArgumentBinding(IConverter<CloudQueueMessage, T> converter)
+            public ConverterArgumentBinding(IConverter<IStorageQueueMessage, T> converter)
             {
                 _converter = converter;
             }
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 get { return null; }
             }
 
-            public Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
+            public Task<ITriggerData> BindAsync(IStorageQueueMessage value, ValueBindingContext context)
             {
                 object converted = _converter.Convert(value);
                 IValueProvider provider = new QueueMessageValueProvider(value, converted, typeof(T));

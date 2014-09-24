@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -17,11 +18,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private static readonly TimeSpan Minimum = QueuePollingIntervals.Minimum;
         private static readonly TimeSpan DefaultMaximum = QueuePollingIntervals.DefaultMaximum;
 
-        private readonly CloudQueue _queue;
+        private readonly IStorageQueue _queue;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
-        public HostMessageListenerFactory(CloudQueue queue, IFunctionIndexLookup functionLookup,
+        public HostMessageListenerFactory(IStorageQueue queue, IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger)
         {
             _queue = queue;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
-            ITriggerExecutor<CloudQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
+            ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
             IQueueConfiguration queueConfiguration = context.QueueConfiguration;
             TimeSpan configuredMaximum = queueConfiguration.MaxPollingInterval;

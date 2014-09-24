@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
@@ -15,14 +16,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
     internal class UserTypeArgumentBindingProvider : IQueueTriggerArgumentBindingProvider
     {
-        public ITriggerDataArgumentBinding<CloudQueueMessage> TryCreate(ParameterInfo parameter)
+        public ITriggerDataArgumentBinding<IStorageQueueMessage> TryCreate(ParameterInfo parameter)
         {
             // At indexing time, attempt to bind all types.
             // (Whether or not actual binding is possible depends on the message shape at runtime.)
             return new UserTypeArgumentBinding(parameter.ParameterType);
         }
 
-        private class UserTypeArgumentBinding : ITriggerDataArgumentBinding<CloudQueueMessage>
+        private class UserTypeArgumentBinding : ITriggerDataArgumentBinding<IStorageQueueMessage>
         {
             private readonly Type _valueType;
             private readonly IBindingDataProvider _bindingDataProvider;
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 get { return _bindingDataProvider != null ? _bindingDataProvider.Contract : null; }
             }
 
-            public Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
+            public Task<ITriggerData> BindAsync(IStorageQueueMessage value, ValueBindingContext context)
             {
                 object convertedValue;
 

@@ -6,9 +6,9 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
     {
         private static string poisonQueueSuffix = "-poison";
 
-        private readonly CloudQueue _queue;
-        private readonly CloudQueue _poisonQueue;
-        private readonly ITriggeredFunctionInstanceFactory<CloudQueueMessage> _instanceFactory;
+        private readonly IStorageQueue _queue;
+        private readonly IStorageQueue _poisonQueue;
+        private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
-        public QueueListenerFactory(CloudQueue queue,
-            ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory)
+        public QueueListenerFactory(IStorageQueue queue,
+            ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
             {
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             return Task.FromResult(listener);
         }
 
-        private static CloudQueue CreatePoisonQueueReference(CloudQueueClient client, string name)
+        private static IStorageQueue CreatePoisonQueueReference(IStorageQueueClient client, string name)
         {
             Debug.Assert(client != null);
 

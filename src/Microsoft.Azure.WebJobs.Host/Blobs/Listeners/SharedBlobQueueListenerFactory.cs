@@ -5,9 +5,9 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -16,16 +16,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IFunctionExecutor _executor;
         private readonly ListenerFactoryContext _context;
         private readonly SharedQueueWatcher _sharedQueueWatcher;
-        private readonly CloudQueueClient _queueClient;
-        private readonly CloudQueue _hostBlobTriggerQueue;
+        private readonly IStorageQueueClient _queueClient;
+        private readonly IStorageQueue _hostBlobTriggerQueue;
         private readonly CloudBlobClient _blobClient;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(IFunctionExecutor executor,
             ListenerFactoryContext context,
             SharedQueueWatcher sharedQueueWatcher,
-            CloudQueueClient queueClient,
-            CloudQueue hostBlobTriggerQueue,
+            IStorageQueueClient queueClient,
+            IStorageQueue hostBlobTriggerQueue,
             CloudBlobClient blobClient,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public SharedBlobQueueListener Create()
         {
-            CloudQueue blobTriggerPoisonQueue = _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
+            IStorageQueue blobTriggerPoisonQueue =
+                _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
             BlobQueueTriggerExecutor triggerExecutor =
                 new BlobQueueTriggerExecutor(_blobClient, _executor, _blobWrittenWatcher);
             IQueueConfiguration queueConfiguration = _context.QueueConfiguration;

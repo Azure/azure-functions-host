@@ -4,14 +4,15 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class JobHostContextFactory
     {
-        private readonly CloudStorageAccount _dashboardAccount;
-        private readonly CloudStorageAccount _storageAccount;
+        private readonly IStorageAccount _dashboardAccount;
+        private readonly IStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
         private readonly IStorageCredentialsValidator _credentialsValidator;
         private readonly ITypeLocator _typeLocator;
@@ -20,8 +21,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly CancellationToken _shutdownToken;
 
-        public JobHostContextFactory(CloudStorageAccount dashboardAccount,
-            CloudStorageAccount storageAccount,
+        public JobHostContextFactory(IStorageAccount dashboardAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator,
             ITypeLocator typeLocator,

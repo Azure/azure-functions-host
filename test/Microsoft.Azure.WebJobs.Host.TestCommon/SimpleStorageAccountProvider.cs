@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
@@ -12,15 +13,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public CloudStorageAccount DashboardAccount { get; set; }
 
-        public CloudStorageAccount GetAccount(string connectionStringName)
+        IStorageAccount IStorageAccountProvider.GetAccount(string connectionStringName)
         {
             if (connectionStringName == ConnectionStringNames.Dashboard)
             {
-                return DashboardAccount;
+                return DashboardAccount != null ? new StorageAccount(DashboardAccount) : null;
             }
             else if (connectionStringName == ConnectionStringNames.Storage)
             {
-                return StorageAccount;
+                return StorageAccount != null ? new StorageAccount(StorageAccount) : null;
             }
             else
             {

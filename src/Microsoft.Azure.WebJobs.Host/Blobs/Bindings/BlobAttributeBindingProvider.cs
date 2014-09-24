@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
 
             IBinding binding = new BlobBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateCloudBlobClient(), path);
+                context.StorageAccount.SdkObject.CreateCloudBlobClient(), path);
             return Task.FromResult(binding);
         }
     }

@@ -4,21 +4,21 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal class FunctionIndexerContext
     {
         private readonly INameResolver _nameResolver;
-        private readonly CloudStorageAccount _storageAccount;
+        private readonly IStorageAccount _storageAccount;
         private readonly string _serviceBusConnectionString;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
 
         private FunctionIndexerContext(INameResolver nameResolver,
-            CloudStorageAccount storageAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider)
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             get { return _nameResolver; }
         }
 
-        public CloudStorageAccount StorageAccount
+        public IStorageAccount StorageAccount
         {
             get { return _storageAccount; }
         }
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         }
 
         public static FunctionIndexerContext CreateDefault(INameResolver nameResolver,
-            CloudStorageAccount storageAccount,
+            IStorageAccount storageAccount,
             string serviceBusConnectionString,
             IEnumerable<Type> cloudBlobStreamBinderTypes)
         {

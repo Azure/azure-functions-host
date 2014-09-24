@@ -3,17 +3,19 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultStorageAccountProvider : IStorageAccountProvider, IConnectionStringProvider
     {
-        private static readonly IConnectionStringProvider _ambientConnectionStringProvider = new AmbientConnectionStringProvider();
+        private static readonly IConnectionStringProvider _ambientConnectionStringProvider =
+            new AmbientConnectionStringProvider();
 
-        private CloudStorageAccount _dashboardAccount;
+        private IStorageAccount _dashboardAccount;
         private bool _dashboardAccountSet;
-        private CloudStorageAccount _storageAccount;
+        private IStorageAccount _storageAccount;
         private bool _storageAccountSet;
         private string _serviceBusConnectionString;
         private bool _serviceBusConnectionStringSet;
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </param>
         public DefaultStorageAccountProvider(string dashboardAndStorageConnectionString)
         {
-            CloudStorageAccount account = ParseStorageAccount(dashboardAndStorageConnectionString);
+            IStorageAccount account = ParseStorageAccount(dashboardAndStorageConnectionString);
             _dashboardAccount = account;
             _dashboardAccountSet = true;
             _storageAccount = account;
@@ -95,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public CloudStorageAccount GetAccount(string connectionStringName)
+        public IStorageAccount GetAccount(string connectionStringName)
         {
             if (connectionStringName == ConnectionStringNames.Dashboard)
             {
@@ -150,24 +152,25 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public IReadOnlyDictionary<string, string> GetConnectionStrings()
-        {
-            return _ambientConnectionStringProvider.GetConnectionStrings();
-        }
-
-        private CloudStorageAccount ParseDashboardAccount(string connectionString, bool explicitlySet)
+        private IStorageAccount ParseDashboardAccount(string connectionString, bool explicitlySet)
         {
             if (explicitlySet && String.IsNullOrEmpty(connectionString))
             {
                 return null;
             }
 
-            return StorageAccountParser.ParseAccount(connectionString, ConnectionStringNames.Dashboard);
+            return ParseAccount(connectionString, ConnectionStringNames.Dashboard);
         }
 
-        private CloudStorageAccount ParseStorageAccount(string connectionString)
+        private IStorageAccount ParseStorageAccount(string connectionString)
         {
-            return StorageAccountParser.ParseAccount(connectionString, ConnectionStringNames.Storage);
+            return ParseAccount(connectionString, ConnectionStringNames.Storage);
+        }
+
+        private static IStorageAccount ParseAccount(string connectionString, string connectionStringName)
+        {
+            CloudStorageAccount sdkAccount = StorageAccountParser.ParseAccount(connectionString, connectionStringName);
+            return new StorageAccount(sdkAccount);
         }
     }
 }

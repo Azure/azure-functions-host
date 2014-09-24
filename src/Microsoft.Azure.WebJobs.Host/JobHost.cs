@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
@@ -75,8 +76,8 @@ namespace Microsoft.Azure.WebJobs
             }
 
             IStorageAccountProvider accountProvider = serviceProvider.GetStorageAccountProvider();
-            CloudStorageAccount dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
-            CloudStorageAccount storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
+            IStorageAccount dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
+            IStorageAccount storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
 
             IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
             string serviceBusConnectionString =

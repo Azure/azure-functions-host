@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -38,25 +37,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             return Environment.GetEnvironmentVariable(prefixedConnectionStringName) ?? connectionStringInConfig;
-        }
-
-        public IReadOnlyDictionary<string, string> GetConnectionStrings()
-        {
-            var connectionStrings = new Dictionary<string, string>();
-
-            foreach (ConnectionStringSettings connectionString in ConfigurationManager.ConnectionStrings)
-            {
-                if (String.IsNullOrEmpty(connectionString.ConnectionString))
-                {
-                    connectionStrings.Add(connectionString.Name, Environment.GetEnvironmentVariable(connectionString.Name));
-                }
-                else
-                {
-                    connectionStrings.Add(connectionString.Name, connectionString.ConnectionString);
-                }
-            }
-
-            return connectionStrings;
         }
     }
 }

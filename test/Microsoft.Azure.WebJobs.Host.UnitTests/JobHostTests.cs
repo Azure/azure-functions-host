@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -477,15 +478,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private class LambdaStorageCredentialsValidator : IStorageCredentialsValidator
         {
-            private readonly Func<CloudStorageAccount, CancellationToken, Task> _validateCredentialsAsync;
+            private readonly Func<IStorageAccount, CancellationToken, Task> _validateCredentialsAsync;
 
             public LambdaStorageCredentialsValidator(
-                Func<CloudStorageAccount, CancellationToken, Task> validateCredentialsAsync)
+                Func<IStorageAccount, CancellationToken, Task> validateCredentialsAsync)
             {
                 _validateCredentialsAsync = validateCredentialsAsync;
             }
 
-            public Task ValidateCredentialsAsync(CloudStorageAccount account, CancellationToken cancellationToken)
+            public Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
             {
                 return _validateCredentialsAsync.Invoke(account, cancellationToken);
             }

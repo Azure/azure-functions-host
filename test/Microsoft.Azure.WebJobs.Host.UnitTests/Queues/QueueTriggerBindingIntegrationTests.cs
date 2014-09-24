@@ -4,8 +4,10 @@
 using System;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Moq;
 using Newtonsoft.Json;
 using Xunit;
 using Xunit.Extensions;
@@ -14,14 +16,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueTriggerBindingIntegrationTests
     {
-        private ITriggerBinding<CloudQueueMessage> _binding;
+        private ITriggerBinding<IStorageQueueMessage> _binding;
 
         public QueueTriggerBindingIntegrationTests()
         {
             IQueueTriggerArgumentBindingProvider provider = new UserTypeArgumentBindingProvider();
             ParameterInfo pi = new StubParameterInfo("parameterName", typeof(UserDataType));
             var argumentBinding = provider.TryCreate(pi);
-            _binding = new QueueTriggerBinding("parameterName", argumentBinding, null, "queueName");
+            Mock<IStorageQueue> queueMock = new Mock<IStorageQueue>(MockBehavior.Strict);
+            queueMock.Setup(q => q.Name).Returns("queueName");
+            IStorageQueue queue = queueMock.Object;
+            _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding);
         }
 
         [Theory]
@@ -35,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             UserDataType expectedObject = new UserDataType();
             PropertyInfo userProperty = typeof(UserDataType).GetProperty(userPropertyName);
             var parseMethod = userProperty.PropertyType.GetMethod(
-                "Parse",new Type[]{typeof(string)});
-            object convertedPropertyValue = parseMethod.Invoke(null, new object[]{userPropertyValue});
+                "Parse", new Type[] { typeof(string) });
+            object convertedPropertyValue = parseMethod.Invoke(null, new object[] { userPropertyValue });
             userProperty.SetValue(expectedObject, convertedPropertyValue);
             string messageContent = JsonConvert.SerializeObject(expectedObject);
             CloudQueueMessage message = new CloudQueueMessage(messageContent);
 
             // Act
-            ITriggerData data = _binding.BindAsync(message,null).GetAwaiter().GetResult();
+            ITriggerData data = _binding.BindAsync(message, null).GetAwaiter().GetResult();
 
             // Assert
             Assert.NotNull(data);

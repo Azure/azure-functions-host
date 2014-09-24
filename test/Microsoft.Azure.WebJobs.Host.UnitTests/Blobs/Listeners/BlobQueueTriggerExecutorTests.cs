@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         {
             // Arrange
             BlobQueueTriggerExecutor product = CreateProductUnderTest();
-            CloudQueueMessage message = CreateMessage("ThisIsNotValidJson");
+            IStorageQueueMessage message = CreateMessage("ThisIsNotValidJson");
 
             // Act
             Task task = product.ExecuteAsync(message, CancellationToken.None);
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         {
             // Arrange
             BlobQueueTriggerExecutor product = CreateProductUnderTest();
-            CloudQueueMessage message = CreateMessage("null");
+            IStorageQueueMessage message = CreateMessage("null");
 
             // Act
             Task task = product.ExecuteAsync(message, CancellationToken.None);
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         {
             // Arrange
             BlobQueueTriggerExecutor product = CreateProductUnderTest();
-            CloudQueueMessage message = CreateMessage("{}");
+            IStorageQueueMessage message = CreateMessage("{}");
 
             // Act
             Task task = product.ExecuteAsync(message, CancellationToken.None);
@@ -69,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         {
             // Arrange
             BlobQueueTriggerExecutor product = CreateProductUnderTest();
-            CloudQueueMessage message = CreateMessage(new BlobTriggerMessage { FunctionId = "Missing" });
+            IStorageQueueMessage message = CreateMessage(new BlobTriggerMessage { FunctionId = "Missing" });
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -107,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                 ETag = "OriginalETag"
 
             };
-            CloudQueueMessage message = CreateMessage(triggerMessage);
+            IStorageQueueMessage message = CreateMessage(triggerMessage);
 
             // Act
             Task task = product.ExecuteAsync(message, CancellationToken.None);
@@ -127,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             product.Register(functionId, CreateDummyInstanceFactory());
 
-            CloudQueueMessage message = CreateMessage(functionId, "OriginalETag");
+            IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -150,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             product.Register(functionId, CreateDummyInstanceFactory());
 
-            CloudQueueMessage message = CreateMessage(functionId, "OriginalETag");
+            IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -180,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             product.Register(functionId, CreateFakeInstanceFactory());
 
-            CloudQueueMessage message = CreateMessage(functionId, matchingETag);
+            IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -203,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             product.Register(functionId, CreateFakeInstanceFactory());
 
-            CloudQueueMessage message = CreateMessage(functionId, matchingETag);
+            IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -225,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             product.Register(functionId, CreateFakeInstanceFactory());
 
-            CloudQueueMessage message = CreateMessage(functionId, matchingETag);
+            IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
             // Act
             Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
@@ -279,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             return mock.Object;
         }
 
-        private static CloudQueueMessage CreateMessage(string functionId, string eTag)
+        private static IStorageQueueMessage CreateMessage(string functionId, string eTag)
         {
             BlobTriggerMessage triggerMessage = new BlobTriggerMessage
             {
@@ -292,14 +293,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             return CreateMessage(triggerMessage);
         }
 
-        private static CloudQueueMessage CreateMessage(BlobTriggerMessage triggerMessage)
+        private static IStorageQueueMessage CreateMessage(BlobTriggerMessage triggerMessage)
         {
             return CreateMessage(JsonConvert.SerializeObject(triggerMessage));
         }
 
-        private static CloudQueueMessage CreateMessage(string content)
+        private static IStorageQueueMessage CreateMessage(string content)
         {
-            return new CloudQueueMessage(content);
+            Mock<IStorageQueueMessage> mock = new Mock<IStorageQueueMessage>(MockBehavior.Strict);
+            mock.Setup(m => m.AsString).Returns(content);
+            return mock.Object;
         }
 
         private static BlobQueueTriggerExecutor CreateProductUnderTest()

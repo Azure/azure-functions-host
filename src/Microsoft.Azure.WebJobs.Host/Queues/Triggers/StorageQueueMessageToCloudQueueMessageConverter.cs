@@ -2,15 +2,21 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
-    internal class CloudQueueMessageToStringConverter : IConverter<CloudQueueMessage, string>
+    internal class StorageQueueMessageToCloudQueueMessageConverter : IConverter<IStorageQueueMessage, CloudQueueMessage>
     {
-        public string Convert(CloudQueueMessage input)
+        public CloudQueueMessage Convert(IStorageQueueMessage input)
         {
-            return input.AsString;
+            if (input == null)
+            {
+                return null;
+            }
+
+            return input.SdkObject;
         }
     }
 }

@@ -3,8 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -13,35 +11,29 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
-    internal class QueueTriggerBinding : ITriggerBinding<CloudQueueMessage>
+    internal class QueueTriggerBinding : ITriggerBinding<IStorageQueueMessage>
     {
-        private static readonly IObjectToTypeConverter<CloudQueueMessage> _converter =
-            new CompositeObjectToTypeConverter<CloudQueueMessage>(
-                new OutputConverter<CloudQueueMessage>(new IdentityConverter<CloudQueueMessage>()),
-                new OutputConverter<string>(new StringToCloudQueueMessageConverter()));
-
         private readonly string _parameterName;
-        private readonly ITriggerDataArgumentBinding<CloudQueueMessage> _argumentBinding;
-        private readonly CloudStorageAccount _account;
-        private readonly string _accountName;
-        private readonly string _queueName;
+        private readonly IStorageQueue _queue;
+        private readonly ITriggerDataArgumentBinding<IStorageQueueMessage> _argumentBinding;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
+        private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
-        public QueueTriggerBinding(string parameterName, ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding,
-            CloudStorageAccount account, string queueName)
+        public QueueTriggerBinding(string parameterName, IStorageQueue queue,
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
         {
             _parameterName = parameterName;
+            _queue = queue;
             _argumentBinding = argumentBinding;
-            _account = account;
-            _accountName = StorageClient.GetAccountName(account);
-            _queueName = queueName;
             _bindingDataContract = CreateBindingDataContract(argumentBinding);
+            _converter = CreateConverter(queue);
         }
 
         public IReadOnlyDictionary<string, Type> BindingDataContract
@@ -51,11 +43,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
         public string QueueName
         {
-            get { return _queueName; }
+            get { return _queue.Name; }
         }
 
         private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(
-            ITriggerDataArgumentBinding<CloudQueueMessage> argumentBinding)
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("QueueTrigger", typeof(string));
@@ -78,7 +70,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             return contract;
         }
 
-        public async Task<ITriggerData> BindAsync(CloudQueueMessage value, ValueBindingContext context)
+        private static IObjectToTypeConverter<IStorageQueueMessage> CreateConverter(IStorageQueue queue)
+        {
+            return new CompositeObjectToTypeConverter<IStorageQueueMessage>(
+                new OutputConverter<IStorageQueueMessage>(new IdentityConverter<IStorageQueueMessage>()),
+                new OutputConverter<CloudQueueMessage>(new CloudQueueMessageToStorageQueueMessageConverter()),
+                new OutputConverter<string>(new StringToStorageQueueMessageConverter(queue)));
+        }
+
+        public async Task<ITriggerData> BindAsync(IStorageQueueMessage value, ValueBindingContext context)
         {
             ITriggerData triggerData = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value, triggerData.BindingData);
@@ -88,11 +88,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
         public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            CloudQueueMessage message = null;
+            IStorageQueueMessage message = null;
 
             if (!_converter.TryConvert(value, out message))
             {
-                throw new InvalidOperationException("Unable to convert trigger to CloudQueueMessage.");
+                throw new InvalidOperationException("Unable to convert trigger to IStorageQueueMessage.");
             }
 
             return BindAsync(message, context);
@@ -101,13 +101,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             IInvoker invoker, FunctionDescriptor functionDescriptor)
         {
-            ITriggeredFunctionBinding<CloudQueueMessage> functionBinding =
-                new TriggeredFunctionBinding<CloudQueueMessage>(_parameterName, this, nonTriggerBindings);
-            ITriggeredFunctionInstanceFactory<CloudQueueMessage> instanceFactory =
-                new TriggeredFunctionInstanceFactory<CloudQueueMessage>(functionBinding, invoker, functionDescriptor);
-            CloudQueueClient client = _account.CreateCloudQueueClient();
-            CloudQueue queue = client.GetQueueReference(_queueName);
-            IListenerFactory listenerFactory = new QueueListenerFactory(queue, instanceFactory);
+            ITriggeredFunctionBinding<IStorageQueueMessage> functionBinding =
+                new TriggeredFunctionBinding<IStorageQueueMessage>(_parameterName, this, nonTriggerBindings);
+            ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory =
+                new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
+                    functionDescriptor);
+            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
@@ -116,12 +115,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             return new QueueTriggerParameterDescriptor
             {
                 Name = _parameterName,
-                AccountName = _accountName,
-                QueueName = _queueName
+                AccountName = QueueClient.GetAccountName(_queue.ServiceClient),
+                QueueName = _queue.Name
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(CloudQueueMessage value,
+        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageQueueMessage value,
             IReadOnlyDictionary<string, object> bindingDataFromValueType)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

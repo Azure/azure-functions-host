@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             IBinding binding = new QueueBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateCloudQueueClient(), path);
+                context.StorageAccount.SdkObject.CreateCloudQueueClient(), path);
             return Task.FromResult(binding);
         }
     }

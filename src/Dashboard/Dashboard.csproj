@@ -426,10 +426,6 @@
       <Project>{9781d898-5e08-45f1-acd9-7ea106353ac4}</Project>
       <Name>WebJobs.Protocols</Name>
     </ProjectReference>
-    <ProjectReference Include="..\Microsoft.Azure.WebJobs.ServiceBus\WebJobs.ServiceBus.csproj">
-      <Project>{7b396753-f2d9-4655-929b-be7e665a4c7e}</Project>
-      <Name>WebJobs.ServiceBus</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Microsoft.Azure.WebJobs.Storage\WebJobs.Storage.csproj">
       <Project>{543edc53-3b68-49a8-9c3f-fc2ed27515aa}</Project>
       <Name>WebJobs.Storage</Name>

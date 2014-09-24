@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Xunit;
@@ -19,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void TestFails()
         {
             FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null,
-                CloudStorageAccount.DevelopmentStorageAccount, null, null);
+                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
 
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {

@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.NotNull(method);
 
             FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(nameResolver,
-                CloudStorageAccount.DevelopmentStorageAccount, null, null);
+                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
 
             FunctionIndexer indexer = new FunctionIndexer(context);
 
