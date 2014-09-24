@@ -163,49 +163,16 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobCausalityManager.cs">
-      <Link>Data\BlobCausalityManager.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobClient.cs">
-      <Link>Data\BlobClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\BlobPath.cs">
-      <Link>Data\BlobPath.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Blobs\CloudBlobExtensions.cs">
-      <Link>Data\CloudBlobExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\ConnectionStringNames.cs">
-      <Link>Data\ConnectionStringNames.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\AmbientConnectionStringProvider.cs">
-      <Link>Data\AmbientConnectionStringProvider.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\DefaultStorageAccountProvider.cs">
-      <Link>Data\DefaultStorageAccountProvider.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\DefaultStorageCredentialsValidator.cs">
-      <Link>Data\DefaultStorageCredentialsValidator.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IConnectionStringProvider.cs">
-      <Link>Data\IConnectionStringProvider.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IStorageAccountProvider.cs">
-      <Link>Data\IStorageAccountProvider.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\IStorageCredentialsValidator.cs">
-      <Link>Data\IStorageCredentialsValidator.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\StorageClient.cs">
-      <Link>Data\StorageClient.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
-      <Link>Data\StorageExceptionExtensions.cs</Link>
-    </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\DiagnosticsController.cs" />
+    <Compile Include="Data\AccountProvider.cs" />
+    <Compile Include="Data\BlobCausalityReader.cs" />
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
     <Compile Include="Data\BlobParameterSnapshot.cs" />
+    <Compile Include="Data\BlobPath.cs" />
+    <Compile Include="Data\CloudBlobExtensions.cs" />
+    <Compile Include="Data\ConnectionStringNames.cs" />
+    <Compile Include="Data\ConnectionStringProvider.cs" />
     <Compile Include="Data\DashboardBlobNames.cs" />
     <Compile Include="Data\FunctionIndexReader.cs" />
     <Compile Include="Data\FunctionInstanceMetadata.cs" />
@@ -223,12 +190,7 @@
     <Compile Include="Data\Logs\IIndexerLogReader.cs" />
     <Compile Include="Data\Logs\IIndexerLogWriter.cs" />
     <Compile Include="Data\Logs\IndexerLogEntry.cs" />
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\StorageAccountParseResult.cs">
-      <Link>Data\StorageAccountParseResult.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Executors\StorageAccountParser.cs">
-      <Link>Data\StorageAccountParser.cs</Link>
-    </Compile>
+    <Compile Include="Data\StorageCredentialsValidator.cs" />
     <Compile Include="Data\VersionedMetadataDocument.cs" />
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />
@@ -319,7 +281,6 @@
     <Compile Include="Indexers\HostIndexer.cs" />
     <Compile Include="Indexers\FunctionIndexer.cs" />
     <Compile Include="Indexers\UpgradeIndexer.cs" />
-    <Compile Include="Infrastructure\AspNetTaskExecutor.cs" />
     <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />
     <Compile Include="ViewModels\BlobBoundParamModel.cs" />

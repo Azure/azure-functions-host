@@ -10,8 +10,6 @@ using Dashboard.Data.Logs;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
 using Dashboard.Infrastructure;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -96,14 +94,10 @@ namespace Dashboard
 
         private static CloudStorageAccount GetDashboardAccount()
         {
-            DefaultStorageAccountProvider provider = new DefaultStorageAccountProvider();
-            // Explicitly set a value to allow nulls/empty without throwing.
-            provider.DashboardConnectionString = provider.DashboardConnectionString;
-            CloudStorageAccount account = provider.GetAccount(ConnectionStringNames.Dashboard);
+            CloudStorageAccount account = AccountProvider.GetAccount(ConnectionStringNames.Dashboard);
             if (account != null)
             {
-                DefaultStorageCredentialsValidator validator = new DefaultStorageCredentialsValidator();
-                AspNetTaskExecutor.Execute(() => validator.ValidateCredentialsAsync(account, CancellationToken.None));
+                StorageCredentialsValidator.ValidateCredentials(account);
             }
             return account;
         }

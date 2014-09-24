@@ -6,8 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
@@ -23,10 +22,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
     /// </remarks>
     internal static class BlobCausalityManager
     {
-        // Metadata names must adehere to C# identifier rules
-        // http://msdn.microsoft.com/en-us/library/windowsazure/dd135715.aspx
-        internal const string MetadataKeyName = "AzureWebJobsParentId";
-
         [DebuggerNonUserCode] // ignore the StorageClientException in debugger.
         public static void SetWriter(IDictionary<string, string> metadata, Guid function)
         {
@@ -37,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             Debug.Assert(!Guid.Equals(Guid.Empty, function));
             
-            metadata[MetadataKeyName] = function.ToString();
+            metadata[BlobMetadataKeys.ParentId] = function.ToString();
         }
 
         public static async Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)
@@ -47,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return null;
             }
 
-            if (!blob.Metadata.ContainsKey(MetadataKeyName))
+            if (!blob.Metadata.ContainsKey(BlobMetadataKeys.ParentId))
             {
                 return null;
             }
 
-            string val = blob.Metadata[MetadataKeyName];
+            string val = blob.Metadata[BlobMetadataKeys.ParentId];
             Guid result;
             if (Guid.TryParse(val, out result))
             {

@@ -7,19 +7,17 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
+using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
-using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using System.Threading;
-using Dashboard.Infrastructure;
 
 namespace Dashboard
 {
@@ -95,16 +93,16 @@ namespace Dashboard
 
             var blobParam = new BlobBoundParamModel();
             blobParam.IsOutput = argument.IsBlobOutput;
-            blobParam.ConnectionStringKey = AmbientConnectionStringProvider.GetPrefixedConnectionStringName(argument.AccountName);
+            blobParam.ConnectionStringKey = ConnectionStringProvider.GetPrefixedConnectionStringName(argument.AccountName);
 
-            string storageConnectionString = argument.GetStorageConnectionString();
-            if (String.IsNullOrEmpty(storageConnectionString))
+            CloudStorageAccount account = argument.GetStorageAccount();
+            if (account == null)
             {
                 blobParam.IsConnectionStringMissing = true;
                 return blobParam;
             }
 
-            CloudBlockBlob blob = CloudStorageAccount.Parse(storageConnectionString)
+            CloudBlockBlob blob = account
                 .CreateCloudBlobClient()
                 .GetContainerReference(components[0])
                 .GetBlockBlobReference(components[1]);
@@ -140,8 +138,7 @@ namespace Dashboard
 
             try
             {
-                return AspNetTaskExecutor.Execute(
-                    () => BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None)) ?? Guid.Empty;
+                return BlobCausalityReader.GetParentId(blob) ?? Guid.Empty;
             }
             catch (StorageException e)
             {

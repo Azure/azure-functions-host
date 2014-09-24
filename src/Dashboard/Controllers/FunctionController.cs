@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
 using System.Threading;
 using System.Web.Mvc;
 using Dashboard.ApiControllers;
@@ -12,12 +11,9 @@ using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Infrastructure;
 using Dashboard.ViewModels;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Dashboard.Controllers
 {
@@ -242,8 +238,6 @@ namespace Dashboard.Controllers
 
             ICloudBlob blob = null;
 
-            DefaultStorageAccountProvider provider = new DefaultStorageAccountProvider();
-
             try
             {
                 BlobPath parsed = BlobPath.Parse(path);
@@ -253,18 +247,10 @@ namespace Dashboard.Controllers
                     BlobName = parsed.BlobName
                 };
 
-                var connectionStrings = provider.GetConnectionStrings().Select(c =>
+                IReadOnlyDictionary<string, CloudStorageAccount> accounts = AccountProvider.GetAccounts();
+                foreach (var account in accounts.Values)
                 {
-                    CloudStorageAccount account;
-                    CloudStorageAccount.TryParse(c.Value, out account);
-                    return account;
-                })
-                .Where(c => c != null)
-                .ToList();
-                connectionStrings.Add(_account);
-                foreach (var connectionString in connectionStrings)
-                {
-                    blob = descriptor.GetBlockBlob(connectionString);
+                    blob = descriptor.GetBlockBlob(account);
                     if (blob.Exists())
                     {
                         break;
@@ -297,8 +283,7 @@ namespace Dashboard.Controllers
 
             try
             {
-                guid = AspNetTaskExecutor.Execute(
-                    () => BlobCausalityManager.GetWriterAsync(blob, CancellationToken.None));
+                guid = BlobCausalityReader.GetParentId(blob);
             }
             catch
             {

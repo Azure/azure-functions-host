@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -73,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         {
             // Arrange
             Mock<ICloudBlob> blobMock = SetupBlobMock(isFetchSuccess: true);
-            blobMock.Object.Metadata[BlobCausalityManager.MetadataKeyName] = "abc";
+            blobMock.Object.Metadata[BlobMetadataKeys.ParentId] = "abc";
 
             // Act
             Guid? writer = BlobCausalityManager.GetWriterAsync(blobMock.Object, CancellationToken.None).GetAwaiter().GetResult();
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             // Arrange
             Guid expected = Guid.NewGuid();
             Mock<ICloudBlob> blobMock = SetupBlobMock(isFetchSuccess: true);
-            blobMock.Object.Metadata[BlobCausalityManager.MetadataKeyName] = expected.ToString();
+            blobMock.Object.Metadata[BlobMetadataKeys.ParentId] = expected.ToString();
 
             // Act
             Guid? writer = BlobCausalityManager.GetWriterAsync(blobMock.Object, CancellationToken.None).GetAwaiter().GetResult();
@@ -139,12 +140,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
 
         private static Guid? GetWriter(IDictionary<string, string> metadata)
         {
-            if (!metadata.ContainsKey(BlobCausalityManager.MetadataKeyName))
+            if (!metadata.ContainsKey(BlobMetadataKeys.ParentId))
             {
                 return null;
             }
 
-            string val = metadata[BlobCausalityManager.MetadataKeyName];
+            string val = metadata[BlobMetadataKeys.ParentId];
             Guid result;
             if (Guid.TryParse(val, out result))
             {

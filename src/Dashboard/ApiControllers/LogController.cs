@@ -8,8 +8,6 @@ using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Dashboard.Results;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
