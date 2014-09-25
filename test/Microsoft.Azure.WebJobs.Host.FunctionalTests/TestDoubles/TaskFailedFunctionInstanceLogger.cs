@@ -2,21 +2,18 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Timers;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
-    internal class TaskFunctionInstanceLogger<TResult> : IFunctionInstanceLogger
+    internal class TaskFailedFunctionInstanceLogger : IFunctionInstanceLogger
     {
-        private readonly TaskCompletionSource<TResult> _taskSource;
+        private readonly TaskCompletionSource<Exception> _taskSource;
 
-        public TaskFunctionInstanceLogger(TaskCompletionSource<TResult> taskSource)
+        public TaskFailedFunctionInstanceLogger(TaskCompletionSource<Exception> taskSource)
         {
             _taskSource = taskSource;
         }
@@ -30,7 +27,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             if (message != null && message.Failure != null)
             {
-                _taskSource.SetException(message.Failure.Exception);
+                // This class is used when a function is expected to fail (the result of the task is the expected
+                // exception).
+                // A faulted task is reserved for unexpected failures (like unhandled background exceptions).
+                _taskSource.SetResult(message.Failure.Exception);
             }
 
             return Task.FromResult(0);

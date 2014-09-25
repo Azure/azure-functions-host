@@ -121,6 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 return CreateBackoffResult();
             }
 
+
             // What if job takes longer. Call CloudQueue.UpdateMessage
             TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job
             IEnumerable<IStorageQueueMessage> batch;

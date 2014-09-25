@@ -15,7 +15,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal class FakeStorageAccount : IStorageAccount
     {
@@ -105,9 +105,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 return Task.FromResult(0);
             }
 
+            public IStorageQueueMessage CreateMessage(byte[] content)
+            {
+                return new FakeStorageQueueMessage(new CloudQueueMessage(content));
+            }
+
             public IStorageQueueMessage CreateMessage(string content)
             {
-                return new FakeStorageQueueMessage(content);
+                return new FakeStorageQueueMessage(new CloudQueueMessage(content));
             }
 
             public Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
@@ -135,46 +140,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 _store.UpdateMessage(_queueName, (MutableStorageQueueMessage)message, visibilityTimeout, updateFields);
                 return Task.FromResult(0);
-            }
-        }
-
-        private class FakeStorageQueueMessage : MutableStorageQueueMessage
-        {
-            private readonly string _content;
-
-            public FakeStorageQueueMessage(string content)
-            {
-                _content = content;
-            }
-
-            public override byte[] AsBytes
-            {
-                get
-                {
-                    return Encoding.UTF8.GetBytes(_content);
-                }
-            }
-
-            public override string AsString
-            {
-                get { return _content; }
-            }
-
-            public override int DequeueCount { get; set; }
-
-            public override DateTimeOffset? ExpirationTime { get; set; }
-
-            public override string Id { get; set; }
-
-            public override DateTimeOffset? InsertionTime { get; set; }
-
-            public override DateTimeOffset? NextVisibleTime { get; set; }
-
-            public override string PopReceipt { get; set; }
-
-            public override CloudQueueMessage SdkObject
-            {
-                get { throw new NotImplementedException(); }
             }
         }
 
@@ -224,11 +189,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
                 public void AddMessage(MutableStorageQueueMessage message)
                 {
-                    if (message.NextVisibleTime.HasValue)
-                    {
-                        throw new NotSupportedException();
-                    }
-
+                    DateTimeOffset now = DateTimeOffset.Now;
+                    message.Id = Guid.NewGuid().ToString();
+                    message.InsertionTime = now;
+                    message.ExpirationTime = now.AddDays(7);
+                    message.NextVisibleTime = now;
                     _visibleMessages.Enqueue(message);
                 }
 
@@ -251,6 +216,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     for (int count = 0; count < messageCount && _visibleMessages.TryDequeue(out message); count++)
                     {
                         string popReceipt = Guid.NewGuid().ToString();
+                        message.DequeueCount++;
                         message.NextVisibleTime = DateTimeOffset.Now.Add(visibilityTimeout);
                         message.PopReceipt = popReceipt;
                         _invisibleMessages[popReceipt] = message;

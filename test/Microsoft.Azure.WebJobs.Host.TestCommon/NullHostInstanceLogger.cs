@@ -8,9 +8,9 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
-    internal class NullHostInstanceLogger : IHostInstanceLogger
+    public class NullHostInstanceLogger : IHostInstanceLogger
     {
-        public Task LogHostStartedAsync(HostStartedMessage message, CancellationToken cancellationToken)
+        Task IHostInstanceLogger.LogHostStartedAsync(HostStartedMessage message, CancellationToken cancellationToken)
         {
             return Task.FromResult(0);
         }

@@ -132,6 +132,11 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
                 return _sdk.CreateIfNotExistsAsync(cancellationToken);
             }
 
+            public IStorageQueueMessage CreateMessage(byte[] content)
+            {
+                return new StorageQueueMessage(new CloudQueueMessage(content));
+            }
+
             public IStorageQueueMessage CreateMessage(string content)
             {
                 return new StorageQueueMessage(new CloudQueueMessage(content));

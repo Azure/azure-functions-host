@@ -6,7 +6,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal class TaskBackgroundExceptionDispatcher<TResult> : IBackgroundExceptionDispatcher
     {

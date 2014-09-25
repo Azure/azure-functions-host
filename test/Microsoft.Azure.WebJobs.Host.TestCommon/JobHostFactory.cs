@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         {
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
-                TypeLocator = new SimpleTypeLocator(typeof(TProgram)),
+                TypeLocator = new FakeTypeLocator(typeof(TProgram)),
                 StorageAccountProvider = new SimpleStorageAccountProvider
                 {
                     StorageAccount = storageAccount,

@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration config = new JobHostConfiguration()
             {
                 NameResolver = _nameResolver,
-                TypeLocator = new SimpleTypeLocator(this.GetType())
+                TypeLocator = new FakeTypeLocator(this.GetType())
             };
 
             _namespaceManager = NamespaceManager.CreateFromConnectionString(config.ServiceBusConnectionString);

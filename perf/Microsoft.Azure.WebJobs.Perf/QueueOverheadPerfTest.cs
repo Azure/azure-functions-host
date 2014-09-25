@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Perf
             JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString);
             hostConfig.Queues.BatchSize = BatchSize;
             hostConfig.NameResolver = _nameResolver;
-            hostConfig.TypeLocator = new SimpleTypeLocator(typeof(QueueOverheadPerfTest));
+            hostConfig.TypeLocator = new FakeTypeLocator(typeof(QueueOverheadPerfTest));
 
             if (disableLogging)
             {

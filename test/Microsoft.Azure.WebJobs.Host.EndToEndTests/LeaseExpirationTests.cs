@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration hostConfig = new JobHostConfiguration()
             {
                 NameResolver = nameResolver,
-                TypeLocator = new SimpleTypeLocator(typeof(LeaseExpirationTests))
+                TypeLocator = new FakeTypeLocator(typeof(LeaseExpirationTests))
             };
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfig.StorageConnectionString);

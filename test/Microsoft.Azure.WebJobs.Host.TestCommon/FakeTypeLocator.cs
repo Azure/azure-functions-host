@@ -4,11 +4,11 @@
 using System;
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
-    internal class FakeTypeLocator : ITypeLocator
+    public class FakeTypeLocator : ITypeLocator
     {
-        private readonly IReadOnlyList<Type> _types;
+        private readonly Type[] _types;
 
         public FakeTypeLocator(params Type[] types)
         {

@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration hostConfiguration = new JobHostConfiguration()
             {
                 NameResolver = _resolver,
-                TypeLocator = new SimpleTypeLocator(typeof(AsyncChainEndToEndTests))
+                TypeLocator = new FakeTypeLocator(typeof(AsyncChainEndToEndTests))
             };
 
             _storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);

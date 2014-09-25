@@ -4,13 +4,13 @@
 using System;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
-    internal class SdkStorageQueueMessage : MutableStorageQueueMessage
+    internal class FakeStorageQueueMessage : MutableStorageQueueMessage
     {
         private readonly CloudQueueMessage _message;
 
-        public SdkStorageQueueMessage(CloudQueueMessage message)
+        public FakeStorageQueueMessage(CloudQueueMessage message)
         {
             if (message == null)
             {

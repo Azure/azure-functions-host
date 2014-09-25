@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Perf
         {
             JobHostConfiguration hostConfig = new JobHostConfiguration(_connectionString);
             hostConfig.NameResolver = _nameResolver;
-            hostConfig.TypeLocator = new SimpleTypeLocator(typeof(BlobOverheadPerfTest));
+            hostConfig.TypeLocator = new FakeTypeLocator(typeof(BlobOverheadPerfTest));
 
             if (disableLogging)
             {

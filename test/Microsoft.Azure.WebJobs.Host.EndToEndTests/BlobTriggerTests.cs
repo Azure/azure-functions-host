@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _hostConfiguration = new JobHostConfiguration()
             {
                 NameResolver = nameResolver,
-                TypeLocator = new SimpleTypeLocator(typeof(BlobTriggerTests)),
+                TypeLocator = new FakeTypeLocator(typeof(BlobTriggerTests)),
             };
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(_hostConfiguration.StorageConnectionString);

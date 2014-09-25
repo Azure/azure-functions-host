@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Perf
 
                 JobHostConfiguration hostConfig = new JobHostConfiguration(connectionString);
                 hostConfig.NameResolver = _nameResolver;
-                hostConfig.TypeLocator = new SimpleTypeLocator(typeof(FunctionChainingPerfTest));
+                hostConfig.TypeLocator = new FakeTypeLocator(typeof(FunctionChainingPerfTest));
 
                 JobHost host = new JobHost(hostConfig);
                 _tokenSource = new CancellationTokenSource();

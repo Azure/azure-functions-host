@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             return new TestJobHostConfiguration
             {
-                TypeLocator = new SimpleTypeLocator(),
+                TypeLocator = new FakeTypeLocator(),
                 StorageAccountProvider = new SimpleStorageAccountProvider
                 {
                     // Nse null connection strings since unit tests shouldn't make wire requests.

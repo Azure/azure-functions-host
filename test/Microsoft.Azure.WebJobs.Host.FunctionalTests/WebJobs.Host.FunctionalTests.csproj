@@ -44,20 +44,18 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="NullHostInstanceLogger.cs" />
-    <Compile Include="TaskFunctionInstanceLogger.cs" />
-    <Compile Include="TaskBackgroundExceptionDispatcher.cs" />
-    <Compile Include="SdkStorageQueueMessage.cs" />
-    <Compile Include="MutableStorageQueueMessage.cs" />
+    <Compile Include="TestDoubles\StrictEncodings.cs" />
+    <Compile Include="TestDoubles\TaskFailedFunctionInstanceLogger.cs" />
+    <Compile Include="TestDoubles\TaskFunctionInstanceLogger.cs" />
+    <Compile Include="TestDoubles\TaskBackgroundExceptionDispatcher.cs" />
+    <Compile Include="TestDoubles\FakeStorageQueueMessage.cs" />
+    <Compile Include="TestDoubles\MutableStorageQueueMessage.cs" />
     <Compile Include="StorageQueueExtensions.cs" />
-    <Compile Include="FakeStorageAccount.cs" />
-    <Compile Include="FakeQueueConfiguration.cs" />
-    <Compile Include="FakeServiceProvider.cs" />
-    <Compile Include="FakeHostIdProvider.cs" />
-    <Compile Include="FakeStorageCredentialsValidator.cs" />
-    <Compile Include="NullConnectionStringProvider.cs" />
-    <Compile Include="FakeStorageAccountProvider.cs" />
-    <Compile Include="FakeTypeLocator.cs" />
+    <Compile Include="TestDoubles\FakeStorageAccount.cs" />
+    <Compile Include="TestDoubles\FakeQueueConfiguration.cs" />
+    <Compile Include="TestDoubles\FakeServiceProvider.cs" />
+    <Compile Include="TestDoubles\FakeHostIdProvider.cs" />
+    <Compile Include="TestDoubles\FakeStorageAccountProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QueueTriggerTests.cs" />
   </ItemGroup>

@@ -5,7 +5,7 @@ using System;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal abstract class MutableStorageQueueMessage : IStorageQueueMessage
     {

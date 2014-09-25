@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         /// <summary>Creates a new queue message.</summary>
         /// <param name="content">The message content.</param>
         /// <returns>A new queue message</returns>
+        IStorageQueueMessage CreateMessage(byte[] content);
+
+        /// <summary>Creates a new queue message.</summary>
+        /// <param name="content">The message content.</param>
+        /// <returns>A new queue message</returns>
         IStorageQueueMessage CreateMessage(string content);
 
         /// <summary>Deletes a message.</summary>

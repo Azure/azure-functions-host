@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Host.Queues;
 
-namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal class FakeQueueConfiguration : IQueueConfiguration
     {

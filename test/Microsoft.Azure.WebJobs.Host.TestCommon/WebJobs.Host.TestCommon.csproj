@@ -90,7 +90,7 @@
     <Compile Include="NullConnectionStringProvider.cs" />
     <Compile Include="RandomNameResolver.cs" />
     <Compile Include="NullStorageCredentialsValidator.cs" />
-    <Compile Include="SimpleTypeLocator.cs" />
+    <Compile Include="FakeTypeLocator.cs" />
     <Compile Include="SimpleStorageAccountProvider.cs" />
     <Compile Include="JobHostFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

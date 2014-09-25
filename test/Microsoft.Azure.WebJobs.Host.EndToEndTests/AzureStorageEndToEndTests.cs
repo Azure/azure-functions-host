@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration hostConfig = new JobHostConfiguration()
             {
                 NameResolver = _resolver,
-                TypeLocator = new SimpleTypeLocator(
+                TypeLocator = new FakeTypeLocator(
                     this.GetType(),
                     typeof(BlobToCustomObjectBinder))
             };

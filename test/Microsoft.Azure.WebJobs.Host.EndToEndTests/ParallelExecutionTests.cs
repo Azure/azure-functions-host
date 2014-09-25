@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             JobHostConfiguration hostConfiguration = new JobHostConfiguration()
             {
                 NameResolver = nameResolver,
-                TypeLocator = new SimpleTypeLocator(typeof(ParallelExecutionTests)),
+                TypeLocator = new FakeTypeLocator(typeof(ParallelExecutionTests)),
             };
             hostConfiguration.Queues.BatchSize = batchSize;
 

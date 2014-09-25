@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
                 IValueProvider provider = new QueueMessageValueProvider(value, convertedValue, ValueType);
 
-                IReadOnlyDictionary<string, object> bindingData = (_bindingDataProvider != null) 
+                IReadOnlyDictionary<string, object> bindingData = (_bindingDataProvider != null)
                     ? _bindingDataProvider.GetBindingData(convertedValue) : null;
 
                 return Task.FromResult<ITriggerData>(new TriggerData(provider, bindingData));
