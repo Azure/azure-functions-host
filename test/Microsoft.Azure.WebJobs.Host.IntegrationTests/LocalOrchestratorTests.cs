@@ -74,37 +74,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         }
 
         [Fact]
-        public void InvokeWithMissingBlobBlockBlob()
-        {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            TestBlobClient.DeleteContainer(account, "daas-test-input");
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncWithMissingBlobBlockBlob");
-        }
-
-        [Fact]
-        public void InvokeWithMissingBlobStream()
-        {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            TestBlobClient.DeleteContainer(account, "daas-test-input");
-
-            var lc = TestStorage.New<Program>(account);
-            // Not found
-            Assert.Throws<InvalidOperationException>(() => lc.Call("FuncWithMissingBlobStream"));
-        }
-
-        [Fact]
-        public void InvokeWithMissingBlobTextReader()
-        {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            TestBlobClient.DeleteContainer(account, "daas-test-input");
-
-            var lc = TestStorage.New<Program>(account);
-            lc.Call("FuncWithMissingBlobTextReader");
-        }
-
-        [Fact]
         public void InvokeWithParamsParser()
         {
             var account = TestStorage.GetAccount();
@@ -335,23 +304,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     // Ensure expected value in Stream
                     Assert.Equal(i, value);
                 }
-            }
-
-            public static void FuncWithMissingBlobBlockBlob([Blob(@"daas-test-input/blob.csv")] CloudBlockBlob blob)
-            {
-                Assert.NotNull(blob);
-                Assert.Equal("blob.csv", blob.Name);
-                Assert.Equal("daas-test-input", blob.Container.Name);
-            }
-
-            public static void FuncWithMissingBlobStream([Blob(@"daas-test-input/blob.csv", FileAccess.Read)] Stream stream)
-            {
-                throw new InvalidOperationException();
-            }
-
-            public static void FuncWithMissingBlobTextReader([Blob(@"daas-test-input/blob.csv")] TextReader reader)
-            {
-                Assert.Null(reader);
             }
 
             public static void ParseArgument(int x, [Blob(@"daas-test-input/out.csv")] TextWriter output)

@@ -131,17 +131,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         }
 
         [Fact]
-        public void TestIQueryableMissingTable()
-        {
-            Program.RowCount = int.MinValue;
-
-            var host = JobHostFactory.Create<Program>();
-            host.Call("IQueryableMissingTable");
-
-            Assert.Equal(0, Program.RowCount);
-        }
-
-        [Fact]
         public void TestITableEntity()
         {
             var account = CloudStorageAccount.DevelopmentStorageAccount;
@@ -358,18 +347,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                                                         where entity.StringProperty == "B"
                                                         select entity;
                 EntitiesWithStringPropertyB = query.ToArray().Count();
-            }
-
-            public static void IQueryableMissingTable([Table("NonExistingTable")] IQueryable<QueryableTestEntity> table)
-            {
-                int count = 0;
-
-                foreach (QueryableTestEntity entity in table)
-                {
-                    ++count;
-                }
-
-                RowCount = count;
             }
 
             public class ValueTableEntity : TableEntity

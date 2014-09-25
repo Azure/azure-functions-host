@@ -5,6 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
             get { return false; }
         }
 
-        private Task<IValueProvider> BindAsync(CloudStorageAccount account, ValueBindingContext context)
+        private Task<IValueProvider> BindAccountAsync(CloudStorageAccount account, ValueBindingContext context)
         {
             IValueProvider provider = new CloudStorageAccountValueProvider(account);
             return Task.FromResult(provider);
@@ -45,12 +46,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
                 throw new InvalidOperationException("Unable to convert value to CloudStorageAccount.");
             }
 
-            return BindAsync(account, context);
+            return BindAccountAsync(account, context);
         }
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(context.StorageAccount, context.ValueContext);
+            return BindAccountAsync(context.StorageAccount.SdkObject, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()
