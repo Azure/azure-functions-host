@@ -88,7 +88,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public static async Task<JobHostContext> CreateAndLogHostStartedAsync(IStorageAccount dashboardAccount,
             IStorageAccount storageAccount, string serviceBusConnectionString,
             IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
-            IHostIdProvider hostIdProvider, IQueueConfiguration queueConfiguration, CancellationToken shutdownToken,
+            IHostIdProvider hostIdProvider, IHostInstanceLogger hostInstanceLogger,
+            IFunctionInstanceLogger functionInstanceLogger, IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, CancellationToken shutdownToken,
             CancellationToken cancellationToken)
         {
             CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
@@ -109,28 +111,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, combinedCancellationToken);
                 }
 
-                IHostInstanceLogger hostInstanceLogger;
-                IFunctionInstanceLogger functionInstanceLogger;
                 IFunctionOutputLogger functionOutputLogger;
 
                 if (dashboardAccount != null)
                 {
-                    // Create logging against a live Azure account.
                     CloudBlobClient dashboardBlobClient = sdkDashboardAccount.CreateCloudBlobClient();
-                    IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
-                        new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
-                    PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
-                    hostInstanceLogger = queueLogger;
-                    functionInstanceLogger = new CompositeFunctionInstanceLogger(
-                        queueLogger,
-                        new ConsoleFunctionInstanceLogger());
                     functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
                 }
                 else
                 {
-                    // No auxillary logging. Logging interfaces are nops or in-memory.
-                    hostInstanceLogger = new NullHostInstanceLogger();
-                    functionInstanceLogger = new ConsoleFunctionInstanceLogger();
                     functionOutputLogger = new ConsoleFunctionOutputLogger();
                 }
 
@@ -146,8 +135,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     throw new InvalidOperationException(HostIdValidator.ValidationMessage);
                 }
 
-                HostBindingContext bindingContext = new HostBindingContext(functions.BindingProvider, nameResolver,
-                    queueConfiguration, storageAccount, serviceBusConnectionString);
+                HostBindingContext bindingContext = new HostBindingContext(backgroundExceptionDispatcher,
+                    functions.BindingProvider, nameResolver, queueConfiguration, storageAccount,
+                    serviceBusConnectionString);
 
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;
@@ -241,7 +231,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IListenerFactory instanceQueueListenerFactory, HostBindingContext bindingContext,
             IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
         {
-            IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand, innerExecutor);
+            IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
+                bindingContext.BackgroundExceptionDispatcher, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
                 innerExecutor, bindingContext, hostId, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
@@ -255,7 +246,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
                 bindingContext, hostId);
-            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, factoryListener);
+            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
+                bindingContext.BackgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;
         }

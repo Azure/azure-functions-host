@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
@@ -23,6 +24,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _hostId = hostId;
             _sharedListeners = sharedListeners;
             _cancellationToken = cancellationToken;
+        }
+
+        public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher
+        {
+            get { return _hostContext.BackgroundExceptionDispatcher; }
         }
 
         public IQueueConfiguration QueueConfiguration

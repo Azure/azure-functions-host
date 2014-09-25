@@ -3,8 +3,10 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -18,7 +20,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IHostInstanceLogger _hostInstanceLogger;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly CancellationToken _shutdownToken;
 
         public JobHostContextFactory(IStorageAccount dashboardAccount,
@@ -28,7 +33,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ITypeLocator typeLocator,
             INameResolver nameResolver,
             IHostIdProvider hostIdProvider,
+            IHostInstanceLogger hostInstanceLogger,
+            IFunctionInstanceLogger functionInstanceLogger,
             IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             CancellationToken shutdownToken)
         {
             _dashboardAccount = dashboardAccount;
@@ -38,7 +46,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _typeLocator = typeLocator;
             _nameResolver = nameResolver;
             _hostIdProvider = hostIdProvider;
+            _hostInstanceLogger = hostInstanceLogger;
+            _functionInstanceLogger = functionInstanceLogger;
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _shutdownToken = shutdownToken;
         }
 
@@ -46,7 +57,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             return JobHostContext.CreateAndLogHostStartedAsync(_dashboardAccount, _storageAccount,
                 _serviceBusConnectionString, _credentialsValidator, _typeLocator, _nameResolver, _hostIdProvider,
-                _queueConfiguration, _shutdownToken, cancellationToken);
+                _hostInstanceLogger, _functionInstanceLogger, _queueConfiguration, _backgroundExceptionDispatcher,
+                _shutdownToken, cancellationToken);
         }
     }
 }

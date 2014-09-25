@@ -44,6 +44,11 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="NullHostInstanceLogger.cs" />
+    <Compile Include="TaskFunctionInstanceLogger.cs" />
+    <Compile Include="TaskBackgroundExceptionDispatcher.cs" />
+    <Compile Include="SdkStorageQueueMessage.cs" />
+    <Compile Include="MutableStorageQueueMessage.cs" />
     <Compile Include="StorageQueueExtensions.cs" />
     <Compile Include="FakeStorageAccount.cs" />
     <Compile Include="FakeQueueConfiguration.cs" />

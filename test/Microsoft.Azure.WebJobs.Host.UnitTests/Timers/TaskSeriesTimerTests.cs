@@ -20,14 +20,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = null;
-            Task initialWait = Task.FromResult(0);
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict).Object;
+            Task initialWait = Task.FromResult(0);
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, initialWait, backgroundExceptionDispatcher),
-                "command");
+                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait), "command");
         }
 
         [Fact]
@@ -35,14 +34,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = CreateDummyCommand();
-            Task initialWait = null;
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict).Object;
+            Task initialWait = null;
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, initialWait, backgroundExceptionDispatcher),
-                "initialWait");
+                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait), "initialWait");
         }
 
         [Fact]
@@ -50,12 +48,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
         {
             // Arrange
             ITaskSeriesCommand command = CreateDummyCommand();
-            Task initialWait = Task.FromResult(0);
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null;
+            Task initialWait = Task.FromResult(0);
 
             // Act & Assert
             ExceptionAssert.ThrowsArgumentNull(
-                () => CreateProductUnderTest(command, initialWait, backgroundExceptionDispatcher),
+                () => CreateProductUnderTest(command, backgroundExceptionDispatcher, initialWait),
                 "backgroundExceptionDispatcher");
         }
 
@@ -878,24 +876,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 
         private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command)
         {
-            return CreateProductUnderTest(command, Task.Delay(0), CreateStackExceptionDispatcher());
+            return CreateProductUnderTest(command, CreateStackExceptionDispatcher(), Task.Delay(0));
         }
 
         private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command, Task initialWait)
         {
-            return CreateProductUnderTest(command, initialWait, CreateStackExceptionDispatcher());
+            return CreateProductUnderTest(command, CreateStackExceptionDispatcher(), initialWait);
         }
 
         private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
-            return CreateProductUnderTest(command, Task.Delay(0), backgroundExceptionDispatcher);
+            return CreateProductUnderTest(command, backgroundExceptionDispatcher, Task.Delay(0));
         }
 
-        private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command, Task initialWait,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        private static TaskSeriesTimer CreateProductUnderTest(ITaskSeriesCommand command,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, Task initialWait)
         {
-            return new TaskSeriesTimer(command, initialWait, backgroundExceptionDispatcher);
+            return new TaskSeriesTimer(command, backgroundExceptionDispatcher, initialWait);
         }
 
         private static ITaskSeriesCommand CreateStubCommand(TimeSpan separationInterval)

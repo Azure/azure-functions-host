@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -148,21 +149,17 @@ namespace Microsoft.Azure.WebJobs
         /// </returns>
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IStorageAccountProvider))
+            if (serviceType == typeof(IBackgroundExceptionDispatcher))
             {
-                return _storageAccountProvider;
-            }
-            else if (serviceType == typeof(IStorageCredentialsValidator))
-            {
-                return _storageCredentialsValidator;
+                return BackgroundExceptionDispatcher.Instance;
             }
             else if (serviceType == typeof(IConnectionStringProvider))
             {
                 return _storageAccountProvider;
             }
-            else if (serviceType == typeof(ITypeLocator))
+            else if (serviceType == typeof(IHostIdProvider))
             {
-                return _typeLocator;
+                return GetHostIdProvider();
             }
             else if (serviceType == typeof(INameResolver))
             {
@@ -172,9 +169,17 @@ namespace Microsoft.Azure.WebJobs
             {
                 return _queueConfiguration;
             }
-            else if (serviceType == typeof(IHostIdProvider))
+            else if (serviceType == typeof(IStorageAccountProvider))
             {
-                return GetHostIdProvider();
+                return _storageAccountProvider;
+            }
+            else if (serviceType == typeof(IStorageCredentialsValidator))
+            {
+                return _storageCredentialsValidator;
+            }
+            else if (serviceType == typeof(ITypeLocator))
+            {
+                return _typeLocator;
             }
             else
             {

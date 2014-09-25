@@ -15,8 +15,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
     {
         private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
             new CompositeArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<IStorageQueueMessage>(
-                    new IdentityConverter<IStorageQueueMessage>()),
                 new ConverterArgumentBindingProvider<CloudQueueMessage>(
                     new StorageQueueMessageToCloudQueueMessageConverter()),
                 new ConverterArgumentBindingProvider<string>(new StorageQueueMessageToStringConverter()),

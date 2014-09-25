@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
             _blobClient = account.CreateCloudBlobClient();
             _context = new HostBindingContext(
+                backgroundExceptionDispatcher: BackgroundExceptionDispatcher.Instance,
                 bindingProvider: index.BindingProvider,
                 nameResolver: null,
                 queueConfiguration: null,

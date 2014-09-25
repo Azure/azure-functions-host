@@ -3,7 +3,9 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -21,7 +23,31 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IStorageAccountProvider))
+            if (serviceType == typeof(IBackgroundExceptionDispatcher))
+            {
+                return BackgroundExceptionDispatcher.Instance;
+            }
+            else if (serviceType == typeof(IConnectionStringProvider))
+            {
+                return ConnectionStringProvider;
+            }
+            else if (serviceType == typeof(IFunctionInstanceLogger))
+            {
+                return new NullFunctionInstanceLogger();
+            }
+            else if (serviceType == typeof(IHostIdProvider))
+            {
+                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
+            }
+            else if (serviceType == typeof(IHostInstanceLogger))
+            {
+                return new NullHostInstanceLogger();
+            }
+            else if (serviceType == typeof(IQueueConfiguration))
+            {
+                return Queues;
+            }
+            else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return StorageAccountProvider;
             }
@@ -29,21 +55,9 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 return StorageCredentialsValidator;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
-            {
-                return ConnectionStringProvider;
-            }
             else if (serviceType == typeof(ITypeLocator))
             {
                 return TypeLocator;
-            }
-            else if (serviceType == typeof(IHostIdProvider))
-            {
-                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
-            }
-            else if (serviceType == typeof(IQueueConfiguration))
-            {
-                return Queues;
             }
             else
             {

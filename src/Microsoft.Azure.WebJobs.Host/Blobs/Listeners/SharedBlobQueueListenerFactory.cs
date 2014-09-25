@@ -48,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
-                delayStrategy, _sharedQueueWatcher, queueConfiguration.BatchSize, queueConfiguration.MaxDequeueCount);
+                delayStrategy, _context.BackgroundExceptionDispatcher, _sharedQueueWatcher,
+                queueConfiguration.BatchSize, queueConfiguration.MaxDequeueCount);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }
     }

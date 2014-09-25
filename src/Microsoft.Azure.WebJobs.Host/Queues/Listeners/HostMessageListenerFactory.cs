@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 poisonQueue: null,
                 triggerExecutor: triggerExecutor,
                 delayStrategy: delayStrategy,
+                backgroundExceptionDispatcher: context.BackgroundExceptionDispatcher,
                 sharedWatcher: null,
                 batchSize: queueConfiguration.BatchSize,
                 maxDequeueCount: queueConfiguration.MaxDequeueCount);

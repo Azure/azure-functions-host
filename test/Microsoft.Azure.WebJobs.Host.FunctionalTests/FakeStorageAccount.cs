@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             public Task AddMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
             {
-                _store.AddMessage(_queueName, (FakeStorageQueueMessage)message);
+                _store.AddMessage(_queueName, (MutableStorageQueueMessage)message);
                 return Task.FromResult(0);
             }
 
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             public Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
             {
-                _store.DeleteMessage(_queueName, (FakeStorageQueueMessage)message);
+                _store.DeleteMessage(_queueName, (MutableStorageQueueMessage)message);
                 return Task.FromResult(0);
             }
 
@@ -133,11 +133,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public Task UpdateMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout,
                 MessageUpdateFields updateFields, CancellationToken cancellationToken)
             {
-                throw new NotImplementedException();
+                _store.UpdateMessage(_queueName, (MutableStorageQueueMessage)message, visibilityTimeout, updateFields);
+                return Task.FromResult(0);
             }
         }
 
-        private class FakeStorageQueueMessage : IStorageQueueMessage
+        private class FakeStorageQueueMessage : MutableStorageQueueMessage
         {
             private readonly string _content;
 
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 _content = content;
             }
 
-            public byte[] AsBytes
+            public override byte[] AsBytes
             {
                 get
                 {
@@ -154,24 +155,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 }
             }
 
-            public string AsString
+            public override string AsString
             {
                 get { return _content; }
             }
 
-            public int DequeueCount { get; set; }
+            public override int DequeueCount { get; set; }
 
-            public DateTimeOffset? ExpirationTime { get; set; }
+            public override DateTimeOffset? ExpirationTime { get; set; }
 
-            public string Id { get; set; }
+            public override string Id { get; set; }
 
-            public DateTimeOffset? InsertionTime { get; set; }
+            public override DateTimeOffset? InsertionTime { get; set; }
 
-            public DateTimeOffset? NextVisibleTime { get; set; }
+            public override DateTimeOffset? NextVisibleTime { get; set; }
 
-            public string PopReceipt { get; set; }
+            public override string PopReceipt { get; set; }
 
-            public CloudQueueMessage SdkObject
+            public override CloudQueueMessage SdkObject
             {
                 get { throw new NotImplementedException(); }
             }
@@ -182,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             private readonly ConcurrentDictionary<string, QueueStore> _items =
                 new ConcurrentDictionary<string, QueueStore>();
 
-            public void AddMessage(string queueName, FakeStorageQueueMessage message)
+            public void AddMessage(string queueName, MutableStorageQueueMessage message)
             {
                 _items[queueName].AddMessage(message);
             }
@@ -192,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 _items.AddOrUpdate(queueName, new QueueStore(), (_, existing) => existing);
             }
 
-            public void DeleteMessage(string queueName, FakeStorageQueueMessage message)
+            public void DeleteMessage(string queueName, MutableStorageQueueMessage message)
             {
                 _items[queueName].DeleteMessage(message);
             }
@@ -202,20 +203,26 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 return _items.ContainsKey(queueName);
             }
 
-            public IEnumerable<FakeStorageQueueMessage> GetMessages(string queueName, int messageCount,
+            public IEnumerable<MutableStorageQueueMessage> GetMessages(string queueName, int messageCount,
                 TimeSpan visibilityTimeout)
             {
                 return _items[queueName].GetMessages(messageCount, visibilityTimeout);
             }
 
+            public void UpdateMessage(string queueName, MutableStorageQueueMessage message, TimeSpan visibilityTimeout,
+                MessageUpdateFields updateFields)
+            {
+                _items[queueName].UpdateMessage(message, visibilityTimeout, updateFields);
+            }
+
             private class QueueStore
             {
-                private readonly ConcurrentQueue<FakeStorageQueueMessage> _visibleMessages =
-                    new ConcurrentQueue<FakeStorageQueueMessage>();
-                private readonly ConcurrentDictionary<string, FakeStorageQueueMessage> _invisibleMessages =
-                    new ConcurrentDictionary<string, FakeStorageQueueMessage>();
+                private readonly ConcurrentQueue<MutableStorageQueueMessage> _visibleMessages =
+                    new ConcurrentQueue<MutableStorageQueueMessage>();
+                private readonly ConcurrentDictionary<string, MutableStorageQueueMessage> _invisibleMessages =
+                    new ConcurrentDictionary<string, MutableStorageQueueMessage>();
 
-                public void AddMessage(FakeStorageQueueMessage message)
+                public void AddMessage(MutableStorageQueueMessage message)
                 {
                     if (message.NextVisibleTime.HasValue)
                     {
@@ -225,9 +232,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     _visibleMessages.Enqueue(message);
                 }
 
-                public void DeleteMessage(FakeStorageQueueMessage message)
+                public void DeleteMessage(MutableStorageQueueMessage message)
                 {
-                    FakeStorageQueueMessage ignore;
+                    MutableStorageQueueMessage ignore;
 
                     if (!_invisibleMessages.TryRemove(message.PopReceipt, out ignore))
                     {
@@ -235,11 +242,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     }
                 }
 
-                public IEnumerable<FakeStorageQueueMessage> GetMessages(int messageCount, TimeSpan visibilityTimeout)
+                public IEnumerable<MutableStorageQueueMessage> GetMessages(int messageCount, TimeSpan visibilityTimeout)
                 {
                     MakeExpiredInvisibleMessagesVisible();
-                    List<FakeStorageQueueMessage> messages = new List<FakeStorageQueueMessage>();
-                    FakeStorageQueueMessage message;
+                    List<MutableStorageQueueMessage> messages = new List<MutableStorageQueueMessage>();
+                    MutableStorageQueueMessage message;
 
                     for (int count = 0; count < messageCount && _visibleMessages.TryDequeue(out message); count++)
                     {
@@ -253,16 +260,30 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     return messages;
                 }
 
+                public void UpdateMessage(MutableStorageQueueMessage message, TimeSpan visibilityTimeout,
+                    MessageUpdateFields updateFields)
+                {
+                    if ((updateFields & MessageUpdateFields.Content) == MessageUpdateFields.Content)
+                    {
+                        // No-op; queue messages already provide in-memory content updating.
+                    }
+
+                    if ((updateFields & MessageUpdateFields.Visibility) == MessageUpdateFields.Visibility)
+                    {
+                        message.NextVisibleTime = DateTimeOffset.Now.Add(visibilityTimeout);
+                    }
+                }
+
                 private void MakeExpiredInvisibleMessagesVisible()
                 {
-                    KeyValuePair<string, FakeStorageQueueMessage>[] invisibleMessagesSnapshot =
+                    KeyValuePair<string, MutableStorageQueueMessage>[] invisibleMessagesSnapshot =
                         _invisibleMessages.ToArray();
                     IEnumerable<string> expiredInvisibleMessagePopReceipts =
                         invisibleMessagesSnapshot.Where(
                         p => p.Value.NextVisibleTime.Value.UtcDateTime < DateTimeOffset.UtcNow).Select(p => p.Key);
                     foreach (string popReceipt in expiredInvisibleMessagePopReceipts)
                     {
-                        FakeStorageQueueMessage message;
+                        MutableStorageQueueMessage message;
 
                         if (_invisibleMessages.TryRemove(popReceipt, out message))
                         {

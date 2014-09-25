@@ -10,9 +10,11 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
@@ -87,15 +89,19 @@ namespace Microsoft.Azure.WebJobs
             ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
             IHostIdProvider hostIdProvider = serviceProvider.GetHostIdProvider();
-            IQueueConfiguration queueConfiguration = serviceProvider.GetJobHostQueuesConfiguration();
+            IHostInstanceLogger hostInstanceLogger = serviceProvider.GetHostInstanceLogger();
+            IFunctionInstanceLogger functionInstanceLogger = serviceProvider.GetFunctionInstanceLogger();
+            IQueueConfiguration queueConfiguration = serviceProvider.GetQueueConfiguration();
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
+                serviceProvider.GetBackgroundExceptionDispatcher();
 
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
 
             _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
-                credentialsValidator, typeLocator, nameResolver, hostIdProvider, queueConfiguration,
-                _shutdownTokenSource.Token);
+                credentialsValidator, typeLocator, nameResolver, hostIdProvider, hostInstanceLogger,
+                functionInstanceLogger, queueConfiguration, backgroundExceptionDispatcher, _shutdownTokenSource.Token);
         }
 
         // Test hook only.

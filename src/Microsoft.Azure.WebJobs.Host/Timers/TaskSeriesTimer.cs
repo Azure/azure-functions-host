@@ -12,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
     internal sealed class TaskSeriesTimer : ITaskSeriesTimer
     {
         private readonly ITaskSeriesCommand _command;
-        private readonly Task _initialWait;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly Task _initialWait;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
         private bool _started;
@@ -21,22 +21,12 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
         private Task _run;
         private bool _disposed;
 
-        public TaskSeriesTimer(ITaskSeriesCommand command, Task initialWait)
-            : this(command, initialWait, BackgroundExceptionDispatcher.Instance)
-        {
-        }
-
-        public TaskSeriesTimer(ITaskSeriesCommand command, Task initialWait,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        public TaskSeriesTimer(ITaskSeriesCommand command, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            Task initialWait)
         {
             if (command == null)
             {
                 throw new ArgumentNullException("command");
-            }
-
-            if (initialWait == null)
-            {
-                throw new ArgumentNullException("initialWait");
             }
 
             if (backgroundExceptionDispatcher == null)
@@ -44,9 +34,14 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (initialWait == null)
+            {
+                throw new ArgumentNullException("initialWait");
+            }
+
             _command = command;
-            _initialWait = initialWait;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _initialWait = initialWait;
             _cancellationTokenSource = new CancellationTokenSource();
         }
 

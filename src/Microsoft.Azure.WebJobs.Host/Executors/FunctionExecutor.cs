@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 completedMessage.Failure = new FunctionFailure
                 {
+                    Exception = exception,
                     ExceptionType = exception.GetType().FullName,
                     ExceptionDetails = exception.ToDetails(),
                 };
@@ -100,7 +101,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 cancellationToken);
 
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
-            using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand))
+            using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand,
+                _context.BindingContext.BackgroundExceptionDispatcher))
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
@@ -168,7 +170,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return _context.FunctionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
         }
 
-        private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand)
+        private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (updateCommand == null)
             {
@@ -177,12 +180,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             TimeSpan initialDelay = FunctionOutputIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionOutputIntervals.RefreshRate;
-            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate,
+                backgroundExceptionDispatcher);
             timer.Start();
             return timer;
         }
 
-        private static ITaskSeriesTimer StartParameterLogTimer(IRecurrentCommand updateCommand)
+        private static ITaskSeriesTimer StartParameterLogTimer(IRecurrentCommand updateCommand,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (updateCommand == null)
             {
@@ -191,7 +196,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             TimeSpan initialDelay = FunctionParameterLogIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionParameterLogIntervals.RefreshRate;
-            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate,
+                backgroundExceptionDispatcher);
             timer.Start();
             return timer;
         }
@@ -208,7 +214,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IRecurrentCommand updateParameterLogCommand =
                 outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
 
-            using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand))
+            using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand,
+                _context.BindingContext.BackgroundExceptionDispatcher))
             {
                 try
                 {
@@ -249,14 +256,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private static ValueWatcher CreateValueWatcher(IReadOnlyDictionary<string, IWatcher> watches,
-            CloudBlockBlob parameterLogBlob, TextWriter consoleOutput)
+            CloudBlockBlob parameterLogBlob, TextWriter consoleOutput,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (parameterLogBlob == null)
             {
                 return null;
             }
 
-            return new ValueWatcher(watches, parameterLogBlob, consoleOutput);
+            return new ValueWatcher(watches, parameterLogBlob, consoleOutput, backgroundExceptionDispatcher);
         }
 
         internal static async Task ExecuteWithWatchersAsync(IInvoker invoker,

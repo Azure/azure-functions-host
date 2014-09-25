@@ -26,11 +26,11 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
         }
 
         public static ITaskSeriesTimer CreateTimer(IRecurrentCommand command, TimeSpan initialInterval,
-            TimeSpan delayInterval)
+            TimeSpan delayInterval, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             IDelayStrategy delayStrategy = new FixedDelayStrategy(delayInterval);
             ITaskSeriesCommand timerCommand = new RecurrentTaskSeriesCommand(command, delayStrategy);
-            return new TaskSeriesTimer(timerCommand, Task.Delay(initialInterval));
+            return new TaskSeriesTimer(timerCommand, backgroundExceptionDispatcher, Task.Delay(initialInterval));
         }
     }
 }

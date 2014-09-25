@@ -3,8 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -19,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private bool _storageAccountSet;
         private string _serviceBusConnectionString;
         private bool _serviceBusConnectionStringSet;
+        private IHostInstanceLogger _hostInstanceLogger;
+        private IFunctionInstanceLogger _functionInstanceLogger;
 
         public DefaultStorageAccountProvider()
         {
@@ -34,10 +39,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public DefaultStorageAccountProvider(string dashboardAndStorageConnectionString)
         {
             IStorageAccount account = ParseStorageAccount(dashboardAndStorageConnectionString);
-            _dashboardAccount = account;
-            _dashboardAccountSet = true;
-            _storageAccount = account;
-            _storageAccountSet = true;
+            DashboardAccount = account;
+            StorageAccount = account;
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
@@ -50,12 +53,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Dashboard);
                 }
 
+                // Intentionally access the field rather than the property to avoid setting _dashboardAccountSet.
                 return _dashboardAccount != null ? _dashboardAccount.ToString(exportSecrets: true) : null;
             }
             set
             {
-                _dashboardAccount = ParseDashboardAccount(value, explicitlySet: true);
-                _dashboardAccountSet = true;
+                DashboardAccount = ParseDashboardAccount(value, explicitlySet: true);
             }
         }
 
@@ -69,12 +72,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Storage);
                 }
 
+                // Intentionally access the field rather than the property to avoid setting _storageAccountSet.
                 return _storageAccount != null ? _storageAccount.ToString(exportSecrets: true) : null;
             }
             set
             {
-                _storageAccount = ParseStorageAccount(value);
-                _storageAccountSet = true;
+                StorageAccount = ParseStorageAccount(value);
             }
         }
 
@@ -97,30 +100,86 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public IStorageAccount GetAccount(string connectionStringName)
+        public IHostInstanceLogger HostInstanceLogger
         {
-            if (connectionStringName == ConnectionStringNames.Dashboard)
+            get
             {
-                if (!_dashboardAccountSet)
-                {
-                    _dashboardAccount = ParseDashboardAccount(
-                        _ambientConnectionStringProvider.GetConnectionString(connectionStringName),
-                        explicitlySet: false);
-                    _dashboardAccountSet = true;
-                }
+                EnsureDashboardAccount();
+                return _hostInstanceLogger;
+            }
+        }
 
+        public IFunctionInstanceLogger FunctionInstanceLogger
+        {
+            get
+            {
+                EnsureDashboardAccount();
+                return _functionInstanceLogger;
+            }
+        }
+
+        private IStorageAccount DashboardAccount
+        {
+            get
+            {
+                EnsureDashboardAccount();
                 return _dashboardAccount;
             }
-            else if (connectionStringName == ConnectionStringNames.Storage)
+            set
+            {
+                _dashboardAccount = value;
+
+                if (value != null)
+                {
+                    // Create logging against a live Azure account.
+                    CloudBlobClient dashboardBlobClient = value.SdkObject.CreateCloudBlobClient();
+                    IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
+                        new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
+                    PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
+                    _hostInstanceLogger = queueLogger;
+                    _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger,
+                        new ConsoleFunctionInstanceLogger());
+                }
+                else
+                {
+                    // No auxillary logging. Logging interfaces are nops or in-memory.
+                    _hostInstanceLogger = new NullHostInstanceLogger();
+                    _functionInstanceLogger = new ConsoleFunctionInstanceLogger();
+                }
+
+                _dashboardAccountSet = true;
+            }
+        }
+
+        private IStorageAccount StorageAccount
+        {
+            get
             {
                 if (!_storageAccountSet)
                 {
                     _storageAccount = ParseStorageAccount(
-                        _ambientConnectionStringProvider.GetConnectionString(connectionStringName));
+                        _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Storage));
                     _storageAccountSet = true;
                 }
 
                 return _storageAccount;
+            }
+            set
+            {
+                _storageAccount = value;
+                _storageAccountSet = true;
+            }
+        }
+
+        public IStorageAccount GetAccount(string connectionStringName)
+        {
+            if (connectionStringName == ConnectionStringNames.Dashboard)
+            {
+                return DashboardAccount;
+            }
+            else if (connectionStringName == ConnectionStringNames.Storage)
+            {
+                return StorageAccount;
             }
             else
             {
@@ -171,6 +230,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             CloudStorageAccount sdkAccount = StorageAccountParser.ParseAccount(connectionString, connectionStringName);
             return new StorageAccount(sdkAccount);
+        }
+
+        private void EnsureDashboardAccount()
+        {
+            if (!_dashboardAccountSet)
+            {
+                DashboardAccount = ParseDashboardAccount(_ambientConnectionStringProvider.GetConnectionString(
+                    ConnectionStringNames.Dashboard), explicitlySet: false);
+            }
         }
     }
 }

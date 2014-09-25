@@ -3,15 +3,23 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
     internal class FakeServiceProvider : IServiceProvider
     {
+        public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher { get; set; }
+
         public IConnectionStringProvider ConnectionStringProvider { get; set; }
 
+        public IFunctionInstanceLogger FunctionInstanceLogger { get; set; }
+
         public IHostIdProvider HostIdProvider { get; set; }
+
+        public IHostInstanceLogger HostInstanceLogger { get; set; }
 
         public IQueueConfiguration QueueConfiguration { get; set; }
 
@@ -23,13 +31,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IConnectionStringProvider))
+            if (serviceType == typeof(IBackgroundExceptionDispatcher))
+            {
+                return BackgroundExceptionDispatcher;
+            }
+            else if (serviceType == typeof(IConnectionStringProvider))
             {
                 return ConnectionStringProvider;
+            }
+            else if (serviceType == typeof(IFunctionInstanceLogger))
+            {
+                return FunctionInstanceLogger;
             }
             else if (serviceType == typeof(IHostIdProvider))
             {
                 return HostIdProvider;
+            }
+            else if (serviceType == typeof(IHostInstanceLogger))
+            {
+                return HostInstanceLogger;
             }
             else if (serviceType == typeof(IQueueConfiguration))
             {

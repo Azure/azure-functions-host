@@ -19,11 +19,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobListener(CloudStorageAccount storageAccount)
+        public SharedBlobListener(CloudStorageAccount storageAccount,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             _strategy = CreateStrategy(storageAccount);
             // Start the first iteration immediately.
-            _timer = new TaskSeriesTimer(_strategy, initialWait: Task.Delay(0));
+            _timer = new TaskSeriesTimer(_strategy, backgroundExceptionDispatcher, initialWait: Task.Delay(0));
         }
 
         public IBlobWrittenWatcher BlobWritterWatcher

@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -18,7 +19,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IStorageAccountProvider))
+            if (serviceType == typeof(IBackgroundExceptionDispatcher))
+            {
+                return BackgroundExceptionDispatcher.Instance;
+            }
+            else if (serviceType == typeof(IConnectionStringProvider))
+            {
+                return ConnectionStringProvider;
+            }
+            else if (serviceType == typeof(IHostIdProvider))
+            {
+                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
+            }
+            else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return StorageAccountProvider;
             }
@@ -26,17 +39,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 return StorageCredentialsValidator;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
-            {
-                return ConnectionStringProvider;
-            }
             else if (serviceType == typeof(ITypeLocator))
             {
                 return TypeLocator;
-            }
-            else if (serviceType == typeof(IHostIdProvider))
-            {
-                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
             }
             else
             {

@@ -22,14 +22,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IStorageQueue _poisonQueue;
         private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly int _batchSize;
         private readonly uint _newBatchThreshold;
         private readonly uint _maxDequeueCount;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher =
-            BackgroundExceptionDispatcher.Instance;
 
         private bool _foundMessageSinceLastDelay;
         private bool _disposed;
@@ -39,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IStorageQueue poisonQueue,
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IDelayStrategy delayStrategy,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             SharedQueueWatcher sharedWatcher,
             int batchSize,
             int maxDequeueCount)
@@ -53,11 +53,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentOutOfRangeException("maxDequeueCount");
             }
 
-            _timer = new TaskSeriesTimer(this, Task.Delay(0));
+            _timer = new TaskSeriesTimer(this, backgroundExceptionDispatcher, Task.Delay(0));
             _queue = queue;
             _poisonQueue = poisonQueue;
             _triggerExecutor = triggerExecutor;
             _delayStrategy = delayStrategy;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
 
             if (sharedWatcher != null)
             {
@@ -230,7 +231,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 bool succeeded;
 
-                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout))
+                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout,
+                    _backgroundExceptionDispatcher))
                 {
                     timer.Start();
 
@@ -281,7 +283,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         }
 
         private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
-            IStorageQueueMessage message, TimeSpan visibilityTimeout)
+            IStorageQueueMessage message, TimeSpan visibilityTimeout,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             // Update a message's visibility when it is halfway to expiring.
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
@@ -289,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, TimeSpan.FromMinutes(1));
             ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout,
                 speedupStrategy);
-            return new TaskSeriesTimer(command, Task.Delay(normalUpdateInterval));
+            return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(normalUpdateInterval));
         }
 
         private async Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)

@@ -73,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private static IObjectToTypeConverter<IStorageQueueMessage> CreateConverter(IStorageQueue queue)
         {
             return new CompositeObjectToTypeConverter<IStorageQueueMessage>(
-                new OutputConverter<IStorageQueueMessage>(new IdentityConverter<IStorageQueueMessage>()),
                 new OutputConverter<CloudQueueMessage>(new CloudQueueMessageToStorageQueueMessageConverter()),
                 new OutputConverter<string>(new StringToStorageQueueMessageConverter(queue)));
         }
