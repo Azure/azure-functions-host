@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             if (!TryParse(value, out path))
             {
-                throw new FormatException("Blob identifiers must be in the format container/blob.");
+                throw new FormatException("Blob identifiers must be in the format 'container/blob'.");
             }
 
             return path;
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             if (!TryParse(value, out possiblePath))
             {
-                errorMessage = "Blob identifiers must be in the format container/blob.";
+                errorMessage = "Blob identifiers must be in the format 'container/blob'.";
                 path = null;
                 return false;
             }

@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string QueueName = "input";
 
         [Fact]
-        private static void TestBindToCloudQueueMessage()
+        public void CanBindToCloudQueueMessage()
         {
             // Arrange
             CloudQueueMessage expectedMessage = new CloudQueueMessage("ignore");
@@ -33,14 +33,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
-        public void BindToString()
+        public void CanBindToString()
         {
             const string expectedContent = "abc";
             TestBindToString(expectedContent);
         }
 
         [Fact]
-        public void BindToEmptyString()
+        public void CanBindToEmptyString()
         {
             TestBindToString(String.Empty);
         }

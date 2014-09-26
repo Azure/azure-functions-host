@@ -37,12 +37,13 @@ namespace Dashboard.Data
 
         public static IReadOnlyDictionary<string, string> GetConnectionStrings()
         {
-            Dictionary<string, string> connectionStrings = new Dictionary<string, string>();
+            Dictionary<string, string> connectionStrings = new Dictionary<string, string>(
+                StringComparer.OrdinalIgnoreCase);
             IDictionary environmentVariables = Environment.GetEnvironmentVariables();
 
             foreach (string key in environmentVariables.Keys)
             {
-                if (key.StartsWith(Prefix, StringComparison.Ordinal))
+                if (key.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     connectionStrings[key.Substring(Prefix.Length)] = (string)environmentVariables[key];
                 }
@@ -51,7 +52,7 @@ namespace Dashboard.Data
             // Connection string settings take precedence over environment variables.
             foreach (ConnectionStringSettings setting in ConfigurationManager.ConnectionStrings)
             {
-                if (setting.Name.StartsWith(Prefix, StringComparison.Ordinal))
+                if (setting.Name.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     connectionStrings[setting.Name.Substring(Prefix.Length)] = setting.ConnectionString;
                 }
