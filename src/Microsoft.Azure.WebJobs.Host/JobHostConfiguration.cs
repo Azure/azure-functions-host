@@ -6,6 +6,7 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
@@ -157,9 +158,17 @@ namespace Microsoft.Azure.WebJobs
             {
                 return _storageAccountProvider;
             }
+            else if (serviceType == typeof(IFunctionInstanceLogger))
+            {
+                return _storageAccountProvider.FunctionInstanceLogger;
+            }
             else if (serviceType == typeof(IHostIdProvider))
             {
                 return GetHostIdProvider();
+            }
+            else if (serviceType == typeof(IHostInstanceLogger))
+            {
+                return _storageAccountProvider.HostInstanceLogger;
             }
             else if (serviceType == typeof(INameResolver))
             {
