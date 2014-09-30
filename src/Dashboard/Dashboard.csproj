@@ -175,7 +175,6 @@
     <Compile Include="Data\ConnectionStringProvider.cs" />
     <Compile Include="Data\DashboardBlobNames.cs" />
     <Compile Include="Data\FunctionIndexReader.cs" />
-    <Compile Include="Data\FunctionInstanceMetadata.cs" />
     <Compile Include="Data\DashboardVersionManager.cs" />
     <Compile Include="Data\DashboardVersion.cs" />
     <Compile Include="Data\IFunctionIndexReader.cs" />

@@ -67,8 +67,8 @@ namespace Dashboard.Data
             // Cast from IListBlobItem to ICloudBlob is safe due to useFlatBlobListing: true above.
             foreach (ICloudBlob blob in blobSegment.Results)
             {
-                string nameWithoutPrefix = blob.Name.Substring(prefix.Length);
-                results.Add(RecentInvocationEntry.Parse(nameWithoutPrefix, blob.Metadata));
+                RecentInvocationEntry result = RecentInvocationEntry.Create(blob.Metadata);
+                results.Add(result);
             }
 
             string nextContinuationToken = BlobContinuationTokenSerializer.Serialize(blobSegment.ContinuationToken);

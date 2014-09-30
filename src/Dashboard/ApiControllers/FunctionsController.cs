@@ -247,38 +247,16 @@ namespace Dashboard.ApiControllers
 
         private InvocationLogViewModel CreateInvocationEntry(RecentInvocationEntry entry)
         {
-            Debug.Assert(entry.Metadata != null);
+            Debug.Assert(entry != null);
 
             var metadataSnapshot = new FunctionInstanceSnapshot();
             metadataSnapshot.Id = entry.Id;
-            metadataSnapshot.DisplayTitle = entry.Metadata[FunctionInstanceMetadata.DisplayTitle];
-
-            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.StartTime))
-            {
-                metadataSnapshot.StartTime = FunctionInstanceMetadata.DeserializeDateTimeOffset(entry.Metadata[FunctionInstanceMetadata.StartTime]);
-            }
-            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.EndTime))
-            {
-                metadataSnapshot.EndTime = FunctionInstanceMetadata.DeserializeDateTimeOffset(entry.Metadata[FunctionInstanceMetadata.EndTime]);
-            }
-            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.Succeeded))
-            {
-                metadataSnapshot.Succeeded = Boolean.Parse(entry.Metadata[FunctionInstanceMetadata.Succeeded]);
-            }
-
-            bool? heartbeatIsValid = null;
-            if (entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatContainer) &&
-                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatDirectory) &&
-                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatName) &&
-                entry.Metadata.ContainsKey(FunctionInstanceMetadata.HeartbeatExpiration))
-            {
-                heartbeatIsValid = HostInstanceHasHeartbeat(entry.Metadata[FunctionInstanceMetadata.HeartbeatContainer],
-                    entry.Metadata[FunctionInstanceMetadata.HeartbeatDirectory],
-                    entry.Metadata[FunctionInstanceMetadata.HeartbeatName],
-                    Int32.Parse(entry.Metadata[FunctionInstanceMetadata.HeartbeatExpiration]));
-            }
-
-            return new InvocationLogViewModel(metadataSnapshot, heartbeatIsValid);
+            metadataSnapshot.DisplayTitle = entry.DisplayTitle;
+            metadataSnapshot.StartTime = entry.StartTime;
+            metadataSnapshot.EndTime = entry.EndTime;
+            metadataSnapshot.Succeeded = entry.Succeeded;
+            metadataSnapshot.Heartbeat = entry.Heartbeat;
+            return new InvocationLogViewModel(metadataSnapshot, HostInstanceHasHeartbeat(metadataSnapshot));
         }
 
         private InvocationLogViewModel CreateInvocationEntry(Guid id)

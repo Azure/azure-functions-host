@@ -24,9 +24,8 @@ namespace Dashboard.Data
 
         public void CreateOrUpdate(FunctionInstanceSnapshot snapshot, DateTimeOffset timestamp)
         {
-            var innerId = CreateInnerId(snapshot.FunctionId, timestamp, snapshot.Id);
-            var metadata = FunctionInstanceMetadata.CreateFromSnapshot(snapshot);
-            _store.CreateOrUpdate(innerId, metadata, String.Empty);
+            string innerId = CreateInnerId(snapshot.FunctionId, timestamp, snapshot.Id);
+            _store.CreateOrUpdate(innerId, RecentInvocationEntry.CreateMetadata(snapshot), String.Empty);
         }
 
         public void DeleteIfExists(string functionId, DateTimeOffset timestamp, Guid id)
@@ -38,7 +37,7 @@ namespace Dashboard.Data
         private static string CreateInnerId(string functionId, DateTimeOffset timestamp, Guid id)
         {
             return DashboardBlobPrefixes.CreateByFunctionRelativePrefix(functionId) +
-                RecentInvocationEntry.Format(timestamp, id);
+                RecentInvocationEntry.CreateBlobName(timestamp, id);
         }
     }
 }

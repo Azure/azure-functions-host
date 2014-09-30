@@ -25,9 +25,8 @@ namespace Dashboard.Data
 
         public void CreateOrUpdate(FunctionInstanceSnapshot snapshot, WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp)
         {
-            var innerId = CreateInnerId(webJobRunId, timestamp, snapshot.Id);
-            var metadata = FunctionInstanceMetadata.CreateFromSnapshot(snapshot);
-            _store.CreateOrUpdate(innerId, metadata, String.Empty);
+            string innerId = CreateInnerId(webJobRunId, timestamp, snapshot.Id);
+            _store.CreateOrUpdate(innerId, RecentInvocationEntry.CreateMetadata(snapshot), String.Empty);
         }
 
         public void DeleteIfExists(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id)
@@ -39,7 +38,7 @@ namespace Dashboard.Data
         private static string CreateInnerId(WebJobRunIdentifier webJobRunId, DateTimeOffset timestamp, Guid id)
         {
             return DashboardBlobPrefixes.CreateByJobRunRelativePrefix(webJobRunId) +
-                RecentInvocationEntry.Format(timestamp, id);
+                RecentInvocationEntry.CreateBlobName(timestamp, id);
         }
     }
 }
