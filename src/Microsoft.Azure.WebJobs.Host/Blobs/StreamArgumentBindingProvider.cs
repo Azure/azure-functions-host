@@ -9,7 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableReadStream watchableStream = await ReadBlobArgumentBinding.TryBindStreamAsync(blob, context);
                 if (watchableStream == null)
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 get { return typeof(Stream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob,
                     context);
@@ -104,10 +104,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             // This class intentionally does not implement IDisposable because there's nothing it can do in Dispose.
             private sealed class WriteStreamValueBinder : IValueBinder, IWatchable
             {
-                private readonly ICloudBlob _blob;
+                private readonly IStorageBlob _blob;
                 private readonly WatchableCloudBlobStream _stream;
 
-                public WriteStreamValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream)
+                public WriteStreamValueBinder(IStorageBlob blob, WatchableCloudBlobStream stream)
                 {
                     _blob = blob;
                     _stream = stream;

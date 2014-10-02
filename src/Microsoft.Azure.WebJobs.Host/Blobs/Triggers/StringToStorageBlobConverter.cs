@@ -4,23 +4,23 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
-    internal class StringToCloudBlobConverter : IAsyncConverter<string, ICloudBlob>
+    internal class StringToStorageBlobConverter : IAsyncConverter<string, IStorageBlob>
     {
-        private readonly CloudBlobClient _client;
+        private readonly IStorageBlobClient _client;
 
-        public StringToCloudBlobConverter(CloudBlobClient client)
+        public StringToStorageBlobConverter(IStorageBlobClient client)
         {
             _client = client;
         }
 
-        public Task<ICloudBlob> ConvertAsync(string input, CancellationToken cancellationToken)
+        public Task<IStorageBlob> ConvertAsync(string input, CancellationToken cancellationToken)
         {
             BlobPath path = BlobPath.ParseAndValidate(input);
-            CloudBlobContainer container = _client.GetContainerReference(path.ContainerName);
+            IStorageBlobContainer container = _client.GetContainerReference(path.ContainerName);
             return container.GetBlobReferenceFromServerAsync(path.BlobName, cancellationToken);
         }
     }

@@ -12,21 +12,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class CloudBlobExtensions
     {
-        public static string GetBlobPath(this ICloudBlob blob)
-        {
-            return ToBlobPath(blob).ToString();
-        }
-
-        public static BlobPath ToBlobPath(this ICloudBlob blob)
-        {
-            if (blob == null)
-            {
-                throw new ArgumentNullException("blob");
-            }
-
-            return new BlobPath(blob.Container.Name, blob.Name);
-        }
-
         public static async Task<bool> TryFetchAttributesAsync(this ICloudBlob blob,
             CancellationToken cancellationToken)
         {

@@ -3,11 +3,11 @@
 
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    internal interface IBlobArgumentBinding : IArgumentBinding<ICloudBlob>
+    internal interface IBlobArgumentBinding : IArgumentBinding<IStorageBlob>
     {
         FileAccess Access { get; }
     }

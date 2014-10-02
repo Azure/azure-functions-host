@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
@@ -15,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
     {
         private readonly string _parameterName;
         private readonly IBlobArgumentBinding _argumentBinding;
-        private readonly CloudBlobClient _client;
+        private readonly IStorageBlobClient _client;
         private readonly string _accountName;
         private readonly IBindableBlobPath _path;
-        private readonly IAsyncObjectToTypeConverter<ICloudBlob> _converter;
+        private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
 
-        public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, CloudBlobClient client,
+        public BlobBinding(string parameterName, IBlobArgumentBinding argumentBinding, IStorageBlobClient client,
             IBindableBlobPath path)
         {
             _parameterName = parameterName;
@@ -56,15 +57,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             get { return _argumentBinding.Access; }
         }
 
-        private static IAsyncObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client,
+        private static IAsyncObjectToTypeConverter<IStorageBlob> CreateConverter(IStorageBlobClient client,
             IBindableBlobPath path, Type argumentType)
         {
-            return new CompositeAsyncObjectToTypeConverter<ICloudBlob>(
-                new OutputConverter<ICloudBlob>(new AsyncIdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(client, path, argumentType)));
+            return new CompositeAsyncObjectToTypeConverter<IStorageBlob>(
+                new OutputConverter<IStorageBlob>(new AsyncConverter<IStorageBlob, IStorageBlob>(
+                    new IdentityConverter<IStorageBlob>())),
+                new OutputConverter<ICloudBlob>(new AsyncConverter<ICloudBlob, IStorageBlob>(
+                    new CloudBlobToStorageBlobConverter())),
+                new OutputConverter<string>(new StringToStorageBlobConverter(client, path, argumentType)));
         }
 
-        private Task<IValueProvider> BindAsync(ICloudBlob value, ValueBindingContext context)
+        private Task<IValueProvider> BindBlobAsync(IStorageBlob value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
@@ -72,24 +76,24 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
             BlobPath boundPath = _path.Bind(context.BindingData);
-            CloudBlobContainer container = _client.GetContainerReference(boundPath.ContainerName);
+            IStorageBlobContainer container = _client.GetContainerReference(boundPath.ContainerName);
             
             if (_argumentBinding.Access != FileAccess.Read)
             {
-                container.CreateIfNotExists();
+                await container.CreateIfNotExistsAsync(context.CancellationToken);
             }
 
             Type argumentType = _argumentBinding.ValueType;
             string blobName = boundPath.BlobName;
-            ICloudBlob blob = await container.GetBlobReferenceForArgumentTypeAsync(blobName, argumentType,
+            IStorageBlob blob = await container.GetBlobReferenceForArgumentTypeAsync(blobName, argumentType,
                 context.CancellationToken);
 
-            return await BindAsync(blob, context.ValueContext);
+            return await BindBlobAsync(blob, context.ValueContext);
         }
 
         public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            ConversionResult<ICloudBlob> conversionResult =
+            ConversionResult<IStorageBlob> conversionResult =
                 await _converter.TryConvertAsync(value, context.CancellationToken);
 
             if (!conversionResult.Succeeded)
@@ -97,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 throw new InvalidOperationException("Unable to convert value to ICloudBlob.");
             }
 
-            return await BindAsync(conversionResult.Result, context);
+            return await BindBlobAsync(conversionResult.Result, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

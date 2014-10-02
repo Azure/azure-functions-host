@@ -4,15 +4,15 @@
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class ReadBlobArgumentBinding
     {
-        public static async Task<WatchableReadStream> TryBindStreamAsync(ICloudBlob blob, ValueBindingContext context)
+        public static async Task<WatchableReadStream> TryBindStreamAsync(IStorageBlob blob, ValueBindingContext context)
         {
             Stream rawStream;
             try

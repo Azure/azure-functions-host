@@ -4,15 +4,17 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal static class WriteBlobArgumentBinding
     {
-        public static async Task<WatchableCloudBlobStream> BindStreamAsync(ICloudBlob blob, ValueBindingContext context)
+        public static async Task<WatchableCloudBlobStream> BindStreamAsync(IStorageBlob blob,
+            ValueBindingContext context)
         {
-            CloudBlockBlob blockBlob = blob as CloudBlockBlob;
+            IStorageBlockBlob blockBlob = blob as IStorageBlockBlob;
 
             if (blockBlob == null)
             {

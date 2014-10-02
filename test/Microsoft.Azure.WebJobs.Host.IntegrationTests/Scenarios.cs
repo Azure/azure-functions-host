@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -192,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     Assert.True(poisonMessageReceived); // Guard
                     BlobTriggerMessage message = JsonConvert.DeserializeObject<BlobTriggerMessage>(PoisonBlobProgram.PoisonMessageText);
                     Assert.NotNull(message);
-                    Assert.Equal(BlobType.BlockBlob, message.BlobType);
+                    Assert.Equal(StorageBlobType.BlockBlob, message.BlobType);
                     Assert.Equal(expectedContainerName, message.ContainerName);
                     Assert.Equal(expectedBlobName, message.BlobName);
                     Assert.False(String.IsNullOrEmpty(message.ETag));

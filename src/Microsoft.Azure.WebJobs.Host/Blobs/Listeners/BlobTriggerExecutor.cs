@@ -8,11 +8,12 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal class BlobTriggerExecutor : ITriggerExecutor<ICloudBlob>
+    internal class BlobTriggerExecutor : ITriggerExecutor<IStorageBlob>
     {
         private readonly string _hostId;
         private readonly string _functionId;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _receiptManager = receiptManager;
         }
 
-        public async Task<bool> ExecuteAsync(ICloudBlob value, CancellationToken cancellationToken)
+        public async Task<bool> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
         {
             // Avoid unnecessary network calls for non-matches. First, check to see if the blob matches this trigger.
             IReadOnlyDictionary<string, object> bindingData = _input.CreateBindingData(value.ToBlobPath());
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Next, check to see if the blob currently exists (and, if so, what the current ETag is).
-            string possibleETag = await _eTagReader.GetETagAsync(value, cancellationToken);
+            string possibleETag = await _eTagReader.GetETagAsync(value.SdkObject, cancellationToken);
 
             if (possibleETag == null)
             {

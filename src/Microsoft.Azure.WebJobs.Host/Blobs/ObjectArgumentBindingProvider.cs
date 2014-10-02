@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 get { return _valueType; }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 object value;
                 ParameterLog status;

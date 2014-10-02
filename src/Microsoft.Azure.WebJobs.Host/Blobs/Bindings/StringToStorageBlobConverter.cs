@@ -5,24 +5,24 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal class StringToCloudBlobConverter : IAsyncConverter<string, ICloudBlob>
+    internal class StringToStorageBlobConverter : IAsyncConverter<string, IStorageBlob>
     {
-        private readonly CloudBlobClient _client;
+        private readonly IStorageBlobClient _client;
         private readonly IBindableBlobPath _defaultPath;
         private readonly Type _argumentType;
 
-        public StringToCloudBlobConverter(CloudBlobClient client, IBindableBlobPath defaultPath, Type argumentType)
+        public StringToStorageBlobConverter(IStorageBlobClient client, IBindableBlobPath defaultPath, Type argumentType)
         {
             _client = client;
             _defaultPath = defaultPath;
             _argumentType = argumentType;
         }
 
-        public Task<ICloudBlob> ConvertAsync(string input, CancellationToken cancellationToken)
+        public async Task<IStorageBlob> ConvertAsync(string input, CancellationToken cancellationToken)
         {
             BlobPath path;
 
@@ -36,9 +36,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 path = BlobPath.ParseAndValidate(input);
             }
 
-            CloudBlobContainer container = _client.GetContainerReference(path.ContainerName);
-            container.CreateIfNotExists();
-            return container.GetBlobReferenceForArgumentTypeAsync(path.BlobName, _argumentType, cancellationToken);
+            IStorageBlobContainer container = _client.GetContainerReference(path.ContainerName);
+            await container.CreateIfNotExistsAsync(cancellationToken);
+            return await container.GetBlobReferenceForArgumentTypeAsync(path.BlobName, _argumentType,
+                cancellationToken);
         }
     }
 }

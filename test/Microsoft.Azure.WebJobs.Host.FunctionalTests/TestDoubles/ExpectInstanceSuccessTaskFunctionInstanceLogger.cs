@@ -9,11 +9,11 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
-    internal class TaskFailedFunctionInstanceLogger : IFunctionInstanceLogger
+    internal class ExpectInstanceSuccessTaskFunctionInstanceLogger : IFunctionInstanceLogger
     {
-        private readonly TaskCompletionSource<Exception> _taskSource;
+        private readonly TaskCompletionSource<object> _taskSource;
 
-        public TaskFailedFunctionInstanceLogger(TaskCompletionSource<Exception> taskSource)
+        public ExpectInstanceSuccessTaskFunctionInstanceLogger(TaskCompletionSource<object> taskSource)
         {
             _taskSource = taskSource;
         }
@@ -27,10 +27,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         {
             if (message != null && message.Failure != null)
             {
-                // This class is used when a function is expected to fail (the result of the task is the expected
-                // exception).
-                // A faulted task is reserved for unexpected failures (like unhandled background exceptions).
-                _taskSource.SetResult(message.Failure.Exception);
+                _taskSource.SetException(message.Failure.Exception);
+            }
+            else
+            {
+                _taskSource.SetResult(null);
             }
 
             return Task.FromResult(0);

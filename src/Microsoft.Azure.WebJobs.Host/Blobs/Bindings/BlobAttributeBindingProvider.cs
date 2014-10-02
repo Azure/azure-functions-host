@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
@@ -24,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             List<IBlobArgumentBindingProvider> innerProviders = new List<IBlobArgumentBindingProvider>();
 
-            innerProviders.Add(CreateConverterProvider<ICloudBlob, IdentityConverter<ICloudBlob>>());
-            innerProviders.Add(CreateConverterProvider<CloudBlockBlob, CloudBlobToCloudBlockBlobConverter>());
-            innerProviders.Add(CreateConverterProvider<CloudPageBlob, CloudBlobToCloudPageBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<ICloudBlob, StorageBlobToCloudBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudBlockBlob, StorageBlobToCloudBlockBlobConverter>());
+            innerProviders.Add(CreateConverterProvider<CloudPageBlob, StorageBlobToCloudPageBlobConverter>());
             innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: null));
             innerProviders.Add(new CloudBlobStreamArgumentBindingProvider());
             innerProviders.Add(new TextReaderArgumentBindingProvider());
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         }
 
         private static IBlobArgumentBindingProvider CreateConverterProvider<TValue, TConverter>()
-            where TConverter : IConverter<ICloudBlob, TValue>, new()
+            where TConverter : IConverter<IStorageBlob, TValue>, new()
         {
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
 
             IBinding binding = new BlobBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.SdkObject.CreateCloudBlobClient(), path);
+                context.StorageAccount.CreateBlobClient(), path);
             return Task.FromResult(binding);
         }
     }

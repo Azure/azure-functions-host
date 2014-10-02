@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
@@ -53,11 +54,11 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             strategy.Execute();
         }
 
-        private class LambdaBlobTriggerExecutor : ITriggerExecutor<ICloudBlob>
+        private class LambdaBlobTriggerExecutor : ITriggerExecutor<IStorageBlob>
         {
-            public Func<ICloudBlob, bool> ExecuteLambda { get; set; }
+            public Func<IStorageBlob, bool> ExecuteLambda { get; set; }
 
-            public Task<bool> ExecuteAsync(ICloudBlob value, CancellationToken cancellationToken)
+            public Task<bool> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
             {
                 return Task.FromResult(ExecuteLambda.Invoke(value));
             }

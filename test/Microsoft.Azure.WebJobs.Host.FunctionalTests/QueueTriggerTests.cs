@@ -684,8 +684,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             // Arrange
             TaskCompletionSource<TResult> functionTaskSource = new TaskCompletionSource<TResult>();
-            IServiceProvider serviceProvider = CreateServiceProvider<TResult>(CreateFakeStorageAccount(), programType,
-                functionTaskSource);
+            IServiceProvider serviceProvider = FunctionalTest.CreateServiceProviderForManualCompletion<TResult>(
+                CreateFakeStorageAccount(), programType, functionTaskSource);
             Task<TResult> functionTask = functionTaskSource.Task;
             setTaskSource.Invoke(functionTaskSource);
             Task callTask;
@@ -731,46 +731,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IStorageQueue queue = client.GetQueueReference(queueName);
             queue.CreateIfNotExists();
             return queue;
-        }
-
-        private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
-            TaskCompletionSource<TResult> taskSource)
-        {
-            return new FakeServiceProvider
-            {
-                StorageAccountProvider = new FakeStorageAccountProvider
-                {
-                    StorageAccount = storageAccount
-                },
-                TypeLocator = new FakeTypeLocator(programType),
-                BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
-                HostInstanceLogger = new NullHostInstanceLogger(),
-                FunctionInstanceLogger = new TaskFunctionInstanceLogger<TResult>(taskSource),
-                ConnectionStringProvider = new NullConnectionStringProvider(),
-                HostIdProvider = new FakeHostIdProvider(),
-                QueueConfiguration = new FakeQueueConfiguration(),
-                StorageCredentialsValidator = new NullStorageCredentialsValidator()
-            };
-        }
-
-        private static IServiceProvider CreateServiceProviderForInstanceFailure(IStorageAccount storageAccount,
-            Type programType, TaskCompletionSource<Exception> taskSource)
-        {
-            return new FakeServiceProvider
-            {
-                StorageAccountProvider = new FakeStorageAccountProvider
-                {
-                    StorageAccount = storageAccount
-                },
-                TypeLocator = new FakeTypeLocator(programType),
-                BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<Exception>(taskSource),
-                HostInstanceLogger = new NullHostInstanceLogger(),
-                FunctionInstanceLogger = new TaskFailedFunctionInstanceLogger(taskSource),
-                ConnectionStringProvider = new NullConnectionStringProvider(),
-                HostIdProvider = new FakeHostIdProvider(),
-                QueueConfiguration = new FakeQueueConfiguration(),
-                StorageCredentialsValidator = new NullStorageCredentialsValidator()
-            };
         }
 
         private class BindToCloudQueueMessageProgram

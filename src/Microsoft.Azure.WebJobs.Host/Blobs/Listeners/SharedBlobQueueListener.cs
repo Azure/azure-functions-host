@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _executor = executor;
         }
 
-        public void Register(string functionId, ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory)
+        public void Register(string functionId, ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
             if (_started)
             {

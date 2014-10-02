@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
@@ -33,6 +34,28 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             Debug.Assert(!Guid.Equals(Guid.Empty, function));
             
             metadata[BlobMetadataKeys.ParentId] = function.ToString();
+        }
+
+        public static async Task<Guid?> GetWriterAsync(IStorageBlob blob, CancellationToken cancellationToken)
+        {
+            if (!await blob.TryFetchAttributesAsync(cancellationToken))
+            {
+                return null;
+            }
+
+            if (!blob.Metadata.ContainsKey(BlobMetadataKeys.ParentId))
+            {
+                return null;
+            }
+
+            string val = blob.Metadata[BlobMetadataKeys.ParentId];
+            Guid result;
+            if (Guid.TryParse(val, out result))
+            {
+                return result;
+            }
+
+            return null;
         }
 
         public static async Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)

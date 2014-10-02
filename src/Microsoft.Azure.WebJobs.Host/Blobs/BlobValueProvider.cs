@@ -2,19 +2,18 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal sealed class BlobValueProvider : IValueProvider
     {
-        private readonly ICloudBlob _blob;
+        private readonly IStorageBlob _blob;
         private readonly object _value;
         private readonly Type _valueType;
 
-        public BlobValueProvider(ICloudBlob blob, object value, Type valueType)
+        public BlobValueProvider(IStorageBlob blob, object value, Type valueType)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {
@@ -26,12 +25,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _valueType = valueType;
         }
 
-        public static BlobValueProvider Create<T>(ICloudBlob blob, T value)
+        public static BlobValueProvider Create<T>(IStorageBlob blob, T value)
         {
             return new BlobValueProvider(blob, value: value, valueType: typeof(T));
         }
 
-        public static BlobValueProvider CreateWithNull<T>(ICloudBlob blob) where T : class
+        public static BlobValueProvider CreateWithNull<T>(IStorageBlob blob) where T : class
         {
             return new BlobValueProvider(blob, value: null, valueType: typeof(T));
         }

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -19,15 +20,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
 
-        private readonly IDictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>> _registrations;
+        private readonly IDictionary<CloudBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>> _registrations;
         private readonly IDictionary<CloudBlobContainer, DateTime> _lastModifiedTimestamps;
         private readonly ConcurrentQueue<ICloudBlob> _blobWrittenNotifications;
 
         public ScanContainersStrategy()
         {
-            _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>>(
-                new CloudContainerComparer());
-            _lastModifiedTimestamps = new Dictionary<CloudBlobContainer, DateTime>(new CloudContainerComparer());
+            _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>>(
+                new CloudBlobContainerComparer());
+            _lastModifiedTimestamps = new Dictionary<CloudBlobContainer, DateTime>(new CloudBlobContainerComparer());
             _blobWrittenNotifications = new ConcurrentQueue<ICloudBlob>();
         }
 
@@ -36,11 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _blobWrittenNotifications.Enqueue(blobWritten);
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor)
+        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
         {
             // Register and Execute are not concurrency-safe.
             // Avoiding calling Register while Execute is running is the caller's responsibility.
-            ICollection<ITriggerExecutor<ICloudBlob>> containerRegistrations;
+            ICollection<ITriggerExecutor<IStorageBlob>> containerRegistrations;
 
             if (_registrations.ContainsKey(container))
             {
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
             else
             {
-                containerRegistrations = new List<ITriggerExecutor<ICloudBlob>>();
+                containerRegistrations = new List<ITriggerExecutor<IStorageBlob>>();
                 _registrations.Add(container, containerRegistrations);
             }
 
@@ -143,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 if (exception.IsNotFound())
                 {
-                    return new Tuple<IEnumerable<ICloudBlob>,DateTime>(
+                    return new Tuple<IEnumerable<ICloudBlob>, DateTime>(
                         Enumerable.Empty<ICloudBlob>(), updatedTimestamp);
                 }
                 else
@@ -189,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 }
             }
 
-            return new Tuple<IEnumerable<ICloudBlob>,DateTime>(newBlobs, updatedTimestamp);
+            return new Tuple<IEnumerable<ICloudBlob>, DateTime>(newBlobs, updatedTimestamp);
         }
     }
 }

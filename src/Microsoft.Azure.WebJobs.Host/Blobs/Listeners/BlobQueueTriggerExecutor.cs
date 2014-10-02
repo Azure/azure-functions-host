@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -18,20 +19,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobQueueTriggerExecutor : ITriggerExecutor<IStorageQueueMessage>
     {
-        private readonly CloudBlobClient _client;
+        private readonly IStorageBlobClient _client;
         private readonly IBlobETagReader _eTagReader;
         private readonly IBlobCausalityReader _causalityReader;
         private readonly IFunctionExecutor _innerExecutor;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
-        private readonly ConcurrentDictionary<string, ITriggeredFunctionInstanceFactory<ICloudBlob>> _registrations;
+        private readonly ConcurrentDictionary<string, ITriggeredFunctionInstanceFactory<IStorageBlob>> _registrations;
 
-        public BlobQueueTriggerExecutor(CloudBlobClient client, IFunctionExecutor innerExecutor,
+        public BlobQueueTriggerExecutor(IStorageBlobClient client, IFunctionExecutor innerExecutor,
             IBlobWrittenWatcher blobWrittenWatcher)
             : this(client, BlobETagReader.Instance, BlobCausalityReader.Instance, innerExecutor, blobWrittenWatcher)
         {
         }
 
-        public BlobQueueTriggerExecutor(CloudBlobClient client, IBlobETagReader eTagReader,
+        public BlobQueueTriggerExecutor(IStorageBlobClient client, IBlobETagReader eTagReader,
             IBlobCausalityReader causalityReader, IFunctionExecutor innerExecutor,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
@@ -40,10 +41,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _causalityReader = causalityReader;
             _innerExecutor = innerExecutor;
             _blobWrittenWatcher = blobWrittenWatcher;
-            _registrations = new ConcurrentDictionary<string, ITriggeredFunctionInstanceFactory<ICloudBlob>>();
+            _registrations = new ConcurrentDictionary<string, ITriggeredFunctionInstanceFactory<IStorageBlob>>();
         }
 
-        public void Register(string functionId, ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory)
+        public void Register(string functionId, ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
             _registrations.AddOrUpdate(functionId, instanceFactory, (i1, i2) => instanceFactory);
         }
@@ -66,31 +67,31 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Ensure that the function ID is still valid. Otherwise, ignore this message.
-            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory;
+            ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory;
 
             if (!_registrations.TryGetValue(functionId, out instanceFactory))
             {
                 return true;
             }
 
-            CloudBlobContainer container = _client.GetContainerReference(message.ContainerName);
+            IStorageBlobContainer container = _client.GetContainerReference(message.ContainerName);
             string blobName = message.BlobName;
 
-            ICloudBlob blob;
+            IStorageBlob blob;
             
             switch (message.BlobType)
             {
-                case BlobType.PageBlob:
+                case StorageBlobType.PageBlob:
                     blob = container.GetPageBlobReference(blobName);
                     break;
-                case BlobType.BlockBlob:
+                case StorageBlobType.BlockBlob:
                 default:
                     blob = container.GetBlockBlobReference(blobName);
                     break;
             }
 
             // Ensure the blob still exists with the same ETag.
-            string possibleETag = await _eTagReader.GetETagAsync(blob, cancellationToken);
+            string possibleETag = await _eTagReader.GetETagAsync(blob.SdkObject, cancellationToken);
 
             if (possibleETag == null)
             {
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // If the blob still exists but the ETag is different, delete the message but do a fast path notification.
             if (!String.Equals(message.ETag, possibleETag, StringComparison.Ordinal))
             {
-                _blobWrittenWatcher.Notify(blob);
+                _blobWrittenWatcher.Notify(blob.SdkObject);
                 return true;
             }
 

@@ -236,6 +236,36 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\WriteBlobParameterLog.cs">
       <Link>Protocols\WriteBlobParameterLog.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlob.cs">
+      <Link>Storage\Blob\IStorageBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobClient.cs">
+      <Link>Storage\Blob\IStorageBlobClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobContainer.cs">
+      <Link>Storage\Blob\IStorageBlobContainer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlockBlob.cs">
+      <Link>Storage\Blob\IStorageBlockBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStoragePageBlob.cs">
+      <Link>Storage\Blob\IStoragePageBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobClient.cs">
+      <Link>Storage\Blob\StorageBlobClient.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobContainer.cs">
+      <Link>Storage\Blob\StorageBlobContainer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobType.cs">
+      <Link>Storage\Blob\StorageBlobType.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlockBlob.cs">
+      <Link>Storage\Blob\StorageBlockBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StoragePageBlob.cs">
+      <Link>Storage\Blob\StoragePageBlob.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\IStorageAccount.cs">
       <Link>Storage\IStorageAccount.cs</Link>
     </Compile>
@@ -325,10 +355,12 @@
     <Compile Include="Bindings\Invoke\ClassInvokeBinding.cs" />
     <Compile Include="Bindings\Invoke\InvokeBinding.cs" />
     <Compile Include="Bindings\Runtime\CollectingDisposable.cs" />
+    <Compile Include="Blobs\CloudBlobToStorageBlobConverter.cs" />
     <Compile Include="Blobs\Bindings\WriteBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Bindings\CancellableTaskFactory.cs" />
     <Compile Include="Blobs\Bindings\TaskCancellableAsyncResult.cs" />
     <Compile Include="Blobs\BlobCausalityReader.cs" />
+    <Compile Include="Blobs\StorageBlobExtensions.cs" />
     <Compile Include="Blobs\IBlobCausalityReader.cs" />
     <Compile Include="Blobs\Listeners\BlobListener.cs" />
     <Compile Include="Blobs\Listeners\BlobListenerFactory.cs" />
@@ -349,6 +381,7 @@
     <Compile Include="Blobs\Listeners\SharedBlobListener.cs" />
     <Compile Include="Blobs\Listeners\SharedBlobListenerFactory.cs" />
     <Compile Include="Blobs\Listeners\StorageAnalyticsLogParser.cs" />
+    <Compile Include="Blobs\StorageBlobToCloudBlobConverter.cs" />
     <Compile Include="Blobs\TaskAsyncResultOfTResult.cs" />
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
@@ -384,7 +417,7 @@
     <Compile Include="ConnectionStringNames.cs" />
     <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
     <Compile Include="Converters\IAsyncConverter.cs" />
-    <Compile Include="Converters\AsyncIdentityConverter.cs" />
+    <Compile Include="Converters\AsyncConverter.cs" />
     <Compile Include="Converters\ConversionResult.cs" />
     <Compile Include="Converters\IAsyncObjectToTypeConverter.cs" />
     <Compile Include="Executors\FunctionInstanceFactory.cs" />
@@ -553,7 +586,7 @@
     <Compile Include="Blobs\Bindings\BlobAttributeBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\BlobBinding.cs" />
     <Compile Include="Blobs\Bindings\BlobCommittedAction.cs" />
-    <Compile Include="Blobs\Bindings\CloudBlobContainerExtensions.cs" />
+    <Compile Include="Blobs\Bindings\StorageBlobContainerExtensions.cs" />
     <Compile Include="Blobs\Bindings\CloudBlobStreamArgumentBinderProvider.cs" />
     <Compile Include="Blobs\Bindings\DelegatingCloudBlobStream.cs" />
     <Compile Include="Blobs\Bindings\IBlobCommitedAction.cs" />
@@ -570,8 +603,8 @@
     <Compile Include="Blobs\CloudBlobStreamObjectBinderOfT.cs" />
     <Compile Include="Blobs\ICloudBlobStreamObjectBinder.cs" />
     <Compile Include="Blobs\ObjectArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\CloudBlobToCloudPageBlobConverter.cs" />
-    <Compile Include="Blobs\CloudBlobToCloudBlockBlobConverter.cs" />
+    <Compile Include="Blobs\StorageBlobToCloudPageBlobConverter.cs" />
+    <Compile Include="Blobs\StorageBlobToCloudBlockBlobConverter.cs" />
     <Compile Include="Blobs\IBlobArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Triggers\BlobTriggerAttributeBindingProvider.cs" />
     <Compile Include="Blobs\CloudBlobExtensions.cs" />
@@ -580,9 +613,9 @@
     <Compile Include="Blobs\StreamArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Triggers\BlobTriggerBinding.cs" />
     <Compile Include="Blobs\OutputConverter.cs" />
-    <Compile Include="Blobs\Bindings\StringToCloudBlobConverter.cs" />
+    <Compile Include="Blobs\Bindings\StringToStorageBlobConverter.cs" />
     <Compile Include="Blobs\WatchableReadStream.cs" />
-    <Compile Include="Blobs\Triggers\StringToCloudBlobConverter.cs" />
+    <Compile Include="Blobs\Triggers\StringToStorageBlobConverter.cs" />
     <Compile Include="Converters\IConverter.cs" />
     <Compile Include="Converters\IdentityConverter.cs" />
     <Compile Include="Converters\CompositeObjectToTypeConverter.cs" />

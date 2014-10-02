@@ -7,15 +7,15 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class ConverterArgumentBindingProvider<T> : IBlobArgumentBindingProvider
     {
-        private readonly IConverter<ICloudBlob, T> _converter;
+        private readonly IConverter<IStorageBlob, T> _converter;
 
-        public ConverterArgumentBindingProvider(IConverter<ICloudBlob, T> converter)
+        public ConverterArgumentBindingProvider(IConverter<IStorageBlob, T> converter)
         {
             _converter = converter;
         }
@@ -40,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         {
             internal const FileAccess DefaultAccess = FileAccess.ReadWrite;
 
-            private readonly IConverter<ICloudBlob, T> _converter;
+            private readonly IConverter<IStorageBlob, T> _converter;
 
-            public ConverterArgumentBinding(IConverter<ICloudBlob, T> converter)
+            public ConverterArgumentBinding(IConverter<IStorageBlob, T> converter)
             {
                 _converter = converter;
             }
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 get { return typeof(T); }
             }
 
-            public Task<IValueProvider> BindAsync(ICloudBlob value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageBlob value, ValueBindingContext context)
             {
                 IValueProvider provider = BlobValueProvider.Create(value, _converter.Convert(value));
                 return Task.FromResult(provider);

@@ -2,15 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal sealed class BlobWatchableDisposableValueProvider : IValueProvider, IWatchable, IDisposable
     {
-        private readonly ICloudBlob _blob;
+        private readonly IStorageBlob _blob;
         private readonly object _value;
         private readonly Type _valueType;
         private readonly IWatcher _watcher;
@@ -18,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         private bool _disposed;
 
-        public BlobWatchableDisposableValueProvider(ICloudBlob blob, object value, Type valueType, IWatcher watcher,
+        public BlobWatchableDisposableValueProvider(IStorageBlob blob, object value, Type valueType, IWatcher watcher,
             IDisposable disposable)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))

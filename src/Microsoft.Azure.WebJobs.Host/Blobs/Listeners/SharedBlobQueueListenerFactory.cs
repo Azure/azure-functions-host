@@ -5,9 +5,9 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly SharedQueueWatcher _sharedQueueWatcher;
         private readonly IStorageQueueClient _queueClient;
         private readonly IStorageQueue _hostBlobTriggerQueue;
-        private readonly CloudBlobClient _blobClient;
+        private readonly IStorageBlobClient _blobClient;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(IFunctionExecutor executor,
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             SharedQueueWatcher sharedQueueWatcher,
             IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
-            CloudBlobClient blobClient,
+            IStorageBlobClient blobClient,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
             _executor = executor;

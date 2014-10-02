@@ -3,13 +3,14 @@
 
 using System;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class BlobClient
     {
-        public static string GetAccountName(CloudBlobClient client)
+        public static string GetAccountName(IStorageBlobClient client)
         {
             if (client == null)
             {

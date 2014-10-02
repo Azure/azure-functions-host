@@ -45,10 +45,24 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="FunctionalTest.cs" />
+    <Compile Include="BlobTests.cs" />
     <Compile Include="QueueTests.cs" />
+    <Compile Include="StorageBlobExtensions.cs" />
+    <Compile Include="StorageBlobContainerExtensions.cs" />
+    <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
+    <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
+    <Compile Include="TestDoubles\FakeStorageBlockBlob.cs" />
+    <Compile Include="TestDoubles\FakeStorageQueue.cs" />
+    <Compile Include="TestDoubles\FakeStorageBlobClient.cs" />
+    <Compile Include="TestDoubles\FakeStorageQueueClient.cs" />
+    <Compile Include="TestDoubles\MemoryBlobStore.cs" />
+    <Compile Include="TestDoubles\MemoryCloudBlobStream.cs" />
+    <Compile Include="TestDoubles\MemoryQueueStore.cs" />
+    <Compile Include="TestDoubles\StorageExceptionFactory.cs" />
     <Compile Include="TestDoubles\StrictEncodings.cs" />
-    <Compile Include="TestDoubles\TaskFailedFunctionInstanceLogger.cs" />
-    <Compile Include="TestDoubles\TaskFunctionInstanceLogger.cs" />
+    <Compile Include="TestDoubles\ExpectInstanceFailureTaskFunctionInstanceLogger.cs" />
+    <Compile Include="TestDoubles\ExpectInstanceSuccessTaskFunctionInstanceLogger.cs" />
+    <Compile Include="TestDoubles\ExpectManualCompletionTaskFunctionInstanceLogger.cs" />
     <Compile Include="TestDoubles\TaskBackgroundExceptionDispatcher.cs" />
     <Compile Include="TestDoubles\FakeStorageQueueMessage.cs" />
     <Compile Include="TestDoubles\MutableStorageQueueMessage.cs" />
@@ -91,6 +105,8 @@
     <Reference Include="System.Spatial, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Spatial.5.6.0\lib\net40\System.Spatial.dll</HintPath>
     </Reference>
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="xunit">
       <HintPath>..\..\packages\xunit.1.9.2\lib\net20\xunit.dll</HintPath>
     </Reference>

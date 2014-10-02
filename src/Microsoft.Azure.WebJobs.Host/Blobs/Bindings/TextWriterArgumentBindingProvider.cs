@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 get { return typeof(TextWriter); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob,
                     context);
@@ -57,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             // This class intentionally does not implement IDisposable because there's nothing it can do in Dispose.
             private class TextWriterValueBinder : IValueBinder, IWatchable
             {
-                private readonly ICloudBlob _blob;
+                private readonly IStorageBlob _blob;
                 private readonly WatchableCloudBlobStream _stream;
                 private readonly TextWriter _value;
 
-                public TextWriterValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream, TextWriter value)
+                public TextWriterValueBinder(IStorageBlob blob, WatchableCloudBlobStream stream, TextWriter value)
                 {
                     _blob = blob;
                     _stream = stream;

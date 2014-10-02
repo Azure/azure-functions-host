@@ -12,23 +12,24 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
-    internal class BlobTriggerBinding : ITriggerBinding<ICloudBlob>
+    internal class BlobTriggerBinding : ITriggerBinding<IStorageBlob>
     {
         private readonly string _parameterName;
-        private readonly IArgumentBinding<ICloudBlob> _argumentBinding;
-        private readonly CloudBlobClient _client;
+        private readonly IArgumentBinding<IStorageBlob> _argumentBinding;
+        private readonly IStorageBlobClient _client;
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
-        private readonly IAsyncObjectToTypeConverter<ICloudBlob> _converter;
+        private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
-        public BlobTriggerBinding(string parameterName, IArgumentBinding<ICloudBlob> argumentBinding,
-            CloudBlobClient client, IBlobPathSource path)
+        public BlobTriggerBinding(string parameterName, IArgumentBinding<IStorageBlob> argumentBinding,
+            IStorageBlobClient client, IBlobPathSource path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -87,14 +88,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             return contract;
         }
 
-        private static IAsyncObjectToTypeConverter<ICloudBlob> CreateConverter(CloudBlobClient client)
+        private static IAsyncObjectToTypeConverter<IStorageBlob> CreateConverter(IStorageBlobClient client)
         {
-            return new CompositeAsyncObjectToTypeConverter<ICloudBlob>(
-                new OutputConverter<ICloudBlob>(new AsyncIdentityConverter<ICloudBlob>()),
-                new OutputConverter<string>(new StringToCloudBlobConverter(client)));
+            return new CompositeAsyncObjectToTypeConverter<IStorageBlob>(
+                new OutputConverter<IStorageBlob>(new AsyncConverter<IStorageBlob, IStorageBlob>(
+                    new IdentityConverter<IStorageBlob>())),
+                new OutputConverter<ICloudBlob>(new AsyncConverter<ICloudBlob, IStorageBlob>(
+                    new CloudBlobToStorageBlobConverter())),
+                new OutputConverter<string>(new StringToStorageBlobConverter(client)));
         }
 
-        public async Task<ITriggerData> BindAsync(ICloudBlob value, ValueBindingContext context)
+        public async Task<ITriggerData> BindAsync(IStorageBlob value, ValueBindingContext context)
         {
             IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
@@ -104,12 +108,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            ConversionResult<ICloudBlob> conversionResult = await _converter.TryConvertAsync(value,
+            ConversionResult<IStorageBlob> conversionResult = await _converter.TryConvertAsync(value,
                 context.CancellationToken);
 
             if (!conversionResult.Succeeded)
             {
-                throw new InvalidOperationException("Unable to convert trigger to ICloudBlob.");
+                throw new InvalidOperationException("Unable to convert trigger to IStorageBlob.");
             }
 
             return await BindAsync(conversionResult.Result, context);
@@ -118,13 +122,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
             IInvoker invoker, FunctionDescriptor functionDescriptor)
         {
-            ITriggeredFunctionBinding<ICloudBlob> functionBinding =
-                new TriggeredFunctionBinding<ICloudBlob>(_parameterName, this, nonTriggerBindings);
-            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory =
-                new TriggeredFunctionInstanceFactory<ICloudBlob>(functionBinding, invoker, functionDescriptor);
-            CloudBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
-            IListenerFactory listenerFactory = new BlobListenerFactory(functionDescriptor.Id, container, _path,
-                instanceFactory);
+            ITriggeredFunctionBinding<IStorageBlob> functionBinding =
+                new TriggeredFunctionBinding<IStorageBlob>(_parameterName, this, nonTriggerBindings);
+            ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory =
+                new TriggeredFunctionInstanceFactory<IStorageBlob>(functionBinding, invoker, functionDescriptor);
+            IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
+            IListenerFactory listenerFactory = new BlobListenerFactory(functionDescriptor.Id, container.SdkObject,
+                _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
@@ -140,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(ICloudBlob value)
+        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageBlob value)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
             bindingData.Add("BlobTrigger", value.GetBlobPath());

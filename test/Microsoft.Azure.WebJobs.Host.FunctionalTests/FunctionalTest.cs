@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
@@ -12,8 +13,29 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
     internal static class FunctionalTest
     {
-        public static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
-            TaskCompletionSource<TResult> taskSource)
+        private static IServiceProvider CreateServiceProviderForInstanceFailure(IStorageAccount storageAccount,
+            Type programType, TaskCompletionSource<Exception> taskSource)
+        {
+            return CreateServiceProvider<Exception>(storageAccount, programType, taskSource,
+                new ExpectInstanceFailureTaskFunctionInstanceLogger(taskSource));
+        }
+
+        public static IServiceProvider CreateServiceProviderForInstanceSuccess(IStorageAccount storageAccount,
+            Type programType, TaskCompletionSource<object> taskSource)
+        {
+            return CreateServiceProvider<object>(storageAccount, programType, taskSource,
+                new ExpectInstanceSuccessTaskFunctionInstanceLogger(taskSource));
+        }
+
+        public static IServiceProvider CreateServiceProviderForManualCompletion<TResult>(IStorageAccount storageAccount,
+            Type programType, TaskCompletionSource<TResult> taskSource)
+        {
+            return CreateServiceProvider<TResult>(storageAccount, programType, taskSource,
+                new ExpectManualCompletionFunctionInstanceLogger<TResult>(taskSource));
+        }
+
+        private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
+            TaskCompletionSource<TResult> taskSource, IFunctionInstanceLogger functionInstanceLogger)
         {
             return new FakeServiceProvider
             {
@@ -23,8 +45,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 },
                 TypeLocator = new FakeTypeLocator(programType),
                 BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
-                HostInstanceLogger = new NullHostInstanceLogger(),
-                FunctionInstanceLogger = new TaskFunctionInstanceLogger<TResult>(taskSource),
+                HostInstanceLogger = new TestCommon.NullHostInstanceLogger(),
+                FunctionInstanceLogger = functionInstanceLogger,
                 ConnectionStringProvider = new NullConnectionStringProvider(),
                 HostIdProvider = new FakeHostIdProvider(),
                 QueueConfiguration = new FakeQueueConfiguration(),
@@ -32,62 +54,64 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             };
         }
 
-        private static IServiceProvider CreateServiceProviderForInstanceFailure(IStorageAccount storageAccount,
-            Type programType, TaskCompletionSource<Exception> taskSource)
+        // Stops running the host as soon as the first function logs completion.
+        public static void RunTrigger(IStorageAccount account, Type programType)
         {
-            return new FakeServiceProvider
-            {
-                StorageAccountProvider = new FakeStorageAccountProvider
-                {
-                    StorageAccount = storageAccount
-                },
-                TypeLocator = new FakeTypeLocator(programType),
-                BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<Exception>(taskSource),
-                HostInstanceLogger = new NullHostInstanceLogger(),
-                FunctionInstanceLogger = new TaskFailedFunctionInstanceLogger(taskSource),
-                ConnectionStringProvider = new NullConnectionStringProvider(),
-                HostIdProvider = new FakeHostIdProvider(),
-                QueueConfiguration = new FakeQueueConfiguration(),
-                StorageCredentialsValidator = new NullStorageCredentialsValidator()
-            };
+            // Arrange
+            TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
+            IServiceProvider serviceProvider = CreateServiceProviderForInstanceSuccess(account, programType,
+                taskSource);
+
+            // Act & Assert
+            RunTrigger<object>(serviceProvider, taskSource.Task);
         }
 
+        // Stops running the host as soon as the program marks the task as completed.
         public static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
             // Arrange
             TaskCompletionSource<TResult> taskSource = new TaskCompletionSource<TResult>();
-            IServiceProvider serviceProvider = CreateServiceProvider<TResult>(account, programType, taskSource);
+            IServiceProvider serviceProvider = CreateServiceProviderForManualCompletion<TResult>(account, programType,
+                taskSource);
             Task<TResult> task = taskSource.Task;
             setTaskSource.Invoke(taskSource);
+
+            try
+            {
+                // Act & Assert
+                return RunTrigger<TResult>(serviceProvider, task);
+            }
+            finally
+            {
+                setTaskSource.Invoke(null);
+            }
+        }
+
+        private static TResult RunTrigger<TResult>(IServiceProvider serviceProvider, Task<TResult> task)
+        {
+            // Arrange
             bool completed;
 
             using (JobHost host = new JobHost(serviceProvider))
             {
-                try
+                host.Start();
+
+                // Act
+                completed = task.WaitUntilCompleted(3 * 1000);
+
+                // Assert
+                Assert.True(completed);
+
+                // Give a nicer test failure message for faulted tasks.
+                if (task.Status == TaskStatus.Faulted)
                 {
-                    host.Start();
-
-                    // Act
-                    completed = task.WaitUntilCompleted(3 * 1000);
+                    task.GetAwaiter().GetResult();
                 }
-                finally
-                {
-                    setTaskSource.Invoke(null);
-                }
+
+                Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+                return task.Result;
             }
-
-            // Assert
-            Assert.True(completed);
-
-            // Give a nicer test failure message for faulted tasks.
-            if (task.Status == TaskStatus.Faulted)
-            {
-                task.GetAwaiter().GetResult();
-            }
-
-            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-            return task.Result;
         }
 
         public static Exception RunTriggerFailure<TResult>(IStorageAccount account, Type programType,
@@ -105,35 +129,35 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             setTaskSource.Invoke(successTaskSource);
             bool completed;
 
-            using (JobHost host = new JobHost(serviceProvider))
+            try
             {
-                try
+                using (JobHost host = new JobHost(serviceProvider))
                 {
                     host.Start();
 
                     // Act
-                    completed = Task.WhenAny(failureTask, successTask).WaitUntilCompleted(30 * 1000);
-                }
-                finally
-                {
-                    setTaskSource.Invoke(null);
+                    completed = Task.WhenAny(failureTask, successTask).WaitUntilCompleted(3 * 1000);
+
+                    // Assert
+                    Assert.True(completed);
+
+                    // The function should not be invoked.
+                    Assert.Equal(TaskStatus.WaitingForActivation, successTask.Status);
+
+                    // Give a nicer test failure message for faulted tasks.
+                    if (failureTask.Status == TaskStatus.Faulted)
+                    {
+                        successTask.GetAwaiter().GetResult();
+                    }
+
+                    Assert.Equal(TaskStatus.RanToCompletion, failureTask.Status);
+                    return failureTask.Result;
                 }
             }
-
-            // Assert
-            Assert.True(completed);
-
-            // The function should not be invoked.
-            Assert.Equal(TaskStatus.WaitingForActivation, successTask.Status);
-
-            // Give a nicer test failure message for faulted tasks.
-            if (failureTask.Status == TaskStatus.Faulted)
+            finally
             {
-                successTask.GetAwaiter().GetResult();
+                setTaskSource.Invoke(null);
             }
-
-            Assert.Equal(TaskStatus.RanToCompletion, failureTask.Status);
-            return failureTask.Result;
         }
     }
 }

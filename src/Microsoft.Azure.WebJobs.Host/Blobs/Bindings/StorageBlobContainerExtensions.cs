@@ -4,25 +4,25 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal static class CloudBlobContainerExtensions
+    internal static class StorageBlobContainerExtensions
     {
-        public static Task<ICloudBlob> GetBlobReferenceForArgumentTypeAsync(this CloudBlobContainer container,
+        public static Task<IStorageBlob> GetBlobReferenceForArgumentTypeAsync(this IStorageBlobContainer container,
             string blobName, Type argumentType, CancellationToken cancellationToken)
         {
-
             if (argumentType == typeof(CloudBlockBlob))
             {
-                ICloudBlob blob = container.GetBlockBlobReference(blobName);
+                IStorageBlob blob = container.GetBlockBlobReference(blobName);
                 return Task.FromResult(blob);
             }
             else if (argumentType == typeof(CloudPageBlob))
             {
-                ICloudBlob blob = container.GetPageBlobReference(blobName);
+                IStorageBlob blob = container.GetPageBlobReference(blobName);
                 return Task.FromResult(blob);
             }
             else
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             }
         }
 
-        private static async Task<ICloudBlob> GetExistingOrNewBlockBlobReferenceAsync(this CloudBlobContainer container,
+        private static async Task<IStorageBlob> GetExistingOrNewBlockBlobReferenceAsync(IStorageBlobContainer container,
             string blobName, CancellationToken cancellationToken)
         {
             try

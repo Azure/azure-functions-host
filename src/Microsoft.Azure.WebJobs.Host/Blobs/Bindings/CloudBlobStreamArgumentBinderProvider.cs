@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 get { return typeof(CloudBlobStream); }
             }
 
-            public async Task<IValueProvider> BindAsync(ICloudBlob blob, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob,
                     context);
@@ -53,10 +54,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             // This class intentionally does not implement IDisposable because there's nothing it can do in Dispose.
             private sealed class CloudBlobStreamValueBinder : IValueBinder, IWatchable
             {
-                private readonly ICloudBlob _blob;
+                private readonly IStorageBlob _blob;
                 private readonly WatchableCloudBlobStream _stream;
 
-                public CloudBlobStreamValueBinder(ICloudBlob blob, WatchableCloudBlobStream stream)
+                public CloudBlobStreamValueBinder(IStorageBlob blob, WatchableCloudBlobStream stream)
                 {
                     _blob = blob;
                     _stream = stream;

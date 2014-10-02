@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -20,21 +21,21 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
 
-        private readonly IDictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>> _registrations;
+        private readonly IDictionary<CloudBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>> _registrations;
         private readonly IDictionary<CloudBlobClient, BlobLogListener> _logListeners;
         private readonly Thread _initialScanThread;
         private readonly ConcurrentQueue<ICloudBlob> _blobsFoundFromScanOrNotification;
 
         public PollLogsStrategy()
         {
-            _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<ICloudBlob>>>(
-                new CloudContainerComparer());
+            _registrations = new Dictionary<CloudBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>>(
+                new CloudBlobContainerComparer());
             _logListeners = new Dictionary<CloudBlobClient, BlobLogListener>(new CloudBlobClientComparer());
             _initialScanThread = new Thread(ScanContainers);
             _blobsFoundFromScanOrNotification =  new ConcurrentQueue<ICloudBlob>();
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor)
+        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
         {
             // Initial background scans for all containers happen on first Execute call.
             // Prevent accidental late registrations.
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new InvalidOperationException("All registrations must be created before execution begins.");
             }
 
-            ICollection<ITriggerExecutor<ICloudBlob>> containerRegistrations;
+            ICollection<ITriggerExecutor<IStorageBlob>> containerRegistrations;
 
             if (_registrations.ContainsKey(container))
             {
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
             else
             {
-                containerRegistrations = new List<ITriggerExecutor<ICloudBlob>>();
+                containerRegistrations = new List<ITriggerExecutor<IStorageBlob>>();
                 _registrations.Add(container, containerRegistrations);
             }
 

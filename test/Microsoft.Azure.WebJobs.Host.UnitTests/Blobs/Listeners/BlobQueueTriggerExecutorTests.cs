@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -102,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             BlobTriggerMessage triggerMessage = new BlobTriggerMessage
             {
                 FunctionId = functionId,
-                BlobType = expectedBlobType,
+                BlobType = (StorageBlobType)expectedBlobType,
                 ContainerName = expectedContainerName,
                 BlobName = expectedBlobName,
                 ETag = "OriginalETag"
@@ -235,10 +237,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             Assert.False(task.Result);
         }
 
-        private static CloudBlobClient CreateClient()
+        private static IStorageBlobClient CreateClient()
         {
-            CloudStorageAccount account = CloudStorageAccount.DevelopmentStorageAccount;
-            return account.CreateCloudBlobClient();
+            IStorageAccount account = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount);
+            return account.CreateBlobClient();
         }
 
         private static IBlobWrittenWatcher CreateDummyBlobWrittenWatcher()
@@ -266,17 +268,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             return new Mock<IFunctionExecutor>(MockBehavior.Strict).Object;
         }
 
-        private static ITriggeredFunctionInstanceFactory<ICloudBlob> CreateDummyInstanceFactory()
+        private static ITriggeredFunctionInstanceFactory<IStorageBlob> CreateDummyInstanceFactory()
         {
-            return new Mock<ITriggeredFunctionInstanceFactory<ICloudBlob>>(MockBehavior.Strict).Object;
+            return new Mock<ITriggeredFunctionInstanceFactory<IStorageBlob>>(MockBehavior.Strict).Object;
         }
 
-        private static ITriggeredFunctionInstanceFactory<ICloudBlob> CreateFakeInstanceFactory()
+        private static ITriggeredFunctionInstanceFactory<IStorageBlob> CreateFakeInstanceFactory()
         {
-            Mock<ITriggeredFunctionInstanceFactory<ICloudBlob>> mock =
-                new Mock<ITriggeredFunctionInstanceFactory<ICloudBlob>>(MockBehavior.Strict);
-            mock.Setup(f => f.Create(It.IsAny<ICloudBlob>(), It.IsAny<Guid?>()))
-                .Returns<ICloudBlob, Guid?>((b, parentId) => CreateStubFunctionInstance(parentId));
+            Mock<ITriggeredFunctionInstanceFactory<IStorageBlob>> mock =
+                new Mock<ITriggeredFunctionInstanceFactory<IStorageBlob>>(MockBehavior.Strict);
+            mock.Setup(f => f.Create(It.IsAny<IStorageBlob>(), It.IsAny<Guid?>()))
+                .Returns<IStorageBlob, Guid?>((b, parentId) => CreateStubFunctionInstance(parentId));
             return mock.Object;
         }
 
@@ -285,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             BlobTriggerMessage triggerMessage = new BlobTriggerMessage
             {
                 FunctionId = functionId,
-                BlobType = BlobType.BlockBlob,
+                BlobType = StorageBlobType.BlockBlob,
                 ContainerName = "container",
                 BlobName = "blob",
                 ETag = eTag
@@ -333,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
              IBlobCausalityReader causalityReader, IFunctionExecutor innerExecutor,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
-            CloudBlobClient client = CreateClient();
+            IStorageBlobClient client = CreateClient();
             return new BlobQueueTriggerExecutor(client, eTagReader, causalityReader, innerExecutor, blobWrittenWatcher);
         }
 
@@ -345,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         private static IBlobCausalityReader CreateStubCausalityReader(Guid? parentId)
         {
             Mock<IBlobCausalityReader> mock = new Mock<IBlobCausalityReader>(MockBehavior.Strict);
-            mock.Setup(r => r.GetWriterAsync(It.IsAny<ICloudBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(r => r.GetWriterAsync(It.IsAny<IStorageBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(parentId));
             return mock.Object;
         }

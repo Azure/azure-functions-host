@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
             triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
-            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(QueueName);
 
             // Act
             CloudQueue result = RunTrigger<CloudQueue>(account, typeof(BindToCloudQueueProgram),
@@ -36,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(QueueName, queue.Name);
+            Assert.Equal(QueueName, result.Name);
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(QueueName);
             Assert.True(queue.Exists());
         }
 
@@ -48,13 +48,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
             triggerQueue.AddMessage(triggerQueue.CreateMessage(expectedContent));
-            IStorageQueue queue = CreateQueue(account, QueueName);
 
             // Act
             RunTrigger<object>(account, typeof(BindToICollectorCloudQueueMessageProgram),
                 (s) => BindToICollectorCloudQueueMessageProgram.TaskSource = s);
 
             // Assert
+            IStorageQueue queue = CreateQueue(account, QueueName);
             IEnumerable<IStorageQueueMessage> messages = queue.GetMessages(messageCount: 10);
             Assert.NotNull(messages);
             Assert.Equal(1, messages.Count());

@@ -20,16 +20,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             return StorageClient.GetAccountName(client.Credentials);
         }
 
-        public static string GetAccountName(CloudQueueClient client)
-        {
-            if (client == null)
-            {
-                return null;
-            }
-
-            return StorageClient.GetAccountName(client.Credentials);
-        }
-
         /// <summary>
         /// Ensures that the passed name is a valid queue name.
         /// If not, an ArgumentException is thrown

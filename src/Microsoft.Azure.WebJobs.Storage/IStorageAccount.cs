@@ -3,9 +3,11 @@
 
 using System;
 #if PUBLICSTORAGE
+using Microsoft.Azure.WebJobs.Storage.Blob;
 using Microsoft.Azure.WebJobs.Storage.Queue;
 using Microsoft.Azure.WebJobs.Storage.Table;
 #else
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
@@ -31,6 +33,10 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
 
         /// <summary>Gets the underlying <see cref="CloudStorageAccount"/>.</summary>
         CloudStorageAccount SdkObject { get; }
+
+        /// <summary>Creates a blob client.</summary>
+        /// <returns>A blob client.</returns>
+        IStorageBlobClient CreateBlobClient();
 
         /// <summary>Creates a queue client.</summary>
         /// <returns>A queue client.</returns>

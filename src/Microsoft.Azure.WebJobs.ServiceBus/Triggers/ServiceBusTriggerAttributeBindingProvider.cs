@@ -15,7 +15,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
             new CompositeArgumentBindingProvider(
-                new ConverterArgumentBindingProvider<BrokeredMessage>(new AsyncIdentityConverter<BrokeredMessage>()),
+                new ConverterArgumentBindingProvider<BrokeredMessage>(
+                    new AsyncConverter<BrokeredMessage, BrokeredMessage>(new IdentityConverter<BrokeredMessage>())),
                 new ConverterArgumentBindingProvider<string>(new BrokeredMessageToStringConverter()),
                 new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.

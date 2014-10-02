@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             get { return _strategy; }
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<ICloudBlob> triggerExecutor)
+        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
         {
             if (_started)
             {

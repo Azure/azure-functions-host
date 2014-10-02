@@ -5,9 +5,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 #if PUBLICSTORAGE
+using Microsoft.Azure.WebJobs.Storage.Blob;
 using Microsoft.Azure.WebJobs.Storage.Queue;
 using Microsoft.Azure.WebJobs.Storage.Table;
 #else
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
@@ -15,7 +17,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Auth;
-
+using Microsoft.WindowsAzure.Storage.Blob;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage
@@ -55,6 +57,13 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         public CloudStorageAccount SdkObject
         {
             get { return _sdkAccount; }
+        }
+
+        /// <inheritdoc />
+        public IStorageBlobClient CreateBlobClient()
+        {
+            CloudBlobClient sdkClient = _sdkAccount.CreateCloudBlobClient();
+            return new StorageBlobClient(sdkClient);
         }
 
         /// <inheritdoc />

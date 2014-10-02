@@ -48,6 +48,16 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Blob\IStorageBlob.cs" />
+    <Compile Include="Blob\IStoragePageBlob.cs" />
+    <Compile Include="Blob\StorageBlobType.cs" />
+    <Compile Include="Blob\StoragePageBlob.cs" />
+    <Compile Include="Blob\StorageBlockBlob.cs" />
+    <Compile Include="Blob\StorageBlobContainer.cs" />
+    <Compile Include="Blob\StorageBlobClient.cs" />
+    <Compile Include="Blob\IStorageBlobClient.cs" />
+    <Compile Include="Blob\IStorageBlobContainer.cs" />
+    <Compile Include="Blob\IStorageBlockBlob.cs" />
     <Compile Include="IStorageAccount.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Queue\IStorageQueueMessage.cs" />

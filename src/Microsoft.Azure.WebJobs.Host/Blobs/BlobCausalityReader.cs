@@ -4,7 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             get { return _instance; }
         }
 
-        public Task<Guid?> GetWriterAsync(ICloudBlob blob, CancellationToken cancellationToken)
+        public Task<Guid?> GetWriterAsync(IStorageBlob blob, CancellationToken cancellationToken)
         {
             return BlobCausalityManager.GetWriterAsync(blob, cancellationToken);
         }
