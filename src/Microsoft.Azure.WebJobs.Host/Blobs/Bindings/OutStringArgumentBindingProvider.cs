@@ -81,21 +81,22 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 /// </summary>
                 /// <param name="value">string object as retrieved from user's WebJobs method argument.</param>
                 /// <param name="cancellationToken">a cancellation token</param>
-                /// <remarks>As this method handles out string parameter it distinguishes following possible scenarios:
+                /// <remarks>
+                /// The out string parameter is processed as follows:
                 /// <list type="bullet">
                 /// <item>
                 /// <description>
-                /// the value is null - no CloudBlob will be created;
+                /// If the value is <see langword="null"/>, no blob will be created.
                 /// </description>
                 /// </item>
                 /// <item>
                 /// <description>
-                /// the value is an empty string - a CloudBlob with empty content will be created;
+                /// If the value is an empty string, a blob with empty content will be created.
                 /// </description>
                 /// </item>
                 /// <item>
                 /// <description>
-                /// the value is a non-empty string - a CloudBlob with content from given string will be created.
+                /// If the value is a non-empty string, a blob with that content will be created.
                 /// </description>
                 /// </item>
                 /// </list>

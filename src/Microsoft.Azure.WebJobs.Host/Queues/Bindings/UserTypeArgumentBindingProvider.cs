@@ -7,13 +7,13 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class UserTypeArgumentBindingProvider : IQueueArgumentBindingProvider
     {
-        public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
+        public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut)
             {
@@ -35,23 +35,23 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             return CreateBinding(itemType);
         }
 
-        private static IArgumentBinding<CloudQueue> CreateBinding(Type itemType)
+        private static IArgumentBinding<IStorageQueue> CreateBinding(Type itemType)
         {
             Type genericType = typeof(UserTypeArgumentBinding<>).MakeGenericType(itemType);
-            return (IArgumentBinding<CloudQueue>)Activator.CreateInstance(genericType);
+            return (IArgumentBinding<IStorageQueue>)Activator.CreateInstance(genericType);
         }
 
-        private class UserTypeArgumentBinding<TInput> : IArgumentBinding<CloudQueue>
+        private class UserTypeArgumentBinding<TInput> : IArgumentBinding<IStorageQueue>
         {
             public Type ValueType
             {
                 get { return typeof(TInput); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
-                IConverter<TInput, CloudQueueMessage> converter =
-                    new UserTypeToCloudQueueMessageConverter<TInput>(context.FunctionInstanceId);
+                IConverter<TInput, IStorageQueueMessage> converter =
+                    new UserTypeToStorageQueueMessageConverter<TInput>(value, context.FunctionInstanceId);
                 IValueProvider provider = new ConverterValueBinder<TInput>(value, converter,
                     context.MessageEnqueuedWatcher);
                 return Task.FromResult(provider);

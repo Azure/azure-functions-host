@@ -44,6 +44,8 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="FunctionalTest.cs" />
+    <Compile Include="QueueTests.cs" />
     <Compile Include="TestDoubles\StrictEncodings.cs" />
     <Compile Include="TestDoubles\TaskFailedFunctionInstanceLogger.cs" />
     <Compile Include="TestDoubles\TaskFunctionInstanceLogger.cs" />

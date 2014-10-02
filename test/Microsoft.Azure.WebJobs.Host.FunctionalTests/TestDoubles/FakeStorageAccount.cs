@@ -75,17 +75,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             private readonly QueuesStore _store;
             private readonly string _queueName;
             private readonly IStorageQueueClient _parent;
+            private readonly CloudQueue _sdkObject;
 
             public FakeStorageQueue(QueuesStore store, string queueName, IStorageQueueClient parent)
             {
                 _store = store;
                 _queueName = queueName;
                 _parent = parent;
+                _sdkObject = new CloudQueue(new Uri("http://localhost/" + queueName));
             }
 
             public string Name
             {
                 get { return _queueName; }
+            }
+
+            public CloudQueue SdkObject
+            {
+                get { return _sdkObject; }
             }
 
             public IStorageQueueClient ServiceClient
@@ -95,7 +102,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             public Task AddMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
             {
-                _store.AddMessage(_queueName, (MutableStorageQueueMessage)message);
+                if (message == null)
+                {
+                    throw new ArgumentNullException("message");
+                }
+
+                MutableStorageQueueMessage storeMessage = message as MutableStorageQueueMessage;
+
+                if (storeMessage == null)
+                {
+                    storeMessage = new FakeStorageQueueMessage(message.SdkObject);
+                }
+
+                _store.AddMessage(_queueName, storeMessage);
                 return Task.FromResult(0);
             }
 

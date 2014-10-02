@@ -3,12 +3,12 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal interface IMessageConverterFactory<TInput>
     {
-        IConverter<TInput, CloudQueueMessage> Create(Guid functionInstanceId);
+        IConverter<TInput, IStorageQueueMessage> Create(IStorageQueue queue, Guid functionInstanceId);
     }
 }

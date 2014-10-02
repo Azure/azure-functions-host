@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 #if PUBLICSTORAGE
 using Microsoft.Azure.WebJobs.Storage.Queue;
@@ -16,8 +15,7 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Auth;
-using System.Threading;
-using System.Threading.Tasks;
+
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage
@@ -77,103 +75,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         public string ToString(bool exportSecrets)
         {
             return _sdkAccount.ToString(exportSecrets: exportSecrets);
-        }
-
-        private class StorageQueueClient : IStorageQueueClient
-        {
-            private readonly CloudQueueClient _sdk;
-
-            public StorageQueueClient(CloudQueueClient sdk)
-            {
-                _sdk = sdk;
-            }
-
-            public StorageCredentials Credentials
-            {
-                get { return _sdk.Credentials; }
-            }
-
-            public IStorageQueue GetQueueReference(string queueName)
-            {
-                CloudQueue sdkQueue = _sdk.GetQueueReference(queueName);
-                return new StorageQueue(this, sdkQueue);
-            }
-        }
-
-        private class StorageQueue : IStorageQueue
-        {
-            private readonly IStorageQueueClient _parent;
-            private readonly CloudQueue _sdk;
-
-            public StorageQueue(IStorageQueueClient parent, CloudQueue sdk)
-            {
-                _parent = parent;
-                _sdk = sdk;
-            }
-
-            public string Name
-            {
-                get { return _sdk.Name; }
-            }
-
-            public IStorageQueueClient ServiceClient
-            {
-                get { return _parent; }
-            }
-
-            public Task AddMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
-            {
-                CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-                return _sdk.AddMessageAsync(sdkMessage, cancellationToken);
-            }
-
-            public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
-            {
-                return _sdk.CreateIfNotExistsAsync(cancellationToken);
-            }
-
-            public IStorageQueueMessage CreateMessage(byte[] content)
-            {
-                return new StorageQueueMessage(new CloudQueueMessage(content));
-            }
-
-            public IStorageQueueMessage CreateMessage(string content)
-            {
-                return new StorageQueueMessage(new CloudQueueMessage(content));
-            }
-
-            public Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
-            {
-                CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-                return _sdk.DeleteMessageAsync(sdkMessage, cancellationToken);
-            }
-
-            public Task<bool> ExistsAsync(CancellationToken cancellationToken)
-            {
-                return _sdk.ExistsAsync(cancellationToken);
-            }
-
-            public Task<IEnumerable<IStorageQueueMessage>> GetMessagesAsync(int messageCount, TimeSpan? visibilityTimeout,
-                QueueRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
-            {
-                Task<IEnumerable<CloudQueueMessage>> innerTask = _sdk.GetMessagesAsync(messageCount,
-                    visibilityTimeout, options, operationContext, cancellationToken);
-                return GetMessagesAsyncCore(innerTask);
-            }
-
-            private static async Task<IEnumerable<IStorageQueueMessage>> GetMessagesAsyncCore(
-                Task<IEnumerable<CloudQueueMessage>> innerTask)
-            {
-                IEnumerable<CloudQueueMessage> sdkMessages = await innerTask;
-                return sdkMessages.Select<CloudQueueMessage, IStorageQueueMessage>(m => new StorageQueueMessage(m));
-            }
-
-            public Task UpdateMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout,
-                MessageUpdateFields updateFields, CancellationToken cancellationToken)
-            {
-                CloudQueueMessage sdkMessage = ((StorageQueueMessage)message).SdkObject;
-                return _sdk.UpdateMessageAsync(sdkMessage, visibilityTimeout, updateFields, cancellationToken);
-            }
         }
 
         private class StorageTableClient : IStorageTableClient

@@ -28,7 +28,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             }
 
             /// <remarks>
-            /// As this method handles out string parameter it distinguishes following possible scenarios:
+            /// The out string parameter is processed as follows:
+            /// <list type="bullet">
             /// <item>
             /// <description>
             /// If the value is <see langword="null"/>, no message will be sent.
@@ -41,9 +42,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             /// </item>
             /// <item>
             /// <description>
-            /// If the value is a non-empty string, a message with content from given argument will be sent.
+            /// If the value is a non-empty string, a message with that content will be sent.
             /// </description>
             /// </item>
+            /// </list>
             /// </remarks>
             public Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
             {

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
@@ -27,6 +28,27 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
 
             queue.CreateIfNotExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public static bool Exists(this IStorageQueue queue)
+        {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            return queue.ExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public static IEnumerable<IStorageQueueMessage> GetMessages(this IStorageQueue queue, int messageCount)
+        {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            return queue.GetMessagesAsync(messageCount, visibilityTimeout: null, options: null, operationContext: null,
+                cancellationToken: CancellationToken.None).GetAwaiter().GetResult();
         }
     }
 }

@@ -1,11 +1,10 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
@@ -18,11 +17,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             _providers = providers;
         }
 
-        public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
+        public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             foreach (IQueueArgumentBindingProvider provider in _providers)
             {
-                IArgumentBinding<CloudQueue> binding = provider.TryCreate(parameter);
+                IArgumentBinding<IStorageQueue> binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {

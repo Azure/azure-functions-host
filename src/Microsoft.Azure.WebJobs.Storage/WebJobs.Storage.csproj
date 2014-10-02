@@ -53,6 +53,8 @@
     <Compile Include="Queue\IStorageQueueMessage.cs" />
     <Compile Include="Queue\IStorageQueue.cs" />
     <Compile Include="Queue\IStorageQueueClient.cs" />
+    <Compile Include="Queue\StorageQueueClient.cs" />
+    <Compile Include="Queue\StorageQueue.cs" />
     <Compile Include="Queue\StorageQueueMessage.cs" />
     <Compile Include="StorageAccount.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />

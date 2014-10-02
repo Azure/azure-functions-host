@@ -58,22 +58,25 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             /// </summary>
             /// <param name="value">BrokeredMessage instance as retrieved from user's WebJobs method argument.</param>
             /// <param name="cancellationToken">a cancellation token</param>
-            /// <remarks>As this method handles out message instance parameter it distinguishes following possible scenarios:
+            /// <remarks>
+            /// The out message parameter is processed as follows:
+            /// <list type="bullet">
             /// <item>
             /// <description>
-            /// the value is null - no message will be sent;
+            /// If the value is <see langword="null"/>, no message will be sent.
             /// </description>
             /// </item>
             /// <item>
             /// <description>
-            /// the value is an instance with empty content - a message with empty content will be sent;
+            /// If the value has empty content, a message with empty content will be sent.
             /// </description>
             /// </item>
             /// <item>
             /// <description>
-            /// the value is an instance with non-empty content - a message with content from given argument will be sent.
+            /// If the value has non-empty content, a message with that content will be sent.
             /// </description>
             /// </item>
+            /// </list>
             /// </remarks>
             public async Task SetValueAsync(object value, CancellationToken cancellationToken)
             {

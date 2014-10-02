@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(new FakeStorageQueueMessage(expectedMessage));
 
             // Act
-            CloudQueueMessage result = RunQueueTrigger<CloudQueueMessage>(account,
-                typeof(BindToCloudQueueMessageProgram), (s) => BindToCloudQueueMessageProgram.TaskSource = s);
+            CloudQueueMessage result = RunTrigger<CloudQueueMessage>(account, typeof(BindToCloudQueueMessageProgram),
+                (s) => BindToCloudQueueMessageProgram.TaskSource = s);
 
             // Assert
             Assert.Same(expectedMessage, result);
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            string result = RunQueueTrigger<string>(account, typeof(BindToStringProgram),
+            string result = RunTrigger<string>(account, typeof(BindToStringProgram),
                 (s) => BindToStringProgram.TaskSource = s);
 
             // Assert
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Exception exception = RunQueueTriggerFailure<string>(account, typeof(BindToStringProgram),
+            Exception exception = RunTriggerFailure<string>(account, typeof(BindToStringProgram),
                 (s) => BindToStringProgram.TaskSource = s);
 
             // Assert
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            byte[] result = RunQueueTrigger<byte[]>(account, typeof(BindToByteArrayProgram),
+            byte[] result = RunTrigger<byte[]>(account, typeof(BindToByteArrayProgram),
                 (s) => BindToByteArrayProgram.TaskSource = s);
 
             // Assert
@@ -148,8 +148,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Poco result = RunQueueTrigger<Poco>(account, typeof(BindToPocoProgram),
-                (s) => BindToPocoProgram.TaskSource = s);
+            Poco result = RunTrigger<Poco>(account, typeof(BindToPocoProgram), (s) => BindToPocoProgram.TaskSource = s);
 
             // Assert
             AssertEqual(expectedContent, result);
@@ -180,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Exception exception = RunQueueTriggerFailure<Poco>(account, typeof(BindToPocoProgram),
+            Exception exception = RunTriggerFailure<Poco>(account, typeof(BindToPocoProgram),
                 (s) => BindToPocoProgram.TaskSource = s);
 
             // Assert
@@ -207,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Exception exception = RunQueueTriggerFailure<Poco>(account, typeof(BindToPocoProgram),
+            Exception exception = RunTriggerFailure<Poco>(account, typeof(BindToPocoProgram),
                 (s) => BindToPocoProgram.TaskSource = s);
 
             // Assert
@@ -235,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            int result = RunQueueTrigger<int>(account, typeof(BindToPocoStructProgram),
+            int result = RunTrigger<int>(account, typeof(BindToPocoStructProgram),
                 (s) => BindToPocoStructProgram.TaskSource = s);
 
             // Assert
@@ -253,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            string result = RunQueueTrigger<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
+            string result = RunTrigger<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
                 (s) => BindToQueueTriggerBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -272,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            string result = RunQueueTrigger<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
+            string result = RunTrigger<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
                 (s) => BindToQueueTriggerBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -290,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Exception exception = RunQueueTriggerFailure<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
+            Exception exception = RunTriggerFailure<string>(account, typeof(BindToQueueTriggerBindingDataProgram),
                 (s) => BindToQueueTriggerBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -312,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            int result = RunQueueTrigger<int>(account, typeof(BindToDequeueCountBindingDataProgram),
+            int result = RunTrigger<int>(account, typeof(BindToDequeueCountBindingDataProgram),
                 (s) => BindToDequeueCountBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -330,8 +329,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            DateTimeOffset result = RunQueueTrigger<DateTimeOffset>(account,
-                typeof(BindToExpirationTimeBindingDataProgram),
+            DateTimeOffset result = RunTrigger<DateTimeOffset>(account, typeof(BindToExpirationTimeBindingDataProgram),
                 (s) => BindToExpirationTimeBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -349,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            string result = RunQueueTrigger<string>(account, typeof(BindToIdBindingDataProgram),
+            string result = RunTrigger<string>(account, typeof(BindToIdBindingDataProgram),
                 (s) => BindToIdBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -368,8 +366,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            DateTimeOffset result = RunQueueTrigger<DateTimeOffset>(account,
-                typeof(BindToInsertionTimeBindingDataProgram),
+            DateTimeOffset result = RunTrigger<DateTimeOffset>(account, typeof(BindToInsertionTimeBindingDataProgram),
                 (s) => BindToInsertionTimeBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -387,8 +384,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            DateTimeOffset result = RunQueueTrigger<DateTimeOffset>(account,
-                typeof(BindToNextVisibleTimeBindingDataProgram),
+            DateTimeOffset result = RunTrigger<DateTimeOffset>(account, typeof(BindToNextVisibleTimeBindingDataProgram),
                 (s) => BindToNextVisibleTimeBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -406,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            string result = RunQueueTrigger<string>(account, typeof(BindToPopReceiptBindingDataProgram),
+            string result = RunTrigger<string>(account, typeof(BindToPopReceiptBindingDataProgram),
                 (s) => BindToPopReceiptBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -427,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            int result = RunQueueTrigger<int>(account, typeof(BindToPocoStructPropertyBindingDataProgram),
+            int result = RunTrigger<int>(account, typeof(BindToPocoStructPropertyBindingDataProgram),
                 (s) => BindToPocoStructPropertyBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -451,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             queue.AddMessage(message);
 
             // Act
-            Poco result = RunQueueTrigger<Poco>(account, typeof(BindToPocoComplexPropertyBindingDataProgram),
+            Poco result = RunTrigger<Poco>(account, typeof(BindToPocoComplexPropertyBindingDataProgram),
                 (s) => BindToPocoComplexPropertyBindingDataProgram.TaskSource = s);
 
             // Assert
@@ -671,88 +667,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Same(expectedPopReceipt, result);
         }
 
-        private static TResult RunQueueTrigger<TResult>(IStorageAccount account, Type programType,
+        private static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
-            // Arrange
-            TaskCompletionSource<TResult> taskSource = new TaskCompletionSource<TResult>();
-            IServiceProvider serviceProvider = CreateServiceProvider<TResult>(account, programType, taskSource);
-            Task<TResult> task = taskSource.Task;
-            setTaskSource.Invoke(taskSource);
-            bool completed;
-
-            using (JobHost host = new JobHost(serviceProvider))
-            {
-                try
-                {
-                    host.Start();
-
-                    // Act
-                    completed = task.WaitUntilCompleted(3 * 1000);
-                }
-                finally
-                {
-                    setTaskSource.Invoke(null);
-                }
-            }
-
-            // Assert
-            Assert.True(completed);
-
-            // Give a nicer test failure message for faulted tasks.
-            if (task.Status == TaskStatus.Faulted)
-            {
-                task.GetAwaiter().GetResult();
-            }
-
-            Assert.Equal(TaskStatus.RanToCompletion, task.Status);
-            return task.Result;
+            return FunctionalTest.RunTrigger<TResult>(account, programType, setTaskSource);
         }
 
-        private static Exception RunQueueTriggerFailure<TResult>(IStorageAccount account, Type programType,
+        private static Exception RunTriggerFailure<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
-            // Arrange
-            TaskCompletionSource<Exception> failureTaskSource = new TaskCompletionSource<Exception>();
-            IServiceProvider serviceProvider = CreateServiceProviderForInstanceFailure(account, programType,
-                failureTaskSource);
-            TaskCompletionSource<TResult> successTaskSource = new TaskCompletionSource<TResult>();
-            // The task for failed function invocation (should complete successfully with an exception).
-            Task<Exception> failureTask = failureTaskSource.Task;
-            // The task for successful function invocation (should not complete).
-            Task<TResult> successTask = successTaskSource.Task;
-            setTaskSource.Invoke(successTaskSource);
-            bool completed;
-
-            using (JobHost host = new JobHost(serviceProvider))
-            {
-                try
-                {
-                    host.Start();
-
-                    // Act
-                    completed = Task.WhenAny(failureTask, successTask).WaitUntilCompleted(30 * 1000);
-                }
-                finally
-                {
-                    setTaskSource.Invoke(null);
-                }
-            }
-
-            // Assert
-            Assert.True(completed);
-
-            // The function should not be invoked.
-            Assert.Equal(TaskStatus.WaitingForActivation, successTask.Status);
-
-            // Give a nicer test failure message for faulted tasks.
-            if (failureTask.Status == TaskStatus.Faulted)
-            {
-                successTask.GetAwaiter().GetResult();
-            }
-
-            Assert.Equal(TaskStatus.RanToCompletion, failureTask.Status);
-            return failureTask.Result;
+            return FunctionalTest.RunTriggerFailure<TResult>(account, programType, setTaskSource);
         }
 
         private static TResult CallQueueTrigger<TResult>(object message, Type programType,

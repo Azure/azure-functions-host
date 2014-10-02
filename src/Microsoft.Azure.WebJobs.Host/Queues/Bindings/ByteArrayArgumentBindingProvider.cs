@@ -5,13 +5,13 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class ByteArrayArgumentBindingProvider : IQueueArgumentBindingProvider
     {
-        public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
+        public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(byte[]).MakeByRefType())
             {
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             return new ByteArrayArgumentBinding();
         }
 
-        private class ByteArrayArgumentBinding : IArgumentBinding<CloudQueue>
+        private class ByteArrayArgumentBinding : IArgumentBinding<IStorageQueue>
         {
             public Type ValueType
             {
@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             /// <remarks>
-            /// As this method handles out byte array parameter it distinguishes following possible scenarios:
+            /// The out byte array parameter is processed as follows:
+            /// <list type="bullet">
             /// <item>
             /// <description>
             /// If the value is <see langword="null"/>, no message will be sent.
@@ -42,14 +43,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             /// </item>
             /// <item>
             /// <description>
-            /// If the value is a non-empty byte array, a message with content from given argument will be sent.
+            /// If the value is a non-empty byte array, a message with that content will be sent.
             /// </description>
             /// </item>
+            /// </list>
             /// </remarks>
-            public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
                 IValueProvider provider = new NonNullConverterValueBinder<byte[]>(value,
-                    new ByteArrayToCloudQueueMessageConverter(), context.MessageEnqueuedWatcher);
+                    new ByteArrayToStorageQueueMessageConverter(value), context.MessageEnqueuedWatcher);
                 return Task.FromResult(provider);
             }
         }

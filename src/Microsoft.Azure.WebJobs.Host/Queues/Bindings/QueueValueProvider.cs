@@ -3,17 +3,17 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal sealed class QueueValueProvider : IValueProvider
     {
-        private readonly CloudQueue _queue;
+        private readonly IStorageQueue _queue;
         private readonly object _value;
         private readonly Type _valueType;
 
-        public QueueValueProvider(CloudQueue queue, object value, Type valueType)
+        public QueueValueProvider(IStorageQueue queue, object value, Type valueType)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {

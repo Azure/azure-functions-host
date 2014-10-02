@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
@@ -14,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
     internal class QueueBinding : IBinding
     {
         private readonly string _parameterName;
-        private readonly IArgumentBinding<CloudQueue> _argumentBinding;
-        private readonly CloudQueueClient _client;
+        private readonly IArgumentBinding<IStorageQueue> _argumentBinding;
+        private readonly IStorageQueueClient _client;
         private readonly string _accountName;
         private readonly IBindableQueuePath _path;
-        private readonly IObjectToTypeConverter<CloudQueue> _converter;
+        private readonly IObjectToTypeConverter<IStorageQueue> _converter;
 
-        public QueueBinding(string parameterName, IArgumentBinding<CloudQueue> argumentBinding, CloudQueueClient client,
-            IBindableQueuePath path)
+        public QueueBinding(string parameterName, IArgumentBinding<IStorageQueue> argumentBinding,
+            IStorageQueueClient client, IBindableQueuePath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -50,36 +51,38 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
         }
 
-        private static IObjectToTypeConverter<CloudQueue> CreateConverter(CloudQueueClient client, IBindableQueuePath path)
+        private static IObjectToTypeConverter<IStorageQueue> CreateConverter(IStorageQueueClient client,
+            IBindableQueuePath path)
         {
-            return new CompositeObjectToTypeConverter<CloudQueue>(
-                new OutputConverter<CloudQueue>(new IdentityConverter<CloudQueue>()),
-                new OutputConverter<string>(new StringToCloudQueueConverter(client, path)));
+            return new CompositeObjectToTypeConverter<IStorageQueue>(
+                new OutputConverter<IStorageQueue>(new IdentityConverter<IStorageQueue>()),
+                new OutputConverter<CloudQueue>(new CloudQueueToStorageQueueConverter()),
+                new OutputConverter<string>(new StringToStorageQueueConverter(client, path)));
+        }
+
+        private Task<IValueProvider> BindQueueAsync(IStorageQueue value, ValueBindingContext context)
+        {
+            return _argumentBinding.BindAsync(value, context);
         }
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
             string boundQueueName = _path.Bind(context.BindingData);
-            CloudQueue queue = _client.GetQueueReference(boundQueueName);
+            IStorageQueue queue = _client.GetQueueReference(boundQueueName);
 
-            return BindAsync(queue, context.ValueContext);
-        }
-
-        private Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
-        {
-            return _argumentBinding.BindAsync(value, context);
+            return BindQueueAsync(queue, context.ValueContext);
         }
 
         public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            CloudQueue queue = null;
+            IStorageQueue queue = null;
 
             if (!_converter.TryConvert(value, out queue))
             {
                 throw new InvalidOperationException("Unable to convert value to CloudQueue.");
             }
 
-            return BindAsync(queue, context);
+            return BindQueueAsync(queue, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

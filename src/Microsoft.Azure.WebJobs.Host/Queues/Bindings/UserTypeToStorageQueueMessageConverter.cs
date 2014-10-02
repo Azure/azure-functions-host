@@ -5,21 +5,28 @@ using System;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
-    internal class UserTypeToCloudQueueMessageConverter<TInput> : IConverter<TInput, CloudQueueMessage>
+    internal class UserTypeToStorageQueueMessageConverter<TInput> : IConverter<TInput, IStorageQueueMessage>
     {
+        private readonly IStorageQueue _queue;
         private readonly Guid _functionInstanceId;
 
-        public UserTypeToCloudQueueMessageConverter(Guid functionInstanceId)
+        public UserTypeToStorageQueueMessageConverter(IStorageQueue queue, Guid functionInstanceId)
         {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            _queue = queue;
             _functionInstanceId = functionInstanceId;
         }
 
-        public CloudQueueMessage Convert(TInput input)
+        public IStorageQueueMessage Convert(TInput input)
         {
             JToken token;
 
@@ -36,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             }
 
             string contents = token.ToJsonString();
-            return new CloudQueueMessage(contents);
+            return _queue.CreateMessage(contents);
         }
     }
 }

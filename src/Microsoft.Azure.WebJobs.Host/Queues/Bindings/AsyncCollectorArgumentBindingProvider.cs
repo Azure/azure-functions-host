@@ -7,13 +7,13 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class AsyncCollectorArgumentBindingProvider : IQueueArgumentBindingProvider
     {
-        public IArgumentBinding<CloudQueue> TryCreate(ParameterInfo parameter)
+        public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             Type parameterType = parameter.ParameterType;
 
@@ -33,24 +33,25 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             return CreateBinding(itemType);
         }
 
-        private static IArgumentBinding<CloudQueue> CreateBinding(Type itemType)
+        private static IArgumentBinding<IStorageQueue> CreateBinding(Type itemType)
         {
             MethodInfo method = typeof(AsyncCollectorArgumentBindingProvider).GetMethod("CreateBindingGeneric",
                 BindingFlags.NonPublic | BindingFlags.Static);
             Debug.Assert(method != null);
             MethodInfo genericMethod = method.MakeGenericMethod(itemType);
             Debug.Assert(genericMethod != null);
-            Func<IArgumentBinding<CloudQueue>> lambda = (Func<IArgumentBinding<CloudQueue>>)Delegate.CreateDelegate(
-                typeof(Func<IArgumentBinding<CloudQueue>>), genericMethod);
+            Func<IArgumentBinding<IStorageQueue>> lambda =
+                (Func<IArgumentBinding<IStorageQueue>>)Delegate.CreateDelegate(
+                typeof(Func<IArgumentBinding<IStorageQueue>>), genericMethod);
             return lambda.Invoke();
         }
 
-        private static IArgumentBinding<CloudQueue> CreateBindingGeneric<TItem>()
+        private static IArgumentBinding<IStorageQueue> CreateBindingGeneric<TItem>()
         {
             return new AsyncCollectorArgumentBinding<TItem>(MessageConverterFactory.Create<TItem>());
         }
 
-        private class AsyncCollectorArgumentBinding<TItem> : IArgumentBinding<CloudQueue>
+        private class AsyncCollectorArgumentBinding<TItem> : IArgumentBinding<IStorageQueue>
         {
             private readonly IMessageConverterFactory<TItem> _converterFactory;
 
@@ -64,9 +65,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 get { return typeof(ICollector<TItem>); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudQueue value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
-                IConverter<TItem, CloudQueueMessage> converter = _converterFactory.Create(context.FunctionInstanceId);
+                IConverter<TItem, IStorageQueueMessage> converter = _converterFactory.Create(value,
+                    context.FunctionInstanceId);
                 IAsyncCollector<TItem> collector = new QueueAsyncCollector<TItem>(value, converter);
                 IValueProvider provider = new CollectorValueProvider(value, collector, typeof(IAsyncCollector<TItem>));
                 return Task.FromResult(provider);

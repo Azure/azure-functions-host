@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         /// <summary>Gets the name of the queue.</summary>
         string Name { get; }
 
+        /// <summary>Gets the underlying <see cref="CloudQueue"/>.</summary>
+        CloudQueue SdkObject { get; }
+
         /// <summary>Gets the queue service client.</summary>
         IStorageQueueClient ServiceClient { get; }
 

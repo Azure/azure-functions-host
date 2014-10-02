@@ -3,22 +3,22 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
-    internal class StringToCloudQueueConverter : IConverter<string, CloudQueue>
+    internal class StringToStorageQueueConverter : IConverter<string, IStorageQueue>
     {
-        private readonly CloudQueueClient _client;
+        private readonly IStorageQueueClient _client;
         private readonly IBindableQueuePath _defaultPath;
 
-        public StringToCloudQueueConverter(CloudQueueClient client, IBindableQueuePath defaultPath)
+        public StringToStorageQueueConverter(IStorageQueueClient client, IBindableQueuePath defaultPath)
         {
             _client = client;
             _defaultPath = defaultPath;
         }
 
-        public CloudQueue Convert(string input)
+        public IStorageQueue Convert(string input)
         {
             string queueName;
 

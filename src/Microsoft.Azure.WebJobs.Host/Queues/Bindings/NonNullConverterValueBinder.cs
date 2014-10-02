@@ -7,18 +7,18 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     // Same as ConverterValueBinder, but doesn't enqueue null values.
     internal class NonNullConverterValueBinder<TInput> : IOrderedValueBinder
     {
-        private readonly CloudQueue _queue;
-        private readonly IConverter<TInput, CloudQueueMessage> _converter;
+        private readonly IStorageQueue _queue;
+        private readonly IConverter<TInput, IStorageQueueMessage> _converter;
         private readonly IMessageEnqueuedWatcher _messageEnqueuedWatcher;
 
-        public NonNullConverterValueBinder(CloudQueue queue, IConverter<TInput, CloudQueueMessage> converter,
+        public NonNullConverterValueBinder(IStorageQueue queue, IConverter<TInput, IStorageQueueMessage> converter,
             IMessageEnqueuedWatcher messageEnqueuedWatcher)
         {
             _queue = queue;
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             if (value != null)
             {
                 Debug.Assert(value is TInput);
-                CloudQueueMessage message = _converter.Convert((TInput)value);
+                IStorageQueueMessage message = _converter.Convert((TInput)value);
                 Debug.Assert(message != null);
                 await _queue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
 

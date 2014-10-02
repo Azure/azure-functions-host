@@ -5,7 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
@@ -34,14 +34,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             IBindableQueuePath path = BindableQueuePath.Create(queueName);
             path.ValidateContractCompatibility(context.BindingDataContract);
 
-            IArgumentBinding<CloudQueue> argumentBinding = _innerProvider.TryCreate(parameter);
+            IArgumentBinding<IStorageQueue> argumentBinding = _innerProvider.TryCreate(parameter);
             if (argumentBinding == null)
             {
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
             IBinding binding = new QueueBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.SdkObject.CreateCloudQueueClient(), path);
+                context.StorageAccount.CreateQueueClient(), path);
             return Task.FromResult(binding);
         }
     }
