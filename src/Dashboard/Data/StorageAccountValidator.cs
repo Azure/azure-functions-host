@@ -7,10 +7,12 @@ using Microsoft.WindowsAzure.Storage;
 
 namespace Dashboard.Data
 {
-    public class StorageCredentialsValidator
+    public class StorageAccountValidator
     {
+        private const string HttpsEndpointScheme = "https";
+
         [CLSCompliant(false)]
-        public static void ValidateCredentials(CloudStorageAccount account)
+        public static bool ValidateAccountAccessible(CloudStorageAccount account)
         {
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
@@ -28,10 +30,27 @@ namespace Dashboard.Data
             }
             catch
             {
-                string message = String.Format(CultureInfo.CurrentCulture,
-                    "The account credentials for '{0}' are incorrect.", account.Credentials.AccountName);
-                throw new InvalidOperationException(message);
+                return false;
             }
+
+            return true;
+        }
+
+        [CLSCompliant(false)]
+        public static bool ValidateEndpointsSecure(CloudStorageAccount account)
+        {
+            if (!IsSecureEndpointProtocol(account.BlobEndpoint) ||
+                !IsSecureEndpointProtocol(account.QueueEndpoint))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsSecureEndpointProtocol(Uri endpoint)
+        {
+            return String.Equals(endpoint.Scheme, HttpsEndpointScheme, StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }

@@ -165,6 +165,8 @@
     </Compile>
     <Compile Include="ApiControllers\FunctionsController.cs" />
     <Compile Include="ApiControllers\DiagnosticsController.cs" />
+    <Compile Include="App_Start\ConnectionStringState.cs" />
+    <Compile Include="App_Start\DashboardAccountContext.cs" />
     <Compile Include="Data\AccountProvider.cs" />
     <Compile Include="Data\BlobCausalityReader.cs" />
     <Compile Include="Data\BlobContinuationTokenSerializer.cs" />
@@ -189,7 +191,7 @@
     <Compile Include="Data\Logs\IIndexerLogReader.cs" />
     <Compile Include="Data\Logs\IIndexerLogWriter.cs" />
     <Compile Include="Data\Logs\IndexerLogEntry.cs" />
-    <Compile Include="Data\StorageCredentialsValidator.cs" />
+    <Compile Include="Data\StorageAccountValidator.cs" />
     <Compile Include="Data\FunctionIndexEntry.cs" />
     <Compile Include="Data\FunctionIndexManager.cs" />
     <Compile Include="Data\IFunctionIndexManager.cs" />
@@ -272,6 +274,7 @@
     <Compile Include="Data\TableParameterSnapshot.cs" />
     <Compile Include="Data\ConcurrentMetadataDocument.cs" />
     <Compile Include="Data\BlobConcurrentTextStore.cs" />
+    <Compile Include="Filters\AccountContextAttribute.cs" />
     <Compile Include="HostMessaging\Aborter.cs" />
     <Compile Include="HostMessaging\FunctionInstanceArgumentExtensions.cs" />
     <Compile Include="HostMessaging\IAborter.cs" />
@@ -301,7 +304,6 @@
     <Compile Include="App_Start\HostVersionConfig.cs" />
     <Compile Include="App_Start\NinjectWebCommon.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
-    <Compile Include="App_Start\SdkSetupState.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\FunctionController.cs" />
     <Compile Include="Controllers\MainController.cs" />
@@ -404,6 +406,7 @@
     <Content Include="app\views\FunctionInvocation.html" />
     <Content Include="Views\Function\Replay.cshtml" />
     <Content Include="Views\Function\_Invoke.cshtml" />
+    <Content Include="Views\Shared\_TopLayout.cshtml" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
@@ -419,7 +422,6 @@
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_Header.cshtml" />
     <Content Include="Views\Shared\_Layout.cshtml" />
-    <Content Include="Views\Shared\_TopLayout.cshtml" />
     <Content Include="Views\Web.config" />
     <Content Include="Views\_ViewStart.cshtml" />
   </ItemGroup>

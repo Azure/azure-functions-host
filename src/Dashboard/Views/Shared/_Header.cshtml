@@ -13,14 +13,14 @@
         <ul class="nav navbar-nav navbar-right">
             <li>
                 <a href="@Url.Content("~/#/functions")">
-                    @if (SdkSetupState.BadInit)
+                    @if (ViewBag.DashboardHasSetupError)
                     {
                         <i class="glyphicon glyphicon-exclamation-sign"></i>
                     }
                     Functions
                 </a>    
             </li>
-            @if (!SdkSetupState.BadInit)
+            @if (!ViewBag.DashboardHasSetupError)
             {
                 @Html.MenuLink("Search Blobs", icon: "glyphicon glyphicon-search", action: "SearchBlob", controller: "Function")
                 <li><a href="@Url.Content("~/#/about")">About</a></li>

@@ -17,15 +17,17 @@ namespace Dashboard
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
             routes.MapMvcAttributeRoutes();
+        }
 
-            if (SdkSetupState.BadInit)
-            {
-                // deregister the non SPA MVC route, and replace it with a redirect to Functions Homepage so
-                // the user would get the helpful error.
-                var legacyRoute = routes.OfType<Route>().First(r => r.Url == FunctionController.LegacyNonSpaRouteUrl);
-                routes.Remove(legacyRoute);
-                routes.Add(new Route(FunctionController.LegacyNonSpaRouteUrl, new RedirectRouteHandler("~/#/functions")));
-            }
+        public static void RegisterNoAccountRoutes(RouteCollection routes)
+        {
+            RegisterRoutes(routes);
+
+            // deregister the non SPA MVC route, and replace it with a redirect to Functions Homepage so
+            // the user would get the helpful error.
+            var legacyRoute = routes.OfType<Route>().First(r => r.Url == FunctionController.LegacyNonSpaRouteUrl);
+            routes.Remove(legacyRoute);
+            routes.Add(new Route(FunctionController.LegacyNonSpaRouteUrl, new RedirectRouteHandler("~/#/functions")));
         }
 
         // a Redirect route handler. We only need this as a stopgap until we SPA-ify the SearchBlob and Run/Replay pages

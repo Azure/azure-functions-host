@@ -1,8 +1,8 @@
 ﻿<section ng-controller="ErrorsController">
     <!-- Warnings -->
     <p class="alert alert-warning" ng-if="_usingSdk === true && _sdkNotConfigured.badInit && _sdkNotConfigured.connectionStringState === 'missing'">
-        Make sure that you are setting a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> in your Microsoft Azure Website configuration with
-        a value similar to <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Microsoft Azure Storage account where the Microsoft Azure WebJobs Runtime logs are stored.<br />
+        Make sure that you are setting a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> in your Microsoft Azure Website configuration
+        by using the following format <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Microsoft Azure Storage account where the Microsoft Azure WebJobs Runtime logs are stored.<br /><br />
         Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Microsoft Azure Website.
     </p>
     <p class="alert alert-warning" ng-if="isOldHost">
@@ -13,11 +13,15 @@
     </p>
 
     <!-- Errors -->
-    <p class="alert alert-danger" ng-if="_usingSdk === true && _sdkNotConfigured.badInit && _sdkNotConfigured.connectionStringState === 'invalid'">
-        The configuration is not properly set for the Microsoft Azure WebJobs Dashboard. <span ng-if="_sdkNotConfigured.badInitErrorMessage"> The error message was "{{_sdkNotConfigured.badInitErrorMessage}}".</span><br />
-        In your Microsoft Azure Website configuration you must set a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> with
-        a value similar to <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Microsoft Azure Storage account where the Microsoft Azure WebJobs Runtime logs are stored.<br />
-        Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Microsoft Azure Website.
+    <p class="alert alert-danger" ng-if="_usingSdk === true && _sdkNotConfigured.badInit">
+        <span>The configuration is not properly set for the Microsoft Azure WebJobs Dashboard. </span>
+        <span ng-if="_sdkNotConfigured.connectionStringState === 'unparsable'">A connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> is not well-formed.</span>
+        <span ng-if="_sdkNotConfigured.connectionStringState === 'insecure'">The dashboard connection string <code>{{_sdkNotConfigured.dashboardStorageAccountName}}</code> must use the HTTPS protocol.</span>
+        <span ng-if="_sdkNotConfigured.connectionStringState === 'inaccessible'">Failed to connect with the <code>{{_sdkNotConfigured.dashboardStorageAccountName}}</code> storage account using credentials provided in the connection string.</span>
+        <br />
+        <span>In your Microsoft Azure Website configuration you must set a connection string named <code>{{_sdkNotConfigured.runtimeConnectionStringName}}</code> by using the following format <code>DefaultEndpointsProtocol=https;AccountName=<b>NAME</b>;AccountKey=<b>KEY</b></code> pointing to the Microsoft Azure Storage account where the Microsoft Azure WebJobs Runtime logs are stored.</span>
+        <br /><br />
+        <span>Please visit the article <a href="http://go.microsoft.com/fwlink/?LinkID=320957">about configuring connection strings</a> for more information on how you can configure connection strings in your Microsoft Azure Website.</span>
     </p>
     <p class="alert alert-danger" ng-repeat="error in errors">
         {{error}}

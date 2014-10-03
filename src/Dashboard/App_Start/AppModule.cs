@@ -1,20 +1,20 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Threading;
 using System.Web;
 using System.Web.Caching;
+using System.Web.Mvc;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
+using Dashboard.Filters;
 using Dashboard.HostMessaging;
 using Dashboard.Indexers;
-using Dashboard.Infrastructure;
 using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Ninject.Modules;
+using Ninject.Web.Mvc.FilterBindingSyntax;
 
 namespace Dashboard
 {
@@ -22,17 +22,21 @@ namespace Dashboard
     {
         public override void Load()
         {
-            CloudStorageAccount sdkAccount = TryCreateAccount();
+            DashboardAccountContext context = TryCreateAccount();
+            Bind<DashboardAccountContext>().ToConstant(context);
 
-            if (sdkAccount == null)
+            this.BindFilter<AccountContextAttribute>(FilterScope.Global, 0);
+
+            CloudStorageAccount account = context.StorageAccount;
+            if (account == null)
             {
                 return;
             }
 
-            CloudBlobClient blobClient = sdkAccount.CreateCloudBlobClient();
-            CloudQueueClient queueClient = sdkAccount.CreateCloudQueueClient();
+            CloudBlobClient blobClient = account.CreateCloudBlobClient();
+            CloudQueueClient queueClient = account.CreateCloudQueueClient();
 
-            Bind<CloudStorageAccount>().ToConstant(sdkAccount);
+            Bind<CloudStorageAccount>().ToConstant(account);
             Bind<CloudBlobClient>().ToConstant(blobClient);
             Bind<CloudQueueClient>().ToConstant(queueClient);
 
@@ -72,35 +76,42 @@ namespace Dashboard
             Bind<IIndexerLogReader>().To<IndexerBlobLogReader>();
         }
 
-        private static CloudStorageAccount TryCreateAccount()
+        private static DashboardAccountContext TryCreateAccount()
         {
-            try
-            {
-                var account = GetDashboardAccount();
-                if (account != null)
-                {
-                    SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Valid;
-                    return account;
-                }
-                SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Missing;
-            }
-            catch (Exception e)
-            {
-                // Invalid
-                SdkSetupState.ConnectionStringState = SdkSetupState.ConnectionStringStates.Invalid;
-                SdkSetupState.BadInitErrorMessage = e.Message; // $$$ don't use a global flag.                    
-            }
-            return null;
-        }
+            DashboardAccountContext context = new DashboardAccountContext();
 
-        private static CloudStorageAccount GetDashboardAccount()
-        {
-            CloudStorageAccount account = AccountProvider.GetAccount(ConnectionStringNames.Dashboard);
-            if (account != null)
+            string connectionString = ConnectionStringProvider.GetConnectionString(
+                DashboardAccountContext.ConnectionStringName);
+            if (connectionString == null)
             {
-                StorageCredentialsValidator.ValidateCredentials(account);
+                context.ConnectionStringState = ConnectionStringState.Missing;
+                return context;
             }
-            return account;
+
+            CloudStorageAccount account;
+            if (!CloudStorageAccount.TryParse(connectionString, out account))
+            {
+                context.ConnectionStringState = ConnectionStringState.Unparsable;
+                return context;
+            }
+
+            context.SdkStorageAccountName = account.Credentials.AccountName;
+
+            if (!StorageAccountValidator.ValidateEndpointsSecure(account))
+            {
+                context.ConnectionStringState = ConnectionStringState.Insecure;
+                return context;
+            }
+
+            if (!StorageAccountValidator.ValidateAccountAccessible(account))
+            {
+                context.ConnectionStringState = ConnectionStringState.Inaccessible;
+                return context;
+            }
+
+            context.ConnectionStringState = ConnectionStringState.Valid;
+            context.StorageAccount = account;
+            return context;
         }
     }
 }

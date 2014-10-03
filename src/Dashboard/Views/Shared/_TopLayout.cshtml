@@ -12,18 +12,18 @@
     <script>
         var dashboard = angular.module('dashboard');
         dashboard.value('siteRoot', '@Url.Content("~/")');
-        @if (SdkSetupState.BadInit)
+        @if (ViewBag.DashboardHasSetupError)
         {
             <text>
-        dashboard.run(function($rootScope) {
-            $rootScope._sdkNotConfigured = {
-                badInit: @SdkSetupState.BadInit.ToString().ToLowerInvariant(),
-                runtimeConnectionStringName: '@SdkSetupState.DashboardConnectionStringName',
-                badInitErrorMessage: '@SdkSetupState.BadInitErrorMessage',
-                connectionStringState: '@SdkSetupState.ConnectionStringState.ToString().ToLowerInvariant()'
-            };
-        });
-        </text>
+            dashboard.run(function($rootScope) {
+                $rootScope._sdkNotConfigured = {
+                    badInit: @ViewBag.DashboardHasSetupError.ToString().ToLowerInvariant(),
+                    runtimeConnectionStringName: '@ViewBag.DashboardConnectionStringName',
+                    dashboardStorageAccountName: '@ViewBag.DashboardStorageAccountName',
+                    connectionStringState: '@ViewBag.DashboardConnectionStringState.ToString().ToLowerInvariant()'
+                };
+            });
+            </text>
         }
     </script>
 </head>

@@ -23,14 +23,25 @@ namespace Dashboard
         {
             var kernel = NinjectWebCommon.Kernel;
 
+            DashboardAccountContext context = kernel.Get<DashboardAccountContext>();
+
             AreaRegistration.RegisterAllAreas();
 
             GlobalConfiguration.Configure(WebApiConfig.Register);
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
-            RouteConfig.RegisterRoutes(RouteTable.Routes);
+
+            if (!context.HasSetupError)
+            {
+                RouteConfig.RegisterRoutes(RouteTable.Routes);
+            }
+            else 
+            { 
+                RouteConfig.RegisterNoAccountRoutes(RouteTable.Routes); 
+            }
+            
             BundleConfig.RegisterBundles(BundleTable.Bundles);
 
-            if (!SdkSetupState.BadInit)
+            if (!context.HasSetupError)
             {
                 ModelBinderConfig.Register(kernel);
                 HostVersionConfig.RegisterWarnings(kernel.Get<IHostVersionReader>());
