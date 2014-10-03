@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -28,10 +29,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(CloudTable); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 await value.CreateIfNotExistsAsync(context.CancellationToken);
-                return new TableValueProvider(value, value, typeof(CloudTable));
+                return new TableValueProvider(value, value.SdkObject, typeof(CloudTable));
             }
 
             public FileAccess Access

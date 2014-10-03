@@ -2,12 +2,11 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -15,11 +14,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class TableEntityCollectorBinder<T> : IValueBinder, IWatchable
          where T : ITableEntity
     {
-        private readonly CloudTable _table;
+        private readonly IStorageTable _table;
         private readonly TableEntityWriter<T> _tableWriter;
         private readonly Type _valueType;
 
-        public TableEntityCollectorBinder(CloudTable table, TableEntityWriter<T> tableWriter, Type valueType)
+        public TableEntityCollectorBinder(IStorageTable table, TableEntityWriter<T> tableWriter, Type valueType)
         {
             if (tableWriter != null && !valueType.IsAssignableFrom(tableWriter.GetType()))
             {

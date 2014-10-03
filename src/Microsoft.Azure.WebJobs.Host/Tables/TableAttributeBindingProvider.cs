@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
 
             string tableName = context.Resolve(tableAttribute.TableName);
+            IStorageTableClient client = context.StorageAccount.CreateTableClient();
             Type parameterType = parameter.ParameterType;
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;
@@ -41,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (bindsToEntireTable)
             {
-                CloudTableClient client = context.StorageAccount.SdkObject.CreateCloudTableClient();
                 IBindableTablePath path = BindableTablePath.Create(tableName);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
@@ -56,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
             else
             {
-                IStorageTableClient client = context.StorageAccount.CreateTableClient();
                 string partitionKey = context.Resolve(tableAttribute.PartitionKey);
                 string rowKey = context.Resolve(tableAttribute.RowKey);
                 IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);

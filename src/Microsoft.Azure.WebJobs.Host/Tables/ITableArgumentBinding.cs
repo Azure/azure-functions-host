@@ -3,11 +3,11 @@
 
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal interface ITableArgumentBinding : IArgumentBinding<CloudTable>
+    internal interface ITableArgumentBinding : IArgumentBinding<IStorageTable>
     {
         FileAccess Access { get; }
     }

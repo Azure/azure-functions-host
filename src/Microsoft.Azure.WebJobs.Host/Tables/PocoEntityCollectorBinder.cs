@@ -2,23 +2,21 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class PocoEntityCollectorBinder<T> : IValueBinder, IWatchable
     {
-        private readonly CloudTable _table;
+        private readonly IStorageTable _table;
         private readonly PocoEntityWriter<T> _value;
         private readonly Type _valueType;
 
-        public PocoEntityCollectorBinder(CloudTable table, PocoEntityWriter<T> value, Type valueType)
+        public PocoEntityCollectorBinder(IStorageTable table, PocoEntityWriter<T> value, Type valueType)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {

@@ -47,6 +47,7 @@
     <Compile Include="FunctionalTest.cs" />
     <Compile Include="BlobTests.cs" />
     <Compile Include="StorageTableExtensions.cs" />
+    <Compile Include="TableTests.cs" />
     <Compile Include="TableEntityTests.cs" />
     <Compile Include="QueueTests.cs" />
     <Compile Include="StorageBlobExtensions.cs" />

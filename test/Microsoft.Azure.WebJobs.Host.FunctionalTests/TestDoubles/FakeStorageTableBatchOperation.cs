@@ -32,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return ((IEnumerable)_items).GetEnumerator();
         }
 
-        public void Insert(ITableEntity entity)
+        public void Add(IStorageTableOperation operation)
         {
-            _items.Add(FakeStorageTableOperation.Insert(entity));
+            _items.Add(operation);
         }
     }
 }

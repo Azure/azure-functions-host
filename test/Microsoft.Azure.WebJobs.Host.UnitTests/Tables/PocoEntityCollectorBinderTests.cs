@@ -9,6 +9,9 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
+using System.Threading;
+using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
@@ -23,11 +26,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         internal class StubTableEntityWriter : TableEntityWriter<ITableEntity>
         {
             public StubTableEntityWriter()
-                : base(null)
+                : base(new StorageTable(new CloudTable(new Uri("http://localhost:10000/account/table"))))
             {
             }
 
-            internal override Task ExecuteBatchAndCreateTableIfNotExistsAsync(Dictionary<string, TableOperation> batch)
+            internal override Task ExecuteBatchAndCreateTableIfNotExistsAsync(
+                Dictionary<string, IStorageTableOperation> batch, CancellationToken cancellationToken)
             {
                 // Do nothing
                 return Task.FromResult(0);
@@ -38,12 +42,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void ValueHasNotChanged()
         {
             // Arrange
-            CloudTableClient client = CloudStorageAccount.DevelopmentStorageAccount.CreateCloudTableClient();
-            CloudTable table = client.GetTableReference("table");
+            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
             Type valueType = typeof(PocoEntityWriter<SimpleClass>);
-            PocoEntityCollectorBinder<SimpleClass> product = new PocoEntityCollectorBinder<SimpleClass>(table, writer, valueType);
+            PocoEntityCollectorBinder<SimpleClass> product = new PocoEntityCollectorBinder<SimpleClass>(table, writer,
+                valueType);
 
             // Act
             var parameterLog = product.GetStatus() as TableParameterLog;
@@ -56,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void PropertyHasBeenAdded()
         {
             // Arrange
-            CloudTableClient client = CloudStorageAccount.DevelopmentStorageAccount.CreateCloudTableClient();
-            CloudTable table = client.GetTableReference("table");
+            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
             Type valueType = typeof(PocoEntityWriter<SimpleClass>);
@@ -82,8 +87,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public void PropertyHasBeenReplaced()
         {
             // Arrange
-            CloudTableClient client = CloudStorageAccount.DevelopmentStorageAccount.CreateCloudTableClient();
-            CloudTable table = client.GetTableReference("table");
+            IStorageTableClient client = new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount).CreateTableClient();
+            IStorageTable table = client.GetTableReference("table");
             PocoEntityWriter<SimpleClass> writer = new PocoEntityWriter<SimpleClass>(table);
             writer.TableEntityWriter = new StubTableEntityWriter();
             Type valueType = typeof(PocoEntityWriter<SimpleClass>);

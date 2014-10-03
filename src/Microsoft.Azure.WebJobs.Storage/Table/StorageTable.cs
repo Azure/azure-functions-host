@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -37,6 +38,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         }
 
         /// <inheritdoc />
+        public CloudTable SdkObject
+        {
+            get { return _sdk; }
+        }
+
+        /// <inheritdoc />
         public IStorageTableBatchOperation CreateBatch()
         {
             TableBatchOperation sdkBatch = new TableBatchOperation();
@@ -47,6 +54,24 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
         {
             return _sdk.CreateIfNotExistsAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public IStorageTableOperation CreateInsertOperation(ITableEntity entity)
+        {
+            return StorageTableOperation.Insert(entity);
+        }
+
+        /// <inheritdoc />
+        public IStorageTableOperation CreateInsertOrReplaceOperation(ITableEntity entity)
+        {
+            return StorageTableOperation.InsertOrReplace(entity);
+        }
+
+        /// <inheritdoc />
+        public IQueryable<TElement> CreateQuery<TElement>() where TElement : ITableEntity, new()
+        {
+            return _sdk.CreateQuery<TElement>();
         }
 
         /// <inheritdoc />
@@ -75,6 +100,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         {
             TableBatchOperation sdkBatch = ((StorageTableBatchOperation)batch).SdkObject;
             return _sdk.ExecuteBatchAsync(sdkBatch, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task<bool> ExistsAsync(CancellationToken cancellationToken)
+        {
+            return _sdk.ExistsAsync(cancellationToken);
         }
     }
 }

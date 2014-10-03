@@ -21,6 +21,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _items.AddOrUpdate(tableName, new Table(), (_, existing) => existing);
         }
 
+        public IQueryable<TElement> CreateQuery<TElement>(string tableName) where TElement : ITableEntity, new()
+        {
+            return _items[tableName].CreateQuery<TElement>();
+        }
+
         public TableResult Execute(string tableName, IStorageTableOperation operation)
         {
             return _items[tableName].Execute(operation);
@@ -28,13 +33,42 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IList<TableResult> ExecuteBatch(string tableName, IStorageTableBatchOperation batch)
         {
+            if (!_items.ContainsKey(tableName))
+            {
+                throw StorageExceptionFactory.Create(404, "TableNotFound");
+            }
+
             return _items[tableName].ExecuteBatch(batch);
+        }
+
+        public bool Exists(string tableName)
+        {
+            return _items.ContainsKey(tableName);
         }
 
         private class Table
         {
             private readonly ConcurrentDictionary<Tuple<string, string>, TableItem> _entities =
                 new ConcurrentDictionary<Tuple<string, string>, TableItem>();
+
+            public IQueryable<TElement> CreateQuery<TElement>() where TElement : ITableEntity, new()
+            {
+                // The test implementation of IQueryable will support all operations, not just the subset that Azure
+                // Storage handles.
+                return _entities.Select(CreateEntity<TElement>).AsQueryable();
+            }
+
+            private TElement CreateEntity<TElement>(KeyValuePair<Tuple<string, string>, TableItem> pair)
+                where TElement : ITableEntity, new()
+            {
+                TElement entity = new TElement();
+                entity.PartitionKey = pair.Key.Item1;
+                entity.RowKey = pair.Key.Item2;
+                entity.Timestamp = pair.Value.Timestamp;
+                entity.ReadEntity(pair.Value.CloneProperties(), operationContext: null);
+                entity.ETag = null;
+                return entity;
+            }
 
             public TableResult Execute(IStorageTableOperation operation)
             {

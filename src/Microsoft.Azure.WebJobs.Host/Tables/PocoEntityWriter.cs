@@ -1,14 +1,11 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -21,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         internal TableEntityWriter<ITableEntity> TableEntityWriter { get; set; }
 
-        public PocoEntityWriter(CloudTable table, TableParameterLog tableStatistics)
+        public PocoEntityWriter(IStorageTable table, TableParameterLog tableStatistics)
         {
             TableEntityWriter = new TableEntityWriter<ITableEntity>(table, tableStatistics);
         }
 
-        public PocoEntityWriter(CloudTable table)
+        public PocoEntityWriter(IStorageTable table)
         {
             TableEntityWriter = new TableEntityWriter<ITableEntity>(table);
         }

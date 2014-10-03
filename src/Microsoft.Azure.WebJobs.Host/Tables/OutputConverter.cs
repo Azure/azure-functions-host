@@ -2,21 +2,21 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class OutputConverter<TInput> : IObjectToTypeConverter<CloudTable>
+    internal class OutputConverter<TInput> : IObjectToTypeConverter<IStorageTable>
         where TInput : class
     {
-        private readonly IConverter<TInput, CloudTable> _innerConverter;
+        private readonly IConverter<TInput, IStorageTable> _innerConverter;
 
-        public OutputConverter(IConverter<TInput, CloudTable> innerConverter)
+        public OutputConverter(IConverter<TInput, IStorageTable> innerConverter)
         {
             _innerConverter = innerConverter;
         }
 
-        public bool TryConvert(object input, out CloudTable output)
+        public bool TryConvert(object input, out IStorageTable output)
         {
             TInput typedInput = input as TInput;
 

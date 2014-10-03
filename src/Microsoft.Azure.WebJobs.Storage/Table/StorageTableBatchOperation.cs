@@ -62,10 +62,10 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         }
 
         /// <inheritdoc />
-        public void Insert(ITableEntity entity)
+        public void Add(IStorageTableOperation operation)
         {
-            StorageTableOperation operation = StorageTableOperation.Insert(entity);
-            _sdk.Add(operation.SdkObject);
+            TableOperation sdkOperation = ((StorageTableOperation)operation).SdkObject;
+            _sdk.Add(sdkOperation);
             _items.Add(operation);
         }
     }

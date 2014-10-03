@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -24,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <summary>Gets the name of the table.</summary>
         string Name { get; }
 
+        /// <summary>Gets the underlying <see cref="CloudTable"/>.</summary>
+        CloudTable SdkObject { get; }
+
         /// <summary>Creates a batch operation.</summary>
         /// <returns>A new batch operation.</returns>
         IStorageTableBatchOperation CreateBatch();
@@ -32,6 +36,21 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task that will create the table if it does not already exist.</returns>
         Task CreateIfNotExistsAsync(CancellationToken cancellationToken);
+
+        /// <summary>Creates an operation to insert an entity.</summary>
+        /// <param name="entity">The entity to insert.</param>
+        /// <returns>An operation to insert an entity.</returns>
+        IStorageTableOperation CreateInsertOperation(ITableEntity entity);
+
+        /// <summary>Creates an operation to insert or replace an entity.</summary>
+        /// <param name="entity">The entity to insert or replace.</param>
+        /// <returns>An operation to insert or replace an entity.</returns>
+        IStorageTableOperation CreateInsertOrReplaceOperation(ITableEntity entity);
+
+        /// <summary>Creates a LINQ query.</summary>
+        /// <typeparam name="TElement">The type of entity to query.</typeparam>
+        /// <returns>A LINQ query.</returns>
+        IQueryable<TElement> CreateQuery<TElement>() where TElement : ITableEntity, new();
 
         /// <summary>Creates an operation to replace an entity.</summary>
         /// <param name="entity">The entity to replace.</param>
@@ -58,5 +77,10 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
         /// <returns>A task that will execute an atomic batch operation and return the results.</returns>
         Task<IList<TableResult>> ExecuteBatchAsync(IStorageTableBatchOperation batch,
             CancellationToken cancellationToken);
+
+        /// <summary>Determines whether the table exists.</summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task that will determine whether the table exists.</returns>
+        Task<bool> ExistsAsync(CancellationToken cancellationToken);
     }
 }

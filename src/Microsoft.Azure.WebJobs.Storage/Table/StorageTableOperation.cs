@@ -87,6 +87,15 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
             return new StorageTableOperation(sdkOperation, TableOperationType.Insert, entity);
         }
 
+        /// <summary>Creates an operation to insert or replace an entity.</summary>
+        /// <param name="entity">The entity to insert or replace.</param>
+        /// <returns>An operation to insert or replace an entity.</returns>
+        public static StorageTableOperation InsertOrReplace(ITableEntity entity)
+        {
+            TableOperation sdkOperation = TableOperation.InsertOrReplace(entity);
+            return new StorageTableOperation(sdkOperation, TableOperationType.InsertOrReplace, entity);
+        }
+
         /// <summary>Creates an operation to replace an entity.</summary>
         /// <param name="entity">The entity to replace.</param>
         /// <returns>An operation to replace an entity.</returns>

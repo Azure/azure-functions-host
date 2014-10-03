@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage.Table;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage.Table
@@ -19,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
     internal interface IStorageTableBatchOperation : IReadOnlyList<IStorageTableOperation>
 #endif
     {
-        /// <summary>Adds an entity to insert.</summary>
-        /// <param name="entity">The entity to insert.</param>
-        void Insert(ITableEntity entity);
+        /// <summary>Adds an operation to the batch.</summary>
+        /// <param name="operation">The operation to add.</param>
+        void Add(IStorageTableOperation operation);
     }
 }

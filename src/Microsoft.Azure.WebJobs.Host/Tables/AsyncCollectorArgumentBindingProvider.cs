@@ -3,9 +3,9 @@
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -65,10 +65,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(ICollector<TElement>); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 TableEntityWriter<TElement> tableWriter = new TableEntityWriter<TElement>(value);
-                IValueProvider provider = new TableEntityCollectorBinder<TElement>(value, tableWriter, typeof(ICollector<TElement>));
+                IValueProvider provider = new TableEntityCollectorBinder<TElement>(value, tableWriter,
+                    typeof(ICollector<TElement>));
                 return Task.FromResult(provider);
             }
         }
@@ -85,10 +86,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(ICollector<TElement>); }
             }
 
-            public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 PocoEntityWriter<TElement> collector = new PocoEntityWriter<TElement>(value);
-                IValueProvider provider = new PocoEntityCollectorBinder<TElement>(value, collector, typeof(ICollector<TElement>));
+                IValueProvider provider = new PocoEntityCollectorBinder<TElement>(value, collector,
+                    typeof(ICollector<TElement>));
                 return Task.FromResult(provider);
             }
         }

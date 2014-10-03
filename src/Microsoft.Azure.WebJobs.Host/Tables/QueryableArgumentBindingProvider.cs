@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(IQueryable<TElement>); }
             }
 
-            public async Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+            public async Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 IQueryable<TElement> queryable;
 

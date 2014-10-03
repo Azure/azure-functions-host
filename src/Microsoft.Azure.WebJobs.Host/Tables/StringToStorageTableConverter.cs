@@ -3,22 +3,22 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class StringToCloudTableConverter : IConverter<string, CloudTable>
+    internal class StringToStorageTableConverter : IConverter<string, IStorageTable>
     {
-        private readonly CloudTableClient _client;
+        private readonly IStorageTableClient _client;
         private readonly IBindableTablePath _defaultPath;
 
-        public StringToCloudTableConverter(CloudTableClient client, IBindableTablePath defaultPath)
+        public StringToStorageTableConverter(IStorageTableClient client, IBindableTablePath defaultPath)
         {
             _client = client;
             _defaultPath = defaultPath;
         }
 
-        public CloudTable Convert(string input)
+        public IStorageTable Convert(string input)
         {
             string tableName;
 

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -15,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         private readonly string _parameterName;
         private readonly ITableArgumentBinding _argumentBinding;
-        private readonly CloudTableClient _client;
+        private readonly IStorageTableClient _client;
         private readonly string _accountName;
         private readonly IBindableTablePath _path;
-        private readonly IObjectToTypeConverter<CloudTable> _converter;
+        private readonly IObjectToTypeConverter<IStorageTable> _converter;
 
-        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, CloudTableClient client,
+        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, IStorageTableClient client,
             IBindableTablePath path)
         {
             _parameterName = parameterName;
@@ -49,37 +50,38 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        private static IObjectToTypeConverter<CloudTable> CreateConverter(CloudTableClient client,
+        private static IObjectToTypeConverter<IStorageTable> CreateConverter(IStorageTableClient client,
             IBindableTablePath path)
         {
-            return new CompositeObjectToTypeConverter<CloudTable>(
-                new OutputConverter<CloudTable>(new IdentityConverter<CloudTable>()),
-                new OutputConverter<string>(new StringToCloudTableConverter(client, path)));
+            return new CompositeObjectToTypeConverter<IStorageTable>(
+                new OutputConverter<IStorageTable>(new IdentityConverter<IStorageTable>()),
+                new OutputConverter<CloudTable>(new CloudTableToStorageTableConverter()),
+                new OutputConverter<string>(new StringToStorageTableConverter(client, path)));
         }
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
             string boundTableName = _path.Bind(context.BindingData);
-            CloudTable table = _client.GetTableReference(boundTableName);
+            IStorageTable table = _client.GetTableReference(boundTableName);
 
-            return BindAsync(table, context.ValueContext);
+            return BindTableAsync(table, context.ValueContext);
         }
 
-        private Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+        private Task<IValueProvider> BindTableAsync(IStorageTable value, ValueBindingContext context)
         {
             return _argumentBinding.BindAsync(value, context);
         }
 
         public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            CloudTable table = null;
+            IStorageTable table = null;
 
             if (!_converter.TryConvert(value, out table))
             {
-                throw new InvalidOperationException("Unable to convert value to CloudTable.");
+                throw new InvalidOperationException("Unable to convert value to IStorageTable.");
             }
 
-            return BindAsync(table, context);
+            return BindTableAsync(table, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

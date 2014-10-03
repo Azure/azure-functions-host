@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            IStorageQueueClient client = account.CreateQueueClient();
+            IStorageQueue triggerQueue = CreateQueue(client, TriggerQueueName);
             triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
 
             // Act
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(QueueName, result.Name);
-            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(QueueName);
+            IStorageQueue queue = client.GetQueueReference(QueueName);
             Assert.True(queue.Exists());
         }
 
@@ -46,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             // Arrange
             const string expectedContent = "message";
             IStorageAccount account = CreateFakeStorageAccount();
-            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            IStorageQueueClient client = account.CreateQueueClient();
+            IStorageQueue triggerQueue = CreateQueue(client, TriggerQueueName);
             triggerQueue.AddMessage(triggerQueue.CreateMessage(expectedContent));
 
             // Act
@@ -54,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 (s) => BindToICollectorCloudQueueMessageProgram.TaskSource = s);
 
             // Assert
-            IStorageQueue queue = CreateQueue(account, QueueName);
+            IStorageQueue queue = client.GetQueueReference(QueueName);
             IEnumerable<IStorageQueueMessage> messages = queue.GetMessages(messageCount: 10);
             Assert.NotNull(messages);
             Assert.Equal(1, messages.Count());
@@ -67,9 +69,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             return new FakeStorageAccount();
         }
 
-        private static IStorageQueue CreateQueue(IStorageAccount account, string queueName)
+        private static IStorageQueue CreateQueue(IStorageQueueClient client, string queueName)
         {
-            IStorageQueueClient client = account.CreateQueueClient();
             IStorageQueue queue = client.GetQueueReference(queueName);
             queue.CreateIfNotExists();
             return queue;

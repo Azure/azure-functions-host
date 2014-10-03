@@ -3,17 +3,17 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal sealed class TableValueProvider : IValueProvider
     {
-        private readonly CloudTable _table;
+        private readonly IStorageTable _table;
         private readonly object _value;
         private readonly Type _valueType;
 
-        public TableValueProvider(CloudTable table, object value, Type valueType)
+        public TableValueProvider(IStorageTable table, object value, Type valueType)
         {
             if (value != null && !valueType.IsAssignableFrom(value.GetType()))
             {

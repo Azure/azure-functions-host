@@ -4,13 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -19,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class TableEntityWriter<T> : ICollector<T>, IAsyncCollector<T>, IWatcher
         where T : ITableEntity
     {
-        private readonly CloudTable _table;
+        private readonly IStorageTable _table;
 
         /// <summary>
         /// Max batch size is an azure limitation on how many entries can be in each batch.
@@ -32,19 +31,20 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         /// </summary>
         public const int MaxPartitionWidth = 1000;
 
-        private readonly Dictionary<string, Dictionary<string, TableOperation>> _map = new Dictionary<string, Dictionary<string, TableOperation>>();
+        private readonly Dictionary<string, Dictionary<string, IStorageTableOperation>> _map =
+            new Dictionary<string, Dictionary<string, IStorageTableOperation>>();
 
         private readonly TableParameterLog _log;
 
         private readonly Stopwatch _watch = new Stopwatch();
 
-        public TableEntityWriter(CloudTable table, TableParameterLog log)
+        public TableEntityWriter(IStorageTable table, TableParameterLog log)
         {
             _table = table;
             _log = log;
         }
 
-        public TableEntityWriter(CloudTable table)
+        public TableEntityWriter(IStorageTable table)
             : this(table, new TableParameterLog())
         {
         }
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             TableClient.ValidateAzureTableKeyValue(partitionKey);
             TableClient.ValidateAzureTableKeyValue(rowKey);
 
-            Dictionary<string, TableOperation> partition;
+            Dictionary<string, IStorageTableOperation> partition;
             if (!_map.TryGetValue(partitionKey, out partition))
             {
                 if (_map.Count >= MaxPartitionWidth)
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                     await FlushAsync(cancellationToken);
                 }
 
-                partition = new Dictionary<string, TableOperation>();
+                partition = new Dictionary<string, IStorageTableOperation>();
                 _map[partitionKey] = partition;
             }
 
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 await FlushPartitionAsync(partition, cancellationToken);
 
                 // Reinitialize partition
-                partition = new Dictionary<string, TableOperation>();
+                partition = new Dictionary<string, IStorageTableOperation>();
                 _map[partitionKey] = partition;
             }
 
@@ -97,15 +97,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (String.IsNullOrEmpty(itemCopy.ETag))
             {
-                partition.Add(rowKey, TableOperation.Insert(itemCopy));
+                partition.Add(rowKey, _table.CreateInsertOperation(itemCopy));
             }
             else if (itemCopy.ETag.Equals("*"))
             {
-                partition.Add(rowKey, TableOperation.InsertOrReplace(itemCopy));
+                partition.Add(rowKey, _table.CreateInsertOrReplaceOperation(itemCopy));
             }
             else 
             {
-                partition.Add(rowKey, TableOperation.Replace(itemCopy));
+                partition.Add(rowKey, _table.CreateReplaceOperation(itemCopy));
             }
 
             if (partition.Count >= MaxBatchSize)
@@ -131,14 +131,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _map.Clear();
         }
 
-        internal virtual async Task FlushPartitionAsync(Dictionary<string, TableOperation> partition, CancellationToken cancellationToken)
+        internal virtual async Task FlushPartitionAsync(Dictionary<string, IStorageTableOperation> partition,
+            CancellationToken cancellationToken)
         {
             if (partition.Count > 0)
             {
                 try
                 {
                     _watch.Start();
-                    await ExecuteBatchAndCreateTableIfNotExistsAsync(partition);
+                    await ExecuteBatchAndCreateTableIfNotExistsAsync(partition, cancellationToken);
                 }
                 finally
                 {
@@ -148,9 +149,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        internal virtual async Task ExecuteBatchAndCreateTableIfNotExistsAsync(Dictionary<string, TableOperation> partition)
+        internal virtual async Task ExecuteBatchAndCreateTableIfNotExistsAsync(
+            Dictionary<string, IStorageTableOperation> partition, CancellationToken cancellationToken)
         {
-            TableBatchOperation batch = new TableBatchOperation();
+            IStorageTableBatchOperation batch = _table.CreateBatch();
 
             foreach (var operation in partition.Values)
             {
@@ -164,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 try
                 {
                     // Commit the batch
-                    await _table.ExecuteBatchAsync(batch);
+                    await _table.ExecuteBatchAsync(batch, cancellationToken);
                 }
                 catch (StorageException e)
                 {
@@ -179,10 +181,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 if (exception != null)
                 {
                     // Make sure the table exists
-                    await _table.CreateIfNotExistsAsync();
+                    await _table.CreateIfNotExistsAsync(cancellationToken);
 
                     // Commit the batch
-                    await _table.ExecuteBatchAsync(batch);
+                    await _table.ExecuteBatchAsync(batch, cancellationToken);
                 }
             }
         }
