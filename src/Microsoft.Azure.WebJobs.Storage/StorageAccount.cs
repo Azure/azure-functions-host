@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
+
 #if PUBLICSTORAGE
 using Microsoft.Azure.WebJobs.Storage.Blob;
 using Microsoft.Azure.WebJobs.Storage.Queue;
@@ -84,88 +83,6 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         public string ToString(bool exportSecrets)
         {
             return _sdkAccount.ToString(exportSecrets: exportSecrets);
-        }
-
-        private class StorageTableClient : IStorageTableClient
-        {
-            private readonly CloudTableClient _sdk;
-
-            public StorageTableClient(CloudTableClient sdk)
-            {
-                _sdk = sdk;
-            }
-
-            public IStorageTable GetTableReference(string tableName)
-            {
-                CloudTable sdkTable = _sdk.GetTableReference(tableName);
-                return new StorageTable(sdkTable);
-            }
-        }
-
-        private class StorageTable : IStorageTable
-        {
-            private readonly CloudTable _sdk;
-
-            public StorageTable(CloudTable sdk)
-            {
-                _sdk = sdk;
-            }
-
-            public void Insert(ITableEntity entity)
-            {
-                if (entity == null)
-                {
-                    throw new ArgumentNullException("entity");
-                }
-
-                TableOperation insert = TableOperation.Insert(entity);
-
-                try
-                {
-                    _sdk.Execute(insert);
-                }
-                catch (StorageException exception)
-                {
-                    if (!exception.IsNotFound())
-                    {
-                        throw;
-                    }
-
-                    _sdk.CreateIfNotExists();
-                    _sdk.Execute(insert);
-                }
-            }
-
-            public IEnumerable<TElement> Query<TElement>(int? limit, params IQueryModifier[] queryModifiers) where TElement : ITableEntity, new()
-            {
-                IQueryable<TElement> q = _sdk.CreateQuery<TElement>();
-                foreach (var queryModifier in queryModifiers)
-                {
-                    q = queryModifier.Apply(q);
-                }
-
-                if (limit.HasValue)
-                {
-                    q = q.Take(limit.Value);
-                }
-
-                try
-                {
-                    return q.ToArray();
-                }
-                catch (StorageException queryException)
-                {
-                    // unless it is 404, do not recover
-                    if (!queryException.IsNotFound())
-                    {
-                        throw;
-                    }
-                    else
-                    {
-                        return Enumerable.Empty<TElement>();
-                    }
-                }
-            }
         }
     }
 }

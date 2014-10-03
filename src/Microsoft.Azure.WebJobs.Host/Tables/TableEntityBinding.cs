@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         private readonly string _parameterName;
         private readonly IArgumentBinding<TableEntityContext> _argumentBinding;
-        private readonly CloudTableClient _client;
+        private readonly IStorageTableClient _client;
         private readonly string _accountName;
         private readonly IBindableTableEntityPath _path;
         private readonly IObjectToTypeConverter<TableEntityContext> _converter;
 
         public TableEntityBinding(string parameterName, IArgumentBinding<TableEntityContext> argumentBinding,
-            CloudTableClient client, IBindableTableEntityPath path)
+            IStorageTableClient client, IBindableTableEntityPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             get { return _path.RowKeyPattern; }
         }
 
-        private static IObjectToTypeConverter<TableEntityContext> CreateConverter(CloudTableClient client,
+        private static IObjectToTypeConverter<TableEntityContext> CreateConverter(IStorageTableClient client,
             IBindableTableEntityPath path)
         {
             return new CompositeObjectToTypeConverter<TableEntityContext>(
@@ -58,10 +58,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 new EntityOutputConverter<string>(new StringToTableEntityContextConverter(client, path)));
         }
 
+        private Task<IValueProvider> BindEntityAsync(TableEntityContext entityContext, ValueBindingContext context)
+        {
+            return _argumentBinding.BindAsync(entityContext, context);
+        }
+
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
             TableEntityPath boundPath = _path.Bind(context.BindingData);
-            CloudTable table = _client.GetTableReference(boundPath.TableName);
+            IStorageTable table = _client.GetTableReference(boundPath.TableName);
 
             TableEntityContext entityContext = new TableEntityContext
             {
@@ -70,12 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 RowKey = boundPath.RowKey
             };
 
-            return BindAsync(entityContext, context.ValueContext);
-        }
-
-        private Task<IValueProvider> BindAsync(TableEntityContext entityContext, ValueBindingContext context)
-        {
-            return _argumentBinding.BindAsync(entityContext, context);
+            return BindEntityAsync(entityContext, context.ValueContext);
         }
 
         public Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             TableClient.ValidateAzureTableKeyValue(entityContext.PartitionKey);
             TableClient.ValidateAzureTableKeyValue(entityContext.RowKey);
 
-            return BindAsync(entityContext, context);
+            return BindEntityAsync(entityContext, context);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

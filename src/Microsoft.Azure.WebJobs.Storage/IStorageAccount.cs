@@ -42,8 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         /// <returns>A queue client.</returns>
         IStorageQueueClient CreateQueueClient();
 
-        /// <summary>
-        /// Creates a table client.</summary>
+        /// <summary>Creates a table client.</summary>
         /// <returns>A table client.</returns>
         IStorageTableClient CreateTableClient();
 

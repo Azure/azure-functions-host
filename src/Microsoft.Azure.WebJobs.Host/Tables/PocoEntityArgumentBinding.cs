@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -18,8 +19,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public async Task<IValueProvider> BindAsync(TableEntityContext value, ValueBindingContext context)
         {
-            TableOperation retrieve = TableOperation.Retrieve<DynamicTableEntity>(value.PartitionKey, value.RowKey);
-            TableResult result = await value.Table.ExecuteAsync(retrieve, context.CancellationToken);
+            IStorageTable table = value.Table;
+            IStorageTableOperation retrieve = table.CreateRetrieveOperation<DynamicTableEntity>(
+                value.PartitionKey, value.RowKey);
+            TableResult result = await table.ExecuteAsync(retrieve, context.CancellationToken);
             DynamicTableEntity entity = (DynamicTableEntity)result.Result;
 
             if (entity == null)

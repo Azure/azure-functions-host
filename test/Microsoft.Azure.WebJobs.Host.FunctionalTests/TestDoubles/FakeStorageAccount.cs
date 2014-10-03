@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         private readonly MemoryBlobStore _blobStore = new MemoryBlobStore();
         private readonly MemoryQueueStore _queueStore = new MemoryQueueStore();
+        private readonly MemoryTableStore _tableStore = new MemoryTableStore();
 
         public StorageCredentials Credentials
         {
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageTableClient CreateTableClient()
         {
-            throw new NotImplementedException();
+            return new FakeStorageTableClient(_tableStore, _credentials);
         }
 
         public string ToString(bool exportSecrets)

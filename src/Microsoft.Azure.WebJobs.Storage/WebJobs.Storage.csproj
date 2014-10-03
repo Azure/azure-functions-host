@@ -68,15 +68,16 @@
     <Compile Include="Queue\StorageQueueMessage.cs" />
     <Compile Include="StorageAccount.cs" />
     <Compile Include="StorageExceptionExtensions.cs" />
-    <Compile Include="Table\CloudTableExtensions.cs" />
+    <Compile Include="Table\TypeEntityResolver.cs" />
+    <Compile Include="Table\IStorageTableOperation.cs" />
+    <Compile Include="Table\IStorageTableBatchOperation.cs" />
     <Compile Include="Table\IStorageTable.cs" />
     <Compile Include="Table\IStorageTableClient.cs" />
-    <Compile Include="Table\ResolverQueryModifier.cs" />
-    <Compile Include="Table\RowKeyGreaterThanOrEqualQueryModifier.cs" />
-    <Compile Include="Table\RowKeyGreaterThanQueryModifier.cs" />
-    <Compile Include="Table\RowKeyLessThanQueryModifier.cs" />
-    <Compile Include="Table\PartitionKeyEqualsQueryModifier.cs" />
-    <Compile Include="Table\IQueryModifier.cs" />
+    <Compile Include="Table\IEntityResolver.cs" />
+    <Compile Include="Table\StorageTableBatchOperation.cs" />
+    <Compile Include="Table\StorageTableOperation.cs" />
+    <Compile Include="Table\StorageTable.cs" />
+    <Compile Include="Table\StorageTableClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Common\PublicKey.snk">

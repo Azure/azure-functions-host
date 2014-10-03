@@ -3,16 +3,16 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class StringToTableEntityContextConverter : IConverter<string, TableEntityContext>
     {
-        private readonly CloudTableClient _client;
+        private readonly IStorageTableClient _client;
         private readonly IBindableTableEntityPath _defaultPath;
 
-        public StringToTableEntityContextConverter(CloudTableClient client, IBindableTableEntityPath defaultPath)
+        public StringToTableEntityContextConverter(IStorageTableClient client, IBindableTableEntityPath defaultPath)
         {
             _client = client;
             _defaultPath = defaultPath;

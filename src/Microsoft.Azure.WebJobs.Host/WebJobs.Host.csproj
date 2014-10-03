@@ -293,32 +293,35 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\StorageExceptionExtensions.cs">
       <Link>Storage\StorageExceptionExtensions.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\CloudTableExtensions.cs">
-      <Link>Storage\Table\CloudTableExtensions.cs</Link>
-    </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IQueryModifier.cs">
-      <Link>Storage\Table\IQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IEntityResolver.cs">
+      <Link>Storage\Table\IEntityResolver.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTable.cs">
       <Link>Storage\Table\IStorageTable.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableBatchOperation.cs">
+      <Link>Storage\Table\IStorageTableBatchOperation.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableClient.cs">
       <Link>Storage\Table\IStorageTableClient.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\PartitionKeyEqualsQueryModifier.cs">
-      <Link>Storage\Table\PartitionKeyEqualsQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\IStorageTableOperation.cs">
+      <Link>Storage\Table\IStorageTableOperation.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\ResolverQueryModifier.cs">
-      <Link>Storage\Table\ResolverQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTable.cs">
+      <Link>Storage\Table\StorageTable.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\RowKeyGreaterThanOrEqualQueryModifier.cs">
-      <Link>Storage\Table\RowKeyGreaterThanOrEqualQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableBatchOperation.cs">
+      <Link>Storage\Table\StorageTableBatchOperation.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\RowKeyGreaterThanQueryModifier.cs">
-      <Link>Storage\Table\RowKeyGreaterThanQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableClient.cs">
+      <Link>Storage\Table\StorageTableClient.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\RowKeyLessThanQueryModifier.cs">
-      <Link>Storage\Table\RowKeyLessThanQueryModifier.cs</Link>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\StorageTableOperation.cs">
+      <Link>Storage\Table\StorageTableOperation.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Table\TypeEntityResolver.cs">
+      <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />

@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
@@ -55,7 +56,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (HasChanged)
             {
-                return _entityContext.Table.ExecuteAsync(TableOperation.Replace(_value), cancellationToken);
+                IStorageTable table = _entityContext.Table;
+                IStorageTableOperation operation = table.CreateReplaceOperation(_value);
+                return table.ExecuteAsync(operation, cancellationToken);
             }
 
             return Task.FromResult(0);

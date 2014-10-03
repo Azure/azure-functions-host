@@ -46,17 +46,24 @@
     </Compile>
     <Compile Include="FunctionalTest.cs" />
     <Compile Include="BlobTests.cs" />
+    <Compile Include="StorageTableExtensions.cs" />
+    <Compile Include="TableEntityTests.cs" />
     <Compile Include="QueueTests.cs" />
     <Compile Include="StorageBlobExtensions.cs" />
     <Compile Include="StorageBlobContainerExtensions.cs" />
     <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
     <Compile Include="TestDoubles\FakeStorageBlockBlob.cs" />
+    <Compile Include="TestDoubles\FakeStorageTableBatchOperation.cs" />
+    <Compile Include="TestDoubles\FakeStorageTableOperation.cs" />
+    <Compile Include="TestDoubles\FakeStorageTable.cs" />
     <Compile Include="TestDoubles\FakeStorageQueue.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobClient.cs" />
+    <Compile Include="TestDoubles\FakeStorageTableClient.cs" />
     <Compile Include="TestDoubles\FakeStorageQueueClient.cs" />
     <Compile Include="TestDoubles\MemoryBlobStore.cs" />
     <Compile Include="TestDoubles\MemoryCloudBlobStream.cs" />
+    <Compile Include="TestDoubles\MemoryTableStore.cs" />
     <Compile Include="TestDoubles\MemoryQueueStore.cs" />
     <Compile Include="TestDoubles\StorageExceptionFactory.cs" />
     <Compile Include="TestDoubles\StrictEncodings.cs" />
