@@ -69,6 +69,7 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Spatial, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -389,9 +390,24 @@
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
-    <Compile Include="Converters\EnumParseStringToTConverter.cs" />
+    <Compile Include="Converters\KnownTypesParseToStringConverterFactory.cs" />
+    <Compile Include="Converters\StringToTimeSpanConverter.cs" />
+    <Compile Include="Converters\StringToDateTimeOffsetConverter.cs" />
+    <Compile Include="Converters\StringToDecimalConverter.cs" />
+    <Compile Include="Converters\StringToBigIntegerConverter.cs" />
+    <Compile Include="Converters\StringToDoubleConverter.cs" />
+    <Compile Include="Converters\StringToDateTimeConverter.cs" />
+    <Compile Include="Converters\StringToGuidConverter.cs" />
+    <Compile Include="Converters\StringToSingleConverter.cs" />
+    <Compile Include="Converters\StringToInt64Converter.cs" />
+    <Compile Include="Converters\StringToInt32Converter.cs" />
+    <Compile Include="Converters\StringToUInt64Converter.cs" />
+    <Compile Include="Converters\StringToUInt32Converter.cs" />
+    <Compile Include="Converters\StringToUInt16Converter.cs" />
+    <Compile Include="Converters\StringToInt16Converter.cs" />
+    <Compile Include="Converters\StringToSByteConverter.cs" />
+    <Compile Include="Converters\StringToByteConverter.cs" />
     <Compile Include="Converters\CompositeStringToTConverterFactory.cs" />
-    <Compile Include="Converters\EnumParseStringToTConverterFactory.cs" />
     <Compile Include="Converters\IdentityStringToTConverterFactory.cs" />
     <Compile Include="Converters\IStringToTConverterFactory.cs" />
     <Compile Include="Converters\StringToTConverterFactory.cs" />

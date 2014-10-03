@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
             if (!_tryParseDelegate.Invoke(input, out parsed))
             {
                 string msg = String.Format(CultureInfo.CurrentCulture,
-                    "Parameter is illegal format to parse as type '{0}'", typeof(TOutput).FullName);
-                throw new InvalidOperationException(msg);
+                    "Input string was not in a correct format for type '{0}'.", typeof(TOutput).FullName);
+                throw new FormatException(msg);
             }
 
             return parsed;

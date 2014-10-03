@@ -7,9 +7,9 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     {
         private static readonly IStringToTConverterFactory _instance = new CompositeStringToTConverterFactory(
             new IdentityStringToTConverterFactory(),
+            new KnownTypesParseToStringConverterFactory(),
             new TryParseStringToTConverterFactory(),
-            new TypeConverterStringToTConverterFactory(), // Do this before Enums to give it higher precedence.
-            new EnumParseStringToTConverterFactory());
+            new TypeConverterStringToTConverterFactory());
 
         public static IStringToTConverterFactory Instance
         {

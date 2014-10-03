@@ -68,6 +68,7 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Spatial, Version=5.6.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Spatial.5.6.0\lib\net40\System.Spatial.dll</HintPath>
     </Reference>
@@ -113,6 +114,9 @@
     <Compile Include="Blobs\UncompletedAsyncResult.cs" />
     <Compile Include="Blobs\CompletedAsyncResult.cs" />
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
+    <Compile Include="Converters\CultureInfoContext.cs" />
+    <Compile Include="Converters\StringToTConverterFactoryTests.cs" />
+    <Compile Include="Converters\TToStringConverterFactoryTests.cs" />
     <Compile Include="Executors\TaskInvokerTests.cs" />
     <Compile Include="Executors\VoidInvokerTests.cs" />
     <Compile Include="Executors\InvokerFactoryTests.cs" />
