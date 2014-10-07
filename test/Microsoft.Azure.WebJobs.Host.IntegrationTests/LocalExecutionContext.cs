@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
@@ -59,10 +60,11 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             IFunctionDefinition function = Lookup(functionName);
 
             BlobPath parsed = BlobPath.Parse(blobPath);
-            CloudBlobContainer container = _blobClient.GetContainerReference(parsed.ContainerName);
-            CloudBlockBlob blobInput = container.GetBlockBlobReference(parsed.BlobName);
-
-            ITriggeredFunctionInstanceFactory<ICloudBlob> instanceFactory = (ITriggeredFunctionInstanceFactory<ICloudBlob>)function.InstanceFactory;
+            CloudBlobContainer sdkContainer = _blobClient.GetContainerReference(parsed.ContainerName);
+            CloudBlockBlob sdkBlob = sdkContainer.GetBlockBlobReference(parsed.BlobName);
+            IStorageBlobContainer parent = new StorageBlobContainer(sdkContainer);
+            IStorageBlob blobInput = new StorageBlockBlob(parent, sdkBlob);
+            var instanceFactory = (ITriggeredFunctionInstanceFactory<IStorageBlob>)function.InstanceFactory;
             IFunctionInstance instance = instanceFactory.Create(blobInput, null);
             Execute(instance);
         }

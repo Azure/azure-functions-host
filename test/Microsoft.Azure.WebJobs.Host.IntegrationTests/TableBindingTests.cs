@@ -18,7 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithIQueryable")]
         [InlineData("FuncWithICollector")]
         [InlineData("FuncWithITableEntity")]
-        [InlineData("FuncWithPocoTableEntity")]
+        [InlineData("FuncWithPocoObjectEntity")]
+        [InlineData("FuncWithPocoValueEntity")]
         public void Call_WhenMissingTable_DoesntCreate(string functionName)
         {
             CloudTable table = TestTableClient.GetTableReference(TestTableName);
@@ -51,41 +52,51 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
         private class MissingTableProgram
         {
-            public class ValueTableEntity : TableEntity
-            {
-                public string Value { get; set; }
-            }
-
-            public class PocoTableEntity
-            {
-                public string Value { get; set; }
-            }
-
-            public static void FuncWithIQueryable([Table(TestTableName)] IQueryable<ValueTableEntity> entities)
+            public static void FuncWithIQueryable([Table(TestTableName)] IQueryable<CustomTableEntity> entities)
             {
                 Assert.NotNull(entities);
                 Assert.Empty(entities);
             }
 
-            public static void FuncWithICollector([Table(TestTableName)] ICollector<ValueTableEntity> entities)
+            public static void FuncWithICollector([Table(TestTableName)] ICollector<CustomTableEntity> entities)
             {
                 Assert.NotNull(entities);
             }
 
-            public static void FuncWithITableEntity([Table(TestTableName, "PK", "RK")] ValueTableEntity entity)
+            public static void FuncWithITableEntity([Table(TestTableName, "PK", "RK")] CustomTableEntity entity)
             {
                 Assert.Null(entity);
             }
 
-            public static void FuncWithPocoTableEntity([Table(TestTableName, "PK", "RK")] PocoTableEntity entity)
+            public static void FuncWithPocoObjectEntity([Table(TestTableName, "PK", "RK")] PocoObjectEntity entity)
             {
                 Assert.Null(entity);
+            }
+
+            public static void FuncWithPocoValueEntity([Table(TestTableName, "PK", "RK")] PocoValueEntity entity)
+            {
+                Assert.Null(entity.Value);
             }
 
             public static void FuncWithCloudTable([Table(TestTableName)] CloudTable table)
             {
                 Assert.NotNull(table);
             }
+        }
+
+        public class CustomTableEntity : TableEntity
+        {
+            public string Value { get; set; }
+        }
+
+        public class PocoObjectEntity
+        {
+            public string Value { get; set; }
+        }
+
+        public struct PocoValueEntity
+        {
+            public string Value { get; set; }
         }
     }
 }

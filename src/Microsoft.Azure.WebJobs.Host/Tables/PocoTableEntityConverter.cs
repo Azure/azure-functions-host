@@ -106,7 +106,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return default(T);
             }
 
-            var obj = new T();
+            // casting to object to allow boxing of value types.
+            // boxing is required to make SetValue below update original object (and not a copy of it)
+            object obj = new T();
             foreach (var kv in data)
             {
                 var prop = typeof(T).GetProperty(kv.Key, BindingFlags.Public | BindingFlags.Instance);
@@ -120,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 }
             }
 
-            return obj;
+            return (T)obj;
         }
 
         private static object DeserializeObject(string str, Type type)

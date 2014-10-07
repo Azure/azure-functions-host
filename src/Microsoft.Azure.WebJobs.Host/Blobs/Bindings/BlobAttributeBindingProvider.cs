@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -37,15 +38,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             if (cloudBlobStreamBinderTypes != null)
             {
-                foreach (Type cloudBlobStreamBinderType in cloudBlobStreamBinderTypes)
-                {
-                    Type itemType;
-                    ICloudBlobStreamObjectBinder objectBinder =
-                        CloudBlobStreamObjectBinder.Create(cloudBlobStreamBinderType, out itemType);
+                innerProviders.AddRange(cloudBlobStreamBinderTypes.Select(
+                    t => CloudBlobStreamObjectBinder.CreateReadBindingProvider(t)));
 
-                    innerProviders.Add(new ObjectArgumentBindingProvider(objectBinder, itemType));
-                    innerProviders.Add(new OutObjectArgumentBindingProvider(objectBinder, itemType));
-                }
+                innerProviders.AddRange(cloudBlobStreamBinderTypes.Select(
+                    t => CloudBlobStreamObjectBinder.CreateWriteBindingProvider(t)));
             }
 
             return new CompositeArgumentBindingProvider(innerProviders);

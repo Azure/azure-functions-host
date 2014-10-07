@@ -620,8 +620,6 @@
     <Compile Include="Blobs\CompositeArgumentBindingProvider.cs" />
     <Compile Include="Blobs\ConverterArgumentBindingProvider.cs" />
     <Compile Include="Blobs\Bindings\OutObjectArgumentBindingProvider.cs" />
-    <Compile Include="Blobs\CloudBlobStreamObjectBinderOfT.cs" />
-    <Compile Include="Blobs\ICloudBlobStreamObjectBinder.cs" />
     <Compile Include="Blobs\ObjectArgumentBindingProvider.cs" />
     <Compile Include="Blobs\StorageBlobToCloudPageBlobConverter.cs" />
     <Compile Include="Blobs\StorageBlobToCloudBlockBlobConverter.cs" />

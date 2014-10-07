@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
         public object GetValue()
         {
-            return null;
+            return default(TInput);
         }
 
         public string ToInvokeString()

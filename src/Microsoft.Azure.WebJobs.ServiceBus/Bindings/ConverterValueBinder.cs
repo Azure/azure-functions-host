@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         public object GetValue()
         {
-            return null;
+            return default(TInput);
         }
 
         public string ToInvokeString()

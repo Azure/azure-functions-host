@@ -61,7 +61,22 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             lc.Call("FuncWithOutT");
 
             Assert.True(queue.Exists(), "queue must be created");
-            AssertMessageSent(queue, new PayloadPoco { Value = TestValue });
+            AssertMessageSent(queue, new FooPoco { Value = TestValue });
+        }
+
+        [Fact]
+        public void CallFuncWithOutValueT_WhenMissingQueue_CreatesAndSends()
+        {
+            var account = TestStorage.GetAccount();
+            CloudQueue queue = account.CreateCloudQueueClient().GetQueueReference(TestQueueName);
+            TestQueueClient.DeleteQueue(queue);
+            Assert.False(queue.Exists(), "queue must be deleted before test");
+            var lc = TestStorage.New<MissingQueueProgram>(account);
+
+            lc.Call("FuncWithOutValueT");
+
+            Assert.True(queue.Exists(), "queue must be created");
+            AssertMessageSent(queue, new FooValuePoco { Value = TestValue });
         }
 
         [Theory]
@@ -153,23 +168,28 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 queue.Add(TestQueueMessage);
             }
 
-            public static void FuncWithICollectorNoop([Queue(TestQueueName)] ICollector<PayloadPoco> queue)
+            public static void FuncWithICollectorNoop([Queue(TestQueueName)] ICollector<FooPoco> queue)
             {
                 Assert.NotNull(queue);
             }
 
-            public static void FuncWithOutT([Queue(TestQueueName)] out PayloadPoco value)
+            public static void FuncWithOutT([Queue(TestQueueName)] out FooPoco value)
             {
-                value = new PayloadPoco { Value = TestValue };
+                value = new FooPoco { Value = TestValue };
             }
 
-            public static void FuncWithOutTNull([Queue(TestQueueName)] out PayloadPoco value)
+            public static void FuncWithOutTNull([Queue(TestQueueName)] out FooPoco value)
             {
-                value = default(PayloadPoco);
+                value = default(FooPoco);
+            }
+
+            public static void FuncWithOutValueT([Queue(TestQueueName)] out FooValuePoco value)
+            {
+                value = new FooValuePoco { Value = TestValue };
             }
         }
 
-        private class PayloadPoco
+        private class FooPoco
         {
             public int Value { get; set; }
             public string Content { get; set; }
@@ -181,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     return false;
                 }
 
-                PayloadPoco other = obj as PayloadPoco;
+                FooPoco other = obj as FooPoco;
                 return ((object)other != null) && Value == other.Value && Content == other.Content;
             }
 
@@ -189,6 +209,12 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             {
                 return Value ^ (Content != null ? Content.GetHashCode() : 0);
             }
+        }
+
+        private struct FooValuePoco
+        {
+            public int Value { get; set; }
+            public string Content { get; set; }
         }
     }
 }

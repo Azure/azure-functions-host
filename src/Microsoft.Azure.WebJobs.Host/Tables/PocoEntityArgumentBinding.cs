@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (entity == null)
             {
-                return new NullEntityValueProvider(value, typeof(TElement));
+                return new NullEntityValueProvider<TElement>(value);
             }
 
             TElement userEntity = PocoTableEntity.ToPocoEntity<TElement>(entity);

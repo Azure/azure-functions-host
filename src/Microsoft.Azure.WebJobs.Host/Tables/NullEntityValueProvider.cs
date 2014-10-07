@@ -6,25 +6,23 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class NullEntityValueProvider : IValueProvider
+    internal class NullEntityValueProvider<TElement> : IValueProvider
     {
         private readonly TableEntityContext _entityContext;
-        private readonly Type _valueType;
 
-        public NullEntityValueProvider(TableEntityContext entityContext, Type valueType)
+        public NullEntityValueProvider(TableEntityContext entityContext)
         {
             _entityContext = entityContext;
-            _valueType = valueType;
         }
 
         public Type Type
         {
-            get { return _valueType; }
+            get { return typeof(TElement); }
         }
 
         public object GetValue()
         {
-            return null;
+            return default(TElement);
         }
 
         public string ToInvokeString()

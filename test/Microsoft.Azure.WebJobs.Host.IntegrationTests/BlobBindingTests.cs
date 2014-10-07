@@ -27,10 +27,12 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithOutStringNull")]
         [InlineData("FuncWithStreamWriteNoop")]
         [InlineData("FuncWithT")]
+        [InlineData("FuncWithValueT")]
         public void Call_WhenMissingBlob_DoesntCreate(string functionName)
         {
             CloudStorageAccount account = TestStorage.GetAccount();
-            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { typeof(MissingBlobToCustomDataBinder) });
+            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { 
+                typeof(MissingBlobToCustomValueBinder), typeof(MissingBlobToCustomObjectBinder) });
             Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
                 "blob should NOT exist before the test.");
 
@@ -47,10 +49,12 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithStreamWrite")]
         [InlineData("FuncWithOutT")]
         [InlineData("FuncWithOutTNull")]
+        [InlineData("FuncWithOutValueT")]
         public void Call_WhenMissingBlob_Creates(string functionName)
         {
             CloudStorageAccount account = TestStorage.GetAccount();
-            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { typeof(MissingBlobToCustomDataBinder) });
+            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { 
+                typeof(MissingBlobToCustomValueBinder), typeof(MissingBlobToCustomObjectBinder) });
             Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
                 "blob should NOT exist before the test.");
 
@@ -68,13 +72,19 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 "blob should be deleted after Dispose");
         }
 
-        private class CustomDataValue
+        private struct CustomDataValue
         {
             public int ValueId { get; set; }
             public string Content { get; set; }
         }
 
-        private class MissingBlobToCustomDataBinder : ICloudBlobStreamBinder<CustomDataValue>
+        private class CustomDataObject
+        {
+            public int ValueId { get; set; }
+            public string Content { get; set; }
+        }
+
+        private class MissingBlobToCustomValueBinder : ICloudBlobStreamBinder<CustomDataValue>
         {
             public Task<CustomDataValue> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
             {
@@ -88,6 +98,29 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             {
                 Assert.NotNull(output);
 
+                Assert.Equal(TestValue, value.ValueId);
+
+                const byte ignore = 0xFF;
+                output.WriteByte(ignore);
+                
+                return Task.FromResult(0);
+            }
+        }
+
+        private class MissingBlobToCustomObjectBinder : ICloudBlobStreamBinder<CustomDataObject>
+        {
+            public Task<CustomDataObject> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
+            {
+                Assert.Null(input);
+
+                CustomDataObject value = new CustomDataObject { ValueId = TestValue };
+                return Task.FromResult(value);
+            }
+
+            public Task WriteToStreamAsync(CustomDataObject value, Stream output, CancellationToken cancellationToken)
+            {
+                Assert.NotNull(output);
+
                 if (value != null)
                 {
                     Assert.Equal(TestValue, value.ValueId);
@@ -95,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     const byte ignore = 0xFF;
                     output.WriteByte(ignore);
                 }
-                
+
                 return Task.FromResult(0);
             }
         }
@@ -152,20 +185,31 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 content = null;
             }
 
-            public static void FuncWithT([Blob(TestBlobPath)] CustomDataValue value)
+            public static void FuncWithT([Blob(TestBlobPath)] CustomDataObject value)
             {
                 Assert.NotNull(value);
                 Assert.Equal(TestValue, value.ValueId);
             }
 
-            public static void FuncWithOutT([Blob(TestBlobPath)] out CustomDataValue value)
+            public static void FuncWithOutT([Blob(TestBlobPath)] out CustomDataObject value)
             {
-                value = new CustomDataValue { ValueId = Int32.MinValue };
+                value = new CustomDataObject { ValueId = TestValue, Content = "ignore" };
             }
 
-            public static void FuncWithOutTNull([Blob(TestBlobPath)] out CustomDataValue value)
+            public static void FuncWithOutTNull([Blob(TestBlobPath)] out CustomDataObject value)
             {
-                value = default(CustomDataValue);
+                value = null;
+            }
+
+            public static void FuncWithValueT([Blob(TestBlobPath)] CustomDataValue value)
+            {
+                Assert.NotNull(value);
+                Assert.Equal(TestValue, value.ValueId);
+            }
+
+            public static void FuncWithOutValueT([Blob(TestBlobPath)] out CustomDataValue value)
+            {
+                value = new CustomDataValue { ValueId = TestValue, Content = "ignore" };
             }
         }
     }

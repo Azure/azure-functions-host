@@ -11,20 +11,14 @@ using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
-    internal class OutObjectArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class OutObjectArgumentBindingProvider<TValue, TBinder> : IBlobArgumentBindingProvider
+        where TBinder : ICloudBlobStreamBinder<TValue>, new()
     {
-        private readonly ICloudBlobStreamObjectBinder _objectBinder;
-        private readonly Type _valueType;
-
-        public OutObjectArgumentBindingProvider(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
-        {
-            _objectBinder = objectBinder;
-            _valueType = valueType;
-        }
+        private readonly ICloudBlobStreamBinder<TValue> _objectBinder = new TBinder();
 
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
-            if (!parameter.IsOut || parameter.ParameterType.GetElementType() != _valueType)
+            if (!parameter.IsOut || parameter.ParameterType.GetElementType() != typeof(TValue))
             {
                 return null;
             }
@@ -35,17 +29,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     + access.Value.ToString() + ".");
             }
 
-            return new ObjectArgumentBinding(_objectBinder, _valueType);
+            return new ObjectArgumentBinding(_objectBinder);
         }
 
         private class ObjectArgumentBinding : IBlobArgumentBinding
         {
-            private readonly ICloudBlobStreamObjectBinder _objectBinder;
-            private readonly Type _valueType;
+            private readonly ICloudBlobStreamBinder<TValue> _objectBinder;
 
-            public ObjectArgumentBinding(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
+            public ObjectArgumentBinding(ICloudBlobStreamBinder<TValue> objectBinder)
             {
-                _valueType = valueType;
                 _objectBinder = objectBinder;
             }
 
@@ -56,13 +48,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             public Type ValueType
             {
-                get { return _valueType; }
+                get { return typeof(TValue); }
             }
 
             public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
-                WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob, context);
-                return new ObjectValueBinder(blob, watchableStream, _objectBinder, _valueType);
+                WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(
+                    blob, context);
+                return new ObjectValueBinder(blob, watchableStream, _objectBinder);
             }
 
             // There's no way to dispose a CloudBlobStream without committing.
@@ -71,21 +64,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             {
                 private readonly IStorageBlob _blob;
                 private readonly WatchableCloudBlobStream _stream;
-                private readonly ICloudBlobStreamObjectBinder _objectBinder;
-                private readonly Type _valueType;
+                private readonly ICloudBlobStreamBinder<TValue> _objectBinder;
 
                 public ObjectValueBinder(IStorageBlob blob, WatchableCloudBlobStream stream,
-                    ICloudBlobStreamObjectBinder objectBinder, Type valueType)
+                    ICloudBlobStreamBinder<TValue> objectBinder)
                 {
                     _blob = blob;
                     _stream = stream;
                     _objectBinder = objectBinder;
-                    _valueType = valueType;
                 }
 
                 public Type Type
                 {
-                    get { return _valueType; }
+                    get { return typeof(TValue); }
                 }
 
                 public IWatcher Watcher
@@ -95,12 +86,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
                 public object GetValue()
                 {
-                    return null;
+                    return default(TValue);
                 }
 
                 public async Task SetValueAsync(object value, CancellationToken cancellationToken)
                 {
-                    await _objectBinder.WriteToStreamAsync(_stream, value, cancellationToken);
+                    await _objectBinder.WriteToStreamAsync((TValue)value, _stream, cancellationToken);
 
                     if (!_stream.HasCommitted)
                     {

@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public static void VerifyDefaultConstructor(Type entityType)
         {
-            if (entityType.GetConstructor(Type.EmptyTypes) == null)
+            if (!entityType.IsValueType && entityType.GetConstructor(Type.EmptyTypes) == null)
             {
                 throw new InvalidOperationException("Table entity types must provide a default constructor.");
             }

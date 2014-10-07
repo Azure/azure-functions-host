@@ -27,6 +27,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _watcher = watcher;
         }
 
+        public static BlobWatchableValueProvider Create<T>(IStorageBlob blob, T value, IWatcher watcher)
+        {
+            return new BlobWatchableValueProvider(blob, value: value, valueType: typeof(T), watcher: watcher);
+        }
+
         public Type Type
         {
             get { return _valueType; }

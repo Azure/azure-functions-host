@@ -11,25 +11,14 @@ using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    internal class ObjectArgumentBindingProvider : IBlobArgumentBindingProvider
+    internal class ObjectArgumentBindingProvider<TValue, TBinder> : IBlobArgumentBindingProvider
+        where TBinder : ICloudBlobStreamBinder<TValue>, new()
     {
-        private readonly ICloudBlobStreamObjectBinder _objectBinder;
-        private readonly Type _valueType;
-
-        public ObjectArgumentBindingProvider(Type cloudBlobStreamBinderType)
-        {
-            _objectBinder = CloudBlobStreamObjectBinder.Create(cloudBlobStreamBinderType, out _valueType);
-        }
-
-        public ObjectArgumentBindingProvider(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
-        {
-            _objectBinder = objectBinder;
-            _valueType = valueType;
-        }
+        private readonly ICloudBlobStreamBinder<TValue> _objectBinder = new TBinder();
 
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
-            if (parameter.ParameterType != _valueType)
+            if (parameter.ParameterType != typeof(TValue))
             {
                 return null;
             }
@@ -40,18 +29,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     + access.Value.ToString() + ".");
             }
 
-            return new ObjectArgumentBinding(_objectBinder, _valueType);
+            return new ObjectArgumentBinding(_objectBinder);
         }
 
         private class ObjectArgumentBinding : IBlobArgumentBinding
         {
-            private readonly ICloudBlobStreamObjectBinder _objectBinder;
-            private readonly Type _valueType;
+            private readonly ICloudBlobStreamBinder<TValue> _objectBinder;
 
-            public ObjectArgumentBinding(ICloudBlobStreamObjectBinder objectBinder, Type valueType)
+            public ObjectArgumentBinding(ICloudBlobStreamBinder<TValue> objectBinder)
             {
                 _objectBinder = objectBinder;
-                _valueType = valueType;
             }
 
             public FileAccess Access
@@ -61,20 +48,21 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             public Type ValueType
             {
-                get { return _valueType; }
+                get { return typeof(TValue); }
             }
 
             public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
-                object value;
-                ParameterLog status;
-
+                TValue value;
+                
                 WatchableReadStream watchableStream = await ReadBlobArgumentBinding.TryBindStreamAsync(blob, context);
                 if (watchableStream == null)
                 {
                     value = await _objectBinder.ReadFromStreamAsync(watchableStream, context.CancellationToken);
-                    return new BlobValueProvider(blob, value, _valueType);
+                    return BlobValueProvider.Create(blob, value);
                 }
+
+                ParameterLog status;
 
                 using (watchableStream)
                 {
@@ -82,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     status = watchableStream.GetStatus();
                 }
 
-                return new BlobWatchableValueProvider(blob, value, _valueType, new ImmutableWatcher(status));
+                return BlobWatchableValueProvider.Create(blob, value, new ImmutableWatcher(status));
             }
         }
     }

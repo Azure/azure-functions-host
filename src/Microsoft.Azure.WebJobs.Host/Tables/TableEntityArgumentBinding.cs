@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
             if (entity == null)
             {
-                return new NullEntityValueProvider(value, typeof(TElement));
+                return new NullEntityValueProvider<TElement>(value);
             }
 
             return new TableEntityValueBinder(value, entity, typeof(TElement));
