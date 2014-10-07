@@ -122,15 +122,36 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 return;
             }
 
-            foreach (ITriggerExecutor<ICloudBlob> registration in _registrations[container])
+            foreach (ITriggerExecutor<IStorageBlob> registration in _registrations[container])
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (!await registration.ExecuteAsync(blob, cancellationToken))
+                if (!await registration.ExecuteAsync(CreateStorageBlob(blob), cancellationToken))
                 {
                     // If notification failed, try again on the next iteration.
                     _blobsFoundFromScanOrNotification.Enqueue(blob);
                 }
+            }
+        }
+
+        internal static IStorageBlob CreateStorageBlob(ICloudBlob blob)
+        {
+            if (blob == null)
+            {
+                return null;
+            }
+
+            IStorageBlobContainer container = new StorageBlobContainer(blob.Container);
+
+            CloudBlockBlob blockBlob = blob as CloudBlockBlob;
+
+            if (blockBlob != null)
+            {
+                return new StorageBlockBlob(container, blockBlob);
+            }
+            else
+            {
+                return new StoragePageBlob(container, (CloudPageBlob)blob);
             }
         }
 
