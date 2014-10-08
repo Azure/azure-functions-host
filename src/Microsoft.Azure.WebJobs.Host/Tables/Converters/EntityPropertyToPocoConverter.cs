@@ -1,0 +1,31 @@
+﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+
+using System;
+using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
+
+namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
+{
+    internal class EntityPropertyToPocoConverter<TProperty> : IConverter<EntityProperty, TProperty>
+    {
+        public TProperty Convert(EntityProperty input)
+        {
+            if (input == null)
+            {
+                throw new ArgumentNullException("input");
+            }
+
+            string json = input.StringValue;
+
+            if (json == null)
+            {
+                throw new InvalidOperationException("The String property must not be null for JSON objects.");
+            }
+
+            return JsonConvert.DeserializeObject<TProperty>(json, JsonSerialization.Settings);
+        }
+    }
+}
