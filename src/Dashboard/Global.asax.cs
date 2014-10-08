@@ -70,12 +70,12 @@ namespace Dashboard
                 try
                 {
                     _indexer.Update();
-
-                    Thread.Sleep(IndexerPollIntervalMilliseconds);
                 }
                 // Swallow any exceptions from the background thread to avoid killing the worker
                 // process. We should only get here if logging failed for indexer exceptions.
                 catch (Exception) { }
+
+                Thread.Sleep(IndexerPollIntervalMilliseconds);
             }
         }
     }
