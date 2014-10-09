@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
     public class FunctionIndexerIntegrationTests
     {
         // Helper to do the indexing.
-        private static FunctionDescriptor Get(string methodName, INameResolver nameResolver = null)
+        private static Tuple<FunctionDescriptor, IFunctionDefinition> IndexMethod(string methodName, INameResolver nameResolver = null)
         {
             MethodInfo method = typeof(FunctionIndexerIntegrationTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(method);
@@ -28,19 +29,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
             FunctionIndexer indexer = new FunctionIndexer(context);
 
-            FunctionDescriptor descriptor = null;
+            Tuple<FunctionDescriptor, IFunctionDefinition> indexEntry = null;
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>(MockBehavior.Strict);
             indexMock
                 .Setup((i) => i.Add(
                     It.IsAny<IFunctionDefinition>(),
                     It.IsAny<FunctionDescriptor>(),
                     It.IsAny<MethodInfo>()))
-                .Callback<IFunctionDefinition, FunctionDescriptor, MethodInfo>((i1, d, i2) => descriptor = d);
+                .Callback<IFunctionDefinition, FunctionDescriptor, MethodInfo>(
+                    (ifd, fd, i) => indexEntry = Tuple.Create(fd, ifd));
             IFunctionIndex index = indexMock.Object;
 
             indexer.IndexMethodAsync(method, index, CancellationToken.None).GetAwaiter().GetResult();
 
-            return descriptor;
+            return indexEntry;
         }
 
         private static void NoAutoTrigger1([Blob(@"daas-test-input/{name}.csv")] TextReader inputs) { }
@@ -48,10 +50,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestNoAutoTrigger1()
         {
-            FunctionDescriptor func = Get("NoAutoTrigger1");
+            var entry = IndexMethod("NoAutoTrigger1");
 
-            Assert.NotNull(func);
-            var parameters = func.Parameters;
+            Assert.NotNull(entry);
+
+            IFunctionDefinition definiton = entry.Item2;
+            Assert.NotNull(definiton);
+            Assert.Null(definiton.ListenerFactory);
+
+            FunctionDescriptor descriptor = entry.Item1;
+            Assert.NotNull(descriptor);
+            var parameters = descriptor.Parameters;
             Assert.Equal(1, parameters.Count());
             Assert.IsType<BlobParameterDescriptor>(parameters.First());
         }
@@ -64,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             DictNameResolver nameResolver = new DictNameResolver();
             nameResolver.Add("name", "VALUE");
 
-            FunctionDescriptor func = Get("NameResolver", nameResolver);
+            FunctionDescriptor func = IndexMethod("NameResolver", nameResolver).Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;
@@ -82,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestAutoTrigger1()
         {
-            FunctionDescriptor func = Get("AutoTrigger1");
+            FunctionDescriptor func = IndexMethod("AutoTrigger1").Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;
@@ -96,10 +105,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestNoAutoTrigger2()
         {
-            FunctionDescriptor func = Get("NoAutoTrigger2");
+            var entry = IndexMethod("NoAutoTrigger2");
 
-            Assert.NotNull(func);
-            var parameters = func.Parameters;
+            Assert.NotNull(entry);
+
+            IFunctionDefinition definiton = entry.Item2;
+            Assert.NotNull(definiton);
+            Assert.Null(definiton.ListenerFactory);
+
+            FunctionDescriptor descriptor = entry.Item1;
+            Assert.NotNull(descriptor);
+            var parameters = descriptor.Parameters;
             Assert.Equal(2, parameters.Count());
             Assert.IsType<CallerSuppliedParameterDescriptor>(parameters.ElementAt(0));
             Assert.IsType<CallerSuppliedParameterDescriptor>(parameters.ElementAt(1));
@@ -112,9 +128,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestNoIndex()
         {
-            FunctionDescriptor func = Get("NoIndex");
+            var entry = IndexMethod("NoIndex");
 
-            Assert.Null(func);
+            Assert.Null(entry);
         }
 
         private static void Table([Table("TableName")] CloudTable table) { }
@@ -122,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestTable()
         {
-            FunctionDescriptor func = Get("Table");
+            FunctionDescriptor func = IndexMethod("Table").Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;
@@ -141,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestQueueTrigger()
         {
-            FunctionDescriptor func = Get("QueueTrigger");
+            FunctionDescriptor func = IndexMethod("QueueTrigger").Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;
@@ -163,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestQueueOutput()
         {
-            FunctionDescriptor func = Get("QueueOutput");
+            FunctionDescriptor func = IndexMethod("QueueOutput").Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;
@@ -183,11 +199,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestHasBlobAndUnboundParameter()
         {
+            var entry = IndexMethod("HasBlobAndUnboundParameter");
 
-            FunctionDescriptor func = Get("HasBlobAndUnboundParameter");
+            Assert.NotNull(entry);
+            
+            IFunctionDefinition definiton = entry.Item2;
+            Assert.NotNull(definiton);
+            Assert.Null(definiton.ListenerFactory);
 
-            Assert.NotNull(func);
-            var parameters = func.Parameters;
+            FunctionDescriptor descriptor = entry.Item1;
+            Assert.NotNull(descriptor);
+            var parameters = descriptor.Parameters;
             Assert.Equal(2, parameters.Count());
 
             ParameterDescriptor firstParameter = parameters.ElementAt(0);
@@ -208,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestHasBlobAndBoundParameter()
         {
-            FunctionDescriptor func = Get("HasBlobAndBoundParameter");
+            FunctionDescriptor func = IndexMethod("HasBlobAndBoundParameter").Item1;
 
             Assert.NotNull(func);
             var parameters = func.Parameters;

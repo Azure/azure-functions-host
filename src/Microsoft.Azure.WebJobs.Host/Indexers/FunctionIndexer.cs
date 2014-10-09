@@ -234,6 +234,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             {
                 functionDefinition = triggerBinding.CreateFunctionDefinition(nonTriggerBindings, invoker,
                     functionDescriptor);
+
+                if (hasNoAutomaticTrigger && functionDefinition != null)
+                {
+                    functionDefinition = new FunctionDefinition(functionDefinition.InstanceFactory, listenerFactory: null);
+                }
             }
             else
             {
