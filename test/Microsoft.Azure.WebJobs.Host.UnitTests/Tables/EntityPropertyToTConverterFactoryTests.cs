@@ -17,6 +17,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         private static DateTime _minimumValidDateTimeValue = new DateTime(1601, 01, 01, 0, 0, 0, DateTimeKind.Utc);
         private static DateTimeOffset _minimumValidDateTimeOffsetValue = new DateTimeOffset(_minimumValidDateTimeValue);
 
+        [Fact]
+        public void Create_EntityProperty_CanConvert()
+        {
+            // Act
+            IConverter<EntityProperty, EntityProperty> converter =
+                TToEntityPropertyConverterFactory.Create<EntityProperty>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty expected = new EntityProperty(1);
+            EntityProperty property = converter.Convert(expected);
+            Assert.Same(expected, property);
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]

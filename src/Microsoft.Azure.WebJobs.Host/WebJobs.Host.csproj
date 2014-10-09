@@ -390,6 +390,16 @@
     <Compile Include="Blobs\TaskAsyncResult.cs" />
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
+    <Compile Include="ClassPropertySetter.cs" />
+    <Compile Include="StructPropertySetter.cs" />
+    <Compile Include="StructPropertyAccessorFactory.cs" />
+    <Compile Include="ClassPropertyAccessorFactory.cs" />
+    <Compile Include="IPropertyAccessorFactory.cs" />
+    <Compile Include="IPropertySetter.cs" />
+    <Compile Include="IPropertyGetter.cs" />
+    <Compile Include="PropertyAccessorFactory.cs" />
+    <Compile Include="StructPropertyGetter.cs" />
+    <Compile Include="ClassPropertyGetter.cs" />
     <Compile Include="Converters\KnownTypesParseToStringConverterFactory.cs" />
     <Compile Include="Converters\StringToTimeSpanConverter.cs" />
     <Compile Include="Converters\StringToDateTimeOffsetConverter.cs" />
@@ -515,6 +525,8 @@
     <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\ConverterPropertyGetter.cs" />
+    <Compile Include="Tables\ConverterPropertySetter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToPocoConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToStringConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToInt64Converter.cs" />
@@ -557,7 +569,10 @@
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\PocoEntityCollectorBinder.cs" />
     <Compile Include="Tables\PocoEntityWriter.cs" />
+    <Compile Include="Tables\PocoToTableEntityConverter.cs" />
+    <Compile Include="Tables\PropertyInfoExtensions.cs" />
     <Compile Include="Tables\TableEntityCollectorBinder.cs" />
+    <Compile Include="Tables\TableEntityToPocoConverter.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />
     <Compile Include="Tables\TableEntityArgumentBinding.cs" />
     <Compile Include="Tables\TableEntityWriter.cs" />

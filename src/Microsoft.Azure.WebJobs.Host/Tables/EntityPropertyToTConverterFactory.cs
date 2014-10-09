@@ -12,74 +12,94 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     {
         public static IConverter<EntityProperty, TOutput> Create<TOutput>()
         {
+            if (typeof(TOutput) == typeof(EntityProperty))
+            {
+                return (IConverter<EntityProperty, TOutput>)new IdentityConverter<EntityProperty>();
+            }
+
             if (typeof(TOutput) == typeof(bool))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToBooleanConverter();
             }
-            else if (typeof(TOutput) == typeof(bool?))
+
+
+            if (typeof(TOutput) == typeof(bool?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableBooleanConverter();
             }
-            else if (typeof(TOutput) == typeof(byte[]))
+
+
+            if (typeof(TOutput) == typeof(byte[]))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToByteArrayConverter();
             }
-            else if (typeof(TOutput) == typeof(DateTime))
+
+            if (typeof(TOutput) == typeof(DateTime))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToDateTimeConverter();
             }
-            else if (typeof(TOutput) == typeof(DateTime?))
+
+            if (typeof(TOutput) == typeof(DateTime?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableDateTimeConverter();
             }
-            else if (typeof(TOutput) == typeof(DateTimeOffset))
+
+            if (typeof(TOutput) == typeof(DateTimeOffset))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToDateTimeOffsetConverter();
             }
-            else if (typeof(TOutput) == typeof(DateTimeOffset?))
+
+            if (typeof(TOutput) == typeof(DateTimeOffset?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableDateTimeOffsetConverter();
             }
-            else if (typeof(TOutput) == typeof(double))
+
+            if (typeof(TOutput) == typeof(double))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToDoubleConverter();
             }
-            else if (typeof(TOutput) == typeof(double?))
+
+            if (typeof(TOutput) == typeof(double?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableDoubleConverter();
             }
-            else if (typeof(TOutput) == typeof(Guid))
+
+            if (typeof(TOutput) == typeof(Guid))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToGuidConverter();
             }
-            else if (typeof(TOutput) == typeof(Guid?))
+
+            if (typeof(TOutput) == typeof(Guid?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableGuidConverter();
             }
-            else if (typeof(TOutput) == typeof(int))
+
+            if (typeof(TOutput) == typeof(int))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToInt32Converter();
             }
-            else if (typeof(TOutput) == typeof(int?))
+
+            if (typeof(TOutput) == typeof(int?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableInt32Converter();
             }
-            else if (typeof(TOutput) == typeof(long))
+
+            if (typeof(TOutput) == typeof(long))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToInt64Converter();
             }
-            else if (typeof(TOutput) == typeof(long?))
+
+            if (typeof(TOutput) == typeof(long?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableInt64Converter();
             }
-            else if (typeof(TOutput) == typeof(string))
+
+            if (typeof(TOutput) == typeof(string))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToStringConverter();
             }
-            else
-            {
-                return new EntityPropertyToPocoConverter<TOutput>();
-            }
+
+            return new EntityPropertyToPocoConverter<TOutput>();
         }
     }
 }

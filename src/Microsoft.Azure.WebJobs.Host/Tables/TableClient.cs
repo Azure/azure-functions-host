@@ -79,6 +79,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return entityType == typeof(ITableEntity) || entityType.GetInterfaces().Any(t => t == typeof(ITableEntity));
         }
 
+        public static bool IsSystemProperty(string propertyName)
+        {
+            return String.Equals("PartitionKey", propertyName, StringComparison.Ordinal) ||
+                String.Equals("RowKey", propertyName, StringComparison.Ordinal) ||
+                String.Equals("Timestamp", propertyName, StringComparison.Ordinal) ||
+                String.Equals("ETag", propertyName, StringComparison.Ordinal);
+        }
+
         public static void VerifyDefaultConstructor(Type entityType)
         {
             if (!entityType.IsValueType && entityType.GetConstructor(Type.EmptyTypes) == null)

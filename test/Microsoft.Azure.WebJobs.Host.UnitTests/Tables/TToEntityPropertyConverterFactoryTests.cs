@@ -14,6 +14,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
     public class EntityPropertyToTConverterFactoryTests
     {
+        [Fact]
+        public void Create_EntityProperty_CanConvert()
+        {
+            // Act
+            IConverter<EntityProperty, EntityProperty> converter =
+                EntityPropertyToTConverterFactory.Create<EntityProperty>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty expected = new EntityProperty(1);
+            EntityProperty property = converter.Convert(expected);
+            Assert.Equal(expected, property);
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
