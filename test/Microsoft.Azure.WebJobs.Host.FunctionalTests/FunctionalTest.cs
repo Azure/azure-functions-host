@@ -114,6 +114,38 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        // Stops running the host as soon as the first function logs completion.
+        public static Exception RunTriggerFailure(IStorageAccount account, Type programType)
+        {
+            // Arrange
+            TaskCompletionSource<Exception> taskSource = new TaskCompletionSource<Exception>();
+            IServiceProvider serviceProvider = CreateServiceProviderForInstanceFailure(account, programType,
+                taskSource);
+            // The task for failed function invocation (should complete successfully with a non-null exception).
+            Task<Exception> task = taskSource.Task;
+
+            using (JobHost host = new JobHost(serviceProvider))
+            {
+                host.Start();
+
+                // Act
+                bool completed = task.WaitUntilCompleted(3 * 1000);
+
+                // Assert
+                Assert.True(completed);
+
+                // Give a nicer test failure message for faulted tasks.
+                if (task.Status == TaskStatus.Faulted)
+                {
+                    task.GetAwaiter().GetResult();
+                }
+
+                Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+                return task.Result;
+            }
+        }
+
+        // Stops running the host as soon as the program marks the task as completed.
         public static Exception RunTriggerFailure<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {

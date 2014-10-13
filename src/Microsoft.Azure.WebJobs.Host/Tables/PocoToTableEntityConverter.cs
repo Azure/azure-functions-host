@@ -35,6 +35,21 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _otherPropertyGetters = otherPropertyGetters;
         }
 
+        public bool ConvertsPartitionKey
+        {
+            get { return _partitionKeyGetter != null; }
+        }
+
+        public bool ConvertsRowKey
+        {
+            get { return _rowKeyGetter != null; }
+        }
+
+        public bool ConvertsETag
+        {
+            get { return _eTagKeyGetter != null; }
+        }
+
         public ITableEntity Convert(TInput input)
         {
             if (input == null)

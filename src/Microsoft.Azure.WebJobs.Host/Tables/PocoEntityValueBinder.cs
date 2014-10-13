@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class PocoEntityValueBinder<TElement> : IValueBinder, IWatchable, IWatcher
     {
-        private static readonly IConverter<TElement, ITableEntity> _converter =
+        private static readonly PocoToTableEntityConverter<TElement> _converter =
             PocoToTableEntityConverter<TElement>.Create();
 
         private readonly TableEntityContext _entityContext;
@@ -52,11 +52,33 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             // Not ByRef, so can ignore value argument.
             ITableEntity entity = _converter.Convert(_value);
-            // TODO: Preserve PartitionKey, RowKey and ETag from _value when those properties exist.
-            // TODO: Validate PartitionKey and RowKey have not changed when those properties exist.
-            entity.PartitionKey = _entityContext.PartitionKey;
-            entity.RowKey = _entityContext.RowKey;
-            entity.ETag = _eTag;
+
+            if (!_converter.ConvertsPartitionKey)
+            {
+                entity.PartitionKey = _entityContext.PartitionKey;
+            }
+
+            if (!_converter.ConvertsRowKey)
+            {
+                entity.RowKey = _entityContext.RowKey;
+            }
+
+            if (!_converter.ConvertsETag)
+            {
+                entity.ETag = _eTag;
+            }
+
+            if (entity.PartitionKey != _entityContext.PartitionKey)
+            {
+                throw new InvalidOperationException(
+                    "When binding to a table entity, the partition key must not be changed.");
+            }
+
+            if (entity.RowKey != _entityContext.RowKey)
+            {
+                throw new InvalidOperationException(
+                    "When binding to a table entity, the row key must not be changed.");
+            }
 
             if (HasChanges(entity))
             {

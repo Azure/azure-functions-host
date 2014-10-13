@@ -25,12 +25,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)
         {
-            if (message != null && message.Failure != null)
+            if (message != null)
             {
                 // This class is used when a function is expected to fail (the result of the task is the expected
                 // exception).
                 // A faulted task is reserved for unexpected failures (like unhandled background exceptions).
-                _taskSource.SetResult(message.Failure.Exception);
+                _taskSource.SetResult(message.Failure != null ? message.Failure.Exception : null);
             }
 
             return Task.FromResult(0);

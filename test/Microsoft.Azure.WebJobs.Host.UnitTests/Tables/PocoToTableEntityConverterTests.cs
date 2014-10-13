@@ -867,6 +867,84 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Assert.Same(expectedPartitionKey, actual.PartitionKey);
         }
 
+        [Fact]
+        public void ConvertsPartitionKey_IfPocoHasPartitionKeyProperty_ReturnsTrue()
+        {
+            // Arrange
+            PocoToTableEntityConverter<PocoWithPartitionKey> product = CreateProductUnderTest<PocoWithPartitionKey>();
+
+            // Act
+            bool convertsPartitionKey = product.ConvertsPartitionKey;
+
+            // Assert
+            Assert.True(convertsPartitionKey);
+        }
+
+        [Fact]
+        public void ConvertsPartitionKey_IfPocoDoesNotHavePartitionKeyProperty_ReturnsFalse()
+        {
+            // Arrange
+            PocoToTableEntityConverter<Poco> product = CreateProductUnderTest<Poco>();
+
+            // Act
+            bool convertsPartitionKey = product.ConvertsPartitionKey;
+
+            // Assert
+            Assert.False(convertsPartitionKey);
+        }
+
+        [Fact]
+        public void ConvertsRowKey_IfPocoHasRowKeyProperty_ReturnsTrue()
+        {
+            // Arrange
+            PocoToTableEntityConverter<PocoWithRowKey> product = CreateProductUnderTest<PocoWithRowKey>();
+
+            // Act
+            bool convertsRowKey = product.ConvertsRowKey;
+
+            // Assert
+            Assert.True(convertsRowKey);
+        }
+
+        [Fact]
+        public void ConvertsRowKey_IfPocoDoesNotHaveRowKeyProperty_ReturnsFalse()
+        {
+            // Arrange
+            PocoToTableEntityConverter<Poco> product = CreateProductUnderTest<Poco>();
+
+            // Act
+            bool convertsRowKey = product.ConvertsRowKey;
+
+            // Assert
+            Assert.False(convertsRowKey);
+        }
+
+        [Fact]
+        public void ConvertsETag_IfPocoHasETagProperty_ReturnsTrue()
+        {
+            // Arrange
+            PocoToTableEntityConverter<PocoWithETag> product = CreateProductUnderTest<PocoWithETag>();
+
+            // Act
+            bool convertsETag = product.ConvertsETag;
+
+            // Assert
+            Assert.True(convertsETag);
+        }
+
+        [Fact]
+        public void ConvertsETag_IfPocoDoesNotHaveETagProperty_ReturnsFalse()
+        {
+            // Arrange
+            PocoToTableEntityConverter<Poco> product = CreateProductUnderTest<Poco>();
+
+            // Act
+            bool convertsETag = product.ConvertsETag;
+
+            // Assert
+            Assert.False(convertsETag);
+        }
+
         private static PocoToTableEntityConverter<TInput> CreateProductUnderTest<TInput>()
         {
             PocoToTableEntityConverter<TInput> product = PocoToTableEntityConverter<TInput>.Create();

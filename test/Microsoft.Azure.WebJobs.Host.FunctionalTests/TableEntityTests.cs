@@ -169,6 +169,55 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(expectedValue, property.BinaryValue);
         }
 
+        [Fact]
+        public void TableEntity_IfUpdatesPartitionKey_Throws()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
+
+            IStorageTable table = CreateTable(account, TableName);
+            table.Insert(new DynamicTableEntity(PartitionKey, RowKey));
+
+            // Act
+            Exception exception = RunTriggerFailure(account, typeof(UpdatePocoPartitionKeyProgram));
+
+            // Assert
+            Assert.NotNull(exception);
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Error while handling parameter entity after function returned:", exception.Message);
+            Exception innerException = exception.InnerException;
+            Assert.NotNull(innerException);
+            Assert.IsType<InvalidOperationException>(innerException);
+            Assert.Equal("When binding to a table entity, the partition key must not be changed.",
+                innerException.Message);
+        }
+
+        [Fact]
+        public void TableEntity_IfUpdatesRowKey_Throws()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
+
+            IStorageTable table = CreateTable(account, TableName);
+            table.Insert(new DynamicTableEntity(PartitionKey, RowKey));
+
+            // Act
+            Exception exception = RunTriggerFailure(account, typeof(UpdatePocoRowKeyProgram));
+
+            // Assert
+            Assert.NotNull(exception);
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Error while handling parameter entity after function returned:", exception.Message);
+            Exception innerException = exception.InnerException;
+            Assert.NotNull(innerException);
+            Assert.IsType<InvalidOperationException>(innerException);
+            Assert.Equal("When binding to a table entity, the row key must not be changed.", innerException.Message);
+        }
+
         private static IStorageAccount CreateFakeStorageAccount()
         {
             return new FakeStorageAccount();
@@ -199,6 +248,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
             return FunctionalTest.RunTrigger<TResult>(account, programType, setTaskSource);
+        }
+
+        private static Exception RunTriggerFailure(IStorageAccount account, Type programType)
+        {
+            return FunctionalTest.RunTriggerFailure(account, programType);
         }
 
         private class BindToDynamicTableEntityProgram
@@ -252,6 +306,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private class UpdatePocoPartitionKeyProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
+                [Table(TableName, PartitionKey, RowKey)] PocoWithKeys entity)
+            {
+                entity.PartitionKey = Guid.NewGuid().ToString();
+            }
+        }
+
+        private class UpdatePocoRowKeyProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
+                [Table(TableName, PartitionKey, RowKey)] PocoWithKeys entity)
+            {
+                entity.RowKey = Guid.NewGuid().ToString();
+            }
+        }
+
         private class Poco
         {
             public string Value { get; set; }
@@ -260,6 +332,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private class PocoWithByteArrayValue
         {
             public byte[] Value { get; set; }
+        }
+
+        private class PocoWithKeys
+        {
+            public string PartitionKey { get; set; }
+
+            public string RowKey { get; set; }
         }
     }
 }
