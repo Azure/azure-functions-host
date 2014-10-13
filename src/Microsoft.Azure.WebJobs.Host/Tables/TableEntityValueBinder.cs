@@ -78,43 +78,47 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             get
             {
-                IDictionary<string, EntityProperty> newProperties = _value.WriteEntity(null);
+                return HasChanges(_originalProperties, _value.WriteEntity(operationContext: null));
+            }
+        }
 
-                if (_originalProperties.Keys.Count != newProperties.Keys.Count)
+        internal static bool HasChanges(IDictionary<string, EntityProperty> originalProperties,
+            IDictionary<string, EntityProperty> currentProperties)
+        {
+            if (originalProperties.Keys.Count != currentProperties.Keys.Count)
+            {
+                return true;
+            }
+
+            if (!Enumerable.SequenceEqual(originalProperties.Keys, currentProperties.Keys))
+            {
+                return true;
+            }
+
+            foreach (string key in currentProperties.Keys)
+            {
+                EntityProperty originalValue = originalProperties[key];
+                EntityProperty newValue = currentProperties[key];
+
+                if (originalValue == null)
                 {
-                    return true;
-                }
-
-                if (!Enumerable.SequenceEqual(_originalProperties.Keys, newProperties.Keys))
-                {
-                    return true;
-                }
-
-                foreach (string key in newProperties.Keys)
-                {
-                    EntityProperty originalValue = _originalProperties[key];
-                    EntityProperty newValue = newProperties[key];
-
-                    if (originalValue == null)
-                    {
-                        if (newValue != null)
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-
-                    if (!originalValue.Equals(newValue))
+                    if (newValue != null)
                     {
                         return true;
                     }
+                    else
+                    {
+                        continue;
+                    }
                 }
 
-                return false;
+                if (!originalValue.Equals(newValue))
+                {
+                    return true;
+                }
             }
+
+            return false;
         }
 
         internal static IDictionary<string, EntityProperty> DeepClone(IDictionary<string, EntityProperty> value)

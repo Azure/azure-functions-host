@@ -65,5 +65,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             IEntityResolver resolver = new TypeEntityResolver<TElement>();
             return new FakeStorageTableOperation(partitionKey, rowKey, resolver);
         }
+
+        public static FakeStorageTableOperation Replace(ITableEntity entity)
+        {
+            return new FakeStorageTableOperation(TableOperationType.Replace, entity);
+        }
     }
 }

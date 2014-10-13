@@ -158,7 +158,6 @@
     <Compile Include="Protocols\JsonTypeNameAttributeTests.cs" />
     <Compile Include="Timers\LinearSpeedupStrategyTests.cs" />
     <Compile Include="Indexers\NameResolverTests.cs" />
-    <Compile Include="Tables\PocoTableEntityConverterTests.cs" />
     <Compile Include="Protocols\PolymorphicJsonConverterTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PublicSurfaceTests.cs" />

@@ -729,7 +729,6 @@
     <Compile Include="Tables\OutputConverter.cs" />
     <Compile Include="Tables\ParameterizedTablePath.cs" />
     <Compile Include="Tables\ParameterizedTableEntityPath.cs" />
-    <Compile Include="Tables\PocoTableEntity.cs" />
     <Compile Include="Tables\BindableTablePath.cs" />
     <Compile Include="Tables\StringToTableEntityContextConverter.cs" />
     <Compile Include="Tables\StringToStorageTableConverter.cs" />
@@ -797,7 +796,6 @@
     <Compile Include="Indexers\FunctionIndexingException.cs" />
     <Compile Include="Blobs\BlobCausalityManager.cs" />
     <Compile Include="Queues\QueueCausalityManager.cs" />
-    <Compile Include="Tables\PocoTableEntityConverter.cs" />
     <Compile Include="Queues\QueueClient.cs" />
     <Compile Include="Tables\TableClient.cs" />
     <Compile Include="Executors\FunctionExecutor.cs" />

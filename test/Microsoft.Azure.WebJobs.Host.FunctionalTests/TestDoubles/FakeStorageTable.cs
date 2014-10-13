@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageTableOperation CreateReplaceOperation(ITableEntity entity)
         {
-            throw new NotImplementedException();
+            return FakeStorageTableOperation.Replace(entity);
         }
 
         public IStorageTableOperation CreateRetrieveOperation<TElement>(string partitionKey, string rowKey)

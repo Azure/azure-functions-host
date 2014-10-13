@@ -16,7 +16,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             TableEntityContext entityContext = new TableEntityContext();
             SimpleTableEntity value = new SimpleTableEntity { Item = "Foo" };
             Type valueType = typeof(SimpleTableEntity);
-            PocoEntityValueBinder product = new PocoEntityValueBinder(entityContext, "etag", value, valueType);
+            PocoEntityValueBinder<SimpleTableEntity> product = new PocoEntityValueBinder<SimpleTableEntity>(
+                entityContext, "etag", value);
 
             // Act
             bool hasChanged = product.HasChanged;
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             TableEntityContext entityContext = new TableEntityContext();
             SimpleTableEntity value = new SimpleTableEntity { Item = "Foo" };
             Type valueType = typeof(SimpleTableEntity);
-            PocoEntityValueBinder product = new PocoEntityValueBinder(entityContext, "etag", value, valueType);
+            PocoEntityValueBinder<SimpleTableEntity> product = new PocoEntityValueBinder<SimpleTableEntity>(
+                entityContext, "etag", value);
 
             value.Item = "Bar";
 

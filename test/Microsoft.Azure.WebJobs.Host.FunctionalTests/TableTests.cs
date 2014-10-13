@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -67,6 +68,108 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(property);
             Assert.Equal(EdmType.String, property.PropertyType);
             Assert.Equal(expectedValue, property.StringValue);
+        }
+
+        [Fact]
+        public void Table_IfBoundToICollectorPoco_AddInsertsEntity()
+        {
+            // Arrange
+            const string expectedValue = "abc";
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            triggerQueue.AddMessage(triggerQueue.CreateMessage(expectedValue));
+
+            // Act
+            RunTrigger(account, typeof(BindToICollectorPocoProgram));
+
+            // Assert
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            Assert.True(table.Exists());
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+            Assert.NotNull(entity.Properties);
+            Assert.True(entity.Properties.ContainsKey(PropertyName));
+            EntityProperty property = entity.Properties[PropertyName];
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Equal(expectedValue, property.StringValue);
+        }
+
+        [Fact]
+        public void Table_IfBoundToICollectorPoco_AddInsertsUsingNativeTableTypes()
+        {
+            // Arrange
+            PocoWithAllTypes expected = new PocoWithAllTypes
+            {
+                PartitionKey = PartitionKey,
+                RowKey = RowKey,
+                BooleanProperty = true,
+                NullableBooleanProperty = null,
+                ByteArrayProperty = new byte[] { 0x12, 0x34 },
+                DateTimeProperty = DateTime.Now,
+                NullableDateTimeProperty = null,
+                DateTimeOffsetProperty = DateTimeOffset.MaxValue,
+                NullableDateTimeOffsetProperty = null,
+                DoubleProperty = 3.14,
+                NullableDoubleProperty = null,
+                GuidProperty = Guid.NewGuid(),
+                NullableGuidProperty = null,
+                Int32Property = 123,
+                NullableInt32Property = null,
+                Int64Property = 456,
+                NullableInt64Property = null,
+                StringProperty = "abc",
+                PocoProperty = new Poco
+                {
+                    PartitionKey = "def",
+                    RowKey = "ghi",
+                    Property = "jkl"
+                }
+            };
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            triggerQueue.AddMessage(triggerQueue.CreateMessage(JsonConvert.SerializeObject(expected)));
+
+            // Act
+            RunTrigger(account, typeof(BindToICollectorPocoWithAllTypesProgram));
+
+            // Assert
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            Assert.True(table.Exists());
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
+            Assert.Equal(expected.PartitionKey, entity.PartitionKey);
+            Assert.Equal(expected.RowKey, entity.RowKey);
+            IDictionary<string, EntityProperty> properties = entity.Properties;
+            AssertNullablePropertyEqual(expected.BooleanProperty, EdmType.Boolean, properties, "BooleanProperty",
+                (p) => p.BooleanValue);
+            AssertPropertyNull(EdmType.Boolean, properties, "NullableBooleanProperty", (p) => p.BooleanValue);
+            AssertPropertyEqual(expected.ByteArrayProperty, EdmType.Binary, properties, "ByteArrayProperty",
+                (p) => p.BinaryValue);
+            AssertNullablePropertyEqual(expected.DateTimeProperty, EdmType.DateTime, properties, "DateTimeProperty",
+                (p) => p.DateTime);
+            AssertPropertyNull(EdmType.DateTime, properties, "NullableDateTimeProperty", (p) => p.DateTime);
+            AssertNullablePropertyEqual(expected.DateTimeOffsetProperty, EdmType.DateTime, properties,
+                "DateTimeOffsetProperty", (p) => p.DateTime);
+            AssertPropertyNull(EdmType.DateTime, properties, "NullableDateTimeOffsetProperty",
+                (p) => p.DateTimeOffsetValue);
+            AssertNullablePropertyEqual(expected.DoubleProperty, EdmType.Double, properties, "DoubleProperty",
+                (p) => p.DoubleValue);
+            AssertPropertyNull(EdmType.Double, properties, "NullableDoubleProperty", (p) => p.DoubleValue);
+            AssertNullablePropertyEqual(expected.GuidProperty, EdmType.Guid, properties, "GuidProperty",
+                (p) => p.GuidValue);
+            AssertPropertyNull(EdmType.Guid, properties, "NullableGuidProperty", (p) => p.GuidValue);
+            AssertNullablePropertyEqual(expected.Int32Property, EdmType.Int32, properties, "Int32Property",
+                (p) => p.Int32Value);
+            AssertPropertyNull(EdmType.Int32, properties, "NullableInt32Property", (p) => p.Int32Value);
+            AssertNullablePropertyEqual(expected.Int64Property, EdmType.Int64, properties, "Int64Property",
+                (p) => p.Int64Value);
+            AssertPropertyNull(EdmType.Int64, properties, "NullableInt64Property", (p) => p.Int64Value);
+            AssertPropertyEqual(expected.StringProperty, EdmType.String, properties, "StringProperty",
+                (p) => p.StringValue);
+            AssertPropertyEqual(JsonConvert.SerializeObject(expected.PocoProperty, Formatting.Indented), EdmType.String,
+                properties, "PocoProperty", (p) => p.StringValue);
         }
 
         [Fact]
@@ -128,6 +231,51 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.Equal(expectedValue, property.GuidValue);
         }
 
+        private static void AssertNullablePropertyEqual<T>(T expected,
+            EdmType expectedType,
+            IDictionary<string, EntityProperty> properties,
+            string propertyName,
+            Func<EntityProperty, Nullable<T>> actualAccessor)
+            where T : struct
+        {
+            Assert.NotNull(properties);
+            Assert.True(properties.ContainsKey(propertyName));
+            EntityProperty property = properties[propertyName];
+            Assert.Equal(expectedType, property.PropertyType);
+            Nullable<T> actualValue = actualAccessor.Invoke(property);
+            Assert.True(actualValue.HasValue);
+            Assert.Equal(expected, actualValue.Value);
+        }
+
+        private static void AssertPropertyEqual<T>(T expected,
+            EdmType expectedType,
+            IDictionary<string, EntityProperty> properties,
+            string propertyName,
+            Func<EntityProperty, T> actualAccessor)
+            where T : class
+        {
+            Assert.NotNull(properties);
+            Assert.True(properties.ContainsKey(propertyName));
+            EntityProperty property = properties[propertyName];
+            Assert.Equal(expectedType, property.PropertyType);
+            T actualValue = actualAccessor.Invoke(property);
+            Assert.Equal(expected, actualValue);
+        }
+
+        private static void AssertPropertyNull<T>(EdmType expectedType,
+            IDictionary<string, EntityProperty> properties,
+            string propertyName,
+            Func<EntityProperty, Nullable<T>> actualAccessor)
+            where T : struct
+        {
+            Assert.NotNull(properties);
+            Assert.True(properties.ContainsKey(propertyName));
+            EntityProperty property = properties[propertyName];
+            Assert.Equal(expectedType, property.PropertyType);
+            Nullable<T> actualValue = actualAccessor.Invoke(property);
+            Assert.False(actualValue.HasValue);
+        }
+
         private static IStorageAccount CreateFakeStorageAccount()
         {
             return new FakeStorageAccount();
@@ -176,6 +324,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private class BindToICollectorPocoProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage message,
+                [Table(TableName)] ICollector<Poco> table)
+            {
+                table.Add(new Poco { PartitionKey = PartitionKey, RowKey = RowKey, Property = message.AsString });
+            }
+        }
+
+        private class BindToICollectorPocoWithAllTypesProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage message,
+                [Table(TableName)] ICollector<PocoWithAllTypes> table)
+            {
+                PocoWithAllTypes entity = JsonConvert.DeserializeObject<PocoWithAllTypes>(message.AsString);
+                table.Add(entity);
+            }
+        }
+
         private class BindToIQueryableDynamicTableEntityProgram
         {
             public static TaskCompletionSource<IQueryable<DynamicTableEntity>> TaskSource { get; set; }
@@ -185,6 +352,56 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 TaskSource.TrySetResult(table);
             }
+        }
+
+        private class Poco
+        {
+            public string PartitionKey { get; set; }
+
+            public string RowKey { get; set; }
+
+            public string Property { get; set; }
+        }
+
+        private class PocoWithAllTypes
+        {
+            public string PartitionKey { get; set; }
+
+            public string RowKey { get; set; }
+
+            public bool BooleanProperty { get; set; }
+
+            public bool? NullableBooleanProperty { get; set; }
+
+            public byte[] ByteArrayProperty { get; set; }
+
+            public DateTime DateTimeProperty { get; set; }
+
+            public DateTime? NullableDateTimeProperty { get; set; }
+
+            public DateTimeOffset DateTimeOffsetProperty { get; set; }
+
+            public DateTimeOffset? NullableDateTimeOffsetProperty { get; set; }
+
+            public double DoubleProperty { get; set; }
+
+            public double? NullableDoubleProperty { get; set; }
+
+            public Guid GuidProperty { get; set; }
+
+            public Guid? NullableGuidProperty { get; set; }
+
+            public int Int32Property { get; set; }
+
+            public int? NullableInt32Property { get; set; }
+
+            public long Int64Property { get; set; }
+
+            public long? NullableInt64Property { get; set; }
+
+            public string StringProperty { get; set; }
+
+            public Poco PocoProperty { get; set; }
         }
     }
 }

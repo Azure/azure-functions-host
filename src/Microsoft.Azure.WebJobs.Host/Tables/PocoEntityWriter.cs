@@ -4,6 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -16,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     /// <typeparam name="T">The POCO type.</typeparam>
     internal class PocoEntityWriter<T> : ICollector<T>, IAsyncCollector<T>, IWatcher
     {
+        private static readonly IConverter<T, ITableEntity> _converter = PocoToTableEntityConverter<T>.Create();
+
         internal TableEntityWriter<ITableEntity> TableEntityWriter { get; set; }
 
         public PocoEntityWriter(IStorageTable table, TableParameterLog tableStatistics)
@@ -40,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public Task AddAsync(T item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            ITableEntity tableEntity = PocoTableEntity.ToTableEntity(item);
+            ITableEntity tableEntity = _converter.Convert(item);
             return TableEntityWriter.AddAsync(tableEntity, cancellationToken);
         }
 

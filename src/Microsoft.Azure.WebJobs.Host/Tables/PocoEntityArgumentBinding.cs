@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -12,6 +13,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class PocoEntityArgumentBinding<TElement> : IArgumentBinding<TableEntityContext>
         where TElement : new()
     {
+        private static readonly IConverter<ITableEntity, TElement> _converter =
+            TableEntityToPocoConverter<TElement>.Create();
+
         public Type ValueType
         {
             get { return typeof(TElement); }
@@ -30,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return new NullEntityValueProvider<TElement>(value);
             }
 
-            TElement userEntity = PocoTableEntity.ToPocoEntity<TElement>(entity);
+            TElement userEntity = _converter.Convert(entity);
 
-            return new PocoEntityValueBinder(value, entity.ETag, userEntity, typeof(TElement));
+            return new PocoEntityValueBinder<TElement>(value, entity.ETag, userEntity);
         }
     }
 }
