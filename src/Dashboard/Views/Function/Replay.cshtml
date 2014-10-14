@@ -23,7 +23,14 @@
     </div>
 </div>
 
-@using (Html.BeginForm("Replay", "Function", new { parentId = Model.ParentId }, FormMethod.Post, new Dictionary<string, object> { { "class", "form" }, { "role", "form" } }))
+@if (ViewBag.CanReplay)
 {
-    Html.RenderPartial("_Invoke", Model);
+    using (Html.BeginForm("Replay", "Function", new { parentId = Model.ParentId }, FormMethod.Post, new Dictionary<string, object> { { "class", "form" }, { "role", "form" } }))
+    {
+        Html.RenderPartial("_Invoke", Model);
+    }
+}
+else
+{
+    <p class="alert alert-danger">The function cannot be replayed because its function definition has changed.</p>
 }

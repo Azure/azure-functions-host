@@ -92,7 +92,9 @@ namespace Dashboard.Controllers
                 return HttpNotFound();
             }
 
-            var model = CreateRunFunctionViewModel(function, CreateParameters(function, parentLog), "Replay", parent);
+            IEnumerable<FunctionParameterViewModel> parameters;
+            ViewBag.CanReplay = TryResolveParameters(function, parentLog, out parameters);
+            var model = CreateRunFunctionViewModel(function, parameters, "Replay", parent);
 
             return View(model);
         }
@@ -154,22 +156,30 @@ namespace Dashboard.Controllers
             return parameters;
         }
 
-        private static IEnumerable<FunctionParameterViewModel> CreateParameters(FunctionSnapshot function, FunctionInstanceSnapshot snapshot)
+        private static bool TryResolveParameters(FunctionSnapshot function, FunctionInstanceSnapshot snapshot, out IEnumerable<FunctionParameterViewModel> resolvedParameters)
         {
             List<FunctionParameterViewModel> parameters = new List<FunctionParameterViewModel>();
 
             foreach (KeyValuePair<string, ParameterSnapshot> parameter in function.Parameters)
             {
+                if (!snapshot.Arguments.ContainsKey(parameter.Key))
+                {
+                    resolvedParameters = null;
+                    return false;
+                }
+                
                 FunctionParameterViewModel parameterModel = new FunctionParameterViewModel
                 {
                     Name = parameter.Key,
                     Description = parameter.Value.Prompt,
                     Value = snapshot.Arguments[parameter.Key].Value
                 };
+                
                 parameters.Add(parameterModel);
             }
 
-            return parameters;
+            resolvedParameters = parameters;
+            return true;
         }
 
         private static IDictionary<string, string> GetArguments(NameValueCollection form)
