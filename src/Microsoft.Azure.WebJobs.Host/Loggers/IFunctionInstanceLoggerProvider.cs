@@ -4,10 +4,10 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Host.Executors
+namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
-    internal interface IHostIdProvider
+    internal interface IFunctionInstanceLoggerProvider
     {
-        Task<string> GetHostIdAsync(CancellationToken cancellationToken);
+        Task<IFunctionInstanceLogger> GetAsync(CancellationToken cancellationToken);
     }
 }

@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -15,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
@@ -77,20 +79,15 @@ namespace Microsoft.Azure.WebJobs
                 throw new ArgumentNullException("serviceProvider");
             }
 
-            IStorageAccountProvider accountProvider = serviceProvider.GetStorageAccountProvider();
-            IStorageAccount dashboardAccount = accountProvider.GetAccount(ConnectionStringNames.Dashboard);
-            IStorageAccount storageAccount = accountProvider.GetAccount(ConnectionStringNames.Storage);
-
-            IConnectionStringProvider connectionStringProvider = serviceProvider.GetConnectionStringProvider();
-            string serviceBusConnectionString =
-                connectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
-
-            IStorageCredentialsValidator credentialsValidator = serviceProvider.GetStorageCredentialsValidator();
-            ITypeLocator typeLocator = serviceProvider.GetTypeLocator();
+            IStorageAccountProvider storageAccountProvider = serviceProvider.GetStorageAccountProvider();
+            IServiceBusAccountProvider serviceBusAccountProvider = serviceProvider.GetServiceBusAccountProvider();
+            IFunctionIndexProvider functionIndexProvider = serviceProvider.GetFunctionIndexProvider();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
+            IBindingProvider bindingProvider = serviceProvider.GetBindingProvider();
             IHostIdProvider hostIdProvider = serviceProvider.GetHostIdProvider();
-            IHostInstanceLogger hostInstanceLogger = serviceProvider.GetHostInstanceLogger();
-            IFunctionInstanceLogger functionInstanceLogger = serviceProvider.GetFunctionInstanceLogger();
+            IHostInstanceLoggerProvider hostInstanceLoggerProvider = serviceProvider.GetHostInstanceLoggerProvider();
+            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider =
+                serviceProvider.GetFunctionInstanceLoggerProvider();
             IQueueConfiguration queueConfiguration = serviceProvider.GetQueueConfiguration();
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 serviceProvider.GetBackgroundExceptionDispatcher();
@@ -99,9 +96,10 @@ namespace Microsoft.Azure.WebJobs
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
 
-            _contextFactory = new JobHostContextFactory(dashboardAccount, storageAccount, serviceBusConnectionString,
-                credentialsValidator, typeLocator, nameResolver, hostIdProvider, hostInstanceLogger,
-                functionInstanceLogger, queueConfiguration, backgroundExceptionDispatcher, _shutdownTokenSource.Token);
+            _contextFactory = new JobHostContextFactory(storageAccountProvider, serviceBusAccountProvider,
+                functionIndexProvider, nameResolver, bindingProvider, hostIdProvider, hostInstanceLoggerProvider,
+                functionInstanceLoggerProvider, queueConfiguration, backgroundExceptionDispatcher,
+                _shutdownTokenSource.Token);
         }
 
         // Test hook only.

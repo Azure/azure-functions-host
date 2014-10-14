@@ -53,6 +53,7 @@
     <Compile Include="StorageBlobExtensions.cs" />
     <Compile Include="StorageBlobContainerExtensions.cs" />
     <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
+    <Compile Include="TestDoubles\FakeFunctionInstanceLoggerProvider.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
     <Compile Include="TestDoubles\FakeStorageBlockBlob.cs" />
     <Compile Include="TestDoubles\FakeStorageTableBatchOperation.cs" />

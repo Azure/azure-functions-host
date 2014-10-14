@@ -4,56 +4,21 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
-    internal class FunctionIndex : IFunctionIndex
+    internal class FunctionIndex : IFunctionIndex, IFunctionIndexCollector
     {
-        private readonly IBindingProvider _bindingProvider;
         private readonly IDictionary<string, IFunctionDefinition> _functionsById;
         private readonly IDictionary<MethodInfo, IFunctionDefinition> _functionsByMethod;
         private readonly ICollection<FunctionDescriptor> _functionDescriptors;
 
-        private FunctionIndex(IBindingProvider bindingProvider)
+        public FunctionIndex()
         {
-            _bindingProvider = bindingProvider;
             _functionsById = new Dictionary<string, IFunctionDefinition>();
             _functionsByMethod = new Dictionary<MethodInfo, IFunctionDefinition>();
             _functionDescriptors = new List<FunctionDescriptor>();
-        }
-
-        public IBindingProvider BindingProvider
-        {
-            get { return _bindingProvider; }
-        }
-
-        public static Task<FunctionIndex> CreateAsync(FunctionIndexContext context)
-        {
-            IEnumerable<Type> types = context.TypeLocator.GetTypes();
-            IEnumerable<Type> cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(types);
-            return CreateAsync(context, types, cloudBlobStreamBinderTypes);
-        }
-
-        internal static async Task<FunctionIndex> CreateAsync(FunctionIndexContext context, IEnumerable<Type> types,
-            IEnumerable<Type> cloudBlobStreamBinderTypes)
-        {
-            FunctionIndexerContext indexerContext = FunctionIndexerContext.CreateDefault(context,
-                cloudBlobStreamBinderTypes);
-
-            FunctionIndex index = new FunctionIndex(indexerContext.BindingProvider);
-            FunctionIndexer indexer = new FunctionIndexer(indexerContext);
-
-            foreach (Type type in types)
-            {
-                await indexer.IndexTypeAsync(type, index, context.CancellationToken);
-            }
-
-            return index;
         }
 
         public void Add(IFunctionDefinition function, FunctionDescriptor descriptor, MethodInfo method)
@@ -104,36 +69,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         public IEnumerable<MethodInfo> ReadAllMethods()
         {
             return _functionsByMethod.Keys;
-        }
-
-        // Search for any types that implement ICloudBlobStreamBinder<T>
-        internal static IEnumerable<Type> GetCloudBlobStreamBinderTypes(IEnumerable<Type> types)
-        {
-            List<Type> cloudBlobStreamBinderTypes = new List<Type>();
-
-            foreach (Type type in types)
-            {
-                try
-                {
-                    foreach (Type interfaceType in type.GetInterfaces())
-                    {
-                        if (interfaceType.IsGenericType)
-                        {
-                            Type interfaceGenericDefinition = interfaceType.GetGenericTypeDefinition();
-
-                            if (interfaceGenericDefinition == typeof(ICloudBlobStreamBinder<>))
-                            {
-                                cloudBlobStreamBinderTypes.Add(type);
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            return cloudBlobStreamBinderTypes;
         }
     }
 }

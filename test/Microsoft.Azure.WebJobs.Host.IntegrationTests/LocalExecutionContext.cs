@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
@@ -31,15 +32,19 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         public LocalExecutionContext(Type type, CloudStorageAccount account, Type[] cloudBlobStreamBinderTypes)
         {
             _type = type;
-            FunctionIndex index = FunctionIndex.CreateAsync(
-                new FunctionIndexContext(null, null, new StorageAccount(account), null, CancellationToken.None),
-                new Type[] { type }, cloudBlobStreamBinderTypes).GetAwaiter().GetResult();
-            _index = index;
+
+            IExtensionTypeLocator extensionTypeLocator = new FakeExtensionTypeLocator(cloudBlobStreamBinderTypes);
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(extensionTypeLocator);
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(extensionTypeLocator);
+            IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type), null,
+                new SimpleStorageAccountProvider { StorageAccount = account }, new NullServiceBusAccountProvider(),
+                triggerBindingProvider, bindingProvider);
+            _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
             _context = new HostBindingContext(
                 backgroundExceptionDispatcher: BackgroundExceptionDispatcher.Instance,
-                bindingProvider: index.BindingProvider,
+                bindingProvider: bindingProvider,
                 nameResolver: null,
                 queueConfiguration: null,
                 storageAccount: new StorageAccount(account),

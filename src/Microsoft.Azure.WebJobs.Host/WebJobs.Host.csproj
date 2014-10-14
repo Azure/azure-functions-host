@@ -391,6 +391,17 @@
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
     <Compile Include="ClassPropertySetter.cs" />
+    <Compile Include="Executors\DefaultServiceBusAccountProvider.cs" />
+    <Compile Include="Executors\IServiceBusAccountProvider.cs" />
+    <Compile Include="Executors\StorageAccountProviderExtensions.cs" />
+    <Compile Include="Indexers\ExtensionTypeLocator.cs" />
+    <Compile Include="Indexers\FunctionIndexProvider.cs" />
+    <Compile Include="Indexers\IExtensionTypeLocator.cs" />
+    <Compile Include="Indexers\IFunctionIndexCollector.cs" />
+    <Compile Include="Indexers\IFunctionIndexProvider.cs" />
+    <Compile Include="Loggers\DefaultLoggerProvider.cs" />
+    <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
+    <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
     <Compile Include="StructPropertySetter.cs" />
     <Compile Include="StructPropertyAccessorFactory.cs" />
     <Compile Include="ClassPropertyAccessorFactory.cs" />
@@ -470,8 +481,6 @@
     <Compile Include="Executors\FunctionExecutorContext.cs" />
     <Compile Include="Executors\JobHostContext.cs" />
     <Compile Include="Executors\JobHostContextFactory.cs" />
-    <Compile Include="Indexers\FunctionIndexContext.cs" />
-    <Compile Include="Indexers\FunctionIndexerContext.cs" />
     <Compile Include="Indexers\IFunctionIndex.cs" />
     <Compile Include="Indexers\IFunctionIndexLookup.cs" />
     <Compile Include="Indexers\FunctionIndex.cs" />

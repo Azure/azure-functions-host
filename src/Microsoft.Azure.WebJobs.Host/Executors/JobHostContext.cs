@@ -19,7 +19,6 @@ using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -85,31 +84,36 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(IStorageAccount dashboardAccount,
-            IStorageAccount storageAccount, string serviceBusConnectionString,
-            IStorageCredentialsValidator credentialsValidator, ITypeLocator typeLocator, INameResolver nameResolver,
-            IHostIdProvider hostIdProvider, IHostInstanceLogger hostInstanceLogger,
-            IFunctionInstanceLogger functionInstanceLogger, IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, CancellationToken shutdownToken,
+        public static async Task<JobHostContext> CreateAndLogHostStartedAsync(
+            IStorageAccountProvider storageAccountProvider,
+            IServiceBusAccountProvider serviceBusAccountProvider,
+            IFunctionIndexProvider functionIndexProvider,
+            INameResolver nameResolver,
+            IBindingProvider bindingProvider,
+            IHostIdProvider hostIdProvider,
+            IHostInstanceLoggerProvider hostInstanceLoggerProvider,
+            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            CancellationToken shutdownToken,
             CancellationToken cancellationToken)
         {
-            CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
-
             using (CancellationTokenSource combinedCancellationSource =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
 
-                // This will make a network call to verify the credentials work.
-                await credentialsValidator.ValidateCredentialsAsync(storageAccount, combinedCancellationToken);
+                IStorageAccount storageAccount = await storageAccountProvider.GetStorageAccountAsync(
+                    combinedCancellationToken);
+                IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(
+                    combinedCancellationToken);
+                string serviceBusConnectionString = serviceBusAccountProvider.GetConnectionString();
+                CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
 
-                // Avoid double-validating the same credentials.
-                if (storageAccount != null && storageAccount.Credentials != null && dashboardAccount != null &&
-                    !storageAccount.Credentials.Equals(dashboardAccount.Credentials))
-                {
-                    // This will make a network call to verify the credentials work.
-                    await credentialsValidator.ValidateCredentialsAsync(dashboardAccount, combinedCancellationToken);
-                }
+                IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(
+                    combinedCancellationToken);
+                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(
+                    combinedCancellationToken);
 
                 IFunctionOutputLogger functionOutputLogger;
 
@@ -123,12 +127,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     functionOutputLogger = new ConsoleFunctionOutputLogger();
                 }
 
-                FunctionIndexContext indexContext = new FunctionIndexContext(typeLocator, nameResolver,
-                    storageAccount, serviceBusConnectionString, combinedCancellationToken);
-                FunctionIndex functions = await FunctionIndex.CreateAsync(indexContext);
-                IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
+                IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                string hostId = await hostIdProvider.GetHostIdAsync(indexedMethods, cancellationToken);
+                string hostId = await hostIdProvider.GetHostIdAsync(cancellationToken);
 
                 if (!HostIdValidator.IsValid(hostId))
                 {
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
 
                 HostBindingContext bindingContext = new HostBindingContext(backgroundExceptionDispatcher,
-                    functions.BindingProvider, nameResolver, queueConfiguration, storageAccount,
+                    bindingProvider, nameResolver, queueConfiguration, storageAccount,
                     serviceBusConnectionString);
 
                 IListenerFactory sharedQueueListenerFactory;
@@ -169,6 +170,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         heartbeatDescriptor.SharedContainerName,
                         heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 
+                    IEnumerable<MethodInfo> indexedMethods = functions.ReadAllMethods();
                     Assembly hostAssembly = GetHostAssembly(indexedMethods);
                     string displayName = hostAssembly != null ? hostAssembly.GetName().Name : "Unknown";
 
@@ -252,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return shutdownListener;
         }
 
-        internal static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
+        private static Assembly GetHostAssembly(IEnumerable<MethodInfo> methods)
         {
             // 1. Try to get the assembly name from the first method.
             MethodInfo firstMethod = methods.FirstOrDefault();

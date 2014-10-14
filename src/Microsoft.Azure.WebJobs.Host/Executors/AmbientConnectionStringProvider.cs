@@ -8,7 +8,18 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class AmbientConnectionStringProvider : IConnectionStringProvider
     {
-        internal static string Prefix = "AzureWebJobs";
+        private static readonly AmbientConnectionStringProvider _instance = new AmbientConnectionStringProvider();
+
+        internal static readonly string Prefix = "AzureWebJobs";
+
+        private AmbientConnectionStringProvider()
+        {
+        }
+
+        public static AmbientConnectionStringProvider Instance
+        {
+            get { return _instance; }
+        }
 
         public static string GetPrefixedConnectionStringName(string connectionStringName)
         {

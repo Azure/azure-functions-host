@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -17,45 +18,54 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     // Negotiates host ID based on the assembly name of the first indexed method (persists a GUID for this purpose).
     internal class DynamicHostIdProvider : IHostIdProvider
     {
-        private readonly CloudBlobDirectory _directory;
+        private readonly IFunctionIndexProvider _functionIndexProvider;
+        private readonly IStorageAccountProvider _storageAccountProvider;
 
-        public DynamicHostIdProvider(CloudStorageAccount account)
-            : this(VerifyNotNull(account).CreateCloudBlobClient().GetContainerReference(
-                HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.Ids))
+        public DynamicHostIdProvider(IFunctionIndexProvider functionIndexProvider,
+            IStorageAccountProvider storageAccountProvider)
         {
-        }
-
-        private DynamicHostIdProvider(CloudBlobDirectory directory)
-        {
-            if (directory == null)
+            if (functionIndexProvider == null)
             {
-                throw new ArgumentNullException("directory");
+                throw new ArgumentNullException("functionIndexProvider");
             }
 
-            _directory = directory;
+            if (storageAccountProvider == null)
+            {
+                throw new ArgumentNullException("storageAccountProvider");
+            }
+
+            _functionIndexProvider = functionIndexProvider;
+            _storageAccountProvider = storageAccountProvider;
         }
 
-        public Task<string> GetHostIdAsync(IEnumerable<MethodInfo> indexedMethods, CancellationToken cancellationToken)
+        public async Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
-            string sharedHostName = GetSharedHostName(indexedMethods);
-            return GetOrCreateHostIdAsync(sharedHostName, cancellationToken);
+            IFunctionIndex index = await _functionIndexProvider.GetAsync(cancellationToken);
+            IStorageAccount account = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
+            IEnumerable<MethodInfo> indexedMethods = index.ReadAllMethods();
+
+            string sharedHostName = GetSharedHostName(indexedMethods, account);
+            CloudBlobDirectory directory = account.SdkObject.CreateCloudBlobClient().GetContainerReference(
+                HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.Ids);
+            return await GetOrCreateHostIdAsync(sharedHostName, directory, cancellationToken);
         }
 
-        private string GetSharedHostName(IEnumerable<MethodInfo> indexedMethods)
+        private static string GetSharedHostName(IEnumerable<MethodInfo> indexedMethods, IStorageAccount storageAccount)
         {
             // Determine the host name from the method list
             MethodInfo firstMethod = indexedMethods.FirstOrDefault();
             Assembly hostAssembly = firstMethod != null ? firstMethod.DeclaringType.Assembly : null;
             string hostName = hostAssembly != null ? hostAssembly.FullName : "Unknown";
-            string sharedHostName = _directory.ServiceClient.Credentials.AccountName + "/" + hostName;
+            string sharedHostName = storageAccount.Credentials.AccountName + "/" + hostName;
             return sharedHostName;
         }
 
-        private async Task<string> GetOrCreateHostIdAsync(string sharedHostName, CancellationToken cancellationToken)
+        private static async Task<string> GetOrCreateHostIdAsync(string sharedHostName, CloudBlobDirectory directory,
+            CancellationToken cancellationToken)
         {
-            Debug.Assert(_directory != null);
+            Debug.Assert(directory != null);
 
-            CloudBlockBlob blob = _directory.GetBlockBlobReference(sharedHostName);
+            CloudBlockBlob blob = directory.GetBlockBlobReference(sharedHostName);
             Guid? possibleHostId = await TryGetExistingIdAsync(blob, cancellationToken);
 
             if (possibleHostId.HasValue)
@@ -177,16 +187,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     throw;
                 }
             }
-        }
-
-        private static CloudStorageAccount VerifyNotNull(CloudStorageAccount account)
-        {
-            if (account == null)
-            {
-                throw new ArgumentNullException("account");
-            }
-
-            return account;
         }
     }
 }

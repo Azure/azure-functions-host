@@ -3,7 +3,9 @@
 
 using System;
 using System.Globalization;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -18,14 +20,25 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IBackgroundExceptionDispatcher>(serviceProvider);
         }
 
+        public static IBindingProvider GetBindingProvider(this IServiceProvider serviceProvider)
+        {
+            return GetService<IBindingProvider>(serviceProvider);
+        }
+
         public static IConnectionStringProvider GetConnectionStringProvider(this IServiceProvider serviceProvider)
         {
             return GetService<IConnectionStringProvider>(serviceProvider);
         }
 
-        public static IFunctionInstanceLogger GetFunctionInstanceLogger(this IServiceProvider serviceProvider)
+        public static IFunctionIndexProvider GetFunctionIndexProvider(this IServiceProvider serviceProvider)
         {
-            return GetService<IFunctionInstanceLogger>(serviceProvider);
+            return GetService<IFunctionIndexProvider>(serviceProvider);
+        }
+
+        public static IFunctionInstanceLoggerProvider GetFunctionInstanceLoggerProvider(
+            this IServiceProvider serviceProvider)
+        {
+            return GetService<IFunctionInstanceLoggerProvider>(serviceProvider);
         }
 
         public static IHostIdProvider GetHostIdProvider(this IServiceProvider serviceProvider)
@@ -33,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IHostIdProvider>(serviceProvider);
         }
 
-        public static IHostInstanceLogger GetHostInstanceLogger(this IServiceProvider serviceProvider)
+        public static IHostInstanceLoggerProvider GetHostInstanceLoggerProvider(this IServiceProvider serviceProvider)
         {
-            return GetService<IHostInstanceLogger>(serviceProvider);
+            return GetService<IHostInstanceLoggerProvider>(serviceProvider);
         }
 
         public static INameResolver GetNameResolver(this IServiceProvider serviceProvider)
@@ -48,19 +61,14 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IQueueConfiguration>(serviceProvider);
         }
 
+        public static IServiceBusAccountProvider GetServiceBusAccountProvider(this IServiceProvider serviceProvider)
+        {
+            return GetService<IServiceBusAccountProvider>(serviceProvider);
+        }
+
         public static IStorageAccountProvider GetStorageAccountProvider(this IServiceProvider serviceProvider)
         {
             return GetService<IStorageAccountProvider>(serviceProvider);
-        }
-
-        public static IStorageCredentialsValidator GetStorageCredentialsValidator(this IServiceProvider serviceProvider)
-        {
-            return GetService<IStorageCredentialsValidator>(serviceProvider);
-        }
-
-        public static ITypeLocator GetTypeLocator(this IServiceProvider serviceProvider)
-        {
-            return GetService<ITypeLocator>(serviceProvider);
         }
 
         private static T GetService<T>(this IServiceProvider serviceProvider) where T : class

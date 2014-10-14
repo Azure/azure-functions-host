@@ -4,25 +4,32 @@
 using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public sealed class JobHostConfiguration : IServiceProvider
     {
+        private readonly DefaultLoggerProvider _loggerProvider;
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
-        private readonly IStorageCredentialsValidator _storageCredentialsValidator =
-            new DefaultStorageCredentialsValidator();
+        private readonly DefaultServiceBusAccountProvider _serviceBusAccountProvider =
+            new DefaultServiceBusAccountProvider();
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
 
         private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
+        private IFunctionIndexProvider _functionIndexProvider;
+        private IBindingProvider _bindingProvider;
+        private IExtensionTypeLocator _extensionTypeLocator;
+        private ITriggerBindingProvider _triggerBindingProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -48,6 +55,7 @@ namespace Microsoft.Azure.WebJobs
         private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
         {
             _storageAccountProvider = storageAccountProvider;
+            _loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
 
             WriteSiteExtensionManifest();
         }
@@ -101,8 +109,8 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>
         public string ServiceBusConnectionString
         {
-            get { return _storageAccountProvider.ServiceBusConnectionString; }
-            set { _storageAccountProvider.ServiceBusConnectionString = value; }
+            get { return _serviceBusAccountProvider.ConnectionString; }
+            set { _serviceBusAccountProvider.ConnectionString = value; }
         }
 
         /// <summary>Gets or sets the type locator.</summary>
@@ -117,6 +125,7 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 _typeLocator = value;
+                _extensionTypeLocator = null;
             }
         }
 
@@ -143,6 +152,74 @@ namespace Microsoft.Azure.WebJobs
             get { return _queueConfiguration; }
         }
 
+        private IBindingProvider BindingProvider
+        {
+            get
+            {
+                if (_bindingProvider == null)
+                {
+                    _bindingProvider = DefaultBindingProvider.Create(ExtensionTypeLocator);
+                }
+
+                return _bindingProvider;
+            }
+        }
+
+        private IExtensionTypeLocator ExtensionTypeLocator
+        {
+            get
+            {
+                if (_extensionTypeLocator == null)
+                {
+                    _extensionTypeLocator = new ExtensionTypeLocator(_typeLocator);
+                }
+
+                return _extensionTypeLocator;
+            }
+        }
+
+        private IFunctionIndexProvider FunctionIndexProvider
+        {
+            get
+            {
+                if (_functionIndexProvider == null)
+                {
+                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, NameResolver,
+                        _storageAccountProvider, _serviceBusAccountProvider, TriggerBindingProvider, BindingProvider);
+                }
+
+                return _functionIndexProvider;
+            }
+        }
+
+        private IHostIdProvider HostIdProvider
+        {
+            get
+            {
+                if (_hostId != null)
+                {
+                    return new FixedHostIdProvider(_hostId);
+                }
+                else
+                {
+                    return new DynamicHostIdProvider(FunctionIndexProvider, _storageAccountProvider);
+                }
+            }
+        }
+
+        private ITriggerBindingProvider TriggerBindingProvider
+        {
+            get
+            {
+                if (_triggerBindingProvider == null)
+                {
+                    _triggerBindingProvider = DefaultTriggerBindingProvider.Create(ExtensionTypeLocator);
+                }
+
+                return _triggerBindingProvider;
+            }
+        }
+
         /// <summary>Gets the service object of the specified type.</summary>
         /// <param name="serviceType">The type of service object to get.</param>
         /// <returns>
@@ -154,21 +231,25 @@ namespace Microsoft.Azure.WebJobs
             {
                 return BackgroundExceptionDispatcher.Instance;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
+            else if (serviceType == typeof(IBindingProvider))
             {
-                return _storageAccountProvider;
+                return BindingProvider;
             }
-            else if (serviceType == typeof(IFunctionInstanceLogger))
+            else if (serviceType == typeof(IFunctionIndexProvider))
             {
-                return _storageAccountProvider.FunctionInstanceLogger;
+                return FunctionIndexProvider;
+            }
+            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
+            {
+                return _loggerProvider;
             }
             else if (serviceType == typeof(IHostIdProvider))
             {
-                return GetHostIdProvider();
+                return HostIdProvider;
             }
-            else if (serviceType == typeof(IHostInstanceLogger))
+            else if (serviceType == typeof(IHostInstanceLoggerProvider))
             {
-                return _storageAccountProvider.HostInstanceLogger;
+                return _loggerProvider;
             }
             else if (serviceType == typeof(INameResolver))
             {
@@ -178,34 +259,17 @@ namespace Microsoft.Azure.WebJobs
             {
                 return _queueConfiguration;
             }
+            else if (serviceType == typeof(IServiceBusAccountProvider))
+            {
+                return _serviceBusAccountProvider;
+            }
             else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return _storageAccountProvider;
             }
-            else if (serviceType == typeof(IStorageCredentialsValidator))
-            {
-                return _storageCredentialsValidator;
-            }
-            else if (serviceType == typeof(ITypeLocator))
-            {
-                return _typeLocator;
-            }
             else
             {
                 return null;
-            }
-        }
-
-        private IHostIdProvider GetHostIdProvider()
-        {
-            if (_hostId != null)
-            {
-                return new FixedHostIdProvider(_hostId);
-            }
-            else
-            {
-                return new DynamicHostIdProvider(
-                    _storageAccountProvider.GetAccount(ConnectionStringNames.Storage).SdkObject);
             }
         }
 

@@ -3,19 +3,18 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal class TestJobHostConfiguration : IServiceProvider
     {
+        public IServiceBusAccountProvider ServiceBusAccountProvider { get; set; }
+
         public IStorageAccountProvider StorageAccountProvider { get; set; }
-
-        public IConnectionStringProvider ConnectionStringProvider { get; set; }
-
-        public IStorageCredentialsValidator StorageCredentialsValidator { get; set; }
-
-        public ITypeLocator TypeLocator { get; set; }
 
         public object GetService(Type serviceType)
         {
@@ -23,25 +22,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 return BackgroundExceptionDispatcher.Instance;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
+            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
             {
-                return ConnectionStringProvider;
+                return new NullFunctionInstanceLoggerProvider();
+            }
+            else if (serviceType == typeof(IFunctionIndexProvider))
+            {
+                return new EmptyFunctionIndexProvider();
+            }
+            else if (serviceType == typeof(IHostInstanceLoggerProvider))
+            {
+                return new NullHostInstanceLoggerProvider();
             }
             else if (serviceType == typeof(IHostIdProvider))
             {
                 return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
             }
+            else if (serviceType == typeof(IServiceBusAccountProvider))
+            {
+                return ServiceBusAccountProvider;
+            }
             else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return StorageAccountProvider;
-            }
-            else if (serviceType == typeof(IStorageCredentialsValidator))
-            {
-                return StorageCredentialsValidator;
-            }
-            else if (serviceType == typeof(ITypeLocator))
-            {
-                return TypeLocator;
             }
             else
             {

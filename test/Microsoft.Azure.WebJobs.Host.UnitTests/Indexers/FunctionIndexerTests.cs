@@ -7,8 +7,10 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Moq;
 using Xunit;
 using Xunit.Extensions;
@@ -21,12 +23,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_Throws_IfMethodHasUnboundOutParameterWithJobsAttribute()
         {
             // Arrange
-            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>(MockBehavior.Strict);
+            Mock<IFunctionIndexCollector> indexMock = new Mock<IFunctionIndexCollector>(MockBehavior.Strict);
             int calls = 0;
             indexMock
                 .Setup(i => i.Add(It.IsAny<IFunctionDefinition>(), It.IsAny<FunctionDescriptor>(), It.IsAny<MethodInfo>()))
                 .Callback(() => calls++);
-            IFunctionIndex index = indexMock.Object;
+            IFunctionIndexCollector index = indexMock.Object;
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
@@ -45,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_IgnoresMethod_IfNonSdkMethod(string method)
         {
             // Arrange
-            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
+            Mock<IFunctionIndexCollector> indexMock = new Mock<IFunctionIndexCollector>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
@@ -59,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_IfMethodReturnsNonTask_Throws()
         {
             // Arrange
-            IFunctionIndex index = CreateDummyFunctionIndex();
+            IFunctionIndexCollector index = CreateDummyFunctionIndex();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
@@ -75,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_IfMethodReturnsTaskOfTResult_Throws()
         {
             // Arrange
-            IFunctionIndex index = CreateDummyFunctionIndex();
+            IFunctionIndexCollector index = CreateDummyFunctionIndex();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
@@ -91,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_IfMethodReturnsVoid_DoesNotThrow()
         {
             // Arrange
-            IFunctionIndex index = CreateStubFunctionIndex();
+            IFunctionIndexCollector index = CreateStubFunctionIndex();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
@@ -103,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         public void IndexMethod_IfMethodReturnsTask_DoesNotThrow()
         {
             // Arrange
-            IFunctionIndex index = CreateStubFunctionIndex();
+            IFunctionIndexCollector index = CreateStubFunctionIndex();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
@@ -195,20 +197,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             Assert.Equal(false, actual);
         }
 
-        private static IFunctionIndex CreateDummyFunctionIndex()
+        private static IFunctionIndexCollector CreateDummyFunctionIndex()
         {
-            return new Mock<IFunctionIndex>(MockBehavior.Strict).Object;
+            return new Mock<IFunctionIndexCollector>(MockBehavior.Strict).Object;
         }
 
         private static FunctionIndexer CreateProductUnderTest()
         {
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null, null, null, null);
-            return new FunctionIndexer(context);
+            ITriggerBindingProvider triggerBindingProvider =
+                DefaultTriggerBindingProvider.Create(new NullExtensionTypeLocator());
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
+            return new FunctionIndexer(null, null, null, triggerBindingProvider, bindingProvider);
         }
 
-        private static IFunctionIndex CreateStubFunctionIndex()
+        private static IFunctionIndexCollector CreateStubFunctionIndex()
         {
-            return new Mock<IFunctionIndex>().Object;
+            return new Mock<IFunctionIndexCollector>().Object;
         }
 
         [NoAutomaticTrigger]

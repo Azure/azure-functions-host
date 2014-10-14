@@ -3,7 +3,9 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -37,20 +39,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
             TaskCompletionSource<TResult> taskSource, IFunctionInstanceLogger functionInstanceLogger)
         {
+            IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider
+            {
+                StorageAccount = storageAccount
+            };
+            IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
+
             return new FakeServiceProvider
             {
-                StorageAccountProvider = new FakeStorageAccountProvider
-                {
-                    StorageAccount = storageAccount
-                },
-                TypeLocator = new FakeTypeLocator(programType),
+                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType), null,
+                    storageAccountProvider, serviceBusAccountProvider,
+                    DefaultTriggerBindingProvider.Create(new NullExtensionTypeLocator()),
+                    DefaultBindingProvider.Create(new NullExtensionTypeLocator())),
+                StorageAccountProvider = storageAccountProvider,
+                ServiceBusAccountProvider = serviceBusAccountProvider,
                 BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
-                HostInstanceLogger = new TestCommon.NullHostInstanceLogger(),
-                FunctionInstanceLogger = functionInstanceLogger,
-                ConnectionStringProvider = new NullConnectionStringProvider(),
+                HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
+                FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),
                 HostIdProvider = new FakeHostIdProvider(),
-                QueueConfiguration = new FakeQueueConfiguration(),
-                StorageCredentialsValidator = new NullStorageCredentialsValidator()
+                QueueConfiguration = new FakeQueueConfiguration()
             };
         }
 

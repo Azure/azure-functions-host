@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -14,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     {
         private readonly string _hostId = Guid.NewGuid().ToString("N");
 
-        public Task<string> GetHostIdAsync(IEnumerable<MethodInfo> indexedMethods, CancellationToken cancellationToken)
+        public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(_hostId);
         }

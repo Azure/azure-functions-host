@@ -6,9 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
@@ -24,13 +26,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             MethodInfo method = typeof(FunctionIndexerIntegrationTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(method);
 
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(nameResolver,
-                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
+            ITriggerBindingProvider triggerBindingProvider =
+                DefaultTriggerBindingProvider.Create(new NullExtensionTypeLocator());
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
 
-            FunctionIndexer indexer = new FunctionIndexer(context);
+            FunctionIndexer indexer = new FunctionIndexer(nameResolver,
+                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, triggerBindingProvider,
+                bindingProvider);
 
             Tuple<FunctionDescriptor, IFunctionDefinition> indexEntry = null;
-            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>(MockBehavior.Strict);
+            Mock<IFunctionIndexCollector> indexMock = new Mock<IFunctionIndexCollector>(MockBehavior.Strict);
             indexMock
                 .Setup((i) => i.Add(
                     It.IsAny<IFunctionDefinition>(),
@@ -38,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
                     It.IsAny<MethodInfo>()))
                 .Callback<IFunctionDefinition, FunctionDescriptor, MethodInfo>(
                     (ifd, fd, i) => indexEntry = Tuple.Create(fd, ifd));
-            IFunctionIndex index = indexMock.Object;
+            IFunctionIndexCollector index = indexMock.Object;
 
             indexer.IndexMethodAsync(method, index, CancellationToken.None).GetAwaiter().GetResult();
 

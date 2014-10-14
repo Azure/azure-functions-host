@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -17,9 +18,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
     {
         private readonly IBlobArgumentBindingProvider _provider;
 
-        public BlobAttributeBindingProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
+        public BlobAttributeBindingProvider(IExtensionTypeLocator extensionTypeLocator)
         {
-            _provider = CreateProvider(cloudBlobStreamBinderTypes);
+            if (extensionTypeLocator == null)
+            {
+                throw new ArgumentNullException("extensionTypeLocator");
+            }
+
+            _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)

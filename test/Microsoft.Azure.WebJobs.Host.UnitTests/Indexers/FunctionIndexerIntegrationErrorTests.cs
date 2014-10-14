@@ -19,13 +19,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         [Fact]
         public void TestFails()
         {
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null,
-                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
-
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
-                IFunctionIndex stubIndex = new Mock<IFunctionIndex>().Object;
-                FunctionIndexer indexer = new FunctionIndexer(context);
+                IFunctionIndexCollector stubIndex = new Mock<IFunctionIndexCollector>().Object;
+                FunctionIndexer indexer = new FunctionIndexer(null,
+                    new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null, null);
                 Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethodAsync(method, stubIndex, CancellationToken.None).GetAwaiter().GetResult());
             }
         }

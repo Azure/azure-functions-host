@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -13,21 +14,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     {
         public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher { get; set; }
 
-        public IConnectionStringProvider ConnectionStringProvider { get; set; }
+        public IFunctionIndexProvider FunctionIndexProvider { get; set; }
 
-        public IFunctionInstanceLogger FunctionInstanceLogger { get; set; }
+        public IFunctionInstanceLoggerProvider FunctionInstanceLoggerProvider { get; set; }
 
         public IHostIdProvider HostIdProvider { get; set; }
 
-        public IHostInstanceLogger HostInstanceLogger { get; set; }
+        public IHostInstanceLoggerProvider HostInstanceLoggerProvider { get; set; }
 
         public IQueueConfiguration QueueConfiguration { get; set; }
 
+        public IServiceBusAccountProvider ServiceBusAccountProvider { get; set; }
+
         public IStorageAccountProvider StorageAccountProvider { get; set; }
-
-        public IStorageCredentialsValidator StorageCredentialsValidator { get; set; }
-
-        public ITypeLocator TypeLocator { get; set; }
 
         public object GetService(Type serviceType)
         {
@@ -35,37 +34,33 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             {
                 return BackgroundExceptionDispatcher;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
+            else if (serviceType == typeof(IFunctionIndexProvider))
             {
-                return ConnectionStringProvider;
+                return FunctionIndexProvider;
             }
-            else if (serviceType == typeof(IFunctionInstanceLogger))
+            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
             {
-                return FunctionInstanceLogger;
+                return FunctionInstanceLoggerProvider;
             }
             else if (serviceType == typeof(IHostIdProvider))
             {
                 return HostIdProvider;
             }
-            else if (serviceType == typeof(IHostInstanceLogger))
+            else if (serviceType == typeof(IHostInstanceLoggerProvider))
             {
-                return HostInstanceLogger;
+                return HostInstanceLoggerProvider;
             }
             else if (serviceType == typeof(IQueueConfiguration))
             {
                 return QueueConfiguration;
             }
+            else if (serviceType == typeof(IServiceBusAccountProvider))
+            {
+                return ServiceBusAccountProvider;
+            }
             else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return StorageAccountProvider;
-            }
-            else if (serviceType == typeof(IStorageCredentialsValidator))
-            {
-                return StorageCredentialsValidator;
-            }
-            else if (serviceType == typeof(ITypeLocator))
-            {
-                return TypeLocator;
             }
             else
             {

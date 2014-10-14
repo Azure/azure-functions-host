@@ -8,9 +8,11 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Newtonsoft.Json;
@@ -39,10 +41,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
                 BindingFlags.Static | BindingFlags.NonPublic);
             Assert.NotNull(method); // Guard
 
-            FunctionIndexerContext context = FunctionIndexerContext.CreateDefault(null,
-                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null);
-            FunctionIndexer indexer = new FunctionIndexer(context);
-            IFunctionIndex stubIndex = new Mock<IFunctionIndex>().Object;
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
+                new NullExtensionTypeLocator());
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
+            FunctionIndexer indexer = new FunctionIndexer(null,
+                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, triggerBindingProvider,
+                bindingProvider);
+            IFunctionIndexCollector stubIndex = new Mock<IFunctionIndexCollector>().Object;
 
             // Act & Assert
             Exception exception = Assert.Throws<InvalidOperationException>(

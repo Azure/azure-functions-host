@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -11,15 +12,13 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     internal class TestJobHostConfiguration : IServiceProvider
     {
-        public IStorageAccountProvider StorageAccountProvider { get; set; }
-
-        public IConnectionStringProvider ConnectionStringProvider { get; set; }
-
-        public IStorageCredentialsValidator StorageCredentialsValidator { get; set; }
-
-        public ITypeLocator TypeLocator { get; set; }
+        public IFunctionIndexProvider FunctionIndexProvider { get; set; }
 
         public IQueueConfiguration Queues { get; set; }
+
+        public IServiceBusAccountProvider ServiceBusAccountProvider { get; set; }
+
+        public IStorageAccountProvider StorageAccountProvider { get; set; }
 
         public object GetService(Type serviceType)
         {
@@ -27,37 +26,33 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 return BackgroundExceptionDispatcher.Instance;
             }
-            else if (serviceType == typeof(IConnectionStringProvider))
+            else if (serviceType == typeof(IFunctionIndexProvider))
             {
-                return ConnectionStringProvider;
+                return FunctionIndexProvider;
             }
-            else if (serviceType == typeof(IFunctionInstanceLogger))
+            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
             {
-                return new NullFunctionInstanceLogger();
+                return new NullFunctionInstanceLoggerProvider();
             }
             else if (serviceType == typeof(IHostIdProvider))
             {
                 return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
             }
-            else if (serviceType == typeof(IHostInstanceLogger))
+            else if (serviceType == typeof(IHostInstanceLoggerProvider))
             {
-                return new NullHostInstanceLogger();
+                return new NullHostInstanceLoggerProvider();
             }
             else if (serviceType == typeof(IQueueConfiguration))
             {
                 return Queues;
             }
+            else if (serviceType == typeof(IServiceBusAccountProvider))
+            {
+                return ServiceBusAccountProvider;
+            }
             else if (serviceType == typeof(IStorageAccountProvider))
             {
                 return StorageAccountProvider;
-            }
-            else if (serviceType == typeof(IStorageCredentialsValidator))
-            {
-                return StorageCredentialsValidator;
-            }
-            else if (serviceType == typeof(ITypeLocator))
-            {
-                return TypeLocator;
             }
             else
             {

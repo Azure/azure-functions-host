@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.Host.Indexers
@@ -23,16 +24,25 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
         private static readonly Func<MethodInfo, bool> _hasServiceBusAttributeDefault = _ => false;
 
-        private readonly FunctionIndexerContext _context;
+        private readonly INameResolver _nameResolver;
+        private readonly IStorageAccount _storageAccount;
+        private readonly string _serviceBusConnectionString;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly Func<MethodInfo, bool> _hasServiceBusAttribute;
 
-        public FunctionIndexer(FunctionIndexerContext context)
+        public FunctionIndexer(INameResolver nameResolver,
+            IStorageAccount storageAccount,
+            string serviceBusConnectionString,
+            ITriggerBindingProvider triggerBindingProvider,
+            IBindingProvider bindingProvider)
         {
-            _context = context;
-            _triggerBindingProvider = context.TriggerBindingProvider;
-            _bindingProvider = context.BindingProvider;
+            _nameResolver = nameResolver;
+            _storageAccount = storageAccount;
+            _serviceBusConnectionString = serviceBusConnectionString;
+            _triggerBindingProvider = triggerBindingProvider;
+            _bindingProvider = bindingProvider;
+
             Type serviceBusIndexerType = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.WebJobs.ServiceBus.ServiceBusIndexer");
             if (serviceBusIndexerType != null)
             {
@@ -47,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
         }
 
-        public async Task IndexTypeAsync(Type type, IFunctionIndex index, CancellationToken cancellationToken)
+        public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
         {
             foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags).Where(IsSdkMethod))
             {
@@ -90,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return attributeData.AttributeType.Assembly == typeof(BlobAttribute).Assembly;
         }
 
-        public async Task IndexMethodAsync(MethodInfo method, IFunctionIndex index, CancellationToken cancellationToken)
+        public async Task IndexMethodAsync(MethodInfo method, IFunctionIndexCollector index,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -106,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
         }
 
-        internal async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndex index,
+        internal async Task IndexMethodAsyncCore(MethodInfo method, IFunctionIndexCollector index,
             CancellationToken cancellationToken)
         {
             Debug.Assert(method != null);
@@ -119,7 +130,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             foreach (ParameterInfo parameter in parameters)
             {
                 ITriggerBinding possibleTriggerBinding = await _triggerBindingProvider.TryCreateAsync(
-                    new TriggerBindingProviderContext(_context, parameter, cancellationToken));
+                    new TriggerBindingProviderContext(_nameResolver, _storageAccount, _serviceBusConnectionString,
+                        parameter, cancellationToken));
 
                 if (possibleTriggerBinding != null)
                 {
@@ -158,7 +170,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 }
 
                 IBinding binding = await _bindingProvider.TryCreateAsync(
-                    BindingProviderContext.Create(_context, parameter, bindingDataContract, cancellationToken));
+                    new BindingProviderContext(_nameResolver, _storageAccount, _serviceBusConnectionString, parameter,
+                        bindingDataContract, cancellationToken));
 
                 if (binding == null)
                 {

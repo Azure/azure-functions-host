@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 
@@ -12,20 +14,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageAccount DashboardAccount { get; set; }
 
-        public IStorageAccount GetAccount(string connectionStringName)
+        public Task<IStorageAccount> GetAccountAsync(string connectionStringName, CancellationToken cancellationToken)
         {
+            IStorageAccount account;
+
             if (connectionStringName == ConnectionStringNames.Storage)
             {
-                return StorageAccount;
+                account = StorageAccount;
             }
             else if (connectionStringName == ConnectionStringNames.Dashboard)
             {
-                return DashboardAccount;
+                account = DashboardAccount;
             }
             else
             {
-                return null;
+                account = null;
             }
+
+            return Task.FromResult(account);
         }
     }
 }

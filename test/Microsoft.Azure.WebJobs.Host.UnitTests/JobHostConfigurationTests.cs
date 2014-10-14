@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
@@ -28,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                     StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", new byte[0], "key") , true).ToString(exportSecrets: true)
                 };
                 Assert.Null(configuration.DashboardConnectionString); // Guard
-                IConnectionStringProvider connectionStringProvider = configuration.GetConnectionStringProvider();
+                IStorageAccountProvider storageAccountProvider = configuration.GetStorageAccountProvider();
 
                 // Act & Assert
                 ExceptionAssert.ThrowsInvalidOperation(() =>
-                    connectionStringProvider.GetConnectionString(ConnectionStringNames.Dashboard),
+                    storageAccountProvider.GetDashboardAccountAsync(CancellationToken.None).GetAwaiter().GetResult(),
                     "Microsoft Azure WebJobs SDK Dashboard connection string is missing or empty. The Microsoft Azure Storage account connection string can be set in the following ways:" + Environment.NewLine +
                     "1. Set the connection string named 'AzureWebJobsDashboard' in the connectionStrings section of the .config file in the following format " +
                     "<add name=\"AzureWebJobsDashboard\" connectionString=\"DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY\" />, or" + Environment.NewLine +

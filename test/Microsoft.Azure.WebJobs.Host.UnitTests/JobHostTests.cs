@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -64,9 +65,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void StartAsync_WhenStarting_Throws()
         {
             // Arrange
-            TaskCompletionSource<object> validateTaskSource = new TaskCompletionSource<object>();
-            TestJobHostConfiguration configuration = CreateConfiguration(new LambdaStorageCredentialsValidator(
-                    (i1, i2) => validateTaskSource.Task));
+            TaskCompletionSource<IStorageAccount> getAccountTaskSource = new TaskCompletionSource<IStorageAccount>();
+            TestJobHostConfiguration configuration = CreateConfiguration(new LambdaStorageAccountProvider(
+                    (i1, i2) => getAccountTaskSource.Task));
 
             using (JobHost host = new JobHost(configuration))
             {
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 ExceptionAssert.ThrowsInvalidOperation(() => host.StartAsync(), "Start has already been called.");
 
                 // Cleanup
-                validateTaskSource.SetResult(null);
+                getAccountTaskSource.SetResult(null);
                 starting.GetAwaiter().GetResult();
             }
         }
@@ -153,9 +154,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void StopAsync_WhenStarting_Throws()
         {
             // Arrange
-            TaskCompletionSource<object> validateTaskSource = new TaskCompletionSource<object>();
-            TestJobHostConfiguration configuration = CreateConfiguration(new LambdaStorageCredentialsValidator(
-                    (i1, i2) => validateTaskSource.Task));
+            TaskCompletionSource<IStorageAccount> getAccountTaskSource = new TaskCompletionSource<IStorageAccount>();
+            TestJobHostConfiguration configuration = CreateConfiguration(new LambdaStorageAccountProvider(
+                    (i1, i2) => getAccountTaskSource.Task));
 
             using (JobHost host = new JobHost(configuration))
             {
@@ -166,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 ExceptionAssert.ThrowsInvalidOperation(() => host.StopAsync(), "The host has not yet started.");
 
                 // Cleanup
-                validateTaskSource.SetResult(null);
+                getAccountTaskSource.SetResult(null);
                 starting.GetAwaiter().GetResult();
             }
         }
@@ -434,22 +435,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         private static TestJobHostConfiguration CreateConfiguration()
         {
-            return CreateConfiguration(new NullStorageCredentialsValidator());
+            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
+            {
+                // Use null connection strings since unit tests shouldn't make wire requests.
+                StorageAccount = null,
+                DashboardAccount = null
+            };
+            return CreateConfiguration(storageAccountProvider);
         }
 
-        private static TestJobHostConfiguration CreateConfiguration(IStorageCredentialsValidator credentialsValidator)
+        private static TestJobHostConfiguration CreateConfiguration(IStorageAccountProvider storageAccountProvider)
         {
             return new TestJobHostConfiguration
             {
-                TypeLocator = new FakeTypeLocator(),
-                StorageAccountProvider = new SimpleStorageAccountProvider
-                {
-                    // Nse null connection strings since unit tests shouldn't make wire requests.
-                    StorageAccount = null,
-                    DashboardAccount = null
-                },
-                StorageCredentialsValidator = credentialsValidator,
-                ConnectionStringProvider = new NullConnectionStringProvider()
+                StorageAccountProvider = storageAccountProvider,
+                ServiceBusAccountProvider = new NullServiceBusAccountProvider()
             };
         }
 
@@ -476,19 +476,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             }
         }
 
-        private class LambdaStorageCredentialsValidator : IStorageCredentialsValidator
+        private class LambdaStorageAccountProvider : IStorageAccountProvider
         {
-            private readonly Func<IStorageAccount, CancellationToken, Task> _validateCredentialsAsync;
+            private readonly Func<string, CancellationToken, Task<IStorageAccount>> _getAccountAsync;
 
-            public LambdaStorageCredentialsValidator(
-                Func<IStorageAccount, CancellationToken, Task> validateCredentialsAsync)
+            public LambdaStorageAccountProvider(Func<string, CancellationToken, Task<IStorageAccount>> getAccountAsync)
             {
-                _validateCredentialsAsync = validateCredentialsAsync;
+                _getAccountAsync = getAccountAsync;
             }
 
-            public Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
+            public Task<IStorageAccount> GetAccountAsync(string connectionStringName,
+                CancellationToken cancellationToken)
             {
-                return _validateCredentialsAsync.Invoke(account, cancellationToken);
+                return _getAccountAsync.Invoke(connectionStringName, cancellationToken);
             }
         }
 

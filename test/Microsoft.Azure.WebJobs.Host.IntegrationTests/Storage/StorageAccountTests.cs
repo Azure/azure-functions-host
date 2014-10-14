@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
         private static string GetConnectionString()
         {
             string name = ConnectionStringNames.Dashboard;
-            string value = new AmbientConnectionStringProvider().GetConnectionString(name);
+            string value = AmbientConnectionStringProvider.Instance.GetConnectionString(name);
 
             if (String.IsNullOrEmpty(value))
             {

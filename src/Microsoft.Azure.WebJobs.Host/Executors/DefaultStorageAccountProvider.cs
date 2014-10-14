@@ -2,28 +2,25 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.Protocols;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class DefaultStorageAccountProvider : IStorageAccountProvider, IConnectionStringProvider
+    internal class DefaultStorageAccountProvider : IStorageAccountProvider
     {
         private static readonly IConnectionStringProvider _ambientConnectionStringProvider =
-            new AmbientConnectionStringProvider();
+            AmbientConnectionStringProvider.Instance;
+
+        private readonly IStorageCredentialsValidator _storageCredentialsValidator =
+            new DefaultStorageCredentialsValidator();
 
         private IStorageAccount _dashboardAccount;
         private bool _dashboardAccountSet;
         private IStorageAccount _storageAccount;
         private bool _storageAccountSet;
-        private string _serviceBusConnectionString;
-        private bool _serviceBusConnectionStringSet;
-        private IHostInstanceLogger _hostInstanceLogger;
-        private IFunctionInstanceLogger _functionInstanceLogger;
 
         public DefaultStorageAccountProvider()
         {
@@ -81,72 +78,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        /// <summary>Gets or sets the Azure Service bus connection string.</summary>
-        public string ServiceBusConnectionString
-        {
-            get
-            {
-                if (!_serviceBusConnectionStringSet)
-                {
-                    return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
-                }
-
-                return _serviceBusConnectionString;
-            }
-            set
-            {
-                _serviceBusConnectionString = value;
-                _serviceBusConnectionStringSet = true;
-            }
-        }
-
-        public IHostInstanceLogger HostInstanceLogger
-        {
-            get
-            {
-                EnsureDashboardAccount();
-                return _hostInstanceLogger;
-            }
-        }
-
-        public IFunctionInstanceLogger FunctionInstanceLogger
-        {
-            get
-            {
-                EnsureDashboardAccount();
-                return _functionInstanceLogger;
-            }
-        }
-
         private IStorageAccount DashboardAccount
         {
             get
             {
-                EnsureDashboardAccount();
+                if (!_dashboardAccountSet)
+                {
+                    _dashboardAccount = ParseDashboardAccount(_ambientConnectionStringProvider.GetConnectionString(
+                        ConnectionStringNames.Dashboard), explicitlySet: false);
+                    _dashboardAccountSet = true;
+                }
+
                 return _dashboardAccount;
             }
             set
             {
                 _dashboardAccount = value;
-
-                if (value != null)
-                {
-                    // Create logging against a live Azure account.
-                    CloudBlobClient dashboardBlobClient = value.SdkObject.CreateCloudBlobClient();
-                    IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
-                        new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
-                    PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
-                    _hostInstanceLogger = queueLogger;
-                    _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger,
-                        new ConsoleFunctionInstanceLogger());
-                }
-                else
-                {
-                    // No auxillary logging. Logging interfaces are nops or in-memory.
-                    _hostInstanceLogger = new NullHostInstanceLogger();
-                    _functionInstanceLogger = new ConsoleFunctionInstanceLogger();
-                }
-
                 _dashboardAccountSet = true;
             }
         }
@@ -171,44 +118,31 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public IStorageAccount GetAccount(string connectionStringName)
+        public async Task<IStorageAccount> GetAccountAsync(string connectionStringName,
+            CancellationToken cancellationToken)
         {
+            IStorageAccount account;
+
             if (connectionStringName == ConnectionStringNames.Dashboard)
             {
-                return DashboardAccount;
+                account = DashboardAccount;
             }
             else if (connectionStringName == ConnectionStringNames.Storage)
             {
-                return StorageAccount;
+                account = StorageAccount;
             }
             else
             {
-                return null;
+                account =null;
             }
-        }
 
-        public string GetConnectionString(string connectionStringName)
-        {
-            if (connectionStringName == ConnectionStringNames.Dashboard ||
-                connectionStringName == ConnectionStringNames.Storage)
+            if (account != null)
             {
-                return GetAccount(connectionStringName).ToString(exportSecrets: true);
+                // On the first attempt, this will make a network call to verify the credentials work.
+                await _storageCredentialsValidator.ValidateCredentialsAsync(account, cancellationToken);
             }
-            else if (connectionStringName == ConnectionStringNames.ServiceBus)
-            {
-                if (!_serviceBusConnectionStringSet)
-                {
-                    _serviceBusConnectionString =
-                        _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
-                    _serviceBusConnectionStringSet = true;
-                }
 
-                return _serviceBusConnectionString;
-            }
-            else
-            {
-                return _ambientConnectionStringProvider.GetConnectionString(connectionStringName);
-            }
+            return account;
         }
 
         private IStorageAccount ParseDashboardAccount(string connectionString, bool explicitlySet)
@@ -230,15 +164,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             CloudStorageAccount sdkAccount = StorageAccountParser.ParseAccount(connectionString, connectionStringName);
             return new StorageAccount(sdkAccount);
-        }
-
-        private void EnsureDashboardAccount()
-        {
-            if (!_dashboardAccountSet)
-            {
-                DashboardAccount = ParseDashboardAccount(_ambientConnectionStringProvider.GetConnectionString(
-                    ConnectionStringNames.Dashboard), explicitlySet: false);
-            }
         }
     }
 }

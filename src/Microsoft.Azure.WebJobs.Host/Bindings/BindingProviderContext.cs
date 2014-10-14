@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -72,13 +71,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             }
 
             return _nameResolver.ResolveWholeString(input);
-        }
-
-        public static BindingProviderContext Create(FunctionIndexerContext indexerContext, ParameterInfo parameter,
-            IReadOnlyDictionary<string, Type> bindingDataContract, CancellationToken cancellationToken)
-        {
-            return new BindingProviderContext(indexerContext.NameResolver, indexerContext.StorageAccount,
-                indexerContext.ServiceBusConnectionString, parameter, bindingDataContract, cancellationToken);
         }
 
         public static BindingProviderContext Create(BindingContext bindingContext, ParameterInfo parameter,

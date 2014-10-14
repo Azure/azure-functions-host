@@ -5,9 +5,9 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
-    public class NullConnectionStringProvider : IConnectionStringProvider
+    public class NullServiceBusAccountProvider : IServiceBusAccountProvider
     {
-        public string GetConnectionString(string connectionStringName)
+        public string GetConnectionString()
         {
             return null;
         }

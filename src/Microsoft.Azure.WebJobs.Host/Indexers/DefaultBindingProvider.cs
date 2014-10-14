@@ -17,11 +17,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
-        public static IBindingProvider Create(IEnumerable<Type> cloudBlobStreamBinderTypes)
+        public static IBindingProvider Create(IExtensionTypeLocator extensionTypeLocator)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
             innerProviders.Add(new QueueAttributeBindingProvider());
-            innerProviders.Add(new BlobAttributeBindingProvider(cloudBlobStreamBinderTypes));
+            innerProviders.Add(new BlobAttributeBindingProvider(extensionTypeLocator));
 
             innerProviders.Add(new TableAttributeBindingProvider());
 

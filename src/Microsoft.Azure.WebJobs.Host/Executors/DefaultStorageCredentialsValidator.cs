@@ -2,17 +2,41 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Auth;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultStorageCredentialsValidator : IStorageCredentialsValidator
     {
+        private readonly HashSet<StorageCredentials> _validatedCredentials = new HashSet<StorageCredentials>();
+
         public async Task ValidateCredentialsAsync(IStorageAccount account, CancellationToken cancellationToken)
+        {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
+            StorageCredentials credentials = account.Credentials;
+
+            // Avoid double-validating the same account and credentials.
+            if (_validatedCredentials.Contains(credentials))
+            {
+                return;
+            }
+
+            await ValidateCredentialsAsyncCore(account, cancellationToken);
+            _validatedCredentials.Add(credentials);
+        }
+
+        private static async Task ValidateCredentialsAsyncCore(IStorageAccount account,
+            CancellationToken cancellationToken)
         {
             CloudStorageAccount sdkAccount = account.SdkObject;
 
