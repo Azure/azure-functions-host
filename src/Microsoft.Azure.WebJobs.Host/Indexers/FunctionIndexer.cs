@@ -169,9 +169,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     continue;
                 }
 
-                IBinding binding = await _bindingProvider.TryCreateAsync(
-                    new BindingProviderContext(_nameResolver, _storageAccount, _serviceBusConnectionString, parameter,
-                        bindingDataContract, cancellationToken));
+                IBinding binding = await _bindingProvider.TryCreateAsync(new BindingProviderContext(_nameResolver,
+                    parameter, bindingDataContract, cancellationToken));
 
                 if (binding == null)
                 {

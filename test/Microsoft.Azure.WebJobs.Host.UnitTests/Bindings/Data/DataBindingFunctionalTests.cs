@@ -41,12 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
                 BindingFlags.Static | BindingFlags.NonPublic);
             Assert.NotNull(method); // Guard
 
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
-                new NullExtensionTypeLocator());
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
-            FunctionIndexer indexer = new FunctionIndexer(null,
-                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, triggerBindingProvider,
-                bindingProvider);
+            FunctionIndexer indexer = FunctionIndexerFactory.Create(CloudStorageAccount.DevelopmentStorageAccount);
             IFunctionIndexCollector stubIndex = new Mock<IFunctionIndexCollector>().Object;
 
             // Act & Assert

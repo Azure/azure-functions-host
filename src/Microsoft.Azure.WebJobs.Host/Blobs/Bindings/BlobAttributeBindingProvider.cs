@@ -8,7 +8,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -16,15 +18,23 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class BlobAttributeBindingProvider : IBindingProvider
     {
+        private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
 
-        public BlobAttributeBindingProvider(IExtensionTypeLocator extensionTypeLocator)
+        public BlobAttributeBindingProvider(IStorageAccountProvider accountProvider,
+            IExtensionTypeLocator extensionTypeLocator)
         {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
             if (extensionTypeLocator == null)
             {
                 throw new ArgumentNullException("extensionTypeLocator");
             }
 
+            _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
         }
 
@@ -60,14 +70,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
 
-        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             BlobAttribute blob = parameter.GetCustomAttribute<BlobAttribute>(inherit: false);
 
             if (blob == null)
             {
-                return Task.FromResult<IBinding>(null);
+                return null;
             }
 
             string resolvedCombinedPath = context.Resolve(blob.BlobPath);
@@ -81,9 +91,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 throw new InvalidOperationException("Can't bind Blob to type '" + parameter.ParameterType + "'.");
             }
 
-            IBinding binding = new BlobBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateBlobClient(), path);
-            return Task.FromResult(binding);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageBlobClient client = account.CreateBlobClient();
+            IBinding binding = new BlobBinding(parameter.Name, argumentBinding, client, path);
+            return binding;
         }
     }
 }

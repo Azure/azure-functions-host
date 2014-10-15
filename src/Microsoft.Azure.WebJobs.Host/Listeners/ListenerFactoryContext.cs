@@ -5,7 +5,6 @@ using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
@@ -34,11 +33,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         public IQueueConfiguration QueueConfiguration
         {
             get { return _hostContext.QueueConfiguration; }
-        }
-
-        public IStorageAccount StorageAccount
-        {
-            get { return _hostContext.StorageAccount; }
         }
 
         public IBlobWrittenWatcher BlobWrittenWatcher

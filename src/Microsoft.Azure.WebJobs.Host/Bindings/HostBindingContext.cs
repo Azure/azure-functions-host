@@ -3,7 +3,6 @@
 
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -14,23 +13,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly IBindingProvider _bindingProvider;
         private readonly INameResolver _nameResolver;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IStorageAccount _storageAccount;
-        private readonly string _serviceBusConnectionString;
 
         public HostBindingContext(
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IBindingProvider bindingProvider,
             INameResolver nameResolver,
-            IQueueConfiguration queueConfiguration,
-            IStorageAccount storageAccount,
-            string serviceBusConnectionString)
+            IQueueConfiguration queueConfiguration)
         {
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _bindingProvider = bindingProvider;
             _nameResolver = nameResolver;
             _queueConfiguration = queueConfiguration;
-            _storageAccount = storageAccount;
-            _serviceBusConnectionString = serviceBusConnectionString;
         }
 
         public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher
@@ -51,16 +44,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         public IQueueConfiguration QueueConfiguration
         {
             get { return _queueConfiguration; }
-        }
-
-        public IStorageAccount StorageAccount
-        {
-            get { return _storageAccount; }
-        }
-
-        public string ServiceBusConnectionString
-        {
-            get { return _serviceBusConnectionString; }
         }
 
         public IBlobWrittenWatcher BlobWrittenWatcher { get; set; }

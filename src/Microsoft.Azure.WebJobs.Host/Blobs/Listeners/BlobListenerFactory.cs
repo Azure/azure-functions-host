@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -16,14 +17,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class BlobListenerFactory : IListenerFactory
     {
         private readonly string _functionId;
+        private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionInstanceFactory<IStorageBlob> _instanceFactory;
 
-        public BlobListenerFactory(string functionId, CloudBlobContainer container, IBlobPathSource input,
-            ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
+        public BlobListenerFactory(string functionId, IStorageAccount account, CloudBlobContainer container,
+            IBlobPathSource input, ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
             _functionId = functionId;
+            _account = account;
             _container = container;
             _input = input;
             _instanceFactory = instanceFactory;
@@ -34,13 +37,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             SharedQueueWatcher sharedQueueWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
             SharedBlobListener sharedBlobListener = context.SharedListeners.GetOrCreate<SharedBlobListener>(
-                new SharedBlobListenerFactory(context));
+                new SharedBlobListenerFactory(_account, context));
 
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
-            IStorageQueueClient queueClient = context.StorageAccount.CreateQueueClient();
-            IStorageBlobClient blobClient = context.StorageAccount.CreateBlobClient();
-            CloudBlobClient sdkBlobClient = context.StorageAccount.SdkObject.CreateCloudBlobClient();
+            IStorageQueueClient queueClient = _account.CreateQueueClient();
+            IStorageBlobClient blobClient = _account.CreateBlobClient();
+            CloudBlobClient sdkBlobClient = _account.SdkObject.CreateCloudBlobClient();
 
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(context.HostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);

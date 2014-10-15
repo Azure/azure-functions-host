@@ -5,6 +5,8 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -23,18 +25,31 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 new TableEntityArgumentBindingProvider(),
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
 
-        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        private readonly IStorageAccountProvider _accountProvider;
+
+        public TableAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
+            _accountProvider = accountProvider;
+        }
+
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
 
             if (tableAttribute == null)
             {
-                return Task.FromResult<IBinding>(null);
+                return null;
             }
 
             string tableName = context.Resolve(tableAttribute.TableName);
-            IStorageTableClient client = context.StorageAccount.CreateTableClient();
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageTableClient client = account.CreateTableClient();
             Type parameterType = parameter.ParameterType;
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;
@@ -71,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 binding = new TableEntityBinding(parameter.Name, argumentBinding, client, path);
             }
 
-            return Task.FromResult(binding);
+            return binding;
         }
     }
 }

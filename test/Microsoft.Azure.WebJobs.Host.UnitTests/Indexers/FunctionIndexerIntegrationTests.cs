@@ -6,11 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
@@ -26,13 +23,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             MethodInfo method = typeof(FunctionIndexerIntegrationTests).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             Assert.NotNull(method);
 
-            ITriggerBindingProvider triggerBindingProvider =
-                DefaultTriggerBindingProvider.Create(new NullExtensionTypeLocator());
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
-
-            FunctionIndexer indexer = new FunctionIndexer(nameResolver,
-                new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, triggerBindingProvider,
-                bindingProvider);
+            FunctionIndexer indexer = FunctionIndexerFactory.Create(CloudStorageAccount.DevelopmentStorageAccount,
+                nameResolver);
 
             Tuple<FunctionDescriptor, IFunctionDefinition> indexEntry = null;
             Mock<IFunctionIndexCollector> indexMock = new Mock<IFunctionIndexCollector>(MockBehavior.Strict);

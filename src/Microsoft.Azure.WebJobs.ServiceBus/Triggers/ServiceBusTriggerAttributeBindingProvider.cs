@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
@@ -20,6 +21,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 new ConverterArgumentBindingProvider<string>(new BrokeredMessageToStringConverter()),
                 new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
+
+        private readonly IServiceBusAccountProvider _accountProvider;
+
+        public ServiceBusTriggerAttributeBindingProvider(IServiceBusAccountProvider accountProvider)
+        {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
+            _accountProvider = accountProvider;
+        }
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
@@ -52,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
-                context.ServiceBusConnectionString);
+            string connectionString = _accountProvider.GetConnectionString();
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
             ITriggerBinding binding;
 
             if (queueName != null)

@@ -34,11 +34,17 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             _type = type;
 
             IExtensionTypeLocator extensionTypeLocator = new FakeExtensionTypeLocator(cloudBlobStreamBinderTypes);
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(extensionTypeLocator);
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(extensionTypeLocator);
+            IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
+            {
+                StorageAccount = account
+            };
+            IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
+                serviceBusAccountProvider, extensionTypeLocator);
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
+                storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type), null,
-                new SimpleStorageAccountProvider { StorageAccount = account }, new NullServiceBusAccountProvider(),
-                triggerBindingProvider, bindingProvider);
+                storageAccountProvider, serviceBusAccountProvider, triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
@@ -46,9 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 backgroundExceptionDispatcher: BackgroundExceptionDispatcher.Instance,
                 bindingProvider: bindingProvider,
                 nameResolver: null,
-                queueConfiguration: null,
-                storageAccount: new StorageAccount(account),
-                serviceBusConnectionString: null);
+                queueConfiguration: null);
         }
 
         public void Call(string functionName, object arguments = null)

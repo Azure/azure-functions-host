@@ -30,16 +30,6 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
             get { return _nameResolver; }
         }
 
-        public IStorageAccount StorageAccount
-        {
-            get { return _storageAccount; }
-        }
-
-        public string ServiceBusConnectionString
-        {
-            get { return _serviceBusConnectionString; }
-        }
-
         public ParameterInfo Parameter
         {
             get { return _parameter; }

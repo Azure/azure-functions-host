@@ -18,11 +18,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
                 new OutputConverter<string>(new StringToCloudStorageAccountConverter()));
 
         private readonly string _parameterName;
+        private readonly CloudStorageAccount _account;
         private readonly string _accountName;
 
         public CloudStorageAccountBinding(string parameterName, CloudStorageAccount account)
         {
             _parameterName = parameterName;
+            _account = account;
             _accountName = StorageClient.GetAccountName(account);
         }
 
@@ -51,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAccountAsync(context.StorageAccount.SdkObject, context.ValueContext);
+            return BindAccountAsync(_account, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

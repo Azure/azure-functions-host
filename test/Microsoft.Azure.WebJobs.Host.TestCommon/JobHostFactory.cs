@@ -40,8 +40,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), null,
                     storageAccountProvider, serviceBusAccountProvider,
-                    DefaultTriggerBindingProvider.Create(extensionTypeLocator),
-                    DefaultBindingProvider.Create(extensionTypeLocator)),
+                    DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
+                        extensionTypeLocator),
+                    DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
+                        extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = new SimpleQueueConfiguration(maxDequeueCount)

@@ -102,8 +102,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
 
                 HostBindingContext bindingContext = new HostBindingContext(_backgroundExceptionDispatcher,
-                    _bindingProvider, _nameResolver, _queueConfiguration, storageAccount,
-                    serviceBusConnectionString);
+                    _bindingProvider, _nameResolver, _queueConfiguration);
 
                 IListenerFactory sharedQueueListenerFactory;
                 IListenerFactory instanceQueueListenerFactory;

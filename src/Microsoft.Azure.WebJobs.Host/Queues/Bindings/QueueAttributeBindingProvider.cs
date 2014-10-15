@@ -5,6 +5,8 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
@@ -20,14 +22,26 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             new CollectorArgumentBindingProvider(),
             new AsyncCollectorArgumentBindingProvider());
 
-        public Task<IBinding> TryCreateAsync(BindingProviderContext context)
+        private readonly IStorageAccountProvider _accountProvider;
+
+        public QueueAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
+            _accountProvider = accountProvider;
+        }
+
+        public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             QueueAttribute queueAttribute = parameter.GetCustomAttribute<QueueAttribute>(inherit: false);
 
             if (queueAttribute == null)
             {
-                return Task.FromResult<IBinding>(null);
+                return null;
             }
 
             string queueName = context.Resolve(queueAttribute.QueueName);
@@ -40,9 +54,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 throw new InvalidOperationException("Can't bind Queue to type '" + parameter.ParameterType + "'.");
             }
 
-            IBinding binding = new QueueBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateQueueClient(), path);
-            return Task.FromResult(binding);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageQueueClient client = account.CreateQueueClient();
+            IBinding binding = new QueueBinding(parameter.Name, argumentBinding, client, path);
+            return binding;
         }
     }
 }

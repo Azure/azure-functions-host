@@ -6,7 +6,6 @@ using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -34,16 +33,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         public INameResolver NameResolver
         {
             get { return _functionContext.NameResolver; }
-        }
-
-        public IStorageAccount StorageAccount
-        {
-            get { return _functionContext.StorageAccount; }
-        }
-
-        public string ServiceBusConnectionString
-        {
-            get { return _functionContext.ServiceBusConnectionString; }
         }
 
         public IBlobWrittenWatcher BlobWrittenWatcher

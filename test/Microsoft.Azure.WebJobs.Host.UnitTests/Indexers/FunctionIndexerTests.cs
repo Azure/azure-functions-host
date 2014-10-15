@@ -204,10 +204,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
         private static FunctionIndexer CreateProductUnderTest()
         {
-            ITriggerBindingProvider triggerBindingProvider =
-                DefaultTriggerBindingProvider.Create(new NullExtensionTypeLocator());
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(new NullExtensionTypeLocator());
-            return new FunctionIndexer(null, null, null, triggerBindingProvider, bindingProvider);
+            return FunctionIndexerFactory.Create(account: null);
         }
 
         private static IFunctionIndexCollector CreateStubFunctionIndex()

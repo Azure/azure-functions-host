@@ -9,7 +9,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -18,15 +20,23 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
     internal class BlobTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
+        private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
 
-        public BlobTriggerAttributeBindingProvider(IExtensionTypeLocator extensionTypeLocator)
+        public BlobTriggerAttributeBindingProvider(IStorageAccountProvider accountProvider,
+            IExtensionTypeLocator extensionTypeLocator)
         {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
             if (extensionTypeLocator == null)
             {
                 throw new ArgumentNullException("extensionTypeLocator");
             }
 
+            _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
         }
 
@@ -56,14 +66,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             return new ConverterArgumentBindingProvider<TValue>(new TConverter());
         }
 
-        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
+        public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             BlobTriggerAttribute blobTrigger = parameter.GetCustomAttribute<BlobTriggerAttribute>(inherit: false);
 
             if (blobTrigger == null)
             {
-                return Task.FromResult<ITriggerBinding>(null);
+                return null;
             }
 
             string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
@@ -76,9 +86,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new InvalidOperationException("Can't bind BlobTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding,
-                context.StorageAccount.CreateBlobClient(), path);
-            return Task.FromResult(binding);
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path);
+            return binding;
         }
     }
 }

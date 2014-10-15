@@ -4,7 +4,8 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Converters;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -21,14 +22,26 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 new ConverterArgumentBindingProvider<byte[]>(new StorageQueueMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
-        public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
+        private readonly IStorageAccountProvider _accountProvider;
+
+        public QueueTriggerAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
+            _accountProvider = accountProvider;
+        }
+
+        public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
             QueueTriggerAttribute queueTrigger = parameter.GetCustomAttribute<QueueTriggerAttribute>(inherit: false);
 
             if (queueTrigger == null)
             {
-                return Task.FromResult<ITriggerBinding>(null);
+                return null;
             }
 
             string queueName = context.Resolve(queueTrigger.QueueName);
@@ -42,11 +55,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                     "Can't bind QueueTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            IStorageQueueClient client = context.StorageAccount.CreateQueueClient();
+            IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
+            IStorageQueueClient client = account.CreateQueueClient();
             IStorageQueue queue = client.GetQueueReference(queueName);
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding);
-            return Task.FromResult(binding);
+            return binding;
         }
 
         private static string NormalizeAndValidate(string queueName)

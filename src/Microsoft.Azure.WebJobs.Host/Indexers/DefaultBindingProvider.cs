@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Data;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Queues.Bindings;
 using Microsoft.Azure.WebJobs.Host.Tables;
 
@@ -17,13 +18,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
-        public static IBindingProvider Create(IExtensionTypeLocator extensionTypeLocator)
+        public static IBindingProvider Create(IStorageAccountProvider storageAccountProvider,
+            IServiceBusAccountProvider serviceBusAccountProvider, IExtensionTypeLocator extensionTypeLocator)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
-            innerProviders.Add(new QueueAttributeBindingProvider());
-            innerProviders.Add(new BlobAttributeBindingProvider(extensionTypeLocator));
+            innerProviders.Add(new QueueAttributeBindingProvider(storageAccountProvider));
+            innerProviders.Add(new BlobAttributeBindingProvider(storageAccountProvider, extensionTypeLocator));
 
-            innerProviders.Add(new TableAttributeBindingProvider());
+            innerProviders.Add(new TableAttributeBindingProvider(storageAccountProvider));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
@@ -31,11 +33,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             if (serviceBusProviderType != null)
             {
                 IBindingProvider serviceBusAttributeBindingProvider =
-                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType);
+                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType, serviceBusAccountProvider);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
 
-            innerProviders.Add(new CloudStorageAccountBindingProvider());
+            innerProviders.Add(new CloudStorageAccountBindingProvider(storageAccountProvider));
             innerProviders.Add(new CancellationTokenBindingProvider());
 
             // The console output binder below will handle all remaining TextWriter parameters. It must come after the

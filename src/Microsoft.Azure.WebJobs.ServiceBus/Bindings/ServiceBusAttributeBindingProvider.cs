@@ -5,6 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -18,6 +19,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 new UserTypeArgumentBindingProvider(),
                 new CollectorArgumentBindingProvider(),
                 new AsyncCollectorArgumentBindingProvider());
+
+        private readonly IServiceBusAccountProvider _accountProvider;
+
+        public ServiceBusAttributeBindingProvider(IServiceBusAccountProvider accountProvider)
+        {
+            if (accountProvider == null)
+            {
+                throw new ArgumentNullException("accountProvider");
+            }
+
+            _accountProvider = accountProvider;
+        }
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
@@ -40,8 +53,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Can't bind ServiceBus to type '" + parameter.ParameterType + "'.");
             }
 
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(
-                context.ServiceBusConnectionString);
+            string connectionString = _accountProvider.GetConnectionString();
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path);
             return Task.FromResult(binding);
