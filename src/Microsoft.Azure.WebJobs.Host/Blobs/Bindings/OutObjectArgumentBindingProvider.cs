@@ -93,12 +93,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 {
                     await _objectBinder.WriteToStreamAsync((TValue)value, _stream, cancellationToken);
 
-                    if (!_stream.HasCommitted)
+                    // Determine whether or not to upload the blob.
+                    if (await _stream.CompleteAsync(cancellationToken))
                     {
-                        await _stream.CommitAsync(cancellationToken);
+                        _stream.Dispose(); // Can only dispose when committing; see note on class above.
                     }
-
-                    _stream.Dispose();
                 }
 
                 public string ToInvokeString()

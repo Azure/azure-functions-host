@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithOutStringNull")]
         [InlineData("FuncWithStreamWriteNoop")]
         [InlineData("FuncWithT")]
+        [InlineData("FuncWithOutTNull")]
         [InlineData("FuncWithValueT")]
         public void Call_WhenMissingBlob_DoesntCreate(string functionName)
         {
@@ -48,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithTextWriter")]
         [InlineData("FuncWithStreamWrite")]
         [InlineData("FuncWithOutT")]
-        [InlineData("FuncWithOutTNull")]
         [InlineData("FuncWithOutValueT")]
         public void Call_WhenMissingBlob_Creates(string functionName)
         {
