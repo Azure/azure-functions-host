@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     combinedCancellationToken);
                 IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(
                     combinedCancellationToken);
-                string serviceBusConnectionString = _serviceBusAccountProvider.GetConnectionString();
+                string serviceBusConnectionString = _serviceBusAccountProvider.ConnectionString;
                 CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
 
                 IHostInstanceLogger hostInstanceLogger = await _hostInstanceLoggerProvider.GetAsync(

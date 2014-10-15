@@ -5,6 +5,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IServiceBusAccountProvider
     {
-        string GetConnectionString();
+        string ConnectionString { get; }
     }
 }

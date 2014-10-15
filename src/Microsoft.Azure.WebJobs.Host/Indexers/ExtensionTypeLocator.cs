@@ -20,16 +20,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _typeLocator = typeLocator;
         }
 
-        private IReadOnlyList<Type> _cloubBlobStreamBinderTypes;
+        private IReadOnlyList<Type> _cloudBlobStreamBinderTypes;
 
         public IReadOnlyList<Type> GetCloudBlobStreamBinderTypes()
         {
-            if (_cloubBlobStreamBinderTypes == null)
+            if (_cloudBlobStreamBinderTypes == null)
             {
-                _cloubBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(_typeLocator.GetTypes());
+                _cloudBlobStreamBinderTypes = GetCloudBlobStreamBinderTypes(_typeLocator.GetTypes());
             }
 
-            return _cloubBlobStreamBinderTypes;
+            return _cloudBlobStreamBinderTypes;
         }
 
         // Search for any types that implement ICloudBlobStreamBinder<T>

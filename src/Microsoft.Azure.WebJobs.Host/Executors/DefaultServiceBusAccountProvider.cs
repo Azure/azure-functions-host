@@ -17,8 +17,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 if (!_connectionStringSet)
                 {
-                    // Unlike GetConnectionString below, this property getter does not lock and cache the value.
-                    return _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.ServiceBus);
+                    _connectionString = _ambientConnectionStringProvider.GetConnectionString(
+                        ConnectionStringNames.ServiceBus);
+                    _connectionStringSet = true;
                 }
 
                 return _connectionString;
@@ -28,19 +29,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 _connectionString = value;
                 _connectionStringSet = true;
             }
-        }
-
-        public string GetConnectionString()
-        {
-            if (!_connectionStringSet)
-            {
-                // Unlike the property getter above, this method locks and caches the value.
-                _connectionString = _ambientConnectionStringProvider.GetConnectionString(
-                    ConnectionStringNames.ServiceBus);
-                _connectionStringSet = true;
-            }
-
-            return _connectionString;
         }
     }
 }

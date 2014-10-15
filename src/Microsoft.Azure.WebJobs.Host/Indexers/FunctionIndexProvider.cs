@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             IStorageAccount storageAccount = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
-            string serviceBusConnectionString = _serviceBusAccountProvider.GetConnectionString();
+            string serviceBusConnectionString = _serviceBusAccountProvider.ConnectionString;
 
             FunctionIndex index = new FunctionIndex();
             FunctionIndexer indexer = new FunctionIndexer(_nameResolver, storageAccount, serviceBusConnectionString,

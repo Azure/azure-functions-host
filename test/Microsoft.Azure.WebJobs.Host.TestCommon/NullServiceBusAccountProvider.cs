@@ -7,9 +7,9 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
     public class NullServiceBusAccountProvider : IServiceBusAccountProvider
     {
-        public string GetConnectionString()
+        public string ConnectionString
         {
-            return null;
+            get { return null; }
         }
     }
 }
