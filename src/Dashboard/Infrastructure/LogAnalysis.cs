@@ -238,9 +238,13 @@ namespace Dashboard
         {
             Debug.Assert(log != null);
             StringBuilder builder = new StringBuilder();
-            long bytesRead = log.BytesRead;
-            double complete = bytesRead * 100.0 / log.Length;
-            builder.AppendFormat("Read {0:n0} bytes ({1:0.00}% of total). ", bytesRead, complete);
+            builder.AppendFormat("Read {0:n0} bytes", log.BytesRead);
+            if (log.Length != 0)
+            {
+                double complete = log.BytesRead * 100.0 / log.Length;
+                builder.AppendFormat(" ({0:0.00}% of total)", complete);
+            }
+            builder.Append(". ");
             AppendNetworkTime(builder, log.ElapsedTime);
             return builder.ToString();
         }
