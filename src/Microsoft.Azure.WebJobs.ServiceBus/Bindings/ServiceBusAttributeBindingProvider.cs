@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Can't bind ServiceBus to type '" + parameter.ParameterType + "'.");
             }
 
-            string connectionString = _accountProvider.GetConnectionString();
+            string connectionString = _accountProvider.ConnectionString;
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path);

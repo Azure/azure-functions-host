@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            string connectionString = _accountProvider.GetConnectionString();
+            string connectionString = _accountProvider.ConnectionString;
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
             ITriggerBinding binding;
 
