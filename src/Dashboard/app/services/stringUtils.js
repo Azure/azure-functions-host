@@ -43,7 +43,7 @@
             return plural("1 s", "{0} s", Math.round(totalSeconds));
 
         if (timeSpan > 0)
-            return plural("1 ms", "{0} ms", timeSpan);
+            return plural("1 ms", "{0} ms", Math.round(timeSpan));
 
         return "less than 1ms";
     }

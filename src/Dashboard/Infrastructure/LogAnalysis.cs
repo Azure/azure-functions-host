@@ -201,7 +201,7 @@ namespace Dashboard
             }
         }
 
-        private static string Format(ParameterLog log)
+        internal static string Format(ParameterLog log)
         {
             ReadBlobParameterLog readBlobLog = log as ReadBlobParameterLog;
 
@@ -244,19 +244,28 @@ namespace Dashboard
                 double complete = log.BytesRead * 100.0 / log.Length;
                 builder.AppendFormat(" ({0:0.00}% of total)", complete);
             }
-            builder.Append(". ");
+            builder.Append(".");
             AppendNetworkTime(builder, log.ElapsedTime);
             return builder.ToString();
         }
 
-        internal static void AppendNetworkTime(StringBuilder builder, TimeSpan elapsed)
+        private static void AppendNetworkTime(StringBuilder builder, TimeSpan elapsed)
+        {
+            string formattedTime = Format(elapsed);
+            if (!String.IsNullOrEmpty(formattedTime))
+            {
+                builder.Append(" ");
+                builder.Append(formattedTime);
+                builder.Append(" spent on I/O.");
+            }
+        }
+
+        internal static string Format(TimeSpan elapsed)
         {
             if (elapsed == TimeSpan.Zero)
             {
-                return;
+                return String.Empty;
             }
-
-            builder.Append("(about ");
 
             string unitName;
             int unitCount;
@@ -281,8 +290,9 @@ namespace Dashboard
                 unitName = "millisecond";
                 unitCount = Math.Max((int)Math.Round(elapsed.TotalMilliseconds), 1);
             }
-            builder.AppendFormat(CultureInfo.CurrentCulture, "{0} {1}{2}", unitCount, unitName, unitCount > 1 ? "s" : String.Empty);
-            builder.Append(" spent on I/O)");
+
+            return String.Format(CultureInfo.CurrentCulture, "About {0} {1}{2}", unitCount, unitName, 
+                unitCount > 1 ? "s" : String.Empty);
         }
 
         private static string Format(WriteBlobParameterLog log)
@@ -303,8 +313,12 @@ namespace Dashboard
         {
             Debug.Assert(log != null);
 
-            return String.Format(CultureInfo.CurrentCulture, "Wrote {0} {1}. ({2})", log.EntitiesWritten,
-                log.EntitiesWritten == 1 ? "entity" : "entities", log.ElapsedWriteTime);
+            StringBuilder builder = new StringBuilder();
+            builder.AppendFormat(CultureInfo.CurrentCulture, "Wrote {0} {1}.", log.EntitiesWritten,
+                log.EntitiesWritten == 1 ? "entity" : "entities");
+            AppendNetworkTime(builder, log.ElapsedWriteTime);
+
+            return builder.ToString();
         }
     }
 }
