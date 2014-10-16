@@ -49,7 +49,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             return new FakeServiceProvider
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType), null,
-                    storageAccountProvider, serviceBusAccountProvider,
                     DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator),
                     DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,

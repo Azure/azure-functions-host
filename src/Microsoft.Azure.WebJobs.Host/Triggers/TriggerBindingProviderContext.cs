@@ -10,17 +10,13 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     internal class TriggerBindingProviderContext
     {
         private readonly INameResolver _nameResolver;
-        private readonly IStorageAccount _storageAccount;
-        private readonly string _serviceBusConnectionString;
         private readonly ParameterInfo _parameter;
         private readonly CancellationToken _cancellationToken;
 
-        public TriggerBindingProviderContext(INameResolver nameResolver, IStorageAccount storageAccount,
-            string serviceBusConnectionString, ParameterInfo parameter, CancellationToken cancellationToken)
+        public TriggerBindingProviderContext(INameResolver nameResolver, ParameterInfo parameter, 
+            CancellationToken cancellationToken)
         {
             _nameResolver = nameResolver;
-            _storageAccount = storageAccount;
-            _serviceBusConnectionString = serviceBusConnectionString;
             _parameter = parameter;
             _cancellationToken = cancellationToken;
         }

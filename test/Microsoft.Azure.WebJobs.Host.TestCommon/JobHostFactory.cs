@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), null,
-                    storageAccountProvider, serviceBusAccountProvider,
                     DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator),
                     DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,

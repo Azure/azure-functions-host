@@ -22,8 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
                 IFunctionIndexCollector stubIndex = new Mock<IFunctionIndexCollector>().Object;
-                FunctionIndexer indexer = new FunctionIndexer(null,
-                    new StorageAccount(CloudStorageAccount.DevelopmentStorageAccount), null, null, null);
+                FunctionIndexer indexer = new FunctionIndexer(null, null, null);
                 Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethodAsync(method, stubIndex, CancellationToken.None).GetAwaiter().GetResult());
             }
         }

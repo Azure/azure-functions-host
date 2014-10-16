@@ -25,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class JobHostContextFactory
     {
         private readonly IStorageAccountProvider _storageAccountProvider;
-        private readonly IServiceBusAccountProvider _serviceBusAccountProvider;
         private readonly IFunctionIndexProvider _functionIndexProvider;
         private readonly INameResolver _nameResolver;
         private readonly IBindingProvider _bindingProvider;
@@ -37,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly CancellationToken _shutdownToken;
 
         public JobHostContextFactory(IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider,
             IFunctionIndexProvider functionIndexProvider,
             INameResolver nameResolver,
             IBindingProvider bindingProvider,
@@ -49,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             CancellationToken shutdownToken)
         {
             _storageAccountProvider = storageAccountProvider;
-            _serviceBusAccountProvider = serviceBusAccountProvider;
             _functionIndexProvider = functionIndexProvider;
             _nameResolver = nameResolver;
             _bindingProvider = bindingProvider;
@@ -68,11 +65,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
 
-                IStorageAccount storageAccount = await _storageAccountProvider.GetStorageAccountAsync(
-                    combinedCancellationToken);
                 IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(
                     combinedCancellationToken);
-                string serviceBusConnectionString = _serviceBusAccountProvider.ConnectionString;
                 CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
 
                 IHostInstanceLogger hostInstanceLogger = await _hostInstanceLoggerProvider.GetAsync(

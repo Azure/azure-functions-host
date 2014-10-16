@@ -25,21 +25,15 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private static readonly Func<MethodInfo, bool> _hasServiceBusAttributeDefault = _ => false;
 
         private readonly INameResolver _nameResolver;
-        private readonly IStorageAccount _storageAccount;
-        private readonly string _serviceBusConnectionString;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly Func<MethodInfo, bool> _hasServiceBusAttribute;
 
         public FunctionIndexer(INameResolver nameResolver,
-            IStorageAccount storageAccount,
-            string serviceBusConnectionString,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider)
         {
             _nameResolver = nameResolver;
-            _storageAccount = storageAccount;
-            _serviceBusConnectionString = serviceBusConnectionString;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
 
@@ -130,8 +124,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             foreach (ParameterInfo parameter in parameters)
             {
                 ITriggerBinding possibleTriggerBinding = await _triggerBindingProvider.TryCreateAsync(
-                    new TriggerBindingProviderContext(_nameResolver, _storageAccount, _serviceBusConnectionString,
-                        parameter, cancellationToken));
+                    new TriggerBindingProviderContext(_nameResolver, parameter, cancellationToken));
 
                 if (possibleTriggerBinding != null)
                 {

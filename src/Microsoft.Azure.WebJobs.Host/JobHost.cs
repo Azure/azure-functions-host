@@ -80,7 +80,6 @@ namespace Microsoft.Azure.WebJobs
             }
 
             IStorageAccountProvider storageAccountProvider = serviceProvider.GetStorageAccountProvider();
-            IServiceBusAccountProvider serviceBusAccountProvider = serviceProvider.GetServiceBusAccountProvider();
             IFunctionIndexProvider functionIndexProvider = serviceProvider.GetFunctionIndexProvider();
             INameResolver nameResolver = serviceProvider.GetNameResolver();
             IBindingProvider bindingProvider = serviceProvider.GetBindingProvider();
@@ -96,7 +95,7 @@ namespace Microsoft.Azure.WebJobs
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
 
-            _contextFactory = new JobHostContextFactory(storageAccountProvider, serviceBusAccountProvider,
+            _contextFactory = new JobHostContextFactory(storageAccountProvider,
                 functionIndexProvider, nameResolver, bindingProvider, hostIdProvider, hostInstanceLoggerProvider,
                 functionInstanceLoggerProvider, queueConfiguration, backgroundExceptionDispatcher,
                 _shutdownTokenSource.Token);

@@ -185,8 +185,8 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_functionIndexProvider == null)
                 {
-                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, NameResolver,
-                        _storageAccountProvider, _serviceBusAccountProvider, TriggerBindingProvider, BindingProvider);
+                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, NameResolver, 
+                        TriggerBindingProvider, BindingProvider);
                 }
 
                 return _functionIndexProvider;
@@ -260,10 +260,6 @@ namespace Microsoft.Azure.WebJobs
             else if (serviceType == typeof(IQueueConfiguration))
             {
                 return _queueConfiguration;
-            }
-            else if (serviceType == typeof(IServiceBusAccountProvider))
-            {
-                return _serviceBusAccountProvider;
             }
             else if (serviceType == typeof(IStorageAccountProvider))
             {

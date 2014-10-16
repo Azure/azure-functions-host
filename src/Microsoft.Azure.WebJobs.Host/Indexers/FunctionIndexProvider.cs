@@ -16,8 +16,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
-        private readonly IStorageAccountProvider _storageAccountProvider;
-        private readonly IServiceBusAccountProvider _serviceBusAccountProvider;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
 
@@ -25,15 +23,11 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public FunctionIndexProvider(ITypeLocator typeLocator,
             INameResolver nameResolver,
-            IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider)
         {
             _typeLocator = typeLocator;
             _nameResolver = nameResolver;
-            _storageAccountProvider = storageAccountProvider;
-            _serviceBusAccountProvider = serviceBusAccountProvider;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
         }
@@ -50,12 +44,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
-            IStorageAccount storageAccount = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
-            string serviceBusConnectionString = _serviceBusAccountProvider.ConnectionString;
-
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_nameResolver, storageAccount, serviceBusConnectionString,
-                _triggerBindingProvider, _bindingProvider);
+            FunctionIndexer indexer = new FunctionIndexer(_nameResolver, _triggerBindingProvider, _bindingProvider);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type), null,
-                storageAccountProvider, serviceBusAccountProvider, triggerBindingProvider, bindingProvider);
+                triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();

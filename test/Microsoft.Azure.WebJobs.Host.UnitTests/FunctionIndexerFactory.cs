@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 
-            return new FunctionIndexer(nameResolver, storageAccount, null, triggerBindingProvider, bindingProvider);
+            return new FunctionIndexer(nameResolver, triggerBindingProvider, bindingProvider);
         }
     }
 }

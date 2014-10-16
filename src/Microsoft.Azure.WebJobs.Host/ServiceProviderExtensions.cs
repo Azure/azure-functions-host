@@ -25,11 +25,6 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IBindingProvider>(serviceProvider);
         }
 
-        public static IConnectionStringProvider GetConnectionStringProvider(this IServiceProvider serviceProvider)
-        {
-            return GetService<IConnectionStringProvider>(serviceProvider);
-        }
-
         public static IFunctionIndexProvider GetFunctionIndexProvider(this IServiceProvider serviceProvider)
         {
             return GetService<IFunctionIndexProvider>(serviceProvider);
@@ -59,11 +54,6 @@ namespace Microsoft.Azure.WebJobs.Host
         public static IQueueConfiguration GetQueueConfiguration(this IServiceProvider serviceProvider)
         {
             return GetService<IQueueConfiguration>(serviceProvider);
-        }
-
-        public static IServiceBusAccountProvider GetServiceBusAccountProvider(this IServiceProvider serviceProvider)
-        {
-            return GetService<IServiceBusAccountProvider>(serviceProvider);
         }
 
         public static IStorageAccountProvider GetStorageAccountProvider(this IServiceProvider serviceProvider)
