@@ -6,6 +6,8 @@
             jobName = $routeParams.jobName,
             jobRunUrl = api.kudu.job('continuous', jobName);
 
+        isUsingSdk.findOut($scope);
+
         $scope.jobName = jobName;
         $scope.nonFinalInvocations = {};
 

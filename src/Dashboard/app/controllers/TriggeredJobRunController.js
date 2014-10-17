@@ -11,6 +11,8 @@
         $scope.runId = runId;
         $scope.nonFinalInvocations = {};
 
+        isUsingSdk.findOut($scope);
+
         $scope.breadcrumbs = [{
             url: urls.jobs(),
             title: 'WebJobs'

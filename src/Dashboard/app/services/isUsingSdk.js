@@ -7,17 +7,20 @@
     function setUsing(scope) {
         if (scope) {
             scope._usingSdk = true;
+            scope._usingSdkSet = true;
         } else {
             $rootScope._usingSdk = true;
+            $rootScope._usingSdkSet = true;
         }
     }
 
     function setNotUsing(scope) {
         scope._usingSdk = false;
+        scope._usingSdkSet = true;
     }
 
     function findOut(scope) {
-        if (isUsing(scope)) {
+        if (scope._usingSdkSet) {
             // this (or other) service already found out.
             return;
         }

@@ -1,8 +1,10 @@
 ﻿angular.module('dashboard').controller('TriggeredJobController',
-  function ($scope, $routeParams, $interval, $http, JobRun, JobDefinition, api, urls) {
+  function ($scope, $routeParams, $interval, $http, JobRun, JobDefinition, api, urls, isUsingSdk) {
       var poll,
           pollInterval = 10 * 1000,
           lastPoll = 0;
+
+      isUsingSdk.findOut($scope);
 
       $scope.jobName = $routeParams.jobName;
 
