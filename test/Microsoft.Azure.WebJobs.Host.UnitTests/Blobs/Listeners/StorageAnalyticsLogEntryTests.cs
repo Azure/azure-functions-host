@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
         [Theory]
         [InlineData(StorageServiceOperationType.PutBlob, StorageServiceType.Blob, @"/storagesample/sample-container/""0x8D199A96CB71468""/sample-blob.txt", "sample-container", @"""0x8D199A96CB71468""/sample-blob.txt")]
-        [InlineData(StorageServiceOperationType.CopyBlobSource, StorageServiceType.Blob, @"https://storagesample.blob.core.windows.net/sample-container/sample-blob.txt", "sample-container", "sample-blob.txt")]
+        [InlineData(StorageServiceOperationType.CopyBlobDestination, StorageServiceType.Blob, @"https://storagesample.blob.core.windows.net/sample-container/sample-blob.txt", "sample-container", "sample-blob.txt")]
         internal void ToBlobPath_IfValidBlobOperationEntry_ReturnsBlobPath(StorageServiceOperationType operationType, StorageServiceType serviceType, string requestedObjectKey, string expectedContainerName, string expectedBlobName)
         {
             StorageAnalyticsLogEntry entry = CreateEntry("2014-09-08T18:44:18.9681025Z", operationType, serviceType, requestedObjectKey);

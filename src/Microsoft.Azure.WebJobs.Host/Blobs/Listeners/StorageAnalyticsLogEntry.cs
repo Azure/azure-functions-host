@@ -58,10 +58,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     ServiceType.HasValue &&
                     ServiceType == StorageServiceType.Blob &&
                     OperationType.HasValue &&
-                    ((OperationType == StorageServiceOperationType.PutBlob) ||
+                    ((OperationType == StorageServiceOperationType.ClearPage) || 
                     (OperationType == StorageServiceOperationType.CopyBlob) ||
                     (OperationType == StorageServiceOperationType.CopyBlobDestination) ||
-                    (OperationType == StorageServiceOperationType.CopyBlobSource) ||
+                    (OperationType == StorageServiceOperationType.PutBlob) ||
+                    (OperationType == StorageServiceOperationType.PutBlockList) ||
+                    (OperationType == StorageServiceOperationType.PutPage) ||
                     (OperationType == StorageServiceOperationType.SetBlobMetadata) ||
                     (OperationType == StorageServiceOperationType.SetBlobProperties));
             }
