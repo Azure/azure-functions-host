@@ -91,34 +91,33 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
-
-                if (!HostIdValidator.IsValid(hostId))
-                {
-                    throw new InvalidOperationException(HostIdValidator.ValidationMessage);
-                }
-
                 HostBindingContext bindingContext = new HostBindingContext(_backgroundExceptionDispatcher,
                     _bindingProvider, _nameResolver, _queueConfiguration);
+                FunctionExecutorContext executorContext = new FunctionExecutorContext(functionInstanceLogger,
+                    functionOutputLogger, bindingContext);
+                IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
-                IListenerFactory sharedQueueListenerFactory;
-                IListenerFactory instanceQueueListenerFactory;
-                IRecurrentCommand heartbeatCommand;
+                IFunctionExecutor executor = new FunctionExecutor(executorContext);
+
+                IFunctionExecutor hostCallExecutor;
+                IListener listener;
                 HostOutputMessage hostOutputMessage;
 
                 if (dashboardAccount != null)
                 {
+                    string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
+
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
-                    sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
+                    IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
                         functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
-                    instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue, functions,
-                        functionInstanceLogger);
+                    IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
+                        functions, functionInstanceLogger);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                     {
@@ -127,7 +126,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         InstanceBlobName = hostInstanceId.ToString("N"),
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
-                    heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(sdkDashboardAccount,
+                    IRecurrentCommand heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(
+                        sdkDashboardAccount,
                         heartbeatDescriptor.SharedContainerName,
                         heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 
@@ -145,28 +145,30 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         WebJobRunIdentifier = WebJobRunIdentifier.Current
                     };
 
+                    hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, bindingContext,
+                        heartbeatCommand, _shutdownToken, executor);
+                    IListenerFactory hostListenerFactory = new CompositeListenerFactory(functionsListenerFactory,
+                        sharedQueueListenerFactory, instanceQueueListenerFactory);
+                    listener = CreateHostListener(hostListenerFactory, bindingContext, heartbeatCommand, _shutdownToken,
+                        executor);
+
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger,
                         combinedCancellationToken);
                 }
                 else
                 {
-                    sharedQueueListenerFactory = new NullListenerFactory();
-                    instanceQueueListenerFactory = new NullListenerFactory();
-                    heartbeatCommand = new NullRecurrentCommand();
+                    hostCallExecutor = new ShutdownFunctionExecutor(_shutdownToken, executor);
+
+                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory, executor,
+                        bindingContext);
+                    IListener shutdownListener = new ShutdownListener(_shutdownToken, factoryListener);
+                    listener = shutdownListener;
+
                     hostOutputMessage = new DataOnlyHostOutputMessage();
                 }
 
-                IFunctionExecutor executor = new FunctionExecutor(new FunctionExecutorContext(functionInstanceLogger,
-                    functionOutputLogger, bindingContext, hostOutputMessage));
-                IListenerFactory allFunctionsListenerFactory = new HostListenerFactory(functions.ReadAll(),
-                    sharedQueueListenerFactory, instanceQueueListenerFactory);
-
-                IFunctionExecutor hostCallExecutor = CreateHostCallExecutor(hostId, instanceQueueListenerFactory,
-                    bindingContext, heartbeatCommand, _shutdownToken, executor);
-
-                IListener listener = CreateHostListener(hostId, allFunctionsListenerFactory, bindingContext,
-                    heartbeatCommand, _shutdownToken, executor);
+                executorContext.HostOutputMessage = hostOutputMessage;
 
                 IEnumerable<FunctionDescriptor> descriptors = functions.ReadAllDescriptors();
                 int descriptorsCount = descriptors.Count();
@@ -190,25 +192,25 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static IFunctionExecutor CreateHostCallExecutor(string hostId,
-            IListenerFactory instanceQueueListenerFactory, HostBindingContext bindingContext,
-            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
+        private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
+            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
+            IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
                 bindingContext.BackgroundExceptionDispatcher, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
-                innerExecutor, bindingContext, hostId, heartbeatExecutor);
+                innerExecutor, bindingContext, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
                 abortListenerExecutor);
             return shutdownFunctionExecutor;
         }
 
-        private static IListener CreateHostListener(string hostId, IListenerFactory allFunctionsListenerFactory,
+        private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
             HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor executor)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
-                bindingContext, hostId);
+                bindingContext);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
                 bindingContext.BackgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);

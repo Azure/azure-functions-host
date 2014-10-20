@@ -45,12 +45,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             };
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
+            IHostIdProvider hostIdProvider = new FakeHostIdProvider();
 
             return new FakeServiceProvider
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType), null,
                     DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator),
+                        extensionTypeLocator, hostIdProvider),
                     DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
                 FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),
-                HostIdProvider = new FakeHostIdProvider(),
+                HostIdProvider = hostIdProvider,
                 QueueConfiguration = new FakeQueueConfiguration()
             };
         }

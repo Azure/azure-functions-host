@@ -12,17 +12,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionOutputLogger _functionOutputLogger;
         private readonly HostBindingContext _bindingContext;
-        private readonly HostOutputMessage _hostOutputMessage;
+
+        private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutorContext(IFunctionInstanceLogger functionInstanceLogger,
             IFunctionOutputLogger functionOutputLogger,
-            HostBindingContext bindingContext,
-            HostOutputMessage hostOutputMessage)
+            HostBindingContext bindingContext)
         {
             _functionInstanceLogger = functionInstanceLogger;
             _functionOutputLogger = functionOutputLogger;
             _bindingContext = bindingContext;
-            _hostOutputMessage = hostOutputMessage;
         }
 
         public IFunctionInstanceLogger FunctionInstanceLogger
@@ -43,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         public HostOutputMessage HostOutputMessage
         {
             get { return _hostOutputMessage; }
+            set { _hostOutputMessage = value; }
         }
     }
 }

@@ -12,15 +12,13 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     internal class ListenerFactoryContext
     {
         private readonly HostBindingContext _hostContext;
-        private readonly string _hostId;
         private readonly SharedListenerContainer _sharedListeners;
         private readonly CancellationToken _cancellationToken;
 
-        public ListenerFactoryContext(HostBindingContext hostContext, string hostId,
-            SharedListenerContainer sharedListeners, CancellationToken cancellationToken)
+        public ListenerFactoryContext(HostBindingContext hostContext, SharedListenerContainer sharedListeners,
+            CancellationToken cancellationToken)
         {
             _hostContext = hostContext;
-            _hostId = hostId;
             _sharedListeners = sharedListeners;
             _cancellationToken = cancellationToken;
         }
@@ -45,11 +43,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
         {
             get { return _hostContext.MessageEnqueuedWatcher; }
             set { _hostContext.MessageEnqueuedWatcher = value; }
-        }
-
-        public string HostId
-        {
-            get { return _hostId; }
         }
 
         public SharedListenerContainer SharedListeners

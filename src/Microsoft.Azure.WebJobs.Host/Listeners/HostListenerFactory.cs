@@ -11,16 +11,10 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     internal class HostListenerFactory : IListenerFactory
     {
         private readonly IEnumerable<IFunctionDefinition> _functionDefinitions;
-        private readonly IListenerFactory _sharedQueueListenerFactory;
-        private readonly IListenerFactory _instanceQueueListenerFactory;
 
-        public HostListenerFactory(IEnumerable<IFunctionDefinition> functionDefinitions,
-            IListenerFactory sharedQueueListenerFactory,
-            IListenerFactory instanceQueueListenerFactory)
+        public HostListenerFactory(IEnumerable<IFunctionDefinition> functionDefinitions)
         {
             _functionDefinitions = functionDefinitions;
-            _sharedQueueListenerFactory = sharedQueueListenerFactory;
-            _instanceQueueListenerFactory = instanceQueueListenerFactory;
         }
 
         public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
@@ -38,20 +32,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
                 IListener listener = await listenerFactory.CreateAsync(executor, context);
                 listeners.Add(listener);
-            }
-
-            IListener sharedQueueListener = await _sharedQueueListenerFactory.CreateAsync(executor, context);
-
-            if (sharedQueueListener != null)
-            {
-                listeners.Add(sharedQueueListener);
-            }
-
-            IListener instanceQueueListener = await _instanceQueueListenerFactory.CreateAsync(executor, context);
-
-            if (instanceQueueListener != null)
-            {
-                listeners.Add(instanceQueueListener);
             }
 
             return new CompositeListener(listeners);

@@ -14,11 +14,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     internal static class DefaultTriggerBindingProvider
     {
         public static ITriggerBindingProvider Create(IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider, IExtensionTypeLocator extensionTypeLocator)
+            IServiceBusAccountProvider serviceBusAccountProvider, IExtensionTypeLocator extensionTypeLocator,
+            IHostIdProvider hostIdProvider)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(storageAccountProvider));
-            innerProviders.Add(new BlobTriggerAttributeBindingProvider(storageAccountProvider, extensionTypeLocator));
+            innerProviders.Add(new BlobTriggerAttributeBindingProvider(storageAccountProvider, extensionTypeLocator,
+                hostIdProvider));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");

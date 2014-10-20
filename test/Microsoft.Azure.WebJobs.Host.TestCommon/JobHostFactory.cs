@@ -35,12 +35,13 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             };
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
+            IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), null,
                     DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator),
+                        extensionTypeLocator, hostIdProvider),
                     DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,

@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -14,16 +13,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IListenerFactory _abortListenerFactory;
         private readonly IFunctionExecutor _abortExecutor;
         private readonly HostBindingContext _abortContext;
-        private readonly string _hostId;
         private readonly IFunctionExecutor _innerExecutor;
 
         public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor,
-            HostBindingContext abortContext, string hostId, IFunctionExecutor innerExecutor)
+            HostBindingContext abortContext, IFunctionExecutor innerExecutor)
         {
             _abortListenerFactory = abortListenerFactory;
             _abortExecutor = abortExecutor;
             _abortContext = abortContext;
-            _hostId = hostId;
             _innerExecutor = innerExecutor;
         }
 
@@ -46,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private Task<IListener> CreateListenerAsync(CancellationToken cancellationToken)
         {
-            ListenerFactoryContext listenerContext = new ListenerFactoryContext(_abortContext, _hostId,
+            ListenerFactoryContext listenerContext = new ListenerFactoryContext(_abortContext,
                 new SharedListenerContainer(), cancellationToken);
             return _abortListenerFactory.CreateAsync(_abortExecutor, listenerContext);
         }

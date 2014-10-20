@@ -402,6 +402,7 @@
     <Compile Include="Indexers\IExtensionTypeLocator.cs" />
     <Compile Include="Indexers\IFunctionIndexCollector.cs" />
     <Compile Include="Indexers\IFunctionIndexProvider.cs" />
+    <Compile Include="Listeners\CompositeListenerFactory.cs" />
     <Compile Include="Loggers\DefaultLoggerProvider.cs" />
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />

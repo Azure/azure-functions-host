@@ -17,15 +17,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobListenerFactory : IListenerFactory
     {
+        private readonly string _hostId;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionInstanceFactory<IStorageBlob> _instanceFactory;
 
-        public BlobListenerFactory(string functionId, IStorageAccount account, CloudBlobContainer container,
-            IBlobPathSource input, ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
+        public BlobListenerFactory(string hostId, string functionId, IStorageAccount account,
+            CloudBlobContainer container, IBlobPathSource input,
+            ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
+            _hostId = hostId;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -46,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageBlobClient blobClient = _account.CreateBlobClient();
             CloudBlobClient sdkBlobClient = _account.SdkObject.CreateCloudBlobClient();
 
-            string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(context.HostId);
+            string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(_hostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
             IListener blobDiscoveryToQueueMessageListener = await CreateBlobDiscoveryToQueueMessageListenerAsync(
@@ -68,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IMessageEnqueuedWatcher messageEnqueuedWatcher,
             CancellationToken cancellationToken)
         {
-            BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(context.HostId, _functionId, _input,
+            BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(_hostId, _functionId, _input,
                 BlobETagReader.Instance, new BlobReceiptManager(blobClient),
                 new BlobTriggerQueueWriter(hostBlobTriggerQueue, messageEnqueuedWatcher));
             await sharedBlobListener.RegisterAsync(_container, triggerExecutor, cancellationToken);

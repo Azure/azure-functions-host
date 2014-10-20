@@ -22,9 +22,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
     {
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
+        private readonly IHostIdProvider _hostIdProvider;
 
         public BlobTriggerAttributeBindingProvider(IStorageAccountProvider accountProvider,
-            IExtensionTypeLocator extensionTypeLocator)
+            IExtensionTypeLocator extensionTypeLocator, IHostIdProvider hostIdProvider)
         {
             if (accountProvider == null)
             {
@@ -36,8 +37,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("extensionTypeLocator");
             }
 
+            if (hostIdProvider == null)
+            {
+                throw new ArgumentNullException("hostIdProvider");
+            }
+
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
+            _hostIdProvider = hostIdProvider;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -87,7 +94,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path);
+            string hostId = await _hostIdProvider.GetHostIdAsync(context.CancellationToken);
+            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path, hostId);
             return binding;
         }
     }

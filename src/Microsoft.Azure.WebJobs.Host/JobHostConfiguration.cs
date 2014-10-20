@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs
         private IBindingProvider _bindingProvider;
         private IExtensionTypeLocator _extensionTypeLocator;
         private ITriggerBindingProvider _triggerBindingProvider;
+        private IHostIdProvider _hostIdProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -87,6 +88,7 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 _hostId = value;
+                _hostIdProvider = null;
             }
         }
 
@@ -195,14 +197,19 @@ namespace Microsoft.Azure.WebJobs
         {
             get
             {
-                if (_hostId != null)
+                if (_hostIdProvider == null)
                 {
-                    return new FixedHostIdProvider(_hostId);
+                    if (_hostId != null)
+                    {
+                        _hostIdProvider = new FixedHostIdProvider(_hostId);
+                    }
+                    else
+                    {
+                        _hostIdProvider = new DynamicHostIdProvider(FunctionIndexProvider, _storageAccountProvider);
+                    }
                 }
-                else
-                {
-                    return new DynamicHostIdProvider(FunctionIndexProvider, _storageAccountProvider);
-                }
+
+                return _hostIdProvider;
             }
         }
 
@@ -213,7 +220,7 @@ namespace Microsoft.Azure.WebJobs
                 if (_triggerBindingProvider == null)
                 {
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_storageAccountProvider,
-                        _serviceBusAccountProvider, ExtensionTypeLocator);
+                        _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider);
                 }
 
                 return _triggerBindingProvider;
