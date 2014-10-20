@@ -16,7 +16,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal class ScanContainersStrategy : IBlobNotificationStrategy
+    internal sealed class ScanContainersStrategy : IBlobListenerStrategy
     {
         private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
 
@@ -37,7 +37,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _blobWrittenNotifications.Enqueue(blobWritten);
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
+        public Task RegisterAsync(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
+            CancellationToken cancellationToken)
         {
             // Register and Execute are not concurrency-safe.
             // Avoiding calling Register while Execute is running is the caller's responsibility.
@@ -59,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 _lastModifiedTimestamps.Add(container, DateTime.MinValue);
             }
+
+            return Task.FromResult(0);
         }
 
         public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
@@ -105,6 +108,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
         }
 
+        public void Cancel()
+        {
+        }
+
+        public void Start()
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+
         private async Task NotifyRegistrationsAsync(ICloudBlob blob, ICollection<ICloudBlob> failedNotifications,
             CancellationToken cancellationToken)
         {
@@ -137,8 +152,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             try
             {
-                // async TODO: Use ListBlobsSegmentedAsync in a loop.
-                currentBlobs = container.ListBlobs(useFlatBlobListing: true).ToList();
+                currentBlobs = (await container.ListBlobsAsync(useFlatBlobListing: true,
+                    cancellationToken: cancellationToken)).ToList();
             }
             catch (StorageException exception)
             {

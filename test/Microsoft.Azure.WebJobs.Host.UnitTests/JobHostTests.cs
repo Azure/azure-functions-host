@@ -3,13 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -23,6 +23,43 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class JobHostTests
     {
+        // Checks that we write the marker file when we call the host
+        [Fact]
+        public void TestSdkMarkerIsWrittenWhenInAzureWebSites()
+        {
+            // Arrange
+            string tempDir = Path.GetTempPath();
+            const string filename = "WebJobsSdk.marker";
+
+            var path = Path.Combine(tempDir, filename);
+
+            File.Delete(path);
+
+            JobHostConfiguration configuration = new JobHostConfiguration();
+            configuration.HostId = "test";
+            configuration.DashboardConnectionString = null;
+            configuration.TypeLocator = new FakeTypeLocator();
+
+            using (JobHost host = new JobHost(configuration))
+            {
+                try
+                {
+                    Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, tempDir);
+
+                    // Act
+                    host.Start();
+
+                    // Assert
+                    Assert.True(File.Exists(path), "SDK marker file should have been written");
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, null);
+                    File.Delete(path);
+                }
+            }
+        }
+
         [Fact]
         public void StartAsync_WhenNotStarted_DoesNotThrow()
         {

@@ -56,8 +56,6 @@ namespace Microsoft.Azure.WebJobs
         {
             _storageAccountProvider = storageAccountProvider;
             _loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
-
-            WriteSiteExtensionManifest();
         }
 
         /// <summary>Gets or sets the host ID.</summary>
@@ -269,23 +267,6 @@ namespace Microsoft.Azure.WebJobs
             {
                 return null;
             }
-        }
-
-        // When running in Azure Web Sites, write out a manifest file.
-        private static void WriteSiteExtensionManifest()
-        {
-            string jobDataPath = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath);
-            if (jobDataPath == null)
-            {
-                // we're not in Azure Web Sites, bye bye.
-                return;
-            }
-
-            const string filename = "WebJobsSdk.marker";
-            var path = Path.Combine(jobDataPath, filename);
-
-            // async TODO: Consider moving call out of JobHostConfiguration constructor.
-            File.WriteAllText(path, DateTime.UtcNow.ToString("s") + "Z"); // content is not really important, this would help debugging though
         }
     }
 }

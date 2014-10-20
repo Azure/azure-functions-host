@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             SharedQueueWatcher sharedQueueWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
@@ -48,27 +49,29 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(context.HostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
-            IListener blobDiscoveryToQueueMessageListener = CreateBlobDiscoveryToQueueMessageListener(context,
-                sharedBlobListener, sdkBlobClient, hostBlobTriggerQueue, sharedQueueWatcher);
+            IListener blobDiscoveryToQueueMessageListener = await CreateBlobDiscoveryToQueueMessageListenerAsync(
+                context, sharedBlobListener, sdkBlobClient, hostBlobTriggerQueue, sharedQueueWatcher,
+                context.CancellationToken);
             IListener queueMessageToTriggerExecutionListener = CreateQueueMessageToTriggerExecutionListener(executor,
                 context, sharedQueueWatcher, queueClient, hostBlobTriggerQueue, blobClient,
                 sharedBlobListener.BlobWritterWatcher);
             IListener compositeListener = new CompositeListener(
                 blobDiscoveryToQueueMessageListener,
                 queueMessageToTriggerExecutionListener);
-            return Task.FromResult(compositeListener);
+            return compositeListener;
         }
 
-        private IListener CreateBlobDiscoveryToQueueMessageListener(ListenerFactoryContext context,
+        private async Task<IListener> CreateBlobDiscoveryToQueueMessageListenerAsync(ListenerFactoryContext context,
             SharedBlobListener sharedBlobListener,
             CloudBlobClient blobClient,
             IStorageQueue hostBlobTriggerQueue,
-            IMessageEnqueuedWatcher messageEnqueuedWatcher)
+            IMessageEnqueuedWatcher messageEnqueuedWatcher,
+            CancellationToken cancellationToken)
         {
             BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(context.HostId, _functionId, _input,
                 BlobETagReader.Instance, new BlobReceiptManager(blobClient),
                 new BlobTriggerQueueWriter(hostBlobTriggerQueue, messageEnqueuedWatcher));
-            sharedBlobListener.Register(_container, triggerExecutor);
+            await sharedBlobListener.RegisterAsync(_container, triggerExecutor, cancellationToken);
             return new BlobListener(sharedBlobListener);
         }
 

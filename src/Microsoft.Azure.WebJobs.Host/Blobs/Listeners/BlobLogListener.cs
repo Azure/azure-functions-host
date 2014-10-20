@@ -25,18 +25,22 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly HashSet<string> _scannedBlobNames = new HashSet<string>();
         private readonly StorageAnalyticsLogParser _parser = new StorageAnalyticsLogParser();
 
-        // This will throw if the client credentials are not valid. 
-        public BlobLogListener(CloudBlobClient blobClient)
+        private BlobLogListener(CloudBlobClient blobClient)
         {
             _blobClient = blobClient;
-
-            // async TODO: Move this operation out of the constructor; do the work async
-            EnableLogging(_blobClient);
         }
 
         public CloudBlobClient Client
         {
             get { return _blobClient; }
+        }
+
+        // This will throw if the client credentials are not valid. 
+        public static async Task<BlobLogListener> CreateAsync(CloudBlobClient blobClient,
+            CancellationToken cancellationToken)
+        {
+            await EnableLoggingAsync(blobClient, cancellationToken);
+            return new BlobLogListener(blobClient);
         }
 
         public async Task<IEnumerable<ICloudBlob>> GetRecentBlobWritesAsync(CancellationToken cancellationToken,
@@ -144,13 +148,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         // Populate the List<> with blob logs for the given prefix. 
         // http://blogs.msdn.com/b/windowsazurestorage/archive/2011/08/03/windows-azure-storage-logging-using-logs-to-track-storage-requests.aspx
-        private static Task GetLogsWithPrefixAsync(List<ICloudBlob> selectedLogs, CloudBlobClient blobClient,
+        private static async Task GetLogsWithPrefixAsync(List<ICloudBlob> selectedLogs, CloudBlobClient blobClient,
             string prefix, CancellationToken cancellationToken)
         {
             // List the blobs using the prefix
-            // async TODO: call ListBlobsSegmentedAsync in a loop.
-            IEnumerable<IListBlobItem> blobs = blobClient.ListBlobs(prefix,
-                useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata);
+            IEnumerable<IListBlobItem> blobs = await blobClient.ListBlobsAsync(prefix,
+                useFlatBlobListing: true, blobListingDetails: BlobListingDetails.Metadata,
+                cancellationToken: cancellationToken);
 
             // iterate through each blob and figure the start and end times in the metadata
             foreach (IListBlobItem item in blobs)
@@ -168,25 +172,24 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     }
                 }
             }
-
-            return Task.FromResult(0);
         }
 
-        public static void EnableLogging(CloudBlobClient blobClient)
+        public static async Task EnableLoggingAsync(CloudBlobClient blobClient, CancellationToken cancellationToken)
         {
-            var sp = blobClient.GetServiceProperties();
+            ServiceProperties serviceProperties = await blobClient.GetServicePropertiesAsync(cancellationToken);
 
             // Merge write onto it. 
-            var lp = sp.Logging;
-            if (lp.LoggingOperations == LoggingOperations.None)
+            LoggingProperties loggingProperties = serviceProperties.Logging;
+
+            if (loggingProperties.LoggingOperations == LoggingOperations.None)
             {
                 // First activating. Be sure to set a retention policy if there isn't one. 
-                lp.RetentionDays = 7;
-                lp.LoggingOperations |= LoggingOperations.Write;
+                loggingProperties.RetentionDays = 7;
+                loggingProperties.LoggingOperations |= LoggingOperations.Write;
 
                 // Leave metrics untouched           
 
-                blobClient.SetServiceProperties(sp);
+                await blobClient.SetServicePropertiesAsync(serviceProperties, cancellationToken);
             }
         }
     }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -64,6 +65,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownToken))
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
+
+                await WriteSiteExtensionManifestAsync(combinedCancellationToken);
 
                 IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(
                     combinedCancellationToken);
@@ -251,6 +254,29 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             };
 
             return logger.LogHostStartedAsync(message, cancellationToken);
+        }
+
+        // When running in Azure Web Sites, write out a manifest file.
+        private static async Task WriteSiteExtensionManifestAsync(CancellationToken cancellationToken)
+        {
+            string jobDataPath = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath);
+            if (jobDataPath == null)
+            {
+                // we're not in Azure Web Sites, bye bye.
+                return;
+            }
+
+            const string filename = "WebJobsSdk.marker";
+            var path = Path.Combine(jobDataPath, filename);
+
+            using (Stream stream = File.OpenWrite(path))
+            using (TextWriter writer = new StreamWriter(stream))
+            {
+                // content is not really important, this would help debugging though
+                cancellationToken.ThrowIfCancellationRequested();
+                await writer.WriteAsync(DateTime.UtcNow.ToString("s") + "Z");
+                await writer.FlushAsync();
+            }
         }
 
         private class DataOnlyHostOutputMessage : HostOutputMessage

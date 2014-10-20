@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class SharedBlobListener : ISharedListener
     {
-        private readonly IBlobNotificationStrategy _strategy;
+        private readonly IBlobListenerStrategy _strategy;
         private readonly ITaskSeriesTimer _timer;
 
         private bool _started;
@@ -33,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             get { return _strategy; }
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
+        public Task RegisterAsync(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
+            CancellationToken cancellationToken)
         {
             if (_started)
             {
@@ -41,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     "Registrations may not be added while the shared listener is running.");
             }
 
-            _strategy.Register(container, triggerExecutor);
+            return _strategy.RegisterAsync(container, triggerExecutor, cancellationToken);
         }
 
         public Task EnsureAllStartedAsync(CancellationToken cancellationToken)
@@ -49,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (!_started)
             {
                 _timer.Start();
+                _strategy.Start();
                 _started = true;
             }
 
@@ -59,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             if (_started)
             {
+                _strategy.Cancel();
                 await _timer.StopAsync(cancellationToken);
                 _started = false;
             }
@@ -66,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public void EnsureAllCanceled()
         {
+            _strategy.Cancel();
             _timer.Cancel();
         }
 
@@ -78,12 +82,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             if (!_disposed)
             {
+                _strategy.Dispose();
                 _timer.Dispose();
                 _disposed = true;
             }
         }
 
-        private static IBlobNotificationStrategy CreateStrategy(CloudStorageAccount account)
+        private static IBlobListenerStrategy CreateStrategy(CloudStorageAccount account)
         {
             if (!StorageClient.IsDevelopmentStorageAccount(account))
             {

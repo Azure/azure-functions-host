@@ -17,7 +17,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     // A hybrid strategy that begins with a full container scan and then does incremental updates via log polling.
-    internal class PollLogsStrategy : IBlobNotificationStrategy
+    internal sealed class PollLogsStrategy : IBlobListenerStrategy
     {
         private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
 
@@ -25,6 +25,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IDictionary<CloudBlobClient, BlobLogListener> _logListeners;
         private readonly Thread _initialScanThread;
         private readonly ConcurrentQueue<ICloudBlob> _blobsFoundFromScanOrNotification;
+        private readonly CancellationTokenSource _cancellationTokenSource;
+
+        private bool _disposed;
 
         public PollLogsStrategy()
         {
@@ -32,11 +35,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 new CloudBlobContainerComparer());
             _logListeners = new Dictionary<CloudBlobClient, BlobLogListener>(new CloudBlobClientComparer());
             _initialScanThread = new Thread(ScanContainers);
-            _blobsFoundFromScanOrNotification =  new ConcurrentQueue<ICloudBlob>();
+            _blobsFoundFromScanOrNotification = new ConcurrentQueue<ICloudBlob>();
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
-        public void Register(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor)
+        public async Task RegisterAsync(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
+            CancellationToken cancellationToken)
         {
+            ThrowIfDisposed();
+
             // Initial background scans for all containers happen on first Execute call.
             // Prevent accidental late registrations.
             // (Also prevents incorrect concurrent execution of Register with Execute.)
@@ -63,23 +70,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             if (!_logListeners.ContainsKey(client))
             {
-                _logListeners.Add(client, new BlobLogListener(client));
+                BlobLogListener logListener = await BlobLogListener.CreateAsync(client, cancellationToken);
+                _logListeners.Add(client, logListener);
             }
         }
 
         public void Notify(ICloudBlob blobWritten)
         {
+            ThrowIfDisposed();
             _blobsFoundFromScanOrNotification.Enqueue(blobWritten);
         }
 
         public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
         {
-            // Start a background scan of the container on first execution. Later writes will be found via polling logs.
-            if (_initialScanThread.ThreadState == ThreadState.Unstarted)
-            {
-                // Thread monitors _hostCancellationToken (that's the only way this thread is controlled).
-                _initialScanThread.Start();
-            }
+            ThrowIfDisposed();
 
             // Drain the background queue (for initial container scans and blob written notifications).
             while (true)
@@ -109,6 +113,30 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             // Run subsequent iterations at 2 second intervals.
             return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
+        }
+
+        public void Start()
+        {
+            ThrowIfDisposed();
+
+            // Start a background scan of the container on first execution. Later writes will be found via polling logs.
+            // Thread monitors _cancellationTokenSource.Token (that's the only way this thread is controlled).
+            _initialScanThread.Start(_cancellationTokenSource.Token);
+        }
+
+        public void Cancel()
+        {
+            ThrowIfDisposed();
+            _cancellationTokenSource.Cancel();
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _cancellationTokenSource.Dispose();
+                _disposed = true;
+            }
         }
 
         private async Task NotifyRegistrationsAsync(ICloudBlob blob, CancellationToken cancellationToken)
@@ -155,11 +183,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        private void ScanContainers()
+        private void ScanContainers(object state)
         {
+            CancellationToken cancellationToken = (CancellationToken)state;
+
             foreach (CloudBlobContainer container in _registrations.Keys)
             {
-                // async TODO: Provide early termination graceful shutdown mechanism.
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 List<IListBlobItem> items;
 
                 try
@@ -183,9 +217,21 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 // Type cast to ICloudBlob is safe due to useFlatBlobListing: true above.
                 foreach (ICloudBlob item in items)
                 {
-                    // async TODO: Provide early termination graceful shutdown mechanism.
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
                     _blobsFoundFromScanOrNotification.Enqueue(item);
                 }
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(null);
             }
         }
     }

@@ -364,6 +364,9 @@
     <Compile Include="Blobs\Bindings\CancellableTaskFactory.cs" />
     <Compile Include="Blobs\Bindings\TaskCancellableAsyncResult.cs" />
     <Compile Include="Blobs\BlobCausalityReader.cs" />
+    <Compile Include="Blobs\Listeners\CloudBlobContainerExtensions.cs" />
+    <Compile Include="Blobs\Listeners\CloudBlobClientExtensions.cs" />
+    <Compile Include="Blobs\Listeners\IBlobListenerStrategy.cs" />
     <Compile Include="Blobs\StorageBlobExtensions.cs" />
     <Compile Include="Blobs\IBlobCausalityReader.cs" />
     <Compile Include="Blobs\Listeners\BlobListener.cs" />

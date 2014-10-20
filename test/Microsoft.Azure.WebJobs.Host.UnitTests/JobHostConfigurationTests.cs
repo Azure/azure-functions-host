@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -161,38 +160,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             ExceptionAssert.ThrowsArgument(() => { configuration.HostId = hostId; }, "value",
                 "A host ID must be between 1 and 32 characters, contain only lowercase letters, numbers, and " +
                 "dashes, not start or end with a dash, and not contain consecutive dashes.");
-        }
-
-        /// <summary>
-        /// Checks that we write the marker file when we call the constructor with arguments
-        /// </summary>
-        [Fact]
-        public void TestSdkMarkerIsWrittenWhenInAzureWebSites()
-        {
-            // Arrange
-            string tempDir = Path.GetTempPath();
-            const string filename = "WebJobsSdk.marker";
-
-            var path = Path.Combine(tempDir, filename);
-
-            File.Delete(path);
-
-
-            try
-            {
-                Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, tempDir);
-
-                // Act
-                JobHostConfiguration configuration = new JobHostConfiguration();
-
-                // Assert
-                Assert.True(File.Exists(path), "SDK marker file should have been written");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(WebSitesKnownKeyNames.JobDataPath, null);
-                File.Delete(path);
-            }
         }
     }
 }
