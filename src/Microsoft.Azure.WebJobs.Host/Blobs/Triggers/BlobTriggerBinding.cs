@@ -27,12 +27,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IStorageBlobClient _client;
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
-        private readonly string _hostId;
+        private readonly IHostIdProvider _hostIdProvider;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
         public BlobTriggerBinding(string parameterName, IArgumentBinding<IStorageBlob> argumentBinding,
-            IStorageAccount account, IBlobPathSource path, string hostId)
+            IStorageAccount account, IBlobPathSource path, IHostIdProvider hostIdProvider)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _client = account.CreateBlobClient();
             _accountName = BlobClient.GetAccountName(_client);
             _path = path;
-            _hostId = hostId;
+            _hostIdProvider = hostIdProvider;
             _converter = CreateConverter(_client);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory =
                 new TriggeredFunctionInstanceFactory<IStorageBlob>(functionBinding, invoker, functionDescriptor);
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
-            IListenerFactory listenerFactory = new BlobListenerFactory(_hostId, functionDescriptor.Id, _account,
+            IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, functionDescriptor.Id, _account,
                 container.SdkObject, _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }

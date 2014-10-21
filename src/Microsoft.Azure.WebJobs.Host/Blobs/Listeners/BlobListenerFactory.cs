@@ -17,18 +17,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobListenerFactory : IListenerFactory
     {
-        private readonly string _hostId;
+        private readonly IHostIdProvider _hostIdProvider;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionInstanceFactory<IStorageBlob> _instanceFactory;
 
-        public BlobListenerFactory(string hostId, string functionId, IStorageAccount account,
+        public BlobListenerFactory(IHostIdProvider hostIdProvider, string functionId, IStorageAccount account,
             CloudBlobContainer container, IBlobPathSource input,
             ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
-            _hostId = hostId;
+            _hostIdProvider = hostIdProvider;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -49,11 +49,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageBlobClient blobClient = _account.CreateBlobClient();
             CloudBlobClient sdkBlobClient = _account.SdkObject.CreateCloudBlobClient();
 
-            string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(_hostId);
+            string hostId = await _hostIdProvider.GetHostIdAsync(context.CancellationToken);
+            string hostBlobTriggerQueueName = HostQueueNames.GetHostBlobTriggerQueueName(hostId);
             IStorageQueue hostBlobTriggerQueue = queueClient.GetQueueReference(hostBlobTriggerQueueName);
 
             IListener blobDiscoveryToQueueMessageListener = await CreateBlobDiscoveryToQueueMessageListenerAsync(
-                context, sharedBlobListener, sdkBlobClient, hostBlobTriggerQueue, sharedQueueWatcher,
+                hostId, context, sharedBlobListener, sdkBlobClient, hostBlobTriggerQueue, sharedQueueWatcher,
                 context.CancellationToken);
             IListener queueMessageToTriggerExecutionListener = CreateQueueMessageToTriggerExecutionListener(executor,
                 context, sharedQueueWatcher, queueClient, hostBlobTriggerQueue, blobClient,
@@ -64,14 +65,15 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             return compositeListener;
         }
 
-        private async Task<IListener> CreateBlobDiscoveryToQueueMessageListenerAsync(ListenerFactoryContext context,
+        private async Task<IListener> CreateBlobDiscoveryToQueueMessageListenerAsync(string hostId,
+            ListenerFactoryContext context,
             SharedBlobListener sharedBlobListener,
             CloudBlobClient blobClient,
             IStorageQueue hostBlobTriggerQueue,
             IMessageEnqueuedWatcher messageEnqueuedWatcher,
             CancellationToken cancellationToken)
         {
-            BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(_hostId, _functionId, _input,
+            BlobTriggerExecutor triggerExecutor = new BlobTriggerExecutor(hostId, _functionId, _input,
                 BlobETagReader.Instance, new BlobReceiptManager(blobClient),
                 new BlobTriggerQueueWriter(hostBlobTriggerQueue, messageEnqueuedWatcher));
             await sharedBlobListener.RegisterAsync(_container, triggerExecutor, cancellationToken);

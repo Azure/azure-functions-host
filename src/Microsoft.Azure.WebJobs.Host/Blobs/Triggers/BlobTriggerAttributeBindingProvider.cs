@@ -94,8 +94,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             }
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
-            string hostId = await _hostIdProvider.GetHostIdAsync(context.CancellationToken);
-            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path, hostId);
+            ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
+                _hostIdProvider);
             return binding;
         }
     }
