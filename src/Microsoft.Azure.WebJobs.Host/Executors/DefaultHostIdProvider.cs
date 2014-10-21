@@ -56,8 +56,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         _innerProvider = new DynamicHostIdProvider(_getFunctionIndexProvider.Invoke(),
                             _storageAccountProvider);
                     }
-
-                    _innerProvider = null;
                 }
 
                 return _innerProvider;
