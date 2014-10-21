@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs
         /// Initializes a new instance of the <see cref="JobHost"/> class using the service provider provided.
         /// </summary>
         /// <param name="serviceProvider">The service provider.</param>
-        public JobHost(IServiceProvider serviceProvider)
+        internal JobHost(IServiceProvider serviceProvider)
         {
             if (serviceProvider == null)
             {
