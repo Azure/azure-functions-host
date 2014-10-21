@@ -116,7 +116,7 @@
 
   <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.1.9.2\lib\net20\xunit.runner.msbuild.dll"/>
 
-  <Target Name="UnitTest" DependsOnTargets="Build">
+  <Target Name="UnitTest" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
         <UnitTestProjects Include="test\Microsoft.Azure.WebJobs.Host.UnitTests\WebJobs.Host.UnitTests.csproj"/>
         <UnitTestProjects Include="test\Microsoft.Azure.WebJobs.Host.FunctionalTests\WebJobs.Host.FunctionalTests.csproj"/>
