@@ -17,20 +17,19 @@ namespace Microsoft.Azure.WebJobs
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public sealed class JobHostConfiguration : IServiceProvider
     {
+        private readonly DefaultHostIdProvider _hostIdProvider;
         private readonly DefaultLoggerProvider _loggerProvider;
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly DefaultServiceBusAccountProvider _serviceBusAccountProvider =
             new DefaultServiceBusAccountProvider();
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
 
-        private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
         private IFunctionIndexProvider _functionIndexProvider;
         private IBindingProvider _bindingProvider;
         private IExtensionTypeLocator _extensionTypeLocator;
         private ITriggerBindingProvider _triggerBindingProvider;
-        private IHostIdProvider _hostIdProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -56,6 +55,7 @@ namespace Microsoft.Azure.WebJobs
         private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
         {
             _storageAccountProvider = storageAccountProvider;
+            _hostIdProvider = new DefaultHostIdProvider(() => FunctionIndexProvider, storageAccountProvider);
             _loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
         }
 
@@ -79,17 +79,8 @@ namespace Microsoft.Azure.WebJobs
         /// </remarks>
         public string HostId
         {
-            get { return _hostId; }
-            set
-            {
-                if (value != null && !HostIdValidator.IsValid(value))
-                {
-                    throw new ArgumentException(HostIdValidator.ValidationMessage, "value");
-                }
-
-                _hostId = value;
-                _hostIdProvider = null;
-            }
+            get { return _hostIdProvider.HostId; }
+            set { _hostIdProvider.HostId = value; }
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
@@ -195,22 +186,7 @@ namespace Microsoft.Azure.WebJobs
 
         private IHostIdProvider HostIdProvider
         {
-            get
-            {
-                if (_hostIdProvider == null)
-                {
-                    if (_hostId != null)
-                    {
-                        _hostIdProvider = new FixedHostIdProvider(_hostId);
-                    }
-                    else
-                    {
-                        _hostIdProvider = new DynamicHostIdProvider(FunctionIndexProvider, _storageAccountProvider);
-                    }
-                }
-
-                return _hostIdProvider;
-            }
+            get { return _hostIdProvider; }
         }
 
         private ITriggerBindingProvider TriggerBindingProvider

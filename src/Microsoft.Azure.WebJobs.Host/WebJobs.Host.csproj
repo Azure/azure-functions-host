@@ -394,6 +394,7 @@
     <Compile Include="Blobs\ReadBlobArgumentBinding.cs" />
     <Compile Include="Blobs\Listeners\BlobTriggerMessage.cs" />
     <Compile Include="ClassPropertySetter.cs" />
+    <Compile Include="Executors\DefaultHostIdProvider.cs" />
     <Compile Include="Executors\DefaultServiceBusAccountProvider.cs" />
     <Compile Include="Executors\IServiceBusAccountProvider.cs" />
     <Compile Include="Executors\StorageAccountProviderExtensions.cs" />
