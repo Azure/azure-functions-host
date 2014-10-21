@@ -41,7 +41,9 @@
             $http({
                 method: "GET",
                 url: $scope.logUrl(),
-                params: { start: start }
+                params: { start: start },
+                responseType: "text",
+                transformResponse: function (data) { return data; }
             }).then(function (res) {
                 consoleLoadedAtLeastOnce = true;
 
