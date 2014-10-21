@@ -18,30 +18,42 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     // Negotiates host ID based on the assembly name of the first indexed method (persists a GUID for this purpose).
     internal class DynamicHostIdProvider : IHostIdProvider
     {
-        private readonly IFunctionIndexProvider _functionIndexProvider;
         private readonly IStorageAccountProvider _storageAccountProvider;
+        private readonly IFunctionIndexProvider _functionIndexProvider;
 
-        public DynamicHostIdProvider(IFunctionIndexProvider functionIndexProvider,
-            IStorageAccountProvider storageAccountProvider)
+        public DynamicHostIdProvider(IStorageAccountProvider storageAccountProvider,
+            IFunctionIndexProvider functionIndexProvider)
         {
-            if (functionIndexProvider == null)
-            {
-                throw new ArgumentNullException("functionIndexProvider");
-            }
-
             if (storageAccountProvider == null)
             {
                 throw new ArgumentNullException("storageAccountProvider");
             }
 
-            _functionIndexProvider = functionIndexProvider;
+            if (functionIndexProvider == null)
+            {
+                throw new ArgumentNullException("functionIndexProvider");
+            }
+
             _storageAccountProvider = storageAccountProvider;
+            _functionIndexProvider = functionIndexProvider;
         }
 
         public async Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
+            IStorageAccount account;
+
+            try
+            {
+                account = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException(
+                    "A host ID is required. Either set JobHostConfiguration.HostId or provide a valid storage " +
+                    "connection string.", exception);
+            }
+
             IFunctionIndex index = await _functionIndexProvider.GetAsync(cancellationToken);
-            IStorageAccount account = await _storageAccountProvider.GetStorageAccountAsync(cancellationToken);
             IEnumerable<MethodInfo> indexedMethods = index.ReadAllMethods();
 
             string sharedHostName = GetSharedHostName(indexedMethods, account);
