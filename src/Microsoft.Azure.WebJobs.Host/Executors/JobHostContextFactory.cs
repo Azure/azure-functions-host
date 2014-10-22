@@ -270,8 +270,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             const string filename = "WebJobsSdk.marker";
             var path = Path.Combine(jobDataPath, filename);
+            const int defaultBufferSize = 4096;
 
-            using (Stream stream = File.OpenWrite(path))
+            using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None,
+                defaultBufferSize, useAsync: true))
             using (TextWriter writer = new StreamWriter(stream))
             {
                 // content is not really important, this would help debugging though
