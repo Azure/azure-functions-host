@@ -505,6 +505,50 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         }
 
         [Fact]
+        public void Create_Enum_CanConvert()
+        {
+            // Act
+            IConverter<AnEnum, EntityProperty> converter = TToEntityPropertyConverterFactory.Create<AnEnum>();
+
+            // Assert
+            Assert.NotNull(converter);
+            const AnEnum expectedValue = AnEnum.B;
+            EntityProperty property = converter.Convert(expectedValue);
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Equal(expectedValue.ToString(), property.StringValue);
+        }
+
+        [Fact]
+        public void Create_NullableEnum_CanConvert()
+        {
+            // Act
+            IConverter<AnEnum?, EntityProperty> converter = TToEntityPropertyConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            Assert.NotNull(converter);
+            const AnEnum expectedValue = AnEnum.B;
+            EntityProperty property = converter.Convert(expectedValue);
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Equal(expectedValue.ToString(), property.StringValue);
+        }
+
+        [Fact]
+        public void Create_NullableEnum_CanConvertNull()
+        {
+            // Act
+            IConverter<AnEnum?, EntityProperty> converter = TToEntityPropertyConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty property = converter.Convert(null);
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.String, property.PropertyType);
+            Assert.Null(property.StringValue);
+        }
+
+        [Fact]
         public void Create_OtherType_CanConvert()
         {
             // Act
@@ -537,6 +581,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         private class Poco
         {
             public string Value { get; set; }
+        }
+
+        private enum AnEnum
+        {
+            A,
+            B,
+            C
         }
     }
 }

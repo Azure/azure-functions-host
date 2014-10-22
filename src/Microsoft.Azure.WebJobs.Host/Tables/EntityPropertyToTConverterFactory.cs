@@ -22,12 +22,10 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToBooleanConverter();
             }
 
-
             if (typeof(TOutput) == typeof(bool?))
             {
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToNullableBooleanConverter();
             }
-
 
             if (typeof(TOutput) == typeof(byte[]))
             {
@@ -99,7 +97,28 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return (IConverter<EntityProperty, TOutput>)new EntityPropertyToStringConverter();
             }
 
+            if (typeof(TOutput).IsEnum)
+            {
+                return new EntityPropertyToEnumConverter<TOutput>();
+            }
+
+            if (typeof(TOutput).IsGenericType && typeof(TOutput).GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                Type nullableElementType = typeof(TOutput).GetGenericArguments()[0];
+
+                if (nullableElementType.IsEnum)
+                {
+                    return CreateNullableEnumConverter<TOutput>(nullableElementType);
+                }
+            }
+
             return new EntityPropertyToPocoConverter<TOutput>();
+        }
+
+        private static IConverter<EntityProperty, TOutput> CreateNullableEnumConverter<TOutput>(Type enumType)
+        {
+            Type genericType = typeof(EntityPropertyToNullableEnumConverter<>).MakeGenericType(enumType);
+            return (IConverter<EntityProperty, TOutput>)Activator.CreateInstance(genericType);
         }
     }
 }

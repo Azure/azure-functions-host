@@ -97,7 +97,28 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return (IConverter<TInput, EntityProperty>)new StringToEntityPropertyConverter();
             }
 
+            if (typeof(TInput).IsEnum)
+            {
+                return new EnumToEntityPropertyConverter<TInput>();
+            }
+
+            if (typeof(TInput).IsGenericType && typeof(TInput).GetGenericTypeDefinition() == typeof(Nullable<>))
+            {
+                Type nullableElementType = typeof(TInput).GetGenericArguments()[0];
+
+                if (nullableElementType.IsEnum)
+                {
+                    return CreateNullableEnumConverter<TInput>(nullableElementType);
+                }
+            }
+
             return new PocoToEntityPropertyConverter<TInput>();
+        }
+
+        private static IConverter<TInput, EntityProperty> CreateNullableEnumConverter<TInput>(Type enumType)
+        {
+            Type genericType = typeof(NullableEnumToEntityPropertyConverter<>).MakeGenericType(enumType);
+            return (IConverter<TInput, EntityProperty>)Activator.CreateInstance(genericType);
         }
     }
 }

@@ -541,6 +541,8 @@
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\ConverterPropertyGetter.cs" />
     <Compile Include="Tables\ConverterPropertySetter.cs" />
+    <Compile Include="Tables\Converters\EntityPropertyToNullableEnumConverter.cs" />
+    <Compile Include="Tables\Converters\EntityPropertyToEnumConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToPocoConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToStringConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToInt64Converter.cs" />
@@ -558,6 +560,8 @@
     <Compile Include="Tables\Converters\EntityPropertyToByteArrayConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToNullableBooleanConverter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToBooleanConverter.cs" />
+    <Compile Include="Tables\Converters\NullableEnumToEntityPropertyConverter.cs" />
+    <Compile Include="Tables\Converters\EnumToEntityPropertyConverter.cs" />
     <Compile Include="Tables\Converters\PocoToEntityPropertyConverter.cs" />
     <Compile Include="Tables\Converters\StringToEntityPropertyConverter.cs" />
     <Compile Include="Tables\Converters\Int64ToEntityPropertyConverter.cs" />

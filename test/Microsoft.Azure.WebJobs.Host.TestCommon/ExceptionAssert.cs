@@ -66,6 +66,11 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         private static string GetFullExpectedArgumentMessage(string message, string parameterName)
         {
+            if (parameterName == null)
+            {
+                return message;
+            }
+
             return String.Format("{0}{1}Parameter name: {2}", message, Environment.NewLine, parameterName);
         }
     }

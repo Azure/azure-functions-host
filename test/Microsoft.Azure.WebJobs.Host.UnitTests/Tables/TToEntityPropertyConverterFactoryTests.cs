@@ -691,6 +691,123 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         }
 
         [Fact]
+        public void Create_Enum_CanConvert()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum> converter = EntityPropertyToTConverterFactory.Create<AnEnum>();
+
+            // Assert
+            Assert.NotNull(converter);
+            const AnEnum expected = AnEnum.B;
+            EntityProperty property = new EntityProperty(expected.ToString());
+            AnEnum actual = converter.Convert(property);
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void Create_Enum_ConvertThrowsIfNullProperty()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum> converter = EntityPropertyToTConverterFactory.Create<AnEnum>();
+
+            // Assert
+            AssertConvertThrowsIfNullProperty(converter);
+        }
+
+        [Fact]
+        public void Create_Enum_ConvertThrowsIfPropertyTypeMismatches()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum> converter = EntityPropertyToTConverterFactory.Create<AnEnum>();
+
+            // Assert
+            AssertConvertThrowsIfPropertyTypeMismatches(converter, "String");
+        }
+
+        [Fact]
+        public void Create_Enum_ConvertThrowsIfNullValue()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum> converter = EntityPropertyToTConverterFactory.Create<AnEnum>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty property = EntityProperty.GeneratePropertyForString(null);
+            ExceptionAssert.ThrowsInvalidOperation(() => converter.Convert(property),
+                "Enum property value must not be null.");
+        }
+
+        [Fact]
+        public void Create_Enum_ConvertThrowsIfNonMemberValue()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum> converter = EntityPropertyToTConverterFactory.Create<AnEnum>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty property = EntityProperty.GeneratePropertyForString("D");
+            ExceptionAssert.ThrowsArgument(() => converter.Convert(property), null,
+                "Requested value 'D' was not found.");
+        }
+
+        [Fact]
+        public void Create_NullableEnum_CanConvert()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum?> converter = EntityPropertyToTConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            Assert.NotNull(converter);
+            AnEnum? expected = AnEnum.B;
+            EntityProperty property = new EntityProperty(expected.ToString());
+            AnEnum? actual = converter.Convert(property);
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void Create_NullableEnum_CanConvertNullValue()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum?> converter = EntityPropertyToTConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            AssertCanConvertNullValue(converter, EntityProperty.GeneratePropertyForString(null));
+        }
+
+        [Fact]
+        public void Create_NullableEnum_ConvertThrowsIfNullProperty()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum?> converter = EntityPropertyToTConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            AssertConvertThrowsIfNullProperty(converter);
+        }
+
+        [Fact]
+        public void Create_NullableEnum_ConvertThrowsIfPropertyTypeMismatches()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum?> converter = EntityPropertyToTConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            AssertConvertThrowsIfPropertyTypeMismatches(converter, "String");
+        }
+
+        [Fact]
+        public void Create_NullableEnum_ConvertThrowsIfNonMemberValue()
+        {
+            // Act
+            IConverter<EntityProperty, AnEnum?> converter = EntityPropertyToTConverterFactory.Create<AnEnum?>();
+
+            // Assert
+            Assert.NotNull(converter);
+            EntityProperty property = EntityProperty.GeneratePropertyForString("D");
+            ExceptionAssert.ThrowsArgument(() => converter.Convert(property), null,
+                "Requested value 'D' was not found.");
+        }
+
+        [Fact]
         public void Create_String_CanConvert()
         {
             // Act
@@ -857,6 +974,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         private class Poco
         {
             public string Value { get; set; }
+        }
+
+        private enum AnEnum
+        {
+            A,
+            B,
+            C
         }
     }
 }
