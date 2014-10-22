@@ -4,6 +4,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -12,16 +13,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     /// Utility class designed to parse given connection string and create instance of the 
     /// <see cref="CloudStorageAccount"/>.
     /// </summary>
-    internal sealed class StorageAccountParser
+    internal sealed class StorageAccountParser : IStorageAccountParser
     {
         /// <summary>
         /// Throwing version of parse account API. It calls TryParseAccount internally, analyzes returned result,
-        /// and throws an exception with formatted message in case of error
+        /// and throws an exception with formatted message in case of error.
         /// </summary>
         /// <param name="connectionString">A Storage account connection string as retrieved from the config</param>
         /// <param name="connectionStringName">Friendly connection string name used to format error message</param>
-        /// <returns>An instance of <see cref="CloudStorageAccount"/> associated with the given connection string</returns>
-        public static CloudStorageAccount ParseAccount(string connectionString, string connectionStringName)
+        /// <returns>An instance of <see cref="StorageAccount"/> associated with the given connection string</returns>
+        public IStorageAccount ParseAccount(string connectionString, string connectionStringName)
         {
             CloudStorageAccount account;
             StorageAccountParseResult result = TryParseAccount(connectionString, out account);
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new InvalidOperationException(message);
             }
 
-            return account;
+            return new StorageAccount(account);
         }
 
         /// <summary>

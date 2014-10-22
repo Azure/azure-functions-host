@@ -11,11 +11,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultStorageAccountProvider : IStorageAccountProvider
     {
-        private static readonly IConnectionStringProvider _ambientConnectionStringProvider =
-            AmbientConnectionStringProvider.Instance;
-
-        private readonly IStorageCredentialsValidator _storageCredentialsValidator =
-            new DefaultStorageCredentialsValidator();
+        private readonly IConnectionStringProvider _ambientConnectionStringProvider;
+        private readonly IStorageCredentialsValidator _storageCredentialsValidator;
+        private readonly IStorageAccountParser _storageAccountParser;
 
         private IStorageAccount _dashboardAccount;
         private bool _dashboardAccountSet;
@@ -23,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private bool _storageAccountSet;
 
         public DefaultStorageAccountProvider()
+            : this(AmbientConnectionStringProvider.Instance, new StorageAccountParser(), new DefaultStorageCredentialsValidator())
         {
         }
 
@@ -34,10 +33,33 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// The Azure Storage connection string for accessing data and logging.
         /// </param>
         public DefaultStorageAccountProvider(string dashboardAndStorageConnectionString)
+            : this()
         {
-            IStorageAccount account = ParseStorageAccount(dashboardAndStorageConnectionString);
-            DashboardAccount = account;
-            StorageAccount = account;
+            StorageConnectionString = dashboardAndStorageConnectionString;
+            DashboardAccount = StorageAccount;
+        }
+
+        internal DefaultStorageAccountProvider(IConnectionStringProvider ambientConnectionStringProvider, 
+            IStorageAccountParser storageAccountParser, IStorageCredentialsValidator storageCredentialsValidator)
+        {
+            if (ambientConnectionStringProvider == null)
+            {
+                throw new ArgumentNullException("ambientConnectionStringProvider");
+            }
+
+            if (storageAccountParser == null)
+            {
+                throw new ArgumentNullException("storageAccountParser");
+            }
+
+            if (storageCredentialsValidator == null)
+            {
+                throw new ArgumentNullException("storageCredentialsValidator");
+            }
+
+            _ambientConnectionStringProvider = ambientConnectionStringProvider;
+            _storageCredentialsValidator = storageCredentialsValidator;
+            _storageAccountParser = storageAccountParser;
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
@@ -55,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             set
             {
-                DashboardAccount = ParseDashboardAccount(value, explicitlySet: true);
+                DashboardAccount = !String.IsNullOrEmpty(value) ? ParseAccount(ConnectionStringNames.Dashboard, value) : null;
             }
         }
 
@@ -74,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             set
             {
-                StorageAccount = ParseStorageAccount(value);
+                StorageAccount = !String.IsNullOrEmpty(value) ? ParseAccount(ConnectionStringNames.Storage, value) : null;
             }
         }
 
@@ -84,8 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 if (!_dashboardAccountSet)
                 {
-                    _dashboardAccount = ParseDashboardAccount(_ambientConnectionStringProvider.GetConnectionString(
-                        ConnectionStringNames.Dashboard), explicitlySet: false);
+                    _dashboardAccount = ParseAccount(ConnectionStringNames.Dashboard);
                     _dashboardAccountSet = true;
                 }
 
@@ -104,8 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 if (!_storageAccountSet)
                 {
-                    _storageAccount = ParseStorageAccount(
-                        _ambientConnectionStringProvider.GetConnectionString(ConnectionStringNames.Storage));
+                    _storageAccount = ParseAccount(ConnectionStringNames.Storage);
                     _storageAccountSet = true;
                 }
 
@@ -133,7 +153,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
             else
             {
-                account =null;
+                account = null;
+            }
+
+            // Only dashboard may be null when requested.
+            if (account == null && connectionStringName != ConnectionStringNames.Dashboard)
+            {
+                throw new InvalidOperationException(StorageAccountParser.FormatParseAccountErrorMessage(
+                    StorageAccountParseResult.MissingOrEmptyConnectionStringError, connectionStringName));
             }
 
             if (account != null)
@@ -145,25 +172,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return account;
         }
 
-        private IStorageAccount ParseDashboardAccount(string connectionString, bool explicitlySet)
+        private IStorageAccount ParseAccount(string connectionStringName)
         {
-            if (explicitlySet && String.IsNullOrEmpty(connectionString))
-            {
-                return null;
-            }
-
-            return ParseAccount(connectionString, ConnectionStringNames.Dashboard);
+            return ParseAccount(connectionStringName, _ambientConnectionStringProvider.GetConnectionString(
+                connectionStringName));
         }
 
-        private IStorageAccount ParseStorageAccount(string connectionString)
+        private IStorageAccount ParseAccount(string connectionStringName, string connectionString)
         {
-            return ParseAccount(connectionString, ConnectionStringNames.Storage);
-        }
-
-        private static IStorageAccount ParseAccount(string connectionString, string connectionStringName)
-        {
-            CloudStorageAccount sdkAccount = StorageAccountParser.ParseAccount(connectionString, connectionStringName);
-            return new StorageAccount(sdkAccount);
+            return _storageAccountParser.ParseAccount(connectionString, connectionStringName);
         }
     }
 }
