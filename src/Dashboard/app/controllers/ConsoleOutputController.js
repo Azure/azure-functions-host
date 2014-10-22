@@ -35,7 +35,7 @@
             }
             var start = 0;
             if ($scope.supportsIncrementalUpdates() && $scope.consoleText && $scope.consoleText.length > 0) {
-                start = $scope.consoleText.split(/\n/).length;
+                start = $scope.consoleText.split(/\n/).length - 1;
             }
 
             $http({
@@ -48,7 +48,7 @@
                 consoleLoadedAtLeastOnce = true;
 
                 if (res.data && res.data.trim() != '') {
-                    if ($scope.consoleText && $scope.consoleText.trim() != '') {
+                    if (start != 0) {
                         $scope.consoleText += res.data;
                     } else {
                         $scope.consoleText = res.data;
