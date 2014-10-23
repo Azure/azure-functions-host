@@ -3,6 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -46,17 +47,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
+                serviceBusAccountProvider, extensionTypeLocator);
 
             return new FakeServiceProvider
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType), null,
                     DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator, hostIdProvider),
-                    DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator)),
+                    bindingProvider),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
+                BindingProvider = bindingProvider,
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
                 FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),
                 HostIdProvider = hostIdProvider,

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -13,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     internal class FakeServiceProvider : IServiceProvider
     {
         public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher { get; set; }
+
+        public IBindingProvider BindingProvider { get; set; }
 
         public IFunctionIndexProvider FunctionIndexProvider { get; set; }
 
@@ -33,6 +36,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             if (serviceType == typeof(IBackgroundExceptionDispatcher))
             {
                 return BackgroundExceptionDispatcher;
+            }
+            else if (serviceType == typeof(IBindingProvider))
+            {
+                return BindingProvider;
             }
             else if (serviceType == typeof(IFunctionIndexProvider))
             {
