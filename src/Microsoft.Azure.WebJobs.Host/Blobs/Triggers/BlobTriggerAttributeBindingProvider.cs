@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
         {
             if (accountProvider == null)
@@ -63,6 +65,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (blobWrittenWatcherSetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherSetter");
+            }
+
             if (messageEnqueuedWatcherSetter == null)
             {
                 throw new ArgumentNullException("messageEnqueuedWatcherSetter");
@@ -74,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
         }
 
@@ -125,7 +133,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
-                _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter);
+                _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter,
+                _messageEnqueuedWatcherSetter);
             return binding;
         }
 

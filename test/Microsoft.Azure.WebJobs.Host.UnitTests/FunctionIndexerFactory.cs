@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Queues;
@@ -26,12 +27,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
+            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
+                new ContextAccessor<IBlobWrittenWatcher>();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
-                BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor);
+                BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor);
 
             return new FunctionIndexer(triggerBindingProvider, bindingProvider);
         }

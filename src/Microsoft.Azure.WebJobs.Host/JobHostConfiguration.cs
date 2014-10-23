@@ -4,6 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -26,6 +27,8 @@ namespace Microsoft.Azure.WebJobs
             BackgroundExceptionDispatcher.Instance;
         private readonly ContextAccessor<IMessageEnqueuedWatcher> _messageEnqueuedWatcherAccessor =
             new ContextAccessor<IMessageEnqueuedWatcher>();
+        private readonly ContextAccessor<IBlobWrittenWatcher> _blobWrittenWatcherAccessor =
+            new ContextAccessor<IBlobWrittenWatcher>();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
@@ -153,7 +156,8 @@ namespace Microsoft.Azure.WebJobs
                 if (_bindingProvider == null)
                 {
                     _bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
-                        _serviceBusAccountProvider, ExtensionTypeLocator, _messageEnqueuedWatcherAccessor);
+                        _serviceBusAccountProvider, ExtensionTypeLocator, _messageEnqueuedWatcherAccessor,
+                        _blobWrittenWatcherAccessor);
                 }
 
                 return _bindingProvider;
@@ -200,7 +204,8 @@ namespace Microsoft.Azure.WebJobs
                 {
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
                         _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
-                        _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor);
+                        _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor,
+                        _blobWrittenWatcherAccessor);
                 }
 
                 return _triggerBindingProvider;

@@ -11,23 +11,16 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class FunctionBindingContext
     {
-        private readonly HostBindingContext _hostContext;
         private readonly Guid _functionInstanceId;
         private readonly CancellationToken _functionCancellationToken;
         private readonly TextWriter _consoleOutput;
 
-        public FunctionBindingContext(HostBindingContext hostContext, Guid functionInstanceId,
-            CancellationToken functionCancellationToken, TextWriter consoleOutput)
+        public FunctionBindingContext(Guid functionInstanceId, CancellationToken functionCancellationToken,
+            TextWriter consoleOutput)
         {
-            _hostContext = hostContext;
             _functionInstanceId = functionInstanceId;
             _functionCancellationToken = functionCancellationToken;
             _consoleOutput = consoleOutput;
-        }
-
-        public IBlobWrittenWatcher BlobWrittenWatcher
-        {
-            get { return _hostContext.BlobWrittenWatcher; }
         }
 
         public Guid FunctionInstanceId

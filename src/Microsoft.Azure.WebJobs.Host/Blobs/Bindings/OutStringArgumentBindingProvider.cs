@@ -14,6 +14,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class OutStringArgumentBindingProvider : IBlobArgumentBindingProvider
     {
+        private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
+
+        public OutStringArgumentBindingProvider(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+        {
+            if (blobWrittenWatcherGetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherGetter");
+            }
+
+            _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
+        }
+
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(string).MakeByRefType())
@@ -27,11 +39,23 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     + access.Value.ToString() + ".");
             }
 
-            return new StringArgumentBinding();
+            return new StringArgumentBinding(_blobWrittenWatcherGetter);
         }
 
         private class StringArgumentBinding : IBlobArgumentBinding
         {
+            private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
+
+            public StringArgumentBinding(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+            {
+                if (blobWrittenWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("blobWrittenWatcherGetter");
+                }
+
+                _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
+            }
+
             public FileAccess Access
             {
                 get { return FileAccess.Write; }
@@ -44,7 +68,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
-                WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob, context);
+                WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob, context,
+                    _blobWrittenWatcherGetter.Value);
                 return new StringValueBinder(blob, watchableStream);
             }
 

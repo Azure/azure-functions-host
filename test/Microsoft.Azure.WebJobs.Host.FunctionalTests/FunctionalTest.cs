@@ -4,6 +4,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -56,11 +57,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 new TaskBackgroundExceptionDispatcher<TResult>(taskSource);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
+            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
+                new ContextAccessor<IBlobWrittenWatcher>();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor);
+                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor);
 
             return new FakeServiceProvider
             {

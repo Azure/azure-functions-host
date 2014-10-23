@@ -12,15 +12,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     {
         private readonly IListenerFactory _abortListenerFactory;
         private readonly IFunctionExecutor _abortExecutor;
-        private readonly HostBindingContext _abortContext;
         private readonly IFunctionExecutor _innerExecutor;
 
         public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor,
-            HostBindingContext abortContext, IFunctionExecutor innerExecutor)
+            IFunctionExecutor innerExecutor)
         {
             _abortListenerFactory = abortListenerFactory;
             _abortExecutor = abortExecutor;
-            _abortContext = abortContext;
             _innerExecutor = innerExecutor;
         }
 
@@ -43,8 +41,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private Task<IListener> CreateListenerAsync(CancellationToken cancellationToken)
         {
-            ListenerFactoryContext listenerContext = new ListenerFactoryContext(_abortContext,
-                new SharedListenerContainer(), cancellationToken);
+            ListenerFactoryContext listenerContext = new ListenerFactoryContext(new SharedListenerContainer(),
+                cancellationToken);
             return _abortListenerFactory.CreateAsync(_abortExecutor, listenerContext);
         }
     }

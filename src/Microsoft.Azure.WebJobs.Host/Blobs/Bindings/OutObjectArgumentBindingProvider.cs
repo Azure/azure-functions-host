@@ -15,6 +15,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         where TBinder : ICloudBlobStreamBinder<TValue>, new()
     {
         private readonly ICloudBlobStreamBinder<TValue> _objectBinder = new TBinder();
+        private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
+
+        public OutObjectArgumentBindingProvider(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+        {
+            if (blobWrittenWatcherGetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherGetter");
+            }
+
+            _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
+        }
 
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
@@ -29,16 +40,29 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     + access.Value.ToString() + ".");
             }
 
-            return new ObjectArgumentBinding(_objectBinder);
+            return new ObjectArgumentBinding(_objectBinder, _blobWrittenWatcherGetter);
         }
 
         private class ObjectArgumentBinding : IBlobArgumentBinding
         {
             private readonly ICloudBlobStreamBinder<TValue> _objectBinder;
+            private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
 
-            public ObjectArgumentBinding(ICloudBlobStreamBinder<TValue> objectBinder)
+            public ObjectArgumentBinding(ICloudBlobStreamBinder<TValue> objectBinder,
+                IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
             {
+                if (objectBinder == null)
+                {
+                    throw new ArgumentNullException("objectBinder");
+                }
+
+                if (blobWrittenWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("blobWrittenWatcherGetter");
+                }
+
                 _objectBinder = objectBinder;
+                _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
             }
 
             public FileAccess Access
@@ -54,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(
-                    blob, context);
+                    blob, context, _blobWrittenWatcherGetter.Value);
                 return new ObjectValueBinder(blob, watchableStream, _objectBinder);
             }
 

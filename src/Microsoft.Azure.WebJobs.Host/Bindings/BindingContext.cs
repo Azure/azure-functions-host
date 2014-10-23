@@ -37,11 +37,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _ambientContext = ambientContext;
         }
 
-        public IBlobWrittenWatcher BlobWrittenWatcher
-        {
-            get { return _functionContext.BlobWrittenWatcher; }
-        }
-
         public Guid FunctionInstanceId
         {
             get { return _functionContext.FunctionInstanceId; }

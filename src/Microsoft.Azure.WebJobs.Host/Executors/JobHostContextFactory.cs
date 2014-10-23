@@ -88,12 +88,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                HostBindingContext bindingContext = new HostBindingContext();
-                FunctionExecutorContext executorContext = new FunctionExecutorContext(functionInstanceLogger,
-                    functionOutputLogger, bindingContext);
+                FunctionExecutorContext executorContext = new FunctionExecutorContext();
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
-                IFunctionExecutor executor = new FunctionExecutor(executorContext, _backgroundExceptionDispatcher);
+                IFunctionExecutor executor = new FunctionExecutor(functionInstanceLogger,
+                    functionOutputLogger, _backgroundExceptionDispatcher, executorContext);
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
@@ -141,12 +140,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         WebJobRunIdentifier = WebJobRunIdentifier.Current
                     };
 
-                    hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, bindingContext,
-                        heartbeatCommand, _shutdownToken, executor);
+                    hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, heartbeatCommand,
+                        _shutdownToken, executor);
                     IListenerFactory hostListenerFactory = new CompositeListenerFactory(functionsListenerFactory,
                         sharedQueueListenerFactory, instanceQueueListenerFactory);
-                    listener = CreateHostListener(hostListenerFactory, bindingContext, heartbeatCommand, _shutdownToken,
-                        executor);
+                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, _shutdownToken, executor);
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger,
@@ -156,8 +154,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     hostCallExecutor = new ShutdownFunctionExecutor(_shutdownToken, executor);
 
-                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory, executor,
-                        bindingContext);
+                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory, executor);
                     IListener shutdownListener = new ShutdownListener(_shutdownToken, factoryListener);
                     listener = shutdownListener;
 
@@ -189,24 +186,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         }
 
         private IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
-            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
+            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
                 _backgroundExceptionDispatcher, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
-                innerExecutor, bindingContext, heartbeatExecutor);
+                innerExecutor, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
                 abortListenerExecutor);
             return shutdownFunctionExecutor;
         }
 
         private IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
-            HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
-            IFunctionExecutor executor)
+            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor executor)
         {
-            IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
-                bindingContext);
+            IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
                 _backgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);

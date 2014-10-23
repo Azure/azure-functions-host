@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Queues;
@@ -42,15 +43,17 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
+            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
+                new ContextAccessor<IBlobWrittenWatcher>();
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
                     serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
-                    BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor),
+                    BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
-                    extensionTypeLocator, messageEnqueuedWatcherAccessor)),
+                    extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = queueConfiguration

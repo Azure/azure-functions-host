@@ -20,15 +20,24 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     // In-memory executor. 
     class FunctionExecutor : IFunctionExecutor
     {
-        private readonly FunctionExecutorContext _context;
+        private readonly IFunctionInstanceLogger _functionInstanceLogger;
+        private readonly IFunctionOutputLogger _functionOutputLogger;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly FunctionExecutorContext _context;
 
-        public FunctionExecutor(FunctionExecutorContext context,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger,
+            IFunctionOutputLogger functionOutputLogger,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            FunctionExecutorContext context)
         {
-            if (context == null)
+            if (functionInstanceLogger == null)
             {
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException("functionInstanceLogger");
+            }
+
+            if (functionOutputLogger == null)
+            {
+                throw new ArgumentNullException("functionOutputLogger");
             }
 
             if (backgroundExceptionDispatcher == null)
@@ -36,8 +45,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
-            _context = context;
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            _functionInstanceLogger = functionInstanceLogger;
+            _functionOutputLogger = functionOutputLogger;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _context = context;
         }
 
         public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
@@ -90,13 +106,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 logCompletedCancellationToken = cancellationToken;
             }
 
-            await _context.FunctionInstanceLogger.LogFunctionCompletedAsync(completedMessage,
+            await _functionInstanceLogger.LogFunctionCompletedAsync(completedMessage,
                 logCompletedCancellationToken);
 
             if (loggedStartedEvent)
             {
-                await _context.FunctionInstanceLogger.DeleteLogFunctionStartedAsync(startedMessageId,
-                    cancellationToken);
+                await _functionInstanceLogger.DeleteLogFunctionStartedAsync(startedMessageId, cancellationToken);
             }
 
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
@@ -110,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             string startedMessageId;
 
             // Create the console output writer
-            IFunctionOutputDefinition outputDefinition = await _context.FunctionOutputLogger.CreateAsync(instance,
+            IFunctionOutputDefinition outputDefinition = await _functionOutputLogger.CreateAsync(instance,
                 cancellationToken);
 
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
@@ -119,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
-                    new FunctionBindingContext(_context.BindingContext, instance.Id, cancellationToken, consoleOutput);
+                    new FunctionBindingContext(instance.Id, cancellationToken, consoleOutput);
 
                 // Must bind before logging (bound invoke string is included in log message).
                 IReadOnlyDictionary<string, IValueProvider> parameters =
@@ -180,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             message.Arguments = CreateArguments(parameters);
 
             // Log that the function started.
-            return _context.FunctionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
+            return _functionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
         }
 
         private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand,

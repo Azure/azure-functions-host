@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
         {
             if (argumentBinding == null)
@@ -75,6 +77,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (blobWrittenWatcherSetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherSetter");
+            }
+
             if (messageEnqueuedWatcherSetter == null)
             {
                 throw new ArgumentNullException("messageEnqueuedWatcherSetter");
@@ -89,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _converter = CreateConverter(_client);
             _bindingDataContract = CreateBindingDataContract(path);
@@ -182,8 +190,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 new TriggeredFunctionInstanceFactory<IStorageBlob>(functionBinding, invoker, functionDescriptor);
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
             IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
-                _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter, functionDescriptor.Id, _account,
-                container.SdkObject, _path, instanceFactory);
+                _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
+                functionDescriptor.Id, _account, container.SdkObject, _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

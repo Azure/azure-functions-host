@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         private readonly Type _type;
         private readonly IFunctionIndexLookup _index;
         private readonly CloudBlobClient _blobClient;
-        private readonly HostBindingContext _context;
 
         // Expose to allow callers to hook in new binders. 
         public LocalExecutionContext(Type type, CloudStorageAccount account, Type[] cloudBlobStreamBinderTypes)
@@ -44,18 +43,20 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
+            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
+                new ContextAccessor<IBlobWrittenWatcher>();
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance,
-                messageEnqueuedWatcherAccessor);
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
-            _context = new HostBindingContext();
         }
 
         public void Call(string functionName, object arguments = null)
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
 
         private void Execute(IFunctionInstance instance)
         {
-            ValueBindingContext context = new ValueBindingContext(new FunctionBindingContext(_context, instance.Id,
+            ValueBindingContext context = new ValueBindingContext(new FunctionBindingContext(instance.Id,
                 CancellationToken.None, TextWriter.Null), CancellationToken.None);
             FunctionExecutor.ExecuteWithWatchersAsync(instance.Invoker,
                 instance.BindingSource.BindAsync(context).GetAwaiter().GetResult(), TextWriter.Null,

@@ -672,7 +672,6 @@
     <Compile Include="Bindings\IWatchable.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBinding.cs" />
     <Compile Include="Bindings\Runtime\RuntimeBindingProvider.cs" />
-    <Compile Include="Bindings\HostBindingContext.cs" />
     <Compile Include="Bindings\ImmutableWatcher.cs" />
     <Compile Include="Bindings\BindStepOrders.cs" />
     <Compile Include="Bindings\ValueProviderDisposable.cs" />

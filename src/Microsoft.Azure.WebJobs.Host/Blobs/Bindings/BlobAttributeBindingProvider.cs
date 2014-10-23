@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         private readonly IBlobArgumentBindingProvider _provider;
 
         public BlobAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
-            IExtensionTypeLocator extensionTypeLocator)
+            IExtensionTypeLocator extensionTypeLocator, IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
         {
             if (accountProvider == null)
             {
@@ -35,24 +35,30 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 throw new ArgumentNullException("extensionTypeLocator");
             }
 
+            if (blobWrittenWatcherGetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherGetter");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
-            _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
+            _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes(), blobWrittenWatcherGetter);
         }
 
-        private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
+        private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes,
+            IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
         {
             List<IBlobArgumentBindingProvider> innerProviders = new List<IBlobArgumentBindingProvider>();
 
             innerProviders.Add(CreateConverterProvider<ICloudBlob, StorageBlobToCloudBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudBlockBlob, StorageBlobToCloudBlockBlobConverter>());
             innerProviders.Add(CreateConverterProvider<CloudPageBlob, StorageBlobToCloudPageBlobConverter>());
-            innerProviders.Add(new StreamArgumentBindingProvider(defaultAccess: null));
-            innerProviders.Add(new CloudBlobStreamArgumentBindingProvider());
+            innerProviders.Add(new StreamArgumentBindingProvider(blobWrittenWatcherGetter));
+            innerProviders.Add(new CloudBlobStreamArgumentBindingProvider(blobWrittenWatcherGetter));
             innerProviders.Add(new TextReaderArgumentBindingProvider());
-            innerProviders.Add(new TextWriterArgumentBindingProvider());
+            innerProviders.Add(new TextWriterArgumentBindingProvider(blobWrittenWatcherGetter));
             innerProviders.Add(new StringArgumentBindingProvider());
-            innerProviders.Add(new OutStringArgumentBindingProvider());
+            innerProviders.Add(new OutStringArgumentBindingProvider(blobWrittenWatcherGetter));
 
             if (cloudBlobStreamBinderTypes != null)
             {

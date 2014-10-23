@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.WebJobs.Host.Bindings.Data;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount;
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Queues;
@@ -23,13 +24,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IStorageAccountProvider storageAccountProvider,
             IServiceBusAccountProvider serviceBusAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
-            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter,
+            IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
             innerProviders.Add(new QueueAttributeBindingProvider(nameResolver, storageAccountProvider,
                 messageEnqueuedWatcherGetter));
             innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator));
+                extensionTypeLocator, blobWrittenWatcherGetter));
 
             innerProviders.Add(new TableAttributeBindingProvider(nameResolver, storageAccountProvider));
 

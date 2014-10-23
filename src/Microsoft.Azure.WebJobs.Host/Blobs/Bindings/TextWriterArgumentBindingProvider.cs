@@ -15,6 +15,18 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class TextWriterArgumentBindingProvider : IBlobArgumentBindingProvider
     {
+        private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
+
+        public TextWriterArgumentBindingProvider(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+        {
+            if (blobWrittenWatcherGetter == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcherGetter");
+            }
+
+            _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
+        }
+
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? access)
         {
             if (parameter.ParameterType != typeof(TextWriter))
@@ -28,11 +40,23 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     + access.Value.ToString() + ".");
             }
 
-            return new TextWriterArgumentBinding();
+            return new TextWriterArgumentBinding(_blobWrittenWatcherGetter);
         }
 
         private class TextWriterArgumentBinding : IBlobArgumentBinding
         {
+            private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
+
+            public TextWriterArgumentBinding(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+            {
+                if (blobWrittenWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("blobWrittenWatcherGetter");
+                }
+
+                _blobWrittenWatcherGetter = blobWrittenWatcherGetter;
+            }
+
             public FileAccess Access
             {
                 get { return FileAccess.Write; }
@@ -46,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             public async Task<IValueProvider> BindAsync(IStorageBlob blob, ValueBindingContext context)
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob,
-                    context);
+                    context, _blobWrittenWatcherGetter.Value);
                 const int defaultBufferSize = 1024;
                 TextWriter writer = new StreamWriter(watchableStream, Encoding.UTF8, defaultBufferSize,
                     leaveOpen: true);
