@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                HostBindingContext bindingContext = new HostBindingContext(_bindingProvider);
+                HostBindingContext bindingContext = new HostBindingContext();
                 FunctionExecutorContext executorContext = new FunctionExecutorContext(functionInstanceLogger,
                     functionOutputLogger, bindingContext);
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());

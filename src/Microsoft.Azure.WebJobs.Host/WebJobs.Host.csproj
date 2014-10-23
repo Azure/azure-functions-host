@@ -325,8 +325,10 @@
       <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
+    <Compile Include="Bindings\IContextGetter.cs" />
     <Compile Include="Bindings\ObjectToTypeConverterFactory.cs" />
     <Compile Include="Bindings\Path\BindingTemplateSource.cs" />
     <Compile Include="Bindings\Path\BindingTemplateParser.cs" />

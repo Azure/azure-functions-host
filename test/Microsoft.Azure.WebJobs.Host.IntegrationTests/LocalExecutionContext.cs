@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
-            _context = new HostBindingContext(bindingProvider);
+            _context = new HostBindingContext();
         }
 
         public void Call(string functionName, object arguments = null)

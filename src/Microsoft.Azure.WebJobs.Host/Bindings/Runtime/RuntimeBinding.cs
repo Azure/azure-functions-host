@@ -10,10 +10,17 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
     internal class RuntimeBinding : IBinding
     {
         private readonly string _parameterName;
+        private readonly IContextGetter<IBindingProvider> _bindingProviderGetter;
 
-        public RuntimeBinding(string parameterName)
+        public RuntimeBinding(string parameterName, IContextGetter<IBindingProvider> bindingProviderGetter)
         {
+            if (bindingProviderGetter == null)
+            {
+                throw new ArgumentNullException("bindingProviderGetter");
+            }
+
             _parameterName = parameterName;
+            _bindingProviderGetter = bindingProviderGetter;
         }
 
         public bool FromAttribute
@@ -41,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(new AttributeBindingSource(context.AmbientContext), context.ValueContext);
+            return BindAsync(new AttributeBindingSource(_bindingProviderGetter.Value, context.AmbientContext),
+                context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

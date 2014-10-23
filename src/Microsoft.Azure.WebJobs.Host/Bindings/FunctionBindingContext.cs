@@ -25,11 +25,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _consoleOutput = consoleOutput;
         }
 
-        public IBindingProvider BindingProvider
-        {
-            get { return _hostContext.BindingProvider; }
-        }
-
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _hostContext.BlobWrittenWatcher; }

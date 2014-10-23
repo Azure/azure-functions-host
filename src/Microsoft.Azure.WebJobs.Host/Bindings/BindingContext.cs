@@ -37,11 +37,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             _ambientContext = ambientContext;
         }
 
-        public IBindingProvider BindingProvider
-        {
-            get { return _functionContext.BindingProvider; }
-        }
-
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _functionContext.BlobWrittenWatcher; }

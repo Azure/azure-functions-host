@@ -48,10 +48,13 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
             innerProviders.Add(new ConsoleOutputBindingProvider());
 
-            innerProviders.Add(new RuntimeBindingProvider());
+            ContextAccessor<IBindingProvider> bindingProviderAccessor = new ContextAccessor<IBindingProvider>();
+            innerProviders.Add(new RuntimeBindingProvider(bindingProviderAccessor));
             innerProviders.Add(new DataBindingProvider());
 
-            return new CompositeBindingProvider(innerProviders);
+            IBindingProvider bindingProvider = new CompositeBindingProvider(innerProviders);
+            bindingProviderAccessor.SetValue(bindingProvider);
+            return bindingProvider;
         }
 
     }

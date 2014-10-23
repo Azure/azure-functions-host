@@ -10,10 +10,22 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal class AttributeBindingSource : IAttributeBindingSource
     {
+        private readonly IBindingProvider _bindingProvider;
         private readonly AmbientBindingContext _context;
 
-        public AttributeBindingSource(AmbientBindingContext context)
+        public AttributeBindingSource(IBindingProvider bindingProvider, AmbientBindingContext context)
         {
+            if (bindingProvider == null)
+            {
+                throw new ArgumentNullException("bindingProvider");
+            }
+
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            _bindingProvider = bindingProvider;
             _context = context;
         }
 
@@ -24,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
         {
-            return _context.BindingProvider.TryCreateAsync(new BindingProviderContext(
+            return _bindingProvider.TryCreateAsync(new BindingProviderContext(
                 new FakeParameterInfo(typeof(TValue), attribute),
                 bindingDataContract: null, cancellationToken: cancellationToken));
         }

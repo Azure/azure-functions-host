@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -8,6 +9,18 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingProvider : IBindingProvider
     {
+        private readonly IContextGetter<IBindingProvider> _bindingProviderGetter;
+
+        public RuntimeBindingProvider(IContextGetter<IBindingProvider> bindingProviderGetter)
+        {
+            if (bindingProviderGetter == null)
+            {
+                throw new ArgumentNullException("bindingProviderGetter");
+            }
+
+            _bindingProviderGetter = bindingProviderGetter;
+        }
+
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
             ParameterInfo parameter = context.Parameter;
@@ -17,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
                 return Task.FromResult<IBinding>(null);
             }
 
-            IBinding binding = new RuntimeBinding(parameter.Name);
+            IBinding binding = new RuntimeBinding(parameter.Name, _bindingProviderGetter);
             return Task.FromResult(binding);
         }
     }
