@@ -18,36 +18,43 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         private readonly IStorageQueue _queue;
         private readonly IStorageQueue _poisonQueue;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
-        public QueueListenerFactory(IStorageQueue queue,
+        public QueueListenerFactory(IStorageQueue queue, IQueueConfiguration queueConfiguration,
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
             {
                 throw new ArgumentNullException("queue");
             }
-            else if (instanceFactory == null)
+
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+            
+            if (instanceFactory == null)
             {
                 throw new ArgumentNullException("instanceFactory");
             }
 
             _queue = queue;
             _poisonQueue = CreatePoisonQueueReference(queue.ServiceClient, queue.Name);
+            _queueConfiguration = queueConfiguration;
             _instanceFactory = instanceFactory;
         }
 
         public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
-            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
-                queueConfiguration.MaxPollingInterval);
+                _queueConfiguration.MaxPollingInterval);
             SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                context.BackgroundExceptionDispatcher, sharedWatcher, queueConfiguration.BatchSize,
-                queueConfiguration.MaxDequeueCount);
+                context.BackgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,
+                _queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }
 

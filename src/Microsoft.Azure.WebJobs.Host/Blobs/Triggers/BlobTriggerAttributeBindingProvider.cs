@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -24,9 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IQueueConfiguration _queueConfiguration;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
-            IExtensionTypeLocator extensionTypeLocator, IHostIdProvider hostIdProvider)
+            IExtensionTypeLocator extensionTypeLocator, IHostIdProvider hostIdProvider,
+            IQueueConfiguration queueConfiguration)
         {
             if (accountProvider == null)
             {
@@ -43,10 +46,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("hostIdProvider");
             }
 
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
             _hostIdProvider = hostIdProvider;
+            _queueConfiguration = queueConfiguration;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -97,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
-                _hostIdProvider);
+                _hostIdProvider, _queueConfiguration);
             return binding;
         }
 

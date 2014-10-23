@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -39,22 +40,19 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 StorageAccount = account
             };
             INameResolver nameResolver = null;
+            IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount: 5);
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"));
+                new FixedHostIdProvider("test"), queueConfiguration);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
-            _context = new HostBindingContext(
-                backgroundExceptionDispatcher: BackgroundExceptionDispatcher.Instance,
-                bindingProvider: bindingProvider,
-                nameResolver: null,
-                queueConfiguration: null);
+            _context = new HostBindingContext(BackgroundExceptionDispatcher.Instance, bindingProvider);
         }
 
         public void Call(string functionName, object arguments = null)

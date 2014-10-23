@@ -19,13 +19,35 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private static readonly TimeSpan DefaultMaximum = QueuePollingIntervals.DefaultMaximum;
 
         private readonly IStorageQueue _queue;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
-        public HostMessageListenerFactory(IStorageQueue queue, IFunctionIndexLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger)
+        public HostMessageListenerFactory(IStorageQueue queue, IQueueConfiguration queueConfiguration,
+            IFunctionIndexLookup functionLookup, IFunctionInstanceLogger functionInstanceLogger)
         {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (functionLookup == null)
+            {
+                throw new ArgumentNullException("functionLookup");
+            }
+
+            if (functionInstanceLogger == null)
+            {
+                throw new ArgumentNullException("functionInstanceLogger");
+            }
+
             _queue = queue;
+            _queueConfiguration = queueConfiguration;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
         }
@@ -34,8 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         {
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);
-            IQueueConfiguration queueConfiguration = context.QueueConfiguration;
-            TimeSpan configuredMaximum = queueConfiguration.MaxPollingInterval;
+            TimeSpan configuredMaximum = _queueConfiguration.MaxPollingInterval;
             // Provide an upper bound on the maximum polling interval for run/abort from dashboard.
             // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
             TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
@@ -46,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 delayStrategy: delayStrategy,
                 backgroundExceptionDispatcher: context.BackgroundExceptionDispatcher,
                 sharedWatcher: null,
-                batchSize: queueConfiguration.BatchSize,
-                maxDequeueCount: queueConfiguration.MaxDequeueCount);
+                batchSize: _queueConfiguration.BatchSize,
+                maxDequeueCount: _queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }
     }

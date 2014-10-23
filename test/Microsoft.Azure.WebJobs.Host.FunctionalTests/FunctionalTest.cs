@@ -8,8 +8,10 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -48,15 +50,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
+            IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
+                storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
+                queueConfiguration);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 
             return new FakeServiceProvider
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType),
-                    DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
-                        serviceBusAccountProvider, extensionTypeLocator, hostIdProvider),
-                    bindingProvider),
+                    triggerBindingProvider, bindingProvider),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),

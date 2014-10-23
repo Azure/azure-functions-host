@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageQueueClient _queueClient;
         private readonly IStorageQueue _hostBlobTriggerQueue;
         private readonly IStorageBlobClient _blobClient;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(IFunctionExecutor executor,
@@ -27,14 +29,56 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
             IStorageBlobClient blobClient,
+            IQueueConfiguration queueConfiguration,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
+            if (executor == null)
+            {
+                throw new ArgumentNullException("executor");
+            }
+
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            if (sharedQueueWatcher == null)
+            {
+                throw new ArgumentNullException("sharedQueueWatcher");
+            }
+
+            if (queueClient == null)
+            {
+                throw new ArgumentNullException("queueClient");
+            }
+
+            if (hostBlobTriggerQueue == null)
+            {
+                throw new ArgumentNullException("hostBlobTriggerQueue");
+            }
+
+            if (blobClient == null)
+            {
+                throw new ArgumentNullException("blobClient");
+            }
+
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (blobWrittenWatcher == null)
+            {
+                throw new ArgumentNullException("blobWrittenWatcher");
+            }
+
             _executor = executor;
             _context = context;
             _sharedQueueWatcher = sharedQueueWatcher;
             _queueClient = queueClient;
             _hostBlobTriggerQueue = hostBlobTriggerQueue;
             _blobClient = blobClient;
+            _queueConfiguration = queueConfiguration;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
@@ -44,12 +88,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
             BlobQueueTriggerExecutor triggerExecutor =
                 new BlobQueueTriggerExecutor(_blobClient, _executor, _blobWrittenWatcher);
-            IQueueConfiguration queueConfiguration = _context.QueueConfiguration;
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
-                queueConfiguration.MaxPollingInterval);
+                _queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
                 delayStrategy, _context.BackgroundExceptionDispatcher, _sharedQueueWatcher,
-                queueConfiguration.BatchSize, queueConfiguration.MaxDequeueCount);
+                _queueConfiguration.BatchSize, _queueConfiguration.MaxDequeueCount);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }
     }

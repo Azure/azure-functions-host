@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     {
         private readonly IStorageAccountProvider _storageAccountProvider;
         private readonly IFunctionIndexProvider _functionIndexProvider;
-        private readonly INameResolver _nameResolver;
         private readonly IBindingProvider _bindingProvider;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHostInstanceLoggerProvider _hostInstanceLoggerProvider;
@@ -38,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public JobHostContextFactory(IStorageAccountProvider storageAccountProvider,
             IFunctionIndexProvider functionIndexProvider,
-            INameResolver nameResolver,
             IBindingProvider bindingProvider,
             IHostIdProvider hostIdProvider,
             IHostInstanceLoggerProvider hostInstanceLoggerProvider,
@@ -49,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             _storageAccountProvider = storageAccountProvider;
             _functionIndexProvider = functionIndexProvider;
-            _nameResolver = nameResolver;
             _bindingProvider = bindingProvider;
             _hostIdProvider = hostIdProvider;
             _hostInstanceLoggerProvider = hostInstanceLoggerProvider;
@@ -92,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
                 HostBindingContext bindingContext = new HostBindingContext(_backgroundExceptionDispatcher,
-                    _bindingProvider, _nameResolver, _queueConfiguration);
+                    _bindingProvider);
                 FunctionExecutorContext executorContext = new FunctionExecutorContext(functionInstanceLogger,
                     functionOutputLogger, bindingContext);
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
@@ -110,14 +107,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
-                    IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue, functions,
-                        functionInstanceLogger);
+                    IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
+                        _queueConfiguration, functions, functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        functions, functionInstanceLogger);
+                        _queueConfiguration, functions, functionInstanceLogger);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                     {

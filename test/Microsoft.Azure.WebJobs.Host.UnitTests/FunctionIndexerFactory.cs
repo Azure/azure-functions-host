@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"));
+                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5));
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 

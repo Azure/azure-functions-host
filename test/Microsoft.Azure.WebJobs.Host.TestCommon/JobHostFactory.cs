@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.WindowsAzure.Storage;
 
@@ -37,17 +38,18 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
             INameResolver nameResolver = null;
+            IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount);
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
-                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider),
+                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
                     extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
-                Queues = new SimpleQueueConfiguration(maxDequeueCount)
+                Queues = queueConfiguration
             };
 
             return new TestJobHost<TProgram>(configuration);

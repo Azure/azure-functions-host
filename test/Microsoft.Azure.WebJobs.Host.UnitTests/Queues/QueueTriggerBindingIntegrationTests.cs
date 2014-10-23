@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -26,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             Mock<IStorageQueue> queueMock = new Mock<IStorageQueue>(MockBehavior.Strict);
             queueMock.Setup(q => q.Name).Returns("queueName");
             IStorageQueue queue = queueMock.Object;
-            _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding);
+            _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding,
+                new Mock<IQueueConfiguration>(MockBehavior.Strict).Object);
         }
 
         [Theory]

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs.Triggers;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 
@@ -17,12 +18,14 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IStorageAccountProvider storageAccountProvider,
             IServiceBusAccountProvider serviceBusAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
-            IHostIdProvider hostIdProvider)
+            IHostIdProvider hostIdProvider,
+            IQueueConfiguration queueConfiguration)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
-            innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider));
+            innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
+                queueConfiguration));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator, hostIdProvider));
+                extensionTypeLocator, hostIdProvider, queueConfiguration));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");

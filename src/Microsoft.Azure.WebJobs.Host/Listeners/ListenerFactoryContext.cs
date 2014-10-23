@@ -28,11 +28,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             get { return _hostContext.BackgroundExceptionDispatcher; }
         }
 
-        public IQueueConfiguration QueueConfiguration
-        {
-            get { return _hostContext.QueueConfiguration; }
-        }
-
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _hostContext.BlobWrittenWatcher; }

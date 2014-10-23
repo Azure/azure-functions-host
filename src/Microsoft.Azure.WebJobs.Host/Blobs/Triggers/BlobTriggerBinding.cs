@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -28,11 +29,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly string _accountName;
         private readonly IBlobPathSource _path;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
         public BlobTriggerBinding(string parameterName, IArgumentBinding<IStorageBlob> argumentBinding,
-            IStorageAccount account, IBlobPathSource path, IHostIdProvider hostIdProvider)
+            IStorageAccount account, IBlobPathSource path, IHostIdProvider hostIdProvider,
+            IQueueConfiguration queueConfiguration)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -41,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _accountName = BlobClient.GetAccountName(_client);
             _path = path;
             _hostIdProvider = hostIdProvider;
+            _queueConfiguration = queueConfiguration;
             _converter = CreateConverter(_client);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -132,8 +136,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory =
                 new TriggeredFunctionInstanceFactory<IStorageBlob>(functionBinding, invoker, functionDescriptor);
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
-            IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, functionDescriptor.Id, _account,
-                container.SdkObject, _path, instanceFactory);
+            IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
+                functionDescriptor.Id, _account, container.SdkObject, _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

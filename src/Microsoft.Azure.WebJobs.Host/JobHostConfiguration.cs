@@ -196,7 +196,8 @@ namespace Microsoft.Azure.WebJobs
                 if (_triggerBindingProvider == null)
                 {
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
-                        _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider);
+                        _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
+                        _queueConfiguration);
                 }
 
                 return _triggerBindingProvider;
@@ -233,10 +234,6 @@ namespace Microsoft.Azure.WebJobs
             else if (serviceType == typeof(IHostInstanceLoggerProvider))
             {
                 return _loggerProvider;
-            }
-            else if (serviceType == typeof(INameResolver))
-            {
-                return _nameResolver;
             }
             else if (serviceType == typeof(IQueueConfiguration))
             {

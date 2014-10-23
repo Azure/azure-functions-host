@@ -46,11 +46,6 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IHostInstanceLoggerProvider>(serviceProvider);
         }
 
-        public static INameResolver GetNameResolver(this IServiceProvider serviceProvider)
-        {
-            return GetService<INameResolver>(serviceProvider);
-        }
-
         public static IQueueConfiguration GetQueueConfiguration(this IServiceProvider serviceProvider)
         {
             return GetService<IQueueConfiguration>(serviceProvider);

@@ -24,16 +24,24 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
+        private readonly IQueueConfiguration _queueConfiguration;
 
-        public QueueTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
+        public QueueTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
+            IQueueConfiguration queueConfiguration)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
+            _queueConfiguration = queueConfiguration;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -61,7 +69,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IStorageQueueClient client = account.CreateQueueClient();
             IStorageQueue queue = client.GetQueueReference(queueName);
 
-            ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding);
+            ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
+                _queueConfiguration);
             return binding;
         }
 

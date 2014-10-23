@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -18,17 +19,49 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class BlobListenerFactory : IListenerFactory
     {
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionInstanceFactory<IStorageBlob> _instanceFactory;
 
-        public BlobListenerFactory(IHostIdProvider hostIdProvider, string functionId, IStorageAccount account,
-            CloudBlobContainer container, IBlobPathSource input,
+        public BlobListenerFactory(IHostIdProvider hostIdProvider, IQueueConfiguration queueConfiguration,
+            string functionId, IStorageAccount account, CloudBlobContainer container, IBlobPathSource input,
             ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
+            if (hostIdProvider == null)
+            {
+                throw new ArgumentNullException("hostIdProvider");
+            }
+
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
+            if (container == null)
+            {
+                throw new ArgumentNullException("container");
+            }
+
+            if (input == null)
+            {
+                throw new ArgumentNullException("input");
+            }
+
+            if (instanceFactory == null)
+            {
+                throw new ArgumentNullException("instanceFactory");
+            }
+
             _hostIdProvider = hostIdProvider;
+            _queueConfiguration = queueConfiguration;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -90,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             SharedBlobQueueListener sharedListener = context.SharedListeners.GetOrCreate<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(executor, context, sharedQueueWatcher, queueClient,
-                    hostBlobTriggerQueue, blobClient, blobWrittenWatcher));
+                    hostBlobTriggerQueue, blobClient, _queueConfiguration, blobWrittenWatcher));
             sharedListener.Register(_functionId, _instanceFactory);
             return new BlobListener(sharedListener);
         }

@@ -24,15 +24,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IStorageQueue _queue;
         private readonly ITriggerDataArgumentBinding<IStorageQueueMessage> _argumentBinding;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
+        private readonly IQueueConfiguration _queueConfiguration;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName, IStorageQueue queue,
-            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding, IQueueConfiguration queueConfiguration)
         {
             _parameterName = parameterName;
             _queue = queue;
             _argumentBinding = argumentBinding;
             _bindingDataContract = CreateBindingDataContract(argumentBinding);
+            _queueConfiguration = queueConfiguration;
             _converter = CreateConverter(queue);
         }
 
@@ -106,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory =
                 new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
                     functionDescriptor);
-            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, instanceFactory);
+            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 
