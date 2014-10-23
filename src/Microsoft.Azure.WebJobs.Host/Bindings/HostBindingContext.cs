@@ -9,20 +9,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class HostBindingContext
     {
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IBindingProvider _bindingProvider;
 
-        public HostBindingContext(
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            IBindingProvider bindingProvider)
+        public HostBindingContext(IBindingProvider bindingProvider)
         {
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _bindingProvider = bindingProvider;
-        }
-
-        public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher
-        {
-            get { return _backgroundExceptionDispatcher; }
         }
 
         public IBindingProvider BindingProvider

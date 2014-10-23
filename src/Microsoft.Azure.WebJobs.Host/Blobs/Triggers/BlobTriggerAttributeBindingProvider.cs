@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -26,10 +27,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IBlobArgumentBindingProvider _provider;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
 
-        public BlobTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
-            IExtensionTypeLocator extensionTypeLocator, IHostIdProvider hostIdProvider,
-            IQueueConfiguration queueConfiguration)
+        public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
+            IStorageAccountProvider accountProvider,
+            IExtensionTypeLocator extensionTypeLocator,
+            IHostIdProvider hostIdProvider,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (accountProvider == null)
             {
@@ -51,11 +56,17 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("queueConfiguration");
             }
 
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -106,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
-                _hostIdProvider, _queueConfiguration);
+                _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher);
             return binding;
         }
 

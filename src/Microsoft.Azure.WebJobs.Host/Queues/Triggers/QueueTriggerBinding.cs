@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -25,16 +26,21 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly ITriggerDataArgumentBinding<IStorageQueueMessage> _argumentBinding;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
-        public QueueTriggerBinding(string parameterName, IStorageQueue queue,
-            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding, IQueueConfiguration queueConfiguration)
+        public QueueTriggerBinding(string parameterName,
+            IStorageQueue queue,
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             _parameterName = parameterName;
             _queue = queue;
             _argumentBinding = argumentBinding;
             _bindingDataContract = CreateBindingDataContract(argumentBinding);
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _converter = CreateConverter(queue);
         }
 
@@ -108,7 +114,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory =
                 new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
                     functionDescriptor);
-            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration, instanceFactory);
+            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration,
+                _backgroundExceptionDispatcher, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

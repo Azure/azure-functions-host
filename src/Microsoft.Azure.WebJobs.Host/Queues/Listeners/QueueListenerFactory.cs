@@ -19,9 +19,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IStorageQueue _poisonQueue;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
-        public QueueListenerFactory(IStorageQueue queue, IQueueConfiguration queueConfiguration,
+        public QueueListenerFactory(IStorageQueue queue,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
@@ -33,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 throw new ArgumentNullException("queueConfiguration");
             }
+
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
             
             if (instanceFactory == null)
             {
@@ -42,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queue = queue;
             _poisonQueue = CreatePoisonQueueReference(queue.ServiceClient, queue.Name);
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _instanceFactory = instanceFactory;
         }
 
@@ -53,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                context.BackgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,
+                _backgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,
                 _queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }

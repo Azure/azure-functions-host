@@ -88,13 +88,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                HostBindingContext bindingContext = new HostBindingContext(_backgroundExceptionDispatcher,
-                    _bindingProvider);
+                HostBindingContext bindingContext = new HostBindingContext(_bindingProvider);
                 FunctionExecutorContext executorContext = new FunctionExecutorContext(functionInstanceLogger,
                     functionOutputLogger, bindingContext);
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
-                IFunctionExecutor executor = new FunctionExecutor(executorContext);
+                IFunctionExecutor executor = new FunctionExecutor(executorContext, _backgroundExceptionDispatcher);
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
@@ -108,13 +107,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
-                        _queueConfiguration, functions, functionInstanceLogger);
+                        _queueConfiguration, _backgroundExceptionDispatcher, functions, functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        _queueConfiguration, functions, functionInstanceLogger);
+                        _queueConfiguration, _backgroundExceptionDispatcher, functions, functionInstanceLogger);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                     {
@@ -189,12 +188,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
+        private IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
             HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
-                bindingContext.BackgroundExceptionDispatcher, innerExecutor);
+                _backgroundExceptionDispatcher, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
                 innerExecutor, bindingContext, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
@@ -202,14 +201,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return shutdownFunctionExecutor;
         }
 
-        private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
+        private IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
             HostBindingContext bindingContext, IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
             IFunctionExecutor executor)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor,
                 bindingContext);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
-                bindingContext.BackgroundExceptionDispatcher, factoryListener);
+                _backgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;
         }

@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -20,14 +21,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
         private readonly IBlobPathSource _input;
         private readonly ITriggeredFunctionInstanceFactory<IStorageBlob> _instanceFactory;
 
-        public BlobListenerFactory(IHostIdProvider hostIdProvider, IQueueConfiguration queueConfiguration,
-            string functionId, IStorageAccount account, CloudBlobContainer container, IBlobPathSource input,
+        public BlobListenerFactory(IHostIdProvider hostIdProvider,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            string functionId,
+            IStorageAccount account,
+            CloudBlobContainer container,
+            IBlobPathSource input,
             ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
         {
             if (hostIdProvider == null)
@@ -38,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (queueConfiguration == null)
             {
                 throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
             if (account == null)
@@ -62,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -74,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             SharedQueueWatcher sharedQueueWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(context));
             SharedBlobListener sharedBlobListener = context.SharedListeners.GetOrCreate<SharedBlobListener>(
-                new SharedBlobListenerFactory(_account, context));
+                new SharedBlobListenerFactory(_account, _backgroundExceptionDispatcher, context));
 
             // Note that these clients are intentionally for the storage account rather than for the dashboard account.
             // We use the storage, not dashboard, account for the blob receipt container and blob trigger queues.
@@ -123,7 +136,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             SharedBlobQueueListener sharedListener = context.SharedListeners.GetOrCreate<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(executor, context, sharedQueueWatcher, queueClient,
-                    hostBlobTriggerQueue, blobClient, _queueConfiguration, blobWrittenWatcher));
+                    hostBlobTriggerQueue, blobClient, _queueConfiguration, _backgroundExceptionDispatcher,
+                    blobWrittenWatcher));
             sharedListener.Register(_functionId, _instanceFactory);
             return new BlobListener(sharedListener);
         }

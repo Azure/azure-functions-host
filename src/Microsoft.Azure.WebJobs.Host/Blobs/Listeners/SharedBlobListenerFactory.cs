@@ -1,26 +1,45 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class SharedBlobListenerFactory : IFactory<SharedBlobListener>
     {
         private readonly IStorageAccount _account;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly ListenerFactoryContext _context;
 
-        public SharedBlobListenerFactory(IStorageAccount account, ListenerFactoryContext context)
+        public SharedBlobListenerFactory(IStorageAccount account,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, ListenerFactoryContext context)
         {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             _account = account;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _context = context;
         }
 
         public SharedBlobListener Create()
         {
-            SharedBlobListener listener = new SharedBlobListener(_account.SdkObject,
-                _context.BackgroundExceptionDispatcher);
+            SharedBlobListener listener = new SharedBlobListener(_account.SdkObject, _backgroundExceptionDispatcher);
             _context.BlobWrittenWatcher = listener.BlobWritterWatcher;
             return listener;
         }

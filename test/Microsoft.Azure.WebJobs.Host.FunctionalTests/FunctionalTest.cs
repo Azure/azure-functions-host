@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Xunit;
 
@@ -51,9 +52,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
+                new TaskBackgroundExceptionDispatcher<TResult>(taskSource);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration);
+                queueConfiguration, backgroundExceptionDispatcher);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 
@@ -63,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     triggerBindingProvider, bindingProvider),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
-                BackgroundExceptionDispatcher = new TaskBackgroundExceptionDispatcher<TResult>(taskSource),
+                BackgroundExceptionDispatcher = backgroundExceptionDispatcher,
                 BindingProvider = bindingProvider,
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
                 FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),

@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 
@@ -24,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5));
+                new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
+                BackgroundExceptionDispatcher.Instance);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 

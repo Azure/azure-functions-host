@@ -46,13 +46,13 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 serviceBusAccountProvider, extensionTypeLocator);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"), queueConfiguration);
+                new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 
             _blobClient = account.CreateCloudBlobClient();
-            _context = new HostBindingContext(BackgroundExceptionDispatcher.Instance, bindingProvider);
+            _context = new HostBindingContext(bindingProvider);
         }
 
         public void Call(string functionName, object arguments = null)

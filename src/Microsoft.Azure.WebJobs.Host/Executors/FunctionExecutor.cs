@@ -21,10 +21,23 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     class FunctionExecutor : IFunctionExecutor
     {
         private readonly FunctionExecutorContext _context;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
 
-        public FunctionExecutor(FunctionExecutorContext context)
+        public FunctionExecutor(FunctionExecutorContext context,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
             _context = context;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
         }
 
         public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
@@ -102,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
             using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand,
-                _context.BindingContext.BackgroundExceptionDispatcher))
+                _backgroundExceptionDispatcher))
             {
                 TextWriter consoleOutput = outputLog.Output;
                 FunctionBindingContext functionContext =
@@ -215,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
 
             using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand,
-                _context.BindingContext.BackgroundExceptionDispatcher))
+                _backgroundExceptionDispatcher))
             {
                 try
                 {

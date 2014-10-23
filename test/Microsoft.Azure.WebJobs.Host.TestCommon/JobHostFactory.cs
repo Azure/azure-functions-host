@@ -5,6 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
@@ -44,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
-                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration),
+                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
+                    BackgroundExceptionDispatcher.Instance),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
                     extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,

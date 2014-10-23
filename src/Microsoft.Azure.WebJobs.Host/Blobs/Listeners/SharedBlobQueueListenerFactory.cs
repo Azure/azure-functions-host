@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageQueue _hostBlobTriggerQueue;
         private readonly IStorageBlobClient _blobClient;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(IFunctionExecutor executor,
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueue hostBlobTriggerQueue,
             IStorageBlobClient blobClient,
             IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
             if (executor == null)
@@ -67,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("queueConfiguration");
             }
 
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
             if (blobWrittenWatcher == null)
             {
                 throw new ArgumentNullException("blobWrittenWatcher");
@@ -79,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _hostBlobTriggerQueue = hostBlobTriggerQueue;
             _blobClient = blobClient;
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
@@ -91,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
-                delayStrategy, _context.BackgroundExceptionDispatcher, _sharedQueueWatcher,
+                delayStrategy, _backgroundExceptionDispatcher, _sharedQueueWatcher,
                 _queueConfiguration.BatchSize, _queueConfiguration.MaxDequeueCount);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }

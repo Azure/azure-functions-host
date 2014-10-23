@@ -23,11 +23,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _cancellationToken = cancellationToken;
         }
 
-        public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher
-        {
-            get { return _hostContext.BackgroundExceptionDispatcher; }
-        }
-
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _hostContext.BlobWrittenWatcher; }

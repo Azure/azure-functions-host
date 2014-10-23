@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage.Queue;
 
@@ -25,9 +26,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IQueueConfiguration _queueConfiguration;
+        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
 
         public QueueTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
-            IQueueConfiguration queueConfiguration)
+            IQueueConfiguration queueConfiguration, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (accountProvider == null)
             {
@@ -39,9 +41,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("queueConfiguration");
             }
 
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _queueConfiguration = queueConfiguration;
+            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -70,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IStorageQueue queue = client.GetQueueReference(queueName);
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
-                _queueConfiguration);
+                _queueConfiguration, _backgroundExceptionDispatcher);
             return binding;
         }
 
