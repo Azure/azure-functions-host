@@ -29,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             queueMock.Setup(q => q.Name).Returns("queueName");
             IStorageQueue queue = queueMock.Object;
             _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding,
-                new Mock<IQueueConfiguration>(MockBehavior.Strict).Object, BackgroundExceptionDispatcher.Instance);
+                new Mock<IQueueConfiguration>(MockBehavior.Strict).Object, BackgroundExceptionDispatcher.Instance,
+                new Mock<IContextSetter<IMessageEnqueuedWatcher>>(MockBehavior.Strict).Object);
         }
 
         [Theory]

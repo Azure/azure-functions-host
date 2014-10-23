@@ -20,11 +20,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _poisonQueue;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
         public QueueListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
@@ -41,6 +43,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
+
+            if (messageEnqueuedWatcherSetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherSetter");
+            }
             
             if (instanceFactory == null)
             {
@@ -51,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _poisonQueue = CreatePoisonQueueReference(queue.ServiceClient, queue.Name);
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _instanceFactory = instanceFactory;
         }
 
@@ -60,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
             SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
-                new SharedQueueWatcherFactory(context));
+                new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
                 _backgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,
                 _queueConfiguration.MaxDequeueCount);

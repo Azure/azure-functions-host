@@ -21,13 +21,15 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IExtensionTypeLocator extensionTypeLocator,
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                queueConfiguration, backgroundExceptionDispatcher));
+                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherSetter));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher));
+                extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
+                messageEnqueuedWatcherSetter));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");

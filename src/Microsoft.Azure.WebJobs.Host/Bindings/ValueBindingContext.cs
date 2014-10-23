@@ -30,11 +30,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _functionContext.BlobWrittenWatcher; }
         }
 
-        public IMessageEnqueuedWatcher MessageEnqueuedWatcher
-        {
-            get { return _functionContext.MessageEnqueuedWatcher; }
-        }
-
         public Guid FunctionInstanceId
         {
             get { return _functionContext.FunctionInstanceId; }

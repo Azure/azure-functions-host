@@ -12,6 +12,19 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class CloudQueueMessageArgumentBindingProvider : IQueueArgumentBindingProvider
     {
+        private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+        public CloudQueueMessageArgumentBindingProvider(
+            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+        {
+            if (messageEnqueuedWatcherGetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+            }
+
+            _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+        }
+
         public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(CloudQueueMessage).MakeByRefType())
@@ -19,11 +32,24 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return null;
             }
 
-            return new CloudQueueMessageArgumentBinding();
+            return new CloudQueueMessageArgumentBinding(_messageEnqueuedWatcherGetter);
         }
 
         internal class CloudQueueMessageArgumentBinding : IArgumentBinding<IStorageQueue>
         {
+            private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+            public CloudQueueMessageArgumentBinding(
+                IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+            {
+                if (messageEnqueuedWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+                }
+
+                _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+            }
+
             public Type ValueType
             {
                 get { return typeof(CloudQueueMessage); }
@@ -52,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
                 IValueProvider provider = new NonNullConverterValueBinder<CloudQueueMessage>(value,
-                    new CloudQueueMessageToStorageQueueMessageConverter(), context.MessageEnqueuedWatcher);
+                    new CloudQueueMessageToStorageQueueMessageConverter(), _messageEnqueuedWatcherGetter.Value);
                 return Task.FromResult(provider);
             }
         }

@@ -13,6 +13,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class UserTypeArgumentBindingProvider : IQueueArgumentBindingProvider
     {
+        private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+        public UserTypeArgumentBindingProvider(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+        {
+            if (messageEnqueuedWatcherGetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+            }
+
+            _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+        }
+
         public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut)
@@ -35,14 +47,27 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             return CreateBinding(itemType);
         }
 
-        private static IArgumentBinding<IStorageQueue> CreateBinding(Type itemType)
+        private IArgumentBinding<IStorageQueue> CreateBinding(Type itemType)
         {
             Type genericType = typeof(UserTypeArgumentBinding<>).MakeGenericType(itemType);
-            return (IArgumentBinding<IStorageQueue>)Activator.CreateInstance(genericType);
+            return (IArgumentBinding<IStorageQueue>)Activator.CreateInstance(genericType,
+                _messageEnqueuedWatcherGetter);
         }
 
         private class UserTypeArgumentBinding<TInput> : IArgumentBinding<IStorageQueue>
         {
+            private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+            public UserTypeArgumentBinding(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+            {
+                if (messageEnqueuedWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+                }
+
+                _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+            }
+
             public Type ValueType
             {
                 get { return typeof(TInput); }
@@ -53,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 IConverter<TInput, IStorageQueueMessage> converter =
                     new UserTypeToStorageQueueMessageConverter<TInput>(value, context.FunctionInstanceId);
                 IValueProvider provider = new ConverterValueBinder<TInput>(value, converter,
-                    context.MessageEnqueuedWatcher);
+                    _messageEnqueuedWatcherGetter.Value);
                 return Task.FromResult(provider);
             }
         }

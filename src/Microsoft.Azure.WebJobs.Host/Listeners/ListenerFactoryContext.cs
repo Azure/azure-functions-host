@@ -29,12 +29,6 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             set { _hostContext.BlobWrittenWatcher = value; }
         }
 
-        public IMessageEnqueuedWatcher MessageEnqueuedWatcher
-        {
-            get { return _hostContext.MessageEnqueuedWatcher; }
-            set { _hostContext.MessageEnqueuedWatcher = value; }
-        }
-
         public SharedListenerContainer SharedListeners
         {
             get { return _sharedListeners; }

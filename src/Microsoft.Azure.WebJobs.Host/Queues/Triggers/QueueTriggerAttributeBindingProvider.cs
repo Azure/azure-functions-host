@@ -27,9 +27,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
 
-        public QueueTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
-            IQueueConfiguration queueConfiguration, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        public QueueTriggerAttributeBindingProvider(INameResolver nameResolver,
+            IStorageAccountProvider accountProvider,
+            IQueueConfiguration queueConfiguration,
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
         {
             if (accountProvider == null)
             {
@@ -46,10 +50,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (messageEnqueuedWatcherSetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherSetter");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -78,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IStorageQueue queue = client.GetQueueReference(queueName);
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
-                _queueConfiguration, _backgroundExceptionDispatcher);
+                _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter);
             return binding;
         }
 

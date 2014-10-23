@@ -27,13 +27,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName,
             IStorageQueue queue,
             ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding,
             IQueueConfiguration queueConfiguration,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
         {
             _parameterName = parameterName;
             _queue = queue;
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _bindingDataContract = CreateBindingDataContract(argumentBinding);
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _converter = CreateConverter(queue);
         }
 
@@ -115,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
                     functionDescriptor);
             IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration,
-                _backgroundExceptionDispatcher, instanceFactory);
+                _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

@@ -11,6 +11,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class StringArgumentBindingProvider : IQueueArgumentBindingProvider
     {
+        private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+        public StringArgumentBindingProvider(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+        {
+            if (messageEnqueuedWatcherGetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+            }
+
+            _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+        }
+
         public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(string).MakeByRefType())
@@ -18,11 +30,23 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return null;
             }
 
-            return new StringArgumentBinding();
+            return new StringArgumentBinding(_messageEnqueuedWatcherGetter);
         }
 
         private class StringArgumentBinding : IArgumentBinding<IStorageQueue>
         {
+            private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+            public StringArgumentBinding(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+            {
+                if (messageEnqueuedWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+                }
+
+                _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+            }
+
             public Type ValueType
             {
                 get { return typeof(string); }
@@ -51,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
                 IValueProvider provider = new NonNullConverterValueBinder<string>(value,
-                    new StringToStorageQueueMessageConverter(value), context.MessageEnqueuedWatcher);
+                    new StringToStorageQueueMessageConverter(value), _messageEnqueuedWatcherGetter.Value);
                 return Task.FromResult(provider);
             }
         }

@@ -42,11 +42,14 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount: 5);
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
+            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
+                new ContextAccessor<IMessageEnqueuedWatcher>();
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
-                new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance);
+                new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance,
+                messageEnqueuedWatcherAccessor);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();

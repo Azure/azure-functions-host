@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher =
             BackgroundExceptionDispatcher.Instance;
+        private readonly ContextAccessor<IMessageEnqueuedWatcher> _messageEnqueuedWatcherAccessor =
+            new ContextAccessor<IMessageEnqueuedWatcher>();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
@@ -151,7 +153,7 @@ namespace Microsoft.Azure.WebJobs
                 if (_bindingProvider == null)
                 {
                     _bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
-                        _serviceBusAccountProvider, ExtensionTypeLocator);
+                        _serviceBusAccountProvider, ExtensionTypeLocator, _messageEnqueuedWatcherAccessor);
                 }
 
                 return _bindingProvider;
@@ -198,7 +200,7 @@ namespace Microsoft.Azure.WebJobs
                 {
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
                         _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
-                        _queueConfiguration, _backgroundExceptionDispatcher);
+                        _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor);
                 }
 
                 return _triggerBindingProvider;

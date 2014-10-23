@@ -4,6 +4,7 @@
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -23,12 +24,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
             IServiceBusAccountProvider serviceBusAccountProvider = null;
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
+            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
+                new ContextAccessor<IMessageEnqueuedWatcher>();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
-                BackgroundExceptionDispatcher.Instance);
+                BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
 
             return new FunctionIndexer(triggerBindingProvider, bindingProvider);
         }

@@ -11,6 +11,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class ByteArrayArgumentBindingProvider : IQueueArgumentBindingProvider
     {
+        private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+        public ByteArrayArgumentBindingProvider(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+        {
+            if (messageEnqueuedWatcherGetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+            }
+
+            _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+        }
+
         public IArgumentBinding<IStorageQueue> TryCreate(ParameterInfo parameter)
         {
             if (!parameter.IsOut || parameter.ParameterType != typeof(byte[]).MakeByRefType())
@@ -18,11 +30,23 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return null;
             }
 
-            return new ByteArrayArgumentBinding();
+            return new ByteArrayArgumentBinding(_messageEnqueuedWatcherGetter);
         }
 
         private class ByteArrayArgumentBinding : IArgumentBinding<IStorageQueue>
         {
+            private readonly IContextGetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherGetter;
+
+            public ByteArrayArgumentBinding(IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+            {
+                if (messageEnqueuedWatcherGetter == null)
+                {
+                    throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+                }
+
+                _messageEnqueuedWatcherGetter = messageEnqueuedWatcherGetter;
+            }
+
             public Type ValueType
             {
                 get { return typeof(byte[]); }
@@ -51,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
                 IValueProvider provider = new NonNullConverterValueBinder<byte[]>(value,
-                    new ByteArrayToStorageQueueMessageConverter(value), context.MessageEnqueuedWatcher);
+                    new ByteArrayToStorageQueueMessageConverter(value), _messageEnqueuedWatcherGetter.Value);
                 return Task.FromResult(provider);
             }
         }

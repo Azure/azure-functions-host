@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly CloudBlobContainer _container;
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         public BlobListenerFactory(IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             string functionId,
             IStorageAccount account,
             CloudBlobContainer container,
@@ -50,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (backgroundExceptionDispatcher == null)
             {
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
+            if (messageEnqueuedWatcherSetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherSetter");
             }
 
             if (account == null)
@@ -75,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _hostIdProvider = hostIdProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -85,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
         {
             SharedQueueWatcher sharedQueueWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
-                new SharedQueueWatcherFactory(context));
+                new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
             SharedBlobListener sharedBlobListener = context.SharedListeners.GetOrCreate<SharedBlobListener>(
                 new SharedBlobListenerFactory(_account, _backgroundExceptionDispatcher, context));
 

@@ -40,15 +40,17 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new SimpleQueueConfiguration(maxDequeueCount);
+            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
+                new ContextAccessor<IMessageEnqueuedWatcher>();
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
                     serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
-                    BackgroundExceptionDispatcher.Instance),
+                    BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
-                    extensionTypeLocator)),
+                    extensionTypeLocator, messageEnqueuedWatcherAccessor)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = queueConfiguration

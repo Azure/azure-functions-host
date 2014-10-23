@@ -54,11 +54,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 new TaskBackgroundExceptionDispatcher<TResult>(taskSource);
+            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
+                new ContextAccessor<IMessageEnqueuedWatcher>();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
-                queueConfiguration, backgroundExceptionDispatcher);
+                queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator);
+                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor);
 
             return new FakeServiceProvider
             {

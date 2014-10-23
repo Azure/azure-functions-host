@@ -13,27 +13,39 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 {
     internal class QueueAttributeBindingProvider : IBindingProvider
     {
-        private static readonly IQueueArgumentBindingProvider _innerProvider = new CompositeArgumentBindingProvider(
-            new CloudQueueArgumentBindingProvider(),
-            new CloudQueueMessageArgumentBindingProvider(),
-            new StringArgumentBindingProvider(),
-            new ByteArrayArgumentBindingProvider(),
-            new UserTypeArgumentBindingProvider(),
-            new CollectorArgumentBindingProvider(),
-            new AsyncCollectorArgumentBindingProvider());
-
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
+        private readonly IQueueArgumentBindingProvider _innerProvider;
 
-        public QueueAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
+        public QueueAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
+            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            if (messageEnqueuedWatcherGetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherGetter");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
+            _innerProvider = CreateInnerProvider(messageEnqueuedWatcherGetter);
+        }
+        
+        private static IQueueArgumentBindingProvider CreateInnerProvider(
+            IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
+        {
+            return new CompositeArgumentBindingProvider(
+                new CloudQueueArgumentBindingProvider(),
+                new CloudQueueMessageArgumentBindingProvider(messageEnqueuedWatcherGetter),
+                new StringArgumentBindingProvider(messageEnqueuedWatcherGetter),
+                new ByteArrayArgumentBindingProvider(messageEnqueuedWatcherGetter),
+                new UserTypeArgumentBindingProvider(messageEnqueuedWatcherGetter),
+                new CollectorArgumentBindingProvider(),
+                new AsyncCollectorArgumentBindingProvider());
         }
 
         public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
