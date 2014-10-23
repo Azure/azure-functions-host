@@ -25,15 +25,17 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 new TableEntityArgumentBindingProvider(),
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
 
+        private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
 
-        public TableAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        public TableAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
         }
 
@@ -47,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return null;
             }
 
-            string tableName = context.Resolve(tableAttribute.TableName);
+            string tableName = Resolve(tableAttribute.TableName);
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             IStorageTableClient client = account.CreateTableClient();
             Type parameterType = parameter.ParameterType;
@@ -71,8 +73,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
             else
             {
-                string partitionKey = context.Resolve(tableAttribute.PartitionKey);
-                string rowKey = context.Resolve(tableAttribute.RowKey);
+                string partitionKey = Resolve(tableAttribute.PartitionKey);
+                string rowKey = Resolve(tableAttribute.RowKey);
                 IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
@@ -87,6 +89,16 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
 
             return binding;
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

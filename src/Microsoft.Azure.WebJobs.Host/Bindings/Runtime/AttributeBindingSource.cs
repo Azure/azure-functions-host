@@ -24,10 +24,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public Task<IBinding> BindAsync<TValue>(Attribute attribute, CancellationToken cancellationToken)
         {
-            return _context.BindingProvider.TryCreateAsync(BindingProviderContext.Create(
-                new BindingContext(_context, cancellationToken),
+            return _context.BindingProvider.TryCreateAsync(new BindingProviderContext(
                 new FakeParameterInfo(typeof(TValue), attribute),
-                bindingDataContract: null));
+                bindingDataContract: null, cancellationToken: cancellationToken));
         }
 
         // A non-reflection based implementation

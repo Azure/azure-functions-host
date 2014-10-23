@@ -22,15 +22,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             new CollectorArgumentBindingProvider(),
             new AsyncCollectorArgumentBindingProvider());
 
+        private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
 
-        public QueueAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        public QueueAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
         }
 
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
                 return null;
             }
 
-            string queueName = context.Resolve(queueAttribute.QueueName);
+            string queueName = Resolve(queueAttribute.QueueName);
             IBindableQueuePath path = BindableQueuePath.Create(queueName);
             path.ValidateContractCompatibility(context.BindingDataContract);
 
@@ -58,6 +60,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             IStorageQueueClient client = account.CreateQueueClient();
             IBinding binding = new QueueBinding(parameter.Name, argumentBinding, client, path);
             return binding;
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

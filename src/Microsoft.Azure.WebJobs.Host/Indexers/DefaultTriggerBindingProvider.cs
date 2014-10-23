@@ -13,14 +13,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultTriggerBindingProvider
     {
-        public static ITriggerBindingProvider Create(IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider, IExtensionTypeLocator extensionTypeLocator,
+        public static ITriggerBindingProvider Create(INameResolver nameResolver,
+            IStorageAccountProvider storageAccountProvider,
+            IServiceBusAccountProvider serviceBusAccountProvider,
+            IExtensionTypeLocator extensionTypeLocator,
             IHostIdProvider hostIdProvider)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
-            innerProviders.Add(new QueueTriggerAttributeBindingProvider(storageAccountProvider));
-            innerProviders.Add(new BlobTriggerAttributeBindingProvider(storageAccountProvider, extensionTypeLocator,
-                hostIdProvider));
+            innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider));
+            innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
+                extensionTypeLocator, hostIdProvider));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
@@ -28,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             if (serviceBusProviderType != null)
             {
                 ITriggerBindingProvider serviceBusAttributeBindingProvider =
-                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviderType,
+                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviderType, nameResolver,
                     serviceBusAccountProvider);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }

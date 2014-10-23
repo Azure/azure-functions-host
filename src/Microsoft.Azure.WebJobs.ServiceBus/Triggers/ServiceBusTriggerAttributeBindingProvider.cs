@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -22,15 +23,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 new ConverterArgumentBindingProvider<byte[]>(new BrokeredMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
+        private readonly INameResolver _nameResolver;
         private readonly IServiceBusAccountProvider _accountProvider;
 
-        public ServiceBusTriggerAttributeBindingProvider(IServiceBusAccountProvider accountProvider)
+        public ServiceBusTriggerAttributeBindingProvider(INameResolver nameResolver,
+            IServiceBusAccountProvider accountProvider)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
         }
 
@@ -50,12 +54,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (serviceBusTrigger.QueueName != null)
             {
-                queueName = context.Resolve(serviceBusTrigger.QueueName);
+                queueName = Resolve(serviceBusTrigger.QueueName);
             }
             else
             {
-                topicName = context.Resolve(serviceBusTrigger.TopicName);
-                subscriptionName = context.Resolve(serviceBusTrigger.SubscriptionName);
+                topicName = Resolve(serviceBusTrigger.TopicName);
+                subscriptionName = Resolve(serviceBusTrigger.SubscriptionName);
             }
 
             ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = _innerProvider.TryCreate(parameter);
@@ -81,6 +85,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             }
 
             return Task.FromResult(binding);
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

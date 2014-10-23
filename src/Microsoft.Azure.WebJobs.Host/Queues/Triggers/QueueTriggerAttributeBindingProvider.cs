@@ -22,15 +22,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 new ConverterArgumentBindingProvider<byte[]>(new StorageQueueMessageToByteArrayConverter()),
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
+        private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
 
-        public QueueTriggerAttributeBindingProvider(IStorageAccountProvider accountProvider)
+        public QueueTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
         }
 
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 return null;
             }
 
-            string queueName = context.Resolve(queueTrigger.QueueName);
+            string queueName = Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
             ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
@@ -68,6 +70,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             queueName = queueName.ToLowerInvariant(); // must be lowercase. coerce here to be nice.
             QueueClient.ValidateQueueName(queueName);
             return queueName;
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

@@ -30,11 +30,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _hostContext.BindingProvider; }
         }
 
-        public INameResolver NameResolver
-        {
-            get { return _hostContext.NameResolver; }
-        }
-
         public IBlobWrittenWatcher BlobWrittenWatcher
         {
             get { return _hostContext.BlobWrittenWatcher; }

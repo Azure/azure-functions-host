@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings.Data
             {
                 { parameterName, parameterType }
             };
-            BindingProviderContext context = new BindingProviderContext(null, parameter, bindingDataContract,
+            BindingProviderContext context = new BindingProviderContext(parameter, bindingDataContract,
                 CancellationToken.None);
             return context;
         }

@@ -4,6 +4,7 @@
 using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 
@@ -20,9 +21,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 new CollectorArgumentBindingProvider(),
                 new AsyncCollectorArgumentBindingProvider());
 
+        private readonly INameResolver _nameResolver;
         private readonly IServiceBusAccountProvider _accountProvider;
 
-        public ServiceBusAttributeBindingProvider(IServiceBusAccountProvider accountProvider)
+        public ServiceBusAttributeBindingProvider(INameResolver nameResolver, IServiceBusAccountProvider accountProvider)
         {
             if (accountProvider == null)
             {
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             }
 
             _accountProvider = accountProvider;
+            _nameResolver = nameResolver;
         }
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 return Task.FromResult<IBinding>(null);
             }
 
-            string queueOrTopicName = context.Resolve(serviceBusAttribute.QueueOrTopicName);
+            string queueOrTopicName = Resolve(serviceBusAttribute.QueueOrTopicName);
             IBindableServiceBusPath path = BindableServiceBusPath.Create(queueOrTopicName);
             path.ValidateContractCompatibility(context.BindingDataContract);
 
@@ -58,6 +61,16 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path);
             return Task.FromResult(binding);
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

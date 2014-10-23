@@ -24,16 +24,12 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
         private static readonly Func<MethodInfo, bool> _hasServiceBusAttributeDefault = _ => false;
 
-        private readonly INameResolver _nameResolver;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly Func<MethodInfo, bool> _hasServiceBusAttribute;
 
-        public FunctionIndexer(INameResolver nameResolver,
-            ITriggerBindingProvider triggerBindingProvider,
-            IBindingProvider bindingProvider)
+        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider)
         {
-            _nameResolver = nameResolver;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
 
@@ -124,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             foreach (ParameterInfo parameter in parameters)
             {
                 ITriggerBinding possibleTriggerBinding = await _triggerBindingProvider.TryCreateAsync(
-                    new TriggerBindingProviderContext(_nameResolver, parameter, cancellationToken));
+                    new TriggerBindingProviderContext(parameter, cancellationToken));
 
                 if (possibleTriggerBinding != null)
                 {
@@ -162,8 +158,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                     continue;
                 }
 
-                IBinding binding = await _bindingProvider.TryCreateAsync(new BindingProviderContext(_nameResolver,
-                    parameter, bindingDataContract, cancellationToken));
+                IBinding binding = await _bindingProvider.TryCreateAsync(new BindingProviderContext(parameter,
+                    bindingDataContract, cancellationToken));
 
                 if (binding == null)
                 {

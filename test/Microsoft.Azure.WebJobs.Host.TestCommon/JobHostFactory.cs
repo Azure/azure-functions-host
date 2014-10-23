@@ -36,14 +36,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FixedHostIdProvider("test");
+            INameResolver nameResolver = null;
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
-                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), null,
-                    DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator, hostIdProvider),
-                    DefaultBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator)),
+                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
+                    DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
+                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider),
+                    DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
+                    extensionTypeLocator)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = new SimpleQueueConfiguration(maxDequeueCount)

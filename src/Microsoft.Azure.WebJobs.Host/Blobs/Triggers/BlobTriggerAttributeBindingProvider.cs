@@ -20,11 +20,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
     internal class BlobTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
+        private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
         private readonly IHostIdProvider _hostIdProvider;
 
-        public BlobTriggerAttributeBindingProvider(IStorageAccountProvider accountProvider,
+        public BlobTriggerAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
             IExtensionTypeLocator extensionTypeLocator, IHostIdProvider hostIdProvider)
         {
             if (accountProvider == null)
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("hostIdProvider");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
             _hostIdProvider = hostIdProvider;
@@ -83,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 return null;
             }
 
-            string resolvedCombinedPath = context.Resolve(blobTrigger.BlobPath);
+            string resolvedCombinedPath = Resolve(blobTrigger.BlobPath);
             IBlobPathSource path = BlobPathSource.Create(resolvedCombinedPath);
 
             IArgumentBinding<IStorageBlob> argumentBinding = _provider.TryCreate(parameter, access: null);
@@ -97,6 +99,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
                 _hostIdProvider);
             return binding;
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

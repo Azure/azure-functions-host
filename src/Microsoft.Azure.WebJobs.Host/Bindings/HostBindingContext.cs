@@ -11,7 +11,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     {
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IBindingProvider _bindingProvider;
-        private readonly INameResolver _nameResolver;
         private readonly IQueueConfiguration _queueConfiguration;
 
         public HostBindingContext(
@@ -22,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         {
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _bindingProvider = bindingProvider;
-            _nameResolver = nameResolver;
             _queueConfiguration = queueConfiguration;
         }
 
@@ -34,11 +32,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         public IBindingProvider BindingProvider
         {
             get { return _bindingProvider; }
-        }
-
-        public INameResolver NameResolver
-        {
-            get { return _nameResolver; }
         }
 
         public IQueueConfiguration QueueConfiguration

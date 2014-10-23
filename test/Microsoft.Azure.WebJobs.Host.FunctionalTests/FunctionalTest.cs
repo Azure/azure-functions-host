@@ -47,14 +47,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
+            INameResolver nameResolver = null;
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 
             return new FakeServiceProvider
             {
-                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType), null,
-                    DefaultTriggerBindingProvider.Create(storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator, hostIdProvider),
+                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType),
+                    DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
+                        serviceBusAccountProvider, extensionTypeLocator, hostIdProvider),
                     bindingProvider),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,

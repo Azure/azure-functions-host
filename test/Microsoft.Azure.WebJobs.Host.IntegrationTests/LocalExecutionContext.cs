@@ -38,13 +38,14 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             {
                 StorageAccount = account
             };
+            INameResolver nameResolver = null;
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"));
-            IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type), null,
+            IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();
 

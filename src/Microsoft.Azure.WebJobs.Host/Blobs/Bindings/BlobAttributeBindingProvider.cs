@@ -18,10 +18,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 {
     internal class BlobAttributeBindingProvider : IBindingProvider
     {
+        private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
         private readonly IBlobArgumentBindingProvider _provider;
 
-        public BlobAttributeBindingProvider(IStorageAccountProvider accountProvider,
+        public BlobAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider,
             IExtensionTypeLocator extensionTypeLocator)
         {
             if (accountProvider == null)
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 throw new ArgumentNullException("extensionTypeLocator");
             }
 
+            _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
         }
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 return null;
             }
 
-            string resolvedCombinedPath = context.Resolve(blob.BlobPath);
+            string resolvedCombinedPath = Resolve(blob.BlobPath);
             IBindableBlobPath path = BindableBlobPath.Create(resolvedCombinedPath);
             path.ValidateContractCompatibility(context.BindingDataContract);
 
@@ -95,6 +97,16 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             IStorageBlobClient client = account.CreateBlobClient();
             IBinding binding = new BlobBinding(parameter.Name, argumentBinding, client, path);
             return binding;
+        }
+
+        private string Resolve(string queueName)
+        {
+            if (_nameResolver == null)
+            {
+                return queueName;
+            }
+
+            return _nameResolver.ResolveWholeString(queueName);
         }
     }
 }

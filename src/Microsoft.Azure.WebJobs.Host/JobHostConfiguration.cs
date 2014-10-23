@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_bindingProvider == null)
                 {
-                    _bindingProvider = DefaultBindingProvider.Create(_storageAccountProvider,
+                    _bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
                         _serviceBusAccountProvider, ExtensionTypeLocator);
                 }
 
@@ -176,8 +176,8 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_functionIndexProvider == null)
                 {
-                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, NameResolver, 
-                        TriggerBindingProvider, BindingProvider);
+                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, TriggerBindingProvider,
+                        BindingProvider);
                 }
 
                 return _functionIndexProvider;
@@ -195,8 +195,8 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_triggerBindingProvider == null)
                 {
-                    _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_storageAccountProvider,
-                        _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider);
+                    _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
+                        _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider);
                 }
 
                 return _triggerBindingProvider;

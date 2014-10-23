@@ -15,19 +15,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     internal class FunctionIndexProvider : IFunctionIndexProvider
     {
         private readonly ITypeLocator _typeLocator;
-        private readonly INameResolver _nameResolver;
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
 
         private IFunctionIndex _index;
 
         public FunctionIndexProvider(ITypeLocator typeLocator,
-            INameResolver nameResolver,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider)
         {
             _typeLocator = typeLocator;
-            _nameResolver = nameResolver;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
         }
@@ -45,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_nameResolver, _triggerBindingProvider, _bindingProvider);
+            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

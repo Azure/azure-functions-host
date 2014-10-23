@@ -18,14 +18,17 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal static class DefaultBindingProvider
     {
-        public static IBindingProvider Create(IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider, IExtensionTypeLocator extensionTypeLocator)
+        public static IBindingProvider Create(INameResolver nameResolver,
+            IStorageAccountProvider storageAccountProvider,
+            IServiceBusAccountProvider serviceBusAccountProvider,
+            IExtensionTypeLocator extensionTypeLocator)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
-            innerProviders.Add(new QueueAttributeBindingProvider(storageAccountProvider));
-            innerProviders.Add(new BlobAttributeBindingProvider(storageAccountProvider, extensionTypeLocator));
+            innerProviders.Add(new QueueAttributeBindingProvider(nameResolver, storageAccountProvider));
+            innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider,
+                extensionTypeLocator));
 
-            innerProviders.Add(new TableAttributeBindingProvider(storageAccountProvider));
+            innerProviders.Add(new TableAttributeBindingProvider(nameResolver, storageAccountProvider));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
@@ -33,7 +36,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             if (serviceBusProviderType != null)
             {
                 IBindingProvider serviceBusAttributeBindingProvider =
-                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType, serviceBusAccountProvider);
+                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType, nameResolver,
+                    serviceBusAccountProvider);
                 innerProviders.Add(serviceBusAttributeBindingProvider);
             }
 

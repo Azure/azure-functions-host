@@ -22,12 +22,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             };
             IServiceBusAccountProvider serviceBusAccountProvider = null;
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
-            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(
-                storageAccountProvider, null, extensionTypeLocator, new FixedHostIdProvider("test"));
-            IBindingProvider bindingProvider = DefaultBindingProvider.Create(storageAccountProvider,
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
+                storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
+                new FixedHostIdProvider("test"));
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator);
 
-            return new FunctionIndexer(nameResolver, triggerBindingProvider, bindingProvider);
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider);
         }
     }
 }
