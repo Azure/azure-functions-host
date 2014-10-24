@@ -2,16 +2,16 @@
     return {
         kudu: {
             jobs: function () {
-                return '/jobs';
+                return '/api/jobs';
             },
             job: function (type, name) {
                 if (type !== 'triggered' && type !== 'continuous') {
                     return "";
                 }
-                return '/jobs/' + type + '/' + encodeURIComponent(name);
+                return '/api/' + type + 'jobs/' + encodeURIComponent(name);
             },
             jobRun: function (jobName, runId) {
-                return '/jobs/triggered/' + encodeURIComponent(jobName) + '/history/' + encodeURIComponent(runId);
+                return '/api/triggeredjobs/' + encodeURIComponent(jobName) + '/history/' + encodeURIComponent(runId);
             },
             jobHistory: function (type, name) {
                 var base = this.job(type, name);
