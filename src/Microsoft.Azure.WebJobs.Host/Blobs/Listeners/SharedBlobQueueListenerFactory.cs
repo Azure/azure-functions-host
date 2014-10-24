@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class SharedBlobQueueListenerFactory : IFactory<SharedBlobQueueListener>
     {
         private readonly IFunctionExecutor _executor;
-        private readonly ListenerFactoryContext _context;
         private readonly SharedQueueWatcher _sharedQueueWatcher;
         private readonly IStorageQueueClient _queueClient;
         private readonly IStorageQueue _hostBlobTriggerQueue;
@@ -25,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(IFunctionExecutor executor,
-            ListenerFactoryContext context,
             SharedQueueWatcher sharedQueueWatcher,
             IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
@@ -37,11 +35,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (executor == null)
             {
                 throw new ArgumentNullException("executor");
-            }
-
-            if (context == null)
-            {
-                throw new ArgumentNullException("context");
             }
 
             if (sharedQueueWatcher == null)
@@ -80,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             _executor = executor;
-            _context = context;
             _sharedQueueWatcher = sharedQueueWatcher;
             _queueClient = queueClient;
             _hostBlobTriggerQueue = hostBlobTriggerQueue;

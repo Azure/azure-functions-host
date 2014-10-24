@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -45,13 +46,14 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                 new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
+            ISharedContextProvider sharedContextProvider = new SharedContextProvider();
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance,
-                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor);
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();

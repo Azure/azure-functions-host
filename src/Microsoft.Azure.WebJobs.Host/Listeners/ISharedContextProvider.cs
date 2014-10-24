@@ -1,14 +1,10 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
-
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
-    internal interface IListenerFactory
+    internal interface ISharedContextProvider
     {
-        Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken);
+        TValue GetOrCreate<TValue>(IFactory<TValue> factory);
     }
 }

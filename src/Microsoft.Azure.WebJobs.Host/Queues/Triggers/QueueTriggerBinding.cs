@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
+        private readonly ISharedContextProvider _sharedContextProvider;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName,
@@ -35,8 +36,39 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
+            ISharedContextProvider sharedContextProvider)
         {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            if (argumentBinding == null)
+            {
+                throw new ArgumentNullException("argumentBinding");
+            }
+
+            if (queueConfiguration == null)
+            {
+                throw new ArgumentNullException("queueConfiguration");
+            }
+
+            if (backgroundExceptionDispatcher == null)
+            {
+                throw new ArgumentNullException("backgroundExceptionDispatcher");
+            }
+
+            if (messageEnqueuedWatcherSetter == null)
+            {
+                throw new ArgumentNullException("messageEnqueuedWatcherSetter");
+            }
+
+            if (sharedContextProvider == null)
+            {
+                throw new ArgumentNullException("sharedContextProvider");
+            }
+
             _parameterName = parameterName;
             _queue = queue;
             _argumentBinding = argumentBinding;
@@ -44,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
+            _sharedContextProvider = sharedContextProvider;
             _converter = CreateConverter(queue);
         }
 
@@ -118,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
                     functionDescriptor);
             IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration,
-                _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter, instanceFactory);
+                _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter, _sharedContextProvider, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

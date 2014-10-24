@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
+        private readonly ISharedContextProvider _sharedContextProvider;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
@@ -38,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
-            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
+            ISharedContextProvider sharedContextProvider)
         {
             if (accountProvider == null)
             {
@@ -75,6 +78,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("messageEnqueuedWatcherSetter");
             }
 
+            if (sharedContextProvider == null)
+            {
+                throw new ArgumentNullException("sharedContextProvider");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
@@ -83,6 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
+            _sharedContextProvider = sharedContextProvider;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -134,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
                 _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter,
-                _messageEnqueuedWatcherSetter);
+                _messageEnqueuedWatcherSetter, _sharedContextProvider);
             return binding;
         }
 

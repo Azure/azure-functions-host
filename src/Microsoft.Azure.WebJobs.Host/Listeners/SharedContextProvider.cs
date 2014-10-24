@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
-    internal class SharedListenerContainer
+    internal class SharedContextProvider : ISharedContextProvider
     {
         private readonly IDictionary<Type, object> _items = new Dictionary<Type, object>();
 

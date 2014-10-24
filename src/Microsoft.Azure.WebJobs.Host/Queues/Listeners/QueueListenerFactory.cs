@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -21,12 +22,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
+        private readonly ISharedContextProvider _sharedContextProvider;
         private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
         public QueueListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
+            ISharedContextProvider sharedContextProvider,
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
@@ -48,6 +51,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 throw new ArgumentNullException("messageEnqueuedWatcherSetter");
             }
+
+            if (sharedContextProvider == null)
+            {
+                throw new ArgumentNullException("sharedContextProvider");
+            }
             
             if (instanceFactory == null)
             {
@@ -59,15 +67,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
+            _sharedContextProvider = sharedContextProvider;
             _instanceFactory = instanceFactory;
         }
 
-        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_instanceFactory, executor);
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
-            SharedQueueWatcher sharedWatcher = context.SharedListeners.GetOrCreate<SharedQueueWatcher>(
+            SharedQueueWatcher sharedWatcher = _sharedContextProvider.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
                 _backgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,

@@ -23,12 +23,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionOutputLogger _functionOutputLogger;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
-        private readonly FunctionExecutorContext _context;
+
+        private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger,
             IFunctionOutputLogger functionOutputLogger,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            FunctionExecutorContext context)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (functionInstanceLogger == null)
             {
@@ -45,15 +45,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
-            if (context == null)
-            {
-                throw new ArgumentNullException("context");
-            }
-
             _functionInstanceLogger = functionInstanceLogger;
             _functionOutputLogger = functionOutputLogger;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _context = context;
+        }
+
+        public HostOutputMessage HostOutputMessage
+        {
+            get { return _hostOutputMessage; }
+            set { _hostOutputMessage = value; }
         }
 
         public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
@@ -390,12 +390,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             return new FunctionStartedMessage
             {
-                HostInstanceId = _context.HostOutputMessage.HostInstanceId,
-                HostDisplayName = _context.HostOutputMessage.HostDisplayName,
-                SharedQueueName = _context.HostOutputMessage.SharedQueueName,
-                InstanceQueueName = _context.HostOutputMessage.InstanceQueueName,
-                Heartbeat = _context.HostOutputMessage.Heartbeat,
-                WebJobRunIdentifier = _context.HostOutputMessage.WebJobRunIdentifier,
+                HostInstanceId = _hostOutputMessage.HostInstanceId,
+                HostDisplayName = _hostOutputMessage.HostDisplayName,
+                SharedQueueName = _hostOutputMessage.SharedQueueName,
+                InstanceQueueName = _hostOutputMessage.InstanceQueueName,
+                Heartbeat = _hostOutputMessage.Heartbeat,
+                WebJobRunIdentifier = _hostOutputMessage.WebJobRunIdentifier,
                 FunctionInstanceId = instance.Id,
                 Function = instance.FunctionDescriptor,
                 ParentId = instance.ParentId,

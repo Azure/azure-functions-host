@@ -408,6 +408,7 @@
     <Compile Include="Indexers\IFunctionIndexCollector.cs" />
     <Compile Include="Indexers\IFunctionIndexProvider.cs" />
     <Compile Include="Listeners\CompositeListenerFactory.cs" />
+    <Compile Include="Listeners\ISharedContextProvider.cs" />
     <Compile Include="Loggers\DefaultLoggerProvider.cs" />
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
@@ -487,7 +488,6 @@
     <Compile Include="Executors\IFunctionInstanceFactory.cs" />
     <Compile Include="Executors\DefaultStorageCredentialsValidator.cs" />
     <Compile Include="Executors\IStorageCredentialsValidator.cs" />
-    <Compile Include="Executors\FunctionExecutorContext.cs" />
     <Compile Include="Executors\JobHostContext.cs" />
     <Compile Include="Executors\JobHostContextFactory.cs" />
     <Compile Include="Indexers\IFunctionIndex.cs" />
@@ -497,10 +497,9 @@
     <Compile Include="Listeners\IFactory.cs" />
     <Compile Include="Blobs\IBlobWrittenWatcher.cs" />
     <Compile Include="Listeners\ISharedListener.cs" />
-    <Compile Include="Listeners\ListenerFactoryContext.cs" />
     <Compile Include="Listeners\NullListener.cs" />
     <Compile Include="Listeners\NullListenerFactory.cs" />
-    <Compile Include="Listeners\SharedListenerContainer.cs" />
+    <Compile Include="Listeners\SharedContextProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLogger.cs" />
     <Compile Include="Loggers\NullHostInstanceLogger.cs" />
     <Compile Include="Loggers\UpdateOutputLogCommand.cs" />

@@ -4,6 +4,7 @@
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -45,15 +46,17 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 new ContextAccessor<IMessageEnqueuedWatcher>();
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
+            ISharedContextProvider sharedContextProvider = new SharedContextProvider();
 
             TestJobHostConfiguration configuration = new TestJobHostConfiguration
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
-                    serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
-                    BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor),
+                        serviceBusAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
+                        BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor,
+                        blobWrittenWatcherAccessor, sharedContextProvider),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
-                    extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor)),
+                        extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor)),
                 StorageAccountProvider = storageAccountProvider,
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = queueConfiguration

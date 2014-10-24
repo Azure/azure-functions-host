@@ -13,12 +13,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageAccount _account;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
-        private readonly ListenerFactoryContext _context;
 
         public SharedBlobListenerFactory(IStorageAccount account,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
-            ListenerFactoryContext context)
+            IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter)
         {
             if (account == null)
             {
@@ -35,15 +33,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("blobWrittenWatcherSetter");
             }
 
-            if (context == null)
-            {
-                throw new ArgumentNullException("context");
-            }
-
             _account = account;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
-            _context = context;
         }
 
         public SharedBlobListener Create()

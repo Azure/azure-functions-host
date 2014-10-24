@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _functionInstanceLogger = functionInstanceLogger;
         }
 
-        public Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
         {
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
                 _functionInstanceLogger);

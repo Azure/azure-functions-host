@@ -5,6 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -28,12 +29,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
+        private readonly ISharedContextProvider _sharedContextProvider;
 
         public QueueTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter)
+            IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
+            ISharedContextProvider sharedContextProvider)
         {
             if (accountProvider == null)
             {
@@ -55,11 +58,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("messageEnqueuedWatcherSetter");
             }
 
+            if (sharedContextProvider == null)
+            {
+                throw new ArgumentNullException("sharedContextProvider");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
+            _sharedContextProvider = sharedContextProvider;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -88,7 +97,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IStorageQueue queue = client.GetQueueReference(queueName);
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
-                _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter);
+                _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter,
+                _sharedContextProvider);
             return binding;
         }
 

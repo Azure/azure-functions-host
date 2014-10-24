@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -26,14 +27,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _instanceFactory = instanceFactory;
         }
 
-        public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
         {
             // Must create all messaging entities before creating message receivers and calling OnMessage.
             // Otherwise, some function could start to execute and try to output messages to entities that don't yet
             // exist.
-            await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, context.CancellationToken);
+            await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, cancellationToken);
 
-            ITriggerExecutor<BrokeredMessage> triggerExecutor = new ServiceBusTriggerExecutor(_instanceFactory, executor);
+            ITriggerExecutor<BrokeredMessage> triggerExecutor = new ServiceBusTriggerExecutor(_instanceFactory,
+                executor);
             return new ServiceBusListener(_messagingFactory, _queueName, triggerExecutor);
         }
     }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Triggers;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             IStorageQueue queue = queueMock.Object;
             _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding,
                 new Mock<IQueueConfiguration>(MockBehavior.Strict).Object, BackgroundExceptionDispatcher.Instance,
-                new Mock<IContextSetter<IMessageEnqueuedWatcher>>(MockBehavior.Strict).Object);
+                new Mock<IContextSetter<IMessageEnqueuedWatcher>>(MockBehavior.Strict).Object,
+                new SharedContextProvider());
         }
 
         [Theory]

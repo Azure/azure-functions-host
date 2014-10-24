@@ -88,11 +88,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
-                FunctionExecutorContext executorContext = new FunctionExecutorContext();
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
-                IFunctionExecutor executor = new FunctionExecutor(functionInstanceLogger,
-                    functionOutputLogger, _backgroundExceptionDispatcher, executorContext);
+                FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger,
+                    _backgroundExceptionDispatcher);
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
@@ -161,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     hostOutputMessage = new DataOnlyHostOutputMessage();
                 }
 
-                executorContext.HostOutputMessage = hostOutputMessage;
+                executor.HostOutputMessage = hostOutputMessage;
 
                 IEnumerable<FunctionDescriptor> descriptors = functions.ReadAllDescriptors();
                 int descriptorsCount = descriptors.Count();

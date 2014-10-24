@@ -41,9 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private Task<IListener> CreateListenerAsync(CancellationToken cancellationToken)
         {
-            ListenerFactoryContext listenerContext = new ListenerFactoryContext(new SharedListenerContainer(),
-                cancellationToken);
-            return _abortListenerFactory.CreateAsync(_abortExecutor, listenerContext);
+            return _abortListenerFactory.CreateAsync(_abortExecutor, cancellationToken);
         }
     }
 }

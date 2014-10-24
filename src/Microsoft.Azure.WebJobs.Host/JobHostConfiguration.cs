@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs
             new ContextAccessor<IMessageEnqueuedWatcher>();
         private readonly ContextAccessor<IBlobWrittenWatcher> _blobWrittenWatcherAccessor =
             new ContextAccessor<IBlobWrittenWatcher>();
+        private readonly ISharedContextProvider _sharedContextProvider = new SharedContextProvider();
 
         private ITypeLocator _typeLocator = new DefaultTypeLocator();
         private INameResolver _nameResolver = new DefaultNameResolver();
@@ -205,7 +207,7 @@ namespace Microsoft.Azure.WebJobs
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
                         _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
                         _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor,
-                        _blobWrittenWatcherAccessor);
+                        _blobWrittenWatcherAccessor, _sharedContextProvider);
                 }
 
                 return _triggerBindingProvider;

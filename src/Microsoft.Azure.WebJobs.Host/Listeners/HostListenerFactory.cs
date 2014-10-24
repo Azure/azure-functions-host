@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -17,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _functionDefinitions = functionDefinitions;
         }
 
-        public async Task<IListener> CreateAsync(IFunctionExecutor executor, ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
         {
             List<IListener> listeners = new List<IListener>();
 
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                     continue;
                 }
 
-                IListener listener = await listenerFactory.CreateAsync(executor, context);
+                IListener listener = await listenerFactory.CreateAsync(executor, cancellationToken);
                 listeners.Add(listener);
             }
 
