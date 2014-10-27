@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Ensure the blob still exists with the same ETag.
-            string possibleETag = await _eTagReader.GetETagAsync(blob.SdkObject, cancellationToken);
+            string possibleETag = await _eTagReader.GetETagAsync(blob, cancellationToken);
 
             if (possibleETag == null)
             {
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             // If the blob still exists but the ETag is different, delete the message but do a fast path notification.
             if (!String.Equals(message.ETag, possibleETag, StringComparison.Ordinal))
             {
-                _blobWrittenWatcher.Notify(blob.SdkObject);
+                _blobWrittenWatcher.Notify(blob);
                 return true;
             }
 

@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
@@ -20,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private bool _started;
         private bool _disposed;
 
-        public SharedBlobListener(CloudStorageAccount storageAccount,
+        public SharedBlobListener(IStorageAccount storageAccount,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             _strategy = CreateStrategy(storageAccount);
@@ -33,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             get { return _strategy; }
         }
 
-        public Task RegisterAsync(CloudBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
+        public Task RegisterAsync(IStorageBlobContainer container, ITriggerExecutor<IStorageBlob> triggerExecutor,
             CancellationToken cancellationToken)
         {
             if (_started)
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        private static IBlobListenerStrategy CreateStrategy(CloudStorageAccount account)
+        private static IBlobListenerStrategy CreateStrategy(IStorageAccount account)
         {
             if (!StorageClient.IsDevelopmentStorageAccount(account))
             {

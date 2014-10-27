@@ -10,8 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IEnumerable<MethodInfo> indexedMethods = index.ReadAllMethods();
 
             string sharedHostName = GetSharedHostName(indexedMethods, account);
-            CloudBlobDirectory directory = account.SdkObject.CreateCloudBlobClient().GetContainerReference(
+            IStorageBlobDirectory directory = account.CreateBlobClient().GetContainerReference(
                 HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.Ids);
             return await GetOrCreateHostIdAsync(sharedHostName, directory, cancellationToken);
         }
@@ -72,12 +72,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return sharedHostName;
         }
 
-        private static async Task<string> GetOrCreateHostIdAsync(string sharedHostName, CloudBlobDirectory directory,
+        private static async Task<string> GetOrCreateHostIdAsync(string sharedHostName, IStorageBlobDirectory directory,
             CancellationToken cancellationToken)
         {
             Debug.Assert(directory != null);
 
-            CloudBlockBlob blob = directory.GetBlockBlobReference(sharedHostName);
+            IStorageBlockBlob blob = directory.GetBlockBlobReference(sharedHostName);
             Guid? possibleHostId = await TryGetExistingIdAsync(blob, cancellationToken);
 
             if (possibleHostId.HasValue)
@@ -103,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             throw new InvalidOperationException("Unable to determine host ID.");
         }
 
-        private static async Task<Guid?> TryGetExistingIdAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
+        private static async Task<Guid?> TryGetExistingIdAsync(IStorageBlockBlob blob,
+            CancellationToken cancellationToken)
         {
             string text = await TryDownloadAsync(blob, cancellationToken);
 
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return null;
         }
 
-        private static async Task<string> TryDownloadAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
+        private static async Task<string> TryDownloadAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             try
             {
@@ -141,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static async Task<bool> TryInitializeIdAsync(CloudBlockBlob blob, Guid hostId,
+        private static async Task<bool> TryInitializeIdAsync(IStorageBlockBlob blob, Guid hostId,
             CancellationToken cancellationToken)
         {
             string text = hostId.ToString("N");

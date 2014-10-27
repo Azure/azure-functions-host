@@ -2,8 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Shared.Protocol;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage.Blob
@@ -38,7 +44,63 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         public IStorageBlobContainer GetContainerReference(string containerName)
         {
             CloudBlobContainer sdkContainer = _sdk.GetContainerReference(containerName);
-            return new StorageBlobContainer(sdkContainer);
+            return new StorageBlobContainer(this, sdkContainer);
+        }
+
+        /// <inheritdoc />
+        public Task<ServiceProperties> GetServicePropertiesAsync(CancellationToken cancellationToken)
+        {
+            return _sdk.GetServicePropertiesAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
+            BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
+            BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            Task<BlobResultSegment> sdkTask = _sdk.ListBlobsSegmentedAsync(prefix, useFlatBlobListing,
+                blobListingDetails, maxResults, currentToken, options, operationContext, cancellationToken);
+            return ListBlobsSegmentedAsyncCore(sdkTask);
+        }
+
+        private async Task<IStorageBlobResultSegment> ListBlobsSegmentedAsyncCore(Task<BlobResultSegment> sdkTask)
+        {
+            BlobResultSegment sdkSegment = await sdkTask;
+
+            if (sdkSegment == null)
+            {
+                return null;
+            }
+
+            IEnumerable<IListBlobItem> sdkResults = sdkSegment.Results;
+
+            List<IStorageListBlobItem> results;
+
+            if (sdkResults != null)
+            {
+                results = new List<IStorageListBlobItem>();
+
+                foreach (IListBlobItem sdkResult in sdkResults)
+                {
+                    CloudBlobContainer sdkContainer = sdkResult.Container;
+                    Debug.Assert(sdkContainer != null);
+                    IStorageBlobContainer container = new StorageBlobContainer(this, sdkContainer);
+                    IStorageListBlobItem result = StorageBlobContainer.ToStorageListBlobItem(container, sdkResult);
+                    results.Add(result);
+                }
+            }
+            else
+            {
+                results = null;
+            }
+
+            return new StorageBlobResultSegment(sdkSegment.ContinuationToken, results);
+        }
+
+        /// <inheritdoc />
+        public Task SetServicePropertiesAsync(ServiceProperties properties, CancellationToken cancellationToken)
+        {
+            return _sdk.SetServicePropertiesAsync(properties, cancellationToken);
         }
     }
 }

@@ -4,8 +4,10 @@
 using System;
 #if PUBLICPROTOCOL
 using Microsoft.Azure.WebJobs.Storage;
+using Microsoft.Azure.WebJobs.Storage.Blob;
 #else
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 #endif
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -27,18 +29,18 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     internal class HeartbeatCommand : IHeartbeatCommand
 #endif
     {
-        private readonly CloudBlockBlob _blob;
+        private readonly IStorageBlockBlob _blob;
 
         /// <summary>Initializes a new instance of the <see cref="HeartbeatCommand"/> class.</summary>
         /// <param name="account">The storage account in which to write the heartbeat.</param>
         /// <param name="containerName">The name of the container in which to write the heartbeat.</param>
         /// <param name="blobName">The name of the heartbeat blob (including the directory name, if any).</param>
-        public HeartbeatCommand(CloudStorageAccount account, string containerName, string blobName)
-            : this(account.CreateCloudBlobClient().GetContainerReference(containerName).GetBlockBlobReference(blobName))
+        public HeartbeatCommand(IStorageAccount account, string containerName, string blobName)
+            : this(account.CreateBlobClient().GetContainerReference(containerName).GetBlockBlobReference(blobName))
         {
         }
 
-        private HeartbeatCommand(CloudBlockBlob blob)
+        private HeartbeatCommand(IStorageBlockBlob blob)
         {
             _blob = blob;
         }
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             try
             {
-                await _blob.UploadTextAsync(String.Empty, cancellationToken);
+                await _blob.UploadTextAsync(String.Empty, cancellationToken: cancellationToken);
                 return;
             }
             catch (StorageException exception)
@@ -67,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             Debug.Assert(isContainerNotFoundException);
             await _blob.Container.CreateIfNotExistsAsync(cancellationToken);
-            await _blob.UploadTextAsync(String.Empty, cancellationToken);
+            await _blob.UploadTextAsync(String.Empty, cancellationToken: cancellationToken);
         }
     }
 }

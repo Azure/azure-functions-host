@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
@@ -67,7 +68,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(
                     combinedCancellationToken);
-                CloudStorageAccount sdkDashboardAccount = dashboardAccount != null ? dashboardAccount.SdkObject : null;
 
                 IHostInstanceLogger hostInstanceLogger = await _hostInstanceLoggerProvider.GetAsync(
                     combinedCancellationToken);
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (dashboardAccount != null)
                 {
-                    CloudBlobClient dashboardBlobClient = sdkDashboardAccount.CreateCloudBlobClient();
+                    IStorageBlobClient dashboardBlobClient = dashboardAccount.CreateBlobClient();
                     functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
                 }
                 else
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         ExpirationInSeconds = (int)HeartbeatIntervals.ExpirationInterval.TotalSeconds
                     };
                     IRecurrentCommand heartbeatCommand = new UpdateHostHeartbeatCommand(new HeartbeatCommand(
-                        sdkDashboardAccount,
+                        dashboardAccount,
                         heartbeatDescriptor.SharedContainerName,
                         heartbeatDescriptor.SharedDirectoryName + "/" + heartbeatDescriptor.InstanceBlobName));
 

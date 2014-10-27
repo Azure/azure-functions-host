@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
         {
             if (_blobWrittenWatcher != null)
             {
-                _blobWrittenWatcher.Notify(_blob.SdkObject);
+                _blobWrittenWatcher.Notify(_blob);
             }
 
             return Task.FromResult(0);

@@ -7,8 +7,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -19,11 +19,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     // Handle incremental updates to get real-time updates for long running functions. 
     internal sealed class BlobFunctionOutputDefinition : IFunctionOutputDefinition
     {
-        private readonly CloudBlobClient _client;
+        private readonly IStorageBlobClient _client;
         private readonly LocalBlobDescriptor _outputBlob;
         private readonly LocalBlobDescriptor _parameterLogBlob;
 
-        public BlobFunctionOutputDefinition(CloudBlobClient client, LocalBlobDescriptor outputBlob,
+        public BlobFunctionOutputDefinition(IStorageBlobClient client, LocalBlobDescriptor outputBlob,
             LocalBlobDescriptor parameterLogBlob)
         {
             _client = client;
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         public async Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
         {
-            CloudBlockBlob blob = GetBlockBlobReference(_outputBlob);
+            IStorageBlockBlob blob = GetBlockBlobReference(_outputBlob);
             string existingContents = await ReadBlobAsync(blob, cancellationToken);
             return await UpdateOutputLogCommand.CreateAsync(blob, existingContents, cancellationToken);
         }
@@ -54,17 +54,17 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), consoleOutput);
         }
 
-        private CloudBlockBlob GetBlockBlobReference(LocalBlobDescriptor descriptor)
+        private IStorageBlockBlob GetBlockBlobReference(LocalBlobDescriptor descriptor)
         {
-            CloudBlobContainer container = _client.GetContainerReference(descriptor.ContainerName);
+            IStorageBlobContainer container = _client.GetContainerReference(descriptor.ContainerName);
             return container.GetBlockBlobReference(descriptor.BlobName);
         }
 
         // Return Null if doesn't exist
         [DebuggerNonUserCode]
-        private static async Task<string> ReadBlobAsync(ICloudBlob blob, CancellationToken cancellationToken)
+        private static async Task<string> ReadBlobAsync(IStorageBlob blob, CancellationToken cancellationToken)
         {
-            // Beware! Blob.DownloadText does not strip the BOM! 
+            // Beware! Blob.DownloadText does not strip the BOM!
             try
             {
                 using (var stream = await blob.OpenReadAsync(cancellationToken))

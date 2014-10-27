@@ -45,17 +45,22 @@
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="BinderTests.cs" />
+    <Compile Include="BlobTriggerTests.cs" />
     <Compile Include="FunctionalTest.cs" />
     <Compile Include="BlobTests.cs" />
+    <Compile Include="StorageBlockBlobExtensions.cs" />
     <Compile Include="StorageTableExtensions.cs" />
     <Compile Include="TableTests.cs" />
     <Compile Include="TableEntityTests.cs" />
     <Compile Include="QueueTests.cs" />
     <Compile Include="StorageBlobExtensions.cs" />
     <Compile Include="StorageBlobContainerExtensions.cs" />
+    <Compile Include="TestDoubles\BlobAttributes.cs" />
     <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
     <Compile Include="TestDoubles\FakeFunctionInstanceLoggerProvider.cs" />
+    <Compile Include="TestDoubles\FakeStorageBlobDirectory.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
+    <Compile Include="TestDoubles\FakeStorageBlobProperties.cs" />
     <Compile Include="TestDoubles\FakeStorageBlockBlob.cs" />
     <Compile Include="TestDoubles\FakeStorageTableBatchOperation.cs" />
     <Compile Include="TestDoubles\FakeStorageTableOperation.cs" />

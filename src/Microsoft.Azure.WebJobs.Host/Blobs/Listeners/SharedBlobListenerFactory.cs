@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public SharedBlobListener Create()
         {
-            SharedBlobListener listener = new SharedBlobListener(_account.SdkObject, _backgroundExceptionDispatcher);
+            SharedBlobListener listener = new SharedBlobListener(_account, _backgroundExceptionDispatcher);
             _blobWrittenWatcherSetter.SetValue(listener.BlobWritterWatcher);
             return listener;
         }

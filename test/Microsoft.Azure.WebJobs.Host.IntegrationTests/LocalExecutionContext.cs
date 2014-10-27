@@ -77,7 +77,8 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             BlobPath parsed = BlobPath.Parse(blobPath);
             CloudBlobContainer sdkContainer = _blobClient.GetContainerReference(parsed.ContainerName);
             CloudBlockBlob sdkBlob = sdkContainer.GetBlockBlobReference(parsed.BlobName);
-            IStorageBlobContainer parent = new StorageBlobContainer(sdkContainer);
+            IStorageBlobContainer parent = new StorageBlobContainer(new StorageBlobClient(sdkContainer.ServiceClient),
+                sdkContainer);
             IStorageBlob blobInput = new StorageBlockBlob(parent, sdkBlob);
             var instanceFactory = (ITriggeredFunctionInstanceFactory<IStorageBlob>)function.InstanceFactory;
             IFunctionInstance instance = instanceFactory.Create(blobInput, null);

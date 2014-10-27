@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Next, check to see if the blob currently exists (and, if so, what the current ETag is).
-            string possibleETag = await _eTagReader.GetETagAsync(value.SdkObject, cancellationToken);
+            string possibleETag = await _eTagReader.GetETagAsync(value, cancellationToken);
 
             if (possibleETag == null)
             {
@@ -53,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 return true;
             }
 
-            CloudBlockBlob receiptBlob = _receiptManager.CreateReference(_hostId, _functionId, value.Container.Name,
+            IStorageBlockBlob receiptBlob = _receiptManager.CreateReference(_hostId, _functionId, value.Container.Name,
                 value.Name, possibleETag);
 
             // Check for the completed receipt. If it's already there, noop.

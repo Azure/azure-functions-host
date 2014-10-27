@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             var container = client.GetContainerReference(containerName);
             IBlobNotificationStrategy strategy = new ScanContainersStrategy();
             LambdaBlobTriggerExecutor executor = new LambdaBlobTriggerExecutor();
-            strategy.RegisterAsync(container, executor, CancellationToken.None).GetAwaiter().GetResult();
+            strategy.RegisterAsync(new StorageBlobContainer(new StorageBlobClient(container.ServiceClient), container), executor, CancellationToken.None).GetAwaiter().GetResult();
 
             executor.ExecuteLambda = (_) =>
             {

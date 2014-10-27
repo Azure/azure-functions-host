@@ -5,21 +5,22 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     internal class BlobFunctionOutputLogger : IFunctionOutputLogger
     {
-        private readonly CloudBlobDirectory _outputLogDirectory;
+        private readonly IStorageBlobDirectory _outputLogDirectory;
 
-        public BlobFunctionOutputLogger(CloudBlobClient client)
+        public BlobFunctionOutputLogger(IStorageBlobClient client)
             : this(client.GetContainerReference(
                 HostContainerNames.Hosts).GetDirectoryReference(HostDirectoryNames.OutputLogs))
         {
         }
 
-        private BlobFunctionOutputLogger(CloudBlobDirectory outputLogDirectory)
+        private BlobFunctionOutputLogger(IStorageBlobDirectory outputLogDirectory)
         {
             _outputLogDirectory = outputLogDirectory;
         }
@@ -37,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return new BlobFunctionOutputDefinition(_outputLogDirectory.ServiceClient, outputBlob, parameterLogBlob);
         }
 
-        private static LocalBlobDescriptor CreateDescriptor(CloudBlobDirectory directory, string name)
+        private static LocalBlobDescriptor CreateDescriptor(IStorageBlobDirectory directory, string name)
         {
-            CloudBlockBlob blob = directory.GetBlockBlobReference(name);
+            IStorageBlockBlob blob = directory.GetBlockBlobReference(name);
 
             return new LocalBlobDescriptor
             {

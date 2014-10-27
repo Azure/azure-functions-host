@@ -2,13 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
+
 #if PUBLICPROTOCOL
 using Microsoft.Azure.WebJobs.Storage;
+using Microsoft.Azure.WebJobs.Storage.Blob;
 #else
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 #endif
-using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
 using System.Threading;
@@ -29,20 +30,20 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     internal class PersistentQueueWriter<T> : IPersistentQueueWriter<T> where T : PersistentQueueMessage
 #endif
     {
-        private readonly CloudBlobContainer _blobContainer;
+        private readonly IStorageBlobContainer _blobContainer;
 
         /// <summary>Initializes a new instance of the <see cref="PersistentQueueWriter{T}"/> class.</summary>
         /// <param name="client">
         /// A blob client for the storage account into which host output messages are written.
         /// </param>
-        public PersistentQueueWriter(CloudBlobClient client)
+        public PersistentQueueWriter(IStorageBlobClient client)
             : this(client.GetContainerReference(ContainerNames.HostOutput))
         {
         }
 
         /// <summary>Initializes a new instance of the <see cref="PersistentQueueWriter{T}"/> class.</summary>
         /// <param name="container">The container into which host output messages are written.</param>
-        public PersistentQueueWriter(CloudBlobContainer container)
+        public PersistentQueueWriter(IStorageBlobContainer container)
         {
             _blobContainer = container;
         }
@@ -50,13 +51,13 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <inheritdoc />
         public async Task<string> EnqueueAsync(T message, CancellationToken cancellationToken)
         {
-            _blobContainer.CreateIfNotExists();
+            await _blobContainer.CreateIfNotExistsAsync(cancellationToken);
 
             string blobName = BlobNames.GetConflictFreeDateTimeBasedBlobName();
-            CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(blobName);
+            IStorageBlockBlob blob = _blobContainer.GetBlockBlobReference(blobName);
             message.AddMetadata(blob.Metadata);
             string messageBody = JsonConvert.SerializeObject(message, JsonSerialization.Settings);
-            await blob.UploadTextAsync(messageBody, cancellationToken);
+            await blob.UploadTextAsync(messageBody, cancellationToken: cancellationToken);
 
             return blobName;
         }
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                     throw new ArgumentNullException("messageId");
                 }
 
-                CloudBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId);
+                IStorageBlockBlob blob = _blobContainer.GetBlockBlobReference(messageId);
                 await blob.DeleteAsync(cancellationToken);
             }
             catch (StorageException exception)

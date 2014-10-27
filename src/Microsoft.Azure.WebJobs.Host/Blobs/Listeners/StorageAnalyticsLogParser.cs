@@ -11,7 +11,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// Then it calls TryParseLogEntry to create a log entry out of every line of supported version and throws 
         /// an exception if the parse method returns null.
         /// </remarks>
-        public async Task<IEnumerable<StorageAnalyticsLogEntry>> ParseLogAsync(ICloudBlob blob, 
+        public async Task<IEnumerable<StorageAnalyticsLogEntry>> ParseLogAsync(IStorageBlob blob, 
             CancellationToken cancellationToken)
         {
             List<StorageAnalyticsLogEntry> entries = new List<StorageAnalyticsLogEntry>();

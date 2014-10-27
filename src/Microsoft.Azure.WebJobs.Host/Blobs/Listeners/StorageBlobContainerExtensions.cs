@@ -5,13 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal static class CloudBlobContainerExtensions
+    internal static class StorageBlobContainerExtensions
     {
-        public static async Task<IEnumerable<IListBlobItem>> ListBlobsAsync(this CloudBlobContainer container, 
+        public static async Task<IEnumerable<IStorageListBlobItem>> ListBlobsAsync(this IStorageBlobContainer container, 
             bool useFlatBlobListing, CancellationToken cancellationToken)
         {
             if (container == null)
@@ -19,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("container");
             }
 
-            List<IListBlobItem> allResults = new List<IListBlobItem>();
+            List<IStorageListBlobItem> allResults = new List<IStorageListBlobItem>();
             BlobContinuationToken currentToken = null;
-            BlobResultSegment result;
+            IStorageBlobResultSegment result;
 
             do
             {
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
                 if (result != null)
                 {
-                    IEnumerable<IListBlobItem> currentResults = result.Results;
+                    IEnumerable<IStorageListBlobItem> currentResults = result.Results;
 
                     if (currentResults != null)
                     {

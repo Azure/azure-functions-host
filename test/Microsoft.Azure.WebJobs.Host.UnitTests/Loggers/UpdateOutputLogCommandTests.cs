@@ -5,7 +5,8 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
@@ -17,8 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
         {
             string content = null;
             Func<string, CancellationToken, Task> fp = (x, _) => { content = x; return Task.FromResult(0); };
-            UpdateOutputLogCommand writer = UpdateOutputLogCommand.CreateAsync(
-                new CloudBlockBlob(new Uri("aa://b/c")), null, fp, CancellationToken.None).GetAwaiter().GetResult();
+            UpdateOutputLogCommand writer = UpdateOutputLogCommand.CreateAsync(new Mock<IStorageBlockBlob>().Object,
+                null, fp, CancellationToken.None).GetAwaiter().GetResult();
 
             var tw = writer.Output;
             tw.Write("1");

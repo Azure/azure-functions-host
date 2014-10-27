@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 #if PUBLICSTORAGE
@@ -24,14 +25,16 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
     {
         private readonly IStorageBlobContainer _parent;
         private readonly CloudPageBlob _sdk;
+        private readonly IStorageBlobProperties _properties;
 
-        /// <summary>Initializes a new instance of the <see cref="CloudPageBlob"/> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="StoragePageBlob"/> class.</summary>
         /// <param name="parent">The parent blob container.</param>
         /// <param name="sdk">The SDK blob to wrap.</param>
         public StoragePageBlob(IStorageBlobContainer parent, CloudPageBlob sdk)
         {
             _parent = parent;
             _sdk = sdk;
+            _properties = new StorageBlobProperties(sdk);
         }
 
         /// <inheritdoc />
@@ -59,6 +62,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public IStorageBlobProperties Properties
+        {
+            get { return _properties; }
+        }
+
+        /// <inheritdoc />
         ICloudBlob IStorageBlob.SdkObject
         {
             get { return _sdk; }
@@ -68,6 +77,19 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         public CloudPageBlob SdkObject
         {
             get { return _sdk; }
+        }
+
+        /// <inheritdoc />
+        public Task<string> AcquireLeaseAsync(TimeSpan? leaseTime, string proposedLeaseId,
+            CancellationToken cancellationToken)
+        {
+            return _sdk.AcquireLeaseAsync(leaseTime, proposedLeaseId, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task DeleteAsync(CancellationToken cancellationToken)
+        {
+            return _sdk.DeleteAsync(cancellationToken);
         }
 
         /// <inheritdoc />
@@ -86,6 +108,20 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         public Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
         {
             return _sdk.OpenReadAsync(cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task ReleaseLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            return _sdk.ReleaseLeaseAsync(accessCondition, options, operationContext, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            return _sdk.SetMetadataAsync(accessCondition, options, operationContext, cancellationToken);
         }
     }
 }

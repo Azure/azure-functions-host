@@ -9,8 +9,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
@@ -18,13 +18,13 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     internal sealed class UpdateParameterLogCommand : IRecurrentCommand
     {
         private readonly IReadOnlyDictionary<string, IWatcher> _watches;
-        private readonly CloudBlockBlob _parameterLogBlob;
+        private readonly IStorageBlockBlob _parameterLogBlob;
         private readonly TextWriter _consoleOutput;
 
         private string _lastContent;
 
-        public UpdateParameterLogCommand(IReadOnlyDictionary<string, IWatcher> watches, CloudBlockBlob parameterLogBlob,
-            TextWriter consoleOutput)
+        public UpdateParameterLogCommand(IReadOnlyDictionary<string, IWatcher> watches,
+            IStorageBlockBlob parameterLogBlob, TextWriter consoleOutput)
         {
             if (parameterLogBlob == null)
             {
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 }
 
                 _lastContent = content;
-                await _parameterLogBlob.UploadTextAsync(content, cancellationToken);
+                await _parameterLogBlob.UploadTextAsync(content, cancellationToken: cancellationToken);
                 return true;
             }
             catch (OperationCanceledException)

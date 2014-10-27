@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -16,21 +17,21 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         private static readonly TimeSpan _leasePeriod = TimeSpan.FromSeconds(30);
 
-        private readonly CloudBlobDirectory _directory;
+        private readonly IStorageBlobDirectory _directory;
 
-        public BlobReceiptManager(CloudBlobClient client)
+        public BlobReceiptManager(IStorageBlobClient client)
             : this(client.GetContainerReference(HostContainerNames.Hosts)
                 .GetDirectoryReference(HostDirectoryNames.BlobReceipts))
         {
         }
 
-        private BlobReceiptManager(CloudBlobDirectory directory)
+        private BlobReceiptManager(IStorageBlobDirectory directory)
         {
             _directory = directory;
         }
 
-        public CloudBlockBlob CreateReference(string hostId, string functionId, string containerName, string blobName,
-            string eTag)
+        public IStorageBlockBlob CreateReference(string hostId, string functionId, string containerName,
+            string blobName, string eTag)
         {
             // Put the ETag before the blob name to prevent ambiguity since the blob name can contain embedded slashes.
             string receiptName = String.Format(CultureInfo.InvariantCulture, "{0}/{1}/{2}/{3}/{4}", hostId, functionId,
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             return _directory.GetBlockBlobReference(receiptName);
         }
 
-        public async Task<BlobReceipt> TryReadAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
+        public async Task<BlobReceipt> TryReadAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             if (!await blob.TryFetchAttributesAsync(cancellationToken))
             {
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             return BlobReceipt.FromMetadata(blob.Metadata);
         }
 
-        public async Task<bool> TryCreateAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
+        public async Task<bool> TryCreateAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             BlobReceipt.Incomplete.ToMetadata(blob.Metadata);
             AccessCondition accessCondition = new AccessCondition { IfNoneMatchETag = "*" };
@@ -114,11 +115,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        public async Task<string> TryAcquireLeaseAsync(CloudBlockBlob blob, CancellationToken cancellationToken)
+        public async Task<string> TryAcquireLeaseAsync(IStorageBlockBlob blob, CancellationToken cancellationToken)
         {
             try
             {
-                return await blob.AcquireLeaseAsync(_leasePeriod, null);
+                return await blob.AcquireLeaseAsync(_leasePeriod, null, cancellationToken);
             }
             catch (StorageException exception)
             {
@@ -138,7 +139,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        public async Task MarkCompletedAsync(CloudBlockBlob blob, string leaseId, CancellationToken cancellationToken)
+        public async Task MarkCompletedAsync(IStorageBlockBlob blob, string leaseId,
+            CancellationToken cancellationToken)
         {
             BlobReceipt.Complete.ToMetadata(blob.Metadata);
 
@@ -167,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
         }
 
-        public async Task ReleaseLeaseAsync(CloudBlockBlob blob, string leaseId, CancellationToken cancellationToken)
+        public async Task ReleaseLeaseAsync(IStorageBlockBlob blob, string leaseId, CancellationToken cancellationToken)
         {
             try
             {

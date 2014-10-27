@@ -3,12 +3,12 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal interface IBlobETagReader
     {
-        Task<string> GetETagAsync(ICloudBlob blob, CancellationToken cancellationToken);
+        Task<string> GetETagAsync(IStorageBlob blob, CancellationToken cancellationToken);
     }
 }

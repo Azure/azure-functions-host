@@ -9,6 +9,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
     internal static class StorageBlobContainerExtensions
     {
+        public static void CreateIfNotExists(this IStorageBlobContainer container)
+        {
+            if (container == null)
+            {
+                throw new ArgumentNullException("container");
+            }
+
+            container.CreateIfNotExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
         public static bool Exists(this IStorageBlobContainer container)
         {
             if (container == null)

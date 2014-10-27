@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
@@ -54,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             if (dashboardAccount != null)
             {
                 // Create logging against a live Azure account.
-                CloudBlobClient dashboardBlobClient = dashboardAccount.SdkObject.CreateCloudBlobClient();
+                IStorageBlobClient dashboardBlobClient = dashboardAccount.CreateBlobClient();
                 IPersistentQueueWriter<PersistentQueueMessage> queueWriter =
                     new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                 PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);

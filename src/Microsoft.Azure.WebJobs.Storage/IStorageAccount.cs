@@ -28,6 +28,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
     internal interface IStorageAccount
 #endif
     {
+        /// <summary>Gets the primary endpoint for the blob service.</summary>
+        Uri BlobEndpoint { get; }
+
         /// <summary>Gets the credentials used to connect to the account.</summary>
         StorageCredentials Credentials { get; }
 

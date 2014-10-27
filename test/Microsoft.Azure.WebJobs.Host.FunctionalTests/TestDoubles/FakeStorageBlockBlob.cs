@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         private readonly IStorageBlobContainer _parent;
         private readonly string _containerName;
         private readonly IDictionary<string, string> _metadata;
+        private readonly FakeStorageBlobProperties _properties;
         private readonly CloudBlockBlob _sdkObject;
 
         public FakeStorageBlockBlob(MemoryBlobStore store, string blobName, IStorageBlobContainer parent)
@@ -29,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _parent = parent;
             _containerName = parent.Name;
             _metadata = new Dictionary<string, string>();
+            _properties = new FakeStorageBlobProperties();
             _sdkObject = new CloudBlockBlob(new Uri("http://localhost/" + _containerName + "/" + blobName));
         }
 
@@ -45,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public StorageBlobType BlobType
         {
-            get { throw new NotImplementedException(); }
+            get { return StorageBlobType.BlockBlob; }
         }
 
         public IStorageBlobContainer Container
@@ -63,9 +66,36 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { return _blobName; }
         }
 
+        public IStorageBlobProperties Properties
+        {
+            get { return _properties; }
+        }
+
         ICloudBlob IStorageBlob.SdkObject
         {
-            get { throw new NotImplementedException(); }
+            get { return _sdkObject; }
+        }
+
+        public Task<string> AcquireLeaseAsync(TimeSpan? leaseTime, string proposedLeaseId,
+            CancellationToken cancellationToken)
+        {
+            if (proposedLeaseId != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            string leaseId = _store.AcquireLease(_containerName, _blobName, leaseTime);
+            return Task.FromResult(leaseId);
+        }
+
+        public Task DeleteAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> DownloadTextAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
 
         public Task<bool> ExistsAsync(CancellationToken cancellationToken)
@@ -75,12 +105,74 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public Task FetchAttributesAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            BlobAttributes attributes = _store.FetchAttributes(_containerName, _blobName);
+            _properties.ETag = attributes.ETag;
+            _properties.LastModified = attributes.LastModified;
+            _metadata.Clear();
+
+            foreach (KeyValuePair<string, string> item in attributes.Metadata)
+            {
+                _metadata.Add(item);
+            }
+
+            return Task.FromResult(0);
         }
 
         public Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(_store.OpenRead(_containerName, _blobName));
+        }
+
+        public Task ReleaseLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            if (accessCondition == null)
+            {
+                throw new ArgumentNullException("accessCondition");
+            }
+
+            if (options != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (operationContext != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (accessCondition.IfMatchETag != null ||
+                accessCondition.IfModifiedSinceTime.HasValue ||
+                accessCondition.IfNoneMatchETag != null ||
+                accessCondition.IfNotModifiedSinceTime.HasValue ||
+                accessCondition.IfSequenceNumberEqual.HasValue ||
+                accessCondition.IfSequenceNumberLessThan.HasValue ||
+                accessCondition.IfSequenceNumberLessThanOrEqual.HasValue)
+            {
+                throw new NotImplementedException();
+            }
+
+            _store.ReleaseLease(_containerName, _blobName, accessCondition.LeaseId);
+            return Task.FromResult(0);
+        }
+
+        public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task UploadTextAsync(string content, Encoding encoding, AccessCondition accessCondition,
+            BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            using (CloudBlobStream stream = _store.OpenWrite(_containerName, _blobName, _metadata))
+            {
+                byte[] buffer = Encoding.UTF8.GetBytes(content);
+                stream.Write(buffer, 0, buffer.Length);
+                stream.Commit();
+            }
+
+            return Task.FromResult(0);
         }
     }
 }

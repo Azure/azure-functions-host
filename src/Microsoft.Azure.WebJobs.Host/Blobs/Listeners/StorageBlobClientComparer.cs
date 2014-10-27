@@ -2,19 +2,19 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    // CloudBlobClients are flyweights; distinct references do not equate to distinct storage accounts.
-    internal class CloudBlobClientComparer : IEqualityComparer<CloudBlobClient>
+    // IStorageBlobClients are flyweights; distinct references do not equate to distinct storage accounts.
+    internal class StorageBlobClientComparer : IEqualityComparer<IStorageBlobClient>
     {
-        public bool Equals(CloudBlobClient x, CloudBlobClient y)
+        public bool Equals(IStorageBlobClient x, IStorageBlobClient y)
         {
             return x.Credentials.AccountName == y.Credentials.AccountName;
         }
 
-        public int GetHashCode(CloudBlobClient obj)
+        public int GetHashCode(IStorageBlobClient obj)
         {
             return obj.Credentials.AccountName.GetHashCode();
         }

@@ -2,9 +2,16 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+#if PUBLICSTORAGE
+using Microsoft.Azure.WebJobs.Storage.Blob;
+#else
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+#endif
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 #if PUBLICSTORAGE
@@ -21,12 +28,15 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
     internal class StorageBlobContainer : IStorageBlobContainer
 #endif
     {
+        private readonly IStorageBlobClient _parent;
         private readonly CloudBlobContainer _sdk;
 
-        /// <summary>Initializes a new instance of the <see cref="CloudBlobContainer"/> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="StorageBlobContainer"/> class.</summary>
+        /// <param name="parent">The parent blob client.</param>
         /// <param name="sdk">The SDK container to wrap.</param>
-        public StorageBlobContainer(CloudBlobContainer sdk)
+        public StorageBlobContainer(IStorageBlobClient parent, CloudBlobContainer sdk)
         {
+            _parent = parent;
             _sdk = sdk;
         }
 
@@ -40,6 +50,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         public CloudBlobContainer SdkObject
         {
             get { return _sdk; }
+        }
+
+        /// <inheritdoc />
+        public IStorageBlobClient ServiceClient
+        {
+            get { return _parent; }
         }
 
         /// <inheritdoc />
@@ -76,17 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
                 return null;
             }
 
-            CloudBlockBlob blockBlob = sdkBlob as CloudBlockBlob;
-
-            if (blockBlob != null)
-            {
-                return new StorageBlockBlob(this, blockBlob);
-            }
-            else
-            {
-                Debug.Assert(sdkBlob is CloudPageBlob);
-                return new StoragePageBlob(this, (CloudPageBlob)sdkBlob);
-            }
+            return ToStorageBlob(this, sdkBlob);
         }
 
         /// <inheritdoc />
@@ -97,10 +103,94 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public IStorageBlobDirectory GetDirectoryReference(string relativeAddress)
+        {
+            CloudBlobDirectory sdkDirectory = _sdk.GetDirectoryReference(relativeAddress);
+            return new StorageBlobDirectory(this, sdkDirectory);
+        }
+
+        /// <inheritdoc />
         public IStoragePageBlob GetPageBlobReference(string blobName)
         {
             CloudPageBlob sdkBlob = _sdk.GetPageBlobReference(blobName);
             return new StoragePageBlob(this, sdkBlob);
+        }
+
+        /// <inheritdoc />
+        public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
+            BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
+            BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            Task<BlobResultSegment> sdkTask = _sdk.ListBlobsSegmentedAsync(prefix, useFlatBlobListing,
+                blobListingDetails, maxResults, currentToken, options, operationContext, cancellationToken);
+            return ListBlobsSegmentedAsyncCore(sdkTask);
+        }
+
+        private async Task<IStorageBlobResultSegment> ListBlobsSegmentedAsyncCore(Task<BlobResultSegment> sdkTask)
+        {
+            BlobResultSegment sdkSegment = await sdkTask;
+
+            if (sdkSegment == null)
+            {
+                return null;
+            }
+
+            IEnumerable<IListBlobItem> sdkResults = sdkSegment.Results;
+
+            List<IStorageListBlobItem> results;
+
+            if (sdkResults != null)
+            {
+                results = new List<IStorageListBlobItem>();
+
+                foreach (IListBlobItem sdkResult in sdkResults)
+                {
+                    IStorageListBlobItem result = ToStorageListBlobItem(this, sdkResult);
+                    results.Add(result);
+                }
+            }
+            else
+            {
+                results = null;
+            }
+
+            return new StorageBlobResultSegment(sdkSegment.ContinuationToken, results);
+        }
+
+        internal static IStorageListBlobItem ToStorageListBlobItem(IStorageBlobContainer parent, IListBlobItem sdkItem)
+        {
+            if (sdkItem == null)
+            {
+                return null;
+            }
+
+            ICloudBlob sdkBlob = sdkItem as ICloudBlob;
+
+            if (sdkBlob != null)
+            {
+                return ToStorageBlob(parent, sdkBlob);
+            }
+            else
+            {
+                return new StorageBlobDirectory(parent, (CloudBlobDirectory)sdkItem);
+            }
+        }
+
+        private static IStorageBlob ToStorageBlob(IStorageBlobContainer parent, ICloudBlob sdkBlob)
+        {
+            Debug.Assert(sdkBlob != null);
+
+            CloudBlockBlob blockBlob = sdkBlob as CloudBlockBlob;
+
+            if (blockBlob != null)
+            {
+                return new StorageBlockBlob(parent, blockBlob);
+            }
+            else
+            {
+                Debug.Assert(sdkBlob is CloudPageBlob);
+                return new StoragePageBlob(parent, (CloudPageBlob)sdkBlob);
+            }
         }
     }
 }

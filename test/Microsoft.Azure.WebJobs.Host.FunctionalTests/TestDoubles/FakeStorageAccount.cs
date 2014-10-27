@@ -13,13 +13,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal class FakeStorageAccount : IStorageAccount
     {
-        private static readonly StorageCredentials _credentials = new StorageCredentials();
+        private static readonly StorageCredentials _credentials = new StorageCredentials("test", new byte[0]);
 
         private readonly MemoryBlobStore _blobStore = new MemoryBlobStore();
         private readonly MemoryQueueStore _queueStore = new MemoryQueueStore();
         private readonly MemoryTableStore _tableStore = new MemoryTableStore();
+        private readonly Uri _blobEndpoint = new Uri("aa://b");
+
+        public Uri BlobEndpoint
+        {
+            get { return _blobEndpoint; }
+        }
 
         public StorageCredentials Credentials
+        {
+            get { return _credentials; }
+        }
+
+        public static StorageCredentials DefaultCredentials
         {
             get { return _credentials; }
         }

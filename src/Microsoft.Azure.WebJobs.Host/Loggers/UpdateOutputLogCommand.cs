@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -16,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     // caller uses the textWriter that we return).
     internal sealed class UpdateOutputLogCommand : IRecurrentCommand, IDisposable, IFunctionOutput
     {
-        private readonly CloudBlockBlob _outputBlob;
+        private readonly IStorageBlockBlob _outputBlob;
 
         // Contents for what's written. Owned by the timer thread.
         private readonly StringWriter _innerWriter;
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         private bool _disposed;
 
-        private UpdateOutputLogCommand(CloudBlockBlob outputBlob, StringWriter innerWriter,
+        private UpdateOutputLogCommand(IStorageBlockBlob outputBlob, StringWriter innerWriter,
             Func<string, CancellationToken, Task> uploadCommand)
         {
             _outputBlob = outputBlob;
@@ -55,15 +56,16 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        public static Task<UpdateOutputLogCommand> CreateAsync(CloudBlockBlob outputBlob, string existingContents,
+        public static Task<UpdateOutputLogCommand> CreateAsync(IStorageBlockBlob outputBlob, string existingContents,
             CancellationToken cancellationToken)
         {
             return CreateAsync(outputBlob, existingContents, (contents, innerToken) => UploadTextAsync(
                 outputBlob, contents, innerToken), cancellationToken);
         }
 
-        public static async Task<UpdateOutputLogCommand> CreateAsync(CloudBlockBlob outputBlob, string existingContents,
-            Func<string, CancellationToken, Task> uploadCommand, CancellationToken cancellationToken)
+        public static async Task<UpdateOutputLogCommand> CreateAsync(IStorageBlockBlob outputBlob,
+            string existingContents, Func<string, CancellationToken, Task> uploadCommand,
+            CancellationToken cancellationToken)
         {
             if (outputBlob == null)
             {
@@ -147,13 +149,13 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
         }
 
-        private static Task UploadTextAsync(CloudBlockBlob outputBlob, string contents,
+        private static Task UploadTextAsync(IStorageBlockBlob outputBlob, string contents,
             CancellationToken cancellationToken)
         {
-            return outputBlob.UploadTextAsync(contents, cancellationToken);
+            return outputBlob.UploadTextAsync(contents, cancellationToken: cancellationToken);
         }
 
-        private static async Task<DateTime?> GetBlobModifiedUtcTimeAsync(ICloudBlob blob,
+        private static async Task<DateTime?> GetBlobModifiedUtcTimeAsync(IStorageBlob blob,
             CancellationToken cancellaitonToken)
         {
             if (!await blob.ExistsAsync(cancellaitonToken))

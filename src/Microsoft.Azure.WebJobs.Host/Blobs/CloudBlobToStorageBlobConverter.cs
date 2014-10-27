@@ -17,9 +17,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return null;
             }
 
+            CloudBlobClient sdkClient = input.ServiceClient;
+            Debug.Assert(sdkClient != null);
+            IStorageBlobClient client = new StorageBlobClient(sdkClient);
+
             CloudBlobContainer sdkContainer = input.Container;
             Debug.Assert(sdkContainer != null);
-            IStorageBlobContainer container = new StorageBlobContainer(sdkContainer);
+            IStorageBlobContainer container = new StorageBlobContainer(client, sdkContainer);
 
             CloudBlockBlob blockBlob = input as CloudBlockBlob;
 

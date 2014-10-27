@@ -2,19 +2,19 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    // CloudBlobContainers are flyweights; distinct references do not equate to distinct containers.
-    internal class CloudBlobContainerComparer : IEqualityComparer<CloudBlobContainer>
+    // IStorageBlobContainers are flyweights; distinct references do not equate to distinct containers.
+    internal class StorageBlobContainerComparer : IEqualityComparer<IStorageBlobContainer>
     {
-        public bool Equals(CloudBlobContainer x, CloudBlobContainer y)
+        public bool Equals(IStorageBlobContainer x, IStorageBlobContainer y)
         {
             return x.Uri == y.Uri;
         }
 
-        public int GetHashCode(CloudBlobContainer obj)
+        public int GetHashCode(IStorageBlobContainer obj)
         {
             return obj.Uri.GetHashCode();
         }

@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 #if PUBLICSTORAGE
@@ -25,6 +26,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 
         /// <summary>Gets the underlying <see cref="CloudBlobContainer"/>.</summary>
         CloudBlobContainer SdkObject { get; }
+
+        /// <summary>Gets the blob service client.</summary>
+        IStorageBlobClient ServiceClient { get; }
 
         /// <summary>Gets the URI of the container's primary location.</summary>
         Uri Uri { get; }
@@ -50,9 +54,30 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <returns>A block blob reference.</returns>
         IStorageBlockBlob GetBlockBlobReference(string blobName);
 
+        /// <summary>Gets a reference to a virtual directory beneath this container.</summary>
+        /// <param name="relativeAddress">The address of the directory.</param>
+        /// <returns>A reference to a virtual directory beneath this container.</returns>
+        IStorageBlobDirectory GetDirectoryReference(string relativeAddress);
+
         /// <summary>Gets a page blob reference.</summary>
         /// <param name="blobName">The blob name.</param>
         /// <returns>A page blob reference.</returns>
         IStoragePageBlob GetPageBlobReference(string blobName);
+
+        /// <summary>Gets a segment of blobs in the container.</summary>
+        /// <param name="prefix">The blob name prefix.</param>
+        /// <param name="useFlatBlobListing">
+        /// Whether to use a flat listing rather than a hierarchical one by virtual directory.
+        /// </param>
+        /// <param name="blobListingDetails">The details to include in the listing.</param>
+        /// <param name="maxResults">A limit on the number of results to be returned.</param>
+        /// <param name="currentToken">A continuation token indicating where to resume listing.</param>
+        /// <param name="options">The options for the request.</param>
+        /// <param name="operationContext">The operation context for the request.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task that will get a segment of blobs in the container.</returns>
+        Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
+            BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
+            BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken);
     }
 }

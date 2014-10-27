@@ -47,6 +47,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage
         }
 
         /// <inheritdoc />
+        public Uri BlobEndpoint
+        {
+            get { return _sdkAccount.BlobEndpoint; }
+        }
+
+        /// <inheritdoc />
         public StorageCredentials Credentials
         {
             get { return _sdkAccount.Credentials; }

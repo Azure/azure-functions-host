@@ -89,9 +89,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(BlobReceipt.Incomplete));
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<string>(null))
                 .Verifiable();
             IBlobReceiptManager receiptManager = mock.Object;
@@ -115,9 +115,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<BlobReceipt>(null));
-            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false))
                 .Verifiable();
             IBlobReceiptManager receiptManager = mock.Object;
@@ -141,9 +141,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<BlobReceipt>(null));
-            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(false));
             IBlobReceiptManager receiptManager = mock.Object;
 
@@ -165,11 +165,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<BlobReceipt>(null));
-            mock.Setup(m => m.TryCreateAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryCreateAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(true));
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<string>(null))
                 .Verifiable();
             IBlobReceiptManager receiptManager = mock.Object;
@@ -193,9 +193,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader("ETag");
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(BlobReceipt.Incomplete));
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult<string>(null));
             IBlobReceiptManager receiptManager = mock.Object;
 
@@ -218,14 +218,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
             int calls = 0;
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                     {
                         return Task.FromResult(calls++ == 0 ? BlobReceipt.Incomplete : BlobReceipt.Complete);
                     });
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult("LeaseId"));
-            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<string>(),
                 It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0));
             IBlobReceiptManager receiptManager = mock.Object;
@@ -250,15 +250,15 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
             int calls = 0;
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(() =>
                 {
                     int call = calls++;
                     return Task.FromResult(call == 0 ? BlobReceipt.Incomplete : BlobReceipt.Complete);
                 });
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult("LeaseId"));
-            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0))
                 .Verifiable();
@@ -285,11 +285,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             InvalidOperationException expectedException = new InvalidOperationException();
 
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(BlobReceipt.Incomplete));
-            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult("LeaseId"));
-            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+            mock.Setup(m => m.ReleaseLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0))
                 .Verifiable();
@@ -327,18 +327,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             Mock<IBlobReceiptManager> managerMock = CreateReceiptManagerReferenceMock();
             managerMock
-                .Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(BlobReceipt.Incomplete));
             managerMock
-                .Setup(m => m.TryAcquireLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+                .Setup(m => m.TryAcquireLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult("LeaseId"));
             managerMock
-                .Setup(m => m.MarkCompletedAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                .Setup(m => m.MarkCompletedAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0))
                 .Verifiable();
             managerMock
-                .Setup(m => m.ReleaseLeaseAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<string>(),
+                .Setup(m => m.ReleaseLeaseAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<string>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(0))
                 .Verifiable();
@@ -395,7 +395,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         private static IBlobReceiptManager CreateCompletedReceiptManager()
         {
             Mock<IBlobReceiptManager> mock = CreateReceiptManagerReferenceMock();
-            mock.Setup(m => m.TryReadAsync(It.IsAny<CloudBlockBlob>(), It.IsAny<CancellationToken>()))
+            mock.Setup(m => m.TryReadAsync(It.IsAny<IStorageBlockBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(BlobReceipt.Complete));
             return mock.Object;
         }
@@ -450,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             Mock<IBlobReceiptManager> mock = new Mock<IBlobReceiptManager>(MockBehavior.Strict);
             mock.Setup(m => m.CreateReference(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(receiptBlob.SdkObject);
+                .Returns(receiptBlob);
             return mock;
         }
 
@@ -458,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         {
             Mock<IBlobETagReader> mock = new Mock<IBlobETagReader>(MockBehavior.Strict);
             mock
-                .Setup(r => r.GetETagAsync(It.IsAny<ICloudBlob>(), It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetETagAsync(It.IsAny<IStorageBlob>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.FromResult(eTag));
             return mock.Object;
         }

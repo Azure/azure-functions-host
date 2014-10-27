@@ -4,8 +4,8 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             get { return _instance; }
         }
 
-        public async Task<string> GetETagAsync(ICloudBlob blob, CancellationToken cancellationToken)
+        public async Task<string> GetETagAsync(IStorageBlob blob, CancellationToken cancellationToken)
         {
             try
             {

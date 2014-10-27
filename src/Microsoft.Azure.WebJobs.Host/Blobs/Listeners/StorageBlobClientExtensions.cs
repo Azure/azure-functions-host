@@ -5,23 +5,25 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
-    internal static class CloudBlobClientExtensions
+    internal static class StorageBlobClientExtensions
     {
-        public static async Task<IEnumerable<IListBlobItem>> ListBlobsAsync(this CloudBlobClient client, string prefix,
-            bool useFlatBlobListing, BlobListingDetails blobListingDetails, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<IStorageListBlobItem>> ListBlobsAsync(this IStorageBlobClient client,
+            string prefix, bool useFlatBlobListing, BlobListingDetails blobListingDetails,
+            CancellationToken cancellationToken)
         {
             if (client == null)
             {
                 throw new ArgumentNullException("client");
             }
 
-            List<IListBlobItem> allResults = new List<IListBlobItem>();
+            List<IStorageListBlobItem> allResults = new List<IStorageListBlobItem>();
             BlobContinuationToken currentToken = null;
-            BlobResultSegment result;
+            IStorageBlobResultSegment result;
 
             do
             {
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
                 if (result != null)
                 {
-                    IEnumerable<IListBlobItem> currentResults = result.Results;
+                    IEnumerable<IStorageListBlobItem> currentResults = result.Results;
 
                     if (currentResults != null)
                     {

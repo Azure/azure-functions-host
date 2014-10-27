@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
             IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, functionDescriptor.Id, _account, container.SdkObject, _path, instanceFactory);
+                _sharedContextProvider, functionDescriptor.Id, _account, container, _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

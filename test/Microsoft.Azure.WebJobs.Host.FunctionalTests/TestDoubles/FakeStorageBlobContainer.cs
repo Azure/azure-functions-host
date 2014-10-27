@@ -17,11 +17,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     {
         private readonly MemoryBlobStore _store;
         private readonly string _containerName;
+        private readonly IStorageBlobClient _parent;
+        private readonly Uri _uri;
 
-        public FakeStorageBlobContainer(MemoryBlobStore store, string containerName)
+        public FakeStorageBlobContainer(MemoryBlobStore store, string containerName, IStorageBlobClient parent)
         {
             _store = store;
             _containerName = containerName;
+            _parent = parent;
+            _uri = new Uri("http://localhost/" + containerName);
         }
 
         public string Name
@@ -34,9 +38,14 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             get { throw new NotImplementedException(); }
         }
 
+        public IStorageBlobClient ServiceClient
+        {
+            get { return _parent; }
+        }
+
         public Uri Uri
         {
-            get { throw new NotImplementedException(); }
+            get { return _uri; }
         }
 
         public Task CreateIfNotExistsAsync(CancellationToken cancellationToken)
@@ -66,9 +75,44 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return new FakeStorageBlockBlob(_store, blobName, this);
         }
 
+        public IStorageBlobDirectory GetDirectoryReference(string relativeAddress)
+        {
+            return new FakeStorageBlobDirectory(_store, relativeAddress, this);
+        }
+
         public IStoragePageBlob GetPageBlobReference(string blobName)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
+            BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken,
+            BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            if (options != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (operationContext != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            string fullPrefix;
+
+            if (!String.IsNullOrEmpty(prefix))
+            {
+                fullPrefix = _containerName + "/" + prefix;
+            }
+            else
+            {
+                fullPrefix = _containerName;
+            }
+
+            IStorageBlobResultSegment segment = _store.ListBlobsSegmented(fullPrefix, useFlatBlobListing,
+                blobListingDetails, maxResults, currentToken);
+            return Task.FromResult(segment);
         }
     }
 }

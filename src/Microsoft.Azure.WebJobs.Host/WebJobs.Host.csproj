@@ -246,8 +246,20 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobContainer.cs">
       <Link>Storage\Blob\IStorageBlobContainer.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobDirectory.cs">
+      <Link>Storage\Blob\IStorageBlobDirectory.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobProperties.cs">
+      <Link>Storage\Blob\IStorageBlobProperties.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlobResultSegment.cs">
+      <Link>Storage\Blob\IStorageBlobResultSegment.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageBlockBlob.cs">
       <Link>Storage\Blob\IStorageBlockBlob.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStorageListBlobItem.cs">
+      <Link>Storage\Blob\IStorageListBlobItem.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\IStoragePageBlob.cs">
       <Link>Storage\Blob\IStoragePageBlob.cs</Link>
@@ -257,6 +269,15 @@
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobContainer.cs">
       <Link>Storage\Blob\StorageBlobContainer.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobDirectory.cs">
+      <Link>Storage\Blob\StorageBlobDirectory.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobProperties.cs">
+      <Link>Storage\Blob\StorageBlobProperties.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobResultSegment.cs">
+      <Link>Storage\Blob\StorageBlobResultSegment.cs</Link>
     </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Storage\Blob\StorageBlobType.cs">
       <Link>Storage\Blob\StorageBlobType.cs</Link>
@@ -367,8 +388,8 @@
     <Compile Include="Blobs\Bindings\CancellableTaskFactory.cs" />
     <Compile Include="Blobs\Bindings\TaskCancellableAsyncResult.cs" />
     <Compile Include="Blobs\BlobCausalityReader.cs" />
-    <Compile Include="Blobs\Listeners\CloudBlobContainerExtensions.cs" />
-    <Compile Include="Blobs\Listeners\CloudBlobClientExtensions.cs" />
+    <Compile Include="Blobs\Listeners\StorageBlobContainerExtensions.cs" />
+    <Compile Include="Blobs\Listeners\StorageBlobClientExtensions.cs" />
     <Compile Include="Blobs\Listeners\IBlobListenerStrategy.cs" />
     <Compile Include="Blobs\StorageBlobExtensions.cs" />
     <Compile Include="Blobs\IBlobCausalityReader.cs" />
@@ -805,7 +826,7 @@
     <Compile Include="Loggers\ConsoleFunctionOutputLogger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Blobs\BlobClient.cs" />
-    <Compile Include="Blobs\Listeners\CloudBlobContainerComparer.cs" />
+    <Compile Include="Blobs\Listeners\StorageBlobContainerComparer.cs" />
     <Compile Include="Indexers\DefaultTypeLocator.cs" />
     <Compile Include="ITypeLocator.cs" />
     <Compile Include="Loggers\IFunctionOutputLogger.cs" />
@@ -824,7 +845,7 @@
     <Compile Include="Blobs\Listeners\StorageServiceOperationType.cs" />
     <Compile Include="Blobs\Listeners\StorageAnalyticsLogColumnId.cs" />
     <Compile Include="Blobs\Listeners\BlobLogListener.cs" />
-    <Compile Include="Blobs\Listeners\CloudBlobClientComparer.cs" />
+    <Compile Include="Blobs\Listeners\StorageBlobClientComparer.cs" />
     <Compile Include="WebSitesKnownKeyNames.cs" />
   </ItemGroup>
   <ItemGroup>
