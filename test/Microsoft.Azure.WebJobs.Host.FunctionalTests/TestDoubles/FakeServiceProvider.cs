@@ -17,9 +17,13 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IBindingProvider BindingProvider { get; set; }
 
+        public IConsoleProvider ConsoleProvider { get; set; }
+
         public IFunctionIndexProvider FunctionIndexProvider { get; set; }
 
         public IFunctionInstanceLoggerProvider FunctionInstanceLoggerProvider { get; set; }
+
+        public IFunctionOutputLoggerProvider FunctionOutputLoggerProvider { get; set; }
 
         public IHostIdProvider HostIdProvider { get; set; }
 
@@ -41,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             {
                 return BindingProvider;
             }
+            else if (serviceType == typeof(IConsoleProvider))
+            {
+                return ConsoleProvider;
+            }
             else if (serviceType == typeof(IFunctionIndexProvider))
             {
                 return FunctionIndexProvider;
@@ -48,6 +56,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
             {
                 return FunctionInstanceLoggerProvider;
+            }
+            else if (serviceType == typeof(IFunctionOutputLoggerProvider))
+            {
+                return FunctionOutputLoggerProvider;
             }
             else if (serviceType == typeof(IHostIdProvider))
             {

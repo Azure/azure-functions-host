@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _poisonQueue;
         private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly TextWriter _log;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly int _batchSize;
         private readonly uint _newBatchThreshold;
@@ -39,10 +41,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IDelayStrategy delayStrategy,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            TextWriter log,
             SharedQueueWatcher sharedWatcher,
             int batchSize,
             int maxDequeueCount)
         {
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
             if (batchSize <= 0)
             {
                 throw new ArgumentOutOfRangeException("batchSize");
@@ -59,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _triggerExecutor = triggerExecutor;
             _delayStrategy = delayStrategy;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _log = log;
 
             if (sharedWatcher != null)
             {
@@ -251,8 +260,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 {
                     if (message.DequeueCount >= _maxDequeueCount)
                     {
-                        Console.WriteLine(
-                            "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
+                        _log.WriteLine("Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
                             _maxDequeueCount,
                             _poisonQueue.Name);
                         await CopyToPoisonQueueAsync(message, cancellationToken);

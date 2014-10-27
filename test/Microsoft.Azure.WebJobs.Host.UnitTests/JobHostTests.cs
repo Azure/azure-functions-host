@@ -35,9 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             File.Delete(path);
 
-            JobHostConfiguration configuration = new JobHostConfiguration();
-            configuration.DashboardConnectionString = null;
-            configuration.TypeLocator = new FakeTypeLocator();
+            IServiceProvider configuration = CreateConfiguration();
 
             using (JobHost host = new JobHost(configuration))
             {

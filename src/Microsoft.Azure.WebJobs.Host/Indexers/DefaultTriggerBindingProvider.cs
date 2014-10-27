@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Triggers;
@@ -26,15 +27,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
-            ISharedContextProvider sharedContextProvider)
+            ISharedContextProvider sharedContextProvider,
+            TextWriter log)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherSetter,
-                sharedContextProvider));
+                sharedContextProvider, log));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
-                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider));
+                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, log));
 
             Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
                 "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");

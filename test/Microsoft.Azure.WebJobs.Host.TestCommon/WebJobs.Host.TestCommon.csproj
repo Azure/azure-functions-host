@@ -82,6 +82,8 @@
     <Compile Include="AzureSdk\CloudQueueClientExtensions.cs" />
     <Compile Include="ExtensionTypeLocator.cs" />
     <Compile Include="FakeExtensionTypeLocator.cs" />
+    <Compile Include="NullConsoleProvider.cs" />
+    <Compile Include="NullFunctionOutputLoggerProvider.cs" />
     <Compile Include="NullFunctionInstanceLoggerProvider.cs" />
     <Compile Include="NullHostInstanceLoggerProvider.cs" />
     <Compile Include="WebJobsShutdownContext.cs" />

@@ -12,13 +12,15 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
-    internal class DefaultLoggerProvider : IHostInstanceLoggerProvider, IFunctionInstanceLoggerProvider
+    internal class DefaultLoggerProvider : IHostInstanceLoggerProvider, IFunctionInstanceLoggerProvider,
+        IFunctionOutputLoggerProvider
     {
         private readonly IStorageAccountProvider _storageAccountProvider;
 
         private bool _loggersSet;
         private IHostInstanceLogger _hostInstanceLogger;
         private IFunctionInstanceLogger _functionInstanceLogger;
+        private IFunctionOutputLogger _functionOutputLogger;
 
         public DefaultLoggerProvider(IStorageAccountProvider storageAccountProvider)
         {
@@ -42,6 +44,12 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return _functionInstanceLogger;
         }
 
+        async Task<IFunctionOutputLogger> IFunctionOutputLoggerProvider.GetAsync(CancellationToken cancellationToken)
+        {
+            await EnsureLoggersAsync(cancellationToken);
+            return _functionOutputLogger;
+        }
+
         private async Task EnsureLoggersAsync(CancellationToken cancellationToken)
         {
             if (_loggersSet)
@@ -62,12 +70,14 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 _hostInstanceLogger = queueLogger;
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger,
                     new ConsoleFunctionInstanceLogger());
+                _functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
             }
             else
             {
                 // No auxillary logging. Logging interfaces are nops or in-memory.
                 _hostInstanceLogger = new NullHostInstanceLogger();
                 _functionInstanceLogger = new ConsoleFunctionInstanceLogger();
+                _functionOutputLogger = new ConsoleFunctionOutputLogger();
             }
 
             _loggersSet = true;

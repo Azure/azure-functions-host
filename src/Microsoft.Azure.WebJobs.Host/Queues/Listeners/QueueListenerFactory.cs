@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
+        private readonly TextWriter _log;
         private readonly ITriggeredFunctionInstanceFactory<IStorageQueueMessage> _instanceFactory;
 
         public QueueListenerFactory(IStorageQueue queue,
@@ -30,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
+            TextWriter log,
             ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory)
         {
             if (queue == null)
@@ -56,6 +59,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 throw new ArgumentNullException("sharedContextProvider");
             }
+
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
             
             if (instanceFactory == null)
             {
@@ -68,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _log = log;
             _instanceFactory = instanceFactory;
         }
 
@@ -79,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             SharedQueueWatcher sharedWatcher = _sharedContextProvider.GetOrCreate<SharedQueueWatcher>(
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                _backgroundExceptionDispatcher, sharedWatcher, _queueConfiguration.BatchSize,
+                _backgroundExceptionDispatcher, _log, sharedWatcher, _queueConfiguration.BatchSize,
                 _queueConfiguration.MaxDequeueCount);
             return Task.FromResult(listener);
         }

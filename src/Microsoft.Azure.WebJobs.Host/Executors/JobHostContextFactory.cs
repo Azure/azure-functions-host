@@ -32,8 +32,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHostInstanceLoggerProvider _hostInstanceLoggerProvider;
         private readonly IFunctionInstanceLoggerProvider _functionInstanceLoggerProvider;
+        private readonly IFunctionOutputLoggerProvider _functionOutputLoggerProvider;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly IConsoleProvider _consoleProvider;
         private readonly CancellationToken _shutdownToken;
 
         public JobHostContextFactory(IStorageAccountProvider storageAccountProvider,
@@ -42,8 +44,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IHostIdProvider hostIdProvider,
             IHostInstanceLoggerProvider hostInstanceLoggerProvider,
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider,
+            IFunctionOutputLoggerProvider functionOutputLoggerProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            IConsoleProvider consoleProvider,
             CancellationToken shutdownToken)
         {
             _storageAccountProvider = storageAccountProvider;
@@ -52,8 +56,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _hostIdProvider = hostIdProvider;
             _hostInstanceLoggerProvider = hostInstanceLoggerProvider;
             _functionInstanceLoggerProvider = functionInstanceLoggerProvider;
+            _functionOutputLoggerProvider = functionOutputLoggerProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _consoleProvider = consoleProvider;
             _shutdownToken = shutdownToken;
         }
 
@@ -73,18 +79,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     combinedCancellationToken);
                 IFunctionInstanceLogger functionInstanceLogger = await _functionInstanceLoggerProvider.GetAsync(
                     combinedCancellationToken);
-
-                IFunctionOutputLogger functionOutputLogger;
-
-                if (dashboardAccount != null)
-                {
-                    IStorageBlobClient dashboardBlobClient = dashboardAccount.CreateBlobClient();
-                    functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
-                }
-                else
-                {
-                    functionOutputLogger = new ConsoleFunctionOutputLogger();
-                }
+                IFunctionOutputLogger functionOutputLogger = await _functionOutputLoggerProvider.GetAsync(
+                    combinedCancellationToken);
 
                 IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
 
@@ -92,6 +88,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger,
                     _backgroundExceptionDispatcher);
+
+                TextWriter consoleOut = _consoleProvider.Out;
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
@@ -105,13 +103,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
-                        _queueConfiguration, _backgroundExceptionDispatcher, functions, functionInstanceLogger);
+                        _queueConfiguration, _backgroundExceptionDispatcher, consoleOut, functions,
+                        functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        _queueConfiguration, _backgroundExceptionDispatcher, functions, functionInstanceLogger);
+                        _queueConfiguration, _backgroundExceptionDispatcher, consoleOut, functions,
+                        functionInstanceLogger);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
                     {
@@ -167,20 +167,20 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (descriptorsCount == 0)
                 {
-                    Console.WriteLine(
+                    consoleOut.WriteLine(
                         "No functions found. Try making job classes public and methods public static.");
                 }
                 else
                 {
-                    Console.WriteLine("Found the following functions:");
+                    consoleOut.WriteLine("Found the following functions:");
 
                     foreach (FunctionDescriptor descriptor in descriptors)
                     {
-                        Console.WriteLine(descriptor.FullName);
+                        consoleOut.WriteLine(descriptor.FullName);
                     }
                 }
 
-                return new JobHostContext(functions, hostCallExecutor, listener);
+                return new JobHostContext(functions, hostCallExecutor, listener, consoleOut);
             }
         }
 

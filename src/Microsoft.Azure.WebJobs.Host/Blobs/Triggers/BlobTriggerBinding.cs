@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
+        private readonly TextWriter _log;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
@@ -47,7 +48,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
-            ISharedContextProvider sharedContextProvider)
+            ISharedContextProvider sharedContextProvider,
+            TextWriter log)
         {
             if (argumentBinding == null)
             {
@@ -94,6 +96,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
             _account = account;
@@ -106,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _log = log;
             _converter = CreateConverter(_client);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -199,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
             IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, functionDescriptor.Id, _account, container, _path, instanceFactory);
+                _sharedContextProvider, _log, functionDescriptor.Id, _account, container, _path, instanceFactory);
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
 

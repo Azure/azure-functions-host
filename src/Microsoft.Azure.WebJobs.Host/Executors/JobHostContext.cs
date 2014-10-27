@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 
@@ -12,16 +13,28 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionExecutor _executor;
         private readonly IListener _listener;
+        private readonly TextWriter _log;
 
         private bool _disposed;
 
         public JobHostContext(IFunctionIndexLookup functionLookup,
             IFunctionExecutor executor,
-            IListener listener)
+            IListener listener,
+            TextWriter log)
         {
             _functionLookup = functionLookup;
             _executor = executor;
             _listener = listener;
+            _log = log;
+        }
+
+        public TextWriter Log
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return _log;
+            }
         }
 
         public IFunctionIndexLookup FunctionLookup

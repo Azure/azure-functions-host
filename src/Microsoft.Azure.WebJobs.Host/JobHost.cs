@@ -86,9 +86,12 @@ namespace Microsoft.Azure.WebJobs
             IHostInstanceLoggerProvider hostInstanceLoggerProvider = serviceProvider.GetHostInstanceLoggerProvider();
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider =
                 serviceProvider.GetFunctionInstanceLoggerProvider();
+            IFunctionOutputLoggerProvider functionOutputLoggerProvider =
+                serviceProvider.GetFunctionOutputLoggerProvider();
             IQueueConfiguration queueConfiguration = serviceProvider.GetQueueConfiguration();
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 serviceProvider.GetBackgroundExceptionDispatcher();
+            IConsoleProvider consoleProvider = serviceProvider.GetConsoleProvider();
 
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
@@ -96,8 +99,8 @@ namespace Microsoft.Azure.WebJobs
 
             _contextFactory = new JobHostContextFactory(storageAccountProvider,
                 functionIndexProvider, bindingProvider, hostIdProvider, hostInstanceLoggerProvider,
-                functionInstanceLoggerProvider, queueConfiguration, backgroundExceptionDispatcher,
-                _shutdownTokenSource.Token);
+                functionInstanceLoggerProvider, functionOutputLoggerProvider, queueConfiguration,
+                backgroundExceptionDispatcher, consoleProvider, _shutdownTokenSource.Token);
         }
 
         // Test hook only.
@@ -133,7 +136,7 @@ namespace Microsoft.Azure.WebJobs
             await EnsureHostStartedAsync(cancellationToken);
 
             await _listener.StartAsync(cancellationToken);
-            Console.WriteLine("Job host started");
+            _context.Log.WriteLine("Job host started");
 
             _state = StateStarted;
         }
@@ -174,7 +177,7 @@ namespace Microsoft.Azure.WebJobs
         {
             await _listener.StopAsync(cancellationToken);
 
-            Console.WriteLine("Job host stopped");
+            _context.Log.WriteLine("Job host stopped");
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor, sharedContextProvider);
+                blobWrittenWatcherAccessor, sharedContextProvider, TextWriter.Null);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);
@@ -77,8 +78,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 ServiceBusAccountProvider = serviceBusAccountProvider,
                 BackgroundExceptionDispatcher = backgroundExceptionDispatcher,
                 BindingProvider = bindingProvider,
+                ConsoleProvider = new NullConsoleProvider(),
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
                 FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),
+                FunctionOutputLoggerProvider = new NullFunctionOutputLoggerProvider(),
                 HostIdProvider = hostIdProvider,
                 QueueConfiguration = new FakeQueueConfiguration()
             };

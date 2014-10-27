@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public sealed class JobHostConfiguration : IServiceProvider
     {
+        private static readonly IConsoleProvider _consoleProvider = new DefaultConsoleProvider();
+
         private readonly DefaultHostIdProvider _hostIdProvider;
         private readonly DefaultLoggerProvider _loggerProvider;
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
@@ -32,7 +34,7 @@ namespace Microsoft.Azure.WebJobs
             new ContextAccessor<IBlobWrittenWatcher>();
         private readonly ISharedContextProvider _sharedContextProvider = new SharedContextProvider();
 
-        private ITypeLocator _typeLocator = new DefaultTypeLocator();
+        private ITypeLocator _typeLocator = new DefaultTypeLocator(_consoleProvider.Out);
         private INameResolver _nameResolver = new DefaultNameResolver();
         private IFunctionIndexProvider _functionIndexProvider;
         private IBindingProvider _bindingProvider;
@@ -207,7 +209,7 @@ namespace Microsoft.Azure.WebJobs
                     _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
                         _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
                         _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor,
-                        _blobWrittenWatcherAccessor, _sharedContextProvider);
+                        _blobWrittenWatcherAccessor, _sharedContextProvider, _consoleProvider.Out);
                 }
 
                 return _triggerBindingProvider;
@@ -229,11 +231,19 @@ namespace Microsoft.Azure.WebJobs
             {
                 return BindingProvider;
             }
+            else if (serviceType == typeof(IConsoleProvider))
+            {
+                return _consoleProvider;
+            }
             else if (serviceType == typeof(IFunctionIndexProvider))
             {
                 return FunctionIndexProvider;
             }
             else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
+            {
+                return _loggerProvider;
+            }
+            else if (serviceType == typeof(IFunctionOutputLoggerProvider))
             {
                 return _loggerProvider;
             }

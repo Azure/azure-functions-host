@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
+        private readonly TextWriter _log;
 
         public BlobTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
-            ISharedContextProvider sharedContextProvider)
+            ISharedContextProvider sharedContextProvider,
+            TextWriter log)
         {
             if (accountProvider == null)
             {
@@ -83,6 +85,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _provider = CreateProvider(extensionTypeLocator.GetCloudBlobStreamBinderTypes());
@@ -92,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _log = log;
         }
 
         private static IBlobArgumentBindingProvider CreateProvider(IEnumerable<Type> cloudBlobStreamBinderTypes)
@@ -143,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             ITriggerBinding binding = new BlobTriggerBinding(parameter.Name, argumentBinding, account, path,
                 _hostIdProvider, _queueConfiguration, _backgroundExceptionDispatcher, _blobWrittenWatcherSetter,
-                _messageEnqueuedWatcherSetter, _sharedContextProvider);
+                _messageEnqueuedWatcherSetter, _sharedContextProvider, _log);
             return binding;
         }
 

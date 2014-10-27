@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host
             return GetService<IBindingProvider>(serviceProvider);
         }
 
+        public static IConsoleProvider GetConsoleProvider(this IServiceProvider serviceProvider)
+        {
+            return GetService<IConsoleProvider>(serviceProvider);
+        }
+
         public static IFunctionIndexProvider GetFunctionIndexProvider(this IServiceProvider serviceProvider)
         {
             return GetService<IFunctionIndexProvider>(serviceProvider);
@@ -34,6 +39,12 @@ namespace Microsoft.Azure.WebJobs.Host
             this IServiceProvider serviceProvider)
         {
             return GetService<IFunctionInstanceLoggerProvider>(serviceProvider);
+        }
+
+        public static IFunctionOutputLoggerProvider GetFunctionOutputLoggerProvider(
+            this IServiceProvider serviceProvider)
+        {
+            return GetService<IFunctionOutputLoggerProvider>(serviceProvider);
         }
 
         public static IHostIdProvider GetHostIdProvider(this IServiceProvider serviceProvider)

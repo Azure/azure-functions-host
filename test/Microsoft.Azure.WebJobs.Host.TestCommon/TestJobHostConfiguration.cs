@@ -26,6 +26,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             {
                 return BackgroundExceptionDispatcher.Instance;
             }
+            else if (serviceType == typeof (IConsoleProvider))
+            {
+                return new NullConsoleProvider();
+            }
             else if (serviceType == typeof(IFunctionIndexProvider))
             {
                 return FunctionIndexProvider;
@@ -33,6 +37,10 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
             {
                 return new NullFunctionInstanceLoggerProvider();
+            }
+            else if (serviceType == typeof(IFunctionOutputLoggerProvider))
+            {
+                return new NullFunctionOutputLoggerProvider();
             }
             else if (serviceType == typeof(IHostIdProvider))
             {

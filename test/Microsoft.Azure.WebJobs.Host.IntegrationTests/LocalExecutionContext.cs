@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), queueConfiguration, BackgroundExceptionDispatcher.Instance,
-                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider);
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, TextWriter.Null);
             IFunctionIndexProvider indexProvider = new FunctionIndexProvider(new FakeTypeLocator(type),
                 triggerBindingProvider, bindingProvider);
             _index = indexProvider.GetAsync(CancellationToken.None).GetAwaiter().GetResult();

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System.IO;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
                 BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                sharedContextProvider);
+                sharedContextProvider, TextWriter.Null);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);

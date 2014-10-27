@@ -430,9 +430,12 @@
     <Compile Include="Indexers\IFunctionIndexProvider.cs" />
     <Compile Include="Listeners\CompositeListenerFactory.cs" />
     <Compile Include="Listeners\ISharedContextProvider.cs" />
+    <Compile Include="Loggers\DefaultConsoleProvider.cs" />
     <Compile Include="Loggers\DefaultLoggerProvider.cs" />
+    <Compile Include="Loggers\IFunctionOutputLoggerProvider.cs" />
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
+    <Compile Include="Loggers\IConsoleProvider.cs" />
     <Compile Include="StructPropertySetter.cs" />
     <Compile Include="StructPropertyAccessorFactory.cs" />
     <Compile Include="ClassPropertyAccessorFactory.cs" />

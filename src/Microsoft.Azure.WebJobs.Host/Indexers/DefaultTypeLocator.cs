@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -15,6 +16,18 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private static readonly string _azureJobsServiceBusAssemblyName = "Microsoft.Azure.WebJobs.ServiceBus";
 
         private static Type[] EmptyTypeArray = new Type[0];
+
+        private readonly TextWriter _log;
+
+        public DefaultTypeLocator(TextWriter log)
+        {
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
+            _log = log;
+        }
 
         // Helper to filter out assemblies that don't even reference this SDK.
         private static bool DoesAssemblyReferenceSdk(Assembly a)
@@ -104,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             catch (ReflectionTypeLoadException ex)
             {
                 // TODO: Log this somewhere?
-                Console.WriteLine("Warning: Only got partial types from assembly: {0}", a.FullName);
-                Console.WriteLine("Exception message: {0}", ex.ToString());
+                _log.WriteLine("Warning: Only got partial types from assembly: {0}", a.FullName);
+                _log.WriteLine("Exception message: {0}", ex.ToString());
 
                 // In case of a type load exception, at least get the types that did succeed in loading
                 types = ex.Types;
@@ -113,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             catch (Exception ex)
             {
                 // TODO: Log this somewhere?
-                Console.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
-                Console.WriteLine("Exception message: {0}", ex.ToString());
+                _log.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
+                _log.WriteLine("Exception message: {0}", ex.ToString());
             }
 
             return types;

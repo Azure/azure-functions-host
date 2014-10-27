@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             _binding = new QueueTriggerBinding("parameterName", queue, argumentBinding,
                 new Mock<IQueueConfiguration>(MockBehavior.Strict).Object, BackgroundExceptionDispatcher.Instance,
                 new Mock<IContextSetter<IMessageEnqueuedWatcher>>(MockBehavior.Strict).Object,
-                new SharedContextProvider());
+                new SharedContextProvider(), TextWriter.Null);
         }
 
         [Theory]

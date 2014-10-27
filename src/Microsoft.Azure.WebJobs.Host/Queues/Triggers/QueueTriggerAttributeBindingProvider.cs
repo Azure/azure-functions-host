@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -30,13 +31,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
+        private readonly TextWriter _log;
 
         public QueueTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
-            ISharedContextProvider sharedContextProvider)
+            ISharedContextProvider sharedContextProvider,
+            TextWriter log)
         {
             if (accountProvider == null)
             {
@@ -63,12 +66,18 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
+            _log = log;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -98,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
                 _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider);
+                _sharedContextProvider, _log);
             return binding;
         }
 

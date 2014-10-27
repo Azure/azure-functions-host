@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -22,12 +23,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly TextWriter _log;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
 
         public HostMessageListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            TextWriter log,
             IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger)
         {
@@ -46,6 +49,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (log == null)
+            {
+                throw new ArgumentNullException("log");
+            }
+
             if (functionLookup == null)
             {
                 throw new ArgumentNullException("functionLookup");
@@ -59,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queue = queue;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _log = log;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
         }
@@ -77,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 triggerExecutor: triggerExecutor,
                 delayStrategy: delayStrategy,
                 backgroundExceptionDispatcher: _backgroundExceptionDispatcher,
+                log: _log,
                 sharedWatcher: null,
                 batchSize: _queueConfiguration.BatchSize,
                 maxDequeueCount: _queueConfiguration.MaxDequeueCount);
