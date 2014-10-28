@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -30,8 +31,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string BlobPath = ContainerName + "/" + BlobName;
         private const string OutputBlobName = "blob.out";
         private const string OutputBlobPath = ContainerName + "/" + OutputBlobName;
+        private const string QueueName = "input";
         private const string OutputQueueName = "output";
         private const int TestValue = Int32.MinValue;
+        private const string TestQueueMessage = "ignore";
 
         [Theory]
         [InlineData("FuncWithString")]
@@ -43,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [InlineData("FuncWithT")]
         [InlineData("FuncWithOutTNull")]
         [InlineData("FuncWithValueT")]
-        public void Blob_IfBoundToMissingBlob_DoesNotCreate(string methodName)
+        public void Blob_IfBoundToTypeAndBlobIsMissing_DoesNotCreate(string methodName)
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
@@ -65,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [InlineData("FuncWithStreamWrite")]
         [InlineData("FuncWithOutT")]
         [InlineData("FuncWithOutValueT")]
-        public void Blob_IfBoundToMissingBlob_Creates(string methodName)
+        public void Blob_IfBoundToTypeAndBlobIsMissing_Creates(string methodName)
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
@@ -255,8 +258,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Assert
             IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
-            IStorageQueueMessage message = queue.GetMessage();
-            AssertPocoValueEqual(15, message);
+            AssertMessageSent(new PocoMessage { Value = "15" }, queue);
         }
 
         [Fact]
@@ -287,9 +289,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IStorageQueueMessage firstMessage = sortedMessages.ElementAt(0);
             IStorageQueueMessage secondMessage = sortedMessages.ElementAt(1);
             IStorageQueueMessage thirdMessage = sortedMessages.ElementAt(2);
-            AssertPocoValueEqual(10, firstMessage);
-            AssertPocoValueEqual(20, secondMessage);
-            AssertPocoValueEqual(30, thirdMessage);
+            AssertEqual(new PocoMessage { Value = "10" }, firstMessage);
+            AssertEqual(new PocoMessage { Value = "20" }, secondMessage);
+            AssertEqual(new PocoMessage { Value = "30" }, thirdMessage);
         }
 
         [Fact]
@@ -314,17 +316,101 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(OutputQueueName, result.Name);
+            Assert.Equal(QueueName, result.Name);
+        }
+
+        [Fact]
+        public void Queue_IfBoundCloudQueueAndQueueIsMissing_Creates()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            CloudQueue result = Call<CloudQueue>(account, typeof(BindToCloudQueueProgram), "BindToCloudQueue",
+                (s) => BindToCloudQueueProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(QueueName);
+            Assert.True(queue.Exists());
         }
 
         private class BindToCloudQueueProgram
         {
             public static TaskCompletionSource<CloudQueue> TaskSource { get; set; }
 
-            public static void BindToCloudQueue([Queue(OutputQueueName)] CloudQueue queue)
+            public static void BindToCloudQueue([Queue(QueueName)] CloudQueue queue)
             {
                 TaskSource.TrySetResult(queue);
             }
+        }
+
+        [Theory]
+        [InlineData("FuncWithOutCloudQueueMessage", TestQueueMessage)]
+        [InlineData("FuncWithOutByteArray", TestQueueMessage)]
+        [InlineData("FuncWithOutString", TestQueueMessage)]
+        [InlineData("FuncWithICollector", TestQueueMessage)]
+        [InlineData("FuncWithOutTNull", "null")]
+        public void Queue_IfBoundToTypeAndQueueIsMissing_CreatesAndSends(string methodName, string expectedMessage)
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(MissingQueueProgram), methodName);
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            Assert.True(queue.Exists());
+            AssertMessageSent(expectedMessage, queue);
+        }
+
+        [Fact]
+        public void Queue_IfBoundToOutPocoAndQueueIsMissing_CreatesAndSends()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(MissingQueueProgram), "FuncWithOutT");
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            Assert.True(queue.Exists());
+            AssertMessageSent(new PocoMessage { Value = TestQueueMessage }, queue);
+        }
+
+        [Fact]
+        public void Queue_IfBoundToOutStructAndQueueIsMissing_CreatesAndSends()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(MissingQueueProgram), "FuncWithOutT");
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            Assert.True(queue.Exists());
+            AssertMessageSent(new StructMessage { Value = TestQueueMessage }, queue);
+        }
+
+        [Theory]
+        [InlineData("FuncWithOutCloudQueueMessageNull")]
+        [InlineData("FuncWithOutByteArrayNull")]
+        [InlineData("FuncWithOutStringNull")]
+        [InlineData("FuncWithICollectorNoop")]
+        public void Queue_IfBoundToTypeAndQueueIsMissing_DoesNotCreate(string methodName)
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(MissingQueueProgram), methodName);
+
+            // Assert
+            IStorageQueue queue = account.CreateQueueClient().GetQueueReference(OutputQueueName);
+            Assert.False(queue.Exists());
         }
 
         [Fact]
@@ -355,13 +441,60 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
-        private static void AssertPocoValueEqual(int expectedValue, IStorageQueueMessage actualMessage)
+        private static void AssertMessageSent(string expectedMessage, IStorageQueue queue)
+        {
+            Assert.NotNull(queue);
+            IStorageQueueMessage message = queue.GetMessage();
+            Assert.NotNull(message);
+            Assert.Equal(expectedMessage, message.AsString);
+        }
+
+        private static void AssertMessageSent(PocoMessage expected, IStorageQueue queue)
+        {
+            Assert.NotNull(queue);
+            IStorageQueueMessage message = queue.GetMessage();
+            Assert.NotNull(message);
+            AssertEqual(expected, message);
+        }
+
+        private static void AssertMessageSent(StructMessage expected, IStorageQueue queue)
+        {
+            Assert.NotNull(queue);
+            IStorageQueueMessage message = queue.GetMessage();
+            Assert.NotNull(message);
+            AssertEqual(expected, message);
+        }
+
+        private static void AssertEqual(PocoMessage expected, IStorageQueueMessage actualMessage)
         {
             Assert.NotNull(actualMessage);
             string content = actualMessage.AsString;
-            Poco poco = JsonConvert.DeserializeObject<Poco>(content);
-            Assert.NotNull(poco);
-            Assert.Equal(expectedValue, poco.Value);
+            PocoMessage actual = JsonConvert.DeserializeObject<PocoMessage>(content);
+            AssertEqual(expected, actual);
+        }
+
+        private static void AssertEqual(StructMessage expected, IStorageQueueMessage actualMessage)
+        {
+            Assert.NotNull(actualMessage);
+            string content = actualMessage.AsString;
+            StructMessage actual = JsonConvert.DeserializeObject<StructMessage>(content);
+            AssertEqual(expected, actual);
+        }
+
+        private static void AssertEqual(PocoMessage expected, PocoMessage actual)
+        {
+            if (expected == null)
+            {
+                Assert.Null(actual);
+                return;
+            }
+
+            Assert.Equal(expected.Value, actual.Value);
+        }
+
+        private static void AssertEqual(StructMessage expected, StructMessage actual)
+        {
+            Assert.Equal(expected.Value, actual.Value);
         }
 
         [Fact]
@@ -660,24 +793,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private class QueueProgram
         {
-            public static void BindToOutPoco([Queue(OutputQueueName)] out Poco output)
+            public static void BindToOutPoco([Queue(OutputQueueName)] out PocoMessage output)
             {
-                output = new Poco { Value = 15 };
+                output = new PocoMessage { Value = "15" };
             }
 
-            public static void BindToICollectorPoco([Queue(OutputQueueName)] ICollector<Poco> output)
+            public static void BindToICollectorPoco([Queue(OutputQueueName)] ICollector<PocoMessage> output)
             {
-                output.Add(new Poco { Value = 10 });
-                output.Add(new Poco { Value = 20 });
-                output.Add(new Poco { Value = 30 });
+                output.Add(new PocoMessage { Value = "10" });
+                output.Add(new PocoMessage { Value = "20" });
+                output.Add(new PocoMessage { Value = "30" });
             }
 
             public static async Task BindToIAsyncCollectorPoco(
-                [Queue(OutputQueueName)] IAsyncCollector<Poco> output)
+                [Queue(OutputQueueName)] IAsyncCollector<PocoMessage> output)
             {
-                await output.AddAsync(new Poco { Value = 10 });
-                await output.AddAsync(new Poco { Value = 20 });
-                await output.AddAsync(new Poco { Value = 30 });
+                await output.AddAsync(new PocoMessage { Value = "10" });
+                await output.AddAsync(new PocoMessage { Value = "20" });
+                await output.AddAsync(new PocoMessage { Value = "30" });
             }
 
             public static async Task BindToIAsyncCollectorEnqueuesImmediately(
@@ -692,9 +825,73 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
-        private class Poco
+        private class PocoMessage
         {
-            public int Value { get; set; }
+            public string Value { get; set; }
+        }
+
+        private struct StructMessage
+        {
+            public string Value { get; set; }
+        }
+
+        private class MissingQueueProgram
+        {
+            public static void FuncWithOutCloudQueueMessage([Queue(OutputQueueName)] out CloudQueueMessage message)
+            {
+                message = new CloudQueueMessage(TestQueueMessage);
+            }
+
+            public static void FuncWithOutCloudQueueMessageNull([Queue(OutputQueueName)] out CloudQueueMessage message)
+            {
+                message = null;
+            }
+
+            public static void FuncWithOutByteArray([Queue(OutputQueueName)] out byte[] payload)
+            {
+                payload = Encoding.UTF8.GetBytes(TestQueueMessage);
+            }
+
+            public static void FuncWithOutByteArrayNull([Queue(OutputQueueName)] out byte[] payload)
+            {
+                payload = null;
+            }
+
+            public static void FuncWithOutString([Queue(OutputQueueName)] out string payload)
+            {
+                payload = TestQueueMessage;
+            }
+
+            public static void FuncWithOutStringNull([Queue(OutputQueueName)] out string payload)
+            {
+                payload = null;
+            }
+
+            public static void FuncWithICollector([Queue(OutputQueueName)] ICollector<string> queue)
+            {
+                Assert.NotNull(queue);
+                queue.Add(TestQueueMessage);
+            }
+
+            public static void FuncWithICollectorNoop([Queue(QueueName)] ICollector<PocoMessage> queue)
+            {
+                Assert.NotNull(queue);
+            }
+
+            public static void FuncWithOutT([Queue(OutputQueueName)] out PocoMessage value)
+            {
+                value = new PocoMessage { Value = TestQueueMessage };
+            }
+
+            public static void FuncWithOutTNull([Queue(OutputQueueName)] out PocoMessage value)
+            {
+                value = default(PocoMessage);
+            }
+
+            public static void FuncWithOutValueT([Queue(OutputQueueName)] out StructMessage value)
+            {
+                value = new StructMessage { Value = TestQueueMessage };
+            }
         }
     }
 }
