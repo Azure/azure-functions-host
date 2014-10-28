@@ -436,6 +436,7 @@
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IConsoleProvider.cs" />
+    <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="StructPropertySetter.cs" />
     <Compile Include="StructPropertyAccessorFactory.cs" />
     <Compile Include="ClassPropertyAccessorFactory.cs" />

@@ -14,15 +14,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
     internal class FakeStorageAccount : IStorageAccount
     {
         private static readonly StorageCredentials _credentials = new StorageCredentials("test", new byte[0]);
+        private static readonly Uri _endpoint = new Uri("aa://b");
 
         private readonly MemoryBlobStore _blobStore = new MemoryBlobStore();
         private readonly MemoryQueueStore _queueStore = new MemoryQueueStore();
         private readonly MemoryTableStore _tableStore = new MemoryTableStore();
-        private readonly Uri _blobEndpoint = new Uri("aa://b");
+        private readonly CloudStorageAccount _sdkObject = new CloudStorageAccount(_credentials, _endpoint, _endpoint,
+            _endpoint, _endpoint);
 
         public Uri BlobEndpoint
         {
-            get { return _blobEndpoint; }
+            get { return _endpoint; }
         }
 
         public StorageCredentials Credentials
@@ -37,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public CloudStorageAccount SdkObject
         {
-            get { throw new NotImplementedException(); }
+            get { return _sdkObject; }
         }
 
         public IStorageBlobClient CreateBlobClient()

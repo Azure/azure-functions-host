@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter)
         {
             return new CompositeArgumentBindingProvider(
+                new StorageQueueArgumentBindingProvider(),
                 new CloudQueueArgumentBindingProvider(),
                 new CloudQueueMessageArgumentBindingProvider(messageEnqueuedWatcherGetter),
                 new StringArgumentBindingProvider(messageEnqueuedWatcherGetter),

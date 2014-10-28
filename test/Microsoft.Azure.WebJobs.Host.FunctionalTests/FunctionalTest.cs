@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -23,18 +24,18 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
     internal static class FunctionalTest
     {
-        public static void Call(IStorageAccount storageAccount, Type programType, MethodInfo method,
-            params Type[] cloudBlobStreamBinderTypes)
+        public static void Call(IStorageAccount account, Type programType, MethodInfo method,
+            IDictionary<string, object> arguments, params Type[] cloudBlobStreamBinderTypes)
         {
             // Arrange
             TaskCompletionSource<object> backgroundTaskSource = new TaskCompletionSource<object>();
-            IServiceProvider serviceProvider = CreateServiceProviderForManualCompletion<object>(storageAccount,
+            IServiceProvider serviceProvider = CreateServiceProviderForManualCompletion<object>(account,
                 programType, backgroundTaskSource, cloudBlobStreamBinderTypes);
             Task backgroundTask = backgroundTaskSource.Task;
 
             using (JobHost host = new JobHost(serviceProvider))
             {
-                Task task = host.CallAsync(method);
+                Task task = host.CallAsync(method, arguments);
 
                 // Act
                 bool completed = Task.WhenAny(task, backgroundTask).WaitUntilCompleted(3 * 1000);
@@ -58,6 +59,51 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 }
 
                 Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+            }
+        }
+
+        // Stops running the host as soon as the program marks the task as completed.
+        public static TResult Call<TResult>(IStorageAccount account, Type programType, MethodInfo method,
+            IDictionary<string, object> arguments, Action<TaskCompletionSource<TResult>> setTaskSource)
+        {
+            // Arrange
+            TaskCompletionSource<TResult> taskSource = new TaskCompletionSource<TResult>();
+            IServiceProvider serviceProvider = CreateServiceProviderForManualCompletion<TResult>(account, programType,
+                taskSource);
+            Task<TResult> task = taskSource.Task;
+            setTaskSource.Invoke(taskSource);
+
+            try
+            {
+                using (JobHost host = new JobHost(serviceProvider))
+                {
+                    Task callTask = host.CallAsync(method, arguments);
+
+                    // Act
+                    bool completed = Task.WhenAny(task, callTask).WaitUntilCompleted(3 * 1000);
+
+                    // Assert
+                    Assert.True(completed);
+
+                    // Give a nicer test failure message for faulted tasks.
+                    if (task.Status == TaskStatus.Faulted)
+                    {
+                        task.GetAwaiter().GetResult();
+                    }
+
+                    if (callTask.Status == TaskStatus.Faulted)
+                    {
+                        callTask.GetAwaiter().GetResult();
+                    }
+
+                    Assert.Equal(TaskStatus.RanToCompletion, callTask.Status);
+
+                    return task.Result;
+                }
+            }
+            finally
+            {
+                setTaskSource.Invoke(null);
             }
         }
 

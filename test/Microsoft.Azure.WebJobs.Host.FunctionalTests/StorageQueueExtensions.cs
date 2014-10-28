@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 
@@ -38,6 +39,23 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
 
             return queue.ExistsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public static IStorageQueueMessage GetMessage(this IStorageQueue queue)
+        {
+            if (queue == null)
+            {
+                throw new ArgumentNullException("queue");
+            }
+
+            IEnumerable<IStorageQueueMessage> messages = GetMessages(queue, messageCount: 1);
+
+            if (messages == null)
+            {
+                return null;
+            }
+
+            return messages.SingleOrDefault();
         }
 
         public static IEnumerable<IStorageQueueMessage> GetMessages(this IStorageQueue queue, int messageCount)
