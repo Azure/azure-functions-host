@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -22,36 +23,85 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
     internal static class FunctionalTest
     {
+        public static void Call(IStorageAccount storageAccount, Type programType, MethodInfo method,
+            params Type[] cloudBlobStreamBinderTypes)
+        {
+            // Arrange
+            TaskCompletionSource<object> backgroundTaskSource = new TaskCompletionSource<object>();
+            IServiceProvider serviceProvider = CreateServiceProviderForManualCompletion<object>(storageAccount,
+                programType, backgroundTaskSource, cloudBlobStreamBinderTypes);
+            Task backgroundTask = backgroundTaskSource.Task;
+
+            using (JobHost host = new JobHost(serviceProvider))
+            {
+                Task task = host.CallAsync(method);
+
+                // Act
+                bool completed = Task.WhenAny(task, backgroundTask).WaitUntilCompleted(3 * 1000);
+
+                // Assert
+                Assert.True(completed);
+
+                // Give a nicer test failure message for faulted tasks.
+                if (backgroundTask.Status == TaskStatus.Faulted)
+                {
+                    backgroundTask.GetAwaiter().GetResult();
+                }
+
+                // The background task should not complete.
+                Assert.Equal(TaskStatus.WaitingForActivation, backgroundTask.Status);
+
+                // Give a nicer test failure message for faulted tasks.
+                if (task.Status == TaskStatus.Faulted)
+                {
+                    task.GetAwaiter().GetResult();
+                }
+
+                Assert.Equal(TaskStatus.RanToCompletion, task.Status);
+            }
+        }
+
         private static IServiceProvider CreateServiceProviderForInstanceFailure(IStorageAccount storageAccount,
             Type programType, TaskCompletionSource<Exception> taskSource)
         {
-            return CreateServiceProvider<Exception>(storageAccount, programType, taskSource,
-                new ExpectInstanceFailureTaskFunctionInstanceLogger(taskSource));
+            return CreateServiceProvider<Exception>(storageAccount, programType, new NullExtensionTypeLocator(),
+                taskSource, new ExpectInstanceFailureTaskFunctionInstanceLogger(taskSource));
         }
 
         public static IServiceProvider CreateServiceProviderForInstanceSuccess(IStorageAccount storageAccount,
             Type programType, TaskCompletionSource<object> taskSource)
         {
-            return CreateServiceProvider<object>(storageAccount, programType, taskSource,
-                new ExpectInstanceSuccessTaskFunctionInstanceLogger(taskSource));
+            return CreateServiceProvider<object>(storageAccount, programType, new NullExtensionTypeLocator(),
+                taskSource, new ExpectInstanceSuccessTaskFunctionInstanceLogger(taskSource));
         }
 
         public static IServiceProvider CreateServiceProviderForManualCompletion<TResult>(IStorageAccount storageAccount,
-            Type programType, TaskCompletionSource<TResult> taskSource)
+            Type programType, TaskCompletionSource<TResult> taskSource, params Type[] cloudBlobStreamBinderTypes)
         {
-            return CreateServiceProvider<TResult>(storageAccount, programType, taskSource,
+            IExtensionTypeLocator extensionTypeLocator;
+
+            if (cloudBlobStreamBinderTypes == null || cloudBlobStreamBinderTypes.Length == 0)
+            {
+                extensionTypeLocator = new NullExtensionTypeLocator();
+            }
+            else
+            {
+                extensionTypeLocator = new FakeExtensionTypeLocator(cloudBlobStreamBinderTypes);
+            }
+
+            return CreateServiceProvider<TResult>(storageAccount, programType, extensionTypeLocator, taskSource,
                 new ExpectManualCompletionFunctionInstanceLogger<TResult>(taskSource));
         }
 
         private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
-            TaskCompletionSource<TResult> taskSource, IFunctionInstanceLogger functionInstanceLogger)
+            IExtensionTypeLocator extensionTypeLocator, TaskCompletionSource<TResult> taskSource,
+            IFunctionInstanceLogger functionInstanceLogger)
         {
             IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider
             {
                 StorageAccount = storageAccount
             };
             IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
-            IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
@@ -192,7 +242,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             // The task for successful function invocation (should not complete).
             Task<TResult> successTask = successTaskSource.Task;
             setTaskSource.Invoke(successTaskSource);
-            bool completed;
 
             try
             {
@@ -201,10 +250,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     host.Start();
 
                     // Act
-                    completed = Task.WhenAny(failureTask, successTask).WaitUntilCompleted(3 * 1000);
+                    bool completed = Task.WhenAny(failureTask, successTask).WaitUntilCompleted(3 * 1000);
 
                     // Assert
                     Assert.True(completed);
+
+                    // Give a nicer test failure message for faulted tasks.
+                    if (successTask.Status == TaskStatus.Faulted)
+                    {
+                        successTask.GetAwaiter().GetResult();
+                    }
 
                     // The function should not be invoked.
                     Assert.Equal(TaskStatus.WaitingForActivation, successTask.Status);

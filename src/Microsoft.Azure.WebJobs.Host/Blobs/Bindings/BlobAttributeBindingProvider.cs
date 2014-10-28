@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                     t => CloudBlobStreamObjectBinder.CreateReadBindingProvider(t)));
 
                 innerProviders.AddRange(cloudBlobStreamBinderTypes.Select(
-                    t => CloudBlobStreamObjectBinder.CreateWriteBindingProvider(t)));
+                    t => CloudBlobStreamObjectBinder.CreateWriteBindingProvider(t, blobWrittenWatcherGetter)));
             }
 
             return new CompositeArgumentBindingProvider(innerProviders);

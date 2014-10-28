@@ -5,14 +5,16 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
+using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 using Xunit.Extensions;
 
-namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {
-    public class BlobBindingTests : IDisposable
+    public class HostCallTests
     {
         internal const string TestContainerName = "daas-test-input";
         internal const string TestBlobName = "blob.csv";
@@ -29,19 +31,19 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithT")]
         [InlineData("FuncWithOutTNull")]
         [InlineData("FuncWithValueT")]
-        public void Call_WhenMissingBlob_DoesntCreate(string functionName)
+        public void Blob_IfBoundToMissingBlob_DoesNotCreate(string methodName)
         {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { 
-                typeof(MissingBlobToCustomValueBinder), typeof(MissingBlobToCustomObjectBinder) });
-            Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
-                "blob should NOT exist before the test.");
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(TestContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(TestBlobName);
 
-            lc.Call(functionName);
+            // Act
+            Call(account, methodName, typeof(MissingBlobToCustomObjectBinder), typeof(MissingBlobToCustomValueBinder));
 
-            Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
-                "blob should NOT be created when nothing is written to a stream or " +
-                "null value is returned by the function.");
+            // Assert
+            Assert.False(blob.Exists());
         }
 
         [Theory]
@@ -50,26 +52,30 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         [InlineData("FuncWithStreamWrite")]
         [InlineData("FuncWithOutT")]
         [InlineData("FuncWithOutValueT")]
-        public void Call_WhenMissingBlob_Creates(string functionName)
+        public void Blob_IfBoundToMissingBlob_Creates(string methodName)
         {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            var lc = TestStorage.New<MissingBlobProgram>(account, new Type[] { 
-                typeof(MissingBlobToCustomValueBinder), typeof(MissingBlobToCustomObjectBinder) });
-            Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
-                "blob should NOT exist before the test.");
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(TestContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(TestBlobName);
 
-            lc.Call(functionName);
+            // Act
+            Call(account, methodName, typeof(MissingBlobToCustomObjectBinder), typeof(MissingBlobToCustomValueBinder));
 
-            Assert.True(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName),
-                "blob must be created if a function wrote to a stream or returned non null value.");
+            // Assert
+            Assert.True(blob.Exists());
         }
 
-        public void Dispose()
+        private static void Call(IStorageAccount account, string methodName, params Type[] cloudBlobStreamBinderTypes)
         {
-            CloudStorageAccount account = TestStorage.GetAccount();
-            TestBlobClient.DeleteContainer(account, TestContainerName);
-            Assert.False(TestBlobClient.DoesBlobExist(account, TestContainerName, TestBlobName), 
-                "blob should be deleted after Dispose");
+            FunctionalTest.Call(account, typeof(MissingBlobProgram), typeof(MissingBlobProgram).GetMethod(methodName),
+                cloudBlobStreamBinderTypes);
+        }
+
+        private static IStorageAccount CreateFakeStorageAccount()
+        {
+            return new FakeStorageAccount();
         }
 
         private struct CustomDataValue
@@ -82,29 +88,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
         {
             public int ValueId { get; set; }
             public string Content { get; set; }
-        }
-
-        private class MissingBlobToCustomValueBinder : ICloudBlobStreamBinder<CustomDataValue>
-        {
-            public Task<CustomDataValue> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
-            {
-                Assert.Null(input);
-
-                CustomDataValue value = new CustomDataValue { ValueId = TestValue };
-                return Task.FromResult(value);
-            }
-
-            public Task WriteToStreamAsync(CustomDataValue value, Stream output, CancellationToken cancellationToken)
-            {
-                Assert.NotNull(output);
-
-                Assert.Equal(TestValue, value.ValueId);
-
-                const byte ignore = 0xFF;
-                output.WriteByte(ignore);
-                
-                return Task.FromResult(0);
-            }
         }
 
         private class MissingBlobToCustomObjectBinder : ICloudBlobStreamBinder<CustomDataObject>
@@ -128,6 +111,29 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
                     const byte ignore = 0xFF;
                     output.WriteByte(ignore);
                 }
+
+                return Task.FromResult(0);
+            }
+        }
+
+        private class MissingBlobToCustomValueBinder : ICloudBlobStreamBinder<CustomDataValue>
+        {
+            public Task<CustomDataValue> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
+            {
+                Assert.Null(input);
+
+                CustomDataValue value = new CustomDataValue { ValueId = TestValue };
+                return Task.FromResult(value);
+            }
+
+            public Task WriteToStreamAsync(CustomDataValue value, Stream output, CancellationToken cancellationToken)
+            {
+                Assert.NotNull(output);
+
+                Assert.Equal(TestValue, value.ValueId);
+
+                const byte ignore = 0xFF;
+                output.WriteByte(ignore);
 
                 return Task.FromResult(0);
             }

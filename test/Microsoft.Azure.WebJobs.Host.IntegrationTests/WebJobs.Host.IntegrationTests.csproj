@@ -94,7 +94,6 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="BlobBindingTests.cs" />
     <Compile Include="BlobListenerUnitTests.cs" />
     <Compile Include="BlobNotificationStrategyExtensions.cs" />
     <Compile Include="QueueBindingTests.cs" />

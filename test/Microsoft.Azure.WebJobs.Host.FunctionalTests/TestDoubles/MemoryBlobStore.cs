@@ -33,6 +33,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public bool Exists(string containerName, string blobName)
         {
+            if (!_items.ContainsKey(containerName))
+            {
+                return false;
+            }
+
             return _items[containerName].Exists(blobName);
         }
 
@@ -97,6 +102,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public Stream OpenRead(string containerName, string blobName)
         {
+            if (!_items.ContainsKey(containerName))
+            {
+                throw StorageExceptionFactory.Create(404);
+            }
+
             return _items[containerName].OpenRead(blobName);
         }
 
