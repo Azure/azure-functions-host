@@ -327,6 +327,34 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        [Fact]
+        public void Binder_IfBindingBlobToTextWriter_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, typeof(BindToBinderBlobTextWriterProgram), "Call");
+
+            // Assert
+            IStorageBlobContainer container = account.CreateBlobClient().GetContainerReference(ContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(OutputBlobName);
+            string content = blob.DownloadText();
+            Assert.Equal("output", content);
+        }
+
+        private class BindToBinderBlobTextWriterProgram
+        {
+            [NoAutomaticTrigger]
+            public static void Call(IBinder binder)
+            {
+                TextWriter tw = binder.Bind<TextWriter>(new BlobAttribute(OutputBlobPath));
+                tw.Write("output");
+
+                // closed automatically 
+            }
+        }
+
         private static void AssertPocoValueEqual(int expectedValue, IStorageQueueMessage actualMessage)
         {
             Assert.NotNull(actualMessage);
@@ -334,6 +362,63 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Poco poco = JsonConvert.DeserializeObject<Poco>(content);
             Assert.NotNull(poco);
             Assert.Equal(expectedValue, poco.Value);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfCopiedViaPoco_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStorageBlockBlob inputBlob = container.GetBlockBlobReference(BlobName);
+            container.CreateIfNotExists();
+            inputBlob.UploadText("abc");
+
+            Dictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "input", BlobPath }
+            };
+
+            // Act
+            Call(account, typeof(CopyBlobViaPocoProgram), "CopyViaPoco", arguments, typeof(PocoBlobBinder));
+
+            // Assert
+            IStorageBlockBlob outputBlob = container.GetBlockBlobReference(OutputBlobName);
+            string content = outputBlob.DownloadText();
+            Assert.Equal("*abc*", content);
+        }
+
+        private class CopyBlobViaPocoProgram
+        {
+            public static void CopyViaPoco(
+                [BlobTrigger(BlobPath)] PocoBlob input,
+                [Blob(OutputBlobPath)] out PocoBlob output)
+            {
+                output = new PocoBlob { Value = "*" + input.Value + "*" };
+            }
+        }
+
+        private class PocoBlob
+        {
+            public string Value;
+        }
+
+        private class PocoBlobBinder : ICloudBlobStreamBinder<PocoBlob>
+        {
+            public async Task<PocoBlob> ReadFromStreamAsync(Stream input, CancellationToken cancellationToken)
+            {
+                TextReader reader = new StreamReader(input);
+                string text = await reader.ReadToEndAsync();
+                return new PocoBlob { Value = text };
+            }
+
+            public async Task WriteToStreamAsync(PocoBlob value, Stream output, CancellationToken cancellationToken)
+            {
+                TextWriter writer = new StreamWriter(output);
+                await writer.WriteAsync(value.Value);
+                await writer.FlushAsync();
+            }
         }
 
         private static void Call(IStorageAccount account, Type programType, string methodName,
@@ -344,9 +429,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         private static void Call(IStorageAccount account, Type programType, string methodName,
-            IDictionary<string, object> arguments)
+            IDictionary<string, object> arguments, params Type[] cloudBlobStreamBinderTypes)
         {
-            FunctionalTest.Call(account, programType, programType.GetMethod(methodName), arguments);
+            FunctionalTest.Call(account, programType, programType.GetMethod(methodName), arguments,
+                cloudBlobStreamBinderTypes);
         }
 
         private static TResult Call<TResult>(IStorageAccount account, Type programType, string methodName,
