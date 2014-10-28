@@ -28,6 +28,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public TableResult Execute(string tableName, IStorageTableOperation operation)
         {
+            if (!_items.ContainsKey(tableName))
+            {
+                return new TableResult { HttpStatusCode = 404 };
+            }
+
             return _items[tableName].Execute(operation);
         }
 

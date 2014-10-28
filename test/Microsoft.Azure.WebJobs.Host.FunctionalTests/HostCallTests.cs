@@ -13,9 +13,11 @@ using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Xunit;
 using Xunit.Extensions;
@@ -33,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string OutputBlobPath = ContainerName + "/" + OutputBlobName;
         private const string QueueName = "input";
         private const string OutputQueueName = "output";
+        private const string TableName = "Table";
         private const int TestValue = Int32.MinValue;
         private const string TestQueueMessage = "ignore";
 
@@ -320,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
-        public void Queue_IfBoundCloudQueueAndQueueIsMissing_Creates()
+        public void Queue_IfBoundToCloudQueueAndQueueIsMissing_Creates()
         {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
@@ -551,6 +554,52 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 TextWriter writer = new StreamWriter(output);
                 await writer.WriteAsync(value.Value);
                 await writer.FlushAsync();
+            }
+        }
+
+        [Theory]
+        [InlineData("FuncWithITableEntity")]
+        [InlineData("FuncWithPocoObjectEntity")]
+        [InlineData("FuncWithPocoValueEntity")]
+        [InlineData("FuncWithIQueryable")]
+        [InlineData("FuncWithICollector")]
+        public void Table_IfBoundToTypeAndTableIsMissing_DoesNotCreate(string methodName)
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+
+            // Act
+            Call(account, typeof(MissingTableProgram), methodName);
+
+            // Assert
+            Assert.False(table.Exists());
+        }
+
+        [Fact]
+        public void Table_IfBoundToCloudTableAndTableIsMissing_Creates()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            CloudTable result = Call<CloudTable>(account, typeof(BindToCloudTableProgram), "BindToCloudTable",
+                (s) => BindToCloudTableProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+            IStorageTable table = account.CreateTableClient().GetTableReference(TableName);
+            Assert.True(table.Exists());
+        }
+
+        private class BindToCloudTableProgram
+        {
+            public static TaskCompletionSource<CloudTable> TaskSource { get; set; }
+
+            public static void BindToCloudTable([Table(TableName)] CloudTable queue)
+            {
+                TaskSource.TrySetResult(queue);
             }
         }
 
@@ -892,6 +941,50 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 value = new StructMessage { Value = TestQueueMessage };
             }
+        }
+
+        private class MissingTableProgram
+        {
+            public static void FuncWithIQueryable([Table(TableName)] IQueryable<SdkTableEntity> entities)
+            {
+                Assert.NotNull(entities);
+                Assert.Empty(entities);
+            }
+
+            public static void FuncWithICollector([Table(TableName)] ICollector<SdkTableEntity> entities)
+            {
+                Assert.NotNull(entities);
+            }
+
+            public static void FuncWithITableEntity([Table(TableName, "PK", "RK")] SdkTableEntity entity)
+            {
+                Assert.Null(entity);
+            }
+
+            public static void FuncWithPocoObjectEntity([Table(TableName, "PK", "RK")] PocoTableEntity entity)
+            {
+                Assert.Null(entity);
+            }
+
+            public static void FuncWithPocoValueEntity([Table(TableName, "PK", "RK")] StructTableEntity entity)
+            {
+                Assert.Null(entity.Value);
+            }
+        }
+
+        private class SdkTableEntity : TableEntity
+        {
+            public string Value { get; set; }
+        }
+
+        private class PocoTableEntity
+        {
+            public string Value { get; set; }
+        }
+
+        private struct StructTableEntity
+        {
+            public string Value { get; set; }
         }
     }
 }

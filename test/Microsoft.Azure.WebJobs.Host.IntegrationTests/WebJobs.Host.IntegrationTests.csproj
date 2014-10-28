@@ -97,7 +97,6 @@
     <Compile Include="TestTableClient.cs" />
     <Compile Include="LocalExecutionContext.cs" />
     <Compile Include="Storage\StorageAccountTests.cs" />
-    <Compile Include="TableBindingTests.cs" />
     <Compile Include="TableCollectorBindingTests.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
