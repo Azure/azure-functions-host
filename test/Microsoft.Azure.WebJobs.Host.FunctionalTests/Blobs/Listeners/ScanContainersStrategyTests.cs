@@ -5,45 +5,45 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 {
-    public class BlobListenerTests
+    public class ScanContainersStrategyTests
     {
         [Fact]
         public void TestBlobListener()
         {
-            var account = CloudStorageAccount.DevelopmentStorageAccount;
-            string containerName = @"daas-test-input";
-            TestBlobClient.DeleteContainer(account, containerName);
-
-            CloudBlobClient client = account.CreateCloudBlobClient();
-            var container = client.GetContainerReference(containerName);
-            IBlobNotificationStrategy strategy = new ScanContainersStrategy();
+            const string containerName = "container";
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobContainer container = account.CreateBlobClient().GetContainerReference(containerName);
+            IBlobNotificationStrategy product = new ScanContainersStrategy();
             LambdaBlobTriggerExecutor executor = new LambdaBlobTriggerExecutor();
-            strategy.RegisterAsync(new StorageBlobContainer(new StorageBlobClient(container.ServiceClient), container), executor, CancellationToken.None).GetAwaiter().GetResult();
+            product.Register(container, executor);
 
             executor.ExecuteLambda = (_) =>
             {
                 throw new InvalidOperationException("shouldn't be any blobs in the container");
             };
-            strategy.Execute();
+            product.Execute();
 
-            TestBlobClient.WriteBlob(account, containerName, "foo1.csv", "abc");
+            const string expectedBlobName = "foo1.csv";
+            IStorageBlockBlob blob = container.GetBlockBlobReference(expectedBlobName);
+            container.CreateIfNotExists();
+            blob.UploadText("ignore");
 
             int count = 0;
-            executor.ExecuteLambda = (blob) =>
+            executor.ExecuteLambda = (b) =>
             {
                 count++;
-                Assert.Equal("foo1.csv", blob.Name);
+                Assert.Equal(expectedBlobName, b.Name);
                 return true;
             };
-            strategy.Execute();
+            product.Execute();
             Assert.Equal(1, count);
 
             // Now run again; shouldn't show up. 
@@ -51,7 +51,12 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             {
                 throw new InvalidOperationException("shouldn't retrigger the same blob");
             };
-            strategy.Execute();
+            product.Execute();
+        }
+
+        private static IStorageAccount CreateFakeStorageAccount()
+        {
+            return new FakeStorageAccount();
         }
 
         private class LambdaBlobTriggerExecutor : ITriggerExecutor<IStorageBlob>

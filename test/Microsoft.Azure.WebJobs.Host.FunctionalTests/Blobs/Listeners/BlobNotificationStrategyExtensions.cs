@@ -4,8 +4,10 @@
 using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
-namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
+namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
 {
     internal static class BlobNotificationStrategyExtensions
     {
@@ -17,6 +19,17 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests
             }
 
             strategy.ExecuteAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+
+        public static void Register(this IBlobNotificationStrategy strategy, IStorageBlobContainer container,
+            ITriggerExecutor<IStorageBlob> triggerExecutor)
+        {
+            if (strategy == null)
+            {
+                throw new ArgumentNullException("strategy");
+            }
+
+            strategy.RegisterAsync(container, triggerExecutor, CancellationToken.None).GetAwaiter().GetResult();
         }
     }
 }
