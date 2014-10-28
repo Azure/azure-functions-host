@@ -97,7 +97,6 @@
     <Compile Include="QueueBindingTests.cs" />
     <Compile Include="TestTableClient.cs" />
     <Compile Include="LocalExecutionContext.cs" />
-    <Compile Include="CancellationTests.cs" />
     <Compile Include="Storage\StorageAccountTests.cs" />
     <Compile Include="TableBindingTests.cs" />
     <Compile Include="TableCollectorBindingTests.cs" />

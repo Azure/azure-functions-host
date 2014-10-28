@@ -51,6 +51,7 @@
     <Compile Include="FunctionalTest.cs" />
     <Compile Include="BlobTests.cs" />
     <Compile Include="HostCallTests.cs" />
+    <Compile Include="HostStopTests.cs" />
     <Compile Include="StorageBlockBlobExtensions.cs" />
     <Compile Include="StorageTableExtensions.cs" />
     <Compile Include="TableTests.cs" />

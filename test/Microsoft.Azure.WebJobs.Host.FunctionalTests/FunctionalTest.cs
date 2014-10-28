@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
-        private static TResult RunTrigger<TResult>(IServiceProvider serviceProvider, Task<TResult> task)
+        public static TResult RunTrigger<TResult>(IServiceProvider serviceProvider, Task<TResult> task)
         {
             // Arrange
             bool completed;

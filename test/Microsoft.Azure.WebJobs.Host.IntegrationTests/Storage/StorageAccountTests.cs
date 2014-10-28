@@ -8,7 +8,6 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
@@ -119,16 +118,6 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
         private static string GetQueueName(string infix)
         {
             return String.Format("test-{0}-{1:N}", infix, Guid.NewGuid());
-        }
-
-        private static string GetTableName(string infix)
-        {
-            return String.Format("Test{0}{1:N}", infix, Guid.NewGuid());
-        }
-
-        private class SimpleEntity : TableEntity
-        {
-            public string Value { get; set; }
         }
     }
 }
