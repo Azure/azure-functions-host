@@ -2,15 +2,14 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Configuration;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Storage.Queue;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
+namespace Microsoft.Azure.WebJobs.Storage.IntegrationTests
 {
     public class StorageAccountTests
     {
@@ -101,18 +100,35 @@ namespace Microsoft.Azure.WebJobs.Host.IntegrationTests.Storage
 
         private static string GetConnectionString()
         {
-            string name = ConnectionStringNames.Dashboard;
-            string value = AmbientConnectionStringProvider.Instance.GetConnectionString(name);
+            const string name = "AzureWebJobsStorage";
+            string value = GetConnectionString(name);
 
             if (String.IsNullOrEmpty(value))
             {
                 string message = String.Format(
                     "This test needs an Azure storage connection string to run. Please set the '{0}' environment " +
-                    "variable or App.config connection string before running this test.", AmbientConnectionStringProvider.Prefix + name);
+                    "variable or App.config connection string before running this test.", name);
                 throw new InvalidOperationException(message);
             }
 
             return value;
+        }
+
+        private static string GetConnectionString(string connectionStringName)
+        {
+            string connectionStringInConfig = null;
+            var connectionStringEntry = ConfigurationManager.ConnectionStrings[connectionStringName];
+            if (connectionStringEntry != null)
+            {
+                connectionStringInConfig = connectionStringEntry.ConnectionString;
+            }
+
+            if (!String.IsNullOrEmpty(connectionStringInConfig))
+            {
+                return connectionStringInConfig;
+            }
+
+            return Environment.GetEnvironmentVariable(connectionStringName) ?? connectionStringInConfig;
         }
 
         private static string GetQueueName(string infix)

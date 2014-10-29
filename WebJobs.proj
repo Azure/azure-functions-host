@@ -136,6 +136,7 @@
   <Target Name="FunctionalTest" DependsOnTargets="UnitTest">
     <ItemGroup>
       <FunctionalTestProjects Include="test\Microsoft.Azure.WebJobs.Host.EndToEndTests\WebJobs.Host.EndToEndTests.csproj"/>
+      <FunctionalTestProjects Include="test\Microsoft.Azure.WebJobs.Storage.IntegrationTests\WebJobs.Storage.IntegrationTests.csproj"/>
     </ItemGroup>
 
     <MSBuild Projects="@(FunctionalTestProjects)"
