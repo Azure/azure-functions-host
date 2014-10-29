@@ -159,7 +159,41 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (options != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (operationContext != null)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (accessCondition != null &&
+                (accessCondition.IfMatchETag != null ||
+                accessCondition.IfModifiedSinceTime.HasValue ||
+                accessCondition.IfNoneMatchETag != null ||
+                accessCondition.IfNotModifiedSinceTime.HasValue ||
+                accessCondition.IfSequenceNumberEqual.HasValue ||
+                accessCondition.IfSequenceNumberLessThan.HasValue ||
+                accessCondition.IfSequenceNumberLessThanOrEqual.HasValue))
+            {
+                throw new NotImplementedException();
+            }
+
+            string leaseId;
+
+            if (accessCondition != null)
+            {
+                leaseId = accessCondition.LeaseId;
+            }
+            else
+            {
+                leaseId = null;
+            }
+
+            _store.SetMetadata(_containerName, _blobName, _metadata, leaseId);
+            return Task.FromResult(0);
         }
 
         public Task UploadTextAsync(string content, Encoding encoding, AccessCondition accessCondition,

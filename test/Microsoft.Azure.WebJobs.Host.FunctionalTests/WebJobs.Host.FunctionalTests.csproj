@@ -52,8 +52,10 @@
     <Compile Include="BlobTests.cs" />
     <Compile Include="HostCallTests.cs" />
     <Compile Include="HostStopTests.cs" />
+    <Compile Include="ScenarioTests.cs" />
     <Compile Include="StorageBlockBlobExtensions.cs" />
     <Compile Include="StorageTableExtensions.cs" />
+    <Compile Include="Tables\TableEntityWriterTests.cs" />
     <Compile Include="TableTests.cs" />
     <Compile Include="TableEntityTests.cs" />
     <Compile Include="QueueTests.cs" />

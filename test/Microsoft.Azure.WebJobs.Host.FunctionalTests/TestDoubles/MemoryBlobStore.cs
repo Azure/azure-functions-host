@@ -125,6 +125,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _items[containerName].ReleaseLease(blobName, leaseId);
         }
 
+        public void SetMetadata(string containerName, string blobName, IDictionary<string, string> metadata,
+            string leaseId)
+        {
+            _items[containerName].SetMetadata(blobName, metadata, leaseId);
+        }
+
         public void SetServiceProperties(ServiceProperties properties)
         {
             _properties = Clone(properties);
@@ -218,6 +224,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
             public BlobAttributes FetchAttributes(string blobName)
             {
+                if (!_items.ContainsKey(blobName))
+                {
+                    throw StorageExceptionFactory.Create(404);
+                }
+
                 return _items[blobName].FetchAttributes();
             }
 
@@ -264,14 +275,37 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                     _items[blobName].ThrowIfLeased();
                 }
 
-                string eTag = Guid.NewGuid().ToString();
-                return new MemoryCloudBlobStream((bytes) => _items[blobName] = new Blob(bytes, eTag, DateTimeOffset.Now,
-                    metadata));
+                return new MemoryCloudBlobStream((bytes) => _items[blobName] = new Blob(bytes, metadata, null, null));
             }
 
             public void ReleaseLease(string blobName, string leaseId)
             {
+                if (!_items.ContainsKey(blobName))
+                {
+                    throw StorageExceptionFactory.Create(404, "BlobNotFound");
+                }
+
                 _items[blobName].ReleaseLease(leaseId);
+            }
+
+            public void SetMetadata(string blobName, IDictionary<string, string> metadata, string leaseId)
+            {
+                Blob existing;
+                if (!_items.TryRemove(blobName, out existing))
+                {
+                    throw new InvalidOperationException();
+                }
+
+                if (leaseId == null)
+                {
+                    existing.ThrowIfLeased();
+                }
+                else
+                {
+                    existing.ThrowIfLeaseMismatch(leaseId);
+                }
+
+                _items[blobName] = new Blob(existing.Contents, metadata, existing.LeaseId, existing.LeaseExpires);
             }
         }
 
@@ -282,13 +316,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             private readonly DateTimeOffset _lastModified;
             private readonly IReadOnlyDictionary<string, string> _metadata;
 
-            public Blob(byte[] contents, string eTag, DateTimeOffset lastModified, IDictionary<string, string> metadata)
+            public Blob(byte[] contents, IDictionary<string, string> metadata, string leaseId, DateTime? leaseExpires)
             {
                 _contents = new byte[contents.LongLength];
-                _eTag = eTag;
-                _lastModified = lastModified;
+                _eTag = Guid.NewGuid().ToString();
+                _lastModified = DateTimeOffset.Now;
                 Array.Copy(contents, _contents, _contents.LongLength);
                 _metadata = new Dictionary<string, string>(metadata);
+                LeaseId = leaseId;
+                LeaseExpires = leaseExpires;
             }
 
             public byte[] Contents
@@ -358,6 +394,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                     {
                         throw new InvalidOperationException();
                     }
+                }
+            }
+
+            public void ThrowIfLeaseMismatch(string leaseId)
+            {
+                if (leaseId == null)
+                {
+                    throw new ArgumentNullException("leaseId");
+                }
+
+                if (LeaseId != leaseId)
+                {
+                    throw new InvalidOperationException();
                 }
             }
         }

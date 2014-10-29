@@ -94,16 +94,10 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="TestTableClient.cs" />
-    <Compile Include="LocalExecutionContext.cs" />
     <Compile Include="Storage\StorageAccountTests.cs" />
     <Compile Include="TableCollectorBindingTests.cs" />
     <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scenarios.cs" />
-    <Compile Include="TestTableWriter.cs" />
-    <Compile Include="TestBlobClient.cs" />
-    <Compile Include="TestQueueClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\Common\PublicKey.snk">

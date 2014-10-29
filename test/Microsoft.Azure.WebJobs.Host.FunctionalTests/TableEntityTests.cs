@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -140,7 +141,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         public void TableEntity_IfUpdatesPoco_PersistsUsingNativeTableTypes()
         {
             // Arrange
-            // Arrange
             byte[] originalValue = new byte[] { 0x12, 0x34 };
             byte[] expectedValue = new byte[] { 0x56, 0x78 };
             IStorageAccount account = CreateFakeStorageAccount();
@@ -216,6 +216,46 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Assert.NotNull(innerException);
             Assert.IsType<InvalidOperationException>(innerException);
             Assert.Equal("When binding to a table entity, the row key must not be changed.", innerException.Message);
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundUsingRouteParameters_Binds()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            const string tableName = TableName + "B";
+            const string partitionKey = PartitionKey + "B";
+            const string rowKey = RowKey + "B";
+            TableEntityMessage message = new TableEntityMessage
+            {
+                TableName = tableName,
+                PartitionKey = partitionKey,
+                RowKey = rowKey
+            };
+            triggerQueue.AddMessage(triggerQueue.CreateMessage(JsonConvert.SerializeObject(message)));
+
+            IStorageTable table = CreateTable(account, tableName);
+            Dictionary<string, EntityProperty> originalProperties = new Dictionary<string, EntityProperty>
+            {
+                { "Value", new EntityProperty(123) }
+            };
+            table.Insert(new DynamicTableEntity(partitionKey, rowKey, etag: null, properties: originalProperties));
+
+            // Act
+            RunTrigger(account, typeof(BindUsingRouteParametersProgram));
+
+            // Assert
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(partitionKey, rowKey);
+            Assert.NotNull(entity);
+            IDictionary<string, EntityProperty> properties = entity.Properties;
+            Assert.NotNull(properties);
+            Assert.True(properties.ContainsKey("Value"));
+            EntityProperty property = properties["Value"];
+            Assert.NotNull(property);
+            Assert.Equal(EdmType.Int32, property.PropertyType);
+            Assert.True(property.Int32Value.HasValue);
+            Assert.Equal(456, property.Int32Value.Value);
         }
 
         private static IStorageAccount CreateFakeStorageAccount()
@@ -324,6 +364,15 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private class BindUsingRouteParametersProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] TableEntityMessage message,
+                [Table("{TableName}", "{PartitionKey}", "{RowKey}")] SdkTableEntity entity)
+            {
+                entity.Value = 456;
+            }
+        }
+
         private class Poco
         {
             public string Value { get; set; }
@@ -339,6 +388,20 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public string PartitionKey { get; set; }
 
             public string RowKey { get; set; }
+        }
+
+        private class TableEntityMessage
+        {
+            public string TableName { get; set; }
+
+            public string PartitionKey { get; set; }
+
+            public string RowKey { get; set; }
+        }
+
+        private class SdkTableEntity : TableEntity
+        {
+            public int Value { get; set; }
         }
     }
 }

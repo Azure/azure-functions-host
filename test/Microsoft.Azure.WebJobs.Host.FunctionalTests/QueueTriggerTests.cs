@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
@@ -455,6 +456,50 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
+        public void QueueTrigger_IfBindingAlwaysFails_MovesToPoisonQueue()
+        {
+            // Arrange
+            const string expectedContents = "abc";
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue queue = CreateQueue(account, QueueName);
+            queue.AddMessage(queue.CreateMessage(expectedContents));
+
+            // Act
+            string result = RunTrigger<string>(account, typeof(PoisonQueueProgram),
+                (s) => PoisonQueueProgram.TaskSource = s,
+                new string[] { typeof(PoisonQueueProgram).FullName + ".PutInPoisonQueue" });
+
+            // Assert
+            Assert.Equal(expectedContents, result);
+        }
+
+        [Fact]
+        public void QueueTrigger_IfDequeueCountReachesMaxDequeueCount_MovesToPoisonQueue()
+        {
+            try
+            {
+                // Arrange
+                const string expectedContents = "abc";
+                IStorageAccount account = CreateFakeStorageAccount();
+                IStorageQueue queue = CreateQueue(account, QueueName);
+                queue.AddMessage(queue.CreateMessage(expectedContents));
+
+                // Act
+                RunTrigger<object>(account, typeof(MaxDequeueCountProgram),
+                    (s) => MaxDequeueCountProgram.TaskSource = s,
+                    new string[] { typeof(MaxDequeueCountProgram).FullName + ".PutInPoisonQueue" });
+
+                // Assert
+                Assert.Equal(new FakeQueueConfiguration().MaxDequeueCount, MaxDequeueCountProgram.DequeueCount);
+
+            }
+            finally
+            {
+                MaxDequeueCountProgram.DequeueCount = 0;
+            }
+        }
+
+        [Fact]
         public void CallQueueTrigger_IfArgumentIsCloudQueueMessage_Binds()
         {
             // Arrange
@@ -673,6 +718,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             return FunctionalTest.RunTrigger<TResult>(account, programType, setTaskSource);
         }
 
+        private static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
+            Action<TaskCompletionSource<TResult>> setTaskSource, IEnumerable<string> ignoreFailureFunctions)
+        {
+            return FunctionalTest.RunTrigger<TResult>(account, programType, setTaskSource, ignoreFailureFunctions);
+        }
+
         private static Exception RunTriggerFailure<TResult>(IStorageAccount account, Type programType,
             Action<TaskCompletionSource<TResult>> setTaskSource)
         {
@@ -880,6 +931,39 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public int Int32Value { get; set; }
 
             public Poco Child { get; set; }
+        }
+
+        private class PoisonQueueProgram
+        {
+            public static TaskCompletionSource<string> TaskSource { get; set; }
+
+            public static void PutInPoisonQueue([QueueTrigger(QueueName)] string message)
+            {
+                throw new InvalidOperationException();
+            }
+
+            public static void ReceiveFromPoisonQueue([QueueTrigger(QueueName + "-poison")] string message)
+            {
+                TaskSource.TrySetResult(message);
+            }
+        }
+
+        private class MaxDequeueCountProgram
+        {
+            public static TaskCompletionSource<object> TaskSource { get; set; }
+
+            public static int DequeueCount { get; set; }
+
+            public static void PutInPoisonQueue([QueueTrigger(QueueName)] string message)
+            {
+                DequeueCount++;
+                throw new InvalidOperationException();
+            }
+
+            public static void ReceiveFromPoisonQueue([QueueTrigger(QueueName + "-poison")] string message)
+            {
+                TaskSource.TrySetResult(null);
+            }
         }
     }
 }
