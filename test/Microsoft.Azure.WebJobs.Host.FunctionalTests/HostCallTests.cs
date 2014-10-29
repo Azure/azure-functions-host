@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -821,6 +822,135 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         [Fact]
+        public void Table_IfBoundToICollectorITableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToICollectorITableEntity));
+        }
+
+        private class BindTableToICollectorITableEntity
+        {
+            public static void Call([Table(TableName)] ICollector<ITableEntity> table)
+            {
+                table.Add(new DynamicTableEntity(PartitionKey, RowKey));
+            }
+        }
+
+        [Fact]
+        public void Table_IfBoundToICollectorDynamicTableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToICollectorDynamicTableEntity));
+        }
+
+        private class BindTableToICollectorDynamicTableEntity
+        {
+            public static void Call([Table(TableName)] ICollector<DynamicTableEntity> table)
+            {
+                table.Add(new DynamicTableEntity(PartitionKey, RowKey));
+            }
+        }
+
+        [Fact]
+        public void Table_IfBoundToICollectorSdkTableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToICollectorSdkTableEntity));
+        }
+
+        private class BindTableToICollectorSdkTableEntity
+        {
+            public static void Call([Table(TableName)] ICollector<SdkTableEntity> table)
+            {
+                table.Add(new SdkTableEntity { PartitionKey = PartitionKey, RowKey = RowKey });
+            }
+        }
+
+        [Fact]
+        public void Table_IfBoundToIAsyncCollectorITableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToIAsyncCollectorITableEntity));
+        }
+
+        private class BindTableToIAsyncCollectorITableEntity
+        {
+            public static Task Call([Table(TableName)] IAsyncCollector<ITableEntity> table)
+            {
+                return table.AddAsync(new DynamicTableEntity(PartitionKey, RowKey));
+            }
+        }
+
+        [Fact]
+        public void Table_IfBoundToIAsyncCollectorDynamicTableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToIAsyncCollectorDynamicTableEntity));
+        }
+
+        private class BindTableToIAsyncCollectorDynamicTableEntity
+        {
+            public static Task Call([Table(TableName)] IAsyncCollector<DynamicTableEntity> table)
+            {
+                return table.AddAsync(new DynamicTableEntity(PartitionKey, RowKey));
+            }
+        }
+
+        [Fact]
+        public void Table_IfBoundToIAsyncCollectorSdkTableEntity_CanCall()
+        {
+            TestTableBoundToCollectorCanCall(typeof(BindTableToIAsyncCollectorSdkTableEntity));
+        }
+
+        private class BindTableToIAsyncCollectorSdkTableEntity
+        {
+            public static Task Call([Table(TableName)] IAsyncCollector<SdkTableEntity> table)
+            {
+                return table.AddAsync(new SdkTableEntity { PartitionKey = PartitionKey, RowKey = RowKey });
+            }
+        }
+
+        private static void TestTableBoundToCollectorCanCall(Type programType)
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Call(account, programType, "Call");
+
+            // Assert
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+        }
+
+        [Fact]
+        public void Table_IfBoundToCollectorAndETagDoesNotMatch_Throws()
+        {
+            TestBindToConcurrentlyUpdatedTableEntity(typeof(BindTableToCollectorFoo), "collector");
+        }
+
+        private class BindTableToCollectorFoo
+        {
+            public static void Call([Table(TableName)] ICollector<ITableEntity> collector,
+                [Table(TableName)] IStorageTable table)
+            {
+                SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+
+                // Update the entity to invalidate the version read by this method.
+                table.Replace(new SdkTableEntity
+                {
+                    PartitionKey = PartitionKey,
+                    RowKey = RowKey,
+                    ETag = "*",
+                    Value = "FooBackground"
+                });
+
+                // The attempted update by this method should now fail.
+                collector.Add(new DynamicTableEntity(PartitionKey, RowKey, entity.ETag,
+                    new Dictionary<string, EntityProperty> { { "Value", new EntityProperty("Bar") } }));
+            }
+        }
+
+        [Fact]
         public void TableEntity_IfBoundToSdkTableEntity_CanCall()
         {
             // Arrange
@@ -973,6 +1103,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
         private static void TestBindTableEntityToConcurrentlyUpdatedValue(Type programType)
         {
+            TestBindToConcurrentlyUpdatedTableEntity(programType, "entity");
+        }
+
+        private static void TestBindToConcurrentlyUpdatedTableEntity(Type programType, string parameterName)
+        {
             // Arrange
             IStorageAccount account = CreateFakeStorageAccount();
             IStorageTableClient client = account.CreateTableClient();
@@ -982,8 +1117,19 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // Act & Assert
             Exception exception = CallFailure(account, programType, "Call");
+            AssertInvocationETagFailure(parameterName, exception);
+
+            SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+            Assert.Equal("FooBackground", entity.Value);
+        }
+
+        private static void AssertInvocationETagFailure(string expectedParameterName, Exception exception)
+        {
             Assert.IsType<InvalidOperationException>(exception);
-            Assert.Equal("Error while handling parameter entity after function returned:", exception.Message);
+            string expectedMessage = String.Format(CultureInfo.InvariantCulture,
+                "Error while handling parameter {0} after function returned:", expectedParameterName);
+            Assert.Equal(expectedMessage, exception.Message);
             Exception innerException = exception.InnerException;
             Assert.IsType<InvalidOperationException>(innerException);
             // This exception is an implementation detail of the fake storage account. A real one would use a
@@ -991,10 +1137,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             InvalidOperationException invalidOperationException = (InvalidOperationException)innerException;
             Assert.NotNull(invalidOperationException.Message);
             Assert.True(invalidOperationException.Message.StartsWith("Entity PK='PK',RK='RK' does not match eTag"));
-
-            SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
-            Assert.NotNull(entity);
-            Assert.Equal("FooBackground", entity.Value);
         }
 
         private static void Call(IStorageAccount account, Type programType, string methodName,
