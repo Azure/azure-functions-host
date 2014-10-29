@@ -36,6 +36,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string QueueName = "input";
         private const string OutputQueueName = "output";
         private const string TableName = "Table";
+        private const string PartitionKey = "PK";
+        private const string RowKey = "RK";
         private const int TestValue = Int32.MinValue;
         private const string TestQueueMessage = "ignore";
 
@@ -195,6 +197,180 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             IStorageBlockBlob outputBlob = container.GetBlockBlobReference(OutputBlobName);
             string outputContent = outputBlob.DownloadText();
             Assert.Equal(expectedContent, outputContent);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToICloudBlob_CanCallWithBlockBlob()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(BlobName);
+            container.CreateIfNotExists();
+            blob.UploadText("ignore");
+
+            // TODO: Remove argument once host.Call supports more flexibility.
+            IDictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "blob", BlobPath }
+            };
+
+            // Act
+            ICloudBlob result = Call<ICloudBlob>(account, typeof(BlobTriggerBindToICloudBlobProgram), "Call", arguments,
+                (s) => BlobTriggerBindToICloudBlobProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(BlobType.BlockBlob, result.BlobType);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToICloudBlob_CanCallWithPageBlob()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStoragePageBlob blob = container.GetPageBlobReference(BlobName);
+            container.CreateIfNotExists();
+            blob.UploadEmptyPage();
+
+            // TODO: Remove argument once host.Call supports more flexibility.
+            IDictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "blob", BlobPath }
+            };
+
+            // Act
+            ICloudBlob result = Call<ICloudBlob>(account, typeof(BlobTriggerBindToICloudBlobProgram), "Call", arguments,
+                (s) => BlobTriggerBindToICloudBlobProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(BlobType.PageBlob, result.BlobType);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToICloudBlobAndTriggerArgumentIsMissing_CallThrows()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Exception exception = CallFailure(account, typeof(BlobTriggerBindToICloudBlobProgram), "Call");
+
+            // Assert
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Missing value for trigger parameter 'blob'.", exception.Message);
+        }
+
+        private class BlobTriggerBindToICloudBlobProgram
+        {
+            public static TaskCompletionSource<ICloudBlob> TaskSource { get; set; }
+
+            public static void Call([BlobTrigger(BlobPath)] ICloudBlob blob)
+            {
+                TaskSource.TrySetResult(blob);
+            }
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToCloudBlockBlob_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStorageBlockBlob blob = container.GetBlockBlobReference(BlobName);
+            container.CreateIfNotExists();
+            blob.UploadText("ignore");
+
+            // TODO: Remove argument once host.Call supports more flexibility.
+            IDictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "blob", BlobPath }
+            };
+
+            // Act
+            CloudBlockBlob result = Call<CloudBlockBlob>(account, typeof(BlobTriggerBindToCloudBlockBlobProgram),
+                "Call", arguments, (s) => BlobTriggerBindToCloudBlockBlobProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToCloudBLockBlobAndTriggerArgumentIsMissing_CallThrows()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Exception exception = CallFailure(account, typeof(BlobTriggerBindToCloudBlockBlobProgram), "Call");
+
+            // Assert
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Missing value for trigger parameter 'blob'.", exception.Message);
+        }
+
+        private class BlobTriggerBindToCloudBlockBlobProgram
+        {
+            public static TaskCompletionSource<CloudBlockBlob> TaskSource { get; set; }
+
+            public static void Call([BlobTrigger(BlobPath)] CloudBlockBlob blob)
+            {
+                TaskSource.TrySetResult(blob);
+            }
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToCloudPageBlob_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageBlobClient client = account.CreateBlobClient();
+            IStorageBlobContainer container = client.GetContainerReference(ContainerName);
+            IStoragePageBlob blob = container.GetPageBlobReference(BlobName);
+            container.CreateIfNotExists();
+            blob.UploadEmptyPage();
+
+            // TODO: Remove argument once host.Call supports more flexibility.
+            IDictionary<string, object> arguments = new Dictionary<string, object>
+            {
+                { "blob", BlobPath }
+            };
+
+            // Act
+            CloudPageBlob result = Call<CloudPageBlob>(account, typeof(BlobTriggerBindToCloudPageBlobProgram), "Call",
+                arguments, (s) => BlobTriggerBindToCloudPageBlobProgram.TaskSource = s);
+
+            // Assert
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void BlobTrigger_IfBoundToCloudPageBlobAndTriggerArgumentIsMissing_CallThrows()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+
+            // Act
+            Exception exception = CallFailure(account, typeof(BlobTriggerBindToCloudPageBlobProgram), "Call");
+
+            // Assert
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Missing value for trigger parameter 'blob'.", exception.Message);
+        }
+
+        private class BlobTriggerBindToCloudPageBlobProgram
+        {
+            public static TaskCompletionSource<CloudPageBlob> TaskSource { get; set; }
+
+            public static void Call([BlobTrigger(BlobPath)] CloudPageBlob blob)
+            {
+                TaskSource.TrySetResult(blob);
+            }
         }
 
         [Fact]
@@ -603,6 +779,224 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        [Fact]
+        public void Table_IfBoundToIQueryable_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.Insert(CreateTableEntity("PK", "RK1", "StringProperty", "A"));
+            table.Insert(CreateTableEntity("PK", "RK2", "StringProperty", "B"));
+            table.Insert(CreateTableEntity("PK", "RK3", "StringProperty", "B"));
+            table.Insert(CreateTableEntity("PK", "RK4", "StringProperty", "C"));
+
+            // Act
+            int result = Call<int>(account, typeof(QueryableCountProgram), "CountEntitiesWithStringPropertyB",
+                (s) => QueryableCountProgram.TaskSource = s);
+
+            // Assert
+            Assert.Equal(2, result);
+        }
+
+        private class QueryableCountProgram
+        {
+            public static TaskCompletionSource<int> TaskSource { get; set; }
+
+            public static void CountEntitiesWithStringPropertyB(
+                [Table(TableName)] IQueryable<QueryableTableEntity> table)
+            {
+                IQueryable<QueryableTableEntity> query = from QueryableTableEntity entity in table
+                                                         where entity.StringProperty == "B"
+                                                         select entity;
+                int count = query.ToArray().Count();
+                TaskSource.TrySetResult(count);
+            }
+        }
+
+        private class QueryableTableEntity : TableEntity
+        {
+            public string StringProperty { get; set; }
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToSdkTableEntity_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.Insert(CreateTableEntity(PartitionKey, RowKey, "Value", "Foo"));
+
+            // Act
+            Call(account, typeof(BindTableEntityToSdkTableEntityProgram), "Call");
+
+            // Assert
+            SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+            Assert.Equal("Bar", entity.Value);
+        }
+
+        private class BindTableEntityToSdkTableEntityProgram
+        {
+            public static void Call([Table(TableName, PartitionKey, RowKey)] SdkTableEntity entity)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+                entity.Value = "Bar";
+            }
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToPocoTableEntity_CanCall()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.Insert(new DynamicTableEntity(PartitionKey, RowKey, null, new Dictionary<string, EntityProperty>
+            {
+                { "Fruit", new EntityProperty("Banana") },
+                { "Duration", new EntityProperty("\"00:00:01\"") },
+                { "Value", new EntityProperty("Foo") }
+            }));
+
+            // Act
+            Call(account, typeof(BindTableEntityToPocoTableEntityProgram), "Call");
+
+            // Assert
+            DynamicTableEntity entity = table.Retrieve<DynamicTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+            Assert.Equal(PartitionKey, entity.PartitionKey); // Guard
+            Assert.Equal(RowKey, entity.RowKey); // Guard
+            IDictionary<string, EntityProperty> properties = entity.Properties;
+            Assert.Equal(3, properties.Count);
+            Assert.True(properties.ContainsKey("Value"));
+            EntityProperty fruitProperty = properties["Fruit"];
+            Assert.Equal(EdmType.String, fruitProperty.PropertyType);
+            Assert.Equal("Pear", fruitProperty.StringValue);
+            EntityProperty durationProperty = properties["Duration"];
+            Assert.Equal(EdmType.String, durationProperty.PropertyType);
+            Assert.Equal("\"00:02:00\"", durationProperty.StringValue);
+            EntityProperty valueProperty = properties["Value"];
+            Assert.Equal(EdmType.String, valueProperty.PropertyType);
+            Assert.Equal("Bar", valueProperty.StringValue);
+        }
+
+        private class BindTableEntityToPocoTableEntityProgram
+        {
+            public static void Call([Table(TableName, PartitionKey, RowKey)] PocoTableEntityWithEnum entity)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal(Fruit.Banana, entity.Fruit);
+                Assert.Equal(TimeSpan.FromSeconds(1), entity.Duration);
+                Assert.Equal("Foo", entity.Value);
+
+                entity.Fruit = Fruit.Pear;
+                entity.Duration = TimeSpan.FromMinutes(2);
+                entity.Value = "Bar";
+            }
+        }
+
+        private class PocoTableEntityWithEnum
+        {
+            public Fruit Fruit { get; set; }
+            public TimeSpan Duration { get; set; }
+            public string Value { get; set; }
+        }
+
+        private enum Fruit
+        {
+            Apple,
+            Banana,
+            Pear
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToSdkTableEntityAndUpdatedConcurrently_Throws()
+        {
+            TestBindTableEntityToConcurrentlyUpdatedValue(typeof(BindTableEntityToConcurrentlyUpdatedSdkTableEntity));
+        }
+
+        private class BindTableEntityToConcurrentlyUpdatedSdkTableEntity
+        {
+            public static void Call([Table(TableName, PartitionKey, RowKey)] SdkTableEntity entity,
+                [Table(TableName)]IStorageTable table)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+
+                // Update the entity to invalidate the version read by this method.
+                table.Replace(new SdkTableEntity
+                {
+                    PartitionKey = PartitionKey,
+                    RowKey = RowKey,
+                    ETag = "*",
+                    Value = "FooBackground"
+                });
+
+                // The attempted update by this method should now fail.
+                entity.Value = "Bar";
+            }
+        }
+
+        [Fact]
+        public void TableEntity_IfBoundToPocoTableEntityAndUpdatedConcurrently_Throws()
+        {
+            TestBindTableEntityToConcurrentlyUpdatedValue(typeof(BindTableEntityToConcurrentlyUpdatedPocoTableEntity));
+        }
+
+        private class BindTableEntityToConcurrentlyUpdatedPocoTableEntity
+        {
+            public static void Call([Table(TableName, PartitionKey, RowKey)] PocoTableEntity entity,
+                [Table(TableName)]IStorageTable table)
+            {
+                Assert.NotNull(entity);
+                Assert.Equal("Foo", entity.Value);
+
+                // Update the entity to invalidate the version read by this method.
+                table.Replace(new SdkTableEntity
+                {
+                    PartitionKey = PartitionKey,
+                    RowKey = RowKey,
+                    ETag = "*",
+                    Value = "FooBackground"
+                });
+
+                // The attempted update by this method should now fail.
+                entity.Value = "Bar";
+            }
+        }
+
+        private static void TestBindTableEntityToConcurrentlyUpdatedValue(Type programType)
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageTableClient client = account.CreateTableClient();
+            IStorageTable table = client.GetTableReference(TableName);
+            table.CreateIfNotExists();
+            table.Insert(CreateTableEntity(PartitionKey, RowKey, "Value", "Foo"));
+
+            // Act & Assert
+            Exception exception = CallFailure(account, programType, "Call");
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal("Error while handling parameter entity after function returned:", exception.Message);
+            Exception innerException = exception.InnerException;
+            Assert.IsType<InvalidOperationException>(innerException);
+            // This exception is an implementation detail of the fake storage account. A real one would use a
+            // StorageException (this assert may need to change if the fake is updated to be more realistic).
+            InvalidOperationException invalidOperationException = (InvalidOperationException)innerException;
+            Assert.NotNull(invalidOperationException.Message);
+            Assert.True(invalidOperationException.Message.StartsWith("Entity PK='PK',RK='RK' does not match eTag"));
+
+            SdkTableEntity entity = table.Retrieve<SdkTableEntity>(PartitionKey, RowKey);
+            Assert.NotNull(entity);
+            Assert.Equal("FooBackground", entity.Value);
+        }
+
         private static void Call(IStorageAccount account, Type programType, string methodName,
             params Type[] cloudBlobStreamBinderTypes)
         {
@@ -632,9 +1026,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 setTaskSource);
         }
 
+        private static Exception CallFailure(IStorageAccount account, Type programType, string methodName)
+        {
+            return FunctionalTest.CallFailure(account, programType, programType.GetMethod(methodName), null);
+        }
+
         private static IStorageAccount CreateFakeStorageAccount()
         {
             return new FakeStorageAccount();
+        }
+
+        private static ITableEntity CreateTableEntity(string partitionKey, string rowKey, string propertyName,
+            string propertyValue)
+        {
+            string eTag = null;
+            return new DynamicTableEntity(partitionKey, rowKey, eTag, new Dictionary<string, EntityProperty>
+            {
+                { propertyName, new EntityProperty(propertyValue) }
+            });
         }
 
         private struct CustomDataValue

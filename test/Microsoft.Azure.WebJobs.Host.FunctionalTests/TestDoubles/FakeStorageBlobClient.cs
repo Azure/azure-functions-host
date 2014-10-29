@@ -53,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 throw new NotImplementedException();
             }
 
-            IStorageBlobResultSegment segment = _store.ListBlobsSegmented(prefix, useFlatBlobListing,
+            Func<string, IStorageBlobContainer> containerFactory = (n) => new FakeStorageBlobContainer(_store, n, this);
+            IStorageBlobResultSegment segment = _store.ListBlobsSegmented(containerFactory, prefix, useFlatBlobListing,
                 blobListingDetails, maxResults, currentToken);
             return Task.FromResult(segment);
         }

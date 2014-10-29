@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class TableAttributeBindingProvider : IBindingProvider
     {
         private static readonly ITableArgumentBindingProvider _tableProvider = new CompositeArgumentBindingProvider(
+            new StorageTableArgumentBindingProvider(),
             new CloudTableArgumentBindingProvider(),
             new QueryableArgumentBindingProvider(),
             new CollectorArgumentBindingProvider(),

@@ -4,7 +4,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -14,25 +13,6 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         {
             IFunctionInstanceLogger logger = new NullFunctionInstanceLogger();
             return Task.FromResult(logger);
-        }
-
-        private class NullFunctionInstanceLogger : IFunctionInstanceLogger
-        {
-            public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
-                CancellationToken cancellationToken)
-            {
-                return Task.FromResult(string.Empty);
-            }
-
-            public Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(0);
-            }
-
-            public Task DeleteLogFunctionStartedAsync(string startedMessageId, CancellationToken cancellationToken)
-            {
-                return Task.FromResult(0);
-            }
         }
     }
 }

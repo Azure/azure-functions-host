@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                         {
                             throw new InvalidOperationException("Replace requires an ETag.");
                         }
-                        else if (!_entities.TryUpdate(key, new TableItem(writeProperties), new TableItem("*")))
+                        else if (!_entities.TryUpdate(key, new TableItem(writeProperties), new TableItem(entity.ETag)))
                         {
                             if (entity.ETag == "*")
                             {

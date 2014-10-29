@@ -111,6 +111,12 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public Task<CloudBlobStream> OpenWriteAsync(long? size, CancellationToken cancellationToken)
+        {
+            return _sdk.OpenWriteAsync(size, cancellationToken);
+        }
+
+        /// <inheritdoc />
         public Task ReleaseLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken)
         {

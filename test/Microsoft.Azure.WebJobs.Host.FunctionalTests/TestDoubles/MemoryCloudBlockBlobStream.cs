@@ -2,17 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
-    internal class MemoryCloudBlobStream : CloudBlobStream
+    internal class MemoryCloudBlockBlobStream : CloudBlobStream
     {
         private readonly MemoryStream _buffer;
         private readonly Action<byte[]> _commitAction;
@@ -20,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         private bool _committed;
         private bool _disposed;
 
-        public MemoryCloudBlobStream(Action<byte[]> commitAction)
+        public MemoryCloudBlockBlobStream(Action<byte[]> commitAction)
         {
             _buffer = new MemoryStream();
             _commitAction = commitAction;

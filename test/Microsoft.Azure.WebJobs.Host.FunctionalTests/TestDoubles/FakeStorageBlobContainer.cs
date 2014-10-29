@@ -61,12 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public Task<IStorageBlob> GetBlobReferenceFromServerAsync(string blobName, CancellationToken cancellationToken)
         {
-            if (!_store.Exists(_containerName, blobName))
-            {
-                throw StorageExceptionFactory.Create(404);
-            }
-
-            IStorageBlob blob = new FakeStorageBlockBlob(_store, blobName, this);
+            IStorageBlob blob = _store.GetBlobReferenceFromServer(this, _containerName, blobName);
             return Task.FromResult(blob);
         }
 
@@ -82,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStoragePageBlob GetPageBlobReference(string blobName)
         {
-            throw new NotImplementedException();
+            return new FakeStoragePageBlob(_store, blobName, this);
         }
 
         public Task<IStorageBlobResultSegment> ListBlobsSegmentedAsync(string prefix, bool useFlatBlobListing,
@@ -110,8 +105,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 fullPrefix = _containerName;
             }
 
-            IStorageBlobResultSegment segment = _store.ListBlobsSegmented(fullPrefix, useFlatBlobListing,
-                blobListingDetails, maxResults, currentToken);
+            Func<string, IStorageBlobContainer> containerFactory = (name) =>
+            {
+                if (name != _containerName)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return this;
+            };
+            IStorageBlobResultSegment segment = _store.ListBlobsSegmented(containerFactory, fullPrefix,
+                useFlatBlobListing, blobListingDetails, maxResults, currentToken);
             return Task.FromResult(segment);
         }
     }

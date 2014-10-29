@@ -83,6 +83,7 @@
     <Compile Include="ExtensionTypeLocator.cs" />
     <Compile Include="FakeExtensionTypeLocator.cs" />
     <Compile Include="NullConsoleProvider.cs" />
+    <Compile Include="NullFunctionInstanceLogger.cs" />
     <Compile Include="NullFunctionOutputLoggerProvider.cs" />
     <Compile Include="NullFunctionInstanceLoggerProvider.cs" />
     <Compile Include="NullHostInstanceLoggerProvider.cs" />

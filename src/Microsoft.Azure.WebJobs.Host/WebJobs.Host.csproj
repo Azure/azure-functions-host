@@ -567,6 +567,7 @@
     <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\StorageTableArgumentBindingProvider.cs" />
     <Compile Include="Tables\ConverterPropertyGetter.cs" />
     <Compile Include="Tables\ConverterPropertySetter.cs" />
     <Compile Include="Tables\Converters\EntityPropertyToNullableEnumConverter.cs" />

@@ -51,13 +51,25 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return _items[containerName].FetchAttributes(blobName);
         }
 
+        public IStorageBlob GetBlobReferenceFromServer(IStorageBlobContainer parent, string containerName,
+            string blobName)
+        {
+            if (!_items.ContainsKey(containerName))
+            {
+                throw StorageExceptionFactory.Create(404);
+            }
+
+            return _items[containerName].GetBlobReferenceFromServer(this, parent, blobName);
+        }
+
         public ServiceProperties GetServiceProperties()
         {
             return Clone(_properties);
         }
 
-        public IStorageBlobResultSegment ListBlobsSegmented(string prefix, bool useFlatBlobListing,
-            BlobListingDetails blobListingDetails, int? maxResults, BlobContinuationToken currentToken)
+        public IStorageBlobResultSegment ListBlobsSegmented(Func<string, IStorageBlobContainer> containerFactory,
+            string prefix, bool useFlatBlobListing, BlobListingDetails blobListingDetails, int? maxResults,
+            BlobContinuationToken currentToken)
         {
             if (prefix == null)
             {
@@ -94,8 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 return null;
             }
 
-            IStorageBlobClient client = new FakeStorageBlobClient(this, FakeStorageAccount.DefaultCredentials);
-            IStorageBlobContainer parent = new FakeStorageBlobContainer(this, prefix, client);
+            IStorageBlobContainer parent = containerFactory.Invoke(prefix);
             IEnumerable<IStorageBlob> results = _items[prefix].ListBlobs(this, parent, blobListingDetails);
             return new StorageBlobResultSegment(null, results);
         }
@@ -110,14 +121,21 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return _items[containerName].OpenRead(blobName);
         }
 
-        public CloudBlobStream OpenWrite(string containerName, string blobName, IDictionary<string, string> metadata)
+        public CloudBlobStream OpenWriteBlock(string containerName, string blobName,
+            IDictionary<string, string> metadata)
         {
             if (!_items.ContainsKey(containerName))
             {
                 throw StorageExceptionFactory.Create(404, "ContainerNotFound");
             }
 
-            return _items[containerName].OpenWrite(blobName, metadata);
+            return _items[containerName].OpenWriteBlock(blobName, metadata);
+        }
+
+        public CloudBlobStream OpenWritePage(string containerName, string blobName, long? size,
+            IDictionary<string, string> metadata)
+        {
+            return _items[containerName].OpenWritePage(blobName, size, metadata);
         }
 
         public void ReleaseLease(string containerName, string blobName, string leaseId)
@@ -232,6 +250,26 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 return _items[blobName].FetchAttributes();
             }
 
+            public IStorageBlob GetBlobReferenceFromServer(MemoryBlobStore store, IStorageBlobContainer parent,
+                string blobName)
+            {
+                if (!_items.ContainsKey(blobName))
+                {
+                    throw StorageExceptionFactory.Create(404);
+                }
+
+                Blob blob = _items[blobName];
+
+                if (blob.BlobType == StorageBlobType.BlockBlob)
+                {
+                    return new FakeStorageBlockBlob(store, blobName, parent);
+                }
+                else
+                {
+                    return new FakeStoragePageBlob(store, blobName, parent);
+                }
+            }
+
             public IEnumerable<IStorageBlob> ListBlobs(MemoryBlobStore store, IStorageBlobContainer parent,
                 BlobListingDetails blobListingDetails)
             {
@@ -268,14 +306,36 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 return new MemoryStream(_items[blobName].Contents, writable: false);
             }
 
-            public CloudBlobStream OpenWrite(string blobName, IDictionary<string, string> metadata)
+            public CloudBlobStream OpenWriteBlock(string blobName, IDictionary<string, string> metadata)
             {
                 if (_items.ContainsKey(blobName))
                 {
                     _items[blobName].ThrowIfLeased();
                 }
 
-                return new MemoryCloudBlobStream((bytes) => _items[blobName] = new Blob(bytes, metadata, null, null));
+                return new MemoryCloudBlockBlobStream((bytes) => _items[blobName] =
+                    new Blob(StorageBlobType.BlockBlob, bytes, metadata, null, null));
+            }
+
+            public CloudBlobStream OpenWritePage(string blobName, long? size, IDictionary<string, string> metadata)
+            {
+                if (!size.HasValue)
+                {
+                    throw new NotImplementedException();
+                }
+
+                if (size.Value % 512 != 0)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                if (_items.ContainsKey(blobName))
+                {
+                    _items[blobName].ThrowIfLeased();
+                }
+
+                return new MemoryCloudPageBlobStream((bytes) => _items[blobName] =
+                    new Blob(StorageBlobType.PageBlob, bytes, metadata, null, null));
             }
 
             public void ReleaseLease(string blobName, string leaseId)
@@ -305,19 +365,28 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                     existing.ThrowIfLeaseMismatch(leaseId);
                 }
 
-                _items[blobName] = new Blob(existing.Contents, metadata, existing.LeaseId, existing.LeaseExpires);
+                _items[blobName] = new Blob(existing.BlobType, existing.Contents, metadata, existing.LeaseId,
+                    existing.LeaseExpires);
             }
         }
 
         private class Blob
         {
+            private readonly StorageBlobType _blobType;
             private readonly byte[] _contents;
             private readonly string _eTag;
             private readonly DateTimeOffset _lastModified;
             private readonly IReadOnlyDictionary<string, string> _metadata;
 
-            public Blob(byte[] contents, IDictionary<string, string> metadata, string leaseId, DateTime? leaseExpires)
+            public Blob(StorageBlobType blobType, byte[] contents, IDictionary<string, string> metadata, string leaseId,
+                DateTime? leaseExpires)
             {
+                if (blobType == StorageBlobType.PageBlob && contents.Length % 512 != 0)
+                {
+                    throw new InvalidOperationException();
+                }
+
+                _blobType = blobType;
                 _contents = new byte[contents.LongLength];
                 _eTag = Guid.NewGuid().ToString();
                 _lastModified = DateTimeOffset.Now;
@@ -325,6 +394,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 _metadata = new Dictionary<string, string>(metadata);
                 LeaseId = leaseId;
                 LeaseExpires = leaseExpires;
+            }
+
+            public StorageBlobType BlobType
+            {
+                get { return _blobType; }
             }
 
             public byte[] Contents

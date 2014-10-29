@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,17 +34,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             _sdkObject = new CloudBlockBlob(new Uri("http://localhost/" + _containerName + "/" + blobName));
         }
 
-        public CloudBlockBlob SdkObject
-        {
-            get { return _sdkObject; }
-        }
-
-        public Task<CloudBlobStream> OpenWriteAsync(CancellationToken cancellationToken)
-        {
-            CloudBlobStream stream = _store.OpenWrite(_containerName, _blobName, _metadata);
-            return Task.FromResult(stream);
-        }
-
         public StorageBlobType BlobType
         {
             get { return StorageBlobType.BlockBlob; }
@@ -69,6 +57,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public IStorageBlobProperties Properties
         {
             get { return _properties; }
+        }
+
+        public CloudBlockBlob SdkObject
+        {
+            get { return _sdkObject; }
         }
 
         ICloudBlob IStorageBlob.SdkObject
@@ -121,6 +114,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult(_store.OpenRead(_containerName, _blobName));
+        }
+
+        public Task<CloudBlobStream> OpenWriteAsync(CancellationToken cancellationToken)
+        {
+            CloudBlobStream stream = _store.OpenWriteBlock(_containerName, _blobName, _metadata);
+            return Task.FromResult(stream);
         }
 
         public Task ReleaseLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
@@ -199,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
         public Task UploadTextAsync(string content, Encoding encoding, AccessCondition accessCondition,
             BlobRequestOptions options, OperationContext operationContext, CancellationToken cancellationToken)
         {
-            using (CloudBlobStream stream = _store.OpenWrite(_containerName, _blobName, _metadata))
+            using (CloudBlobStream stream = _store.OpenWriteBlock(_containerName, _blobName, _metadata))
             {
                 byte[] buffer = Encoding.UTF8.GetBytes(content);
                 stream.Write(buffer, 0, buffer.Length);

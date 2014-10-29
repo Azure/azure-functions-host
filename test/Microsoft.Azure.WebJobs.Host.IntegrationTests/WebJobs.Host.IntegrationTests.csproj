@@ -96,7 +96,6 @@
     </Compile>
     <Compile Include="Storage\StorageAccountTests.cs" />
     <Compile Include="TableCollectorBindingTests.cs" />
-    <Compile Include="Sdk2IntegrationTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
