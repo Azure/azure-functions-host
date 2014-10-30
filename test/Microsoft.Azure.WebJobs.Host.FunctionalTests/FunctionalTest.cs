@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);
 
-            return new FakeServiceProvider
+            IJobHostContextFactory contextFactory = new FakeJobHostContextFactory
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType),
                     triggerBindingProvider, bindingProvider),
@@ -227,6 +227,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 FunctionOutputLoggerProvider = new NullFunctionOutputLoggerProvider(),
                 HostIdProvider = hostIdProvider,
                 QueueConfiguration = new FakeQueueConfiguration()
+            };
+
+            return new FakeServiceProvider
+            {
+                ContextFactory = contextFactory
             };
         }
 

@@ -349,6 +349,7 @@
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
+    <Compile Include="Executors\IJobHostContextFactory.cs" />
     <Compile Include="IContextSetter.cs" />
     <Compile Include="IContextGetter.cs" />
     <Compile Include="Bindings\ObjectToTypeConverterFactory.cs" />

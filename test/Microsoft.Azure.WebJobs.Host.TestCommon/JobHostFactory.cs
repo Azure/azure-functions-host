@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Open Technologies, Inc. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
 
-            TestJobHostConfiguration configuration = new TestJobHostConfiguration
+            IJobHostContextFactory contextFactory = new TestJobHostContextFactory
             {
                 FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)),
                     DefaultTriggerBindingProvider.Create(nameResolver, storageAccountProvider,
@@ -59,11 +60,15 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
                         extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor)),
                 StorageAccountProvider = storageAccountProvider,
-                ServiceBusAccountProvider = serviceBusAccountProvider,
                 Queues = queueConfiguration
             };
 
-            return new TestJobHost<TProgram>(configuration);
+            IServiceProvider serviceProvider = new TestJobHostConfiguration
+            {
+                ContextFactory = contextFactory
+            };
+
+            return new TestJobHost<TProgram>(serviceProvider);
         }
     }
 }

@@ -87,6 +87,7 @@
     <Compile Include="NullFunctionOutputLoggerProvider.cs" />
     <Compile Include="NullFunctionInstanceLoggerProvider.cs" />
     <Compile Include="NullHostInstanceLoggerProvider.cs" />
+    <Compile Include="TestJobHostContextFactory.cs" />
     <Compile Include="WebJobsShutdownContext.cs" />
     <Compile Include="ExceptionAssert.cs" />
     <Compile Include="TaskExtensions.cs" />

@@ -66,6 +66,7 @@
     <Compile Include="TestDoubles\BlobAttributes.cs" />
     <Compile Include="TestDoubles\CompletedCancellableAsyncResult.cs" />
     <Compile Include="TestDoubles\FakeFunctionInstanceLoggerProvider.cs" />
+    <Compile Include="TestDoubles\FakeJobHostContextFactory.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobDirectory.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobContainer.cs" />
     <Compile Include="TestDoubles\FakeStorageBlobProperties.cs" />

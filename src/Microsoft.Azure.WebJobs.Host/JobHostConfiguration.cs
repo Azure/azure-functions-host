@@ -3,15 +3,9 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -20,26 +14,16 @@ namespace Microsoft.Azure.WebJobs
     {
         private static readonly IConsoleProvider _consoleProvider = new DefaultConsoleProvider();
 
-        private readonly DefaultHostIdProvider _hostIdProvider;
-        private readonly DefaultLoggerProvider _loggerProvider;
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly DefaultServiceBusAccountProvider _serviceBusAccountProvider =
             new DefaultServiceBusAccountProvider();
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher =
-            BackgroundExceptionDispatcher.Instance;
-        private readonly ContextAccessor<IMessageEnqueuedWatcher> _messageEnqueuedWatcherAccessor =
-            new ContextAccessor<IMessageEnqueuedWatcher>();
-        private readonly ContextAccessor<IBlobWrittenWatcher> _blobWrittenWatcherAccessor =
-            new ContextAccessor<IBlobWrittenWatcher>();
-        private readonly ISharedContextProvider _sharedContextProvider = new SharedContextProvider();
 
+        private IJobHostContextFactory _contextFactory;
+
+        private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator(_consoleProvider.Out);
         private INameResolver _nameResolver = new DefaultNameResolver();
-        private IFunctionIndexProvider _functionIndexProvider;
-        private IBindingProvider _bindingProvider;
-        private IExtensionTypeLocator _extensionTypeLocator;
-        private ITriggerBindingProvider _triggerBindingProvider;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -65,8 +49,6 @@ namespace Microsoft.Azure.WebJobs
         private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
         {
             _storageAccountProvider = storageAccountProvider;
-            _hostIdProvider = new DefaultHostIdProvider(() => FunctionIndexProvider, storageAccountProvider);
-            _loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
         }
 
         /// <summary>Gets or sets the host ID.</summary>
@@ -89,8 +71,19 @@ namespace Microsoft.Azure.WebJobs
         /// </remarks>
         public string HostId
         {
-            get { return _hostIdProvider.HostId; }
-            set { _hostIdProvider.HostId = value; }
+            get
+            {
+                return _hostId;
+            }
+            set
+            {
+                if (value != null && !HostIdValidator.IsValid(value))
+                {
+                    throw new ArgumentException(HostIdValidator.ValidationMessage, "value");
+                }
+
+                _hostId = value;
+            }
         }
 
         /// <summary>Gets or sets the Azure Storage connection string used for logging and diagnostics.</summary>
@@ -126,7 +119,6 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 _typeLocator = value;
-                _extensionTypeLocator = null;
             }
         }
 
@@ -153,66 +145,17 @@ namespace Microsoft.Azure.WebJobs
             get { return _queueConfiguration; }
         }
 
-        private IBindingProvider BindingProvider
+        private IJobHostContextFactory ContextFactory
         {
             get
             {
-                if (_bindingProvider == null)
+                if (_contextFactory == null)
                 {
-                    _bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
-                        _serviceBusAccountProvider, ExtensionTypeLocator, _messageEnqueuedWatcherAccessor,
-                        _blobWrittenWatcherAccessor);
+                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, _serviceBusAccountProvider,
+                        _typeLocator, _nameResolver, _hostId, _queueConfiguration, _consoleProvider);
                 }
 
-                return _bindingProvider;
-            }
-        }
-
-        private IExtensionTypeLocator ExtensionTypeLocator
-        {
-            get
-            {
-                if (_extensionTypeLocator == null)
-                {
-                    _extensionTypeLocator = new ExtensionTypeLocator(_typeLocator);
-                }
-
-                return _extensionTypeLocator;
-            }
-        }
-
-        private IFunctionIndexProvider FunctionIndexProvider
-        {
-            get
-            {
-                if (_functionIndexProvider == null)
-                {
-                    _functionIndexProvider = new FunctionIndexProvider(TypeLocator, TriggerBindingProvider,
-                        BindingProvider);
-                }
-
-                return _functionIndexProvider;
-            }
-        }
-
-        private IHostIdProvider HostIdProvider
-        {
-            get { return _hostIdProvider; }
-        }
-
-        private ITriggerBindingProvider TriggerBindingProvider
-        {
-            get
-            {
-                if (_triggerBindingProvider == null)
-                {
-                    _triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
-                        _storageAccountProvider, _serviceBusAccountProvider, ExtensionTypeLocator, HostIdProvider,
-                        _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherAccessor,
-                        _blobWrittenWatcherAccessor, _sharedContextProvider, _consoleProvider.Out);
-                }
-
-                return _triggerBindingProvider;
+                return _contextFactory;
             }
         }
 
@@ -223,45 +166,9 @@ namespace Microsoft.Azure.WebJobs
         /// </returns>
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IBackgroundExceptionDispatcher))
+            if (serviceType == typeof(IJobHostContextFactory))
             {
-                return _backgroundExceptionDispatcher;
-            }
-            else if (serviceType == typeof(IBindingProvider))
-            {
-                return BindingProvider;
-            }
-            else if (serviceType == typeof(IConsoleProvider))
-            {
-                return _consoleProvider;
-            }
-            else if (serviceType == typeof(IFunctionIndexProvider))
-            {
-                return FunctionIndexProvider;
-            }
-            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
-            {
-                return _loggerProvider;
-            }
-            else if (serviceType == typeof(IFunctionOutputLoggerProvider))
-            {
-                return _loggerProvider;
-            }
-            else if (serviceType == typeof(IHostIdProvider))
-            {
-                return HostIdProvider;
-            }
-            else if (serviceType == typeof(IHostInstanceLoggerProvider))
-            {
-                return _loggerProvider;
-            }
-            else if (serviceType == typeof(IQueueConfiguration))
-            {
-                return _queueConfiguration;
-            }
-            else if (serviceType == typeof(IStorageAccountProvider))
-            {
-                return _storageAccountProvider;
+                return ContextFactory;
             }
             else
             {

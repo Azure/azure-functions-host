@@ -2,49 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Auth;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class JobHostConfigurationTests
     {
-        [Fact]
-        public void ConnectionStringProvider_NoDashboardConnectionString_Throw()
-        {
-            const string DashboardConnectionEnvironmentVariable = "AzureWebJobsDashboard";
-            string previousConnectionString = Environment.GetEnvironmentVariable(DashboardConnectionEnvironmentVariable);
-
-            try
-            {
-                Environment.SetEnvironmentVariable(DashboardConnectionEnvironmentVariable, null);
-
-                JobHostConfiguration configuration = new JobHostConfiguration
-                {
-                    StorageConnectionString = new CloudStorageAccount(new StorageCredentials("Test", new byte[0], "key") , true).ToString(exportSecrets: true)
-                };
-                Assert.Null(configuration.DashboardConnectionString); // Guard
-                IStorageAccountProvider storageAccountProvider = configuration.GetStorageAccountProvider();
-
-                // Act & Assert
-                ExceptionAssert.ThrowsInvalidOperation(() =>
-                    storageAccountProvider.GetDashboardAccountAsync(CancellationToken.None).GetAwaiter().GetResult(),
-                    "Microsoft Azure WebJobs SDK Dashboard connection string is missing or empty. The Microsoft Azure Storage account connection string can be set in the following ways:" + Environment.NewLine +
-                    "1. Set the connection string named 'AzureWebJobsDashboard' in the connectionStrings section of the .config file in the following format " +
-                    "<add name=\"AzureWebJobsDashboard\" connectionString=\"DefaultEndpointsProtocol=http|https;AccountName=NAME;AccountKey=KEY\" />, or" + Environment.NewLine +
-                    "2. Set the environment variable named 'AzureWebJobsDashboard', or" + Environment.NewLine +
-                    "3. Set corresponding property of JobHostConfiguration.");
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable(DashboardConnectionEnvironmentVariable, previousConnectionString);
-            }
-        }
-
         [Fact]
         public void HostId_IfNull_DoesNotThrow()
         {

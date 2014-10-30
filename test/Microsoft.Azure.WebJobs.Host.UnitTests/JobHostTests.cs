@@ -482,8 +482,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             return new TestJobHostConfiguration
             {
-                StorageAccountProvider = storageAccountProvider,
-                ServiceBusAccountProvider = new NullServiceBusAccountProvider()
+                ContextFactory = new TestJobHostContextFactory
+                {
+                    StorageAccountProvider = storageAccountProvider
+                }
             };
         }
 

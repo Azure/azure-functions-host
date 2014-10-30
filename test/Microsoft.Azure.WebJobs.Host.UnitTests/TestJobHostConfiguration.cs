@@ -3,56 +3,18 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Indexers;
-using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Host.TestCommon;
-using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal class TestJobHostConfiguration : IServiceProvider
     {
-        public IServiceBusAccountProvider ServiceBusAccountProvider { get; set; }
-
-        public IStorageAccountProvider StorageAccountProvider { get; set; }
+        public IJobHostContextFactory ContextFactory { get; set; }
 
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IBackgroundExceptionDispatcher))
+            if (serviceType == typeof(IJobHostContextFactory))
             {
-                return BackgroundExceptionDispatcher.Instance;
-            }
-            else if (serviceType == typeof (IConsoleProvider))
-            {
-                return new NullConsoleProvider();
-            }
-            else if (serviceType == typeof(IFunctionInstanceLoggerProvider))
-            {
-                return new NullFunctionInstanceLoggerProvider();
-            }
-            else if (serviceType == typeof(IFunctionIndexProvider))
-            {
-                return new EmptyFunctionIndexProvider();
-            }
-            else if (serviceType == typeof(IFunctionOutputLoggerProvider))
-            {
-                return new NullFunctionOutputLoggerProvider();
-            }
-            else if (serviceType == typeof(IHostInstanceLoggerProvider))
-            {
-                return new NullHostInstanceLoggerProvider();
-            }
-            else if (serviceType == typeof(IHostIdProvider))
-            {
-                return new FixedHostIdProvider(Guid.NewGuid().ToString("N"));
-            }
-            else if (serviceType == typeof(IServiceBusAccountProvider))
-            {
-                return ServiceBusAccountProvider;
-            }
-            else if (serviceType == typeof(IStorageAccountProvider))
-            {
-                return StorageAccountProvider;
+                return ContextFactory;
             }
             else
             {

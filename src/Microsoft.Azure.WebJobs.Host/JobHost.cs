@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs
         private const int StateStarted = 2;
         private const int StateStoppingOrStopped = 3;
 
-        private readonly JobHostContextFactory _contextFactory;
+        private readonly IJobHostContextFactory _contextFactory;
         private readonly CancellationTokenSource _shutdownTokenSource;
         private readonly WebJobsShutdownWatcher _shutdownWatcher;
         private readonly CancellationTokenSource _stoppingTokenSource;
@@ -79,28 +79,16 @@ namespace Microsoft.Azure.WebJobs
                 throw new ArgumentNullException("serviceProvider");
             }
 
-            IStorageAccountProvider storageAccountProvider = serviceProvider.GetStorageAccountProvider();
-            IFunctionIndexProvider functionIndexProvider = serviceProvider.GetFunctionIndexProvider();
-            IBindingProvider bindingProvider = serviceProvider.GetBindingProvider();
-            IHostIdProvider hostIdProvider = serviceProvider.GetHostIdProvider();
-            IHostInstanceLoggerProvider hostInstanceLoggerProvider = serviceProvider.GetHostInstanceLoggerProvider();
-            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider =
-                serviceProvider.GetFunctionInstanceLoggerProvider();
-            IFunctionOutputLoggerProvider functionOutputLoggerProvider =
-                serviceProvider.GetFunctionOutputLoggerProvider();
-            IQueueConfiguration queueConfiguration = serviceProvider.GetQueueConfiguration();
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
-                serviceProvider.GetBackgroundExceptionDispatcher();
-            IConsoleProvider consoleProvider = serviceProvider.GetConsoleProvider();
+            _contextFactory = serviceProvider.GetJobHostContextFactory();
+
+            if (_contextFactory == null)
+            {
+                throw new InvalidOperationException("The IJobHostContextFactory service must not be null.");
+            }
 
             _shutdownTokenSource = new CancellationTokenSource();
             _shutdownWatcher = WebJobsShutdownWatcher.Create(_shutdownTokenSource);
             _stoppingTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_shutdownTokenSource.Token);
-
-            _contextFactory = new JobHostContextFactory(storageAccountProvider,
-                functionIndexProvider, bindingProvider, hostIdProvider, hostInstanceLoggerProvider,
-                functionInstanceLoggerProvider, functionOutputLoggerProvider, queueConfiguration,
-                backgroundExceptionDispatcher, consoleProvider, _shutdownTokenSource.Token);
         }
 
         // Test hook only.
@@ -339,7 +327,8 @@ namespace Microsoft.Azure.WebJobs
 
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(cancellationToken);
+            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(_shutdownTokenSource.Token,
+                cancellationToken);
 
             lock (_contextLock)
             {

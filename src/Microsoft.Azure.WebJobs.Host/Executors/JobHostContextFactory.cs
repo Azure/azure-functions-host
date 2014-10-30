@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -16,29 +17,65 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class JobHostContextFactory
+    internal class JobHostContextFactory : IJobHostContextFactory
     {
         private readonly IStorageAccountProvider _storageAccountProvider;
-        private readonly IFunctionIndexProvider _functionIndexProvider;
-        private readonly IBindingProvider _bindingProvider;
-        private readonly IHostIdProvider _hostIdProvider;
-        private readonly IHostInstanceLoggerProvider _hostInstanceLoggerProvider;
-        private readonly IFunctionInstanceLoggerProvider _functionInstanceLoggerProvider;
-        private readonly IFunctionOutputLoggerProvider _functionOutputLoggerProvider;
+        private readonly IServiceBusAccountProvider _serviceBusAccountProvider;
+        private readonly ITypeLocator _typeLocator;
+        private readonly INameResolver _nameResolver;
+        private readonly string _hostId;
         private readonly IQueueConfiguration _queueConfiguration;
-        private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IConsoleProvider _consoleProvider;
-        private readonly CancellationToken _shutdownToken;
 
-        public JobHostContextFactory(IStorageAccountProvider storageAccountProvider,
+        public JobHostContextFactory(IStorageAccountProvider storageAccountProvider, IServiceBusAccountProvider
+            serviceBusAccountProvider, ITypeLocator typeLocator, INameResolver nameResolver, string hostId,
+            IQueueConfiguration queueConfiguration, IConsoleProvider consoleProvider)
+        {
+            _storageAccountProvider = storageAccountProvider;
+            _serviceBusAccountProvider = serviceBusAccountProvider;
+            _typeLocator = typeLocator;
+            _nameResolver = nameResolver;
+            _hostId = hostId;
+            _queueConfiguration = queueConfiguration;
+            _consoleProvider = consoleProvider;
+        }
+
+        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken,
+            CancellationToken cancellationToken)
+        {
+            IFunctionIndexProvider functionIndexProvider = null;
+            IHostIdProvider hostIdProvider = new DefaultHostIdProvider(() => functionIndexProvider,
+                _storageAccountProvider);
+            IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(_typeLocator);
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher = BackgroundExceptionDispatcher.Instance;
+            ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
+                new ContextAccessor<IMessageEnqueuedWatcher>();
+            ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
+                new ContextAccessor<IBlobWrittenWatcher>();
+            ISharedContextProvider sharedContextProvider = new SharedContextProvider();
+            ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(_nameResolver,
+                _storageAccountProvider, _serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
+                _queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor, sharedContextProvider, _consoleProvider.Out);
+            IBindingProvider bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
+                _serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor);
+            functionIndexProvider = new FunctionIndexProvider(_typeLocator, triggerBindingProvider, bindingProvider);
+            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(_storageAccountProvider);
+            return CreateAndLogHostStartedAsync(_storageAccountProvider, functionIndexProvider, bindingProvider,
+                hostIdProvider, loggerProvider, loggerProvider, loggerProvider, _queueConfiguration,
+                backgroundExceptionDispatcher, _consoleProvider,
+                shutdownToken, cancellationToken);
+        }
+
+        internal static async Task<JobHostContext> CreateAndLogHostStartedAsync(
+            IStorageAccountProvider storageAccountProvider,
             IFunctionIndexProvider functionIndexProvider,
             IBindingProvider bindingProvider,
             IHostIdProvider hostIdProvider,
@@ -48,48 +85,34 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IConsoleProvider consoleProvider,
-            CancellationToken shutdownToken)
-        {
-            _storageAccountProvider = storageAccountProvider;
-            _functionIndexProvider = functionIndexProvider;
-            _bindingProvider = bindingProvider;
-            _hostIdProvider = hostIdProvider;
-            _hostInstanceLoggerProvider = hostInstanceLoggerProvider;
-            _functionInstanceLoggerProvider = functionInstanceLoggerProvider;
-            _functionOutputLoggerProvider = functionOutputLoggerProvider;
-            _queueConfiguration = queueConfiguration;
-            _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _consoleProvider = consoleProvider;
-            _shutdownToken = shutdownToken;
-        }
-
-        public async Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken cancellationToken)
+            CancellationToken shutdownToken,
+            CancellationToken cancellationToken)
         {
             using (CancellationTokenSource combinedCancellationSource =
-                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownToken))
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
 
                 await WriteSiteExtensionManifestAsync(combinedCancellationToken);
 
-                IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(
+                IStorageAccount dashboardAccount = await storageAccountProvider.GetDashboardAccountAsync(
                     combinedCancellationToken);
 
-                IHostInstanceLogger hostInstanceLogger = await _hostInstanceLoggerProvider.GetAsync(
+                IHostInstanceLogger hostInstanceLogger = await hostInstanceLoggerProvider.GetAsync(
                     combinedCancellationToken);
-                IFunctionInstanceLogger functionInstanceLogger = await _functionInstanceLoggerProvider.GetAsync(
+                IFunctionInstanceLogger functionInstanceLogger = await functionInstanceLoggerProvider.GetAsync(
                     combinedCancellationToken);
-                IFunctionOutputLogger functionOutputLogger = await _functionOutputLoggerProvider.GetAsync(
+                IFunctionOutputLogger functionOutputLogger = await functionOutputLoggerProvider.GetAsync(
                     combinedCancellationToken);
 
-                IFunctionIndex functions = await _functionIndexProvider.GetAsync(combinedCancellationToken);
+                IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
 
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
                 FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger,
-                    _backgroundExceptionDispatcher);
+                    backgroundExceptionDispatcher);
 
-                TextWriter consoleOut = _consoleProvider.Out;
+                TextWriter consoleOut = consoleProvider.Out;
 
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
@@ -97,20 +120,20 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (dashboardAccount != null)
                 {
-                    string hostId = await _hostIdProvider.GetHostIdAsync(cancellationToken);
+                    string hostId = await hostIdProvider.GetHostIdAsync(cancellationToken);
 
                     string sharedQueueName = HostQueueNames.GetHostQueueName(hostId);
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
-                        _queueConfiguration, _backgroundExceptionDispatcher, consoleOut, functions,
+                        queueConfiguration, backgroundExceptionDispatcher, consoleOut, functions,
                         functionInstanceLogger);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        _queueConfiguration, _backgroundExceptionDispatcher, consoleOut, functions,
+                        queueConfiguration, backgroundExceptionDispatcher, consoleOut, functions,
                         functionInstanceLogger);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
@@ -140,10 +163,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     };
 
                     hostCallExecutor = CreateHostCallExecutor(instanceQueueListenerFactory, heartbeatCommand,
-                        _shutdownToken, executor);
+                        backgroundExceptionDispatcher, shutdownToken, executor);
                     IListenerFactory hostListenerFactory = new CompositeListenerFactory(functionsListenerFactory,
                         sharedQueueListenerFactory, instanceQueueListenerFactory);
-                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, _shutdownToken, executor);
+                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, backgroundExceptionDispatcher,
+                        shutdownToken, executor);
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger,
@@ -151,10 +175,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    hostCallExecutor = new ShutdownFunctionExecutor(_shutdownToken, executor);
+                    hostCallExecutor = new ShutdownFunctionExecutor(shutdownToken, executor);
 
                     IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory, executor);
-                    IListener shutdownListener = new ShutdownListener(_shutdownToken, factoryListener);
+                    IListener shutdownListener = new ShutdownListener(shutdownToken, factoryListener);
                     listener = shutdownListener;
 
                     hostOutputMessage = new DataOnlyHostOutputMessage();
@@ -184,12 +208,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
-            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken,
-            IFunctionExecutor innerExecutor)
+        private static IFunctionExecutor CreateHostCallExecutor(IListenerFactory instanceQueueListenerFactory,
+            IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            CancellationToken shutdownToken, IFunctionExecutor innerExecutor)
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
-                _backgroundExceptionDispatcher, innerExecutor);
+                backgroundExceptionDispatcher, innerExecutor);
             IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
                 innerExecutor, heartbeatExecutor);
             IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
@@ -197,12 +221,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return shutdownFunctionExecutor;
         }
 
-        private IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
-            IRecurrentCommand heartbeatCommand, CancellationToken shutdownToken, IFunctionExecutor executor)
+        private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
+            IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
+            CancellationToken shutdownToken, IFunctionExecutor executor)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
-                _backgroundExceptionDispatcher, factoryListener);
+                backgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;
         }
