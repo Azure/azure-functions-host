@@ -83,7 +83,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                     // Assert
                     Assert.True(executedWaitHandle.WaitOne(1000)); // Guard
                     stopwatch.Stop();
-                    AssertGreaterThan(initialDelay, stopwatch.Elapsed);
+                    // Account for the resolution of the system timer; otherwise, the test may fail intermittently
+                    // (as the timer may fire slightly before the precise expected value).
+                    TimeSpan effectiveActualDelay = AddSystemTimerResolution(stopwatch.Elapsed);
+                    AssertGreaterThan(initialDelay, effectiveActualDelay);
                 }
             }
         }
@@ -818,6 +821,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
                     Assert.True(stopExecute.Set()); // Guard
                 }
             }
+        }
+
+        private static TimeSpan AddSystemTimerResolution(TimeSpan value)
+        {
+            // The default system timer resolution is around 15.6ms:
+            // From http://msdn.microsoft.com/en-us/library/windows/hardware/ff545575(v=vs.85).aspx:
+            // "Standard framework timers have an accuracy that matches the system clock tick interval, which is by
+            // default 15.6 milliseconds."
+            TimeSpan systemTimerResolution = TimeSpan.FromMilliseconds(15 + 1);
+            return value + systemTimerResolution;
         }
 
         private static void AssertGreaterThan(TimeSpan expected, TimeSpan actual)
