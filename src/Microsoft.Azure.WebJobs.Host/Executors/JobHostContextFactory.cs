@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 if (descriptorsCount == 0)
                 {
                     consoleOut.WriteLine(
-                        "No functions found. Try making job classes public and methods public static.");
+                        "No functions found. Try making job classes and methods public.");
                 }
                 else
                 {
