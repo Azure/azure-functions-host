@@ -118,6 +118,7 @@
     <Compile Include="EmptyFunctionIndexProvider.cs" />
     <Compile Include="Executors\DefaultStorageAccountProviderTests.cs" />
     <Compile Include="Executors\DynamicHostIdProviderTests.cs" />
+    <Compile Include="Executors\FunctionInvokerTests.cs" />
     <Compile Include="Executors\FunctionInvokerFactoryTests.cs" />
     <Compile Include="Executors\ActivatorInstanceFactoryTests.cs" />
     <Compile Include="Executors\NullInstanceFactoryTests.cs" />

@@ -10,20 +10,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class FunctionInvoker<TReflected> : IFunctionInvoker
     {
         private readonly IReadOnlyList<string> _parameterNames;
-        private readonly IMethodInvoker<TReflected> _methodInvoker;
         private readonly IFactory<TReflected> _instanceFactory;
+        private readonly IMethodInvoker<TReflected> _methodInvoker;
 
-        public FunctionInvoker(IReadOnlyList<string> parameterNames, IMethodInvoker<TReflected> methodInvoker,
-            IFactory<TReflected> instanceFactory)
+        public FunctionInvoker(IReadOnlyList<string> parameterNames, IFactory<TReflected> instanceFactory,
+            IMethodInvoker<TReflected> methodInvoker)
         {
             if (parameterNames == null)
             {
                 throw new ArgumentNullException("parameterNames");
-            }
-
-            if (methodInvoker == null)
-            {
-                throw new ArgumentNullException("methodInvoker");
             }
 
             if (instanceFactory == null)
@@ -31,9 +26,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("instanceFactory");
             }
 
+            if (methodInvoker == null)
+            {
+                throw new ArgumentNullException("methodInvoker");
+            }
+
             _parameterNames = parameterNames;
-            _methodInvoker = methodInvoker;
             _instanceFactory = instanceFactory;
+            _methodInvoker = methodInvoker;
         }
 
         public IFactory<TReflected> InstanceFactory
@@ -46,10 +46,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             get { return _parameterNames; }
         }
 
-        public Task InvokeAsync(object[] arguments)
+        public async Task InvokeAsync(object[] arguments)
         {
             TReflected instance = _instanceFactory.Create();
-            return _methodInvoker.InvokeAsync(instance, arguments);
+
+            using (instance as IDisposable)
+            {
+                await _methodInvoker.InvokeAsync(instance, arguments);
+            }
         }
     }
 }

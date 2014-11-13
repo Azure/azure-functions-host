@@ -70,6 +70,34 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        [Fact]
+        public void Trigger_IfClassIsDisposable_Disposes()
+        {
+            // Arrange
+            CloudQueueMessage expectedMessage = new CloudQueueMessage("ignore");
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue queue = CreateQueue(account, QueueName);
+            queue.AddMessage(new FakeStorageQueueMessage(expectedMessage));
+
+            // Act & Assert
+            RunTrigger<object>(account, typeof(BindToCloudQueueMessageAndDisposeProgram),
+                (s) => BindToCloudQueueMessageAndDisposeProgram.TaskSource = s);
+        }
+
+        private sealed class BindToCloudQueueMessageAndDisposeProgram : IDisposable
+        {
+            public static TaskCompletionSource<object> TaskSource { get; set; }
+
+            public void Run([QueueTrigger(QueueName)] CloudQueueMessage message)
+            {
+            }
+
+            public void Dispose()
+            {
+                TaskSource.TrySetResult(null);
+            }
+        }
+
         private static IStorageAccount CreateFakeStorageAccount()
         {
             return new FakeStorageAccount();

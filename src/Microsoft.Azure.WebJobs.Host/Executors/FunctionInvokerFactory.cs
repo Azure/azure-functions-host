@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             IFactory<TReflected> instanceFactory = CreateInstanceFactory<TReflected>(method);
 
-            return new FunctionInvoker<TReflected>(parameterNames, methodInvoker, instanceFactory);
+            return new FunctionInvoker<TReflected>(parameterNames, instanceFactory, methodInvoker);
         }
 
         private static IFactory<TReflected> CreateInstanceFactory<TReflected>(MethodInfo method)
