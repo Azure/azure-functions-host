@@ -9,35 +9,39 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 {
-    public class VoidInvokerTests
+    public class VoidMethodInvokerTests
     {
         [Fact]
         public void InvokeAsync_DelegatesToLambda()
         {
             // Arrange
+            object expectedInstance = new object();
             object[] expectedArguments = new object[0];
             bool invoked = false;
+            object instance = null;
             object[] arguments = null;
-            Action<object[]> lambda = (a) =>
+            Action<object, object[]> lambda = (i, a) =>
             {
                 invoked = true;
+                instance = i;
                 arguments = a;
             };
 
-            IInvoker invoker = CreateProductUnderTest(lambda);
+            IMethodInvoker<object> invoker = CreateProductUnderTest(lambda);
 
             // Act
-            Task task = invoker.InvokeAsync(expectedArguments);
+            Task task = invoker.InvokeAsync(expectedInstance, expectedArguments);
             
             // Assert
             task.GetAwaiter().GetResult();
             Assert.True(invoked);
+            Assert.Same(expectedInstance, instance);
             Assert.Same(expectedArguments, arguments);
         }
 
-        private static VoidInvoker CreateProductUnderTest(Action<object[]> lambda)
+        private static VoidMethodInvoker<object> CreateProductUnderTest(Action<object, object[]> lambda)
         {
-            return new VoidInvoker(new List<string>(), lambda);
+            return new VoidMethodInvoker<object>(lambda);
         }
     }
 }

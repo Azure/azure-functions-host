@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     // Go down and build an index
     internal class FunctionIndexer
     {
-        private static readonly BindingFlags _publicStaticMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly;
+        private static readonly BindingFlags _publicMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
         private static readonly Func<MethodInfo, bool> _hasServiceBusAttributeDefault = _ => false;
 
         private readonly ITriggerBindingProvider _triggerBindingProvider;
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
         {
-            foreach (MethodInfo method in type.GetMethods(_publicStaticMethodFlags).Where(IsSdkMethod))
+            foreach (MethodInfo method in type.GetMethods(_publicMethodFlags).Where(IsSdkMethod))
             {
                 await IndexMethodAsync(method, index, cancellationToken);
             }
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
             FunctionDescriptor functionDescriptor = CreateFunctionDescriptor(method, triggerParameterName,
                 triggerBinding, nonTriggerBindings);
-            IInvoker invoker = InvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
             IFunctionDefinition functionDefinition;
 
             if (triggerBinding != null)

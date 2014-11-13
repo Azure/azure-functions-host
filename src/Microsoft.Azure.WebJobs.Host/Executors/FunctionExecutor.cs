@@ -237,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IDictionary<string, ParameterLog> parameterLogCollector,
             CancellationToken cancellationToken)
         {
-            IInvoker invoker = instance.Invoker;
+            IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
             IRecurrentCommand updateParameterLogCommand =
                 outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return new ValueWatcher(watches, parameterLogBlob, consoleOutput, backgroundExceptionDispatcher);
         }
 
-        internal static async Task ExecuteWithWatchersAsync(IInvoker invoker,
+        internal static async Task ExecuteWithWatchersAsync(IFunctionInvoker invoker,
             IReadOnlyDictionary<string, IValueProvider> parameters,
             TextWriter consoleOutput,
             CancellationToken cancellationToken)

@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IInvoker invoker, FunctionDescriptor functionDescriptor)
+            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             ITriggeredFunctionBinding<IStorageQueueMessage> functionBinding =
                 new TriggeredFunctionBinding<IStorageQueueMessage>(_parameterName, this, nonTriggerBindings);

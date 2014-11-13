@@ -2,31 +2,23 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class TaskInvoker : IInvoker
+    internal class TaskMethodInvoker<TReflected> : IMethodInvoker<TReflected>
     {
-        private readonly IReadOnlyList<string> _parameterNames;
-        private readonly Func<object[], Task> _lambda;
+        private readonly Func<TReflected, object[], Task> _lambda;
 
-        public TaskInvoker(IReadOnlyList<string> parameterNames, Func<object[], Task> lambda)
+        public TaskMethodInvoker(Func<TReflected, object[], Task> lambda)
         {
-            _parameterNames = parameterNames;
             _lambda = lambda;
         }
 
-        public IReadOnlyList<string> ParameterNames
+        public Task InvokeAsync(TReflected instance, object[] arguments)
         {
-            get { return _parameterNames; }
-        }
-
-        public Task InvokeAsync(object[] arguments)
-        {
-            Task task = _lambda.Invoke(arguments);
+            Task task = _lambda.Invoke(instance, arguments);
             ThrowIfWrappedTaskInstance(task);
             return task;
         }

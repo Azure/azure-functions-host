@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         IBindingSource BindingSource { get; }
 
-        IInvoker Invoker { get; }
+        IFunctionInvoker Invoker { get; }
 
         FunctionDescriptor FunctionDescriptor { get; }
     }

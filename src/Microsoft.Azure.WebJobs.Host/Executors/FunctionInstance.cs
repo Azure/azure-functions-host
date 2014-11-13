@@ -12,11 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly Guid? _parentId;
         private readonly ExecutionReason _reason;
         private readonly IBindingSource _bindingSource;
-        private readonly IInvoker _invoker;
+        private readonly IFunctionInvoker _invoker;
         private readonly FunctionDescriptor _functionDescriptor;
 
         public FunctionInstance(Guid id, Guid? parentId, ExecutionReason reason, IBindingSource bindingSource,
-            IInvoker invoker, FunctionDescriptor functionDescriptor)
+            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             _id = id;
             _parentId = parentId;
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             get { return _bindingSource; }
         }
 
-        public IInvoker Invoker
+        public IFunctionInvoker Invoker
         {
             get { return _invoker; }
         }

@@ -11,10 +11,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class FunctionInstanceFactory : IFunctionInstanceFactory
     {
         private readonly IFunctionBinding _binding;
-        private readonly IInvoker _invoker;
+        private readonly IFunctionInvoker _invoker;
         private readonly FunctionDescriptor _descriptor;
 
-        public FunctionInstanceFactory(IFunctionBinding binding, IInvoker invoker, FunctionDescriptor descriptor)
+        public FunctionInstanceFactory(IFunctionBinding binding, IFunctionInvoker invoker,
+            FunctionDescriptor descriptor)
         {
             _binding = binding;
             _invoker = invoker;

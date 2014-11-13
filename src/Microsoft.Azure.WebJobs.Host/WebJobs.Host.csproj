@@ -349,7 +349,12 @@
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
+    <Compile Include="Executors\FunctionInvoker.cs" />
+    <Compile Include="Executors\FunctionInvokerFactory.cs" />
+    <Compile Include="Executors\IFunctionInvoker.cs" />
     <Compile Include="Executors\IJobHostContextFactory.cs" />
+    <Compile Include="Executors\ActivatorInstanceFactory.cs" />
+    <Compile Include="Executors\NullInstanceFactory.cs" />
     <Compile Include="IContextSetter.cs" />
     <Compile Include="IContextGetter.cs" />
     <Compile Include="Bindings\ObjectToTypeConverterFactory.cs" />
@@ -488,8 +493,8 @@
     <Compile Include="Executors\HostIdValidator.cs" />
     <Compile Include="Executors\IHostIdProvider.cs" />
     <Compile Include="Executors\DynamicHostIdProvider.cs" />
-    <Compile Include="Executors\TaskInvoker.cs" />
-    <Compile Include="Executors\VoidInvoker.cs" />
+    <Compile Include="Executors\TaskMethodInvoker.cs" />
+    <Compile Include="Executors\VoidMethodInvoker.cs" />
     <Compile Include="ConnectionStringNames.cs" />
     <Compile Include="Converters\CompositeAsyncObjectToTypeConverter.cs" />
     <Compile Include="Converters\IAsyncConverter.cs" />
@@ -502,8 +507,8 @@
     <Compile Include="Executors\AbortListenerFunctionExecutor.cs" />
     <Compile Include="Executors\StorageAccountParseResult.cs" />
     <Compile Include="Executors\StorageAccountParser.cs" />
-    <Compile Include="Executors\IInvoker.cs" />
-    <Compile Include="Executors\InvokerFactory.cs" />
+    <Compile Include="Executors\IMethodInvoker.cs" />
+    <Compile Include="Executors\MethodInvokerFactory.cs" />
     <Compile Include="JobHostQueuesConfiguration.cs" />
     <Compile Include="Listeners\HeartbeatListener.cs" />
     <Compile Include="Listeners\ShutdownListener.cs" />
@@ -520,7 +525,7 @@
     <Compile Include="Indexers\IFunctionIndexLookup.cs" />
     <Compile Include="Indexers\FunctionIndex.cs" />
     <Compile Include="Listeners\HostListenerFactory.cs" />
-    <Compile Include="Listeners\IFactory.cs" />
+    <Compile Include="IFactory.cs" />
     <Compile Include="Blobs\IBlobWrittenWatcher.cs" />
     <Compile Include="Listeners\ISharedListener.cs" />
     <Compile Include="Listeners\NullListener.cs" />

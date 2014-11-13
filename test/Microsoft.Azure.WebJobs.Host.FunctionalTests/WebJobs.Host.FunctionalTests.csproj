@@ -53,6 +53,7 @@
     <Compile Include="HostCallTests.cs" />
     <Compile Include="HostStartTests.cs" />
     <Compile Include="HostStopTests.cs" />
+    <Compile Include="InstanceTests.cs" />
     <Compile Include="ScenarioTests.cs" />
     <Compile Include="StoragePageBlobExtensions.cs" />
     <Compile Include="StorageBlockBlobExtensions.cs" />

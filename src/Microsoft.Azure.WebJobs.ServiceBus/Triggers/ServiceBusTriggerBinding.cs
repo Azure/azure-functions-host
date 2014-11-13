@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IInvoker invoker, FunctionDescriptor functionDescriptor)
+            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             ITriggeredFunctionBinding<BrokeredMessage> functionBinding =
                 new TriggeredFunctionBinding<BrokeredMessage>(_parameterName, this, nonTriggerBindings);

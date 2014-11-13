@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         Task<ITriggerData> BindAsync(object value, ValueBindingContext context);
 
         IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IInvoker invoker, FunctionDescriptor functionDescriptor);
+            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor);
 
         ParameterDescriptor ToParameterDescriptor();
     }

@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         }
 
         public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IInvoker invoker, FunctionDescriptor functionDescriptor)
+            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor)
         {
             ITriggeredFunctionBinding<IStorageBlob> functionBinding =
                 new TriggeredFunctionBinding<IStorageBlob>(_parameterName, this, nonTriggerBindings);

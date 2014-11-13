@@ -11,11 +11,11 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     internal class TriggeredFunctionInstanceFactory<TTriggerValue> : ITriggeredFunctionInstanceFactory<TTriggerValue>
     {
         private readonly ITriggeredFunctionBinding<TTriggerValue> _binding;
-        private readonly IInvoker _invoker;
+        private readonly IFunctionInvoker _invoker;
         private readonly FunctionDescriptor _descriptor;
 
-        public TriggeredFunctionInstanceFactory(ITriggeredFunctionBinding<TTriggerValue> binding, IInvoker invoker,
-            FunctionDescriptor descriptor)
+        public TriggeredFunctionInstanceFactory(ITriggeredFunctionBinding<TTriggerValue> binding,
+            IFunctionInvoker invoker, FunctionDescriptor descriptor)
         {
             _binding = binding;
             _invoker = invoker;

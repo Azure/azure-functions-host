@@ -118,6 +118,9 @@
     <Compile Include="EmptyFunctionIndexProvider.cs" />
     <Compile Include="Executors\DefaultStorageAccountProviderTests.cs" />
     <Compile Include="Executors\DynamicHostIdProviderTests.cs" />
+    <Compile Include="Executors\FunctionInvokerFactoryTests.cs" />
+    <Compile Include="Executors\ActivatorInstanceFactoryTests.cs" />
+    <Compile Include="Executors\NullInstanceFactoryTests.cs" />
     <Compile Include="FunctionIndexerFactory.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="StructPropertySetterTests.cs" />
@@ -125,9 +128,9 @@
     <Compile Include="Converters\CultureInfoContext.cs" />
     <Compile Include="Converters\StringToTConverterFactoryTests.cs" />
     <Compile Include="Converters\TToStringConverterFactoryTests.cs" />
-    <Compile Include="Executors\TaskInvokerTests.cs" />
-    <Compile Include="Executors\VoidInvokerTests.cs" />
-    <Compile Include="Executors\InvokerFactoryTests.cs" />
+    <Compile Include="Executors\TaskMethodInvokerTests.cs" />
+    <Compile Include="Executors\VoidMethodInvokerTests.cs" />
+    <Compile Include="Executors\MethodInvokerFactoryTests.cs" />
     <Compile Include="ClassPropertySetterTests.cs" />
     <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Indexers\DefaultTypeLocatorTests.cs" />
