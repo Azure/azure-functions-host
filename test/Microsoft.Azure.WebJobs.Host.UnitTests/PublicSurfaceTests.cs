@@ -41,18 +41,19 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             var assembly = typeof(QueueTriggerAttribute).Assembly;
 
-            var expected = new[] {
+            var expected = new[]
+            {
                 "BinderExtensions",
                 "BlobAttribute",
                 "BlobTriggerAttribute",
                 "IBinder",
+                "IAsyncCollector`1",
+                "ICollector`1",
                 "ICloudBlobStreamBinder`1",
                 "NoAutomaticTriggerAttribute",
                 "QueueAttribute",
                 "QueueTriggerAttribute",
-                "TableAttribute",
-                "ICollector`1",
-                "IAsyncCollector`1"
+                "TableAttribute"
             };
 
             AssertPublicTypes(expected, assembly);
@@ -63,14 +64,16 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             var assembly = typeof(Microsoft.Azure.WebJobs.JobHost).Assembly;
 
-            var expected = new[] { 
+            var expected = new[]
+            {
                 "ConnectionStringNames",
-                "JobHost", 
-                "JobHostConfiguration", 
+                "JobHost",
+                "JobHostConfiguration",
                 "JobHostQueuesConfiguration",
-                "ITypeLocator", 
-                "INameResolver", 
-                "WebJobsShutdownWatcher" 
+                "IJobActivator",
+                "ITypeLocator",
+                "INameResolver",
+                "WebJobsShutdownWatcher"
             };
 
             AssertPublicTypes(expected, assembly);

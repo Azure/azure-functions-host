@@ -349,6 +349,7 @@
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
+    <Compile Include="Executors\DefaultJobActivator.cs" />
     <Compile Include="Executors\FunctionInvoker.cs" />
     <Compile Include="Executors\FunctionInvokerFactory.cs" />
     <Compile Include="Executors\IFunctionInvoker.cs" />
@@ -429,6 +430,7 @@
     <Compile Include="Executors\IServiceBusAccountProvider.cs" />
     <Compile Include="Executors\IStorageAccountParser.cs" />
     <Compile Include="Executors\StorageAccountProviderExtensions.cs" />
+    <Compile Include="IJobActivator.cs" />
     <Compile Include="Indexers\ExtensionTypeLocator.cs" />
     <Compile Include="Indexers\FunctionIndexProvider.cs" />
     <Compile Include="Indexers\IExtensionTypeLocator.cs" />

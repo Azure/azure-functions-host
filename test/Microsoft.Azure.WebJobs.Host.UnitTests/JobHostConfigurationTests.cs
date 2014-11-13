@@ -115,6 +115,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             TestHostIdThrows("a--bc");
         }
 
+        [Fact]
+        public void JobActivator_IfNull_Throws()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            ExceptionAssert.ThrowsArgumentNull(() => configuration.JobActivator = null, "value");
+        }
+
         private static void TestHostIdThrows(string hostId)
         {
             // Arrange

@@ -116,6 +116,7 @@
     <Compile Include="Blobs\WatchableReadStreamTests.cs" />
     <Compile Include="ClassPropertyGetterTests.cs" />
     <Compile Include="EmptyFunctionIndexProvider.cs" />
+    <Compile Include="Executors\DefaultJobActivatorTests.cs" />
     <Compile Include="Executors\DefaultStorageAccountProviderTests.cs" />
     <Compile Include="Executors\DynamicHostIdProviderTests.cs" />
     <Compile Include="Executors\FunctionInvokerTests.cs" />

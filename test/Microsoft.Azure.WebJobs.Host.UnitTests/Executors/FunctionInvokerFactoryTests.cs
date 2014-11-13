@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
@@ -18,9 +19,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = null;
+            IJobActivator activator = CreateDummyActivator();
 
             // Act & Assert
-            ExceptionAssert.ThrowsArgumentNull(() => FunctionInvokerFactory.Create(method), "method");
+            ExceptionAssert.ThrowsArgumentNull(() => FunctionInvokerFactory.Create(method, activator), "method");
+        }
+
+        [Fact]
+        public void Create_IfActivatorIsNull_Throws()
+        {
+            // Arrange
+            MethodInfo method = GetMethodInfo("StaticReturnVoid");
+            IJobActivator activator = null;
+
+            // Act & Assert
+            ExceptionAssert.ThrowsArgumentNull(() => FunctionInvokerFactory.Create(method, activator), "activator");
         }
 
         [Fact]
@@ -28,9 +41,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo("StaticReturnVoid");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
@@ -41,9 +55,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo("NoParameters");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.NotNull(invoker);
@@ -55,9 +70,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo("ParametersFooBarBaz");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.NotNull(invoker);
@@ -69,9 +85,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo("StaticReturnVoid");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
@@ -85,9 +102,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo("InstanceReturnVoid");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.IsType<FunctionInvoker<FunctionInvokerFactoryTests>>(invoker);
@@ -101,14 +119,20 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         {
             // Arrange
             MethodInfo method = GetMethodInfo(typeof(Subclass), "InheritedReturnVoid");
+            IJobActivator activator = CreateDummyActivator();
 
             // Act
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, activator);
 
             // Assert
             Assert.IsType<FunctionInvoker<Subclass>>(invoker);
             FunctionInvoker<Subclass> typedInvoker = (FunctionInvoker<Subclass>)invoker;
             Assert.IsType<ActivatorInstanceFactory<Subclass>>(typedInvoker.InstanceFactory);
+        }
+
+        private static IJobActivator CreateDummyActivator()
+        {
+            return new Mock<IJobActivator>(MockBehavior.Strict).Object;
         }
 
         private static MethodInfo GetMethodInfo(string name)

@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider);
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance);
         }
     }
 }

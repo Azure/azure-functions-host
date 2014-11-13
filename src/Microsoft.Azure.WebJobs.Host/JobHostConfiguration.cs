@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs
         private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator(_consoleProvider.Out);
         private INameResolver _nameResolver = new DefaultNameResolver();
+        private IJobActivator _activator = DefaultJobActivator.Instance;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="JobHostConfiguration"/> class, using a single Microsoft Azure
@@ -83,6 +84,25 @@ namespace Microsoft.Azure.WebJobs
                 }
 
                 _hostId = value;
+            }
+        }
+
+        /// <summary>Gets or sets the job activator.</summary>
+        /// <remarks>The job activator creates instances of job classes when calling instance methods.</remarks>
+        public IJobActivator JobActivator
+        {
+            get
+            {
+                return _activator;
+            }
+            set
+            {
+                if (value == null)
+                {
+                    throw new ArgumentNullException("value");
+                }
+
+                _activator = value;
             }
         }
 
@@ -152,7 +172,7 @@ namespace Microsoft.Azure.WebJobs
                 if (_contextFactory == null)
                 {
                     _contextFactory = new JobHostContextFactory(_storageAccountProvider, _serviceBusAccountProvider,
-                        _typeLocator, _nameResolver, _hostId, _queueConfiguration, _consoleProvider);
+                        _typeLocator, _nameResolver, _activator, _hostId, _queueConfiguration, _consoleProvider);
                 }
 
                 return _contextFactory;

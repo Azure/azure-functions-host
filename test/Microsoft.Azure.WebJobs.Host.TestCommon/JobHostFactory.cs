@@ -58,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                         BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor,
                         blobWrittenWatcherAccessor, sharedContextProvider, TextWriter.Null),
                     DefaultBindingProvider.Create(nameResolver, storageAccountProvider, serviceBusAccountProvider,
-                        extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor)),
+                        extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor),
+                    DefaultJobActivator.Instance),
                 StorageAccountProvider = storageAccountProvider,
                 Queues = queueConfiguration
             };

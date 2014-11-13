@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
@@ -10,36 +11,29 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
     public class ActivatorInstanceFactoryTests
     {
         [Fact]
-        public void Create_ReturnsNonNull()
+        public void Create_DelegatesToJobActivator()
         {
             // Arrange
-            IFactory<object> product = CreateProductUnderTest<object>();
+            object expectedInstance = new object();
+            Mock<IJobActivator> activatorMock = new Mock<IJobActivator>(MockBehavior.Strict);
+            activatorMock.Setup(a => a.CreateInstance<object>())
+                         .Returns(expectedInstance)
+                         .Verifiable();
+            IJobActivator activator = activatorMock.Object;
+
+            IFactory<object> product = CreateProductUnderTest<object>(activator);
 
             // Act
             object instance = product.Create();
 
             // Assert
-            Assert.NotNull(instance);
+            Assert.Same(expectedInstance, instance);
+            activatorMock.Verify();
         }
 
-        [Fact]
-        public void Create_ReturnsNewInstance()
+        private static ActivatorInstanceFactory<TReflected> CreateProductUnderTest<TReflected>(IJobActivator activator)
         {
-            // Arrange
-            IFactory<object> product = CreateProductUnderTest<object>();
-            object originalInstance = product.Create();
-
-            // Act
-            object instance = product.Create();
-
-            // Assert
-            Assert.NotNull(instance);
-            Assert.NotSame(originalInstance, instance);
-        }
-
-        private static ActivatorInstanceFactory<TReflected> CreateProductUnderTest<TReflected>()
-        {
-            return new ActivatorInstanceFactory<TReflected>();
+            return new ActivatorInstanceFactory<TReflected>(activator);
         }
     }
 }

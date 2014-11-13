@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
 using Moq;
 using Xunit;
@@ -22,7 +24,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             foreach (var method in this.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
             {
                 IFunctionIndexCollector stubIndex = new Mock<IFunctionIndexCollector>().Object;
-                FunctionIndexer indexer = new FunctionIndexer(null, null);
+                FunctionIndexer indexer = new FunctionIndexer(
+                    new Mock<ITriggerBindingProvider>(MockBehavior.Strict).Object,
+                    new Mock<IBindingProvider>(MockBehavior.Strict).Object,
+                    new Mock<IJobActivator>(MockBehavior.Strict).Object);
                 Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethodAsync(method, stubIndex, CancellationToken.None).GetAwaiter().GetResult());
             }
         }

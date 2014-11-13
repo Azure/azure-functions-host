@@ -29,17 +29,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IServiceBusAccountProvider _serviceBusAccountProvider;
         private readonly ITypeLocator _typeLocator;
         private readonly INameResolver _nameResolver;
+        private readonly IJobActivator _activator;
         private readonly string _hostId;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IConsoleProvider _consoleProvider;
 
         public JobHostContextFactory(IStorageAccountProvider storageAccountProvider, IServiceBusAccountProvider
-            serviceBusAccountProvider, ITypeLocator typeLocator, INameResolver nameResolver, string hostId,
-            IQueueConfiguration queueConfiguration, IConsoleProvider consoleProvider)
+            serviceBusAccountProvider, ITypeLocator typeLocator, INameResolver nameResolver, IJobActivator activator,
+            string hostId, IQueueConfiguration queueConfiguration, IConsoleProvider consoleProvider)
         {
             _storageAccountProvider = storageAccountProvider;
             _serviceBusAccountProvider = serviceBusAccountProvider;
             _typeLocator = typeLocator;
+            _activator = activator;
             _nameResolver = nameResolver;
             _hostId = hostId;
             _queueConfiguration = queueConfiguration;
@@ -66,7 +68,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(_nameResolver, _storageAccountProvider,
                 _serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor);
-            functionIndexProvider = new FunctionIndexProvider(_typeLocator, triggerBindingProvider, bindingProvider);
+            functionIndexProvider = new FunctionIndexProvider(_typeLocator, triggerBindingProvider, bindingProvider,
+                _activator);
             DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(_storageAccountProvider);
             return CreateAndLogHostStartedAsync(_storageAccountProvider, functionIndexProvider, bindingProvider,
                 hostIdProvider, loggerProvider, loggerProvider, loggerProvider, _queueConfiguration,

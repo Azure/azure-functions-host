@@ -7,9 +7,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class ActivatorInstanceFactory<TReflected> : IFactory<TReflected>
     {
+        private readonly IJobActivator _activator;
+
+        public ActivatorInstanceFactory(IJobActivator activator)
+        {
+            if (activator == null)
+            {
+                throw new ArgumentNullException("activator");
+            }
+
+            _activator = activator;
+        }
+
         public TReflected Create()
         {
-            return Activator.CreateInstance<TReflected>();
+            return _activator.CreateInstance<TReflected>();
         }
     }
 }

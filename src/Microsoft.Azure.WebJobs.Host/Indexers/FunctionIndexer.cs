@@ -26,12 +26,30 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
+        private readonly IJobActivator _activator;
         private readonly Func<MethodInfo, bool> _hasServiceBusAttribute;
 
-        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider)
+        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider,
+            IJobActivator activator)
         {
+            if (triggerBindingProvider == null)
+            {
+                throw new ArgumentNullException("triggerBindingProvider");
+            }
+
+            if (bindingProvider == null)
+            {
+                throw new ArgumentNullException("bindingProvider");
+            }
+
+            if (activator == null)
+            {
+                throw new ArgumentNullException("activator");
+            }
+
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
+            _activator = activator;
 
             Type serviceBusIndexerType = ServiceBusExtensionTypeLoader.Get("Microsoft.Azure.WebJobs.ServiceBus.ServiceBusIndexer");
             if (serviceBusIndexerType != null)
@@ -228,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;
             FunctionDescriptor functionDescriptor = CreateFunctionDescriptor(method, triggerParameterName,
                 triggerBinding, nonTriggerBindings);
-            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method);
+            IFunctionInvoker invoker = FunctionInvokerFactory.Create(method, _activator);
             IFunctionDefinition functionDefinition;
 
             if (triggerBinding != null)
