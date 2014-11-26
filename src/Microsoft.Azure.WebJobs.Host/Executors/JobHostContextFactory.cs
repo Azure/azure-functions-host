@@ -290,14 +290,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             var path = Path.Combine(jobDataPath, filename);
             const int defaultBufferSize = 4096;
 
-            using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None,
-                defaultBufferSize, useAsync: true))
-            using (TextWriter writer = new StreamWriter(stream))
+            try
             {
-                // content is not really important, this would help debugging though
-                cancellationToken.ThrowIfCancellationRequested();
-                await writer.WriteAsync(DateTime.UtcNow.ToString("s") + "Z");
-                await writer.FlushAsync();
+                using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None,
+                        defaultBufferSize, useAsync: true))
+                using (TextWriter writer = new StreamWriter(stream))
+                {
+                    // content is not really important, this would help debugging though
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await writer.WriteAsync(DateTime.UtcNow.ToString("s") + "Z");
+                    await writer.FlushAsync();
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // simultaneous access error or an error caused by some other issue
+                // ignore it and skip marker creation
             }
         }
 
