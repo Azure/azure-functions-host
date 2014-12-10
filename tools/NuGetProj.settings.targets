@@ -5,6 +5,6 @@
     <WebJobsToolsPath>$(MSBuildThisFileDirectory)</WebJobsToolsPath>
     
     <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
-    <WebJobsPackageVersion>1.0.2-alpha</WebJobsPackageVersion>
+    <WebJobsPackageVersion>1.0.1-alpha1</WebJobsPackageVersion>
   </PropertyGroup>
 </Project>
