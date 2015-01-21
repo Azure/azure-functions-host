@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             IStorageAccountProvider storageAccountProvider = storageAccountProviderMock.Object;
             IFunctionIndexProvider functionIndexProvider = CreateDummyFunctionIndexProvider();
 
-            IHostIdProvider product = new DynamicHostIdProvider(storageAccountProvider, functionIndexProvider);
+            IHostIdProvider product = new DynamicHostIdProvider(storageAccountProvider, () => functionIndexProvider);
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert

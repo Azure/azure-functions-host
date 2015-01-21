@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IFunctionIndexProvider functionIndexProvider = null;
             IHostIdProvider hostIdProvider = _hostId != null ? (IHostIdProvider)new FixedHostIdProvider(_hostId)
-                : new DynamicHostIdProvider(_storageAccountProvider, functionIndexProvider);
+                : new DynamicHostIdProvider(_storageAccountProvider, () => functionIndexProvider);
             IExtensionTypeLocator extensionTypeLocator = new ExtensionTypeLocator(_typeLocator);
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher = BackgroundExceptionDispatcher.Instance;
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
