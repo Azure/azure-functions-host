@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         public static ITriggerBindingProvider Create(INameResolver nameResolver,
             IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
             IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
@@ -28,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             ISharedContextProvider sharedContextProvider,
+            IExtensionRegistry extensions,
             TextWriter log)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
@@ -38,15 +38,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
                 blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, log));
 
-            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.WebJobs.ServiceBus.Triggers.ServiceBusTriggerAttributeBindingProvider");
-
-            if (serviceBusProviderType != null)
+            // add any registered extension binding providers
+            foreach (ITriggerBindingProvider provider in extensions.GetExtensions(typeof(ITriggerBindingProvider)))
             {
-                ITriggerBindingProvider serviceBusAttributeBindingProvider =
-                    (ITriggerBindingProvider)Activator.CreateInstance(serviceBusProviderType, nameResolver,
-                    serviceBusAccountProvider);
-                innerProviders.Add(serviceBusAttributeBindingProvider);
+                innerProviders.Add(provider);
             }
 
             return new CompositeTriggerBindingProvider(innerProviders);

@@ -11,16 +11,23 @@ using System.Text.RegularExpressions;
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
 {
     /// <summary>
-    /// Binding template providing functionality of capturing parameter values out of actual path matching  
-    /// original input pattern.
+    /// This class is used to create <see cref="BindingTemplateSource"/> instances from path template strings.
+    /// <see cref="BindingTemplateSource"/> is used at binding time to capture parameter values from actual
+    /// paths at runtime, for use in function parameter binding.
     /// </summary>
     [DebuggerDisplay("{Pattern,nq}")]
-    internal class BindingTemplateSource
+    public class BindingTemplateSource
     {
+        private const string EntirePatternGroupName = "0";
         private readonly string _pattern;
         private readonly Regex _captureRegex;
 
-        public BindingTemplateSource(string pattern, Regex captureRegex)
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="pattern">The template pattern.</param>
+        /// <param name="captureRegex">The cature regular expression.</param>
+        internal BindingTemplateSource(string pattern, Regex captureRegex)
         {
             if (pattern == null)
             {
@@ -36,62 +43,49 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             _captureRegex = captureRegex;
         }
 
+        /// <summary>
+        /// Gets the binding template pattern.
+        /// </summary>
         public string Pattern
         {
             get { return _pattern; }
         }
 
+        /// <summary>
+        /// Gets the collection of template parameter names parsed from the template pattern.
+        /// </summary>
         public IEnumerable<string> ParameterNames
         {
             get
             {
-                const string EntirePatternGroupName = "0";
                 return _captureRegex.GetGroupNames().Where(n => !String.Equals(n, EntirePatternGroupName));
             }
         }
 
         /// <summary>
-        /// Convenient factory method to parse input pattern, build capturing expression and instantiate
-        /// binding template instance.
+        /// Factory method that constructs a <see cref="BindingTemplateSource"/> from an input binding template pattern.
         /// </summary>
-        /// <param name="input">A binding template string in a format supported by <see cref="BindingTemplateParser"/>.
+        /// <remarks>
+        /// A template string may contain parameters embraced with curly brackets, which get replaced 
+        /// with values later when the template is bound. 
+        /// </remarks>
+        /// <example>
+        /// Below is a minimal template that illustrates a few basics:
+        /// {p1}-p2/{{2014}}/folder/{name}.{ext}
+        /// </example>
+        /// <param name="pattern">A binding template pattern string in a supported format (see remarks).
         /// </param>
-        /// <returns>Valid ready-to-use instance of <see cref="BindingTemplateSource"/>.</returns>
-        public static BindingTemplateSource FromString(string input)
+        /// <returns>An instance of <see cref="BindingTemplateSource"/> for the specified template pattern.</returns>
+        public static BindingTemplateSource FromString(string pattern)
         {
-            IEnumerable<BindingTemplateToken> tokens = BindingTemplateParser.GetTokens(input);
+            IEnumerable<BindingTemplateToken> tokens = BindingTemplateParser.GetTokens(pattern);
             string capturePattern = BuildCapturePattern(tokens);
-            return new BindingTemplateSource(input, new Regex(capturePattern, RegexOptions.Compiled));
+
+            return new BindingTemplateSource(pattern, new Regex(capturePattern, RegexOptions.Compiled));
         }
 
         /// <summary>
-        /// Utility method to build regexp to capture parameter values out of pre-parsed template tokens.
-        /// </summary>
-        /// <param name="tokens">Template tokens as generated and validated by 
-        /// the <see cref="BindingTemplateParser"/>.</param>
-        /// <returns>Regex pattern to capture parameter values, containing named capturing groups, matching
-        /// structure and parameter names provided by the list of tokens.</returns>
-        public static string BuildCapturePattern(IEnumerable<BindingTemplateToken> tokens)
-        {
-            StringBuilder builder = new StringBuilder("^");
-
-            foreach (BindingTemplateToken token in tokens)
-            {
-                if (token.IsParameter)
-                {
-                    builder.Append(String.Format("(?<{0}>.*)", token.Value));
-                }
-                else
-                {
-                    builder.Append(Regex.Escape(token.Value));
-                }
-            }
-
-            return builder.Append("$").ToString();
-        }
-
-        /// <summary>
-        /// Retrieves parameter values out of the actual path if it matches the binding template pattern.
+        /// Parses parameter values from the actual path if it matches the binding template pattern.
         /// </summary>
         /// <param name="actualPath">Path string to match</param>
         /// <returns>Dictionary of parameter names to parameter values, or null if no match.</returns>
@@ -115,9 +109,39 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             return namedParameters;
         }
 
+        /// <summary>
+        /// Returns a string representation of the binding template.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return _pattern;
+        }
+
+        /// <summary>
+        /// Utility method to build regexp to capture parameter values out of pre-parsed template tokens.
+        /// </summary>
+        /// <param name="tokens">Template tokens as generated and validated by 
+        /// the <see cref="BindingTemplateParser"/>.</param>
+        /// <returns>Regex pattern to capture parameter values, containing named capturing groups, matching
+        /// structure and parameter names provided by the list of tokens.</returns>
+        internal static string BuildCapturePattern(IEnumerable<BindingTemplateToken> tokens)
+        {
+            StringBuilder builder = new StringBuilder("^");
+
+            foreach (BindingTemplateToken token in tokens)
+            {
+                if (token.IsParameter)
+                {
+                    builder.Append(String.Format("(?<{0}>.*)", token.Value));
+                }
+                else
+                {
+                    builder.Append(Regex.Escape(token.Value));
+                }
+            }
+
+            return builder.Append("$").ToString();
         }
     }
 }

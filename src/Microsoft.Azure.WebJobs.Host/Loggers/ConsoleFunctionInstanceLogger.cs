@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     {
         public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            Console.WriteLine("Executing: '{0}' because {1}", message.Function.ShortName, message.FormatReason());
+            Console.WriteLine("Executing: '{0}' - Reason: '{1}'", message.Function.ShortName, message.FormatReason());
             return Task.FromResult<string>(null);
         }
 
@@ -22,8 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(
-                    "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance id is {0}",
+                Console.WriteLine("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance id is '{0}'",
                     message.FunctionInstanceId);
                 Console.ForegroundColor = oldColor;
             }

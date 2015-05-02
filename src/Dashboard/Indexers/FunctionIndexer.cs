@@ -8,8 +8,8 @@ using System.Linq;
 using Dashboard.Data;
 using Dashboard.HostMessaging;
 using Microsoft.Azure.WebJobs.Protocols;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Indexers
 {
@@ -169,7 +169,7 @@ namespace Dashboard.Indexers
             }
         }
 
-        private static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
+        internal static FunctionInstanceSnapshot CreateSnapshot(FunctionStartedMessage message)
         {
             return new FunctionInstanceSnapshot
             {
@@ -197,8 +197,7 @@ namespace Dashboard.Indexers
         private static IDictionary<string, FunctionInstanceArgument> CreateArguments(IEnumerable<ParameterDescriptor> parameters,
             IDictionary<string, string> argumentValues)
         {
-            IDictionary<string, FunctionInstanceArgument> arguments =
-                new Dictionary<string, FunctionInstanceArgument>();
+            IDictionary<string, FunctionInstanceArgument> arguments = new Dictionary<string, FunctionInstanceArgument>();
 
             foreach (KeyValuePair<string, string> item in argumentValues)
             {

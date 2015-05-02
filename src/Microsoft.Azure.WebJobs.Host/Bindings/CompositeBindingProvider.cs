@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             foreach (IBindingProvider provider in _providers)
             {
                 IBinding binding = await provider.TryCreateAsync(context);
-
                 if (binding != null)
                 {
                     return binding;

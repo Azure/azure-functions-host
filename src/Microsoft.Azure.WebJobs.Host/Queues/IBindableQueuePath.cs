@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
 {
-    interface IBindableQueuePath : IBindablePath<string>
+    internal interface IBindableQueuePath : IBindablePath<string>
     {
         string QueueNamePattern { get; }
     }

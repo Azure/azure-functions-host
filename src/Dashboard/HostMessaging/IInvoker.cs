@@ -10,7 +10,6 @@ namespace Dashboard.HostMessaging
 {
     public interface IInvoker
     {
-        Guid TriggerAndOverride(string queueName, FunctionSnapshot function, IDictionary<string, string> arguments,
-            Guid? parentId, ExecutionReason reason);
+        Guid TriggerAndOverride(string queueName, FunctionSnapshot function, IDictionary<string, string> arguments, Guid? parentId, ExecutionReason reason);
     }
 }

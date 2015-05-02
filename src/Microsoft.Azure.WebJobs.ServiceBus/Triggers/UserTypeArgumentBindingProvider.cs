@@ -6,9 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json;
@@ -94,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
                     try
                     {
-                        return JsonConvert.DeserializeObject<TInput>(contents, JsonSerialization.Settings);
+                        return JsonConvert.DeserializeObject<TInput>(contents, Constants.JsonSerializerSettings);
                     }
                     catch (JsonException e)
                     {

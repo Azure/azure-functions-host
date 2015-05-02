@@ -14,12 +14,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
     /// template parameters with parameter values.
     /// </summary>
     [DebuggerDisplay("{Pattern,nq}")]
-    internal class BindingTemplate
+    public class BindingTemplate
     {
         private readonly string _pattern;
         private readonly IReadOnlyList<BindingTemplateToken> _tokens;
 
-        public BindingTemplate(string pattern, IReadOnlyList<BindingTemplateToken> tokens)
+        internal BindingTemplate(string pattern, IReadOnlyList<BindingTemplateToken> tokens)
         {
             if (pattern == null)
             {
@@ -35,21 +35,27 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             _tokens = tokens;
         }
 
+        /// <summary>
+        /// Gets the binding pattern.
+        /// </summary>
         public string Pattern
         {
             get { return _pattern; }
         }
 
-        public IEnumerable<BindingTemplateToken> Tokens
+        internal IEnumerable<BindingTemplateToken> Tokens
         {
             get { return _tokens; }
         }
 
+        /// <summary>
+        /// Gets the collection of parameter names this pattern applies to.
+        /// </summary>
         public IEnumerable<string> ParameterNames
         {
             get
             {
-                return from token in Tokens where token.IsParameter select token.Value;
+                return Tokens.Where(p => p.IsParameter).Select(p => p.Value);
             }
         }
 
@@ -102,6 +108,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             return builder.ToString();
         }
 
+        /// <summary>
+        /// Gets a string representation of the binding template.
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return _pattern;

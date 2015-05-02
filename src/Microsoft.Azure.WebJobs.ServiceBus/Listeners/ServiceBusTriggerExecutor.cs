@@ -5,30 +5,23 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 {
-    internal class ServiceBusTriggerExecutor : ITriggerExecutor<BrokeredMessage>
+    internal class ServiceBusTriggerExecutor
     {
-        private readonly ITriggeredFunctionInstanceFactory<BrokeredMessage> _instanceFactory;
-        private readonly IFunctionExecutor _innerExecutor;
+        private readonly ITriggeredFunctionExecutor<BrokeredMessage> _innerExecutor;
 
-        public ServiceBusTriggerExecutor(ITriggeredFunctionInstanceFactory<BrokeredMessage> instanceFactory,
-            IFunctionExecutor innerExecutor)
+        public ServiceBusTriggerExecutor(ITriggeredFunctionExecutor<BrokeredMessage> innerExecutor)
         {
-            _instanceFactory = instanceFactory;
             _innerExecutor = innerExecutor;
         }
 
         public async Task<bool> ExecuteAsync(BrokeredMessage value, CancellationToken cancellationToken)
         {
             Guid? parentId = ServiceBusCausalityHelper.GetOwner(value);
-            IFunctionInstance instance = _instanceFactory.Create(value, parentId);
-            IDelayedException exception = await _innerExecutor.TryExecuteAsync(instance, cancellationToken);
-            return exception == null;
+            return await _innerExecutor.TryExecuteAsync(parentId, value, cancellationToken);
         }
     }
 }

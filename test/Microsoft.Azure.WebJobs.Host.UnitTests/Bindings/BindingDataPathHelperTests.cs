@@ -10,7 +10,7 @@ using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
 {
-    public class BindingDataPathTests
+    public class BindingDataPathHelperTests
     {
         [Theory]
         [InlineData(typeof(Int16), "-123")]
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             object paramValue = parseMethod.Invoke(null, new object[] { expectedStringValue });
 
             // Act
-            string stringParamValue = BindingDataPath.ConvertParameterValueToString(paramValue);
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(paramValue);
 
             // Assert
             Assert.NotNull(stringParamValue);
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             const string expectedStringValue = "Some random test string";
 
             // Act
-            string stringParamValue = BindingDataPath.ConvertParameterValueToString(expectedStringValue);
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(expectedStringValue);
 
             // Assert
             Assert.NotNull(stringParamValue);
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             Guid guidParam = Guid.Parse(expectedStringValue);
 
             // Act
-            string stringParamValue = BindingDataPath.ConvertParameterValueToString(guidParam);
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(guidParam);
 
             // Assert
             Assert.NotNull(stringParamValue);
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Bindings
             DateTime dateTimeParam = DateTime.Now;
 
             // Act
-            string stringParamValue = BindingDataPath.ConvertParameterValueToString(dateTimeParam);
+            string stringParamValue = BindingDataPathHelper.ConvertParameterValueToString(dateTimeParam);
 
             // Assert
             Assert.Null(stringParamValue);

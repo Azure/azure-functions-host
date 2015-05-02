@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    interface IBindableTablePath : IBindablePath<string>
+    internal interface IBindableTablePath : IBindablePath<string>
     {
         string TableNamePattern { get; }
     }

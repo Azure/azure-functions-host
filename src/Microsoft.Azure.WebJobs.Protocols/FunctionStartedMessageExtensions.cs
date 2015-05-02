@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     internal static class FunctionStartedMessageExtensions
 #endif
     {
-        /// <summary>Format's a function's <see cref="ExecutionReason"/> in a display-friendly text format.</summary>
+        /// <summary>Formats a function's <see cref="ExecutionReason"/> in a display-friendly text format.</summary>
         /// <param name="message">The function whose reason to format.</param>
         /// <returns>A function's <see cref="ExecutionReason"/> in a display-friendly text format.</returns>
         public static string FormatReason(this FunctionStartedMessage message)
@@ -28,6 +28,14 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             }
 
             ExecutionReason reason = message.Reason;
+
+            // If the message already contains details use them. This will be the case for
+            // messages serialized from the Host to the Dashboard. The host will format the
+            // reason before sending
+            if (!string.IsNullOrEmpty(message.ReasonDetails))
+            {
+                return message.ReasonDetails;
+            }
 
             switch (reason)
             {
@@ -44,25 +52,10 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         private static string GetAutomaticTriggerReason(FunctionStartedMessage message)
         {
-            string blobPath = GetArgumentValue<BlobTriggerParameterDescriptor>(message);
-
-            if (blobPath != null)
+            TriggerParameterDescriptor triggerParameterDescriptor = GetParameterDescriptor<TriggerParameterDescriptor>(message);
+            if (triggerParameterDescriptor != null)
             {
-                return "New blob detected: " + blobPath;
-            }
-
-            QueueTriggerParameterDescriptor queueTrigger = GetParameterDescriptor<QueueTriggerParameterDescriptor>(message);
-
-            if (queueTrigger != null)
-            {
-                return "New queue message detected on '" + queueTrigger.QueueName + "'.";
-            }
-
-            ServiceBusTriggerParameterDescriptor serviceBusTrigger = GetParameterDescriptor<ServiceBusTriggerParameterDescriptor>(message);
-
-            if (serviceBusTrigger != null)
-            {
-                return "New service bus message detected on '" + GetPath(serviceBusTrigger) + "'.";
+                return triggerParameterDescriptor.GetTriggerReason(message.Arguments);
             }
 
             return null;
@@ -71,33 +64,6 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         private static T GetParameterDescriptor<T>(FunctionStartedMessage message) where T : ParameterDescriptor
         {
             return message.Function.Parameters.OfType<T>().FirstOrDefault();
-        }
-
-        private static string GetArgumentValue<T>(FunctionStartedMessage message) where T : ParameterDescriptor
-        {
-            T parameterDescriptor = GetParameterDescriptor<T>(message);
-
-            if (parameterDescriptor == null)
-            {
-                return null;
-            }
-
-            if (!message.Arguments.ContainsKey(parameterDescriptor.Name))
-            {
-                return null;
-            }
-
-            return message.Arguments[parameterDescriptor.Name];
-        }
-
-        private static string GetPath(ServiceBusTriggerParameterDescriptor serviceBusTrigger)
-        {
-            if (serviceBusTrigger.QueueName != null)
-            {
-                return serviceBusTrigger.QueueName;
-            }
-
-            return serviceBusTrigger.TopicName + "/Subscriptions/" + serviceBusTrigger.SubscriptionName;
         }
     }
 }

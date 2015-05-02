@@ -26,8 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private HostOutputMessage _hostOutputMessage;
 
-        public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger,
-            IFunctionOutputLogger functionOutputLogger,
+        public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger, 
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (functionInstanceLogger == null)
@@ -56,8 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             set { _hostOutputMessage = value; }
         }
 
-        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
-            CancellationToken cancellationToken)
+        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance, CancellationToken cancellationToken)
         {
             FunctionStartedMessage startedMessage = CreateStartedMessageWithoutArguments(instance);
             IDictionary<string, ParameterLog> parameterLogCollector = new Dictionary<string, ParameterLog>();
@@ -68,8 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             string startedMessageId = null;
             try
             {
-                startedMessageId = await ExecuteWithLogMessageAsync(instance, startedMessage, parameterLogCollector,
-                    cancellationToken);
+                startedMessageId = await ExecuteWithLogMessageAsync(instance, startedMessage, parameterLogCollector, cancellationToken);
                 completedMessage = CreateCompletedMessage(startedMessage);
             }
             catch (Exception exception)
@@ -117,24 +114,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return exceptionInfo != null ? new ExceptionDispatchInfoDelayedException(exceptionInfo) : null;
         }
 
-        private async Task<string> ExecuteWithLogMessageAsync(IFunctionInstance instance,
-            FunctionStartedMessage message,
-            IDictionary<string, ParameterLog> parameterLogCollector,
-            CancellationToken cancellationToken)
+        private async Task<string> ExecuteWithLogMessageAsync(IFunctionInstance instance, FunctionStartedMessage message, 
+            IDictionary<string, ParameterLog> parameterLogCollector, CancellationToken cancellationToken)
         {
             string startedMessageId;
 
             // Create the console output writer
-            IFunctionOutputDefinition outputDefinition = await _functionOutputLogger.CreateAsync(instance,
-                cancellationToken);
+            IFunctionOutputDefinition outputDefinition = await _functionOutputLogger.CreateAsync(instance, cancellationToken);
 
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
-            using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand,
-                _backgroundExceptionDispatcher))
+            using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand, _backgroundExceptionDispatcher))
             {
                 TextWriter consoleOutput = outputLog.Output;
-                FunctionBindingContext functionContext =
-                    new FunctionBindingContext(instance.Id, cancellationToken, consoleOutput);
+                FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, cancellationToken, consoleOutput);
 
                 // Must bind before logging (bound invoke string is included in log message).
                 IReadOnlyDictionary<string, IValueProvider> parameters =
@@ -388,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private FunctionStartedMessage CreateStartedMessageWithoutArguments(IFunctionInstance instance)
         {
-            return new FunctionStartedMessage
+            FunctionStartedMessage message = new FunctionStartedMessage
             {
                 HostInstanceId = _hostOutputMessage.HostInstanceId,
                 HostDisplayName = _hostOutputMessage.HostDisplayName,
@@ -402,6 +394,16 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 Reason = instance.Reason,
                 StartTime = DateTimeOffset.UtcNow
             };
+
+            // It's important that the host formats the reason before sending the message.
+            // This enables extensibility scenarios. For the built in types, the Host and Dashboard
+            // share types so it's possible (in the case of triggered functions) for the formatting
+            // to require a call to TriggerParameterDescriptor.GetTriggerReason and that can only
+            // be done on the Host side in the case of extensions (since the dashboard doesn't
+            // know about extension types).
+            message.ReasonDetails = message.FormatReason();
+
+            return message;
         }
 
         private static FunctionCompletedMessage CreateCompletedMessage(FunctionStartedMessage startedMessage)
@@ -419,6 +421,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 Arguments = startedMessage.Arguments,
                 ParentId = startedMessage.ParentId,
                 Reason = startedMessage.Reason,
+                ReasonDetails = startedMessage.FormatReason(),
                 StartTime = startedMessage.StartTime,
                 OutputBlob = startedMessage.OutputBlob,
                 ParameterLogBlob = startedMessage.ParameterLogBlob
@@ -489,19 +492,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             public int Compare(IValueProvider x, IValueProvider y)
             {
-                int xOrder = GetStepOrder(x);
-                int yOrder = GetStepOrder(y);
+                int xOrder = (int)GetStepOrder(x);
+                int yOrder = (int)GetStepOrder(y);
 
                 return Comparer<int>.Default.Compare(xOrder, yOrder);
             }
 
-            private static int GetStepOrder(IValueProvider provider)
+            private static BindStepOrder GetStepOrder(IValueProvider provider)
             {
                 IOrderedValueBinder orderedBinder = provider as IOrderedValueBinder;
 
                 if (orderedBinder == null)
                 {
-                    return BindStepOrders.Default;
+                    return BindStepOrder.Default;
                 }
 
                 return orderedBinder.StepOrder;

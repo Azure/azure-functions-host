@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
@@ -191,8 +192,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 extensionTypeLocator = new FakeExtensionTypeLocator(cloudBlobStreamBinderTypes);
             }
 
-            return CreateServiceProvider<TResult>(storageAccount, programType, extensionTypeLocator, activator,
-                taskSource,
+            return CreateServiceProvider<TResult>(storageAccount, programType, extensionTypeLocator, activator, taskSource,
                 new ExpectManualCompletionFunctionInstanceLogger<TResult>(taskSource, ignoreFailureFunctions));
         }
 
@@ -212,7 +212,6 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             {
                 StorageAccount = storageAccount
             };
-            IServiceBusAccountProvider serviceBusAccountProvider = new NullServiceBusAccountProvider();
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
             IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
@@ -223,26 +222,40 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
+            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator, hostIdProvider,
+                storageAccountProvider, extensionTypeLocator, hostIdProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor, sharedContextProvider, TextWriter.Null);
+                blobWrittenWatcherAccessor, sharedContextProvider, extensions, TextWriter.Null);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor);
+                extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor, extensions);
+
+            IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = new NullFunctionInstanceLoggerProvider();
+            IFunctionOutputLoggerProvider functionOutputLoggerProvider = new NullFunctionOutputLoggerProvider();
+            Task<IFunctionOutputLogger> task = functionOutputLoggerProvider.GetAsync(CancellationToken.None);
+            task.Wait();
+            IFunctionOutputLogger functionOutputLogger = task.Result;
+            IFunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher);
+
+            ITypeLocator typeLocator = new FakeTypeLocator(programType);
+            FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(
+                typeLocator, triggerBindingProvider, bindingProvider,
+                activator, executor, new DefaultExtensionRegistry());
 
             IJobHostContextFactory contextFactory = new FakeJobHostContextFactory
             {
-                FunctionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(programType),
-                    triggerBindingProvider, bindingProvider, activator),
+                TypeLocator = typeLocator,
+                FunctionIndexProvider = functionIndexProvider,
                 StorageAccountProvider = storageAccountProvider,
-                ServiceBusAccountProvider = serviceBusAccountProvider,
                 BackgroundExceptionDispatcher = backgroundExceptionDispatcher,
                 BindingProvider = bindingProvider,
                 ConsoleProvider = new NullConsoleProvider(),
                 HostInstanceLoggerProvider = new NullHostInstanceLoggerProvider(),
-                FunctionInstanceLoggerProvider = new FakeFunctionInstanceLoggerProvider(functionInstanceLogger),
-                FunctionOutputLoggerProvider = new NullFunctionOutputLoggerProvider(),
+                FunctionExecutor = executor,
+                FunctionInstanceLoggerProvider = functionInstanceLoggerProvider,
+                FunctionOutputLoggerProvider = functionOutputLoggerProvider,
                 HostIdProvider = hostIdProvider,
                 QueueConfiguration = new FakeQueueConfiguration()
             };

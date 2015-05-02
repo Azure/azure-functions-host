@@ -13,14 +13,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
     {
         private readonly MessagingFactory _messagingFactory;
         private readonly string _entityPath;
-        private readonly ITriggerExecutor<BrokeredMessage> _triggerExecutor;
+        private readonly ServiceBusTriggerExecutor _triggerExecutor;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
         private MessageReceiver _receiver;
         private bool _disposed;
 
-        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath,
-            ITriggerExecutor<BrokeredMessage> triggerExecutor)
+        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor)
         {
             _messagingFactory = messagingFactory;
             _entityPath = entityPath;

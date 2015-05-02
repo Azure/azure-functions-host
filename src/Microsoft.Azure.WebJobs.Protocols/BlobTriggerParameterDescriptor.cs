@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -14,9 +15,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     /// <summary>Represents a parameter triggered on a blob in Azure Storage.</summary>
     [JsonTypeName("BlobTrigger")]
 #if PUBLICPROTOCOL
-    public class BlobTriggerParameterDescriptor : ParameterDescriptor
+    public class BlobTriggerParameterDescriptor : TriggerParameterDescriptor
 #else
-    internal class BlobTriggerParameterDescriptor : ParameterDescriptor
+    internal class BlobTriggerParameterDescriptor : TriggerParameterDescriptor
 #endif
     {
         /// <summary>Gets or sets the name of the storage account.</summary>
@@ -31,5 +32,17 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Gets or sets the kind of access the parameter has to the blob.</summary>
         [JsonConverter(typeof(StringEnumConverter))]
         public FileAccess Access { get; set; }
+
+        /// <inheritdoc />
+        public override string GetTriggerReason(IDictionary<string, string> arguments)
+        {
+            string blobPath;
+            if (arguments != null && arguments.TryGetValue(Name, out blobPath))
+            {
+                return "New blob detected: " + blobPath;
+            }
+
+            return null;
+        }
     }
 }

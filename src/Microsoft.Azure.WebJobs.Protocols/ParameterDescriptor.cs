@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -14,14 +16,33 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 #if PUBLICPROTOCOL
     public class ParameterDescriptor
 #else
-    internal class ParameterDescriptor
+    public class ParameterDescriptor
 #endif
     {
-        /// <summary>Gets or sets the parameter type.</summary>
+        /// <summary>
+        /// Gets or sets the parameter type. This property shouldn't be set explicitly.
+        /// It is automatically set based on application of <see cref="JsonTypeNameAttribute"/>
+        /// to derived types.
+        /// </summary>
         public string Type { get; set; }
 
-        /// <summary>Gets or sets the parameter name.</summary>
+        /// <summary>
+        /// Gets or sets the parameter name.
+        /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the parameter display descriptor.
+        /// </summary>
+        public ParameterDisplayHints DisplayHints { get; set; }
+
+        /// <summary>
+        /// Dictionary of all properties that were in a deserialized
+        /// json payload but didn't have corresponding properties on
+        /// the deserialized type.
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, JToken> ExtendedProperties { get; set; }
 
         private class ParameterDescriptorConverter : PolymorphicJsonConverter
         {

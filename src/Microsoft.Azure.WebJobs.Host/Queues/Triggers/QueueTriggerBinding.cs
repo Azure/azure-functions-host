@@ -8,11 +8,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
-using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
@@ -89,6 +87,14 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _converter = CreateConverter(queue);
         }
 
+        public Type TriggerValueType
+        {
+            get
+            {
+                return typeof(IStorageQueueMessage);
+            }
+        }
+
         public IReadOnlyDictionary<string, Type> BindingDataContract
         {
             get { return _bindingDataContract; }
@@ -99,8 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             get { return _queue.Name; }
         }
 
-        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(
-            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
+        private static IReadOnlyDictionary<string, Type> CreateBindingDataContract(ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding)
         {
             Dictionary<string, Type> contract = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
             contract.Add("QueueTrigger", typeof(string));
@@ -151,18 +156,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             return BindAsync(message, context);
         }
 
-        public IFunctionDefinition CreateFunctionDefinition(IReadOnlyDictionary<string, IBinding> nonTriggerBindings,
-            IFunctionInvoker invoker, FunctionDescriptor functionDescriptor)
+        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
         {
-            ITriggeredFunctionBinding<IStorageQueueMessage> functionBinding =
-                new TriggeredFunctionBinding<IStorageQueueMessage>(_parameterName, this, nonTriggerBindings);
-            ITriggeredFunctionInstanceFactory<IStorageQueueMessage> instanceFactory =
-                new TriggeredFunctionInstanceFactory<IStorageQueueMessage>(functionBinding, invoker,
-                    functionDescriptor);
-            IListenerFactory listenerFactory = new QueueListenerFactory(_queue, _queueConfiguration,
-                _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter, _sharedContextProvider, _log,
-                instanceFactory);
-            return new FunctionDefinition(instanceFactory, listenerFactory);
+            return new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher, 
+                _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, (ITriggeredFunctionExecutor<IStorageQueueMessage>)executor);
+        }
+
+        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor<IStorageQueueMessage> executor)
+        {
+            return new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher,
+                _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, executor);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

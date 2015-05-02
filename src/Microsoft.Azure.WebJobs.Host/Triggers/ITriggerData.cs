@@ -6,10 +6,20 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Triggers
 {
-    internal interface ITriggerData
+    /// <summary>
+    /// Defines an interface for representing data returned after a trigger
+    /// parameter value is bound.
+    /// </summary>
+    public interface ITriggerData
     {
+        /// <summary>
+        /// Gets the <see cref="IValueProvider"/> for the bound parameter value.
+        /// </summary>
         IValueProvider ValueProvider { get; }
 
+        /// <summary>
+        /// Gets the collection of binding data for the bound parameter value.
+        /// </summary>
         IReadOnlyDictionary<string, object> BindingData { get; }
     }
 }

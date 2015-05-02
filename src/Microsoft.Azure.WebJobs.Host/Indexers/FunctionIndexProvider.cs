@@ -18,13 +18,17 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
         private readonly IJobActivator _activator;
+        private readonly IFunctionExecutor _executor;
+        private readonly IExtensionRegistry _extensions;
 
         private IFunctionIndex _index;
 
         public FunctionIndexProvider(ITypeLocator typeLocator,
             ITriggerBindingProvider triggerBindingProvider,
             IBindingProvider bindingProvider,
-            IJobActivator activator)
+            IJobActivator activator,
+            IFunctionExecutor executor,
+            IExtensionRegistry extensions)
         {
             if (typeLocator == null)
             {
@@ -46,10 +50,22 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 throw new ArgumentNullException("activator");
             }
 
+            if (executor == null)
+            {
+                throw new ArgumentNullException("executor");
+            }
+
+            if (extensions == null)
+            {
+                throw new ArgumentNullException("extensions");
+            }
+
             _typeLocator = typeLocator;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
             _activator = activator;
+            _executor = executor;
+            _extensions = extensions;
         }
 
         public async Task<IFunctionIndex> GetAsync(CancellationToken cancellationToken)
@@ -65,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator);
+            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

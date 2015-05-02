@@ -9,7 +9,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal interface IFunctionInstanceFactory
     {
-        IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason,
-            IDictionary<string, object> parameters);
+        IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason, IDictionary<string, object> parameters);
     }
 }

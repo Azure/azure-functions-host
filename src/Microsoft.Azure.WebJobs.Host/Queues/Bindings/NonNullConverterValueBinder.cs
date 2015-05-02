@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
             _messageEnqueuedWatcher = messageEnqueuedWatcher;
         }
 
-        public int StepOrder
+        public BindStepOrder StepOrder
         {
-            get { return BindStepOrders.Enqueue; }
+            get { return BindStepOrder.Enqueue; }
         }
 
         public Type Type

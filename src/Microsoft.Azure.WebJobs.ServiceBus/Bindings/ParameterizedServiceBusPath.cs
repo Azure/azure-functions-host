@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new ArgumentNullException("bindingData");
             }
                 
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
             string queueOrTopicName = _template.Bind(parameters);
             return queueOrTopicName;
         }

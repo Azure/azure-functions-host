@@ -5,8 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Blobs;
-using Microsoft.Azure.WebJobs.Host.Queues;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -15,8 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         private readonly FunctionBindingContext _functionContext;
         private readonly IReadOnlyDictionary<string, object> _bindingData;
 
-        public AmbientBindingContext(FunctionBindingContext functionContext,
-            IReadOnlyDictionary<string, object> bindingData)
+        public AmbientBindingContext(FunctionBindingContext functionContext, IReadOnlyDictionary<string, object> bindingData)
         {
             _functionContext = functionContext;
             _bindingData = bindingData;

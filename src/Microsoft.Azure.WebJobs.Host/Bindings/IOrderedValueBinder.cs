@@ -3,8 +3,14 @@
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    internal interface IOrderedValueBinder : IValueBinder
+    /// <summary>
+    /// Defines an <see cref="IValueBinder"/> that provides an ordering hint./>
+    /// </summary>
+    public interface IOrderedValueBinder : IValueBinder
     {
-        int StepOrder { get; }
+        /// <summary>
+        /// Gets the bind order for the binder.
+        /// </summary>
+        BindStepOrder StepOrder { get; }
     }
 }

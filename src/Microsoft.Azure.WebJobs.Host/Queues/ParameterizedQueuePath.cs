@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                 throw new ArgumentNullException("bindingData");
             }
 
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
             string queueName = _template.Bind(parameters);
             return BindableQueuePath.NormalizeAndValidate(queueName);
         }

@@ -180,10 +180,13 @@
     <Compile Include="Data\Logs\IIndexerLogReader.cs" />
     <Compile Include="Data\Logs\IIndexerLogWriter.cs" />
     <Compile Include="Data\Logs\IndexerLogEntry.cs" />
+    <Compile Include="Data\ParameterSnapshot.cs" />
+    <Compile Include="Data\ServiceBusParameterSnapshot.cs" />
     <Compile Include="Data\StorageAccountValidator.cs" />
     <Compile Include="Data\FunctionIndexEntry.cs" />
     <Compile Include="Data\FunctionIndexManager.cs" />
     <Compile Include="Data\IFunctionIndexManager.cs" />
+    <Compile Include="Data\DisplayHintsParameterSnapshot.cs" />
     <Compile Include="Data\VersionedMetadataDocument.cs" />
     <Compile Include="Data\VersionedMetadataText.cs" />
     <Compile Include="Data\VersionedTextStore.cs" />
@@ -256,9 +259,7 @@
     <Compile Include="Data\IFunctionInstanceLookup.cs" />
     <Compile Include="Data\InvokeParameterSnapshot.cs" />
     <Compile Include="Data\IConcurrentTextStore.cs" />
-    <Compile Include="Data\ParameterSnapshot.cs" />
     <Compile Include="Data\QueueParameterSnapshot.cs" />
-    <Compile Include="Data\ServiceBusParameterSnapshot.cs" />
     <Compile Include="Data\TableEntityParameterSnapshot.cs" />
     <Compile Include="Data\TableParameterSnapshot.cs" />
     <Compile Include="Data\ConcurrentMetadataDocument.cs" />

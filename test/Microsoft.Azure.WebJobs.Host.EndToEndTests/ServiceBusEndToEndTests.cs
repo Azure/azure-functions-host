@@ -10,6 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
+using Microsoft.Azure.WebJobs.ServiceBus;
+using Microsoft.Azure.WebJobs.ServiceBus.Config;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
@@ -116,6 +118,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private void ServiceBusEndToEndInternal()
         {
+            StringWriter consoleOutput = new StringWriter();
+            Console.SetOut(consoleOutput);
+
             // Reinitialize the name resolver to avoid naming conflicts
             _nameResolver = new RandomNameResolver();
 
@@ -125,9 +130,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(this.GetType())
             };
 
-            _namespaceManager = NamespaceManager.CreateFromConnectionString(config.ServiceBusConnectionString);
+            ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration();
+            config.UseServiceBus(serviceBusConfig);
 
-            CreateStartMessage(config.ServiceBusConnectionString);
+            _namespaceManager = NamespaceManager.CreateFromConnectionString(serviceBusConfig.ConnectionString);
+
+            string startQueueName = ResolveName(StartQueueName);
+            string secondQueueName = startQueueName.Replace("start", "1");
+            string queuePrefix = startQueueName.Replace("-queue-start", "");
+            string firstTopicName = string.Format("{0}-topic/Subscriptions/{0}-queue-topic-1", queuePrefix);
+            string secondTopicName = string.Format("{0}-topic/Subscriptions/{0}-queue-topic-2", queuePrefix);
+            CreateStartMessage(serviceBusConfig.ConnectionString, startQueueName);
 
             JobHost host = new JobHost(config);
 
@@ -147,11 +160,27 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
+
+            string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            string[] expectedOutputLines = new string[]
+                {
+                    "Found the following functions:",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBQueue2SBQueue",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBQueue2SBTopic",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBTopicListener1",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBTopicListener2",
+                    "Job host started",
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBQueue' - Reason: 'New service bus message detected on '{0}.'", startQueueName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBTopic' - Reason: 'New service bus message detected on '{0}.'", secondQueueName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener1' - Reason: 'New service bus message detected on '{0}.'", firstTopicName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener2' - Reason: 'New service bus message detected on '{0}.'", secondTopicName),
+                    "Job host stopped"
+                };
+            Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));
         }
 
-        private void CreateStartMessage(string serviceBusConnectionString)
+        private void CreateStartMessage(string serviceBusConnectionString, string queueName)
         {
-            string queueName = ResolveName(StartQueueName);
             if (!_namespaceManager.QueueExists(queueName))
             {
                 _namespaceManager.CreateQueue(queueName);

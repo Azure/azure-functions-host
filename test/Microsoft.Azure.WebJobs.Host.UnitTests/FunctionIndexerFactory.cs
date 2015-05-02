@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.IO;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -18,14 +20,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     internal static class FunctionIndexerFactory
     {
-        public static FunctionIndexer Create(CloudStorageAccount account, INameResolver nameResolver = null)
+        public static FunctionIndexer Create(CloudStorageAccount account = null, INameResolver nameResolver = null, IExtensionRegistry extensionRegistry = null)
         {
             IStorageAccount storageAccount = account != null ? new StorageAccount(account) : null;
             IStorageAccountProvider storageAccountProvider = new SimpleStorageAccountProvider
             {
                 StorageAccount = account
             };
-            IServiceBusAccountProvider serviceBusAccountProvider = null;
             IExtensionTypeLocator extensionTypeLocator = new NullExtensionTypeLocator();
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
                 new ContextAccessor<IMessageEnqueuedWatcher>();
@@ -33,15 +34,26 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
-                storageAccountProvider, serviceBusAccountProvider, extensionTypeLocator,
+                storageAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
                 BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                sharedContextProvider, TextWriter.Null);
+                sharedContextProvider, new DefaultExtensionRegistry(), TextWriter.Null);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
-                serviceBusAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor);
+                extensionTypeLocator, messageEnqueuedWatcherAccessor,
+                blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance);
+            IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
+            var task = outputLoggerProvider.GetAsync(CancellationToken.None);
+            task.Wait();
+            IFunctionOutputLogger outputLogger = task.Result;
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance);
+
+            if (extensionRegistry == null)
+            {
+                extensionRegistry = new DefaultExtensionRegistry();
+            }
+
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry);
         }
     }
 }

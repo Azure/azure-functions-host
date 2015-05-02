@@ -41,10 +41,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Theory]
-        [InlineData("MethodWithUnboundOutParameterAndNoSdkAttribute")]
+        [InlineData("MethodWithUnboundOutParameterAndNoJobAttribute")]
         [InlineData("MethodWithGenericParameter")]
         [InlineData("MethodWithNoParameters")]
-        public void IndexMethod_IgnoresMethod_IfNonSdkMethod(string method)
+        public void IndexMethod_IgnoresMethod_IfNonJobMethod(string method)
         {
             // Arrange
             Mock<IFunctionIndexCollector> indexMock = new Mock<IFunctionIndexCollector>();
@@ -114,87 +114,152 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsFalse_IfMethodHasUnresolvedGenericParameter()
+        public void IsJobMethod_ReturnsFalse_IfMethodHasUnresolvedGenericParameter()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithGenericParameter"));
 
             // Verify
             Assert.Equal(false, actual);
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsFalse_IfMethodHasNoParameters()
+        public void IsJobMethod_ReturnsFalse_IfMethodHasNoParameters()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithNoParameters"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithNoParameters"));
 
             // Verify
             Assert.Equal(false, actual);
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkAttribute()
+        public void IsJobMethod_ReturnsTrue_IfMethodHasJobAttribute()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkAttribute"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithJobAttribute"));
 
             // Verify
             Assert.Equal(true, actual);
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkAttributeButNoParameters()
+        public void IsJobMethod_ReturnsTrue_IfMethodHasJobAttributeButNoParameters()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkAttributeButNoParameters"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithJobAttributeButNoParameters"));
 
             // Verify
             Assert.Equal(true, actual);
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsTrue_IfMethodHasSdkParameterAttributes()
+        public void IsJobMethod_ReturnsTrue_IfMethodHasJobParameterAttributes()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithSdkParameterAttributes"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithJobParameterAttributes"));
 
             // Verify
             Assert.Equal(true, actual);
         }
 
         [Fact]
-        public void IsSdkMethod_ReturnsFalse_IfMethodHasNoSdkAttributes()
+        public void IsJobMethod_ReturnsTrue_IfMethodHasJobParameterAttributes_FromExtensionAssemblies()
+        {
+            // Arrange
+            Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
+            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+            extensions.RegisterExtension<ITriggerBindingProvider>(new TestExtensionTriggerBindingProvider());
+            extensions.RegisterExtension<IBindingProvider>(new TestExtensionBindingProvider());
+            FunctionIndexer product = FunctionIndexerFactory.Create(extensionRegistry: extensions);
+
+            // Act
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithExtensionJobParameterAttributes"));
+
+            // Verify
+            Assert.Equal(true, actual);
+        }
+
+        [Fact]
+        public void IsJobMethod_ReturnsFalse_IfMethodHasNoSdkAttributes()
         {
             // Arrange
             Mock<IFunctionIndex> indexMock = new Mock<IFunctionIndex>();
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act
-            bool actual = product.IsSdkMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithUnboundOutParameterAndNoSdkAttribute"));
+            bool actual = product.IsJobMethod(typeof(FunctionIndexerTests).GetMethod("MethodWithUnboundOutParameterAndNoJobAttribute"));
 
             // Verify
             Assert.Equal(false, actual);
+        }
+
+        private class TestExtensionBindingProvider : IBindingProvider
+        {
+            public Task<IBinding> TryCreateAsync(BindingProviderContext context)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        private class TestExtensionTriggerBindingProvider : ITriggerBindingProvider
+        {
+            public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        [AttributeUsage(AttributeTargets.Parameter)]
+        public class ExtensionTrigger : Attribute
+        {
+            private string _path;
+
+            public ExtensionTrigger(string path)
+            {
+                _path = path;
+            }
+
+            public string Path
+            {
+                get { return _path; }
+            }
+        }
+
+        [AttributeUsage(AttributeTargets.Parameter)]
+        public class Extension : Attribute
+        {
+            private string _path;
+
+            public Extension(string path)
+            {
+                _path = path;
+            }
+
+            public string Path
+            {
+                get { return _path; }
+            }
         }
 
         private static IFunctionIndexCollector CreateDummyFunctionIndex()
@@ -204,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
 
         private static FunctionIndexer CreateProductUnderTest()
         {
-            return FunctionIndexerFactory.Create(account: null);
+            return FunctionIndexerFactory.Create();
         }
 
         private static IFunctionIndexCollector CreateStubFunctionIndex()
@@ -218,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             throw new NotImplementedException();
         }
 
-        public static void MethodWithUnboundOutParameterAndNoSdkAttribute(string input, out Foo parsed)
+        public static void MethodWithUnboundOutParameterAndNoJobAttribute(string input, out Foo parsed)
         {
             throw new NotImplementedException();
         }
@@ -238,18 +303,23 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
         }
 
         [NoAutomaticTrigger]
-        public static void MethodWithSdkAttribute(string input, out string output)
+        public static void MethodWithJobAttribute(string input, out string output)
         {
             throw new NotImplementedException();
         }
 
         [NoAutomaticTrigger]
-        public static void MethodWithSdkAttributeButNoParameters()
+        public static void MethodWithJobAttributeButNoParameters()
         {
             throw new NotImplementedException();
         }
 
-        public static void MethodWithSdkParameterAttributes([QueueTrigger("queue")] string input, [Blob("container/output")] TextWriter writer)
+        public static void MethodWithJobParameterAttributes([QueueTrigger("queue")] string input, [Blob("container/output")] TextWriter writer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public static void MethodWithExtensionJobParameterAttributes([ExtensionTrigger("path")] string input, [Extension("path")] TextWriter writer)
         {
             throw new NotImplementedException();
         }

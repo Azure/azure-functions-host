@@ -33,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 _functionInstanceId = functionInstanceId;
             }
 
-            public int StepOrder
+            public BindStepOrder StepOrder
             {
-                get { return BindStepOrders.Enqueue; }
+                get { return BindStepOrder.Enqueue; }
             }
 
             public Type Type

@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     internal class DefaultTypeLocator : ITypeLocator
     {
         private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
-        private static readonly string _azureJobsServiceBusAssemblyName = "Microsoft.Azure.WebJobs.ServiceBus";
 
         private static Type[] EmptyTypeArray = new Type[0];
 
@@ -32,12 +31,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         // Helper to filter out assemblies that don't even reference this SDK.
         private static bool DoesAssemblyReferenceSdk(Assembly a)
         {
-            // Don't index methods in our Host or ServiceBus assemblies.
+            // Don't index methods in our assemblies.
             if (typeof(DefaultTypeLocator).Assembly == a)
-            {
-                return false;
-            }
-            else if (a.GetName().Name == "Microsoft.Azure.WebJobs.ServiceBus")
             {
                 return false;
             }
@@ -46,11 +41,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
                 if (String.Equals(referencedAssemblyName.Name, _azureJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                if (String.Equals(referencedAssemblyName.Name, _azureJobsServiceBusAssemblyName, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }

@@ -101,6 +101,7 @@
     <Compile Include="Bindings\BrokeredMessageArgumentBinding.cs" />
     <Compile Include="Bindings\ByteArrayArgumentBindingProvider.cs" />
     <Compile Include="Bindings\MessageSenderCollector.cs" />
+    <Compile Include="Bindings\ServiceBusParameterDescriptor.cs" />
     <Compile Include="Bindings\StringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\BrokeredMessageArgumentBindingProvider.cs" />
     <Compile Include="Bindings\MessageSenderExtensions.cs" />
@@ -111,6 +112,10 @@
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
     <Compile Include="Bindings\StringToBrokeredMessageConverter.cs" />
     <Compile Include="Bindings\UserTypeToBrokeredMessageConverter.cs" />
+    <Compile Include="Config\JobHostConfigurationExtensions.cs" />
+    <Compile Include="Config\ServiceBusConfiguration.cs" />
+    <Compile Include="Config\ServiceBusExtensionConfig.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="ContentTypes.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensions.cs" />
     <Compile Include="Listeners\ServiceBusListener.cs" />
@@ -122,13 +127,13 @@
     <Compile Include="Bindings\UserTypeArgumentBindingProvider.cs" />
     <Compile Include="ServiceBusAttribute.cs" />
     <Compile Include="ServiceBusClient.cs" />
-    <Compile Include="ServiceBusIndexer.cs" />
     <Compile Include="ServiceBusTriggerAttribute.cs" />
     <Compile Include="StrictEncodings.cs" />
     <Compile Include="Triggers\BrokeredMessageValueProvider.cs" />
     <Compile Include="Triggers\BrokeredMessageToByteArrayConverter.cs" />
     <Compile Include="Triggers\BrokeredMessageToStringConverter.cs" />
     <Compile Include="Listeners\ServiceBusTriggerExecutor.cs" />
+    <Compile Include="Triggers\ServiceBusTriggerParameterDescriptor.cs" />
     <Compile Include="Triggers\StringToJsonBrokeredMessageConverter.cs" />
     <Compile Include="Triggers\StringToBinaryBrokeredMessageConverter.cs" />
     <Compile Include="Triggers\StringToBrokeredMessageConverterFactory.cs" />

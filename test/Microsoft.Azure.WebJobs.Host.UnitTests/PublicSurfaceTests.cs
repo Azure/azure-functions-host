@@ -9,6 +9,11 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
+    /// <summary>
+    /// These tests help maintain our public surface area + dependencies. They will
+    /// fail any time new dependencies or public surface area are added, ensuring
+    /// we review such additions carefully.
+    /// </summary>
     public class PublicSurfaceTests
     {
         [Fact]
@@ -73,7 +78,52 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IJobActivator",
                 "ITypeLocator",
                 "INameResolver",
-                "WebJobsShutdownWatcher"
+                "WebJobsShutdownWatcher",
+                "AsyncConverter`2",
+                "BindingContext",
+                "BindingDataPathHelper",
+                "BindingDataProvider",
+                "BindingProviderContext",
+                "BindingTemplate",
+                "BindStepOrder",
+                "CompositeObjectToTypeConverter`1",
+                "ConversionResult`1",
+                "FunctionBindingContext",
+                "IArgumentBinding`1",
+                "IAsyncConverter`2",
+                "IAsyncObjectToTypeConverter`1",
+                "IBinding",
+                "IBindingDataProvider",
+                "IBindingProvider",
+                "IConverter`2",
+                "IdentityConverter`1",
+                "IExtensionConfigProvider",
+                "IExtensionRegistry",
+                "IListener",
+                "IListenerFactory",
+                "IObjectToTypeConverter`1",
+                "IOrderedValueBinder",
+                "ITriggerBinding",
+                "ITriggerBinding`1",
+                "ITriggerBindingProvider",
+                "ITriggerData",
+                "ITriggerDataArgumentBinding`1",
+                "IValueBinder",
+                "IValueProvider",
+                "NameResolverExtensions",
+                "FunctionDescriptor",
+                "ParameterDescriptor",
+                "ParameterDisplayHints",
+                "TriggerBindingProviderContext",
+                "TriggerData",
+                "TriggerParameterDescriptor",
+                "ValueBindingContext",
+                "AmbientConnectionStringProvider",
+                "IExtensionRegistryExtensions",
+                "ITriggeredFunctionExecutor",
+                "ITriggeredFunctionExecutor`1",
+                "ListenerFactoryContext",
+                "BindingTemplateSource"
             };
 
             AssertPublicTypes(expected, assembly);

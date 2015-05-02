@@ -5,8 +5,16 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
+    /// <summary>
+    /// Defines an interface for providing connection strings.
+    /// </summary>
     internal interface IConnectionStringProvider
     {
+        /// <summary>
+        /// Get the connection string for the specified name.
+        /// </summary>
+        /// <param name="connectionStringName">The connection string name.</param>
+        /// <returns>The connection string if found.</returns>
         string GetConnectionString(string connectionStringName);
     }
 }

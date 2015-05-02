@@ -45,6 +45,7 @@
     <Compile Include="Indexers\FakeFunctionIndexManager.cs" />
     <Compile Include="Indexers\FakeFunctionIndexVersionManager.cs" />
     <Compile Include="Indexers\FakeHostIndexManager.cs" />
+    <Compile Include="Indexers\FunctionIndexerTests.cs" />
     <Compile Include="Indexers\HostIndexerTests.cs" />
     <Compile Include="Infrastructure\LogAnalysisTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -96,8 +96,7 @@ namespace Dashboard.Indexers
                 return;
             }
 
-            string errorMessage =
-                String.Format(CultureInfo.InvariantCulture, "Unknown message type '{0}'.", message.Type);
+            string errorMessage = String.Format(CultureInfo.InvariantCulture, "Unknown message type '{0}'.", message.Type);
             throw new InvalidOperationException(errorMessage);
         }
     }

@@ -93,7 +93,6 @@
     <Compile Include="TaskExtensions.cs" />
     <Compile Include="SimpleQueueConfiguration.cs" />
     <Compile Include="TestJobHost.cs" />
-    <Compile Include="NullServiceBusAccountProvider.cs" />
     <Compile Include="RandomNameResolver.cs" />
     <Compile Include="FakeTypeLocator.cs" />
     <Compile Include="SimpleStorageAccountProvider.cs" />

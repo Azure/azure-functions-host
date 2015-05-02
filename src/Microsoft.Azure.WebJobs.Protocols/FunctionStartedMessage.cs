@@ -36,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Gets or sets the reason the function executed.</summary>
         public ExecutionReason Reason { get; set; }
 
+        /// <summary>Gets or sets the detailed reason the function executed.</summary>
+        public string ReasonDetails { get; set; }
+
         /// <summary>Gets or sets the time the function started executing.</summary>
         public DateTimeOffset StartTime { get; set; }
 

@@ -21,8 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _innerExecutor = innerExecutor;
         }
 
-        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
-            CancellationToken cancellationToken)
+        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance, CancellationToken cancellationToken)
         {
             IDelayedException result;
 

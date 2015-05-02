@@ -17,13 +17,13 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _listenerFactories = listenerFactories;
         }
 
-        public async Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
+        public async Task<IListener> CreateAsync(ListenerFactoryContext context)
         {
             List<IListener> listeners = new List<IListener>();
 
             foreach (IListenerFactory listenerFactory in _listenerFactories)
             {
-                IListener listener = await listenerFactory.CreateAsync(executor, cancellationToken);
+                IListener listener = await listenerFactory.CreateAsync(context);
                 listeners.Add(listener);
             }
 

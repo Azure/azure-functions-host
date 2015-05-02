@@ -22,28 +22,20 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         public static IBindingProvider Create(INameResolver nameResolver,
             IStorageAccountProvider storageAccountProvider,
-            IServiceBusAccountProvider serviceBusAccountProvider,
             IExtensionTypeLocator extensionTypeLocator,
             IContextGetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherGetter,
-            IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
+            IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter,
+            IExtensionRegistry extensions)
         {
             List<IBindingProvider> innerProviders = new List<IBindingProvider>();
-            innerProviders.Add(new QueueAttributeBindingProvider(nameResolver, storageAccountProvider,
-                messageEnqueuedWatcherGetter));
-            innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider,
-                extensionTypeLocator, blobWrittenWatcherGetter));
-
+            innerProviders.Add(new QueueAttributeBindingProvider(nameResolver, storageAccountProvider, messageEnqueuedWatcherGetter));
+            innerProviders.Add(new BlobAttributeBindingProvider(nameResolver, storageAccountProvider, extensionTypeLocator, blobWrittenWatcherGetter));
             innerProviders.Add(new TableAttributeBindingProvider(nameResolver, storageAccountProvider));
 
-            Type serviceBusProviderType = ServiceBusExtensionTypeLoader.Get(
-                "Microsoft.Azure.WebJobs.ServiceBus.Bindings.ServiceBusAttributeBindingProvider");
-
-            if (serviceBusProviderType != null)
+            // add any registered extension binding providers
+            foreach (IBindingProvider provider in extensions.GetExtensions(typeof(IBindingProvider)))
             {
-                IBindingProvider serviceBusAttributeBindingProvider =
-                    (IBindingProvider)Activator.CreateInstance(serviceBusProviderType, nameResolver,
-                    serviceBusAccountProvider);
-                innerProviders.Add(serviceBusAttributeBindingProvider);
+                innerProviders.Add(provider);
             }
 
             innerProviders.Add(new CloudStorageAccountBindingProvider(storageAccountProvider));

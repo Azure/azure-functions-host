@@ -89,6 +89,8 @@
     <Compile Include="Bindings\BindableServiceBusPathTests.cs" />
     <Compile Include="Bindings\BoundServiceBusTests.cs" />
     <Compile Include="Bindings\ParameterizedServiceBusPathTests.cs" />
+    <Compile Include="Config\JobHostConfigurationExtensionsTests.cs" />
+    <Compile Include="Config\ServiceBusExtensionConfigTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensionsTests.cs" />
     <Compile Include="Triggers\ServiceBusTriggerBindingIntegrationTests.cs" />

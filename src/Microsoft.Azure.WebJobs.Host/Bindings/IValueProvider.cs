@@ -5,12 +5,26 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    internal interface IValueProvider
+    /// <summary>
+    /// Defines methods for retrieving information for an arbitrary value.
+    /// </summary>
+    public interface IValueProvider
     {
+        /// <summary>
+        /// Gets the <see cref="Type"/> of the value.
+        /// </summary>
         Type Type { get; }
 
+        /// <summary>
+        /// Gets the value.
+        /// </summary>
+        /// <returns>The value.</returns>
         object GetValue();
 
+        /// <summary>
+        /// Returns a string representation of the value.
+        /// </summary>
+        /// <returns>The string representation of the value.</returns>
         string ToInvokeString();
     }
 }

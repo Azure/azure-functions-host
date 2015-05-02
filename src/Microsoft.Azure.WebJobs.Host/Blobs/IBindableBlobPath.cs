@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    interface IBindableBlobPath : IBindablePath<BlobPath>
+    internal interface IBindableBlobPath : IBindablePath<BlobPath>
     {
         string ContainerNamePattern { get; }
         string BlobNamePattern { get; }

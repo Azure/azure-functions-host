@@ -7,7 +7,7 @@ using System.Text;
 namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>Contains extension methods for INameResolver.</summary>
-    internal static class NameResolverExtensions
+    public static class NameResolverExtensions
     {
         /// <summary>
         /// Resolve all %% matches within a string.

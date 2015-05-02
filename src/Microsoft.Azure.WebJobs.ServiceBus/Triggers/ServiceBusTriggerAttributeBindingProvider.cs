@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.Azure.WebJobs.ServiceBus.Config;
 using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
@@ -24,18 +25,21 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
         private readonly INameResolver _nameResolver;
-        private readonly IServiceBusAccountProvider _accountProvider;
+        private readonly ServiceBusConfiguration _config;
 
-        public ServiceBusTriggerAttributeBindingProvider(INameResolver nameResolver,
-            IServiceBusAccountProvider accountProvider)
+        public ServiceBusTriggerAttributeBindingProvider(INameResolver nameResolver, ServiceBusConfiguration config)
         {
-            if (accountProvider == null)
+            if (nameResolver == null)
             {
-                throw new ArgumentNullException("accountProvider");
+                throw new ArgumentNullException("nameResolver");
+            }
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
             }
 
             _nameResolver = nameResolver;
-            _accountProvider = accountProvider;
+            _config = config;
         }
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -69,8 +73,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
             }
 
-            string connectionString = _accountProvider.ConnectionString;
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(_config.ConnectionString);
             ITriggerBinding binding;
 
             if (queueName != null)

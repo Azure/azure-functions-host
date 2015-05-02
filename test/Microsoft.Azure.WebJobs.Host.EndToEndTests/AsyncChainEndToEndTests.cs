@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -119,8 +121,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private async Task AsyncChainEndToEndInternal()
         {
-            _resolver = new RandomNameResolver();
+            StringWriter consoleOutput = new StringWriter();
+            Console.SetOut(consoleOutput);
 
+            _resolver = new RandomNameResolver();
+ 
             JobHostConfiguration hostConfiguration = new JobHostConfiguration()
             {
                 NameResolver = _resolver,
@@ -141,6 +146,28 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             await host.CallAsync(typeof(AsyncChainEndToEndTests).GetMethod("ReadResultBlob"));
             Assert.Equal("async works", _finalBlobContent);
+
+            string firstQueueName = _resolver.ResolveInString(Queue1Name);
+            string secondQueueName = _resolver.ResolveInString(Queue2Name);
+            string blobContainerName = _resolver.ResolveInString(ContainerName);
+            string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            string[] expectedOutputLines = new string[]
+                {
+                    "Found the following functions:",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.WriteStartDataMessageToQueue",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToQueueAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.QueueToBlobAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.BlobToBlobAsync",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
+                    "Job host started",
+                    "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This was function was programmatically called via the host APIs.'",
+                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
+                    string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
+                    string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
+                    "Job host stopped",
+                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This was function was programmatically called via the host APIs.'"
+                };
+            Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));
         }
 
         private void Cleanup()

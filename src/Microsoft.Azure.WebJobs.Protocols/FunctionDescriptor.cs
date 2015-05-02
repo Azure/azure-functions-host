@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 #if PUBLICPROTOCOL
     public class FunctionDescriptor
 #else
-    internal class FunctionDescriptor
+    public class FunctionDescriptor
 #endif
     {
         /// <summary>Gets or sets the ID of the function.</summary>

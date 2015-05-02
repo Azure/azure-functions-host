@@ -8,8 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal static class BindablePathExtensions
     {
-        public static void ValidateContractCompatibility<TPath>(this IBindablePath<TPath> path,
-            IReadOnlyDictionary<string, Type> bindingDataContract)
+        public static void ValidateContractCompatibility<TPath>(this IBindablePath<TPath> path, IReadOnlyDictionary<string, Type> bindingDataContract)
         {
             if (path == null)
             {
@@ -24,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 {
                     if (bindingDataContract != null && !bindingDataContract.ContainsKey(parameterName))
                     {
-                        throw new InvalidOperationException("No binding parameter exists for '" + parameterName + "'.");
+                        throw new InvalidOperationException(string.Format("No binding parameter exists for '{0}'.", parameterName));
                     }
                 }
             }

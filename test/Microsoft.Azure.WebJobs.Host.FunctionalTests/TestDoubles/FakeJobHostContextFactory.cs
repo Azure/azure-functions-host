@@ -8,12 +8,15 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 {
     internal class FakeJobHostContextFactory : IJobHostContextFactory
     {
+        public ITypeLocator TypeLocator { get; set; }
+
         public IBackgroundExceptionDispatcher BackgroundExceptionDispatcher { get; set; }
 
         public IBindingProvider BindingProvider { get; set; }
@@ -32,17 +35,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IQueueConfiguration QueueConfiguration { get; set; }
 
-        public IServiceBusAccountProvider ServiceBusAccountProvider { get; set; }
-
         public IStorageAccountProvider StorageAccountProvider { get; set; }
 
-        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken,
-            CancellationToken cancellationToken)
+        public IFunctionExecutor FunctionExecutor { get; set; }
+
+        public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
-            return JobHostContextFactory.CreateAndLogHostStartedAsync(StorageAccountProvider,
-                FunctionIndexProvider, BindingProvider, HostIdProvider, HostInstanceLoggerProvider,
-                FunctionInstanceLoggerProvider, FunctionOutputLoggerProvider, QueueConfiguration,
-                BackgroundExceptionDispatcher, ConsoleProvider, shutdownToken, cancellationToken);
+            INameResolver nameResolver = new RandomNameResolver();
+            JobHostConfiguration config = new JobHostConfiguration
+            {
+                NameResolver = nameResolver,
+                TypeLocator = TypeLocator
+            };
+
+            return JobHostContextFactory.CreateAndLogHostStartedAsync(
+                StorageAccountProvider, QueueConfiguration, TypeLocator, DefaultJobActivator.Instance, nameResolver, 
+                ConsoleProvider, new JobHostConfiguration(), shutdownToken, cancellationToken, HostIdProvider, FunctionExecutor,
+                FunctionIndexProvider, BindingProvider, HostInstanceLoggerProvider, FunctionInstanceLoggerProvider,
+                FunctionOutputLoggerProvider, BackgroundExceptionDispatcher);
         }
     }
 }

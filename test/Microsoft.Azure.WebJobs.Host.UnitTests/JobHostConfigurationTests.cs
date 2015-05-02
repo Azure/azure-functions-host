@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Xunit;
 
@@ -121,6 +123,95 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             JobHostConfiguration configuration = new JobHostConfiguration();
 
             ExceptionAssert.ThrowsArgumentNull(() => configuration.JobActivator = null, "value");
+        }
+
+        [Fact]
+        public void GetService_ReturnsExpectedDefaultServices()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            IExtensionRegistry extensionRegistry = configuration.GetService<IExtensionRegistry>();
+            extensionRegistry.RegisterExtension<IComparable>("test1");
+            extensionRegistry.RegisterExtension<IComparable>("test2");
+            extensionRegistry.RegisterExtension<IComparable>("test3");
+
+            Assert.NotNull(extensionRegistry);
+            IComparable[] results = extensionRegistry.GetExtensions<IComparable>().ToArray();
+            Assert.Equal(3, results.Length);
+
+            IJobHostContextFactory jobHostContextFactory = configuration.GetService<IJobHostContextFactory>();
+            Assert.NotNull(jobHostContextFactory);
+        }
+
+        [Fact]
+        public void GetService_ThrowsArgumentNull_WhenServiceTypeIsNull()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+                () => configuration.GetService(null)
+            );
+            Assert.Equal("serviceType", exception.ParamName);
+        }
+
+        [Fact]
+        public void GetService_ReturnsNull_WhenServiceTypeNotFound()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            object result = configuration.GetService(typeof(IComparable));
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void AddService_AddsNewService()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            IComparable service = "test1";
+            configuration.AddService<IComparable>(service);
+
+            IComparable result = configuration.GetService<IComparable>();
+            Assert.Same(service, result);
+        }
+
+        [Fact]
+        public void AddService_ReplacesExistingService()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            IComparable service = "test1";
+            configuration.AddService<IComparable>(service);
+
+            IComparable result = configuration.GetService<IComparable>();
+            Assert.Same(service, result);
+
+            IComparable service2 = "test2";
+            configuration.AddService<IComparable>(service2);
+            result = configuration.GetService<IComparable>();
+            Assert.Same(service2, result);
+        }
+
+        [Fact]
+        public void AddService_ThrowsArgumentNull_WhenServiceTypeIsNull()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            ArgumentNullException exception = Assert.Throws<ArgumentNullException>(
+                () => configuration.AddService(null, "test1")
+            );
+            Assert.Equal("serviceType", exception.ParamName);
+        }
+
+        [Fact]
+        public void AddService_ThrowsArgumentOutOfRange_WhenInstanceNotInstanceOfType()
+        {
+            JobHostConfiguration configuration = new JobHostConfiguration();
+
+            ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(
+                () => configuration.AddService(typeof(IComparable), new object())
+            );
+            Assert.Equal("serviceInstance", exception.ParamName);
         }
 
         private static void TestHostIdThrows(string hostId)

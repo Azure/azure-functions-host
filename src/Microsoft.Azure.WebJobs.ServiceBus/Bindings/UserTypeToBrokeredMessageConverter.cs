@@ -3,7 +3,6 @@
 
 using System.IO;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json;
 
@@ -13,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     {
         public BrokeredMessage Convert(TInput input)
         {
-            string text = JsonConvert.SerializeObject(input, JsonSerialization.Settings);
+            string text = JsonConvert.SerializeObject(input, Constants.JsonSerializerSettings);
             byte[] bytes = StrictEncodings.Utf8.GetBytes(text);
             MemoryStream stream = new MemoryStream(bytes, writable: false);
 

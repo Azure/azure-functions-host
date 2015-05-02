@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public string Bind(IReadOnlyDictionary<string, object> bindingData)
         {
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
             string tableName = _template.Bind(parameters);
 
             TableClient.ValidateAzureTableName(tableName);

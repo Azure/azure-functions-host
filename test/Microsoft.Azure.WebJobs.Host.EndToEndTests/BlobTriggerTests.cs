@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
@@ -57,9 +60,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [Fact]
         public void BlobGetsProcessedOnlyOnce_SingleHost()
         {
-            _testContainer
-                .GetBlockBlobReference(BlobName)
-                .UploadText("0");
+            StringWriter consoleOutput = new StringWriter();
+            Console.SetOut(consoleOutput);
+
+            CloudBlockBlob blob = _testContainer.GetBlockBlobReference(BlobName);
+            blob.UploadText("0");
 
             int timeToProcess;
 
@@ -75,6 +80,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 timeToProcess = (int)(DateTime.Now - startTime).TotalMilliseconds;
 
                 host.Stop();
+
+                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                string[] expectedOutputLines = new string[]
+                {
+                    "Found the following functions:",
+                    "Microsoft.Azure.WebJobs.Host.EndToEndTests.BlobTriggerTests.SingleBlobTrigger",
+                    "Job host started",
+                    string.Format("Executing: 'BlobTriggerTests.SingleBlobTrigger' - Reason: 'New blob detected: {0}/{1}'", blob.Container.Name, blob.Name),
+                    "Job host stopped",
+                };
+                Assert.True(consoleOutputLines.SequenceEqual(expectedOutputLines));
             }
 
             // Then start again and make sure the blob doesn't get reprocessed

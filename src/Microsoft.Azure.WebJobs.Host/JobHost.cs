@@ -22,8 +22,8 @@ using Microsoft.WindowsAzure.Storage;
 namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
-    /// Defines properties and methods to locate Job methods and listen to trigger events in order
-    /// to execute Job methods.
+    /// A <see cref="JobHost"/> is the execution container for jobs. Once started, the
+    /// <see cref="JobHost"/> will manage and run job functions when they are triggered.
     /// </summary>
     public class JobHost : IDisposable
     {
@@ -299,16 +299,13 @@ namespace Microsoft.Azure.WebJobs
             return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
         }
 
-        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method,
-            IFunctionIndexLookup functionLookup)
+        private static IFunctionDefinition ResolveFunctionDefinition(MethodInfo method, IFunctionIndexLookup functionLookup)
         {
             IFunctionDefinition function = functionLookup.Lookup(method);
 
             if (function == null)
             {
-                string msg = String.Format(
-                    "'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?",
-                    method);
+                string msg = String.Format("'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?", method);
                 throw new InvalidOperationException(msg);
             }
 
@@ -327,8 +324,7 @@ namespace Microsoft.Azure.WebJobs
 
         private async Task<JobHostContext> CreateContextAndLogHostStartedAsync(CancellationToken cancellationToken)
         {
-            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(_shutdownTokenSource.Token,
-                cancellationToken);
+            JobHostContext context = await _contextFactory.CreateAndLogHostStartedAsync(_shutdownTokenSource.Token, cancellationToken);
 
             lock (_contextLock)
             {

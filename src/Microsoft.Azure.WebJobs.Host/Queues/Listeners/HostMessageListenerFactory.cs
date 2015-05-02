@@ -11,7 +11,6 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 {
@@ -26,13 +25,15 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly TextWriter _log;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
+        private readonly IFunctionExecutor _executor;
 
         public HostMessageListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             TextWriter log,
             IFunctionIndexLookup functionLookup,
-            IFunctionInstanceLogger functionInstanceLogger)
+            IFunctionInstanceLogger functionInstanceLogger,
+            IFunctionExecutor executor)
         {
             if (queue == null)
             {
@@ -64,23 +65,30 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("functionInstanceLogger");
             }
 
+            if (executor == null)
+            {
+                throw new ArgumentNullException("executor");
+            }
+
             _queue = queue;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _log = log;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
+            _executor = executor;
         }
 
-        public Task<IListener> CreateAsync(IFunctionExecutor executor, CancellationToken cancellationToken)
+        public Task<IListener> CreateAsync(ListenerFactoryContext context)
         {
-            ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(executor, _functionLookup,
-                _functionInstanceLogger);
+            ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(_executor, _functionLookup, _functionInstanceLogger);
+
             TimeSpan configuredMaximum = _queueConfiguration.MaxPollingInterval;
             // Provide an upper bound on the maximum polling interval for run/abort from dashboard.
             // Use the default maximum for host polling (1 minute) unless the configured overall maximum is even faster.
             TimeSpan maximum = configuredMaximum < DefaultMaximum ? configuredMaximum : DefaultMaximum;
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(Minimum, maximum);
+
             IListener listener = new QueueListener(_queue,
                 poisonQueue: null,
                 triggerExecutor: triggerExecutor,
@@ -90,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 sharedWatcher: null,
                 batchSize: _queueConfiguration.BatchSize,
                 maxDequeueCount: _queueConfiguration.MaxDequeueCount);
+
             return Task.FromResult(listener);
         }
     }

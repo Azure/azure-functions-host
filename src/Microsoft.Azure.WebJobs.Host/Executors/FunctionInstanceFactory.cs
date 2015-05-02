@@ -14,16 +14,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionInvoker _invoker;
         private readonly FunctionDescriptor _descriptor;
 
-        public FunctionInstanceFactory(IFunctionBinding binding, IFunctionInvoker invoker,
-            FunctionDescriptor descriptor)
+        public FunctionInstanceFactory(IFunctionBinding binding, IFunctionInvoker invoker, FunctionDescriptor descriptor)
         {
             _binding = binding;
             _invoker = invoker;
             _descriptor = descriptor;
         }
 
-        public IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason,
-            IDictionary<string, object> parameters)
+        public IFunctionInstance Create(Guid id, Guid? parentId, ExecutionReason reason, IDictionary<string, object> parameters)
         {
             IBindingSource bindingSource = new BindingSource(_binding, parameters);
             return new FunctionInstance(id, parentId, reason, bindingSource, _invoker, _descriptor);

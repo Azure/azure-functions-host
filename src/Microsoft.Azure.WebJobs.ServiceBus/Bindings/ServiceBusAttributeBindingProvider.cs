@@ -2,11 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.ServiceBus.Config;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
@@ -22,17 +24,21 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 new AsyncCollectorArgumentBindingProvider());
 
         private readonly INameResolver _nameResolver;
-        private readonly IServiceBusAccountProvider _accountProvider;
+        private readonly ServiceBusConfiguration _config;
 
-        public ServiceBusAttributeBindingProvider(INameResolver nameResolver, IServiceBusAccountProvider accountProvider)
+        public ServiceBusAttributeBindingProvider(INameResolver nameResolver, ServiceBusConfiguration config)
         {
-            if (accountProvider == null)
+            if (nameResolver == null)
             {
-                throw new ArgumentNullException("accountProvider");
+                throw new ArgumentNullException("nameResolver");
+            }
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
             }
 
-            _accountProvider = accountProvider;
             _nameResolver = nameResolver;
+            _config = config;
         }
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
@@ -47,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             string queueOrTopicName = Resolve(serviceBusAttribute.QueueOrTopicName);
             IBindableServiceBusPath path = BindableServiceBusPath.Create(queueOrTopicName);
-            path.ValidateContractCompatibility(context.BindingDataContract);
+            ValidateContractCompatibility(path, context.BindingDataContract);
 
             IArgumentBinding<ServiceBusEntity> argumentBinding = _innerProvider.TryCreate(parameter);
 
@@ -56,11 +62,30 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 throw new InvalidOperationException("Can't bind ServiceBus to type '" + parameter.ParameterType + "'.");
             }
 
-            string connectionString = _accountProvider.ConnectionString;
-            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(connectionString);
+            ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(_config.ConnectionString);
 
             IBinding binding = new ServiceBusBinding(parameter.Name, argumentBinding, account, path);
             return Task.FromResult(binding);
+        }
+
+        private static void ValidateContractCompatibility(IBindableServiceBusPath path, IReadOnlyDictionary<string, Type> bindingDataContract)
+        {
+            if (path == null)
+            {
+                throw new ArgumentNullException("path");
+            }
+
+            IEnumerable<string> parameterNames = path.ParameterNames;
+            if (parameterNames != null)
+            {
+                foreach (string parameterName in parameterNames)
+                {
+                    if (bindingDataContract != null && !bindingDataContract.ContainsKey(parameterName))
+                    {
+                        throw new InvalidOperationException(string.Format("No binding parameter exists for '{0}'.", parameterName));
+                    }
+                }
+            }
         }
 
         private string Resolve(string queueName)

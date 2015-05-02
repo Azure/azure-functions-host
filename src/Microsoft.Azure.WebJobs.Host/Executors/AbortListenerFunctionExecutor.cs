@@ -3,7 +3,6 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
@@ -14,20 +13,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionExecutor _abortExecutor;
         private readonly IFunctionExecutor _innerExecutor;
 
-        public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor,
-            IFunctionExecutor innerExecutor)
+        public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor, IFunctionExecutor innerExecutor)
         {
             _abortListenerFactory = abortListenerFactory;
             _abortExecutor = abortExecutor;
             _innerExecutor = innerExecutor;
         }
 
-        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance,
-            CancellationToken cancellationToken)
+        public async Task<IDelayedException> TryExecuteAsync(IFunctionInstance instance, CancellationToken cancellationToken)
         {
             IDelayedException result;
 
-            using (IListener listener = await CreateListenerAsync(cancellationToken))
+            ListenerFactoryContext context = new ListenerFactoryContext(cancellationToken);
+            using (IListener listener = await _abortListenerFactory.CreateAsync(context))
             {
                 await listener.StartAsync(cancellationToken);
 
@@ -37,11 +35,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             return result;
-        }
-
-        private Task<IListener> CreateListenerAsync(CancellationToken cancellationToken)
-        {
-            return _abortListenerFactory.CreateAsync(_abortExecutor, cancellationToken);
         }
     }
 }

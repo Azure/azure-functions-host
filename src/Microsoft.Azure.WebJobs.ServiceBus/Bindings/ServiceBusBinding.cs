@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -19,8 +20,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
         private readonly IBindableServiceBusPath _path;
         private readonly IAsyncObjectToTypeConverter<ServiceBusEntity> _converter;
 
-        public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding,
-            ServiceBusAccount account, IBindableServiceBusPath path)
+        public ServiceBusBinding(string parameterName, IArgumentBinding<ServiceBusEntity> argumentBinding, ServiceBusAccount account, IBindableServiceBusPath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -35,15 +35,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             get { return true; }
         }
 
-        private static IAsyncObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusAccount account,
-            IBindableServiceBusPath queueOrTopicName)
-        {
-            return new OutputConverter<string>(new StringToServiceBusEntityConverter(account, queueOrTopicName));
-        }
-
         public async Task<IValueProvider> BindAsync(BindingContext context)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
+
             string boundQueueName = _path.Bind(context.BindingData);
             MessageSender messageSender = await _account.MessagingFactory.CreateMessageSenderAsync(boundQueueName);
 
@@ -52,18 +47,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 Account = _account,
                 MessageSender = messageSender
             };
-            return await BindAsync(entity, context.ValueContext);
-        }
 
-        private Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
-        {
-            return _argumentBinding.BindAsync(value, context);
+            return await BindAsync(entity, context.ValueContext);
         }
 
         public async Task<IValueProvider> BindAsync(object value, ValueBindingContext context)
         {
-            ConversionResult<ServiceBusEntity> conversionResult = await _converter.TryConvertAsync(value,
-                context.CancellationToken);
+            ConversionResult<ServiceBusEntity> conversionResult = await _converter.TryConvertAsync(value, context.CancellationToken);
 
             if (!conversionResult.Succeeded)
             {
@@ -79,8 +69,38 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             {
                 Name = _parameterName,
                 NamespaceName = _namespaceName,
-                QueueOrTopicName = _path.QueueOrTopicNamePattern
+                QueueOrTopicName = _path.QueueOrTopicNamePattern,
+                DisplayHints = CreateParameterDisplayHints(_path.QueueOrTopicNamePattern, false)
             };
+        }
+
+        private Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
+        {
+            return _argumentBinding.BindAsync(value, context);
+        }
+
+        private static IAsyncObjectToTypeConverter<ServiceBusEntity> CreateConverter(ServiceBusAccount account, IBindableServiceBusPath queueOrTopicName)
+        {
+            return new OutputConverter<string>(new StringToServiceBusEntityConverter(account, queueOrTopicName));
+        }
+
+        internal static ParameterDisplayHints CreateParameterDisplayHints(string entityPath, bool isInput)
+        {
+            ParameterDisplayHints descriptor = new ParameterDisplayHints();
+
+            descriptor.Description = isInput ?
+                string.Format(CultureInfo.CurrentCulture, "dequeue from '{0}'", entityPath) :
+                string.Format(CultureInfo.CurrentCulture, "enqueue to '{0}'", entityPath);
+
+            descriptor.AttributeText = string.Format(CultureInfo.CurrentCulture, "[ServiceBus(\"{0}\")]", entityPath);
+
+            descriptor.Prompt = isInput ?
+                "Enter the queue message body" :
+                "Enter the output entity name";
+
+            descriptor.DefaultValue = isInput ? null : entityPath;
+
+            return descriptor;
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
@@ -15,11 +16,14 @@ namespace Microsoft.Azure.WebJobs
         private static readonly IConsoleProvider _consoleProvider = new DefaultConsoleProvider();
 
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
-        private readonly DefaultServiceBusAccountProvider _serviceBusAccountProvider =
-            new DefaultServiceBusAccountProvider();
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
-
+        private readonly IExtensionRegistry _extensionRegistry = new DefaultExtensionRegistry();
+        private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
         private IJobHostContextFactory _contextFactory;
+
+        // TEMP: This will go away in a future release (once ServiceBusConnectionString is removed from this class)
+        private bool _serviceBusConnectionStringSet;
+        private string _serviceBusConnectionString;
 
         private string _hostId;
         private ITypeLocator _typeLocator = new DefaultTypeLocator(_consoleProvider.Out);
@@ -50,6 +54,9 @@ namespace Microsoft.Azure.WebJobs
         private JobHostConfiguration(DefaultStorageAccountProvider storageAccountProvider)
         {
             _storageAccountProvider = storageAccountProvider;
+
+            // add our built in services here
+            AddService<IExtensionRegistry>(new DefaultExtensionRegistry());
         }
 
         /// <summary>Gets or sets the host ID.</summary>
@@ -121,10 +128,24 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>Gets or sets the Azure Service bus connection string.</summary>
+        [Obsolete("Use ServiceBusConfiguration, and pass in via JobHostConfiguration.UseServiceBus.")]
         public string ServiceBusConnectionString
         {
-            get { return _serviceBusAccountProvider.ConnectionString; }
-            set { _serviceBusAccountProvider.ConnectionString = value; }
+            get
+            {
+                if (!_serviceBusConnectionStringSet)
+                {
+                    _serviceBusConnectionString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.ServiceBus);
+                    _serviceBusConnectionStringSet = true;
+                }
+
+                return _serviceBusConnectionString;
+            }
+            set
+            {
+                _serviceBusConnectionString = value;
+                _serviceBusConnectionStringSet = true;
+            }
         }
 
         /// <summary>Gets or sets the type locator.</summary>
@@ -171,8 +192,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_contextFactory == null)
                 {
-                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, _serviceBusAccountProvider,
-                        _typeLocator, _nameResolver, _activator, _hostId, _queueConfiguration, _consoleProvider);
+                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, _consoleProvider, this);
                 }
 
                 return _contextFactory;
@@ -180,20 +200,71 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>Gets the service object of the specified type.</summary>
-        /// <param name="serviceType">The type of service object to get.</param>
+        /// <param name="serviceType">The type of service to get.</param>
         /// <returns>
-        /// A service object of the specified type, if one is available; otherwise, <see langword="null"/>.
+        /// A service of the specified type, if one is available; otherwise, <see langword="null"/>.
         /// </returns>
         public object GetService(Type serviceType)
         {
-            if (serviceType == typeof(IJobHostContextFactory))
+            if (serviceType == null)
             {
+                throw new ArgumentNullException("serviceType");
+            }
+
+            object service = null;
+            _services.TryGetValue(serviceType, out service);
+
+            if (service == null && serviceType == typeof(IJobHostContextFactory))
+            {
+                // ContextFactory must be delay created at the right time
+                AddService<IJobHostContextFactory>(ContextFactory);
                 return ContextFactory;
             }
-            else
+
+            return service;
+        }
+
+        /// <summary>
+        /// Gets the service object of the specified type.
+        /// </summary>
+        /// <typeparam name="TService">The type of service object to get.</typeparam>
+        /// <returns>A service of the specified type, if one is available; otherwise, <see langword="null"/>.</returns>
+        public TService GetService<TService>()
+        {
+            return (TService)this.GetService(typeof(TService));
+        }
+
+        /// <summary>
+        /// Adds the specified service instance, replacing any existing service.
+        /// </summary>
+        /// <param name="serviceType">The service type</param>
+        /// <param name="serviceInstance">The service instance</param>
+        public void AddService(Type serviceType, object serviceInstance)
+        {
+            if (serviceType == null)
             {
-                return null;
+                throw new ArgumentNullException("serviceType");
             }
+            if (!serviceType.IsAssignableFrom(serviceInstance.GetType()))
+            {
+                throw new ArgumentOutOfRangeException("serviceInstance");
+            }
+
+            _services.AddOrUpdate(serviceType, serviceInstance, (key, existingValue) =>
+                {
+                    // always replace existing values
+                    return serviceInstance;
+                });
+        }
+
+        /// <summary>
+        /// Adds the specified service instance, replacing any existing service.
+        /// </summary>
+        /// <typeparam name="TService">The service type</typeparam>
+        /// <param name="serviceInstance">The service instance</param>
+        public void AddService<TService>(TService serviceInstance)
+        {
+            AddService(typeof(TService), serviceInstance);
         }
     }
 }

@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public TableEntityPath Bind(IReadOnlyDictionary<string, object> bindingData)
         {
-            IReadOnlyDictionary<string, string> parameters = BindingDataPath.ConvertParameters(bindingData);
+            IReadOnlyDictionary<string, string> parameters = BindingDataPathHelper.ConvertParameters(bindingData);
             string tableName = _tableNameTemplate.Bind(parameters);
             string partitionKey = _partitionKeyTemplate.Bind(parameters);
             string rowKey = _rowKeyTemplate.Bind(parameters);

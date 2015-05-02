@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Dashboard.Data;
 using Dashboard.Indexers;
 using Microsoft.Azure.WebJobs.Protocols;
@@ -285,6 +283,25 @@ namespace Dashboard.UnitTests.Indexers
             Assert.NotNull(functions); // Guard
             IEnumerable<string> functionIds = functions.Select(f => f.Id).ToArray();
             Assert.Equal(new string[0], functionIds);
+        }
+
+        [Fact]
+        public void CreateParameterSnapshot_DisplayHintsSet_ReturnsDisplayHintsParameterSnapshot()
+        {
+            ParameterDescriptor descriptor = new ParameterDescriptor();
+            descriptor.DisplayHints = new ParameterDisplayHints
+            {
+                Description = "My custom description",
+                Prompt = "Enter your value please",
+                DefaultValue = "1234",
+                AttributeText = "[Custom(1234)]"
+            };
+
+            ParameterSnapshot shapshot = HostIndexer.CreateParameterSnapshot(descriptor);
+            Assert.Equal(descriptor.DisplayHints.Description, shapshot.Description);
+            Assert.Equal(descriptor.DisplayHints.Prompt, shapshot.Prompt);
+            Assert.Equal(descriptor.DisplayHints.DefaultValue, shapshot.DefaultValue);
+            Assert.Equal(descriptor.DisplayHints.AttributeText, shapshot.AttributeText);
         }
 
         private static void AddFunctionToIndex(IFunctionIndexManager functionIndexManager, string hostId,

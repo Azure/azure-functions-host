@@ -5,7 +5,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    interface IBindableTableEntityPath : IBindablePath<TableEntityPath>
+    internal interface IBindableTableEntityPath : IBindablePath<TableEntityPath>
     {
         string TableNamePattern { get; }
         string PartitionKeyPattern { get; }

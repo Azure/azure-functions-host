@@ -5,8 +5,16 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    internal interface IBindingProvider
+    /// <summary>
+    /// Defines an interface for the creation of parameter bindings.
+    /// </summary>
+    public interface IBindingProvider
     {
+        /// <summary>
+        /// Try to create a binding using the specified context.
+        /// </summary>
+        /// <param name="context">The binding context.</param>
+        /// <returns>A task that returns the binding on completion.</returns>
         Task<IBinding> TryCreateAsync(BindingProviderContext context);
     }
 }

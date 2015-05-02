@@ -4,11 +4,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
@@ -26,15 +24,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _executor = executor;
         }
 
-        public void Register(string functionId, ITriggeredFunctionInstanceFactory<IStorageBlob> instanceFactory)
+        public void Register(string functionId, ITriggeredFunctionExecutor<IStorageBlob> executor)
         {
             if (_started)
             {
-                throw new InvalidOperationException(
-                    "Registrations may not be added while the shared listener is running.");
+                throw new InvalidOperationException("Registrations may not be added while the shared listener is running.");
             }
 
-            _executor.Register(functionId, instanceFactory);
+            _executor.Register(functionId, executor);
         }
 
         public async Task EnsureAllStartedAsync(CancellationToken cancellationToken)

@@ -6,7 +6,11 @@ using System.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
-    internal class AmbientConnectionStringProvider : IConnectionStringProvider
+    /// <summary>
+    /// Connection string provider that reads from configuration first, and if a connection
+    /// is not found there, will search in environment variables.
+    /// </summary>
+    public class AmbientConnectionStringProvider : IConnectionStringProvider
     {
         private static readonly AmbientConnectionStringProvider _instance = new AmbientConnectionStringProvider();
 
@@ -16,14 +20,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
         }
 
+        /// <summary>
+        /// Gets the singleton instance.
+        /// </summary>
         public static AmbientConnectionStringProvider Instance
         {
             get { return _instance; }
-        }
-
-        public static string GetPrefixedConnectionStringName(string connectionStringName)
-        {
-            return Prefix + connectionStringName;
         }
 
         /// <summary>
@@ -48,6 +50,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
 
             return Environment.GetEnvironmentVariable(prefixedConnectionStringName) ?? connectionStringInConfig;
+        }
+
+        internal static string GetPrefixedConnectionStringName(string connectionStringName)
+        {
+            return Prefix + connectionStringName;
         }
     }
 }
