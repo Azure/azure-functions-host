@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             using (JobHost host = new JobHost(CreateConfiguration()))
             {
                 // Act & Assert
-                Assert.DoesNotThrow(() => host.StartAsync().GetAwaiter().GetResult());
+                host.StartAsync().GetAwaiter().GetResult();
             }
         }
 
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 host.Start();
 
                 // Act & Assert
-                Assert.DoesNotThrow(() => host.StopAsync().GetAwaiter().GetResult());
+                host.StopAsync().GetAwaiter().GetResult();
             }
         }
 
@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 host.Stop();
 
                 // Act & Assert
-                Assert.DoesNotThrow(() => host.StopAsync().GetAwaiter().GetResult());
+                host.StopAsync().GetAwaiter().GetResult();
             }
         }
 

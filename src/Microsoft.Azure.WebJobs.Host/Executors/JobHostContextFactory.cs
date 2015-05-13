@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             CancellationToken shutdownToken, 
             CancellationToken cancellationToken,
             IHostIdProvider hostIdProvider = null,
-            IFunctionExecutor functionExecutor = null,
+            FunctionExecutor functionExecutor = null,
             IFunctionIndexProvider functionIndexProvider = null,
             IBindingProvider bindingProvider = null,
             IHostInstanceLoggerProvider hostInstanceLogerProvider = null,
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     functionOutputLogger = (IFunctionOutputLogger)(await ((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
                 }
-                
+   
                 if (functionExecutor == null)
                 {
                     functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher);
@@ -145,12 +145,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     functionIndexProvider = new FunctionIndexProvider(typeLocator, triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions);
                 }
-                IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
 
+                IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
 
                 TextWriter consoleOut = consoleProvider.Out;
-
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
                 HostOutputMessage hostOutputMessage;
@@ -207,8 +206,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         shutdownToken, functionExecutor);
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
-                    await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger,
-                        combinedCancellationToken);
+                    await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, combinedCancellationToken);
                 }
                 else
                 {
@@ -221,12 +219,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     hostOutputMessage = new DataOnlyHostOutputMessage();
                 }
 
-                FunctionExecutor concreteExecutor = functionExecutor as FunctionExecutor;
-                if (concreteExecutor != null)
-                {
-                    // TODO: this should be moved to the IFunctionExecutor interface
-                    concreteExecutor.HostOutputMessage = hostOutputMessage;
-                }
+                functionExecutor.HostOutputMessage = hostOutputMessage;
 
                 IEnumerable<FunctionDescriptor> descriptors = functions.ReadAllDescriptors();
                 int descriptorsCount = descriptors.Count();

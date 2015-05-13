@@ -1500,7 +1500,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void FlushAsync_WhenInnerStreamBeginFlushThrows_PropogatesException()
+        public async Task FlushAsync_WhenInnerStreamBeginFlushThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -1514,7 +1514,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(() => product.FlushAsync(cancellationToken));
+            Exception exception = await Assert.ThrowsAsync<Exception>(() => product.FlushAsync(cancellationToken));
             Assert.Same(expectedException, exception);
         }
 
@@ -1774,7 +1774,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void ReadAsync_WhenInnerStreamThrows_PropogatesException()
+        public async Task ReadAsync_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -1792,7 +1792,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(
+            Exception exception = await Assert.ThrowsAsync<Exception>(
                 () => product.ReadAsync(buffer, offset, count, cancellationToken));
             Assert.Same(expectedException, exception);
         }
@@ -2014,7 +2014,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void WriteAsync_WhenInnerStreamThrows_PropogatesException()
+        public async Task WriteAsync_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -2032,7 +2032,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(
+            Exception exception = await Assert.ThrowsAsync<Exception>(
                 () => product.WriteAsync(buffer, offset, count, cancellationToken));
             Assert.Same(expectedException, exception);
         }
@@ -2381,7 +2381,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             CloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
 
             // Act & Assert
-            Assert.DoesNotThrow(() => product.Commit());
+            product.Commit();
         }
 
         [Fact]
@@ -2412,7 +2412,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
         }
 
         [Fact]
-        public void CommitAsync_WhenInnerStreamBeginCommitThrows_PropogatesException()
+        public async Task CommitAsync_WhenInnerStreamBeginCommitThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -2426,7 +2426,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(() => product.CommitAsync(cancellationToken));
+            Exception exception = await Assert.ThrowsAsync<Exception>(() => product.CommitAsync(cancellationToken));
             Assert.Same(expectedException, exception);
         }
 
@@ -2681,7 +2681,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Bindings
             WatchableCloudBlobStream product = CreateProductUnderTest(innerStream, committedAction);
 
             // Act & Assert
-            Assert.DoesNotThrow(() => product.CommitAsync(CancellationToken.None).GetAwaiter().GetResult());
+            product.CommitAsync(CancellationToken.None).GetAwaiter().GetResult();
         }
 
         [Fact]

@@ -575,7 +575,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 
                     // Assert
                     Assert.NotNull(task);
-                    Assert.DoesNotThrow(() => task.GetAwaiter().GetResult());
+                    task.GetAwaiter().GetResult();
                 }
             }
         }
@@ -618,7 +618,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Timers
 
                     // Assert
                     Assert.NotNull(task);
-                    Assert.DoesNotThrow(() => task.GetAwaiter().GetResult());
+                    task.GetAwaiter().GetResult();
                 }
             }
         }

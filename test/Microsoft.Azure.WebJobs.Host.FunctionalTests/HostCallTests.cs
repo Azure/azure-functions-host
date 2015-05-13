@@ -21,7 +21,6 @@ using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 {

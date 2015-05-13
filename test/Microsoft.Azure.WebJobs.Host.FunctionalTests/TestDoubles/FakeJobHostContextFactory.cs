@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
         public IStorageAccountProvider StorageAccountProvider { get; set; }
 
-        public IFunctionExecutor FunctionExecutor { get; set; }
+        public FunctionExecutor FunctionExecutor { get; set; }
 
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
         {

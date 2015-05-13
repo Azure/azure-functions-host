@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Linq;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -145,8 +144,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             EndToEndTest(uploadBlobBeforeHostStart: false);
         }
 
-        // 1 minute timeout
-        [Fact(Timeout = 60 * 1000)]
+        [Fact]
         public void AzureStorageEndToEndFast()
         {
             EndToEndTest(uploadBlobBeforeHostStart: true);

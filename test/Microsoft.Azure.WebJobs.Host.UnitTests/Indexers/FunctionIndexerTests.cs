@@ -97,8 +97,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
-            Assert.DoesNotThrow(() => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnVoid"),
-                index, CancellationToken.None).GetAwaiter().GetResult());
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnVoid"),
+                index, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         [Fact]
@@ -109,8 +109,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
             FunctionIndexer product = CreateProductUnderTest();
 
             // Act & Assert
-            Assert.DoesNotThrow(() => product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnTask"),
-                index, CancellationToken.None).GetAwaiter().GetResult());
+            product.IndexMethodAsync(typeof(FunctionIndexerTests).GetMethod("ReturnTask"),
+                index, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         [Fact]

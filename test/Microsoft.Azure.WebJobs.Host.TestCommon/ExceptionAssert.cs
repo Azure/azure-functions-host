@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
     {
         public static void DoesNotThrow(Action action)
         {
-            Assert.DoesNotThrow(() => action.Invoke());
+            action.Invoke();
         }
 
         public static void ThrowsArgument(Action action, string expectedParameterName)

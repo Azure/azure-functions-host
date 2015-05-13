@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = null;
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = "abc";
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = "a";
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = new string('a', maximumValidCharacters);
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = "abcdefghijklmnopqrstuvwxyz";
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             string hostId = "0-123456789";
 
             // Act & Assert
-            Assert.DoesNotThrow(() => { configuration.HostId = hostId; });
+            configuration.HostId = hostId;
         }
 
         [Fact]

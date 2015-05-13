@@ -2,16 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.ServiceBus;
-using Microsoft.Azure.WebJobs.ServiceBus.Config;
 using Microsoft.ServiceBus;
 using Microsoft.ServiceBus.Messaging;
 using Xunit;
@@ -86,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _topicSubscriptionCalled2.Set();
         }
 
-        [Fact(Timeout = 3 * 60 * 1000)]
+        [Fact]
         public void ServiceBusEndToEnd()
         {
             try

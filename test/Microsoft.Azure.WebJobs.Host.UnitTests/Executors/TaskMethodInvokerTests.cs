@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
         }
 
         [Fact]
-        public void InvokeAsync_IfLambdaThrows_PropogatesException()
+        public async Task InvokeAsync_IfLambdaThrows_PropogatesException()
         {
             // Arrange
             InvalidOperationException expectedException = new InvalidOperationException();
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
             object[] arguments = null;
 
             // Act & Assert
-            InvalidOperationException exception = Assert.Throws<InvalidOperationException>(
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => invoker.InvokeAsync(instance, arguments));
             Assert.Same(expectedException, exception);
         }

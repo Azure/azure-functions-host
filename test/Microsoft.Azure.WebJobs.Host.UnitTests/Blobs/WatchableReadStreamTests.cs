@@ -810,7 +810,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         }
 
         [Fact]
-        public void CopyToAsync_WhenInnerStreamThrows_PropogatesException()
+        public async Task CopyToAsync_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -826,7 +826,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(
+            Exception exception = await Assert.ThrowsAsync<Exception>(
                 () => product.CopyToAsync(destination, bufferSize, cancellationToken));
             Assert.Same(expectedException, exception);
         }
@@ -1023,7 +1023,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         }
 
         [Fact]
-        public void ReadAsync_WhenInnerStreamThrows_PropogatesException()
+        public async Task ReadAsync_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -1041,7 +1041,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(
+            Exception exception = await Assert.ThrowsAsync<Exception>(
                 () => product.ReadAsync(buffer, offset, count, cancellationToken));
             Assert.Same(expectedException, exception);
         }
@@ -1263,7 +1263,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
         }
 
         [Fact]
-        public void WriteAsync_WhenInnerStreamThrows_PropogatesException()
+        public async Task WriteAsync_WhenInnerStreamThrows_PropogatesException()
         {
             // Arrange
             Exception expectedException = new Exception();
@@ -1281,7 +1281,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs
             CancellationToken cancellationToken = CancellationToken.None;
 
             // Act & Assert
-            Exception exception = Assert.Throws<Exception>(
+            Exception exception = await Assert.ThrowsAsync<Exception>(
                 () => product.WriteAsync(buffer, offset, count, cancellationToken));
             Assert.Same(expectedException, exception);
         }
