@@ -114,7 +114,7 @@
              BuildInParallel="$(BuildInParallel)"/>
   </Target>
 
-  <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.1.9.2\lib\net20\xunit.runner.msbuild.dll"/>
+  <UsingTask TaskName="Xunit.Runner.MSBuild.xunit" AssemblyFile="packages\xunit.MSBuild.2.0.0.0\tools\xunit.runner.msbuild.dll"/>
 
   <Target Name="UnitTest" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>

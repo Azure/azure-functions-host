@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus;
@@ -144,14 +145,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             host.Start();
 
-            bool signaled = WaitHandle.WaitAll(
-                new WaitHandle[] { _topicSubscriptionCalled1, _topicSubscriptionCalled2 },
-                2 * 60 * 1000);
+            int timeout = 1 * 60 * 1000;
+            _topicSubscriptionCalled1.WaitOne(timeout);
+            _topicSubscriptionCalled2.WaitOne(timeout);
 
             // Wait for the host to terminate
             host.Stop();
-
-            Assert.True(signaled);
 
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
