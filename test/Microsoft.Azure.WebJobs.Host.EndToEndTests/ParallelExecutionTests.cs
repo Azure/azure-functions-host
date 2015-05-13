@@ -51,17 +51,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         [Theory]
         // One is special case (the old behaviour)
-        [InlineData(1)]
+        [InlineData(1, 1)]
         // Odd and even values
-        [InlineData(2)]
-        [InlineData(3)]
-        public void MaxDegreeOfParallelism_Queues(int batchSize)
+        [InlineData(2, 3)]
+        [InlineData(3, 3)]
+        public void MaxDegreeOfParallelism_Queues(int batchSize, int maxExpectedParallelism)
         {
             _receivedMessages = 0;
             _currentSimultaneouslyRunningFunctions = 0;
             _maxSimultaneouslyRunningFunctions = 0;
-
-            int expectedMaxSimultaneouslyRunningFunctions = (int)Math.Floor(batchSize + 0.5 * batchSize);
             _numberOfQueueMessages = batchSize * 3;
 
             RandomNameResolver nameResolver = new RandomNameResolver();
@@ -96,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 Assert.Equal(_numberOfQueueMessages, _receivedMessages);
                 Assert.Equal(0, _currentSimultaneouslyRunningFunctions);
-                Assert.Equal(expectedMaxSimultaneouslyRunningFunctions , _maxSimultaneouslyRunningFunctions);
+                Assert.Equal(maxExpectedParallelism, _maxSimultaneouslyRunningFunctions);
             }
             finally
             {
