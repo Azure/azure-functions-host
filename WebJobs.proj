@@ -130,7 +130,7 @@
       <Output TaskParameter="TargetOutputs" ItemName="UnitTestAssemblies"/>
     </MSBuild>
 
-    <xunit Assemblies="@(UnitTestAssemblies)" ParallelizeAssemblies="false" ParallelizeTestCollections="false" MaxParallelThreads="1" SerializeTestCases="true"/>
+    <xunit Assemblies="@(UnitTestAssemblies)" ParallelizeAssemblies="false" ParallelizeTestCollections="false"/>
   </Target>
 
   <Target Name="FunctionalTest" DependsOnTargets="UnitTest">
@@ -145,7 +145,7 @@
       <Output TaskParameter="TargetOutputs" ItemName="FunctionalTestAssemblies"/>
     </MSBuild>
 
-    <xunit Assemblies="@(FunctionalTestAssemblies)" ParallelizeAssemblies="false" ParallelizeTestCollections="false" MaxParallelThreads="1" SerializeTestCases="true"/>
+    <xunit Assemblies="@(FunctionalTestAssemblies)" ParallelizeAssemblies="false" ParallelizeTestCollections="false"/>
   </Target>
 
   <Target Name="Clean" DependsOnTargets="GetBinplace">
