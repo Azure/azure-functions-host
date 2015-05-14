@@ -333,8 +333,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             try
             {
-                using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None,
-                        defaultBufferSize, useAsync: true))
+                using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, defaultBufferSize, useAsync: true))
                 using (TextWriter writer = new StreamWriter(stream))
                 {
                     // content is not really important, this would help debugging though
@@ -343,10 +342,17 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     await writer.FlushAsync();
                 }
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                // simultaneous access error or an error caused by some other issue
-                // ignore it and skip marker creation
+                if (ex is UnauthorizedAccessException || ex is IOException)
+                {
+                    // simultaneous access error or an error caused by some other issue
+                    // ignore it and skip marker creation
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
 
