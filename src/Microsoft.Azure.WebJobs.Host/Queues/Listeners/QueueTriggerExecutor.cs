@@ -22,7 +22,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             Guid? parentId = QueueCausalityManager.GetOwner(value);
-            return await _innerExecutor.TryExecuteAsync(parentId, value, cancellationToken);
+            TriggeredFunctionData input = new TriggeredFunctionData
+            {
+                ParentId = parentId,
+                TriggerValue = value
+            };
+            return await _innerExecutor.TryExecuteAsync(input, cancellationToken);
         }
     }
 }

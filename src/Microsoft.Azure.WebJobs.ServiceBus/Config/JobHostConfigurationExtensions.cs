@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
                 throw new ArgumentNullException("serviceBusConfig");
             }
 
-            ServiceBusExtensionConfig extensionConfig = new ServiceBusExtensionConfig(config, serviceBusConfig);
+            ServiceBusExtensionConfig extensionConfig = new ServiceBusExtensionConfig(serviceBusConfig);
 
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
             extensions.RegisterExtension<IExtensionConfigProvider>(extensionConfig);

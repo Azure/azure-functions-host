@@ -176,11 +176,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobCausalityReader causalityReader = CreateStubCausalityReader(expectedParentId);
 
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
-            mock.Setup(e => e.TryExecuteAsync(expectedParentId, It.IsAny<IStorageBlob>(), It.IsAny<CancellationToken>()))
-                .Callback<Guid?, IStorageBlob, CancellationToken>(
-                (mockId, mockValue, mockCancellationToken) =>
+            mock.Setup(e => e.TryExecuteAsync(It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
+                .Callback<TriggeredFunctionData, CancellationToken>(
+                (mockInput, mockCancellationToken) =>
                 {
-                    StorageBlockBlob resultBlob = (StorageBlockBlob)mockValue;
+                    Assert.Equal(expectedParentId, mockInput.ParentId);
+
+                    StorageBlockBlob resultBlob = (StorageBlockBlob)mockInput.TriggerValue;
                     Assert.Equal(TestBlobName, resultBlob.Name);
                 })
                 .ReturnsAsync(true)
@@ -210,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
             mock.Setup(e => e.TryExecuteAsync(
-                It.IsAny<Guid?>(), It.IsAny<IStorageBlob>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true)
                 .Verifiable();
 
@@ -239,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
 
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
             mock.Setup(e => e.TryExecuteAsync(
-                It.IsAny<Guid?>(), It.IsAny<IStorageBlob>(), It.IsAny<CancellationToken>()))
+                It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(false)
                 .Verifiable();
 

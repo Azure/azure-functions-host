@@ -15,10 +15,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// <summary>
         /// Try to invoke the triggered function using the values specified.
         /// </summary>
-        /// <param name="parentId">The parent ID</param>
-        /// <param name="triggerValue">The value that caused the trigger to fire</param>
+        /// <param name="input">The trigger invocation details.</param>
         /// <param name="cancellationToken">The cancellation token</param>
         /// <returns>True if the invocation succeeded, false otherwise.</returns>
-        Task<bool> TryExecuteAsync(Guid? parentId, object triggerValue, CancellationToken cancellationToken);
+        Task<bool> TryExecuteAsync(TriggeredFunctionData input, CancellationToken cancellationToken);
     }
 }

@@ -102,7 +102,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             //// If the blob still exists and its ETag is still valid, execute.
             //// Note: it's possible the blob could change/be deleted between now and when the function executes.
             Guid? parentId = await _causalityReader.GetWriterAsync(blob, cancellationToken);
-            return await executor.TryExecuteAsync(parentId, blob, cancellationToken);
+            TriggeredFunctionData input = new TriggeredFunctionData
+            {
+                ParentId = parentId,
+                TriggerValue = blob
+            };
+            return await executor.TryExecuteAsync(input, cancellationToken);
         }
     }
 }

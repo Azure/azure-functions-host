@@ -16,38 +16,20 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Config
     /// </summary>
     internal class ServiceBusExtensionConfig : IExtensionConfigProvider
     {
-        private JobHostConfiguration _config;
         private ServiceBusConfiguration _serviceBusConfig;
 
         /// <summary>
         /// Creates a new <see cref="ServiceBusExtensionConfig"/> instance.
         /// </summary>
-        /// <param name="config">The <see cref="JobHostConfiguration"/> to configure.</param>
         /// <param name="serviceBusConfig">The <see cref="ServiceBusConfiguration"></see> to use./></param>
-        public ServiceBusExtensionConfig(JobHostConfiguration config, ServiceBusConfiguration serviceBusConfig)
+        public ServiceBusExtensionConfig(ServiceBusConfiguration serviceBusConfig)
         {
-            if (config == null)
-            {
-                throw new ArgumentNullException("config");
-            }
             if (serviceBusConfig == null)
             {
                 throw new ArgumentNullException("serviceBusConfig");
             }
 
-            _config = config;
             _serviceBusConfig = serviceBusConfig;
-        }
-
-        /// <summary>
-        /// Gets the <see cref="JobHostConfiguration"/>
-        /// </summary>
-        public JobHostConfiguration HostConfiguration
-        {
-            get
-            {
-                return _config;
-            }
         }
 
         /// <summary>
@@ -62,11 +44,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Config
         }
 
         /// <inheritdoc />
-        public void Initialize()
+        public void Initialize(ExtensionConfigContext context)
         {
             // get the services we need to construct our binding providers
-            INameResolver nameResolver = _config.GetService<INameResolver>();
-            IExtensionRegistry extensions = _config.GetService<IExtensionRegistry>();
+            INameResolver nameResolver = context.Config.GetService<INameResolver>();
+            IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();
 
             // register our trigger binding provider
             ServiceBusTriggerAttributeBindingProvider triggerBindingProvider = new ServiceBusTriggerAttributeBindingProvider(nameResolver, _serviceBusConfig);

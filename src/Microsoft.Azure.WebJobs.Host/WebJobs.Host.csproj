@@ -354,6 +354,7 @@
       <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
@@ -368,6 +369,8 @@
     <Compile Include="Executors\ITriggeredFunctionExecutor.cs" />
     <Compile Include="Executors\ITriggeredFunctionExecutorOfT.cs" />
     <Compile Include="Executors\NullInstanceFactory.cs" />
+    <Compile Include="Executors\TriggeredFunctionData.cs" />
+    <Compile Include="Executors\TriggeredFunctionDataOfT.cs" />
     <Compile Include="Executors\TriggeredFunctionExecutor.cs" />
     <Compile Include="Extensions\IExtensionRegistryExtensions.cs" />
     <Compile Include="IContextSetter.cs" />

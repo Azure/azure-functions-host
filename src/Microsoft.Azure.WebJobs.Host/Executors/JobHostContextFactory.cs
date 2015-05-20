@@ -83,10 +83,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             // Register system services with the service container
             config.AddService<INameResolver>(nameResolver);
+
+            ExtensionConfigContext context = new ExtensionConfigContext
+            {
+                Config = config
+            };
+            InvokeExtensionConfigProviders(context);
+
             IExtensionRegistry extensions = config.GetExtensions();
-
-            InvokeExtensionConfigProviders(extensions);
-
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
                 messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, consoleProvider.Out);
@@ -242,12 +246,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        private static void InvokeExtensionConfigProviders(IExtensionRegistry extensions)
+        private static void InvokeExtensionConfigProviders(ExtensionConfigContext context)
         {
+            IExtensionRegistry extensions = context.Config.GetExtensions();
+
             IEnumerable<IExtensionConfigProvider> configProviders = extensions.GetExtensions(typeof(IExtensionConfigProvider)).Cast<IExtensionConfigProvider>();
             foreach (IExtensionConfigProvider configProvider in configProviders)
             {
-                configProvider.Initialize();
+                configProvider.Initialize(context);
             }
         }
 

@@ -11,8 +11,11 @@ namespace Microsoft.Azure.WebJobs.Host.Config
     public interface IExtensionConfigProvider
     {
         /// <summary>
-        /// Initializes the extension.
+        /// Initializes the extension. Initialization should register any extension bindings
+        /// with the <see cref="IExtensionRegistry"/> instance, which can be obtained from the
+        /// <see cref="JobHostConfiguration"/> which is an <see cref="System.IServiceProvider"/>.
         /// </summary>
-        void Initialize();
+        /// <param name="context">The <see cref="ExtensionConfigContext"/></param>
+        void Initialize(ExtensionConfigContext context);
     }
 }

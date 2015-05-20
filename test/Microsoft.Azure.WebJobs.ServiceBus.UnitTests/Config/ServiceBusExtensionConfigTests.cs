@@ -4,6 +4,7 @@
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.ServiceBus.Bindings;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
             config.AddService<INameResolver>(new RandomNameResolver());
 
             ServiceBusConfiguration serviceBusConfig = new ServiceBusConfiguration();
-            ServiceBusExtensionConfig serviceBusExtensionConfig = new ServiceBusExtensionConfig(config, serviceBusConfig);
+            ServiceBusExtensionConfig serviceBusExtensionConfig = new ServiceBusExtensionConfig(serviceBusConfig);
 
             IExtensionRegistry extensions = config.GetService<IExtensionRegistry>();
             ITriggerBindingProvider[] triggerBindingProviders = extensions.GetExtensions<ITriggerBindingProvider>().ToArray();
@@ -30,7 +31,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
             IBindingProvider[] bindingProviders = extensions.GetExtensions<IBindingProvider>().ToArray();
             Assert.Equal(0, bindingProviders.Length);
 
-            serviceBusExtensionConfig.Initialize();
+            ExtensionConfigContext context = new ExtensionConfigContext
+            {
+                Config = config
+            };
+            serviceBusExtensionConfig.Initialize(context);
 
             // ensure the ServiceBusTriggerAttributeBindingProvider was registered
             triggerBindingProviders = extensions.GetExtensions<ITriggerBindingProvider>().ToArray();
