@@ -274,18 +274,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return watches;
         }
 
-        private static ValueWatcher CreateValueWatcher(IReadOnlyDictionary<string, IWatcher> watches,
-            CloudBlockBlob parameterLogBlob, TextWriter consoleOutput,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
-        {
-            if (parameterLogBlob == null)
-            {
-                return null;
-            }
-
-            return new ValueWatcher(watches, parameterLogBlob, consoleOutput, backgroundExceptionDispatcher);
-        }
-
         internal static async Task ExecuteWithWatchersAsync(IFunctionInvoker invoker,
             IReadOnlyDictionary<string, IValueProvider> parameters,
             TextWriter consoleOutput,

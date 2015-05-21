@@ -3,6 +3,7 @@
 
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -266,10 +267,14 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        /// <inheritdoc />
-        public void Dispose()
+        /// <summary>
+        /// Dispose the instance
+        /// </summary>
+        /// <param name="disposing">True if currently disposing.</param>
+        [SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_shutdownTokenSource")]
+        protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (disposing && !_disposed)
             {
                 // Running callers might still be using this cancellation token.
                 // Mark it canceled but don't dispose of the source while the callers are running.
@@ -291,6 +296,13 @@ namespace Microsoft.Azure.WebJobs
 
                 _disposed = true;
             }
+        }
+    
+        /// <inheritdoc />
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func,

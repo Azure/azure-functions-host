@@ -15,7 +15,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class SharedBlobQueueListenerFactory : IFactory<SharedBlobQueueListener>
     {
-        private readonly ITriggeredFunctionExecutor<IStorageBlob> _executor;
         private readonly SharedQueueWatcher _sharedQueueWatcher;
         private readonly IStorageQueueClient _queueClient;
         private readonly IStorageQueue _hostBlobTriggerQueue;
@@ -25,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly TextWriter _log;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
-        public SharedBlobQueueListenerFactory(ITriggeredFunctionExecutor<IStorageBlob> executor,
+        public SharedBlobQueueListenerFactory(
             SharedQueueWatcher sharedQueueWatcher,
             IStorageQueueClient queueClient,
             IStorageQueue hostBlobTriggerQueue,
@@ -35,11 +34,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             TextWriter log,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
-            if (executor == null)
-            {
-                throw new ArgumentNullException("executor");
-            }
-
             if (sharedQueueWatcher == null)
             {
                 throw new ArgumentNullException("sharedQueueWatcher");
@@ -80,7 +74,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("blobWrittenWatcher");
             }
 
-            _executor = executor;
             _sharedQueueWatcher = sharedQueueWatcher;
             _queueClient = queueClient;
             _hostBlobTriggerQueue = hostBlobTriggerQueue;
@@ -96,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageQueue blobTriggerPoisonQueue =
                 _queueClient.GetQueueReference(HostQueueNames.BlobTriggerPoisonQueue);
             BlobQueueTriggerExecutor triggerExecutor =
-                new BlobQueueTriggerExecutor(_blobClient, _executor, _blobWrittenWatcher);
+                new BlobQueueTriggerExecutor(_blobClient, _blobWrittenWatcher);
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,

@@ -10,12 +10,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class FunctionBinding : IFunctionBinding
     {
-        private readonly MethodInfo _method;
         private readonly IReadOnlyDictionary<string, IBinding> _bindings;
 
         public FunctionBinding(MethodInfo method, IReadOnlyDictionary<string, IBinding> bindings)
         {
-            _method = method;
             _bindings = bindings;
         }
 

@@ -19,22 +19,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageBlobClient _client;
         private readonly IBlobETagReader _eTagReader;
         private readonly IBlobCausalityReader _causalityReader;
-        private readonly ITriggeredFunctionExecutor<IStorageBlob> _innerExecutor;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
         private readonly ConcurrentDictionary<string, ITriggeredFunctionExecutor<IStorageBlob>> _registrations;
 
-        public BlobQueueTriggerExecutor(IStorageBlobClient client, ITriggeredFunctionExecutor<IStorageBlob> innerExecutor, IBlobWrittenWatcher blobWrittenWatcher)
-            : this(client, BlobETagReader.Instance, BlobCausalityReader.Instance, innerExecutor, blobWrittenWatcher)
+        public BlobQueueTriggerExecutor(IStorageBlobClient client, IBlobWrittenWatcher blobWrittenWatcher)
+            : this(client, BlobETagReader.Instance, BlobCausalityReader.Instance, blobWrittenWatcher)
         {
         }
 
         public BlobQueueTriggerExecutor(IStorageBlobClient client, IBlobETagReader eTagReader,
-            IBlobCausalityReader causalityReader, ITriggeredFunctionExecutor<IStorageBlob> innerExecutor, IBlobWrittenWatcher blobWrittenWatcher)
+            IBlobCausalityReader causalityReader, IBlobWrittenWatcher blobWrittenWatcher)
         {
             _client = client;
             _eTagReader = eTagReader;
             _causalityReader = causalityReader;
-            _innerExecutor = innerExecutor;
             _blobWrittenWatcher = blobWrittenWatcher;
             _registrations = new ConcurrentDictionary<string, ITriggeredFunctionExecutor<IStorageBlob>>();
         }
@@ -102,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             //// If the blob still exists and its ETag is still valid, execute.
             //// Note: it's possible the blob could change/be deleted between now and when the function executes.
             Guid? parentId = await _causalityReader.GetWriterAsync(blob, cancellationToken);
-            TriggeredFunctionData input = new TriggeredFunctionData
+            TriggeredFunctionData<IStorageBlob> input = new TriggeredFunctionData<IStorageBlob>
             {
                 ParentId = parentId,
                 TriggerValue = blob

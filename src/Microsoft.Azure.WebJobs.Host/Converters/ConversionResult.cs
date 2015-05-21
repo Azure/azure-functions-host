@@ -12,11 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
         /// <summary>
         /// Gets a value indicating whether the conversion succeeded.
         /// </summary>
-        public bool Succeeded;
+        public bool Succeeded { get; set; }
 
         /// <summary>
         /// Gets the conversion result.
         /// </summary>
-        public TResult Result;
+        public TResult Result { get; set; }
     }
 }

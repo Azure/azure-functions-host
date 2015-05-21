@@ -14,8 +14,6 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
     {
         private static readonly string _azureJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
 
-        private static Type[] EmptyTypeArray = new Type[0];
-
         private readonly TextWriter _log;
 
         public DefaultTypeLocator(TextWriter log)

@@ -45,9 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         [InlineData(@"2.0;<REMINDER>", 2, 0)]
         public void TryParseVersion_IfCorrectVersionFormat_ReturnsVersion(string line, int major, int minor)
         {
-            StorageAnalyticsLogParser parser = new StorageAnalyticsLogParser();
-
-            Version version = parser.TryParseVersion(line);
+            Version version = StorageAnalyticsLogParser.TryParseVersion(line);
 
             Assert.NotNull(version);
             Assert.Equal(new Version(major, minor), version);
@@ -58,9 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         [InlineData("")]
         public void TryParseVersion_IfNullOrEmpty_ReturnsNull(string line)
         {
-            StorageAnalyticsLogParser parser = new StorageAnalyticsLogParser();
-
-            Version version = parser.TryParseVersion(line);
+            Version version = StorageAnalyticsLogParser.TryParseVersion(line);
 
             Assert.Null(version);
         }
@@ -70,9 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         [InlineData(@"fake;2014-09-08T18:49:25.5834856Z;CopyBlob;Success;202;13;13;authenticated;storagesample;storagesample;blob;""https://storagesample.blob.core.windows.net/sample-container/Copy-sample-blob.txt"";""/storagesample/sample-container/Copy-sample-blob.txt"";4;5;6;7;8;9;0;1;2;3;4;5;6;7;8;9;0")]
         public void TryParseVersion_IfMalformedVersionFormat_ReturnsNull(string line)
         {
-            StorageAnalyticsLogParser parser = new StorageAnalyticsLogParser();
-
-            Version version = parser.TryParseVersion(line);
+            Version version = StorageAnalyticsLogParser.TryParseVersion(line);
 
             Assert.Null(version);
         }

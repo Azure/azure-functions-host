@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IBlobWrittenWatcher blobWrittenWatcher)
         {
             SharedBlobQueueListener sharedListener = sharedContextProvider.GetOrCreate<SharedBlobQueueListener>(
-                new SharedBlobQueueListenerFactory(_executor, sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
+                new SharedBlobQueueListenerFactory(sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
                     blobClient, _queueConfiguration, _backgroundExceptionDispatcher, _log, blobWrittenWatcher));
 
             sharedListener.Register(_functionId, _executor);

@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// </summary>
         /// <param name="line">A line as extracted from a Storage Analytics Log file.</param>
         /// <returns>Parsed instance of <see cref="Version"/> or null if parsing has failed.</returns>
-        public Version TryParseVersion(string line)
+        public static Version TryParseVersion(string line)
         {   
             if (String.IsNullOrEmpty(line))
             {

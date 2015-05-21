@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                 return false;
             }
 
-            if (blobName.EndsWith(".") || blobName.EndsWith("/"))
+            if (blobName.EndsWith(".", StringComparison.OrdinalIgnoreCase) || blobName.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
                 errorMessage = string.Format(invalidSuffixErrorMessage, blobName);
                 return false;

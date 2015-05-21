@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -11,17 +12,15 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     internal class ListenerFactoryListener : IListener
     {
         private readonly IListenerFactory _factory;
-        private readonly IFunctionExecutor _executor;
         private readonly CancellationTokenSource _cancellationSource;
 
         private IListener _listener;
         private CancellationTokenRegistration _cancellationRegistration;
         private bool _disposed;
 
-        public ListenerFactoryListener(IListenerFactory factory, IFunctionExecutor executor)
+        public ListenerFactoryListener(IListenerFactory factory)
         {
             _factory = factory;
-            _executor = executor;
             _cancellationSource = new CancellationTokenSource();
         }
 
@@ -63,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _cancellationSource.Cancel();
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_cancellationSource")]
         public void Dispose()
         {
             if (!_disposed)

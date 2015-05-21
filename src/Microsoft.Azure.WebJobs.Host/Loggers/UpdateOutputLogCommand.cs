@@ -17,22 +17,19 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     // caller uses the textWriter that we return).
     internal sealed class UpdateOutputLogCommand : IRecurrentCommand, IDisposable, IFunctionOutput
     {
-        private readonly IStorageBlockBlob _outputBlob;
-
         // Contents for what's written. Owned by the timer thread.
         private readonly StringWriter _innerWriter;
 
         // Thread-safe access to _innerWriter so that user threads can write to it. 
         private readonly TextWriter _synchronizedWriter;
+        private object _writerSyncLock = new object();
 
         private readonly Func<string, CancellationToken, Task> _uploadCommand;
 
         private bool _disposed;
 
-        private UpdateOutputLogCommand(IStorageBlockBlob outputBlob, StringWriter innerWriter,
-            Func<string, CancellationToken, Task> uploadCommand)
+        private UpdateOutputLogCommand(StringWriter innerWriter, Func<string, CancellationToken, Task> uploadCommand)
         {
-            _outputBlob = outputBlob;
             _innerWriter = innerWriter;
             _synchronizedWriter = TextWriter.Synchronized(_innerWriter);
             _uploadCommand = uploadCommand;
@@ -95,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 innerWriter.WriteLine("========================");
             }
 
-            return new UpdateOutputLogCommand(outputBlob, innerWriter, uploadCommand);
+            return new UpdateOutputLogCommand(innerWriter, uploadCommand);
         }
 
         public async Task<bool> TryExecuteAsync(CancellationToken cancellationToken)
@@ -105,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             // For synchronized text writer, the object is its own lock.
             string snapshot;
 
-            lock (_synchronizedWriter)
+            lock (_writerSyncLock)
             {
                 snapshot = _innerWriter.ToString();
             }
@@ -130,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
             string finalSnapshot;
 
-            lock (_synchronizedWriter)
+            lock (_writerSyncLock)
             {
                 _synchronizedWriter.Flush();
                 finalSnapshot = _innerWriter.ToString();

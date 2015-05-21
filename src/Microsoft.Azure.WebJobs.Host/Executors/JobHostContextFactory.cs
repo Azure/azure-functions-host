@@ -206,8 +206,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                         backgroundExceptionDispatcher, shutdownToken, functionExecutor);
                     IListenerFactory hostListenerFactory = new CompositeListenerFactory(functionsListenerFactory,
                         sharedQueueListenerFactory, instanceQueueListenerFactory);
-                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, backgroundExceptionDispatcher,
-                        shutdownToken, functionExecutor);
+                    listener = CreateHostListener(hostListenerFactory, heartbeatCommand, backgroundExceptionDispatcher, shutdownToken);
 
                     // Publish this to Azure logging account so that a web dashboard can see it. 
                     await LogHostStartedAsync(functions, hostOutputMessage, hostInstanceLogger, combinedCancellationToken);
@@ -216,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     hostCallExecutor = new ShutdownFunctionExecutor(shutdownToken, functionExecutor);
 
-                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory, functionExecutor);
+                    IListener factoryListener = new ListenerFactoryListener(functionsListenerFactory);
                     IListener shutdownListener = new ShutdownListener(shutdownToken, factoryListener);
                     listener = shutdownListener;
 
@@ -272,9 +271,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
             IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            CancellationToken shutdownToken, IFunctionExecutor executor)
+            CancellationToken shutdownToken)
         {
-            IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory, executor);
+            IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory);
             IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
                 backgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);

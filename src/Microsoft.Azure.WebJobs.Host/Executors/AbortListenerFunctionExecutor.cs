@@ -10,13 +10,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     internal class AbortListenerFunctionExecutor : IFunctionExecutor
     {
         private readonly IListenerFactory _abortListenerFactory;
-        private readonly IFunctionExecutor _abortExecutor;
         private readonly IFunctionExecutor _innerExecutor;
 
         public AbortListenerFunctionExecutor(IListenerFactory abortListenerFactory, IFunctionExecutor abortExecutor, IFunctionExecutor innerExecutor)
         {
             _abortListenerFactory = abortListenerFactory;
-            _abortExecutor = abortExecutor;
             _innerExecutor = innerExecutor;
         }
 

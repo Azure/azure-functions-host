@@ -105,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
                 // Otherwise, callers would receive ObjectDisposedException when calling token.Register.
                 // For now, rely on finalization to clean up _cancellationTokenSource's wait handle (if allocated).
                 _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
 
                 _disposed = true;
             }

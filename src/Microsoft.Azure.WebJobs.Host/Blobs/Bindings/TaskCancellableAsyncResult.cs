@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
                 // Because ContinueWith/ExecuteSynchronously will run immediately for a completed task, ensure this is
                 // the last line of the constructor (all other state should be initialized before invoking the
                 // callback).
-                Task continuation = _task.ContinueWith(InvokeCallback, TaskContinuationOptions.ExecuteSynchronously);
+                _task.ContinueWith(InvokeCallback, TaskContinuationOptions.ExecuteSynchronously);
             }
         }
 

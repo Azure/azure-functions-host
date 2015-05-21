@@ -13,16 +13,16 @@ namespace Microsoft.Azure.WebJobs.Host
         /// Resolve all %% matches within a string.
         /// </summary>
         /// <param name="resolver">resolver to apply to each name</param>
-        /// <param name="wholeString">the input string. IE, "start%name1%...%name2%end"</param>
+        /// <param name="resolve">the input string. IE, "start%name1%...%name2%end"</param>
         /// <returns>The resolved string. IE, "startA...Bend" </returns>
-        public static string ResolveWholeString(this INameResolver resolver, string wholeString)
+        public static string ResolveWholeString(this INameResolver resolver, string resolve)
         {
             if (resolver == null)
             {
                 throw new ArgumentNullException("resolver");
             }
 
-            if (wholeString == null)
+            if (resolve == null)
             {
                 return null;
             }
@@ -30,18 +30,18 @@ namespace Microsoft.Azure.WebJobs.Host
             int i = 0;
             StringBuilder sb = new StringBuilder();
 
-            while (i < wholeString.Length)
+            while (i < resolve.Length)
             {
-                int idxStart = wholeString.IndexOf('%', i);
+                int idxStart = resolve.IndexOf('%', i);
                 if (idxStart >= 0)
                 {
-                    int idxEnd = wholeString.IndexOf('%', idxStart + 1);
+                    int idxEnd = resolve.IndexOf('%', idxStart + 1);
                     if (idxEnd < 0)
                     {
                         string msg = string.Format("The '%' at position {0} does not have a closing '%'", idxStart);
                         throw new InvalidOperationException(msg);
                     }
-                    string name = wholeString.Substring(idxStart + 1, idxEnd - idxStart - 1);
+                    string name = resolve.Substring(idxStart + 1, idxEnd - idxStart - 1);
 
                     string value;
                     try
@@ -58,14 +58,14 @@ namespace Microsoft.Azure.WebJobs.Host
                         string msg = string.Format("'%{0}%' does not resolve to a value.", name);
                         throw new InvalidOperationException(msg);
                     }
-                    sb.Append(wholeString.Substring(i, idxStart - i));
+                    sb.Append(resolve.Substring(i, idxStart - i));
                     sb.Append(value);
                     i = idxEnd + 1;
                 }
                 else
                 {
                     // no more '%' tokens
-                    sb.Append(wholeString.Substring(i));
+                    sb.Append(resolve.Substring(i));
                     break;
                 }
             }

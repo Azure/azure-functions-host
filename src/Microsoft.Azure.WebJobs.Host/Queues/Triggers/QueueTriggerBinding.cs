@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             };
         }
 
-        private IReadOnlyDictionary<string, object> CreateBindingData(IStorageQueueMessage value,
+        private static IReadOnlyDictionary<string, object> CreateBindingData(IStorageQueueMessage value,
             IReadOnlyDictionary<string, object> bindingDataFromValueType)
         {
             Dictionary<string, object> bindingData = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);

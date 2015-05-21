@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(CancellationToken token, ValueBindingContext context)
         {
             IValueProvider provider = new CancellationTokenValueProvider(token);

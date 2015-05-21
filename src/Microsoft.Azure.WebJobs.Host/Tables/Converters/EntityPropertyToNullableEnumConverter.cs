@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -10,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
     internal class EntityPropertyToNullableEnumConverter<TEnum> : IConverter<EntityProperty, TEnum?>
         where TEnum : struct
     {
+        [SuppressMessage("Microsoft.Design", "CA1065:DoNotRaiseExceptionsInUnexpectedLocations")]
         static EntityPropertyToNullableEnumConverter()
         {
             if (!typeof(TEnum).IsEnum)

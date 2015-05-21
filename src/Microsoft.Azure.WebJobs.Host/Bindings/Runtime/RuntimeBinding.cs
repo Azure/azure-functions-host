@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(IAttributeBindingSource binding, ValueBindingContext context)
         {
             IValueProvider provider = new RuntimeValueProvider(binding);

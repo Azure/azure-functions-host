@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(TextWriter writer, ValueBindingContext context)
         {
             IValueProvider provider = new ConsoleOutputValueProvider(writer);

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -9,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobTriggerMessage
     {
+        [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         public string Type { get { return "BlobTrigger"; } }
 
         public string FunctionId { get; set; }

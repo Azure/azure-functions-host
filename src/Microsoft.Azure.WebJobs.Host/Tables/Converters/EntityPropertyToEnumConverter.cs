@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.WindowsAzure.Storage.Table;
 
@@ -9,6 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
 {
     internal class EntityPropertyToEnumConverter<TProperty> : IConverter<EntityProperty, TProperty>
     {
+        [SuppressMessage("Microsoft.Design", "CA1065:DoNotRaiseExceptionsInUnexpectedLocations")]
         static EntityPropertyToEnumConverter()
         {
             if (!typeof(TProperty).IsEnum)

@@ -188,8 +188,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
             }
             else
             {
-                Debug.Assert(sdkBlob is CloudPageBlob);
-                return new StoragePageBlob(parent, (CloudPageBlob)sdkBlob);
+                CloudPageBlob cloudPageBlob = sdkBlob as CloudPageBlob;
+                Debug.Assert(cloudPageBlob != null);
+                return new StoragePageBlob(parent, cloudPageBlob);
             }
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Converters;
 using Microsoft.Azure.WebJobs.Host.Protocols;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(TValue value, ValueBindingContext context)
         {
             IValueProvider provider = new ObjectValueProvider(value, typeof(TValue));

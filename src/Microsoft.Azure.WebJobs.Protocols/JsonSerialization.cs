@@ -92,18 +92,30 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 throw new ArgumentNullException("json");
             }
 
-            using (StringReader stringReader = new StringReader(json))
-            using (JsonTextReader jsonReader = CreateJsonTextReader(stringReader))
+            StringReader stringReader = null;
+            try
             {
-                JObject parsed = JObject.Load(jsonReader);
-
-                // Behave as similarly to JObject.Parse as possible (except for the settings used).
-                if (jsonReader.Read() && jsonReader.TokenType != JsonToken.Comment)
+                stringReader = new StringReader(json);
+                using (JsonTextReader jsonReader = CreateJsonTextReader(stringReader))
                 {
-                    throw new JsonReaderException("Invalid content found after JSON object.");
-                }
+                    stringReader = null;
+                    JObject parsed = JObject.Load(jsonReader);
 
-                return parsed;
+                    // Behave as similarly to JObject.Parse as possible (except for the settings used).
+                    if (jsonReader.Read() && jsonReader.TokenType != JsonToken.Comment)
+                    {
+                        throw new JsonReaderException("Invalid content found after JSON object.");
+                    }
+
+                    return parsed;
+                }
+            }
+            finally
+            {
+                if (stringReader != null)
+                {
+                    stringReader.Dispose();
+                }
             }
         }
     }

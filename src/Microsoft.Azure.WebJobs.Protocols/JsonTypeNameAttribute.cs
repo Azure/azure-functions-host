@@ -14,9 +14,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     /// <see cref="PolymorphicJsonConverter"/>.
     /// </summary>
 #if PUBLICPROTOCOL
-    public class JsonTypeNameAttribute : Attribute
+    public sealed class JsonTypeNameAttribute : Attribute
 #else
-    internal class JsonTypeNameAttribute : Attribute
+    internal sealed class JsonTypeNameAttribute : Attribute
 #endif
     {
         private readonly string _typeName;

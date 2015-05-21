@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs
 
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
-        private readonly IExtensionRegistry _extensionRegistry = new DefaultExtensionRegistry();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
         private IJobHostContextFactory _contextFactory;
 
