@@ -43,7 +43,7 @@ namespace Dashboard.Data
             {
                 // Remove the combined prefix and slash before the ID.
                 string id = blob.Name.Substring(combinedPrefix.Length);
-                if (id.StartsWith("/"))
+                if (id.StartsWith("/", StringComparison.OrdinalIgnoreCase))
                 {
                     id = id.Substring(1);
                 }

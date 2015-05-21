@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -12,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     {
         private readonly IReadOnlyDictionary<string, IBinding> _bindings;
 
-        public FunctionBinding(MethodInfo method, IReadOnlyDictionary<string, IBinding> bindings)
+        public FunctionBinding(IReadOnlyDictionary<string, IBinding> bindings)
         {
             _bindings = bindings;
         }

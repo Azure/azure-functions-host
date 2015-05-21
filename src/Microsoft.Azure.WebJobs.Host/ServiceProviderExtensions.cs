@@ -34,11 +34,10 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             T typedService = service as T;
-
             if (typedService == null)
             {
                 string message = String.Format(CultureInfo.InvariantCulture,
-                    "ServiceProvider.GetService({0}) must return an object assignable to {0}.", typeof(T).Name);
+                     "The returned service must be assignable to {0}.", typeof(T).Name);
                 throw new InvalidOperationException(message);
             }
 

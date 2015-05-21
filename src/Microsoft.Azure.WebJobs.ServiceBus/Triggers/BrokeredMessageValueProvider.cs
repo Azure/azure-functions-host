@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 case ContentTypes.ApplicationOctetStream:
                     return GetBase64StringAsync(clonedMessage, cancellationToken);
                 default:
-                    return GetBytesLengthAsync(clonedMessage, cancellationToken);
+                    return GetBytesLengthAsync(clonedMessage);
             }
         }
 
@@ -89,11 +90,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             return Convert.ToBase64String(bytes);
         }
 
-        private static Task<string> GetBytesLengthAsync(BrokeredMessage clonedMessage,
-            CancellationToken cancellationToken)
+        private static Task<string> GetBytesLengthAsync(BrokeredMessage clonedMessage)
         {
             long length;
-
             using (Stream inputStream = clonedMessage.GetBody<Stream>())
             {
                 if (inputStream == null)
@@ -104,7 +103,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 length = inputStream.Length;
             }
 
-            string description = "byte[" + length + "]";
+            string description = string.Format(CultureInfo.InvariantCulture, "byte[{0}]", length);
+
             return Task.FromResult(description);
         }
 

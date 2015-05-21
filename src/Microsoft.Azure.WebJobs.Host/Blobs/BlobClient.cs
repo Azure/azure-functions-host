@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
@@ -76,31 +76,30 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             if (blobName == null)
             {
-                errorMessage = string.Format(tooShortErrorMessage, String.Empty);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, tooShortErrorMessage, String.Empty);
                 return false;
             }
-
             if (blobName.Length == 0)
             {
-                errorMessage = string.Format(tooShortErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, tooShortErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.Length > 1024)
             {
-                errorMessage = string.Format(tooLongErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, tooLongErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.EndsWith(".", StringComparison.OrdinalIgnoreCase) || blobName.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                errorMessage = string.Format(invalidSuffixErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, invalidSuffixErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.IndexOfAny(UnsafeBlobNameCharacters) > -1)
             {
-                errorMessage = string.Format(unsafeCharactersMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, unsafeCharactersMessage, blobName);
                 return false;
             }
 

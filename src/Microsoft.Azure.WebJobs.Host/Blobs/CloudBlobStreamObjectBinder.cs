@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Blobs.Bindings;
 
@@ -46,8 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         {
             if (!binderType.IsValueType && binderType.GetConstructor(Type.EmptyTypes) == null)
             {
-                throw new InvalidOperationException(
-                    "The class implementing ICloudBlobStreamBinder<> must provide a default constructor.");
+                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "The class implementing {0} must provide a default constructor.", typeof(ICloudBlobStreamBinder<>).Name));
             }
         }
     }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -40,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             get { return _committed; }
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public override ICancellableAsyncResult BeginFlush(AsyncCallback callback, object state)
         {
             CancellationTokenSource cancellationSource = new CancellationTokenSource();
@@ -53,11 +55,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             result.End();
         }
 
-        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback,
-            object state)
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
-            Task baseTask = new TaskFactory().FromAsync(base.BeginWrite, base.EndWrite, buffer, offset, count,
-                state: null);
+            Task baseTask = new TaskFactory().FromAsync(base.BeginWrite, base.EndWrite, buffer, offset, count, state: null);
             return new TaskAsyncResult(WriteAsyncCore(baseTask, count), callback, state);
         }
 
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             result.End();
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public override ICancellableAsyncResult BeginCommit(AsyncCallback callback, object state)
         {
             CancellationTokenSource cancellationSource = new CancellationTokenSource();

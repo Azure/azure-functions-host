@@ -32,11 +32,11 @@ namespace Dashboard.Data
             {
                 if (IsInput)
                 {
-                    return string.Format("Read from blob: {0}", Path);
+                    return string.Format(CultureInfo.CurrentCulture, "Read from blob: {0}", Path);
                 }
                 else
                 {
-                    return string.Format("Write to blob: {0}", Path);
+                    return string.Format(CultureInfo.CurrentCulture, "Write to blob: {0}", Path);
                 }
             }
         }

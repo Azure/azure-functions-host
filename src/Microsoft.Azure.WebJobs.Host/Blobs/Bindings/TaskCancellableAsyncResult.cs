@@ -81,8 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             if (_cancellationSourceDisposed)
             {
-                throw new InvalidOperationException(
-                    "Cannot call ICancellableAsyncResult.Cancel after calling the End method.");
+                throw new InvalidOperationException("Cannot call Cancel after calling the End method.");
             }
 
             _cancellationSource.Cancel();

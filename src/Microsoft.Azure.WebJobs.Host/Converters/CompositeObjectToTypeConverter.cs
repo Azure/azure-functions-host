@@ -40,23 +40,23 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
         /// Try to perform a conversion by attempting each inner converter in order
         /// until one succeeds, or all fail.
         /// </summary>
-        /// <param name="value">The value to convert.</param>
-        /// <param name="converted">The converted value if successful.</param>
+        /// <param name="input">The value to convert.</param>
+        /// <param name="output">The converted value if successful.</param>
         /// <returns>True if the conversion was successful, false otherwise.</returns>
-        public bool TryConvert(object value, out T converted)
+        public bool TryConvert(object input, out T output)
         {
             foreach (IObjectToTypeConverter<T> converter in _converters)
             {
                 T possibleConverted;
 
-                if (converter.TryConvert(value, out possibleConverted))
+                if (converter.TryConvert(input, out possibleConverted))
                 {
-                    converted = possibleConverted;
+                    output = possibleConverted;
                     return true;
                 }
             }
 
-            converted = default(T);
+            output = default(T);
             return false;
         }
     }

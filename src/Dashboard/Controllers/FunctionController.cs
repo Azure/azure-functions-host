@@ -25,7 +25,6 @@ namespace Dashboard.Controllers
         private readonly CloudStorageAccount _account;
         private readonly IFunctionLookup _functionLookup;
         private readonly IFunctionInstanceLookup _functionInstanceLookup;
-        private readonly IFunctionQueuedLogger _functionQueuedLogger;
         private readonly IHeartbeatValidityMonitor _heartbeatMonitor;
         private readonly IInvoker _invoker;
 
@@ -33,7 +32,6 @@ namespace Dashboard.Controllers
             CloudStorageAccount account,
             IFunctionLookup functionLookup,
             IFunctionInstanceLookup functionInstanceLookup,
-            IFunctionQueuedLogger functionQueuedLogger,
             IHeartbeatValidityMonitor heartbeatMonitor,
             IInvoker invoker
             )
@@ -41,7 +39,6 @@ namespace Dashboard.Controllers
             _account = account;
             _functionLookup = functionLookup;
             _functionInstanceLookup = functionInstanceLookup;
-            _functionQueuedLogger = functionQueuedLogger;
             _heartbeatMonitor = heartbeatMonitor;
             _invoker = invoker;
         }
@@ -189,7 +186,7 @@ namespace Dashboard.Controllers
 
             foreach (string key in form.AllKeys)
             {
-                if (key.StartsWith(Prefix))
+                if (key.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
                 {
                     string argumentName = key.Substring(Prefix.Length);
                     string value = form[key];

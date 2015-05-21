@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
             else
             {
-                IFunctionInstanceFactory instanceFactory = new FunctionInstanceFactory(new FunctionBinding(method, nonTriggerBindings), invoker, functionDescriptor);
+                IFunctionInstanceFactory instanceFactory = new FunctionInstanceFactory(new FunctionBinding(nonTriggerBindings), invoker, functionDescriptor);
                 functionDefinition = new FunctionDefinition(instanceFactory, listenerFactory: null);
             }
 

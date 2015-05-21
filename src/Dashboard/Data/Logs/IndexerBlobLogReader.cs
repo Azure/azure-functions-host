@@ -151,7 +151,7 @@ namespace Dashboard.Data.Logs
                 entry.Id = entry.Id.Substring(_containerDirectory.Length + 1);
             }
 
-            entry.Date = DateTime.Parse(blob.Metadata[BlobLogEntryKeys.LogDate]);
+            entry.Date = DateTime.Parse(blob.Metadata[BlobLogEntryKeys.LogDate], CultureInfo.InvariantCulture);
             entry.Title = blob.Metadata[BlobLogEntryKeys.TitleKey];
 
             return entry;

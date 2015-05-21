@@ -22,12 +22,21 @@ using Newtonsoft.Json;
 namespace Dashboard
 {
     // $$$ Analysis can be expensive. Use a cache?
-    public class LogAnalysis
+    public static class LogAnalysis
     {
         public static void AddParameterModels(string parameterName, FunctionInstanceArgument argument, ParameterLog log,
-            FunctionInstanceSnapshot snapshot, ICollection<ParamModel> parameterModels)
+            FunctionInstanceSnapshot snapshot, ICollection<ParameterModel> parameterModels)
         {
-            ParamModel model = new ParamModel
+            if (argument == null)
+            {
+                throw new ArgumentNullException("argument");
+            }
+            if (parameterModels == null)
+            {
+                throw new ArgumentNullException("parameterModels");
+            }
+
+            ParameterModel model = new ParameterModel
             {
                 Name = parameterName,
                 ArgInvokeString = argument.Value
@@ -74,7 +83,7 @@ namespace Dashboard
             }
         }
 
-        internal static BlobBoundParamModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
+        internal static BlobBoundParameterModel CreateExtendedBlobModel(FunctionInstanceSnapshot snapshot, FunctionInstanceArgument argument)
         {
             Debug.Assert(argument != null);
 
@@ -90,7 +99,7 @@ namespace Dashboard
                 return null;
             }
 
-            var blobParam = new BlobBoundParamModel();
+            var blobParam = new BlobBoundParameterModel();
             blobParam.IsOutput = argument.IsBlobOutput;
             blobParam.ConnectionStringKey = ConnectionStringProvider.GetPrefixedConnectionStringName(argument.AccountName);
 

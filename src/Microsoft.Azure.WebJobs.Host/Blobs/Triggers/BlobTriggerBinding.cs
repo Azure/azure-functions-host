@@ -206,6 +206,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor<IStorageBlob> executor)
         {
+            if (descriptor == null)
+            {
+                throw new ArgumentNullException("descriptor");
+            }
+
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
 
             IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,

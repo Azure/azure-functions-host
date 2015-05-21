@@ -29,6 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(IAttributeBindingSource binding, ValueBindingContext context)
         {
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
             if (binding == null)
             {
-                throw new InvalidOperationException("Unable to convert value to IAttributeBinding.");
+                throw new InvalidOperationException("Unable to convert value to IAttributeBindingSource.");
             }
 
             return BindAsync(binding, context);
@@ -50,8 +52,14 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
-            return BindAsync(new AttributeBindingSource(_bindingProviderGetter.Value, context.AmbientContext),
-                context.ValueContext);
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            AttributeBindingSource bindingSource = new AttributeBindingSource(_bindingProviderGetter.Value, context.AmbientContext);
+
+            return BindAsync(bindingSource, context.ValueContext);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

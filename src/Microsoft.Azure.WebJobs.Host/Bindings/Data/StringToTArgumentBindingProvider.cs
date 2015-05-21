@@ -13,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     {
         public IArgumentBinding<TBindingData> TryCreate(ParameterInfo parameter)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException("parameter");
+            }
+
             if (typeof(TBindingData) != typeof(string))
             {
                 return null;
@@ -32,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
             Debug.Assert(genericMethod != null);
             Func<IArgumentBinding<string>> lambda = (Func<IArgumentBinding<string>>)Delegate.CreateDelegate(
                 typeof(Func<IArgumentBinding<string>>), genericMethod);
+
             return lambda.Invoke();
         }
 

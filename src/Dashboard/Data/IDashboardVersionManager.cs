@@ -13,12 +13,12 @@ namespace Dashboard.Data
         IConcurrentDocument<DashboardVersion> Read();
 
         /// <summary>Start the process of deleting old statistics.</summary>
-        void StartDeletingOldData(string etag);
+        void StartDeletingOldData(string eTag);
 
         /// <summary>Start the process of restoring the archive.</summary>
-        void StartRestoringArchive(string etag);
+        void StartRestoringArchive(string eTag);
 
         /// <summary>Finishes the upgrade process.</summary>
-        void FinishUpgrade(string etag);
+        void FinishUpgrade(string eTag);
     }
 }

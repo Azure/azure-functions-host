@@ -31,12 +31,21 @@ namespace Dashboard.Data
 
         public bool CreateOrUpdateIfLatest(FunctionSnapshot snapshot)
         {
-            return _store.CreateOrUpdateIfLatest(snapshot.Id, snapshot.HostVersion, CreateOtherMetadata(snapshot),
-                snapshot);
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException("snapshot");
+            }
+
+            return _store.CreateOrUpdateIfLatest(snapshot.Id, snapshot.HostVersion, CreateOtherMetadata(snapshot), snapshot);
         }
 
         public bool UpdateOrCreateIfLatest(FunctionSnapshot snapshot, string currentETag, DateTimeOffset currentVersion)
         {
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException("snapshot");
+            }
+
             return _store.UpdateOrCreateIfLatest(snapshot.Id, snapshot.HostVersion, CreateOtherMetadata(snapshot),
                 snapshot, currentETag, currentVersion);
         }
@@ -52,7 +61,7 @@ namespace Dashboard.Data
             return _store.DeleteIfLatest(id, deleteThroughVersion, currentETag, currentVersion);
         }
 
-        private IDictionary<string, string> CreateOtherMetadata(FunctionSnapshot snapshot)
+        private static IDictionary<string, string> CreateOtherMetadata(FunctionSnapshot snapshot)
         {
             return FunctionIndexEntry.CreateOtherMetadata(snapshot);
         }

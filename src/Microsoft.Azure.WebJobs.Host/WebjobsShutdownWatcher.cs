@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 
@@ -21,6 +22,7 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Begin watching for a shutdown notification from Antares.
         /// </summary>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public WebJobsShutdownWatcher()
             : this(new CancellationTokenSource(), ownsCancellationTokenSource: true)
         {

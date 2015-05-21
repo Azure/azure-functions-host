@@ -23,8 +23,12 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
-            ParameterInfo parameter = context.Parameter;
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
 
+            ParameterInfo parameter = context.Parameter;
             if (parameter.ParameterType != typeof(IBinder))
             {
                 return Task.FromResult<IBinding>(null);

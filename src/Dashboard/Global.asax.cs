@@ -8,7 +8,7 @@ using System.Web.Http;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
-using Dashboard.App_Start;
+using Dashboard.AppStart;
 using Dashboard.Data;
 using Dashboard.Indexers;
 using Ninject;
@@ -43,7 +43,7 @@ namespace Dashboard
 
             if (!context.HasSetupError)
             {
-                ModelBinderConfig.Register(kernel);
+                ModelBinderConfig.Register();
                 HostVersionConfig.RegisterWarnings(kernel.Get<IHostVersionReader>());
             }
 

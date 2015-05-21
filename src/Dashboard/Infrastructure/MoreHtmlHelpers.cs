@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -29,6 +30,11 @@ namespace Dashboard.Controllers
         /// <param name="name">The text to display for the link</param>
         public static HtmlString MenuLink(this HtmlHelper self, string name, string icon, string action, string controller, object routeValues)
         {
+            if (self == null)
+            {
+                throw new ArgumentNullException("self");
+            }
+
             var url = new UrlHelper(self.ViewContext.RequestContext);
             RouteValueDictionary target;
             if (routeValues != null)

@@ -8,8 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Converters;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
-    internal class ClassDataBindingProvider<TBindingData> : IBindingProvider
-        where TBindingData : class
+    internal class ClassDataBindingProvider<TBindingData> : IBindingProvider where TBindingData : class
     {
         private static readonly IDataArgumentBindingProvider<TBindingData> _innerProvider =
             new CompositeArgumentBindingProvider<TBindingData>(
@@ -19,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             ParameterInfo parameter = context.Parameter;
 
             IArgumentBinding<TBindingData> argumentBinding = _innerProvider.TryCreate(parameter);

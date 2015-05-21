@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -12,7 +13,7 @@ namespace Dashboard.Data
     {
         private readonly CloudBlobDirectory _directory;
 
-        [CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public AbortRequestLogger(CloudBlobClient client)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
                 .GetDirectoryReference(DashboardDirectoryNames.AbortRequestLogs))

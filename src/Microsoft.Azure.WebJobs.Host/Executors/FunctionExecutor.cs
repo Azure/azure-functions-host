@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Runtime.ExceptionServices;
@@ -189,8 +190,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             return _functionInstanceLogger.LogFunctionStartedAsync(message, cancellationToken);
         }
 
-        private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        private static ITaskSeriesTimer StartOutputTimer(IRecurrentCommand updateCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (updateCommand == null)
             {
@@ -199,14 +200,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             TimeSpan initialDelay = FunctionOutputIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionOutputIntervals.RefreshRate;
-            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate,
-                backgroundExceptionDispatcher);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate, backgroundExceptionDispatcher);
             timer.Start();
+
             return timer;
         }
 
-        private static ITaskSeriesTimer StartParameterLogTimer(IRecurrentCommand updateCommand,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+        private static ITaskSeriesTimer StartParameterLogTimer(IRecurrentCommand updateCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
         {
             if (updateCommand == null)
             {
@@ -215,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             TimeSpan initialDelay = FunctionParameterLogIntervals.InitialDelay;
             TimeSpan refreshRate = FunctionParameterLogIntervals.RefreshRate;
-            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate,
-                backgroundExceptionDispatcher);
+            ITaskSeriesTimer timer = FixedDelayStrategy.CreateTimer(updateCommand, initialDelay, refreshRate, backgroundExceptionDispatcher);
             timer.Start();
+
             return timer;
         }
 

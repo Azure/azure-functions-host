@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using Microsoft.Azure.WebJobs.Protocols;
@@ -28,8 +29,10 @@ namespace Dashboard.Data
 
         public string FunctionShortName { get; set; }
 
+        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, FunctionInstanceArgument> Arguments  { get; set; }
 
+        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, ParameterLog> ParameterLogs { get; set; }
 
         public Guid? ParentId  { get; set; }
@@ -46,6 +49,7 @@ namespace Dashboard.Data
 
         public LocalBlobDescriptor ParameterLogBlob { get; set; }
 
+        [SuppressMessage("Microsoft.Naming", "CA1702:CompoundWordsShouldBeCasedCorrectly", MessageId = "WebSite")]
         public string WebSiteName { get; set; }
 
         public string WebJobType { get; set; }

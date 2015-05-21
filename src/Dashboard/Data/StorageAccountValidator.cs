@@ -7,13 +7,18 @@ using Microsoft.WindowsAzure.Storage;
 
 namespace Dashboard.Data
 {
-    public class StorageAccountValidator
+    public static class StorageAccountValidator
     {
         private const string HttpsEndpointScheme = "https";
 
         [CLSCompliant(false)]
         public static bool ValidateAccountAccessible(CloudStorageAccount account)
         {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
             // Verify the credentials are correct.
             // Have to actually ping a storage operation.
             var client = account.CreateCloudBlobClient();
@@ -39,6 +44,11 @@ namespace Dashboard.Data
         [CLSCompliant(false)]
         public static bool ValidateEndpointsSecure(CloudStorageAccount account)
         {
+            if (account == null)
+            {
+                throw new ArgumentNullException("account");
+            }
+
             if (!IsSecureEndpointProtocol(account.BlobEndpoint) ||
                 !IsSecureEndpointProtocol(account.QueueEndpoint))
             {
@@ -50,7 +60,7 @@ namespace Dashboard.Data
 
         private static bool IsSecureEndpointProtocol(Uri endpoint)
         {
-            return String.Equals(endpoint.Scheme, HttpsEndpointScheme, StringComparison.InvariantCultureIgnoreCase);
+            return String.Equals(endpoint.Scheme, HttpsEndpointScheme, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

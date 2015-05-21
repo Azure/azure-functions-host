@@ -25,7 +25,7 @@ namespace Dashboard.ViewModels
             if (snapshot.WebSiteName != null
                 && snapshot.WebSiteName == Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey))
             {
-                ExecutingJobRunId = new WebJobRunIdentifierViewModel((WebJobTypes)Enum.Parse(typeof(WebJobTypes),
+                ExecutingJobRunId = new WebJobRunIdentifierViewModel((WebJobType)Enum.Parse(typeof(WebJobType),
                     snapshot.WebJobType), snapshot.WebJobName, snapshot.WebJobRunId);
             }
             if (heartbeatIsValid.HasValue)

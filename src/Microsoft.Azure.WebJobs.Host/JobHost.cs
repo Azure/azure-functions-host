@@ -4,6 +4,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,7 +82,6 @@ namespace Microsoft.Azure.WebJobs
             }
 
             _contextFactory = serviceProvider.GetJobHostContextFactory();
-
             if (_contextFactory == null)
             {
                 throw new InvalidOperationException("The IJobHostContextFactory service must not be null.");
@@ -317,7 +317,7 @@ namespace Microsoft.Azure.WebJobs
 
             if (function == null)
             {
-                string msg = String.Format("'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?", method);
+                string msg = String.Format(CultureInfo.CurrentCulture, "'{0}' can't be invoked from Azure WebJobs SDK. Is it missing Azure WebJobs SDK attributes?", method);
                 throw new InvalidOperationException(msg);
             }
 

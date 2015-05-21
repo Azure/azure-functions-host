@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
@@ -44,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
         public Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             ParameterInfo parameter = context.Parameter;
             ServiceBusTriggerAttribute serviceBusTrigger = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>(inherit: false);
 
@@ -70,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (argumentBinding == null)
             {
-                throw new InvalidOperationException("Can't bind ServiceBusTrigger to type '" + parameter.ParameterType + "'.");
+                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "Can't bind ServiceBusTrigger to type '{0}'.", parameter.ParameterType));
             }
 
             ServiceBusAccount account = ServiceBusAccount.CreateFromConnectionString(_config.ConnectionString);

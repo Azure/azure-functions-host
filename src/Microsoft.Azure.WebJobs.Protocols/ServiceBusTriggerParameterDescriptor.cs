@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Globalization;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -44,10 +45,10 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             }
             else
             {
-                path = string.Format("{0}/Subscriptions/{1}", TopicName, SubscriptionName);
+                path = string.Format(CultureInfo.CurrentCulture, "{0}/Subscriptions/{1}", TopicName, SubscriptionName);
             }
 
-            return string.Format("New service bus message detected on '{0}.", path);
+            return string.Format(CultureInfo.CurrentCulture, "New service bus message detected on '{0}.", path);
         }
     }
 }

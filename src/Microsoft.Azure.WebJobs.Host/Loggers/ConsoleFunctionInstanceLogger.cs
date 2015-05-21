@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance id is '{0}'",
+                Console.WriteLine("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'",
                     message.FunctionInstanceId);
                 Console.ForegroundColor = oldColor;
             }

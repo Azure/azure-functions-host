@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Web.Http.Controllers;
 using System.Web.Mvc;
 using Ninject;
@@ -12,6 +13,7 @@ using IMvcDependencyResolver = System.Web.Mvc.IDependencyResolver;
 
 namespace Dashboard.Infrastructure
 {
+    [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly")]
     public class NinjectDependencyResolver : IMvcDependencyResolver, IHttpDependencyResolver, IHttpDependencyScope
     {
         public IKernel Kernel { get; private set; }
@@ -60,6 +62,8 @@ namespace Dashboard.Infrastructure
             return Kernel.GetAll(serviceType);
         }
 
+        [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly")]
+        [SuppressMessage("Microsoft.Usage", "CA1816:CallGCSuppressFinalizeCorrectly")]
         void IDisposable.Dispose()
         {
             // From IDependencyScope, so no-op

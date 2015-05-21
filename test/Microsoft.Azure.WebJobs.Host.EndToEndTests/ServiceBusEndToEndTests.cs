@@ -164,10 +164,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBTopicListener1",
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.ServiceBusEndToEndTests.SBTopicListener2",
                     "Job host started",
-                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBQueue' - Reason: 'New service bus message detected on '{0}.'", startQueueName),
-                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBTopic' - Reason: 'New service bus message detected on '{0}.'", secondQueueName),
-                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener1' - Reason: 'New service bus message detected on '{0}.'", firstTopicName),
-                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener2' - Reason: 'New service bus message detected on '{0}.'", secondTopicName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBQueue' - Reason: 'New ServiceBus message detected on '{0}.'", startQueueName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBQueue2SBTopic' - Reason: 'New ServiceBus message detected on '{0}.'", secondQueueName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener1' - Reason: 'New ServiceBus message detected on '{0}.'", firstTopicName),
+                    string.Format("Executing: 'ServiceBusEndToEndTests.SBTopicListener2' - Reason: 'New ServiceBus message detected on '{0}.'", secondTopicName),
                     "Job host stopped"
                 };
             Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));

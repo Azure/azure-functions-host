@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Executors
 
             // Act & Assert
             ExceptionAssert.ThrowsInvalidOperation(() => MethodInvokerFactory.Create<object>(method),
-                "TReflected must match the method's ReflectedType.");
+                "The Type must match the method's ReflectedType.");
         }
 
         [Theory]

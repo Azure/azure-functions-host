@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Dashboard.ViewModels
 {
@@ -10,7 +11,8 @@ namespace Dashboard.ViewModels
     {
         public InvocationLogViewModel Invocation { get; set; }
 
-        public ParamModel[] Parameters { get; set; }
+        [SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays")]
+        public ParameterModel[] Parameters { get; set; }
 
         public IEnumerable<Guid> ChildrenIds { get; set; }
 

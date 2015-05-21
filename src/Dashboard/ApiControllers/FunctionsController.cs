@@ -16,7 +16,7 @@ using Microsoft.Azure.WebJobs.Protocols;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using InternalWebJobTypes = Microsoft.Azure.WebJobs.Protocols.WebJobTypes;
-using WebJobTypes = Dashboard.ViewModels.WebJobTypes;
+using WebJobTypes = Dashboard.ViewModels.WebJobType;
 
 namespace Dashboard.ApiControllers
 {
@@ -355,9 +355,9 @@ namespace Dashboard.ApiControllers
             return Ok(model);
         }
 
-        private static ParamModel[] CreateParameterModels(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
+        private static ParameterModel[] CreateParameterModels(CloudStorageAccount account, FunctionInstanceSnapshot snapshot)
         {
-            List<ParamModel> models = new List<ParamModel>();
+            List<ParameterModel> models = new List<ParameterModel>();
 
             IDictionary<string, FunctionInstanceArgument> parameters = snapshot.Arguments;
             IDictionary<string, ParameterLog> parameterLogs = LogAnalysis.GetParameterLogs(account, snapshot);
@@ -386,6 +386,11 @@ namespace Dashboard.ApiControllers
         [Route("api/functions/definitions")]
         public IHttpActionResult GetFunctionDefinitions([FromUri]PagingInfo pagingInfo)
         {
+            if (pagingInfo == null)
+            {
+                throw new ArgumentNullException("pagingInfo");
+            }
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);

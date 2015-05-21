@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -25,6 +26,7 @@ namespace Dashboard.Results
             return Task.FromResult(Execute());
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         private HttpResponseMessage Execute()
         {
             HttpResponseMessage response = new HttpResponseMessage(HttpStatusCode.OK);

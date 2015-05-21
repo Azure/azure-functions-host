@@ -3,6 +3,7 @@
 
 using System.Linq;
 using System.Collections.Generic;
+using System;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -19,6 +20,11 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <param name="extension">The instance to register.</param>
         public static void RegisterExtension<TExtension>(this IExtensionRegistry registry, TExtension extension)
         {
+            if (registry == null)
+            {
+                throw new ArgumentNullException("registry");
+            }
+
             registry.RegisterExtension(typeof(TExtension), extension);
         }
 
@@ -30,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <returns>The collection of extension instances.</returns>
         public static IEnumerable<TExtension> GetExtensions<TExtension>(this IExtensionRegistry registry)
         {
+            if (registry == null)
+            {
+                throw new ArgumentNullException("registry");
+            }
+
             return registry.GetExtensions(typeof(TExtension)).Cast<TExtension>();
         }
     }

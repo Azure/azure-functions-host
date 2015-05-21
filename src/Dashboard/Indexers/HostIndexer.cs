@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using Dashboard.Data;
@@ -27,8 +28,14 @@ namespace Dashboard.Indexers
 
         // This method runs concurrently with other index processing.
         // Ensure all logic here is idempotent.
+        [SuppressMessage("Microsoft.Maintainability", "CA1502:AvoidExcessiveComplexity")]
         public void ProcessHostStarted(HostStartedMessage message)
         {
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+
             string hostId = message.SharedQueueName;
             DateTimeOffset hostVersion = message.EnqueuedOn;
             DateTime hostVersionUtc = hostVersion.UtcDateTime;

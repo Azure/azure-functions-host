@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,6 +14,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
     {
         public Task<string> ConvertAsync(BrokeredMessage input, CancellationToken cancellationToken)
         {
+            if (input == null)
+            {
+                throw new ArgumentNullException("input");
+            }
+
             if (input.ContentType == ContentTypes.TextPlain)
             {
                 Stream stream = input.GetBody<Stream>();

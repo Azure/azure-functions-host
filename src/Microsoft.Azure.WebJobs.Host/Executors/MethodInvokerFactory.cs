@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             if (typeof(TReflected) != method.ReflectedType)
             {
-                throw new InvalidOperationException("TReflected must match the method's ReflectedType.");
+                throw new InvalidOperationException("The Type must match the method's ReflectedType.");
             }
 
             // Parameter to invoker: TReflected instance

@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(TValue value, ValueBindingContext context)
         {

@@ -67,10 +67,16 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
             public Task<IValueProvider> BindAsync(IStorageQueue value, ValueBindingContext context)
             {
+                if (context == null)
+                {
+                    throw new ArgumentNullException("context");
+                }
+
                 IConverter<TItem, IStorageQueueMessage> converter = _converterFactory.Create(value,
                     context.FunctionInstanceId);
                 ICollector<TItem> collector = new QueueCollector<TItem>(value, converter);
                 IValueProvider provider = new CollectorValueProvider(value, collector, typeof(ICollector<TItem>));
+
                 return Task.FromResult(provider);
             }
         }

@@ -8,11 +8,16 @@ using System.Web.Optimization;
 
 namespace Dashboard
 {
-    public class BundleConfig
+    public static class BundleConfig
     {
         // For more information on Bundling, visit http://go.microsoft.com/fwlink/?LinkId=254725
         public static void RegisterBundles(BundleCollection bundles)
         {
+            if (bundles == null)
+            {
+                throw new ArgumentNullException("bundles");
+            }
+
             bundles.Add(new ScriptBundle("~/bundles/js").Include(
                 "~/Scripts/jquery-{version}.js",
                 "~/Content/bootstrap/js/bootstrap.js",

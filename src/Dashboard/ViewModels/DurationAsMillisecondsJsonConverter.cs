@@ -10,6 +10,11 @@ namespace Dashboard.ViewModels
     {
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
+            if (writer == null)
+            {
+                throw new ArgumentNullException("writer");
+            }
+
             var timespan = (TimeSpan)value;
             writer.WriteValue(timespan.TotalMilliseconds);
         }

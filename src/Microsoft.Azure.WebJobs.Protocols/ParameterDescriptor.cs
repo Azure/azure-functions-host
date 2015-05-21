@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// It is automatically set based on application of <see cref="JsonTypeNameAttribute"/>
         /// to derived types.
         /// </summary>
+        [SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
         public string Type { get; set; }
 
         /// <summary>
@@ -41,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// json payload but didn't have corresponding properties on
         /// the deserialized type.
         /// </summary>
-        [JsonExtensionData]
+        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly"), JsonExtensionData]
         public Dictionary<string, JToken> ExtendedProperties { get; set; }
 
         private class ParameterDescriptorConverter : PolymorphicJsonConverter

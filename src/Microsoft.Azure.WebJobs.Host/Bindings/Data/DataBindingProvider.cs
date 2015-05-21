@@ -13,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     {
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             IReadOnlyDictionary<string, Type> bindingDataContract = context.BindingDataContract;
             string parameterName = context.Parameter.Name;
 

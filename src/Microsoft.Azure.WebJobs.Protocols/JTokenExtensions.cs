@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             // The following code is different from token.ToString(), which special-cases null to return "" instead of
             // "null".
-            StringWriter stringWriter = new StringWriter();
+            StringWriter stringWriter = new StringWriter(CultureInfo.InvariantCulture);
             try
             {
                 using (JsonWriter jsonWriter = JsonSerialization.CreateJsonTextWriter(stringWriter))

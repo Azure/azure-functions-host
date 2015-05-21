@@ -53,7 +53,7 @@ namespace Dashboard.Data
                 throw new ArgumentNullException("metadata");
             }
 
-            metadata[VersionMetadataKey] = version.ToString("o");
+            metadata[VersionMetadataKey] = version.ToString("o", CultureInfo.InvariantCulture);
         }
     }
 }

@@ -61,6 +61,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             string boundTableName = _path.Bind(context.BindingData);
             IStorageTable table = _client.GetTableReference(boundTableName);
 

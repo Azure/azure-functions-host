@@ -12,6 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     {
         public IArgumentBinding<TBindingData> TryCreate(ParameterInfo parameter)
         {
+            if (parameter == null)
+            {
+                throw new ArgumentNullException("parameter");
+            }
+
             if (parameter.ParameterType != typeof(string))
             {
                 return null;

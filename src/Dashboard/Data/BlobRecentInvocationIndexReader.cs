@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -14,10 +15,9 @@ namespace Dashboard.Data
         private readonly CloudBlobContainer _container;
         private readonly string _directoryPrefix;
 
-        [CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public BlobRecentInvocationIndexReader(CloudBlobClient client, string directoryName)
-            : this (client.GetContainerReference(DashboardContainerNames.Dashboard)
-                .GetDirectoryReference(directoryName))
+            : this (client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(directoryName))
         {
         }
 

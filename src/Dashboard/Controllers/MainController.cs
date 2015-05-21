@@ -12,7 +12,7 @@ namespace Dashboard.Controllers
         [AcceptVerbs(HttpVerbs.Get | HttpVerbs.Head)]
         public ActionResult Index()
         {
-            if (!Request.Url.GetLeftPart(UriPartial.Path).EndsWith("/"))
+            if (!Request.Url.GetLeftPart(UriPartial.Path).EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
                 return RedirectPermanent(Request.Url.GetLeftPart(UriPartial.Path) + "/");
             }

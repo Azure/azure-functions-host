@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(TextWriter writer, ValueBindingContext context)
         {
@@ -45,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             return BindAsync(context.ConsoleOutput, context.ValueContext);
         }
 

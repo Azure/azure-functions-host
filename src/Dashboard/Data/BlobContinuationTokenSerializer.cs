@@ -65,7 +65,7 @@ namespace Dashboard.Data
                     case StorageLocation.Secondary:
                         return 'S';
                     default:
-                        throw new ArgumentOutOfRangeException("Unknown StorageLocation.", "location");
+                        throw new ArgumentOutOfRangeException("location", "Unknown StorageLocation.");
                 }
             }
         }
@@ -81,7 +81,7 @@ namespace Dashboard.Data
                 case 'S':
                     return StorageLocation.Secondary;
                 default:
-                    throw new ArgumentOutOfRangeException("Unknown serialized StorageLocation.", "value");
+                    throw new ArgumentOutOfRangeException("value", "Unknown serialized StorageLocation.");
             }
         }
     }

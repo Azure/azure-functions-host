@@ -48,6 +48,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             IReadOnlyDictionary<string, object> bindingData = context.BindingData;
 
             if (!bindingData.ContainsKey(_parameterName))

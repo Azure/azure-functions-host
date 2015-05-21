@@ -84,8 +84,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             if (objectType == null)
             {
-                throw new NotSupportedException(
-                    "PolymorphicJsonConverter does not support deserializing without specifying a default objectType.");
+                throw new NotSupportedException("Deserialization is not supported without specifying a default object Type.");
             }
 
             if (serializer == null)

@@ -18,6 +18,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             ParameterInfo parameter = context.Parameter;
 
             IArgumentBinding<TBindingData> argumentBinding = _innerProvider.TryCreate(parameter);

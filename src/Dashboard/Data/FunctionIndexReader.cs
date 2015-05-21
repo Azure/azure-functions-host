@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,7 +17,7 @@ namespace Dashboard.Data
         private readonly CloudBlobDirectory _versionDirectory;
         private readonly IVersionMetadataMapper _versionMapper;
 
-        [CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public FunctionIndexReader(CloudBlobClient client)
             : this (client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
                 DashboardDirectoryNames.FunctionsFlat), client.GetContainerReference(DashboardContainerNames.Dashboard)

@@ -22,6 +22,11 @@ namespace Dashboard.HostMessaging
         public Guid TriggerAndOverride(string queueName, FunctionSnapshot function,
             IDictionary<string, string> arguments, Guid? parentId, ExecutionReason reason)
         {
+            if (function == null)
+            {
+                throw new ArgumentNullException("function");
+            }
+
             Guid id = Guid.NewGuid();
 
             CallAndOverrideMessage message = new CallAndOverrideMessage

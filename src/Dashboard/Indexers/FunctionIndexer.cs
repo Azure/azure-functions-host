@@ -48,6 +48,11 @@ namespace Dashboard.Indexers
         // Ensure all logic here is idempotent.
         public void ProcessFunctionStarted(FunctionStartedMessage message)
         {
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
             _functionInstanceLogger.LogFunctionStarted(snapshot);
 
@@ -132,6 +137,11 @@ namespace Dashboard.Indexers
         // Ensure all logic here is idempotent.
         public void ProcessFunctionCompleted(FunctionCompletedMessage message)
         {
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+
             FunctionInstanceSnapshot snapshot = CreateSnapshot(message);
 
             // The completed message includes the full parameter logs; delete the extra blob used for running status

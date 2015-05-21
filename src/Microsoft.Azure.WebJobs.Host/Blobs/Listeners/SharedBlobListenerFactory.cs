@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public SharedBlobListener Create()
         {
             SharedBlobListener listener = new SharedBlobListener(_account, _backgroundExceptionDispatcher);

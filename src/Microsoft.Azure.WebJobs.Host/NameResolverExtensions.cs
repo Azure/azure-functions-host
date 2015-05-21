@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Host
@@ -38,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host
                     int idxEnd = resolve.IndexOf('%', idxStart + 1);
                     if (idxEnd < 0)
                     {
-                        string msg = string.Format("The '%' at position {0} does not have a closing '%'", idxStart);
+                        string msg = string.Format(CultureInfo.CurrentCulture, "The '%' at position {0} does not have a closing '%'", idxStart);
                         throw new InvalidOperationException(msg);
                     }
                     string name = resolve.Substring(idxStart + 1, idxEnd - idxStart - 1);
@@ -50,12 +51,12 @@ namespace Microsoft.Azure.WebJobs.Host
                     }
                     catch (Exception e)
                     {
-                        string msg = string.Format("Threw an exception trying to resolve '%{0}%' ({1}:{2}).", name, e.GetType().Name, e.Message);
+                        string msg = string.Format(CultureInfo.CurrentCulture, "Threw an exception trying to resolve '%{0}%' ({1}:{2}).", name, e.GetType().Name, e.Message);
                         throw new InvalidOperationException(msg, e);
                     }
                     if (value == null)
                     {
-                        string msg = string.Format("'%{0}%' does not resolve to a value.", name);
+                        string msg = string.Format(CultureInfo.CurrentCulture, "'%{0}%' does not resolve to a value.", name);
                         throw new InvalidOperationException(msg);
                     }
                     sb.Append(resolve.Substring(i, idxStart - i));

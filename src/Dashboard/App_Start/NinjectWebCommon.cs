@@ -3,24 +3,22 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Web;
 using System.Web.Http;
 using System.Web.Mvc;
-using Microsoft.Web.Infrastructure.DynamicModuleHelper;
-using Dashboard.App_Start;
+using Dashboard.AppStart;
 using Dashboard.Infrastructure;
+using Microsoft.Web.Infrastructure.DynamicModuleHelper;
 using Ninject;
 using Ninject.Modules;
 using Ninject.Web.Common;
-using Ninject.Selection.Heuristics;
-using Ninject.Planning.Directives;
-using Ninject.Activation;
 
 [assembly: WebActivatorEx.PreApplicationStartMethod(typeof(NinjectWebCommon), "Start")]
 [assembly: WebActivatorEx.ApplicationShutdownMethodAttribute(typeof(NinjectWebCommon), "Stop")]
 
-namespace Dashboard.App_Start
+namespace Dashboard.AppStart
 {
     public static class NinjectWebCommon
     {
@@ -31,6 +29,7 @@ namespace Dashboard.App_Start
         /// <summary>
         /// Starts the application
         /// </summary>
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public static void Start()
         {
             // Registration must occur before application start. So use: WebActivator.PreApplicationStartMethod 

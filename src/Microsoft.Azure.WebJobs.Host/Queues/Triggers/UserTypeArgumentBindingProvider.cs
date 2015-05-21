@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -46,17 +47,20 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
             public Task<ITriggerData> BindAsync(IStorageQueueMessage value, ValueBindingContext context)
             {
-                object convertedValue;
+                if (value == null)
+                {
+                    throw new ArgumentNullException("value");
+                }
 
+                object convertedValue;
                 try
                 {
-                    convertedValue = JsonConvert.DeserializeObject(value.AsString, ValueType,
-                        JsonSerialization.Settings);
+                    convertedValue = JsonConvert.DeserializeObject(value.AsString, ValueType, JsonSerialization.Settings);
                 }
                 catch (JsonException e)
                 {
                     // Easy to have the queue payload not deserialize properly. So give a useful error. 
-                    string msg = String.Format(
+                    string msg = String.Format(CultureInfo.CurrentCulture, 
 @"Binding parameters to complex objects (such as '{0}') uses Json.NET serialization. 
 1. Bind the parameter type as 'string' instead of '{0}' to get the raw values and avoid JSON deserialization, or
 2. Change the queue payload to be valid json. The JSON parser failed: {1}

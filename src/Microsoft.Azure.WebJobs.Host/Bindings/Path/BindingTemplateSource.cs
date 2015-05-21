@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
             {
                 if (token.IsParameter)
                 {
-                    builder.Append(String.Format("(?<{0}>.*)", token.Value));
+                    builder.Append(String.Format(CultureInfo.InvariantCulture, "(?<{0}>.*)", token.Value));
                 }
                 else
                 {

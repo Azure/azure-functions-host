@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             get { return null; }
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken)
         {
             IFunctionOutput output = new ConsoleFunctionOutputLog();

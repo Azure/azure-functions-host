@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAccountAsync(CloudStorageAccount account, ValueBindingContext context)
         {
@@ -55,6 +56,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
             return BindAccountAsync(_account, context.ValueContext);
         }
 

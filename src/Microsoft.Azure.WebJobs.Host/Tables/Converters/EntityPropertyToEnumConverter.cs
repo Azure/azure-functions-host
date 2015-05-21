@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
         {
             if (!typeof(TProperty).IsEnum)
             {
-                throw new InvalidOperationException("TProperty must be an Enum.");
+                throw new InvalidOperationException("The Type must be an Enum.");
             }
         }
 

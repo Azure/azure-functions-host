@@ -20,12 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
     internal static class TableClient
     {
-        private static readonly char[] _invalidKeyValueCharacters;
-
-        static TableClient()
-        {
-            _invalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
-        }
+        private static readonly char[] _invalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
 
         public static string GetAccountName(IStorageTableClient client)
         {
@@ -99,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             if (entityType.GetProperty(propertyName) == null)
             {
-                throw new InvalidOperationException(String.Format("Table entity types must implement the property {0}.", propertyName));
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "Table entity types must implement the property {0}.", propertyName));
             }
         }
 
@@ -109,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             if (!IsValidAzureTableName(tableName))
             {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid name for an azure table", tableName));
+                throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "'{0}' is not a valid name for an Azure table", tableName));
             }
         }
 

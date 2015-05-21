@@ -36,8 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
             if (access.HasValue && access.Value != FileAccess.Write)
             {
-                throw new InvalidOperationException("Cannot bind CloudBlobStream using access " +
-                    access.Value.ToString() + ".");
+                throw new InvalidOperationException("Cannot bind CloudBlobStream using access " + access.Value.ToString() + ".");
             }
 
             return new CloudBlobStreamArgumentBinding(_blobWrittenWatcherGetter);

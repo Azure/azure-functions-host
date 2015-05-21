@@ -7,7 +7,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    public class BlobCausalityReader
+    public static class BlobCausalityReader
     {
         [CLSCompliant(false)]
         public static Guid? GetParentId(ICloudBlob blob)

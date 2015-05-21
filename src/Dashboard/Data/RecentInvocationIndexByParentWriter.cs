@@ -24,6 +24,11 @@ namespace Dashboard.Data
 
         public void CreateOrUpdate(FunctionInstanceSnapshot snapshot, DateTimeOffset timestamp)
         {
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException("snapshot");
+            }
+
             string innerId = CreateInnerId(snapshot.ParentId.Value, timestamp, snapshot.Id);
             _store.CreateOrUpdate(innerId, RecentInvocationEntry.CreateMetadata(snapshot), String.Empty);
         }

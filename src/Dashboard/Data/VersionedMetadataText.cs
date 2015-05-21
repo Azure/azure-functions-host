@@ -13,8 +13,7 @@ namespace Dashboard.Data
         private readonly DateTimeOffset _version;
         private readonly string _text;
 
-        public VersionedMetadataText(string eTag, IDictionary<string, string> metadata, DateTimeOffset version,
-            string text)
+        public VersionedMetadataText(string eTag, IDictionary<string, string> metadata, DateTimeOffset version, string text)
         {
             if (eTag == null)
             {

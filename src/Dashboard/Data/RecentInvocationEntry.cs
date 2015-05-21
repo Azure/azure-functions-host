@@ -126,6 +126,11 @@ namespace Dashboard.Data
 
         public static Dictionary<string, string> CreateMetadata(FunctionInstanceSnapshot snapshot)
         {
+            if (snapshot == null)
+            {
+                throw new ArgumentNullException("snapshot");
+            }
+
             var metadata = new Dictionary<string, string>();
 
             AddMetadataGuid(metadata, IdKey, snapshot.Id);

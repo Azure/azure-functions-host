@@ -3,7 +3,7 @@
 
 namespace Dashboard.ViewModels
 {
-    public class ParamModel
+    public class ParameterModel
     {
         // Static info
         public string Name { get; set; }
@@ -13,7 +13,7 @@ namespace Dashboard.ViewModels
         // Links provide optional runtime information for further linking to explore arg.
         public string ArgInvokeString { get; set; }
 
-        public BlobBoundParamModel ExtendedBlobModel { get; set; }
+        public BlobBoundParameterModel ExtendedBlobModel { get; set; }
 
         // Runtime info. This can be structured to provide rich hyperlinks.
         public string Status { get; set; }

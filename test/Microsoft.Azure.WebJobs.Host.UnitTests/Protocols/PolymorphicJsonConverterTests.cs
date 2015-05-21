@@ -309,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Protocols
             // Act & Assert
             NotSupportedException exception = Assert.Throws<NotSupportedException>(() => product.ReadJson(reader, objectType, existingValue, serializer));
             Assert.Equal(
-                "PolymorphicJsonConverter does not support deserializing without specifying a default objectType.",
+                "Deserialization is not supported without specifying a default object Type.",
                 exception.Message);
         }
 

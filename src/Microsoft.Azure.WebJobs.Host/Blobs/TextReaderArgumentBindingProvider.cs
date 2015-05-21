@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -21,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
             if (access.HasValue && access.Value != FileAccess.Read)
             {
-                throw new InvalidOperationException("Cannot bind blob to TextReader using access "
-                    + access.Value.ToString() + ".");
+                throw new InvalidOperationException(
+                    string.Format(CultureInfo.CurrentCulture, "Cannot bind blob to TextReader using access '{0}'", access.Value.ToString()));
             }
 
             return new TextReaderArgumentBinding();

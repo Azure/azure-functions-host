@@ -67,6 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Bindings
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             string boundQueueName = _path.Bind(context.BindingData);
             IStorageQueue queue = _client.GetQueueReference(boundQueueName);
 

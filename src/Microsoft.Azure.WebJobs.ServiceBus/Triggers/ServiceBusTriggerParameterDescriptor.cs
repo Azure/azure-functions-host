@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Globalization;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
@@ -33,10 +34,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             }
             else
             {
-                path = string.Format("{0}/Subscriptions/{1}", TopicName, SubscriptionName);
+                path = string.Format(CultureInfo.InvariantCulture, "{0}/Subscriptions/{1}", TopicName, SubscriptionName);
             }
 
-            return string.Format("New service bus message detected on '{0}.", path);
+            return string.Format(CultureInfo.CurrentCulture, "New ServiceBus message detected on '{0}.", path);
         }
     }
 }

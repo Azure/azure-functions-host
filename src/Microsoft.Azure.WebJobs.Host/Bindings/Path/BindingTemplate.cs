@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -95,8 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
                     }
                     else
                     {
-                        throw new InvalidOperationException(String.Format("No value for named parameter '{0}'.",
-                            token.Value));
+                        throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture, "No value for named parameter '{0}'.", token.Value));
                     }
                 }
                 else

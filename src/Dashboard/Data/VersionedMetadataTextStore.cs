@@ -140,16 +140,6 @@ namespace Dashboard.Data
             return metadata;
         }
 
-        private DateTimeOffset GetVersion(ConcurrentMetadataText item)
-        {
-            if (item == null)
-            {
-                return DateTimeOffset.MinValue;
-            }
-
-            return GetVersion(item.Metadata);
-        }
-
         private DateTimeOffset GetVersion(IDictionary<string, string> metadata)
         {
             if (metadata == null)
@@ -160,7 +150,7 @@ namespace Dashboard.Data
             return _versionMapper.GetVersion(metadata);
         }
 
-        private DateTimeOffset GetVersion(VersionedItem item)
+        private static DateTimeOffset GetVersion(VersionedItem item)
         {
             if (item == null)
             {

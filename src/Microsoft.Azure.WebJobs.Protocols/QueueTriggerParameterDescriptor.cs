@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Globalization;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <inheritdoc />
         public override string GetTriggerReason(IDictionary<string, string> arguments)
         {
-            return string.Format("New queue message detected on '{0}'.", QueueName);
+            return string.Format(CultureInfo.CurrentCulture, "New queue message detected on '{0}'.", QueueName);
         }
     }
 }

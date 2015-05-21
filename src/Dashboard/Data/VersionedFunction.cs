@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Dashboard.Data
 {
@@ -14,6 +15,7 @@ namespace Dashboard.Data
 
         public DateTimeOffset HostVersion { get; set; }
 
+        [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, string> Metadata { get; set; }
     }
 }

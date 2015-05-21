@@ -21,6 +21,9 @@
     <IISExpressWindowsAuthentication />
     <IISExpressUseClassicPipelineMode />
     <NuGetPackageImportStamp>278c3e82</NuGetPackageImportStamp>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>..\..\src.ruleset</CodeAnalysisRuleSet>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -31,7 +34,6 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PublishDatabases>false</PublishDatabases>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -41,7 +43,6 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PublishDatabases>false</PublishDatabases>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
@@ -280,7 +281,7 @@
     <Compile Include="Indexers\UpgradeIndexer.cs" />
     <Compile Include="Infrastructure\MoreHtmlHelpers.cs" />
     <Compile Include="Results\TextResult.cs" />
-    <Compile Include="ViewModels\BlobBoundParamModel.cs" />
+    <Compile Include="ViewModels\BlobBoundParameterModel.cs" />
     <Compile Include="ViewModels\FunctionStatisticsViewModel.cs" />
     <Compile Include="ViewModels\DurationAsMillisecondsJsonConverter.cs" />
     <Compile Include="ViewModels\InvocationLogSegment.cs" />
@@ -309,14 +310,14 @@
     <Compile Include="Infrastructure\ModelBinders.cs" />
     <Compile Include="Infrastructure\NinjectDependencyResolver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ViewModels\ParamModel.cs" />
+    <Compile Include="ViewModels\ParameterModel.cs" />
     <Compile Include="ViewModels\WebJobRunIdentifierViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceDetailsViewModel.cs" />
     <Compile Include="ViewModels\FunctionInstanceStatus.cs" />
     <Compile Include="ViewModels\RunFunctionViewModel.cs" />
     <Compile Include="ViewModels\FunctionParameterViewModel.cs" />
     <Compile Include="ViewModels\TriggerReasonViewModel.cs" />
-    <Compile Include="ViewModels\WebJobTypes.cs" />
+    <Compile Include="ViewModels\WebJobType.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="app\controllers\ConsoleOutputController.js" />
@@ -416,6 +417,12 @@
     <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Web.config" />
     <Content Include="Views\_ViewStart.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\..\CustomDictionary.xml">
+      <Link>CustomDictionary.xml</Link>
+      <SubType>Designer</SubType>
+    </CodeAnalysisDictionary>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.Azure.WebJobs.Protocols\WebJobs.Protocols.csproj">

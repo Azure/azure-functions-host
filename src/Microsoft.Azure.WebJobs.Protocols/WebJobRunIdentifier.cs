@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 #if PUBLICPROTOCOL
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     internal class WebJobRunIdentifier
 #endif
     {
+        [SuppressMessage("Microsoft.Performance", "CA1810:InitializeReferenceTypeStaticFieldsInline")]
         static WebJobRunIdentifier()
         {
             var webSiteName = Environment.GetEnvironmentVariable(WebSitesKnownKeyNames.WebSiteNameKey);

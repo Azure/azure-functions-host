@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -262,20 +263,18 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IFunctionExecutor heartbeatExecutor = new HeartbeatFunctionExecutor(heartbeatCommand,
                 backgroundExceptionDispatcher, innerExecutor);
-            IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory,
-                innerExecutor, heartbeatExecutor);
-            IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken,
-                abortListenerExecutor);
+            IFunctionExecutor abortListenerExecutor = new AbortListenerFunctionExecutor(instanceQueueListenerFactory, heartbeatExecutor);
+            IFunctionExecutor shutdownFunctionExecutor = new ShutdownFunctionExecutor(shutdownToken, abortListenerExecutor);
             return shutdownFunctionExecutor;
         }
 
+        [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         private static IListener CreateHostListener(IListenerFactory allFunctionsListenerFactory,
             IRecurrentCommand heartbeatCommand, IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             CancellationToken shutdownToken)
         {
             IListener factoryListener = new ListenerFactoryListener(allFunctionsListenerFactory);
-            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand,
-                backgroundExceptionDispatcher, factoryListener);
+            IListener heartbeatListener = new HeartbeatListener(heartbeatCommand, backgroundExceptionDispatcher, factoryListener);
             IListener shutdownListener = new ShutdownListener(shutdownToken, heartbeatListener);
             return shutdownListener;
         }

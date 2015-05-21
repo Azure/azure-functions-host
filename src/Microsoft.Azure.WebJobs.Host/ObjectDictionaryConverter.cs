@@ -27,8 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
             if (valuesAsNonGenericDictionary != null)
             {
-                throw new InvalidOperationException(
-                    "Argument dictionaries must implement IDictionary<string, object>.");
+                throw new InvalidOperationException("Argument dictionaries must implement IDictionary<string, object>.");
             }
 
             IDictionary<string, object> dictionary = new Dictionary<string, object>();

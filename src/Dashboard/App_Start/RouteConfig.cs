@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Web;
@@ -10,7 +11,7 @@ using Dashboard.Controllers;
 
 namespace Dashboard
 {
-    public class RouteConfig
+    public static class RouteConfig
     {
         public static void RegisterRoutes(RouteCollection routes)
         {
@@ -21,6 +22,11 @@ namespace Dashboard
 
         public static void RegisterNoAccountRoutes(RouteCollection routes)
         {
+            if (routes == null)
+            {
+                throw new ArgumentNullException("routes");
+            }
+
             RegisterRoutes(routes);
 
             // deregister the non SPA MVC route, and replace it with a redirect to Functions Homepage so
@@ -56,6 +62,11 @@ namespace Dashboard
 
                 public void ProcessRequest(HttpContext context)
                 {
+                    if (context == null)
+                    {
+                        throw new ArgumentNullException("context");
+                    }
+
                     context.Response.Redirect(UrlHelper.GenerateContentUrl(_targetUrl, new HttpContextWrapper(context)));
                 }
 

@@ -53,10 +53,13 @@ namespace Dashboard.ApiControllers
             CloudBlockBlob blob = outputBlobDescriptor.GetBlockBlob(_account);
 
             var sb = new StringBuilder();
-            using (var stream = blob.OpenRead())
+            var stream = blob.OpenRead();
+
+            try
             {
                 using (var sr = new StreamReader(stream))
                 {
+                    stream = null;
                     string line = sr.ReadLine();
                     for (int i = 0; line != null; i++, line = sr.ReadLine())
                     {
@@ -65,6 +68,13 @@ namespace Dashboard.ApiControllers
                             sb.AppendLine(line);
                         }
                     }
+                }
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
                 }
             }
 

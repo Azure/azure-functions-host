@@ -18,7 +18,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         public Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             IValueProvider provider = new MessageValueBinder(value, context.FunctionInstanceId);
+
             return Task.FromResult(provider);
         }
 

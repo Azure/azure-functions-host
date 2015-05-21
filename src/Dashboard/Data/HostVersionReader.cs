@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -24,7 +25,7 @@ namespace Dashboard.Data
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>
         /// <param name="account">The cloud storage account.</param>
-        [CLSCompliant(false)]
+        [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public HostVersionReader(CloudBlobClient client)
             : this(client.GetContainerReference(DashboardContainerNames.Dashboard)
             .GetDirectoryReference(DashboardDirectoryNames.Versions))
@@ -90,16 +91,26 @@ namespace Dashboard.Data
             if (blob.Properties.ContentType == "application/json")
             {
                 Encoding utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-                string value;
 
-                using (Stream stream = blob.OpenRead())
-                using (TextReader textReader = new StreamReader(stream, utf8))
+                string value;
+                Stream stream = blob.OpenRead();
+                try
                 {
-                    value = textReader.ReadToEnd();
+                    using (TextReader textReader = new StreamReader(stream, utf8))
+                    {
+                        stream = null;
+                        value = textReader.ReadToEnd();
+                    }
+                }
+                finally
+                {
+                    if (stream != null)
+                    {
+                        stream.Dispose();
+                    }
                 }
 
                 string link;
-
                 if (TryReadLink(value, out link))
                 {
                     version.Link = link;
@@ -111,15 +122,9 @@ namespace Dashboard.Data
 
         private static bool TryReadLink(string value, out string link)
         {
-            JsonSerializerSettings settings = new JsonSerializerSettings
-            {
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
-            };
-
             try
             {
-                VersionBlobContent content = JsonConvert.DeserializeObject<VersionBlobContent>(value,
-                    JsonSerialization.Settings);
+                VersionBlobContent content = JsonConvert.DeserializeObject<VersionBlobContent>(value, JsonSerialization.Settings);
 
                 if (content == null)
                 {
@@ -137,6 +142,8 @@ namespace Dashboard.Data
             }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses")]
+        [SuppressMessage("Microsoft.Usage", "CA1816:CallGCSuppressFinalizeCorrectly")]
         private class VersionBlobContent
         {
             public string Link { get; set; }

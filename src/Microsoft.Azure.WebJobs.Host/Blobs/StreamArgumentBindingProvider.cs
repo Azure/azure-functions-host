@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             FileAccess? actualAccess = attributeAccess.HasValue ? attributeAccess : DefaultAccess;
             if (!actualAccess.HasValue)
             {
-                throw new InvalidOperationException(String.Format(
+                throw new InvalidOperationException(String.Format(CultureInfo.CurrentCulture,
                     "FileAccess must be specified when binding the parameter '{0}' to a blob Stream. " + 
                     "Add a FileAccess argument to the BlobAttribute constructor " + 
                     @"(for example, [Blob(""..."", FileAccess.Read)]).", 
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             switch (actualAccess.Value)
             {
                 case FileAccess.ReadWrite:
-                    throw new InvalidOperationException("Cannot bind blob to Stream using access ReadWrite.");
+                    throw new InvalidOperationException("Cannot bind blob to Stream using FileAccess ReadWrite.");
                 case FileAccess.Read:
                     return new ReadStreamArgumentBinding();
                 case FileAccess.Write:

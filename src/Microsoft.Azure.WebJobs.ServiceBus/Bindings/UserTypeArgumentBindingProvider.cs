@@ -24,8 +24,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             if (typeof(IEnumerable).IsAssignableFrom(itemType))
             {
-                throw new InvalidOperationException(
-                    "Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
+                throw new InvalidOperationException("Enumerable types are not supported. Use ICollector<T> or IAsyncCollector<T> instead.");
             }
             else if (typeof(object) == itemType)
             {
@@ -50,9 +49,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
             public Task<IValueProvider> BindAsync(ServiceBusEntity value, ValueBindingContext context)
             {
+                if (context == null)
+                {
+                    throw new ArgumentNullException("context");
+                }
+
                 IConverter<TInput, BrokeredMessage> converter = new UserTypeToBrokeredMessageConverter<TInput>();
                 IValueProvider provider = new ConverterValueBinder<TInput>(value, converter,
                     context.FunctionInstanceId);
+
                 return Task.FromResult(provider);
             }
         }

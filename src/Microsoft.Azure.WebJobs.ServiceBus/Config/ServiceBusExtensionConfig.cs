@@ -46,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Config
         /// <inheritdoc />
         public void Initialize(ExtensionConfigContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
             // get the services we need to construct our binding providers
             INameResolver nameResolver = context.Config.GetService<INameResolver>();
             IExtensionRegistry extensions = context.Config.GetService<IExtensionRegistry>();

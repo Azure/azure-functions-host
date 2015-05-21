@@ -5,7 +5,7 @@ using System;
 
 namespace Dashboard.ViewModels
 {
-    public class BlobBoundParamModel
+    public class BlobBoundParameterModel
     {
         public bool IsBlobOwnedByCurrentFunctionInstance { get; set; }
         public bool IsBlobMissing { get; set; }

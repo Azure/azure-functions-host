@@ -12,6 +12,11 @@ namespace Dashboard.Data
         public static IConcurrentMetadataTextStore CreateBlobStore(CloudBlobClient client, string containerName,
             string directoryName)
         {
+            if (client == null)
+            {
+                throw new ArgumentNullException("client");
+            }
+
             CloudBlobContainer container = client.GetContainerReference(containerName);
             CloudBlobDirectory directory = container.GetDirectoryReference(directoryName);
             return new BlobConcurrentTextStore(directory);

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         public ParameterDescriptor ToParameterDescriptor()
         {
             string entityPath = _queueName != null ?
-                    _queueName : string.Format("{0}/Subscriptions/{1}", _topicName, _subscriptionName);
+                    _queueName : string.Format(CultureInfo.InvariantCulture, "{0}/Subscriptions/{1}", _topicName, _subscriptionName);
 
             return new ServiceBusTriggerParameterDescriptor
             {

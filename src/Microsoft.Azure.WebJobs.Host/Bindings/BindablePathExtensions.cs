@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                 {
                     if (bindingDataContract != null && !bindingDataContract.ContainsKey(parameterName))
                     {
-                        throw new InvalidOperationException(string.Format("No binding parameter exists for '{0}'.", parameterName));
+                        throw new InvalidOperationException(string.Format(CultureInfo.CurrentCulture, "No binding parameter exists for '{0}'.", parameterName));
                     }
                 }
             }

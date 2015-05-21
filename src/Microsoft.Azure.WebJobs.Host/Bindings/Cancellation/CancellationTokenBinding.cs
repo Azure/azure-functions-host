@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
             get { return false; }
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
         private Task<IValueProvider> BindAsync(CancellationToken token, ValueBindingContext context)
         {
@@ -44,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Cancellation
 
         public Task<IValueProvider> BindAsync(BindingContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
             return BindAsync(context.FunctionCancellationToken, context.ValueContext);
         }
 
