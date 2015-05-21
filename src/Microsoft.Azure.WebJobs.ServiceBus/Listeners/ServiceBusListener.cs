@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -76,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _cancellationTokenSource.Cancel();
         }
 
+        [SuppressMessage("Microsoft.Usage", "CA2213:DisposableFieldsShouldBeDisposed", MessageId = "_cancellationTokenSource")]
         public void Dispose()
         {
             if (!_disposed)

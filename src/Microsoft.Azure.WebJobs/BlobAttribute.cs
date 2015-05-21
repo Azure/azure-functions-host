@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs
     /// </description></item>
     /// </list>
     /// </remarks>
+    [SuppressMessage("Microsoft.Design", "CA1019:DefineAccessorsForAttributeArguments", Justification = "There is an accessor for FileAccess")]
     [AttributeUsage(AttributeTargets.Parameter)]
     [DebuggerDisplay("{BlobPath,nq}")]
     public sealed class BlobAttribute : Attribute

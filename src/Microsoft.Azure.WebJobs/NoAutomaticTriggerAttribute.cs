@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs
     /// RunAndBlock). Instead, they must be invoked manually using the Call method.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Method)]
-    public class NoAutomaticTriggerAttribute : Attribute
+    public sealed class NoAutomaticTriggerAttribute : Attribute
     {
     }
 }

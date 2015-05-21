@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 
@@ -74,6 +75,7 @@ namespace Microsoft.Azure.WebJobs
             get { return _rowKey; }
         }
 
+        [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         private string DebuggerDisplay()
         {
             if (_rowKey == null)

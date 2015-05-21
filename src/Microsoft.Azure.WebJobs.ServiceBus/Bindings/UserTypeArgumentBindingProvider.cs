@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 return null;
             }
 
-            Type parameterType = parameter.ParameterType;
             Type itemType = parameter.ParameterType.GetElementType();
 
             if (typeof(IEnumerable).IsAssignableFrom(itemType))

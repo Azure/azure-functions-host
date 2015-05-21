@@ -15,17 +15,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         {
             if (input.ContentType == ContentTypes.TextPlain)
             {
-                using (Stream stream = input.GetBody<Stream>())
+                Stream stream = input.GetBody<Stream>();
+                if (stream == null)
                 {
-                    if (stream == null)
-                    {
-                        return Task.FromResult<string>(null);
-                    }
+                    return Task.FromResult<string>(null);
+                }
 
+                try
+                {
                     using (TextReader reader = new StreamReader(stream, StrictEncodings.Utf8))
                     {
+                        stream = null;
                         cancellationToken.ThrowIfCancellationRequested();
                         return reader.ReadToEndAsync();
+                    }
+                }
+                finally
+                {
+                    if (stream != null)
+                    {
+                        stream.Dispose();
                     }
                 }
             }

@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
                 throw new ArgumentException("path cannot be null or empty", "path");
             }
 
-            if (path.Length > DeadLetterQueueSuffix.Length && path.EndsWith(DeadLetterQueueSuffix)) 
+            if (path.Length > DeadLetterQueueSuffix.Length && path.EndsWith(DeadLetterQueueSuffix, StringComparison.OrdinalIgnoreCase)) 
             {
                 return new string[] { 
                     path.Substring(0, path.Length - DeadLetterQueueSuffix.Length - 1), 

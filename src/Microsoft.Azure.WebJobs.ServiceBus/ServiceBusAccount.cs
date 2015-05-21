@@ -14,8 +14,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus
 
         public static ServiceBusAccount CreateFromConnectionString(string connectionString)
         {
-            ServiceBusConnectionStringBuilder builder = new ServiceBusConnectionStringBuilder(connectionString);
-
             return new ServiceBusAccount
             {
                 NamespaceManager = NamespaceManager.CreateFromConnectionString(connectionString),
