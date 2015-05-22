@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 try
                 {
-                    await ExecuteWithWatchersAsync(invoker, parameters, consoleOutput, cancellationToken);
+                    await ExecuteWithWatchersAsync(invoker, parameters, cancellationToken);
 
                     if (updateParameterLogTimer != null)
                     {
@@ -276,7 +276,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         internal static async Task ExecuteWithWatchersAsync(IFunctionInvoker invoker,
             IReadOnlyDictionary<string, IValueProvider> parameters,
-            TextWriter consoleOutput,
             CancellationToken cancellationToken)
         {
             IReadOnlyList<string> parameterNames = invoker.ParameterNames;
