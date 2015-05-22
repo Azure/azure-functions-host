@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class BlobCausalityReader : IBlobCausalityReader
     {
-        private static readonly BlobCausalityReader _instance = new BlobCausalityReader();
+        private static readonly BlobCausalityReader Singleton = new BlobCausalityReader();
 
         private BlobCausalityReader()
         {
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 
         public static BlobCausalityReader Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public Task<Guid?> GetWriterAsync(IStorageBlob blob, CancellationToken cancellationToken)

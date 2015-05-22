@@ -14,7 +14,7 @@
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>1866bdf7</NuGetPackageImportStamp>
     <RunCodeAnalysis>true</RunCodeAnalysis>
-    <CodeAnalysisRuleSet>..\..\src.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

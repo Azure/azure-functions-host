@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class PocoEntityArgumentBinding<TElement> : IArgumentBinding<TableEntityContext>
         where TElement : new()
     {
-        private static readonly IConverter<ITableEntity, TElement> _converter =
+        private static readonly IConverter<ITableEntity, TElement> Converter =
             TableEntityToPocoConverter<TElement>.Create();
 
         public Type ValueType
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return new NullEntityValueProvider<TElement>(value);
             }
 
-            TElement userEntity = _converter.Convert(entity);
+            TElement userEntity = Converter.Convert(entity);
 
             return new PocoEntityValueBinder<TElement>(value, entity.ETag, userEntity);
         }

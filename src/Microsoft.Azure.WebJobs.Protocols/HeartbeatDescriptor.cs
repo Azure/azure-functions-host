@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         public string SharedDirectoryName { get; set; }
 
         /// <summary>
-        /// Gets or sets the name of the blob in <see cref="SharedDirectoryName"/> mainted by this host instance.
+        /// Gets or sets the name of the blob in <see cref="SharedDirectoryName"/>.
         /// </summary>
         public string InstanceBlobName { get; set; }
 

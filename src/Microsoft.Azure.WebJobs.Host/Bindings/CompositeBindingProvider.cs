@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class CompositeBindingProvider : IBindingProvider
     {
-        readonly IEnumerable<IBindingProvider> _providers;
+        private readonly IEnumerable<IBindingProvider> _providers;
 
         public CompositeBindingProvider(IEnumerable<IBindingProvider> providers)
         {

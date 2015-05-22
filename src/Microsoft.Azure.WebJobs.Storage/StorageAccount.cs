@@ -13,10 +13,10 @@ using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 #endif
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.WindowsAzure.Storage.Table;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage

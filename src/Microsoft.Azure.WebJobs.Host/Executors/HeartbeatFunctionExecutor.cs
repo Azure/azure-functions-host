@@ -27,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             using (ITaskSeriesTimer timer = CreateHeartbeatTimer(_backgroundExceptionDispatcher))
             {
-
                 await _heartbeatCommand.TryExecuteAsync(cancellationToken);
                 timer.Start();
 

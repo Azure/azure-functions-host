@@ -20,12 +20,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         // Contents for what's written. Owned by the timer thread.
         private readonly StringWriter _innerWriter;
 
+        private readonly Func<string, CancellationToken, Task> _uploadCommand;
+
         // Thread-safe access to _innerWriter so that user threads can write to it. 
         private readonly TextWriter _synchronizedWriter;
         private object _writerSyncLock = new object();
-
-        private readonly Func<string, CancellationToken, Task> _uploadCommand;
-
         private bool _disposed;
 
         private UpdateOutputLogCommand(StringWriter innerWriter, Func<string, CancellationToken, Task> uploadCommand)

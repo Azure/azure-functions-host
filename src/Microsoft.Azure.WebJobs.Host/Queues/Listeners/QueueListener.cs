@@ -81,7 +81,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _maxDequeueCount = (uint)maxDequeueCount;
         }
 
-
         public void Cancel()
         {
             ThrowIfDisposed();
@@ -129,7 +128,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 // Back off when no message is available.
                 return CreateBackoffResult();
             }
-
 
             // What if job takes longer. Call CloudQueue.UpdateMessage
             TimeSpan visibilityTimeout = TimeSpan.FromMinutes(10); // long enough to process the job

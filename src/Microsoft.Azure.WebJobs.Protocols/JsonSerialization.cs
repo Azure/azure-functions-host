@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
     internal static class JsonSerialization
 #endif
     {
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
+        private static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
         {
             // The default value, DateParseHandling.DateTime, drops time zone information from DateTimeOffets.
             // This value appears to work well with both DateTimes (without time zone information) and DateTimeOffsets.
@@ -28,17 +28,17 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             Formatting = Formatting.Indented
         };
 
-        private static readonly JsonSerializer _serializer = JsonSerializer.CreateDefault(_settings);
+        private static readonly JsonSerializer JsonSerializer = JsonSerializer.CreateDefault(JsonSerializerSettings);
 
         /// <summary>Gets the standard <see cref="JsonSerializerSettings"/> used by protocol data.</summary>
         public static JsonSerializerSettings Settings
         {
-            get { return _settings; }
+            get { return JsonSerializerSettings; }
         }
 
         internal static JsonSerializer Serializer
         {
-            get { return _serializer; }
+            get { return JsonSerializer; }
         }
 
         internal static void ApplySettings(JsonReader reader)
@@ -48,11 +48,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 return;
             }
 
-            reader.Culture = _settings.Culture;
-            reader.DateFormatString = _settings.DateFormatString;
-            reader.DateParseHandling = _settings.DateParseHandling;
-            reader.DateTimeZoneHandling = _settings.DateTimeZoneHandling;
-            reader.FloatParseHandling = _serializer.FloatParseHandling;
+            reader.Culture = JsonSerializerSettings.Culture;
+            reader.DateFormatString = JsonSerializerSettings.DateFormatString;
+            reader.DateParseHandling = JsonSerializerSettings.DateParseHandling;
+            reader.DateTimeZoneHandling = JsonSerializerSettings.DateTimeZoneHandling;
+            reader.FloatParseHandling = Serializer.FloatParseHandling;
         }
 
         internal static void ApplySettings(JsonWriter writer)
@@ -62,13 +62,13 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 return;
             }
 
-            writer.Culture = _settings.Culture;
-            writer.DateFormatHandling = _settings.DateFormatHandling;
-            writer.DateFormatString = _settings.DateFormatString;
-            writer.DateTimeZoneHandling = _settings.DateTimeZoneHandling;
-            writer.FloatFormatHandling = _settings.FloatFormatHandling;
-            writer.Formatting = _settings.Formatting;
-            writer.StringEscapeHandling = _settings.StringEscapeHandling;
+            writer.Culture = JsonSerializerSettings.Culture;
+            writer.DateFormatHandling = JsonSerializerSettings.DateFormatHandling;
+            writer.DateFormatString = JsonSerializerSettings.DateFormatString;
+            writer.DateTimeZoneHandling = JsonSerializerSettings.DateTimeZoneHandling;
+            writer.FloatFormatHandling = JsonSerializerSettings.FloatFormatHandling;
+            writer.Formatting = JsonSerializerSettings.Formatting;
+            writer.StringEscapeHandling = JsonSerializerSettings.StringEscapeHandling;
         }
 
         internal static JsonTextReader CreateJsonTextReader(TextReader reader)

@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     /// </summary>
     /// <remarks>
     /// The only items included here are the ones used by BlobTrigger.
-    /// See full list of possible operations at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx, but
+    /// See full list of possible operations at <a href="http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx"/>, but
     /// note that currently it is slightly buggy (PreflightBlobRequest should be BlobPreflightRequest, and GetLeaseInfo
     /// should be GetBlobLeaseInfo).
     /// </remarks>

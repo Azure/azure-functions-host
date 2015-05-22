@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
     /// </summary>
     public class AmbientConnectionStringProvider : IConnectionStringProvider
     {
-        private static readonly AmbientConnectionStringProvider _instance = new AmbientConnectionStringProvider();
+        private static readonly AmbientConnectionStringProvider Singleton = new AmbientConnectionStringProvider();
 
         internal static readonly string Prefix = "AzureWebJobs";
 
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </summary>
         public static AmbientConnectionStringProvider Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         /// <summary>

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
 {
     internal class BackgroundExceptionDispatcher : IBackgroundExceptionDispatcher
     {
-        private static readonly BackgroundExceptionDispatcher _instance = new BackgroundExceptionDispatcher();
+        private static readonly BackgroundExceptionDispatcher Singleton = new BackgroundExceptionDispatcher();
 
         private BackgroundExceptionDispatcher()
         {
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Timers
 
         public static BackgroundExceptionDispatcher Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public void Throw(ExceptionDispatchInfo exceptionInfo)

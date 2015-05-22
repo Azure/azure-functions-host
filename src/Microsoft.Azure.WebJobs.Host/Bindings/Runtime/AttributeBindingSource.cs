@@ -72,21 +72,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
                     get { throw new NotImplementedException(); }
                 }
 
-                public override object[] GetCustomAttributes(Type attributeType, bool inherit)
-                {
-                    throw new NotImplementedException();
-                }
-
-                public override object[] GetCustomAttributes(bool inherit)
-                {
-                    throw new NotImplementedException();
-                }
-
-                public override bool IsDefined(Type attributeType, bool inherit)
-                {
-                    throw new NotImplementedException();
-                }
-
                 public override MemberTypes MemberType
                 {
                     get { return MemberTypes.Method; }
@@ -100,6 +85,21 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
                 public override Type ReflectedType
                 {
                     get { throw new NotImplementedException(); }
+                }
+
+                public override object[] GetCustomAttributes(Type attributeType, bool inherit)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public override object[] GetCustomAttributes(bool inherit)
+                {
+                    throw new NotImplementedException();
+                }
+
+                public override bool IsDefined(Type attributeType, bool inherit)
+                {
+                    throw new NotImplementedException();
                 }
             }
         }

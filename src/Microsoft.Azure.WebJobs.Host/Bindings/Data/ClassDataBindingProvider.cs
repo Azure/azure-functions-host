@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 {
     internal class ClassDataBindingProvider<TBindingData> : IBindingProvider where TBindingData : class
     {
-        private static readonly IDataArgumentBindingProvider<TBindingData> _innerProvider =
+        private static readonly IDataArgumentBindingProvider<TBindingData> InnerProvider =
             new CompositeArgumentBindingProvider<TBindingData>(
                 new ConverterArgumentBindingProvider<TBindingData, TBindingData>(new IdentityConverter<TBindingData>()),
                 new TToStringArgumentBindingProvider<TBindingData>(),
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
 
             ParameterInfo parameter = context.Parameter;
 
-            IArgumentBinding<TBindingData> argumentBinding = _innerProvider.TryCreate(parameter);
+            IArgumentBinding<TBindingData> argumentBinding = InnerProvider.TryCreate(parameter);
 
             string parameterName = parameter.Name;
             Type parameterType = parameter.ParameterType;

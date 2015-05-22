@@ -37,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             get { return _valueType; }
         }
 
+        public IWatcher Watcher
+        {
+            get { return _watcher; }
+        }
+
         public object GetValue()
         {
             return _value;
@@ -45,11 +50,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         public string ToInvokeString()
         {
             return _blob.GetBlobPath();
-        }
-
-        public IWatcher Watcher
-        {
-            get { return _watcher; }
         }
 
         public void Dispose()

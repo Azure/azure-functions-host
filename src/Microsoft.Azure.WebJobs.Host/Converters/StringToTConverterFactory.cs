@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
 {
     internal static class StringToTConverterFactory
     {
-        private static readonly IStringToTConverterFactory _instance = new CompositeStringToTConverterFactory(
+        private static readonly IStringToTConverterFactory Singleton = new CompositeStringToTConverterFactory(
             new IdentityStringToTConverterFactory(),
             new KnownTypesParseToStringConverterFactory(),
             new TryParseStringToTConverterFactory(),
@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
 
         public static IStringToTConverterFactory Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
     }
 }

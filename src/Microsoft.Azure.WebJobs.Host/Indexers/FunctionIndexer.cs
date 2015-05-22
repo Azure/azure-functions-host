@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 {
     internal class FunctionIndexer
     {
-        private static readonly BindingFlags _publicMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+        private static readonly BindingFlags PublicMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
         private readonly ITriggerBindingProvider _triggerBindingProvider;
         private readonly IBindingProvider _bindingProvider;
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
         public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
         {
-            foreach (MethodInfo method in type.GetMethods(_publicMethodFlags).Where(IsJobMethod))
+            foreach (MethodInfo method in type.GetMethods(PublicMethodFlags).Where(IsJobMethod))
             {
                 await IndexMethodAsync(method, index, cancellationToken);
             }

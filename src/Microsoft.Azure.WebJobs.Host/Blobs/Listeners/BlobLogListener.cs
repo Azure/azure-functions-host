@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     // Scans storage logs for blob writes
     internal class BlobLogListener
     {
-        const string LogStartTime = "StartTime";
-        const string LogEndTime = "EndTime";
-        const string LogType = "LogType";
+        private const string LogStartTime = "StartTime";
+        private const string LogEndTime = "EndTime";
+        private const string LogType = "LogType";
 
         private const int DefaultScanHoursWindow = 2;
 

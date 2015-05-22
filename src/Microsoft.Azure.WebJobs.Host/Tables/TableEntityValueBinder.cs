@@ -39,6 +39,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             get { return this; }
         }
 
+        public bool HasChanged
+        {
+            get
+            {
+                return HasChanges(_originalProperties, _value.WriteEntity(operationContext: null));
+            }
+        }
+
         public object GetValue()
         {
             return _value;
@@ -72,14 +80,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         public ParameterLog GetStatus()
         {
             return HasChanged ? new TableParameterLog { EntitiesWritten = 1 } : null;
-        }
-
-        public bool HasChanged
-        {
-            get
-            {
-                return HasChanges(_originalProperties, _value.WriteEntity(operationContext: null));
-            }
         }
 
         internal static bool HasChanges(IDictionary<string, EntityProperty> originalProperties,

@@ -19,11 +19,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         private readonly IContextGetter<IBlobWrittenWatcher> _blobWrittenWatcherGetter;
         private readonly FileAccess? _defaultAccess;
 
-        public FileAccess? DefaultAccess
-        {
-            get { return _defaultAccess; }
-        }
-
         public StreamArgumentBindingProvider(IContextGetter<IBlobWrittenWatcher> blobWrittenWatcherGetter)
         {
             if (blobWrittenWatcherGetter == null)
@@ -37,6 +32,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         public StreamArgumentBindingProvider(FileAccess defaultAccess)
         {
             _defaultAccess = defaultAccess;
+        }
+
+        public FileAccess? DefaultAccess
+        {
+            get { return _defaultAccess; }
         }
 
         public IBlobArgumentBinding TryCreate(ParameterInfo parameter, FileAccess? attributeAccess)

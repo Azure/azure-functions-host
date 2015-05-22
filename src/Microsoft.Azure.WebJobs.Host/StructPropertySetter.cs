@@ -10,8 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class StructPropertySetter<TReflected, TProperty> : IPropertySetter<TReflected, TProperty>
         where TReflected : struct
     {
-        private delegate void PropertySetterDelegate(ref TReflected instance, TProperty value);
-
         private readonly PropertySetterDelegate _setter;
 
         private StructPropertySetter(PropertySetterDelegate setter)
@@ -19,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host
             Debug.Assert(setter != null);
             _setter = setter;
         }
+
+        private delegate void PropertySetterDelegate(ref TReflected instance, TProperty value);
 
         public void SetValue(ref TReflected instance, TProperty value)
         {

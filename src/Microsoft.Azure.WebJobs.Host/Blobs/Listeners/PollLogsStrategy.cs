@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     // A hybrid strategy that begins with a full container scan and then does incremental updates via log polling.
     internal sealed class PollLogsStrategy : IBlobListenerStrategy
     {
-        private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan TwoSeconds = TimeSpan.FromSeconds(2);
 
         private readonly IDictionary<IStorageBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>> _registrations;
         private readonly IDictionary<IStorageBlobClient, BlobLogListener> _logListeners;
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Run subsequent iterations at 2 second intervals.
-            return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
+            return new TaskSeriesCommandResult(wait: Task.Delay(TwoSeconds));
         }
 
         public void Start()

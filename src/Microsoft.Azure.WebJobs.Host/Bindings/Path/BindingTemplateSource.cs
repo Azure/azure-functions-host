@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         /// Constructs a new instance.
         /// </summary>
         /// <param name="pattern">The template pattern.</param>
-        /// <param name="captureRegex">The cature regular expression.</param>
+        /// <param name="captureRegex">The capture regular expression.</param>
         internal BindingTemplateSource(string pattern, Regex captureRegex)
         {
             if (pattern == null)
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Path
         }
 
         /// <summary>
-        /// Utility method to build regexp to capture parameter values out of pre-parsed template tokens.
+        /// Utility method to build a regular expression to capture parameter values out of pre-parsed template tokens.
         /// </summary>
         /// <param name="tokens">Template tokens as generated and validated by 
         /// the <see cref="BindingTemplateParser"/>.</param>

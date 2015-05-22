@@ -9,9 +9,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 {
     internal class RuntimeBindingWatcher : IWatcher
     {
+        private readonly object _itemsLock = new object();
         private ICollection<Tuple<ParameterDescriptor, string, IWatchable>> _items =
             new List<Tuple<ParameterDescriptor, string, IWatchable>>();
-        private readonly object _itemsLock = new object();
 
         public void Add(ParameterDescriptor parameterDescriptor, string value, IWatchable watchable)
         {
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Runtime
 
         public ParameterLog GetStatus()
         {
-            lock(_itemsLock)
+            lock (_itemsLock)
             {
                 if (_items.Count == 0)
                 {

@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class NullInstanceFactory<TReflected> : IFactory<TReflected>
     {
-        private static readonly NullInstanceFactory<TReflected> _instance = new NullInstanceFactory<TReflected>();
+        private static readonly NullInstanceFactory<TReflected> Singleton = new NullInstanceFactory<TReflected>();
 
         private NullInstanceFactory()
         {
@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public static NullInstanceFactory<TReflected> Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public TReflected Create()

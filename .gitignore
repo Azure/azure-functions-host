@@ -5,6 +5,7 @@ csx
 *.user
 *.suo
 *.cscfg
+*.Cache
 
 /packages
 /TestResults

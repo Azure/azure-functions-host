@@ -64,9 +64,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private class ValueWatcherCommand : ITaskSeriesCommand
         {
             // Wait before first Log, small for initial quick log
-            private static readonly TimeSpan _intialDelay = TimeSpan.FromSeconds(3);
+            private static readonly TimeSpan IntialDelay = TimeSpan.FromSeconds(3);
             // Wait in between logs
-            private static readonly TimeSpan _refreshRate = TimeSpan.FromSeconds(10);
+            private static readonly TimeSpan RefreshRate = TimeSpan.FromSeconds(10);
 
             private readonly IReadOnlyDictionary<string, IWatcher> _watches;
             private readonly CloudBlockBlob _blobResults;
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             public async Task<TaskSeriesCommandResult> ExecuteAsync(CancellationToken cancellationToken)
             {
                 await LogStatusWorkerAsync(cancellationToken);
-                return new TaskSeriesCommandResult(wait: Task.Delay(_refreshRate));
+                return new TaskSeriesCommandResult(wait: Task.Delay(RefreshRate));
             }
 
             private async Task LogStatusWorkerAsync(CancellationToken cancellationToken)
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             public static ITaskSeriesTimer CreateTimer(ValueWatcherCommand command,
                 IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
             {
-                return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(_intialDelay));
+                return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(IntialDelay));
             }
         }
     }

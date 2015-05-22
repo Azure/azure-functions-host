@@ -19,13 +19,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     /// <remarks>
     /// Important that this class can interoperate with external queue messages, 
     /// so be resilient to a missing guid marker. 
-    /// Can we switch to some auxillary table? Beware, CloudQueueMessage. 
+    /// Can we switch to some auxiliary table? Beware, CloudQueueMessage. 
     /// Id is not filled out until after the message is queued, 
     /// but then there's a race between updating the aux storage and another function picking up the message.
     /// </remarks>
     internal static class QueueCausalityManager
     {
-        const string parentGuidFieldName = "$AzureWebJobsParentId";
+        private const string ParentGuidFieldName = "$AzureWebJobsParentId";
 
         public static void SetOwner(Guid functionOwner, JObject token)
         {
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
 
             if (!Guid.Equals(Guid.Empty, functionOwner))
             {
-                token[parentGuidFieldName] = functionOwner.ToString();
+                token[ParentGuidFieldName] = functionOwner.ToString();
             }
         }
 
@@ -60,12 +60,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
                 return null;
             }
 
-            if (!json.ContainsKey(parentGuidFieldName) || json[parentGuidFieldName].Type != JTokenType.String)
+            if (!json.ContainsKey(ParentGuidFieldName) || json[ParentGuidFieldName].Type != JTokenType.String)
             {
                 return null;
             }
 
-            string val = (string)json[parentGuidFieldName];
+            string val = (string)json[ParentGuidFieldName];
 
             Guid guid;
             if (Guid.TryParse(val, out guid))

@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// Helper method to normalize and validate resolved queue name.
         /// </summary>
         /// <param name="queueName">A storage queue name containing no parameters</param>
-        /// <returns>Normalized (lower-case'd) storage queue name</returns>
+        /// <returns>Normalized (lower-cased) storage queue name</returns>
         /// <exception cref="System.ArgumentException">If the normalized name is invalid</exception>
         public static string NormalizeAndValidate(string queueName)
         {

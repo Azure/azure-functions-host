@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     internal class StructDataBinding<TBindingData> : IBinding
         where TBindingData : struct
     {
-        private static readonly IObjectToTypeConverter<TBindingData> _converter =
+        private static readonly IObjectToTypeConverter<TBindingData> Converter =
             ObjectToTypeConverterFactory.CreateForStruct<TBindingData>();
 
         private readonly string _parameterName;
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
         {
             TBindingData typedValue;
 
-            if (!_converter.TryConvert(value, out typedValue))
+            if (!Converter.TryConvert(value, out typedValue))
             {
                 throw new InvalidOperationException("Unable to convert value to " + typeof(TBindingData).Name + ".");
             }

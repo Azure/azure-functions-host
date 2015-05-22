@@ -11,12 +11,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     /// <![CDATA[
     /// <version-number>;<request-start-time>;<operation-type>;<request-status>;<http-status-code>;<end-to-end-latency-in-ms>;<server-latency-in-ms>;<authentication-type>;<requester-account-name>;<owner-account-name>;<service-type>;<request-url>;<requested-object-key>;<request-id-header>;<operation-count>;<requester-ip-address>;<request-version-header>;<request-header-size>;<request-packet-size>;<response-header-size>;<response-packet-size>;<request-content-length>;<request-md5>;<server-md5>;<etag-identifier>;<last-modified-time>;<conditions-used>;<user-agent-header>;<referrer-header>;<client-request-id> 
     /// ]]>
-    /// Storage Analytics Log Format defined at http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx
+    /// Storage Analytics Log Format defined at <a href="http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx"/>
     /// </remarks>
     /// <seealso cref="StorageAnalyticsLogEntry"/>
     internal enum StorageAnalyticsLogColumnId
     {
-        /// <summary>The version of Storage Analytics Logging used to record the entry.</summary>
+        /// <summary>
+        /// The version of Storage Analytics Logging used to record the entry.
+        /// </summary>
         VersionNumber = 0,
         RequestStartTime = 1,
         OperationType = 2,
@@ -32,7 +34,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         RequestedObjectKey = 12,
         RequestIdHeader = 13,
         OperationCount = 14,
-        /// <summary>Index of the last column in a log entry.</summary>
+
+        /// <summary>
+        /// Index of the last column in a log entry.
+        /// </summary>
         LastColumn = 29
     }
 }

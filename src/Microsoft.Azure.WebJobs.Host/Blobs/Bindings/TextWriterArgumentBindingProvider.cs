@@ -71,9 +71,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
             {
                 WatchableCloudBlobStream watchableStream = await WriteBlobArgumentBinding.BindStreamAsync(blob,
                     context, _blobWrittenWatcherGetter.Value);
-                const int defaultBufferSize = 1024;
-                TextWriter writer = new StreamWriter(watchableStream, Encoding.UTF8, defaultBufferSize,
-                    leaveOpen: true);
+                const int DefaultBufferSize = 1024;
+
+                TextWriter writer = new StreamWriter(watchableStream, Encoding.UTF8, DefaultBufferSize, leaveOpen: true);
+
                 return new TextWriterValueBinder(blob, watchableStream, writer);
             }
 

@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 #if PUBLICPROTOCOL
 using Microsoft.Azure.WebJobs.Storage;
@@ -10,10 +12,8 @@ using Microsoft.Azure.WebJobs.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 #endif
-using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
-using System.Threading;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols

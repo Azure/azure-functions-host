@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(ICollector<TElement>); }
             }
 
-            public  Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
+            public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 TableEntityWriter<TElement> tableWriter = new TableEntityWriter<TElement>(value);
                 IValueProvider provider = new TableEntityCollectorBinder<TElement>(value, tableWriter,

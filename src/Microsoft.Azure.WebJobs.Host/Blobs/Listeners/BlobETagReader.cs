@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobETagReader : IBlobETagReader
     {
-        private static readonly BlobETagReader _instance = new BlobETagReader();
+        private static readonly BlobETagReader Singleton = new BlobETagReader();
 
         private BlobETagReader()
         {
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public static BlobETagReader Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public async Task<string> GetETagAsync(IStorageBlob blob, CancellationToken cancellationToken)

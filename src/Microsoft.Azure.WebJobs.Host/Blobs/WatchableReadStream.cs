@@ -14,10 +14,10 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal class WatchableReadStream : DelegatingStream, IWatcher
     {
-        private long _countRead;
-
         private readonly Stopwatch _timeRead = new Stopwatch();
         private readonly long _totalLength;
+
+        private long _countRead;
 
         public WatchableReadStream(Stream inner)
             : base(inner)

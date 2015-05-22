@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal class BlobReceiptManager : IBlobReceiptManager
     {
-        private static readonly TimeSpan _leasePeriod = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan LeasePeriod = TimeSpan.FromSeconds(30);
 
         private readonly IStorageBlobDirectory _directory;
 
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             try
             {
-                return await blob.AcquireLeaseAsync(_leasePeriod, null, cancellationToken);
+                return await blob.AcquireLeaseAsync(LeasePeriod, null, cancellationToken);
             }
             catch (StorageException exception)
             {

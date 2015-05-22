@@ -9,10 +9,10 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
 {
-    class StructInvokeBinding<TValue> : IBinding
+    internal class StructInvokeBinding<TValue> : IBinding
         where TValue : struct
     {
-        private static readonly IObjectToTypeConverter<TValue> _converter =
+        private static readonly IObjectToTypeConverter<TValue> Converter =
             ObjectToTypeConverterFactory.CreateForStruct<TValue>();
 
         private readonly string _parameterName;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Invoke
         {
             TValue typedValue = default(TValue);
 
-            if (!_converter.TryConvert(value, out typedValue))
+            if (!Converter.TryConvert(value, out typedValue))
             {
                 throw new InvalidOperationException("Unable to convert value to " + typeof(TValue).Name + ".");
             }

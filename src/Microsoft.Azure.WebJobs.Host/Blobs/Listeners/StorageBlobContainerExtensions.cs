@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                         allResults.AddRange(currentResults);
                     }
                 }
-
-            } while (result != null && result.ContinuationToken != null);
+            } 
+            while (result != null && result.ContinuationToken != null);
 
             return allResults;
         }

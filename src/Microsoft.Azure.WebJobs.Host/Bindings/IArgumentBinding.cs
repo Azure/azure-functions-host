@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// </summary>
         /// <param name="value">The value to bind to.</param>
         /// <param name="context">The binding context.</param>
-        /// <returns>A tast that returns the <see cref="IValueProvider"/> for the bound argument.</returns>
+        /// <returns>A task that returns the <see cref="IValueProvider"/> for the bound argument.</returns>
         Task<IValueProvider> BindAsync(TArgument value, ValueBindingContext context);
     }
 }

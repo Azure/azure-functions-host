@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     /// Represents an entry of the Storage Analytics Log.
     /// </summary>
     /// <remarks>
-    /// Storage Analytics Log Format defined at http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx
+    /// Storage Analytics Log Format defined at <a href="http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx"/>
     /// </remarks>
     internal class StorageAnalyticsLogEntry
     {
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// The type of REST operation performed. May be omitted if not recognized.
         /// </summary>
         /// <remarks>
-        /// See full list of possible operations at http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx.
+        /// See full list of possible operations at <a href="http://msdn.microsoft.com/en-us/library/windowsazure/hh343260.aspx"/>
         /// </remarks>
         public StorageServiceOperationType? OperationType { get; set; }
 

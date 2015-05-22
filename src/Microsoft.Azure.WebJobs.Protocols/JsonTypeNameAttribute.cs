@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
     /// <summary>
-    /// Provides a key to use in place of the .NET type name when deserializing polymophic objects using
+    /// Provides a key to use in place of the .NET type name when deserializing polymorphic objects using
     /// <see cref="PolymorphicJsonConverter"/>.
     /// </summary>
 #if PUBLICPROTOCOL

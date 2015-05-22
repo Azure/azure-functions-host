@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
 
         /// <summary>Gets the service's properties.</summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A task that will retrieve the services's properties.</returns>
+        /// <returns>A task that will retrieve the service's properties.</returns>
         Task<ServiceProperties> GetServicePropertiesAsync(CancellationToken cancellationToken);
 
         /// <summary>Gets a segment of blobs in a container.</summary>
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         /// <summary>Sets the service's properties.</summary>
         /// <param name="properties">The service properties to set.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A task that will retrieve the services's properties.</returns>
+        /// <returns>A task that will retrieve the service's properties.</returns>
         Task SetServicePropertiesAsync(ServiceProperties properties, CancellationToken cancellationToken);
     }
 }

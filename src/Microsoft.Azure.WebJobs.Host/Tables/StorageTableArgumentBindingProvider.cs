@@ -28,18 +28,18 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(IStorageTable); }
             }
 
-            public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
-            {
-                IValueProvider valueProvider = new TableValueProvider(value, value, typeof(IStorageTable));
-                return Task.FromResult(valueProvider);
-            }
-
             public FileAccess Access
             {
                 get
                 {
                     return FileAccess.ReadWrite;
                 }
+            }
+
+            public Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
+            {
+                IValueProvider valueProvider = new TableValueProvider(value, value, typeof(IStorageTable));
+                return Task.FromResult(valueProvider);
             }
         }
     }

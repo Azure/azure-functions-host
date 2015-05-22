@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
 {
     internal class CloudStorageAccountBinding : IBinding
     {
-        private static readonly IObjectToTypeConverter<CloudStorageAccount> _converter =
+        private static readonly IObjectToTypeConverter<CloudStorageAccount> Converter =
             new CompositeObjectToTypeConverter<CloudStorageAccount>(
                 new OutputConverter<CloudStorageAccount>(new IdentityConverter<CloudStorageAccount>()),
                 new OutputConverter<string>(new StringToCloudStorageAccountConverter()));
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount
         {
             CloudStorageAccount account = null;
 
-            if (!_converter.TryConvert(value, out account))
+            if (!Converter.TryConvert(value, out account))
             {
                 throw new InvalidOperationException("Unable to convert value to CloudStorageAccount.");
             }

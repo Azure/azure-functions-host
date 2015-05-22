@@ -19,36 +19,36 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     /// Implements parsing of Storage Analytics Log file.
     /// </summary>
     /// <remarks>
-    /// Storage Analytics Log Format defined at http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx
+    /// Storage Analytics Log Format defined at <a href="http://msdn.microsoft.com/en-us/library/windowsazure/hh343259.aspx"/>
     /// </remarks>
     internal class StorageAnalyticsLogParser
     {
-        private readonly Version SupportedVersion = new Version(1, 0);
+        private readonly Version supportedVersion = new Version(1, 0);
 
-        private const string FieldPattern = 
+        private const string FieldPattern =
             // x - ignore whitespace and comments.
             // n - do not capture unnamed groups. 
-            @"(?xn)" + 
+            @"(?xn)" +
             // Non-capturing group
             // asserts position at start of the string, or
             // matches the character ; literally
-            @"(^|;)" + 
+            @"(^|;)" +
             // Non-capturing group
-            "(" + 
+            "(" +
             // 1st Alternative of named capturing group field:
             // greedy match of " embraced sequence of 0 to unlimited number of characters
-            @"""(?<field>[^""]*)"" | " + 
+            @"""(?<field>[^""]*)"" | " +
             // 2nd Alternative of named capturing group field: 
             // greedy match of zero to unlimited number of characters not present in the list below
-            @"(?<field>[^;""]*)" + 
+            @"(?<field>[^;""]*)" +
             @")" +
             // Positive Lookahead - Assert that the regex below can be matched
             // matches the character ; literally, or
             // asserts position at end of the string
             @"(?=;|$)";
-        
+
         private const int ColumnCount = (int)StorageAnalyticsLogColumnId.LastColumn + 1;
-        
+
         private readonly Regex _compiledRegex;
 
         public StorageAnalyticsLogParser()
@@ -72,14 +72,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// Then it calls TryParseLogEntry to create a log entry out of every line of supported version and throws 
         /// an exception if the parse method returns null.
         /// </remarks>
-        public async Task<IEnumerable<StorageAnalyticsLogEntry>> ParseLogAsync(IStorageBlob blob, 
+        public async Task<IEnumerable<StorageAnalyticsLogEntry>> ParseLogAsync(IStorageBlob blob,
             CancellationToken cancellationToken)
         {
             List<StorageAnalyticsLogEntry> entries = new List<StorageAnalyticsLogEntry>();
 
             using (TextReader tr = new StreamReader(await blob.OpenReadAsync(cancellationToken)))
             {
-                for (int lineNumber = 1; ; lineNumber++)
+                for (int lineNumber = 1;; lineNumber++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     string line = await tr.ReadLineAsync();
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                         throw new FormatException(message);
                     }
 
-                    if (version == SupportedVersion)
+                    if (version == supportedVersion)
                     {
                         StorageAnalyticsLogEntry entry = TryParseLogEntry(line);
                         if (entry == null)
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         /// <param name="line">A line as extracted from a Storage Analytics Log file.</param>
         /// <returns>Parsed instance of <see cref="Version"/> or null if parsing has failed.</returns>
         public static Version TryParseVersion(string line)
-        {   
+        {
             if (String.IsNullOrEmpty(line))
             {
                 return null;
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             Debug.Assert(line != null);
 
-            var capturedFields = 
+            var capturedFields =
                 from Match m in _compiledRegex.Matches(line)
                 select WebUtility.HtmlDecode(m.Groups[1].Value);
             string[] fieldsArray = capturedFields.ToArray();

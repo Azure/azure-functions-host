@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private static FunctionCompletedMessage CreateFailedMessage(CallAndOverrideMessage message)
         {
             DateTimeOffset startAndEndTime = DateTimeOffset.UtcNow;
-            Exception exception = new InvalidOperationException( String.Format(CultureInfo.CurrentCulture,
+            Exception exception = new InvalidOperationException(string.Format(CultureInfo.CurrentCulture,
                         "No function '{0}' currently exists.", message.FunctionId));
 
             // In theory, we could also set HostId, HostInstanceId and WebJobRunId; we'd just have to expose that data

@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Host.Converters
 {
-    interface IStringToTConverterFactory
+    internal interface IStringToTConverterFactory
     {
         IConverter<string, TOutput> TryCreate<TOutput>();
     }

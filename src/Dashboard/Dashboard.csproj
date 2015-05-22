@@ -22,7 +22,7 @@
     <IISExpressUseClassicPipelineMode />
     <NuGetPackageImportStamp>278c3e82</NuGetPackageImportStamp>
     <RunCodeAnalysis>true</RunCodeAnalysis>
-    <CodeAnalysisRuleSet>..\..\src.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>..\src.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

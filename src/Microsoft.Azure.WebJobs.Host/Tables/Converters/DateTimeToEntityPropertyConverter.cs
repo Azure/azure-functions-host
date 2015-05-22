@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
 {
     internal class DateTimeToEntityPropertyConverter : IConverter<DateTime, EntityProperty>
     {
-        private static readonly DateTime minimumValidValue = new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime MinimumValidValue = new DateTime(1601, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         public EntityProperty Convert(DateTime input)
         {
@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables.Converters
 
         internal static void ThrowIfUnsupportedValue(DateTime input)
         {
-            if (input < minimumValidValue)
+            if (input < MinimumValidValue)
             {
                 throw new ArgumentOutOfRangeException("input", "Azure Tables cannot store DateTime values before the " +
                     "year 1601. Did you mean to use a nullable DateTime?");

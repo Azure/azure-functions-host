@@ -35,9 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         [JsonIgnore]
         public DateTimeOffset EnqueuedOn { get; set; }
 
-        /// <summary>Gets or sets a receipt from dequeuing the message.</summary>
+        /// <summary>Gets or sets a receipt from dequeueing the message.</summary>
         [JsonIgnore]
         public string PopReceipt { get; set; }
+
+        internal abstract void AddMetadata(IDictionary<string, string> metadata);
 
         private class PersistentQueueMessageConverter : PolymorphicJsonConverter
         {
@@ -46,7 +48,5 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
             {
             }
         }
-
-        internal abstract void AddMetadata(IDictionary<string, string> metadata);
     }
 }

@@ -10,8 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class StructPropertyGetter<TReflected, TProperty> : IPropertyGetter<TReflected, TProperty>
         where TReflected : struct
     {
-        private delegate TProperty PropertyGetterDelegate(ref TReflected instance);
-
         private readonly PropertyGetterDelegate _getter;
 
         private StructPropertyGetter(PropertyGetterDelegate getter)
@@ -19,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host
             Debug.Assert(getter != null);
             _getter = getter;
         }
+
+        private delegate TProperty PropertyGetterDelegate(ref TReflected instance);
 
         public TProperty GetValue(TReflected instance)
         {

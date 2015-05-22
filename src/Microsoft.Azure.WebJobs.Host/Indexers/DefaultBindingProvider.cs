@@ -53,6 +53,5 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             bindingProviderAccessor.SetValue(bindingProvider);
             return bindingProvider;
         }
-
     }
 }

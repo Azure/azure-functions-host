@@ -10,8 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class ClassPropertySetter<TReflected, TProperty> : IPropertySetter<TReflected, TProperty>
         where TReflected : class
     {
-        private delegate void PropertySetterDelegate(TReflected instance, TProperty value);
-
         private readonly PropertySetterDelegate _setter;
 
         private ClassPropertySetter(PropertySetterDelegate setter)
@@ -19,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host
             Debug.Assert(setter != null);
             _setter = setter;
         }
+
+        private delegate void PropertySetterDelegate(TReflected instance, TProperty value);
 
         public void SetValue(ref TReflected instance, TProperty value)
         {

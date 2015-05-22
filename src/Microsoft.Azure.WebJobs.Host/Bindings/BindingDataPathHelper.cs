@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// The set of supported types is limited to built-in signed/unsigned integer types, 
         /// strings, and Guid (which is translated in canonical form without curly braces).
         /// </summary>
-        /// <param name="parameterValue">The prameter value to convert</param>
+        /// <param name="parameterValue">The parameter value to convert</param>
         /// <returns>Path compatible string representation of the given parameter or null if its type is not supported.</returns>
         public static string ConvertParameterValueToString(object parameterValue)
         {

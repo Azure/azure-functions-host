@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     // Table name is restrictive, must match: "^[A-Za-z][A-Za-z0-9]{2,62}$"
     internal static class TableClient
     {
-        private static readonly char[] _invalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
+        private static readonly char[] InvalidKeyValueCharacters = GetInvalidTableKeyValueCharacters();
 
         public static string GetAccountName(IStorageTableClient client)
         {
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 return false;
             }
 
-            return value.IndexOfAny(_invalidKeyValueCharacters) == -1;
+            return value.IndexOfAny(InvalidKeyValueCharacters) == -1;
         }
     }
 }

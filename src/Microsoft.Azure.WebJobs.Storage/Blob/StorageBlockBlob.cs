@@ -144,6 +144,5 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
             return _sdk.UploadTextAsync(content, encoding, accessCondition, options, operationContext,
                 cancellationToken);
         }
-
     }
 }

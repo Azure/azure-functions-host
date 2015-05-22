@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Indicates a function executed because of an automatic trigger.</summary>
         AutomaticTrigger,
 
-        /// <summary>Indicates a function executed because of a programatic host call.</summary>
+        /// <summary>Indicates a function executed because of a programmatic host call.</summary>
         HostCall,
 
         /// <summary>Indicates a function executed because of a request from a dashboard user.</summary>

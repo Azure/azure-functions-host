@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     /// <summary>
-    /// 
+    /// Interface defining the contract for executing a triggered function.
     /// </summary>
     /// <typeparam name="TTriggerValue">The trigger value type for the trigger binding.</typeparam>
     public interface ITriggeredFunctionExecutor<TTriggerValue> : ITriggeredFunctionExecutor

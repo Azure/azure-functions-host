@@ -11,7 +11,13 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     internal class BlobTriggerMessage
     {
         [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
-        public string Type { get { return "BlobTrigger"; } }
+        public string Type 
+        { 
+            get 
+            { 
+                return "BlobTrigger"; 
+            } 
+        }
 
         public string FunctionId { get; set; }
 

@@ -17,9 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     /// <typeparam name="T">The POCO type.</typeparam>
     internal class PocoEntityWriter<T> : ICollector<T>, IAsyncCollector<T>, IWatcher
     {
-        private static readonly IConverter<T, ITableEntity> _converter = PocoToTableEntityConverter<T>.Create();
-
-        internal TableEntityWriter<ITableEntity> TableEntityWriter { get; set; }
+        private static readonly IConverter<T, ITableEntity> Converter = PocoToTableEntityConverter<T>.Create();
 
         public PocoEntityWriter(IStorageTable table, TableParameterLog tableStatistics)
         {
@@ -30,6 +28,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         {
             TableEntityWriter = new TableEntityWriter<ITableEntity>(table);
         }
+
+        internal TableEntityWriter<ITableEntity> TableEntityWriter { get; set; }
 
         public void Add(T item)
         {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 
         public Task AddAsync(T item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            ITableEntity tableEntity = _converter.Convert(item);
+            ITableEntity tableEntity = Converter.Convert(item);
             return TableEntityWriter.AddAsync(tableEntity, cancellationToken);
         }
 

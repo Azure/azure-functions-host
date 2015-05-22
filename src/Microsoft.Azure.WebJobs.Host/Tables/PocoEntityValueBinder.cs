@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class PocoEntityValueBinder<TElement> : IValueBinder, IWatchable, IWatcher
     {
-        private static readonly PocoToTableEntityConverter<TElement> _converter =
+        private static readonly PocoToTableEntityConverter<TElement> Converter =
             PocoToTableEntityConverter<TElement>.Create();
 
         private readonly TableEntityContext _entityContext;
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _eTag = eTag;
             _value = value;
             _originalProperties =
-                TableEntityValueBinder.DeepClone(_converter.Convert(value).WriteEntity(operationContext: null));
+                TableEntityValueBinder.DeepClone(Converter.Convert(value).WriteEntity(operationContext: null));
         }
 
         public Type Type
@@ -43,6 +43,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             get { return this; }
         }
 
+        public bool HasChanged
+        {
+            get
+            {
+                return HasChanges(Converter.Convert(_value));
+            }
+        }
+
         public object GetValue()
         {
             return _value;
@@ -51,19 +59,19 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         public Task SetValueAsync(object value, CancellationToken cancellationToken)
         {
             // Not ByRef, so can ignore value argument.
-            ITableEntity entity = _converter.Convert(_value);
+            ITableEntity entity = Converter.Convert(_value);
 
-            if (!_converter.ConvertsPartitionKey)
+            if (!Converter.ConvertsPartitionKey)
             {
                 entity.PartitionKey = _entityContext.PartitionKey;
             }
 
-            if (!_converter.ConvertsRowKey)
+            if (!Converter.ConvertsRowKey)
             {
                 entity.RowKey = _entityContext.RowKey;
             }
 
-            if (!_converter.ConvertsETag)
+            if (!Converter.ConvertsETag)
             {
                 entity.ETag = _eTag;
             }
@@ -98,14 +106,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         public ParameterLog GetStatus()
         {
             return HasChanged ? new TableParameterLog { EntitiesWritten = 1 } : null;
-        }
-
-        public bool HasChanged
-        {
-            get
-            {
-                return HasChanges(_converter.Convert(_value));
-            }
         }
 
         private bool HasChanges(ITableEntity current)

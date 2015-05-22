@@ -27,14 +27,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _watcher = watcher;
         }
 
-        public static BlobWatchableValueProvider Create<T>(IStorageBlob blob, T value, IWatcher watcher)
-        {
-            return new BlobWatchableValueProvider(blob, value: value, valueType: typeof(T), watcher: watcher);
-        }
-
         public Type Type
         {
             get { return _valueType; }
+        }
+
+        public IWatcher Watcher
+        {
+            get { return _watcher; }
+        }
+
+        public static BlobWatchableValueProvider Create<T>(IStorageBlob blob, T value, IWatcher watcher)
+        {
+            return new BlobWatchableValueProvider(blob, value: value, valueType: typeof(T), watcher: watcher);
         }
 
         public object GetValue()
@@ -45,11 +50,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         public string ToInvokeString()
         {
             return _blob.GetBlobPath();
-        }
-
-        public IWatcher Watcher
-        {
-            get { return _watcher; }
         }
     }
 }

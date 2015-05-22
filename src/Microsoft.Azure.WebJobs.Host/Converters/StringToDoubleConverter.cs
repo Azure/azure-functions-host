@@ -10,10 +10,10 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     {
         public double Convert(string input)
         {
-            const NumberStyles floatWithoutWhitespace = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint |
-                NumberStyles.AllowExponent;
+            const NumberStyles FloatWithoutWhitespace = 
+                NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowExponent;
 
-            return Double.Parse(input, floatWithoutWhitespace, CultureInfo.InvariantCulture);
+            return Double.Parse(input, FloatWithoutWhitespace, CultureInfo.InvariantCulture);
         }
     }
 }

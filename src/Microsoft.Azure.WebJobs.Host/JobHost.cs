@@ -9,17 +9,10 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
-using Microsoft.Azure.WebJobs.Host.Queues;
-using Microsoft.Azure.WebJobs.Host.Storage;
-using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Host.Triggers;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -297,7 +290,7 @@ namespace Microsoft.Azure.WebJobs
                 _disposed = true;
             }
         }
-    
+
         /// <inheritdoc />
         public void Dispose()
         {

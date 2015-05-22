@@ -13,12 +13,11 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     // In-memory executor. 
-    class FunctionExecutor : IFunctionExecutor
+    internal class FunctionExecutor : IFunctionExecutor
     {
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionOutputLogger _functionOutputLogger;
@@ -470,20 +469,23 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private class ValueBinderStepOrderComparer : IComparer<IValueProvider>
         {
-            private static readonly ValueBinderStepOrderComparer _instance = new ValueBinderStepOrderComparer();
+            private static readonly ValueBinderStepOrderComparer Singleton = new ValueBinderStepOrderComparer();
 
             private ValueBinderStepOrderComparer()
             {
             }
 
-            public static ValueBinderStepOrderComparer Instance { get { return _instance; } }
+            public static ValueBinderStepOrderComparer Instance 
+            { 
+                get 
+                { 
+                    return Singleton; 
+                } 
+            }
 
             public int Compare(IValueProvider x, IValueProvider y)
             {
-                int xOrder = (int)GetStepOrder(x);
-                int yOrder = (int)GetStepOrder(y);
-
-                return Comparer<int>.Default.Compare(xOrder, yOrder);
+                return Comparer<int>.Default.Compare((int)GetStepOrder(x), (int)GetStepOrder(y));
             }
 
             private static BindStepOrder GetStepOrder(IValueProvider provider)

@@ -29,18 +29,18 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(CloudTable); }
             }
 
-            public async Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
-            {
-                await value.CreateIfNotExistsAsync(context.CancellationToken);
-                return new TableValueProvider(value, value.SdkObject, typeof(CloudTable));
-            }
-
             public FileAccess Access
             {
                 get
                 {
                     return FileAccess.ReadWrite;
                 }
+            }
+
+            public async Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
+            {
+                await value.CreateIfNotExistsAsync(context.CancellationToken);
+                return new TableValueProvider(value, value.SdkObject, typeof(CloudTable));
             }
         }
     }

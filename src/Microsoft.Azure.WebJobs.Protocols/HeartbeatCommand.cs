@@ -2,6 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 #if PUBLICPROTOCOL
 using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.Azure.WebJobs.Storage.Blob;
@@ -10,10 +13,6 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 #endif
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Diagnostics;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -67,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 }
             }
 
-            Debug.Assert(isContainerNotFoundException);
+            Debug.Assert(isContainerNotFoundException, "Blob Container was not found");
             await _blob.Container.CreateIfNotExistsAsync(cancellationToken);
             await _blob.UploadTextAsync(String.Empty, cancellationToken: cancellationToken);
         }

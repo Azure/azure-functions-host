@@ -10,8 +10,6 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class ClassPropertyGetter<TReflected, TProperty> : IPropertyGetter<TReflected, TProperty>
         where TReflected : class
     {
-        private delegate TProperty PropertyGetterDelegate(TReflected instance);
-
         private readonly PropertyGetterDelegate _getter;
 
         private ClassPropertyGetter(PropertyGetterDelegate getter)
@@ -19,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Host
             Debug.Assert(getter != null);
             _getter = getter;
         }
+
+        private delegate TProperty PropertyGetterDelegate(TReflected instance);
 
         public TProperty GetValue(TReflected instance)
         {

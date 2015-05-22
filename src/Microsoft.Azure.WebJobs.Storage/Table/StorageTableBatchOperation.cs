@@ -37,16 +37,16 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Table
             get { return _items.Count; }
         }
 
-        /// <inheritdoc />
-        public IStorageTableOperation this[int index]
-        {
-            get { return _items[index]; }
-        }
-
         /// <summary>Gets the underlying <see cref="TableBatchOperation"/>.</summary>
         public TableBatchOperation SdkObject
         {
             get { return _sdk; }
+        }
+
+        /// <inheritdoc />
+        public IStorageTableOperation this[int index]
+        {
+            get { return _items[index]; }
         }
 
         /// <inheritdoc />

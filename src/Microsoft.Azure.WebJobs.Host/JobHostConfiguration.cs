@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs
     /// <summary>Represents the configuration settings for a <see cref="JobHost"/>.</summary>
     public sealed class JobHostConfiguration : IServiceProvider
     {
-        private static readonly IConsoleProvider _consoleProvider = new DefaultConsoleProvider();
+        private static readonly IConsoleProvider ConsoleProvider = new DefaultConsoleProvider();
 
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs
         private string _serviceBusConnectionString;
 
         private string _hostId;
-        private ITypeLocator _typeLocator = new DefaultTypeLocator(_consoleProvider.Out);
+        private ITypeLocator _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out);
         private INameResolver _nameResolver = new DefaultNameResolver();
         private IJobActivator _activator = DefaultJobActivator.Instance;
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs
         /// </para>
         /// <para>
         /// If non-homogeneous host instances share the same first function assembly,
-        /// this property must be set explicitly; otherwise, the host instances will incorectly try to share work as if
+        /// this property must be set explicitly; otherwise, the host instances will incorrectly try to share work as if
         /// they were homogeneous.
         /// </para>
         /// </remarks>
@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs
             {
                 if (_contextFactory == null)
                 {
-                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, _consoleProvider, this);
+                    _contextFactory = new JobHostContextFactory(_storageAccountProvider, ConsoleProvider, this);
                 }
 
                 return _contextFactory;

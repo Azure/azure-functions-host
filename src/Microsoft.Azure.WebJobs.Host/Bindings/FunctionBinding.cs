@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
                     {
                         valueProvider = await binding.BindAsync(bindingContext);
                     }
-
                 }
                 catch (OperationCanceledException)
                 {

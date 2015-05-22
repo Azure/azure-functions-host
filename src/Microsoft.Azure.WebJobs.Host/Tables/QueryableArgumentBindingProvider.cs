@@ -53,6 +53,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 get { return typeof(IQueryable<TElement>); }
             }
 
+            public FileAccess Access
+            {
+                get
+                {
+                    return FileAccess.Read;
+                }
+            }
+
             public async Task<IValueProvider> BindAsync(IStorageTable value, ValueBindingContext context)
             {
                 IQueryable<TElement> queryable;
@@ -67,14 +75,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 }
 
                 return new TableValueProvider(value, queryable, typeof(IQueryable<TElement>));
-            }
-
-            public FileAccess Access
-            {
-                get
-                {
-                    return FileAccess.Read;
-                }
             }
         }
     }

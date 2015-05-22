@@ -25,6 +25,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
             _valueType = valueType;
         }
 
+        public Type Type
+        {
+            get { return _valueType; }
+        }
+
         public static BlobValueProvider Create<T>(IStorageBlob blob, T value)
         {
             return new BlobValueProvider(blob, value: value, valueType: typeof(T));
@@ -33,11 +38,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         public static BlobValueProvider CreateWithNull<T>(IStorageBlob blob) where T : class
         {
             return new BlobValueProvider(blob, value: null, valueType: typeof(T));
-        }
-
-        public Type Type
-        {
-            get { return _valueType; }
         }
 
         public object GetValue()

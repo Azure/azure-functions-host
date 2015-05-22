@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
-    interface IBlobPathSource
+    internal interface IBlobPathSource
     {
         string ContainerNamePattern { get; }
 

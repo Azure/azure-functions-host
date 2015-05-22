@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
     internal class QueueTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-        private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
+        private static readonly IQueueTriggerArgumentBindingProvider InnerProvider =
             new CompositeArgumentBindingProvider(
                 new ConverterArgumentBindingProvider<CloudQueueMessage>(
                     new StorageQueueMessageToCloudQueueMessageConverter()),
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             string queueName = Resolve(queueTrigger.QueueName);
             queueName = NormalizeAndValidate(queueName);
 
-            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding = _innerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<IStorageQueueMessage> argumentBinding = InnerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {

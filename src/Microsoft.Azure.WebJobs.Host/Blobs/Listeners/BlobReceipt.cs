@@ -10,8 +10,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
     {
         private const string IncompleteKey = "Incomplete";
 
-        private static readonly BlobReceipt _completedInstance = new BlobReceipt(incomplete: false);
-        private static readonly BlobReceipt _incompleteInstance = new BlobReceipt(incomplete: true);
+        private static readonly BlobReceipt CompletedInstance = new BlobReceipt(incomplete: false);
+        private static readonly BlobReceipt IncompleteInstance = new BlobReceipt(incomplete: true);
 
         private readonly bool _incomplete;
 
@@ -22,12 +22,12 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
         public static BlobReceipt Complete
         {
-            get { return _completedInstance; }
+            get { return CompletedInstance; }
         }
 
         public static BlobReceipt Incomplete
         {
-            get { return _incompleteInstance; }
+            get { return IncompleteInstance; }
         }
 
         public bool IsCompleted

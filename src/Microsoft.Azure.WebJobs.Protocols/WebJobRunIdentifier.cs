@@ -33,11 +33,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             if (webSiteName == null || !isValidWebJobType || jobName == null)
             {
-                _current = null;
+                Current = null;
             }
             else
             {
-                _current = new WebJobRunIdentifier(webSiteName, webJobType, jobName, jobRunId);
+                Current = new WebJobRunIdentifier(webSiteName, webJobType, jobName, jobRunId);
             }
         }
 
@@ -90,12 +90,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// <summary>Gets or sets the job run ID.</summary>
         public string RunId { get; set; }
 
-        private static readonly WebJobRunIdentifier _current;
-
         /// <summary>Gets an identifier for the current web job run, if any.</summary>
         public static WebJobRunIdentifier Current
         {
-            get { return _current; }
+            get;
+            private set;
         }
 
         /// <summary>Gets a key containing the full web job identifier.</summary>

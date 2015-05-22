@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Protocols
 namespace Microsoft.Azure.WebJobs.Host.Protocols
 #endif
 {
-    /// <summary>Represents a parameter bound to a <see cref="TextWriter"/> for console ouput.</summary>
+    /// <summary>Represents a parameter bound to a <see cref="TextWriter"/> for console output.</summary>
     [JsonTypeName("ConsoleOutput")]
 #if PUBLICPROTOCOL
     public class ConsoleOutputParameterDescriptor : ParameterDescriptor

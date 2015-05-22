@@ -40,7 +40,6 @@ namespace Microsoft.Azure.WebJobs
             }
 
             // Setup a file system watcher on that file's directory to know when the file is created
-
             string directoryName = Path.GetDirectoryName(_shutdownFile);
             try
             {
@@ -111,8 +110,7 @@ namespace Microsoft.Azure.WebJobs
 
         internal static WebJobsShutdownWatcher Create(CancellationTokenSource cancellationTokenSource)
         {
-            WebJobsShutdownWatcher watcher =
-                new WebJobsShutdownWatcher(cancellationTokenSource, ownsCancellationTokenSource: false);
+            WebJobsShutdownWatcher watcher = new WebJobsShutdownWatcher(cancellationTokenSource, ownsCancellationTokenSource: false);
 
             if (watcher._watcher == null)
             {

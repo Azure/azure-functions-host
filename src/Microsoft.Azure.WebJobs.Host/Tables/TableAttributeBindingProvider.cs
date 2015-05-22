@@ -14,14 +14,14 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableAttributeBindingProvider : IBindingProvider
     {
-        private static readonly ITableArgumentBindingProvider _tableProvider = new CompositeArgumentBindingProvider(
+        private static readonly ITableArgumentBindingProvider TableProvider = new CompositeArgumentBindingProvider(
             new StorageTableArgumentBindingProvider(),
             new CloudTableArgumentBindingProvider(),
             new QueryableArgumentBindingProvider(),
             new CollectorArgumentBindingProvider(),
             new AsyncCollectorArgumentBindingProvider());
 
-        private static readonly ITableEntityArgumentBindingProvider _entityProvider =
+        private static readonly ITableEntityArgumentBindingProvider EntityProvider =
             new CompositeEntityArgumentBindingProvider(
                 new TableEntityArgumentBindingProvider(),
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTablePath path = BindableTablePath.Create(tableName);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                ITableArgumentBinding argumentBinding = _tableProvider.TryCreate(parameterType);
+                ITableArgumentBinding argumentBinding = TableProvider.TryCreate(parameterType);
 
                 if (argumentBinding == null)
                 {
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                IArgumentBinding<TableEntityContext> argumentBinding = _entityProvider.TryCreate(parameterType);
+                IArgumentBinding<TableEntityContext> argumentBinding = EntityProvider.TryCreate(parameterType);
 
                 if (argumentBinding == null)
                 {

@@ -127,7 +127,6 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
                     {
                         valueProvider = await binding.BindAsync(bindingContext);
                     }
-
                 }
                 catch (OperationCanceledException)
                 {

@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     internal class DefaultJobActivator : IJobActivator
     {
-        private static readonly DefaultJobActivator _instance = new DefaultJobActivator();
+        private static readonly DefaultJobActivator Singleton = new DefaultJobActivator();
 
         private DefaultJobActivator()
         {
@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         public static DefaultJobActivator Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public T CreateInstance<T>()

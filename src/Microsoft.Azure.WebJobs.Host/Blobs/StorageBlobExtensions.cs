@@ -59,7 +59,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
                     throw;
                 }
             }
-
         }
     }
 }

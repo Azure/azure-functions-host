@@ -4,7 +4,7 @@
     <Unrecognized>
     </Unrecognized>
     <Recognized>
-      <Word>e</Word>  <!-- Hack to get eTag variants working -->
+      <Word>e</Word>  <!-- to get eTag variants working -->
       <Word>autofac</Word>
       <Word>api</Word>
       <Word>apis</Word>

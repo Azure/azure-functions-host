@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             {
                 hostIdProvider = new FixedHostIdProvider(_config.HostId);
             }
-            return await CreateAndLogHostStartedAsync(_storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator, 
+            return await CreateAndLogHostStartedAsync(_storageAccountProvider, _config.Queues, _config.TypeLocator, _config.JobActivator,
                 _config.NameResolver, _consoleProvider, _config, shutdownToken, cancellationToken, hostIdProvider);
         }
 
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             INameResolver nameResolver,
             IConsoleProvider consoleProvider,
             JobHostConfiguration config,
-            CancellationToken shutdownToken, 
+            CancellationToken shutdownToken,
             CancellationToken cancellationToken,
             IHostIdProvider hostIdProvider = null,
             FunctionExecutor functionExecutor = null,
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    hostInstanceLogger = await ((IHostInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
+                    hostInstanceLogger = await((IHostInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken);
                 }
 
                 IFunctionInstanceLogger functionInstanceLogger = null;
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    functionInstanceLogger = (IFunctionInstanceLogger)(await ((IFunctionInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
+                    functionInstanceLogger = (IFunctionInstanceLogger)(await((IFunctionInstanceLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
                 }
 
                 IFunctionOutputLogger functionOutputLogger = null;
@@ -138,9 +138,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 }
                 else
                 {
-                    functionOutputLogger = (IFunctionOutputLogger)(await ((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
+                    functionOutputLogger = (IFunctionOutputLogger)(await((IFunctionOutputLoggerProvider)loggerProvider).GetAsync(combinedCancellationToken));
                 }
-   
+
                 if (functionExecutor == null)
                 {
                     functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher);
@@ -331,13 +331,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 return;
             }
 
-            const string filename = "WebJobsSdk.marker";
-            var path = Path.Combine(jobDataPath, filename);
-            const int defaultBufferSize = 4096;
+            const string Filename = "WebJobsSdk.marker";
+            var path = Path.Combine(jobDataPath, Filename);
+            const int DefaultBufferSize = 4096;
 
             try
             {
-                using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, defaultBufferSize, useAsync: true))
+                using (Stream stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, DefaultBufferSize, useAsync: true))
                 using (TextWriter writer = new StreamWriter(stream))
                 {
                     // content is not really important, this would help debugging though

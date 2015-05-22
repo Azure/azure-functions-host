@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
     internal class ClassDataBinding<TBindingData> : IBinding
         where TBindingData : class
     {
-        private static readonly IObjectToTypeConverter<TBindingData> _converter =
+        private static readonly IObjectToTypeConverter<TBindingData> Converter =
             ObjectToTypeConverterFactory.CreateForClass<TBindingData>();
 
         private readonly string _parameterName;
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.Data
         {
             TBindingData typedValue;
 
-            if (!_converter.TryConvert(value, out typedValue))
+            if (!Converter.TryConvert(value, out typedValue))
             {
                 throw new InvalidOperationException("Unable to convert value to " + typeof(TBindingData).Name + ".");
             }

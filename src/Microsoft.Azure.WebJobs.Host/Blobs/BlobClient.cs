@@ -10,6 +10,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
 {
     internal static class BlobClient
     {
+        // Tested against storage service on Jan 2014. All other unsafe and reserved characters work fine.
+        private static readonly char[] UnsafeBlobNameCharacters = { '\\', '[', ']' };
+
         public static string GetAccountName(IStorageBlobClient client)
         {
             if (client == null)
@@ -65,49 +68,46 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs
         // The fun part is that it is not fully correct - the \, [ and ] characters do fail anyway!
         public static bool IsValidBlobName(string blobName, out string errorMessage)
         {
-            const string unsafeCharactersMessage =
+            const string UnsafeCharactersMessage =
                 "The given blob name '{0}' contain illegal characters. A blob name cannot the following characters: '\\', '[' and ']'.";
-            const string tooLongErrorMessage =
+            const string TooLongErrorMessage =
                 "The given blob name '{0}' is too long. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
-            const string tooShortErrorMessage =
+            const string TooShortErrorMessage =
                 "The given blob name '{0}' is too short. A blob name must be at least one character long and cannot be more than 1,024 characters long.";
-            const string invalidSuffixErrorMessage =
+            const string InvalidSuffixErrorMessage =
                 "The given blob name '{0}' has an invalid suffix. Avoid blob names that end with a dot ('.'), a forward slash ('/'), or a sequence or combination of the two.";
 
             if (blobName == null)
             {
-                errorMessage = string.Format(CultureInfo.CurrentCulture, tooShortErrorMessage, String.Empty);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, TooShortErrorMessage, String.Empty);
                 return false;
             }
             if (blobName.Length == 0)
             {
-                errorMessage = string.Format(CultureInfo.CurrentCulture, tooShortErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, TooShortErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.Length > 1024)
             {
-                errorMessage = string.Format(CultureInfo.CurrentCulture, tooLongErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, TooLongErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.EndsWith(".", StringComparison.OrdinalIgnoreCase) || blobName.EndsWith("/", StringComparison.OrdinalIgnoreCase))
             {
-                errorMessage = string.Format(CultureInfo.CurrentCulture, invalidSuffixErrorMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, InvalidSuffixErrorMessage, blobName);
                 return false;
             }
 
             if (blobName.IndexOfAny(UnsafeBlobNameCharacters) > -1)
             {
-                errorMessage = string.Format(CultureInfo.CurrentCulture, unsafeCharactersMessage, blobName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, UnsafeCharactersMessage, blobName);
                 return false;
             }
 
             errorMessage = null;
             return true;
         }
-
-        // Tested against storage service on Jan 2014. All other unsafe and reserved characters work fine.
-        static readonly char[] UnsafeBlobNameCharacters = { '\\', '[', ']' };
     }
 }

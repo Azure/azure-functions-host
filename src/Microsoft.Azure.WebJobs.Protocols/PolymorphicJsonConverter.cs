@@ -169,12 +169,12 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         private static IEnumerable<Type> GetTypesInHierarchy<T>()
         {
-            return typeof(T).Assembly.GetTypes().Where(t => (typeof(T).IsAssignableFrom(t)));
+            return typeof(T).Assembly.GetTypes().Where(t => typeof(T).IsAssignableFrom(t));
         }
 
         private static string GetDeclaredTypeName(Type type)
         {
-            Debug.Assert(type != null);
+            Debug.Assert(type != null, "type must not be null");
 
             JsonTypeNameAttribute[] attributes = (JsonTypeNameAttribute[])type.GetCustomAttributes(
                 typeof(JsonTypeNameAttribute), inherit: false);
@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
             public NonCircularContractResolver(Type contractType)
             {
-                Debug.Assert(contractType != null);
+                Debug.Assert(contractType != null, "contract type must not be null");
                 _contractType = contractType;
             }
 

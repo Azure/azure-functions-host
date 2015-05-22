@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host
     internal class ClassPropertyAccessorFactory<TReflected> : IPropertyAccessorFactory<TReflected>
         where TReflected : class
     {
-        private static readonly ClassPropertyAccessorFactory<TReflected> _instance =
+        private static readonly ClassPropertyAccessorFactory<TReflected> Singleton =
             new ClassPropertyAccessorFactory<TReflected>();
 
         private ClassPropertyAccessorFactory()
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host
 
         public static ClassPropertyAccessorFactory<TReflected> Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public IPropertyGetter<TReflected, TProperty> CreateGetter<TProperty>(PropertyInfo property)

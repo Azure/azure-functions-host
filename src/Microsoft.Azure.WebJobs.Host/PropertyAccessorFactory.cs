@@ -8,16 +8,16 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal static class PropertyAccessorFactory<TReflected>
     {
-        private static readonly IPropertyAccessorFactory<TReflected> _instance = GetInstance();
+        private static readonly IPropertyAccessorFactory<TReflected> Singleton = GetInstance();
 
         public static IPropertyGetter<TReflected, TProperty> CreateGetter<TProperty>(PropertyInfo property)
         {
-            return _instance.CreateGetter<TProperty>(property);
+            return Singleton.CreateGetter<TProperty>(property);
         }
 
         public static IPropertySetter<TReflected, TProperty> CreateSetter<TProperty>(PropertyInfo property)
         {
-            return _instance.CreateSetter<TProperty>(property);
+            return Singleton.CreateSetter<TProperty>(property);
         }
 
         private static IPropertyAccessorFactory<TReflected> GetInstance()

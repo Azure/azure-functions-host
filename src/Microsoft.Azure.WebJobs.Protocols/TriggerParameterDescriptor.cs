@@ -26,6 +26,9 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// </summary>
         /// <param name="arguments">The collection of arguments for the current function invocation.</param>
         /// <returns>The descriptive reason string</returns>
-        public virtual string GetTriggerReason(IDictionary<string, string> arguments) { return string.Empty; }
+        public virtual string GetTriggerReason(IDictionary<string, string> arguments) 
+        { 
+            return string.Empty; 
+        }
     }
 }

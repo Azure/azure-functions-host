@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
 {
     internal class TryParseStringToTConverter<TOutput> : IConverter<string, TOutput>
     {
-        TryParseDelegate<TOutput> _tryParseDelegate;
+        private TryParseDelegate<TOutput> _tryParseDelegate;
 
         public TryParseStringToTConverter(TryParseDelegate<TOutput> tryParse)
         {

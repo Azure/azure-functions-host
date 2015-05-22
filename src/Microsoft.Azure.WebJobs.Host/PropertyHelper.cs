@@ -13,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     internal class PropertyHelper
     {
+        private static readonly MethodInfo CallPropertyGetterOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertyGetter", BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly MethodInfo CallPropertyGetterByReferenceOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertyGetterByReference", BindingFlags.NonPublic | BindingFlags.Static);
+        // Implementation of the fast setter.
+        private static readonly MethodInfo CallPropertySetterOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertySetter", BindingFlags.NonPublic | BindingFlags.Static);
+
         private static ConcurrentDictionary<Type, PropertyHelper[]> _reflectionCache = new ConcurrentDictionary<Type, PropertyHelper[]>();
 
         private readonly Type _propertyType;
@@ -29,6 +34,16 @@ namespace Microsoft.Azure.WebJobs.Host
             Name = property.Name;
             _propertyType = property.PropertyType;
             _valueGetter = MakeFastPropertyGetter(property);
+        }
+
+        // Implementation of the fast getter.
+        private delegate TValue ByRefFunc<TDeclaringType, TValue>(ref TDeclaringType arg);
+
+        public virtual string Name { get; protected set; }
+
+        public Type PropertyType
+        {
+            get { return _propertyType; }
         }
 
         /// <summary>
@@ -59,17 +74,10 @@ namespace Microsoft.Azure.WebJobs.Host
 
             // Create a delegate TValue -> "TDeclaringType.Property"
             var propertySetterAsAction = setMethod.CreateDelegate(typeof(Action<,>).MakeGenericType(typeInput, typeValue));
-            var callPropertySetterClosedGenericMethod = _callPropertySetterOpenGenericMethod.MakeGenericMethod(typeInput, typeValue);
+            var callPropertySetterClosedGenericMethod = CallPropertySetterOpenGenericMethod.MakeGenericMethod(typeInput, typeValue);
             callPropertySetterDelegate = Delegate.CreateDelegate(typeof(Action<TDeclaringType, object>), propertySetterAsAction, callPropertySetterClosedGenericMethod);
 
             return (Action<TDeclaringType, object>)callPropertySetterDelegate;
-        }
-
-        public virtual string Name { get; protected set; }
-
-        public Type PropertyType
-        {
-            get { return _propertyType; }
         }
 
         public object GetValue(object instance)
@@ -120,14 +128,14 @@ namespace Microsoft.Azure.WebJobs.Host
             {
                 // Create a delegate (ref TDeclaringType) -> TValue
                 Delegate propertyGetterAsFunc = getMethod.CreateDelegate(typeof(ByRefFunc<,>).MakeGenericType(typeInput, typeOutput));
-                MethodInfo callPropertyGetterClosedGenericMethod = _callPropertyGetterByReferenceOpenGenericMethod.MakeGenericMethod(typeInput, typeOutput);
+                MethodInfo callPropertyGetterClosedGenericMethod = CallPropertyGetterByReferenceOpenGenericMethod.MakeGenericMethod(typeInput, typeOutput);
                 callPropertyGetterDelegate = Delegate.CreateDelegate(typeof(Func<object, object>), propertyGetterAsFunc, callPropertyGetterClosedGenericMethod);
             }
             else
             {
                 // Create a delegate TDeclaringType -> TValue
                 Delegate propertyGetterAsFunc = getMethod.CreateDelegate(typeof(Func<,>).MakeGenericType(typeInput, typeOutput));
-                MethodInfo callPropertyGetterClosedGenericMethod = _callPropertyGetterOpenGenericMethod.MakeGenericMethod(typeInput, typeOutput);
+                MethodInfo callPropertyGetterClosedGenericMethod = CallPropertyGetterOpenGenericMethod.MakeGenericMethod(typeInput, typeOutput);
                 callPropertyGetterDelegate = Delegate.CreateDelegate(typeof(Func<object, object>), propertyGetterAsFunc, callPropertyGetterClosedGenericMethod);
             }
 
@@ -139,12 +147,6 @@ namespace Microsoft.Azure.WebJobs.Host
             return new PropertyHelper(property);
         }
 
-        // Implementation of the fast getter.
-        private delegate TValue ByRefFunc<TDeclaringType, TValue>(ref TDeclaringType arg);
-
-        private static readonly MethodInfo _callPropertyGetterOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertyGetter", BindingFlags.NonPublic | BindingFlags.Static);
-        private static readonly MethodInfo _callPropertyGetterByReferenceOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertyGetterByReference", BindingFlags.NonPublic | BindingFlags.Static);
-
         private static object CallPropertyGetter<TDeclaringType, TValue>(Func<TDeclaringType, TValue> getter, object @this)
         {
             return getter((TDeclaringType)@this);
@@ -155,9 +157,6 @@ namespace Microsoft.Azure.WebJobs.Host
             TDeclaringType unboxed = (TDeclaringType)@this;
             return getter(ref unboxed);
         }
-
-        // Implementation of the fast setter.
-        private static readonly MethodInfo _callPropertySetterOpenGenericMethod = typeof(PropertyHelper).GetMethod("CallPropertySetter", BindingFlags.NonPublic | BindingFlags.Static);
 
         private static void CallPropertySetter<TDeclaringType, TValue>(Action<TDeclaringType, TValue> setter, object @this, object value)
         {

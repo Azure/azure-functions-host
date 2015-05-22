@@ -32,5 +32,4 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         /// <returns>A task that returns the <see cref="ITriggerData"/> for the binding.</returns>
         Task<ITriggerData> BindAsync(TTriggerValue value, ValueBindingContext context);
     }
-
 }

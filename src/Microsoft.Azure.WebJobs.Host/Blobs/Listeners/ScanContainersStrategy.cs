@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 {
     internal sealed class ScanContainersStrategy : IBlobListenerStrategy
     {
-        private static readonly TimeSpan _twoSeconds = TimeSpan.FromSeconds(2);
+        private static readonly TimeSpan TwoSeconds = TimeSpan.FromSeconds(2);
 
         private readonly IDictionary<IStorageBlobContainer, ICollection<ITriggerExecutor<IStorageBlob>>> _registrations;
         private readonly IDictionary<IStorageBlobContainer, DateTime> _lastModifiedTimestamps;
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Run subsequent iterations at 2 second intervals.
-            return new TaskSeriesCommandResult(wait: Task.Delay(_twoSeconds));
+            return new TaskSeriesCommandResult(wait: Task.Delay(TwoSeconds));
         }
 
         public void Cancel()

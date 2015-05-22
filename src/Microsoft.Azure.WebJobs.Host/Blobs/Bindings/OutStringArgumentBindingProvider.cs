@@ -135,11 +135,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Bindings
 
                     string text = (string)value;
 
-                    const int defaultBufferSize = 1024;
+                    const int DefaultBufferSize = 1024;
 
                     using (_stream)
                     {
-                        using (TextWriter writer = new StreamWriter(_stream, Encoding.UTF8, defaultBufferSize,
+                        using (TextWriter writer = new StreamWriter(_stream, Encoding.UTF8, DefaultBufferSize,
                             leaveOpen: true))
                         {
                             cancellationToken.ThrowIfCancellationRequested();
