@@ -18,16 +18,4 @@ namespace Dashboard
             get { return HostVersionConfig.Warnings.Select(w => new HostVersionModel(w.Label, w.Link)); }
         }
     }
-
-    public class HostVersionModel
-    {
-        public HostVersionModel(string label, string link)
-        {
-            Link = link;
-            Label = label;
-        }
-
-        public string Label { get; private set; }
-        public string Link { get; private set; }
-    }
 }

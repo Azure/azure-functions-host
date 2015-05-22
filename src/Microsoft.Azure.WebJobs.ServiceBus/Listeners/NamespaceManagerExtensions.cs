@@ -47,12 +47,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 
             if (path.Length > DeadLetterQueueSuffix.Length && path.EndsWith(DeadLetterQueueSuffix, StringComparison.OrdinalIgnoreCase)) 
             {
-                return new string[] { 
+                return new string[] 
+                { 
                     path.Substring(0, path.Length - DeadLetterQueueSuffix.Length - 1), 
-                    DeadLetterQueueSuffix };
+                    DeadLetterQueueSuffix 
+                };
             }
             
-            return new string[]{path};
+            return new string[] { path };
         }
 
         public static async Task CreateTopicIfNotExistsAsync(this NamespaceManager manager, string path,

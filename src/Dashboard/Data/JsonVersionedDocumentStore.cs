@@ -9,7 +9,7 @@ namespace Dashboard.Data
 {
     public class JsonVersionedDocumentStore<TDocument> : IVersionedDocumentStore<TDocument>
     {
-        private static readonly JsonSerializerSettings _settings =
+        private static readonly JsonSerializerSettings SerializerSettings =
             JsonConcurrentDocumentStore<TDocument>.JsonSerializerSettings;
 
         private readonly IVersionedMetadataTextStore _innerStore;
@@ -21,7 +21,7 @@ namespace Dashboard.Data
 
         internal static JsonSerializerSettings JsonSerializerSettings
         {
-            get { return _settings; }
+            get { return SerializerSettings; }
         }
 
         public IEnumerable<VersionedMetadata> List(string prefix)
@@ -38,7 +38,7 @@ namespace Dashboard.Data
                 return null;
             }
 
-            TDocument document = JsonConvert.DeserializeObject<TDocument>(textItem.Text, _settings);
+            TDocument document = JsonConvert.DeserializeObject<TDocument>(textItem.Text, SerializerSettings);
 
             return new VersionedMetadataDocument<TDocument>(textItem.ETag, textItem.Metadata, textItem.Version,
                 document);
@@ -47,7 +47,7 @@ namespace Dashboard.Data
         public bool CreateOrUpdateIfLatest(string id, DateTimeOffset targetVersion,
             IDictionary<string, string> otherMetadata, TDocument document)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             return _innerStore.CreateOrUpdateIfLatest(id, targetVersion, otherMetadata, text);
         }
@@ -55,7 +55,7 @@ namespace Dashboard.Data
         public bool UpdateOrCreateIfLatest(string id, DateTimeOffset targetVersion,
             IDictionary<string, string> otherMetadata, TDocument document)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             return _innerStore.UpdateOrCreateIfLatest(id, targetVersion, otherMetadata, text);
         }
@@ -64,7 +64,7 @@ namespace Dashboard.Data
             IDictionary<string, string> otherMetadata, TDocument document, string currentETag,
             DateTimeOffset currentVersion)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             return _innerStore.UpdateOrCreateIfLatest(id, targetVersion, otherMetadata, text, currentETag,
                 currentVersion);

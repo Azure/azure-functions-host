@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading;
@@ -63,18 +63,6 @@ namespace Microsoft.Azure.WebJobs
             _ownsCancellationTokenSource = ownsCancellationTokenSource;
         }
 
-        private void OnChanged(object sender, FileSystemEventArgs e)
-        {
-            if (e.FullPath.IndexOf(Path.GetFileName(_shutdownFile), StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                // Found the file mark this WebJob as finished
-                if (_cts != null)
-                {
-                    _cts.Cancel();
-                }
-            }
-        }
-
         /// <summary>
         /// Get a CancellationToken that is signaled when the shutdown notification is detected.
         /// </summary>
@@ -84,6 +72,18 @@ namespace Microsoft.Azure.WebJobs
             {
                 // CancellationToken.None means CanBeCanceled = false, which can facilitate optimizations with tokens.
                 return (_cts != null) ? _cts.Token : CancellationToken.None;
+            }
+        }
+
+        private void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            if (e.FullPath.IndexOf(Path.GetFileName(_shutdownFile), StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // Found the file mark this WebJob as finished
+                if (_cts != null)
+                {
+                    _cts.Cancel();
+                }
             }
         }
 

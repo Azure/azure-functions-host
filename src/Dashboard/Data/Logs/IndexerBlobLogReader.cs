@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using Microsoft.Azure.WebJobs.Protocols;
+using Microsoft.Azure.WebJobs.Storage;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
-using Microsoft.Azure.WebJobs.Storage;
-using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Data.Logs
 {

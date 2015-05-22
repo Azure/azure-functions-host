@@ -8,10 +8,6 @@ namespace Dashboard.Data
 {
     public class ConcurrentMetadataDocument<TDocument> : IConcurrentDocument<TDocument>
     {
-        private readonly string _eTag;
-        private readonly IDictionary<string, string> _metadata;
-        private readonly TDocument _document;
-
         public ConcurrentMetadataDocument(string eTag, IDictionary<string, string> metadata, TDocument document)
         {
             if (eTag == null)
@@ -25,15 +21,15 @@ namespace Dashboard.Data
 
             // document may be null (valid JSON serialization of text bytes: "null").
 
-            _eTag = eTag;
-            _metadata = metadata;
-            _document = document;
+            ETag = eTag;
+            Metadata = metadata;
+            Document = document;
         }
 
-        public string ETag { get { return _eTag; } }
+        public string ETag { get; private set; }
 
-        public IDictionary<string, string> Metadata { get { return _metadata; } }
+        public IDictionary<string, string> Metadata { get; private set; }
 
-        public TDocument Document { get { return _document; } }
+        public TDocument Document { get; private set; }
     }
 }

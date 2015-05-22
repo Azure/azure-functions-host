@@ -10,7 +10,7 @@ namespace Dashboard.Data
     public class JsonConcurrentDocumentStore<TDocument> : IConcurrentDocumentStore<TDocument>,
         IConcurrentMetadataDocumentStore<TDocument>
     {
-        private static readonly JsonSerializerSettings _settings = JsonSerialization.Settings;
+        private static readonly JsonSerializerSettings SerializerSettings = JsonSerialization.Settings;
 
         private readonly IConcurrentMetadataTextStore _innerStore;
 
@@ -21,7 +21,7 @@ namespace Dashboard.Data
 
         internal static JsonSerializerSettings JsonSerializerSettings
         {
-            get { return _settings; }
+            get { return SerializerSettings; }
         }
 
         public IEnumerable<ConcurrentMetadata> List(string prefix)
@@ -45,13 +45,13 @@ namespace Dashboard.Data
 
             string eTag = innerResult.ETag;
             IDictionary<string, string> metadata = innerResult.Metadata;
-            TDocument document = JsonConvert.DeserializeObject<TDocument>(innerResult.Text, _settings);
+            TDocument document = JsonConvert.DeserializeObject<TDocument>(innerResult.Text, SerializerSettings);
             return new ConcurrentMetadataDocument<TDocument>(eTag, metadata, document);
         }
 
         public void CreateOrUpdate(string id, TDocument document)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             _innerStore.CreateOrUpdate(id, text);
         }
@@ -63,7 +63,7 @@ namespace Dashboard.Data
 
         public bool TryCreate(string id, IDictionary<string, string> metadata, TDocument document)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             return _innerStore.TryCreate(id, metadata, text);
         }
@@ -75,7 +75,7 @@ namespace Dashboard.Data
 
         public bool TryUpdate(string id, string eTag, IDictionary<string, string> metadata, TDocument document)
         {
-            string text = JsonConvert.SerializeObject(document, _settings);
+            string text = JsonConvert.SerializeObject(document, SerializerSettings);
 
             return _innerStore.TryUpdate(id, eTag, metadata, text);
         }

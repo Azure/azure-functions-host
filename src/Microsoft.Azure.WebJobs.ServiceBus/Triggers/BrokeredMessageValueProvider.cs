@@ -81,8 +81,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                         return null;
                     }
 
-                    const int defaultBufferSize = 4096;
-                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
+                    const int DefaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, DefaultBufferSize, cancellationToken);
                     bytes = outputStream.ToArray();
                 }
             }
@@ -120,8 +120,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                         return null;
                     }
 
-                    const int defaultBufferSize = 4096;
-                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
+                    const int DefaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, DefaultBufferSize, cancellationToken);
                     byte[] bytes = outputStream.ToArray();
 
                     try

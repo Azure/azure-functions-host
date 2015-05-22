@@ -278,18 +278,21 @@ namespace Dashboard
             string unitName;
             int unitCount;
 
-            if (elapsed > TimeSpan.FromMinutes(55)) // it is about an hour, right?
+            if (elapsed > TimeSpan.FromMinutes(55))
             {
+                // it is about an hour, right?
                 unitName = "hour";
                 unitCount = (int)Math.Round(elapsed.TotalHours);
             }
-            else if (elapsed > TimeSpan.FromSeconds(55)) // it is about a minute, right?
+            else if (elapsed > TimeSpan.FromSeconds(55))
             {
+                // it is about a minute, right?
                 unitName = "minute";
                 unitCount = (int)Math.Round(elapsed.TotalMinutes);
             }
-            else if (elapsed > TimeSpan.FromMilliseconds(950)) // it is about a second, right?
+            else if (elapsed > TimeSpan.FromMilliseconds(950))
             {
+                // it is about a second, right?
                 unitName = "second";
                 unitCount = (int)Math.Round(elapsed.TotalSeconds);
             }

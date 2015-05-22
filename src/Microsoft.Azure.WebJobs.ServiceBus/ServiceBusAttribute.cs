@@ -12,10 +12,10 @@ namespace Microsoft.Azure.WebJobs
     /// <remarks>
     /// The method parameter type can be one of the following:
     /// <list type="bullet">
-    /// <item><description>BrokeredMessage (out param)</description></item>
-    /// <item><description><see cref="string"/> (out param)</description></item>
-    /// <item><description><see cref="T:byte[]"/> (out param)</description></item>
-    /// <item><description>A user-defined type (out param, serialized as JSON)</description></item>
+    /// <item><description>BrokeredMessage (out parameter)</description></item>
+    /// <item><description><see cref="string"/> (out parameter)</description></item>
+    /// <item><description><see cref="T:byte[]"/> (out parameter)</description></item>
+    /// <item><description>A user-defined type (out parameter, serialized as JSON)</description></item>
     /// <item><description>
     /// <see cref="ICollection{T}"/> of these types (to enqueue multiple messages via <see cref="ICollection{T}.Add"/>
     /// </description></item>

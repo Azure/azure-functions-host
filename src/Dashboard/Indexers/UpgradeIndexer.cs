@@ -1,16 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Linq;
+using System.Threading;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Microsoft.Azure.WebJobs.Protocols;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Web;
 
 namespace Dashboard.Indexers
 {
@@ -171,7 +168,7 @@ namespace Dashboard.Indexers
                     Thread.Sleep(IndexerPollIntervalMilliseconds);
                 }
             }
-            while (count > 0 );
+            while (count > 0);
 
             return version;
         }

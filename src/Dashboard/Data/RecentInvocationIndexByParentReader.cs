@@ -12,7 +12,7 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByParentReader(CloudBlobClient client)
-            : this (new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByParent))
+            : this(new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByParent))
         {
         }
 

@@ -3,8 +3,8 @@
 
 using System;
 using System.Globalization;
-using Microsoft.Azure.WebJobs.Protocols;
 using Dashboard.Data.Logs;
+using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Indexers
 {
@@ -50,8 +50,8 @@ namespace Dashboard.Indexers
 
                 // Remove any new lines from the metadata, otherwise you get a 403
                 // back from the Azure SDK
-                logEntry.Title = logEntry.Title.Replace("\r", "");
-                logEntry.Title = logEntry.Title.Replace("\n", "");
+                logEntry.Title = logEntry.Title.Replace("\r", string.Empty);
+                logEntry.Title = logEntry.Title.Replace("\n", string.Empty);
 
                 _logWriter.Write(logEntry);
             }

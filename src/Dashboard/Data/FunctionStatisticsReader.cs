@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    public class FunctionStatisticsReader :  IFunctionStatisticsReader
+    public class FunctionStatisticsReader : IFunctionStatisticsReader
     {
         private readonly IConcurrentDocumentStore<FunctionStatistics> _store;
 

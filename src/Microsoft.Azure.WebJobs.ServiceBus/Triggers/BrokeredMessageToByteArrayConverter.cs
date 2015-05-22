@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                         return null;
                     }
 
-                    const int defaultBufferSize = 4096;
-                    await inputStream.CopyToAsync(outputStream, defaultBufferSize, cancellationToken);
+                    const int DefaultBufferSize = 4096;
+                    await inputStream.CopyToAsync(outputStream, DefaultBufferSize, cancellationToken);
                     return outputStream.ToArray();
                 }
             }

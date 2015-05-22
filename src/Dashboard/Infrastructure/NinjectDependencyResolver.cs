@@ -16,12 +16,12 @@ namespace Dashboard.Infrastructure
     [SuppressMessage("Microsoft.Design", "CA1063:ImplementIDisposableCorrectly")]
     public class NinjectDependencyResolver : IMvcDependencyResolver, IHttpDependencyResolver, IHttpDependencyScope
     {
-        public IKernel Kernel { get; private set; }
-
         public NinjectDependencyResolver(IKernel kernel)
         {
             Kernel = kernel;
         }
+
+        public IKernel Kernel { get; private set; }
 
         object IMvcDependencyResolver.GetService(Type serviceType)
         {
@@ -47,7 +47,7 @@ namespace Dashboard.Infrastructure
 
         object IHttpDependencyScope.GetService(Type serviceType)
         {
-            if (typeof (IHttpController).IsAssignableFrom(serviceType))
+            if (typeof(IHttpController).IsAssignableFrom(serviceType))
             {
                 return Kernel.Get(serviceType);
             }

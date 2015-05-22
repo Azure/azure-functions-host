@@ -11,7 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings.Path;
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     /// <summary>
-    /// Omplementation of <see cref="IBindableServiceBusPath"/> strategy for paths 
+    /// Implementation of <see cref="IBindableServiceBusPath"/> strategy for paths 
     /// containing one or more parameters.
     /// </summary>
     internal class ParameterizedServiceBusPath : IBindableServiceBusPath

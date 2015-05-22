@@ -8,10 +8,6 @@ namespace Dashboard.Data
 {
     public class ConcurrentMetadata
     {
-        private readonly string _id;
-        private readonly string _eTag;
-        private readonly IDictionary<string, string> _metadata;
-
         public ConcurrentMetadata(string id, string eTag, IDictionary<string, string> metadata)
         {
             if (id == null)
@@ -27,15 +23,15 @@ namespace Dashboard.Data
                 throw new ArgumentNullException("metadata");
             }
 
-            _id = id;
-            _eTag = eTag;
-            _metadata = metadata;
+            Id = id;
+            ETag = eTag;
+            Metadata = metadata;
         }
 
-        public string Id { get { return _id; } }
+        public string Id { get; private set; }
 
-        public string ETag { get { return _eTag; } }
+        public string ETag { get; private set; }
 
-        public IDictionary<string, string> Metadata { get { return _metadata; } }
+        public IDictionary<string, string> Metadata { get; private set; }
     }
 }

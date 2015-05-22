@@ -24,12 +24,11 @@ namespace Dashboard
                 "~/Scripts/angular.min.js",
                 "~/Scripts/angular-route.min.js"));
 
-            bundles.Add(new ScriptBundle("~/bundles/app") { Orderer = new PriorityFirstOrderer("main.js")}
+            bundles.Add(new ScriptBundle("~/bundles/app") { Orderer = new PriorityFirstOrderer("main.js") }
                 .IncludeDirectory("~/app", "*.js")
                 .IncludeDirectory("~/app/controllers", "*.js")
                 .IncludeDirectory("~/app/models", "*.js")
-                .IncludeDirectory("~/app/services", "*.js")
-            );
+                .IncludeDirectory("~/app/services", "*.js"));
 
             bundles.Add(new StyleBundle("~/bundles/css").Include(
                 "~/Content/bootstrap/css/bootstrap.css",
@@ -39,21 +38,21 @@ namespace Dashboard
             BundleTable.EnableOptimizations = false;
         }
 
-        class PriorityFirstOrderer : DefaultBundleOrderer
+        private class PriorityFirstOrderer : DefaultBundleOrderer
         {
-            private readonly string _hiPriFilename;
+            private readonly string _filename;
 
-            public PriorityFirstOrderer(string hiPriFilename)
+            public PriorityFirstOrderer(string filename)
             {
-                _hiPriFilename = hiPriFilename;
+                _filename = filename;
             }
 
             public override IEnumerable<BundleFile> OrderFiles(BundleContext context, IEnumerable<BundleFile> files)
             {
                 var result = base.OrderFiles(context, files);
-                return result.Where(f => f.VirtualFile.Name.Equals(_hiPriFilename, StringComparison.OrdinalIgnoreCase))
+                return result.Where(f => f.VirtualFile.Name.Equals(_filename, StringComparison.OrdinalIgnoreCase))
                     .Concat(
-                        result.Where(f => !f.VirtualFile.Name.Equals(_hiPriFilename, StringComparison.OrdinalIgnoreCase)));
+                        result.Where(f => !f.VirtualFile.Name.Equals(_filename, StringComparison.OrdinalIgnoreCase)));
             }
         }
     }

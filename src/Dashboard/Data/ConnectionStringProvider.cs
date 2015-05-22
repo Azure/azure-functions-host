@@ -10,7 +10,7 @@ namespace Dashboard.Data
 {
     public static class ConnectionStringProvider
     {
-        internal static string Prefix = "AzureWebJobs";
+        internal const string Prefix = "AzureWebJobs";
 
         public static string GetPrefixedConnectionStringName(string connectionStringName)
         {

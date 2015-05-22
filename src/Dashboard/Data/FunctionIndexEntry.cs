@@ -17,10 +17,6 @@ namespace Dashboard.Data
         private const string HeartbeatSharedContainerNameKey = "HeartbeatSharedContainerName";
         private const string HeartbeatSharedDirectoryNameKey = "HeartbeatSharedDirectoryName";
 
-        private readonly DateTimeOffset _hostVersion;
-        private readonly string _id;
-        private readonly string _fullName;
-        private readonly string _shortName;
         private readonly int? _heartbeatExpirationInSeconds;
         private readonly string _heartbeatSharedContainerName;
         private readonly string _heartbeatSharedDirectoryName;
@@ -28,28 +24,46 @@ namespace Dashboard.Data
         private FunctionIndexEntry(DateTimeOffset hostVersion, string id, string fullName, string shortName,
             int? heartbeatExpirationInSeconds, string heartbeatSharedContainerName, string heartbeatSharedDirectoryName)
         {
-            _hostVersion = hostVersion;
-            _id = id;
-            _fullName = fullName;
-            _shortName = shortName;
+            HostVersion = hostVersion;
+            Id = id;
+            FullName = fullName;
+            ShortName = shortName;
             _heartbeatExpirationInSeconds = heartbeatExpirationInSeconds;
             _heartbeatSharedContainerName = heartbeatSharedContainerName;
             _heartbeatSharedDirectoryName = heartbeatSharedDirectoryName;
         }
 
-        public DateTimeOffset HostVersion { get { return _hostVersion; } }
+        public DateTimeOffset HostVersion { get; private set; }
 
-        public string Id { get { return _id; } }
+        public string Id { get; private set; }
 
-        public string FullName { get { return _fullName; } }
+        public string FullName { get; private set; }
 
-        public string ShortName { get { return _shortName; } }
+        public string ShortName { get; private set; }
 
-        public int? HeartbeatExpirationInSeconds { get { return _heartbeatExpirationInSeconds; } }
+        public int? HeartbeatExpirationInSeconds 
+        { 
+            get 
+            { 
+                return _heartbeatExpirationInSeconds; 
+            } 
+        }
 
-        public string HeartbeatSharedContainerName { get { return _heartbeatSharedContainerName; } }
+        public string HeartbeatSharedContainerName 
+        { 
+            get 
+            { 
+                return _heartbeatSharedContainerName; 
+            } 
+        }
 
-        public string HeartbeatSharedDirectoryName { get { return _heartbeatSharedDirectoryName; } }
+        public string HeartbeatSharedDirectoryName 
+        { 
+            get 
+            { 
+                return _heartbeatSharedDirectoryName; 
+            } 
+        }
 
         public static FunctionIndexEntry Create(IDictionary<string, string> metadata, DateTimeOffset version)
         {

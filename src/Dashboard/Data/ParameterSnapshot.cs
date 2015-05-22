@@ -14,14 +14,6 @@ namespace Dashboard.Data
         [SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
         public string Type { get; set; }
 
-        private class ParameterSnapshotConverter : PolymorphicJsonConverter
-        {
-            public ParameterSnapshotConverter()
-                : base("Type", PolymorphicJsonConverter.GetTypeMapping<ParameterSnapshot>())
-            {
-            }
-        }
-
         [JsonIgnore]
         public abstract string Description { get; }
 
@@ -33,5 +25,13 @@ namespace Dashboard.Data
 
         [JsonIgnore]
         public abstract string DefaultValue { get; }
+
+        private class ParameterSnapshotConverter : PolymorphicJsonConverter
+        {
+            public ParameterSnapshotConverter()
+                : base("Type", PolymorphicJsonConverter.GetTypeMapping<ParameterSnapshot>())
+            {
+            }
+        }
     }
 }

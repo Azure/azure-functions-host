@@ -19,7 +19,7 @@ namespace Dashboard.Data
 
         [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public FunctionIndexReader(CloudBlobClient client)
-            : this (client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
+            : this(client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(
                 DashboardDirectoryNames.FunctionsFlat), client.GetContainerReference(DashboardContainerNames.Dashboard)
                 .GetDirectoryReference(DashboardDirectoryNames.Functions), VersionMetadataMapper.Instance)
         {

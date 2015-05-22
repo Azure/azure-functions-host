@@ -8,11 +8,6 @@ namespace Dashboard.Data
 {
     public class VersionedMetadataText
     {
-        private readonly string _eTag;
-        private readonly IDictionary<string, string> _metadata;
-        private readonly DateTimeOffset _version;
-        private readonly string _text;
-
         public VersionedMetadataText(string eTag, IDictionary<string, string> metadata, DateTimeOffset version, string text)
         {
             if (eTag == null)
@@ -28,18 +23,18 @@ namespace Dashboard.Data
                 throw new ArgumentNullException("text");
             }
 
-            _eTag = eTag;
-            _metadata = metadata;
-            _version = version;
-            _text = text;
+            ETag = eTag;
+            Metadata = metadata;
+            Version = version;
+            Text = text;
         }
 
-        public string ETag { get { return _eTag; } }
+        public string ETag { get; private set; }
 
-        public IDictionary<string, string> Metadata { get { return _metadata; } }
+        public IDictionary<string, string> Metadata { get; private set; }
 
-        public DateTimeOffset Version { get { return _version; } }
+        public DateTimeOffset Version { get; private set; }
 
-        public string Text { get { return _text; } }
+        public string Text { get; private set; }
     }
 }

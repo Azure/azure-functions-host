@@ -67,7 +67,6 @@ namespace Microsoft.Azure.WebJobs
             get { return _partitionKey; }
         }
 
-
         /// <summary>When binding to a table entity, gets the row key of the entity.</summary>
         /// <remarks>When binding to an entire table, returns <see langword="null"/>.</remarks>
         public string RowKey

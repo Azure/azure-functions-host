@@ -37,7 +37,7 @@ namespace Dashboard
         }
 
         // a Redirect route handler. We only need this as a stopgap until we SPA-ify the SearchBlob and Run/Replay pages
-        class RedirectRouteHandler : IRouteHandler
+        private class RedirectRouteHandler : IRouteHandler
         {
             private readonly string _targetUrl;
 
@@ -60,6 +60,11 @@ namespace Dashboard
                     _targetUrl = targetUrl;
                 }
 
+                public bool IsReusable
+                {
+                    get { return false; }
+                }
+
                 public void ProcessRequest(HttpContext context)
                 {
                     if (context == null)
@@ -69,13 +74,7 @@ namespace Dashboard
 
                     context.Response.Redirect(UrlHelper.GenerateContentUrl(_targetUrl, new HttpContextWrapper(context)));
                 }
-
-                public bool IsReusable
-                {
-                    get { return false; }
-                }
             }
-
         }
     }
 }

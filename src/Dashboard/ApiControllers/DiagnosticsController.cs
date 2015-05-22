@@ -2,15 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
 using System.Web.Http;
 using Dashboard.Data;
 using Dashboard.Data.Logs;
 using Dashboard.ViewModels;
 using Microsoft.Azure.WebJobs.Protocols;
-using Dashboard.Indexers;
 
 namespace Dashboard.ApiControllers
 {

@@ -30,12 +30,12 @@ namespace Dashboard.Data
         public string FunctionShortName { get; set; }
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-        public IDictionary<string, FunctionInstanceArgument> Arguments  { get; set; }
+        public IDictionary<string, FunctionInstanceArgument> Arguments { get; set; }
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public IDictionary<string, ParameterLog> ParameterLogs { get; set; }
 
-        public Guid? ParentId  { get; set; }
+        public Guid? ParentId { get; set; }
 
         public string Reason { get; set; }
 

@@ -6,7 +6,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Dashboard.Data
 {
-    public class FunctionStatisticsWriter :  IFunctionStatisticsWriter
+    public class FunctionStatisticsWriter : IFunctionStatisticsWriter
     {
         private readonly IConcurrentDocumentStore<FunctionStatistics> _store;
 
@@ -35,7 +35,9 @@ namespace Dashboard.Data
         private void UpdateEntity(string functionId, Action<FunctionStatistics> modifier)
         {
             // Keep racing to update the entity until it succeeds.
-            while (!TryUpdateEntity(functionId, modifier));
+            while (!TryUpdateEntity(functionId, modifier))
+            {
+            }
         }
 
         private bool TryUpdateEntity(string functionId, Action<FunctionStatistics> modifier)

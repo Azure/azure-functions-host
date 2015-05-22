@@ -48,7 +48,6 @@ namespace Dashboard.HostMessaging
             return id;
         }
 
-
         public static FunctionInstanceSnapshot CreateSnapshot(Guid id, IDictionary<string, string> arguments,
             Guid? parentId, DateTimeOffset queueTime, string functionId, string functionFullName,
             string functionShortName)

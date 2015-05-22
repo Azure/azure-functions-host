@@ -9,12 +9,12 @@ namespace Dashboard.ViewModels
 {
     public class TriggerReasonViewModel
     {
-        internal FunctionInstanceSnapshot UnderlyingObject { get; private set; }
-
         internal TriggerReasonViewModel(FunctionInstanceSnapshot underlyingObject)
         {
             UnderlyingObject = underlyingObject;
         }
+
+        internal FunctionInstanceSnapshot UnderlyingObject { get; private set; }
 
         public Guid ParentGuid
         {

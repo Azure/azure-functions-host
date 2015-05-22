@@ -11,7 +11,7 @@ namespace Dashboard.Data
     {
         private const string VersionMetadataKey = "Version";
 
-        private static readonly VersionMetadataMapper _instance = new VersionMetadataMapper();
+        private static readonly VersionMetadataMapper Singleton = new VersionMetadataMapper();
 
         private VersionMetadataMapper()
         {
@@ -19,7 +19,7 @@ namespace Dashboard.Data
 
         public static VersionMetadataMapper Instance
         {
-            get { return _instance; }
+            get { return Singleton; }
         }
 
         public DateTimeOffset GetVersion(IDictionary<string, string> metadata)

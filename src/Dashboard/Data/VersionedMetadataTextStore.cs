@@ -175,7 +175,7 @@ namespace Dashboard.Data
             bool persisted = false;
             string previousETag = null;
             int createAttempt = 0;
-            const int maximumCreateAttempts = 10;
+            const int MaximumCreateAttempts = 10;
             VersionedItem currentItem;
 
             for (currentItem = startingItem;
@@ -184,7 +184,7 @@ namespace Dashboard.Data
             {
                 if (currentItem == null)
                 {
-                    if (createAttempt++ >= maximumCreateAttempts)
+                    if (createAttempt++ >= MaximumCreateAttempts)
                     {
                         // Prevent an infinite loop if _innerStore erroneously returns false from TryCreate when a retry
                         // won't help. (The inner store should throw rather than return false in that case.)
@@ -254,8 +254,21 @@ namespace Dashboard.Data
                 _version = version;
             }
 
-            public string ETag { get { return _eTag; } }
-            public DateTimeOffset Version { get { return _version; } }
+            public string ETag 
+            { 
+                get 
+                { 
+                    return _eTag; 
+                } 
+            }
+
+            public DateTimeOffset Version 
+            { 
+                get 
+                { 
+                    return _version; 
+                } 
+            }
         }
     }
 }

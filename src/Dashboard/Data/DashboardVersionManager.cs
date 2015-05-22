@@ -21,8 +21,6 @@ namespace Dashboard.Data
 
         private readonly JsonConcurrentDocumentStore<DashboardVersion> _store;
 
-        public IConcurrentDocument<DashboardVersion> CurrentVersion { get; set; }
-
         /// <summary>
         /// Instantiates a new instance of the <see cref="HostVersionReader"/> class.
         /// </summary>
@@ -38,6 +36,8 @@ namespace Dashboard.Data
             IConcurrentMetadataTextStore innerStore = ConcurrentTextStore.CreateBlobStore(client, DashboardContainerNames.Dashboard, string.Empty);
             _store = new JsonConcurrentDocumentStore<DashboardVersion>(innerStore); 
         }
+
+        public IConcurrentDocument<DashboardVersion> CurrentVersion { get; set; }
 
         /// <inheritdoc />
         [DebuggerNonUserCode]

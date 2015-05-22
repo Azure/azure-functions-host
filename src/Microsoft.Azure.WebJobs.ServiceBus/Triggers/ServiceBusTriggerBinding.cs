@@ -142,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             return new CompositeObjectToTypeConverter<BrokeredMessage>(
                     new OutputConverter<BrokeredMessage>(new IdentityConverter<BrokeredMessage>()),
                     new OutputConverter<string>(StringToBrokeredMessageConverterFactory.Create(parameterType)));
-
         }
     }
 }

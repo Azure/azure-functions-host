@@ -10,7 +10,7 @@ namespace Dashboard.Data
     {
         private readonly IVersionedMetadataTextStore _store;
 
-        internal static string VersionBlobName = "version";
+        internal const string VersionBlobName = "version";
 
         public FunctionIndexVersionManager(CloudBlobClient client)
             : this(VersionedTextStore.CreateBlobStore(

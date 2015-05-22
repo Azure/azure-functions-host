@@ -13,7 +13,7 @@ namespace Dashboard.Data
 
         [CLSCompliant(false)]
         public RecentInvocationIndexByJobRunReader(CloudBlobClient client)
-            : this (new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByJobRun))
+            : this(new BlobRecentInvocationIndexReader(client, DashboardDirectoryNames.RecentFunctionsByJobRun))
         {
         }
 
@@ -22,8 +22,7 @@ namespace Dashboard.Data
             _innerReader = innerReader;
         }
 
-        public IResultSegment<RecentInvocationEntry> Read(WebJobRunIdentifier webJobRunId, int maximumResults,
-            string continuationToken)
+        public IResultSegment<RecentInvocationEntry> Read(WebJobRunIdentifier webJobRunId, int maximumResults, string continuationToken)
         {
             string relativePrefix = DashboardBlobPrefixes.CreateByJobRunRelativePrefix(webJobRunId);
             return _innerReader.Read(relativePrefix, maximumResults, continuationToken);

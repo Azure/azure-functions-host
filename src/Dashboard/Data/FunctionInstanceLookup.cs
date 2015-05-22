@@ -11,7 +11,7 @@ namespace Dashboard.Data
 {
     internal class FunctionInstanceLookup : IFunctionInstanceLookup
     {
-        private static readonly JsonSerializerSettings _settings =
+        private static readonly JsonSerializerSettings SerializerSettings =
             JsonConcurrentDocumentStore<FunctionInstanceSnapshot>.JsonSerializerSettings;
 
         private readonly CloudBlobDirectory _directory;
@@ -53,7 +53,7 @@ namespace Dashboard.Data
                 }
             }
 
-            return JsonConvert.DeserializeObject<FunctionInstanceSnapshot>(contents, _settings);
+            return JsonConvert.DeserializeObject<FunctionInstanceSnapshot>(contents, SerializerSettings);
         }
    }
 }

@@ -22,9 +22,15 @@ namespace Dashboard.AppStart
 {
     public static class NinjectWebCommon
     {
-        private static readonly Bootstrapper bootstrapper = new Bootstrapper();
+        private static readonly Bootstrapper Bootstrapper = new Bootstrapper();
 
-        public static IKernel Kernel { get { return bootstrapper.Kernel; } }
+        public static IKernel Kernel 
+        { 
+            get 
+            { 
+                return Bootstrapper.Kernel; 
+            } 
+        }
 
         /// <summary>
         /// Starts the application
@@ -35,10 +41,10 @@ namespace Dashboard.AppStart
             // Registration must occur before application start. So use: WebActivator.PreApplicationStartMethod 
             DynamicModuleUtility.RegisterModule(typeof(OnePerRequestHttpModule));
             DynamicModuleUtility.RegisterModule(typeof(NinjectHttpModule));
-            bootstrapper.Initialize(CreateKernel);
+            Bootstrapper.Initialize(CreateKernel);
 
             // Set both MVC and WebAPI resolvers
-            var resolver = new NinjectDependencyResolver(bootstrapper.Kernel);
+            var resolver = new NinjectDependencyResolver(Bootstrapper.Kernel);
             DependencyResolver.SetResolver(resolver);
             GlobalConfiguration.Configuration.DependencyResolver = resolver;
         }
@@ -48,8 +54,9 @@ namespace Dashboard.AppStart
         /// </summary>
         public static void Stop()
         {
-            bootstrapper.ShutDown();
+            Bootstrapper.ShutDown();
         }
+
         /// <summary>
         /// Creates the kernel that will manage your application.
         /// </summary>

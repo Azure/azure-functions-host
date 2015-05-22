@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.
+// Licensed under the MIT License. See License.txt in the project root for license information.﻿
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -298,8 +298,7 @@ namespace Microsoft.Azure.WebJobs
             GC.SuppressFinalize(this);
         }
 
-        private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func,
-            IDictionary<string, object> parameters)
+        private static IFunctionInstance CreateFunctionInstance(IFunctionDefinition func, IDictionary<string, object> parameters)
         {
             return func.InstanceFactory.Create(Guid.NewGuid(), null, ExecutionReason.HostCall, parameters);
         }

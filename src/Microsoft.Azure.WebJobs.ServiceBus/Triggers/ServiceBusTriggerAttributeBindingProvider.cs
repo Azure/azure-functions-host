@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
     internal class ServiceBusTriggerAttributeBindingProvider : ITriggerBindingProvider
     {
-        private static readonly IQueueTriggerArgumentBindingProvider _innerProvider =
+        private static readonly IQueueTriggerArgumentBindingProvider InnerProvider =
             new CompositeArgumentBindingProvider(
                 new ConverterArgumentBindingProvider<BrokeredMessage>(
                     new AsyncConverter<BrokeredMessage, BrokeredMessage>(new IdentityConverter<BrokeredMessage>())),
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 subscriptionName = Resolve(serviceBusTrigger.SubscriptionName);
             }
 
-            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = _innerProvider.TryCreate(parameter);
+            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = InnerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {

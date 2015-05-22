@@ -33,8 +33,7 @@ namespace Dashboard.Controllers
             IFunctionLookup functionLookup,
             IFunctionInstanceLookup functionInstanceLookup,
             IHeartbeatValidityMonitor heartbeatMonitor,
-            IInvoker invoker
-            )
+            IInvoker invoker)
         {
             _account = account;
             _functionLookup = functionLookup;

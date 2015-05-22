@@ -8,14 +8,12 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.ServiceBus.Config;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
     internal class ServiceBusAttributeBindingProvider : IBindingProvider
     {
-        private static readonly IQueueArgumentBindingProvider _innerProvider =
+        private static readonly IQueueArgumentBindingProvider InnerProvider =
             new CompositeArgumentBindingProvider(
                 new BrokeredMessageArgumentBindingProvider(),
                 new StringArgumentBindingProvider(),
@@ -61,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             IBindableServiceBusPath path = BindableServiceBusPath.Create(queueOrTopicName);
             ValidateContractCompatibility(path, context.BindingDataContract);
 
-            IArgumentBinding<ServiceBusEntity> argumentBinding = _innerProvider.TryCreate(parameter);
+            IArgumentBinding<ServiceBusEntity> argumentBinding = InnerProvider.TryCreate(parameter);
 
             if (argumentBinding == null)
             {

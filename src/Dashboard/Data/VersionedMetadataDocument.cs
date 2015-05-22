@@ -8,11 +8,6 @@ namespace Dashboard.Data
 {
     public class VersionedMetadataDocument<TDocument>
     {
-        private readonly string _eTag;
-        private readonly IDictionary<string, string> _metadata;
-        private readonly DateTimeOffset _version;
-        private readonly TDocument _document;
-
         public VersionedMetadataDocument(string eTag, IDictionary<string, string> metadata, DateTimeOffset version,
             TDocument document)
         {
@@ -27,18 +22,18 @@ namespace Dashboard.Data
 
             // document may be null (valid JSON serialization of text bytes: "null").
 
-            _eTag = eTag;
-            _metadata = metadata;
-            _version = version;
-            _document = document;
+            ETag = eTag;
+            Metadata = metadata;
+            Version = version;
+            Document = document;
         }
 
-        public string ETag { get { return _eTag; } }
+        public string ETag { get; private set; }
 
-        public IDictionary<string, string> Metadata { get { return _metadata; } }
+        public IDictionary<string, string> Metadata { get; private set; }
 
-        public DateTimeOffset Version { get { return _version; } }
+        public DateTimeOffset Version { get; private set; }
 
-        public TDocument Document { get { return _document; } }
+        public TDocument Document { get; private set; }
     }
 }

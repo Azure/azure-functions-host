@@ -11,7 +11,13 @@ namespace Dashboard
     {
         public const string ConnectionStringName = ConnectionStringNames.Dashboard;
         public static readonly string PrefixedConnectionStringName = 
-            ConnectionStringProvider.GetPrefixedConnectionStringName(ConnectionStringName); 
+            ConnectionStringProvider.GetPrefixedConnectionStringName(ConnectionStringName);
+
+        public DashboardAccountContext()
+        {
+            ConnectionStringState = ConnectionStringState.Unknown;
+            StorageAccount = null;
+        }
 
         public ConnectionStringState ConnectionStringState { get; internal set; }
         
@@ -24,11 +30,5 @@ namespace Dashboard
 
         [CLSCompliant(false)]
         public CloudStorageAccount StorageAccount { get; internal set; }
-
-        public DashboardAccountContext()
-        {
-            ConnectionStringState = ConnectionStringState.Unknown;
-            StorageAccount = null;
-        }
     }
 }

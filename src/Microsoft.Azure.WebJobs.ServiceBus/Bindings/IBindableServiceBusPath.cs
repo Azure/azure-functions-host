@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 {
-    interface IBindableServiceBusPath
+    internal interface IBindableServiceBusPath
     {
         string QueueOrTopicNamePattern { get; }
 

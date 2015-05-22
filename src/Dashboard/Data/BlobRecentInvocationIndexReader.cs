@@ -17,7 +17,7 @@ namespace Dashboard.Data
 
         [SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0"), CLSCompliant(false)]
         public BlobRecentInvocationIndexReader(CloudBlobClient client, string directoryName)
-            : this (client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(directoryName))
+            : this(client.GetContainerReference(DashboardContainerNames.Dashboard).GetDirectoryReference(directoryName))
         {
         }
 
