@@ -35,7 +35,6 @@
     <None Include="..\..\tools\NuGetProj.settings.targets">
       <Link>NuGetProj.settings.targets</Link>
     </None>
-    <None Include="packages.config" />
     <NuGetProject Include="..\Microsoft.Azure.WebJobs.ServiceBus.NuGet\WebJobs.ServiceBus.nuproj">
       <Link>WebJobs.ServiceBus\WebJobs.ServiceBus.nuproj</Link>
     </NuGetProject>
