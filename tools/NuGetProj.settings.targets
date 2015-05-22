@@ -5,6 +5,7 @@
     <WebJobsToolsPath>$(MSBuildThisFileDirectory)</WebJobsToolsPath>
     
     <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
-    <WebJobsPackageVersion>1.0.1</WebJobsPackageVersion>
+    <BUILD_NUMBER Condition=" '$(BUILD_NUMBER)' == '' ">local</BUILD_NUMBER>
+    <WebJobsPackageVersion>1.1.0-alpha1-$(BUILD_NUMBER)</WebJobsPackageVersion>
   </PropertyGroup>
 </Project>
