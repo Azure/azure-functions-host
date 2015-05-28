@@ -114,7 +114,7 @@
     <Compile Include="Bindings\ServiceBusAttributeBindingProvider.cs" />
     <Compile Include="Bindings\StringToBrokeredMessageConverter.cs" />
     <Compile Include="Bindings\UserTypeToBrokeredMessageConverter.cs" />
-    <Compile Include="Config\JobHostConfigurationExtensions.cs" />
+    <Compile Include="Config\ServiceBusJobHostConfigurationExtensions.cs" />
     <Compile Include="Config\ServiceBusConfiguration.cs" />
     <Compile Include="Config\ServiceBusExtensionConfig.cs" />
     <Compile Include="Constants.cs" />

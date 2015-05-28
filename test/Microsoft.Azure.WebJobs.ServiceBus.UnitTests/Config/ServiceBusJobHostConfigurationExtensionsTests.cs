@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Config
 {
-    public class JobHostConfigurationExtensionsTests
+    public class ServiceBusJobHostConfigurationExtensionsTests
     {
         [Fact]
         public void UseServiceBus_ThrowsArgumentNull_WhenServiceBusConfigIsNull()

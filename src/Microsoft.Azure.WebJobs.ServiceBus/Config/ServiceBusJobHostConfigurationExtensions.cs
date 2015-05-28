@@ -4,14 +4,15 @@
 using System;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.Azure.WebJobs.ServiceBus.Config;
 
-namespace Microsoft.Azure.WebJobs.ServiceBus
+namespace Microsoft.Azure.WebJobs
 {
     /// <summary>
     /// Extension methods for ServiceBus integration
     /// </summary>
-    public static class JobHostConfigurationExtensions
+    public static class ServiceBusJobHostConfigurationExtensions
     {
         /// <summary>
         /// Enables use of ServiceBus job extensions
