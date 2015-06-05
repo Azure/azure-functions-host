@@ -18,17 +18,18 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
     /// <summary>
     /// Various E2E tests that use only the public surface and the real Azure storage
     /// </summary>
-    public class AzureStorageEndToEndTests
+    public class AzureStorageEndToEndTests : IClassFixture<AzureStorageEndToEndTests.TestFixture>
     {
-        private const string ContainerName = "e2econtainer%rnd%";
+        private const string TestArtifactsPrefix = "e2etest";
+        private const string ContainerName = TestArtifactsPrefix + "container%rnd%";
         private const string BlobName = "testblob";
 
-        private const string TableName = "e2etable%rnd%";
+        private const string TableName = TestArtifactsPrefix + "table%rnd%";
 
-        private const string HostStartQueueName = "e2estart%rnd%";
-        private const string TestQueueName = "e2equeue%rnd%";
-        private const string TestQueueNameEtag = "etag2equeue%rnd%";
-        private const string DoneQueueName = "e2edone%rnd%";
+        private const string HostStartQueueName = TestArtifactsPrefix + "startqueue%rnd%";
+        private const string TestQueueName = TestArtifactsPrefix + "queue%rnd%";
+        private const string TestQueueNameEtag = TestArtifactsPrefix + "etag2equeue%rnd%";
+        private const string DoneQueueName = TestArtifactsPrefix + "donequeue%rnd%";
 
         private static EventWaitHandle _startWaitHandle;
 
@@ -37,6 +38,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private CloudStorageAccount _storageAccount;
 
         private RandomNameResolver _resolver;
+         
+        public AzureStorageEndToEndTests(TestFixture fixture)
+        {
+            _storageAccount = fixture.StorageAccount;
+        }
 
         /// <summary>
         /// Used to syncronize the application start and blob creation
@@ -152,20 +158,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private void EndToEndTest(bool uploadBlobBeforeHostStart)
         {
-            try
-            {
-                EndToEndTestInternal(uploadBlobBeforeHostStart);
-            }
-            finally
-            {
-                CleanupBlob();
-                CleanupQueue();
-                CleanupTable();
-            }
-        }
-
-        private void EndToEndTestInternal(bool uploadBlobBeforeHostStart)
-        {
             // Reinitialize the name resolver to avoid conflicts
             _resolver = new RandomNameResolver();
 
@@ -176,8 +168,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     this.GetType(),
                     typeof(BlobToCustomObjectBinder))
             };
-
-            _storageAccount = CloudStorageAccount.Parse(hostConfig.StorageConnectionString);
 
             if (uploadBlobBeforeHostStart)
             {
@@ -241,33 +231,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _startWaitHandle.WaitOne();
         }
 
-        private void CleanupBlob()
-        {
-            string testContainerName = _resolver.ResolveInString(ContainerName);
-
-            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(testContainerName);
-            container.DeleteIfExists();
-        }
-
-        private void CleanupQueue()
-        {
-            string testQueueName = _resolver.ResolveInString(TestQueueName);
-
-            CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(testQueueName);
-            queue.DeleteIfExists();
-        }
-
-        private void CleanupTable()
-        {
-            string testTableName = _resolver.ResolveInString(TableName);
-
-            CloudTableClient tableClient = _storageAccount.CreateCloudTableClient();
-            CloudTable table = tableClient.GetTableReference(testTableName);
-            table.DeleteIfExists();
-        }
-
         private void VerifyTableResults()
         {
             string testTableName = _resolver.ResolveInString(TableName);
@@ -310,6 +273,42 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             public string Text { get; set; }
 
             public int Number { get; set; }
+        }
+
+        public class TestFixture : IDisposable
+        {
+            public TestFixture()
+            {
+                JobHostConfiguration config = new JobHostConfiguration();
+                StorageAccount = CloudStorageAccount.Parse(config.StorageConnectionString);
+            }
+
+            public CloudStorageAccount StorageAccount
+            {
+                get;
+                private set;
+            }
+
+            public void Dispose()
+            {
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
+                foreach (var testContainer in blobClient.ListContainers(TestArtifactsPrefix))
+                {
+                    testContainer.Delete();
+                }
+
+                CloudQueueClient queueClient = StorageAccount.CreateCloudQueueClient();
+                foreach (var testQueue in queueClient.ListQueues(TestArtifactsPrefix))
+                {
+                    testQueue.Delete();
+                }
+
+                CloudTableClient tableClient = StorageAccount.CreateCloudTableClient();
+                foreach (var testTable in tableClient.ListTables(TestArtifactsPrefix))
+                {
+                    testTable.Delete();
+                }
+            }
         }
     }
 }

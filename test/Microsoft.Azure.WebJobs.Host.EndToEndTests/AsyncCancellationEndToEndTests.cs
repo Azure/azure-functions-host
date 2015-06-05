@@ -13,7 +13,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     public class AsyncCancellationEndToEndTests : IDisposable
     {
-        private const string QueueName = "asynccancele2e%rnd%";
+        private const string TestArtifactPrefix = "asynccancele2e";
+        private const string QueueName = TestArtifactPrefix + "%rnd%";
         private const int DefaultTimeout = 5 * 1000;
 
         private static Action _invokeInFunction;
@@ -52,8 +53,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             if (_storageAccount != null)
             {
                 CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-                CloudQueue queue = queueClient.GetQueueReference(_resolver.ResolveInString(QueueName));
-                queue.DeleteIfExists();
+                foreach (var testQueue in queueClient.ListQueues(TestArtifactPrefix))
+                {
+                    testQueue.Delete();
+                }
             }
         }
 

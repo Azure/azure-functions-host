@@ -14,7 +14,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
     public class BlobTriggerTests : IDisposable
     {
-        private const string ContainerName = "singletrigger-%rnd%";
+        private const string TestArtifactPrefix = "e2etestsingletrigger";
+        private const string ContainerName = TestArtifactPrefix + "-%rnd%";
         private const string BlobName = "test";
 
         private static ManualResetEvent _blobProcessedEvent;
@@ -22,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private readonly CloudBlobContainer _testContainer;
         private readonly JobHostConfiguration _hostConfiguration;
+        private readonly CloudStorageAccount _storageAccount;
 
         public BlobTriggerTests()
         {
@@ -34,8 +36,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(typeof(BlobTriggerTests)),
             };
 
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(_hostConfiguration.StorageConnectionString);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            _storageAccount = CloudStorageAccount.Parse(_hostConfiguration.StorageConnectionString);
+            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
             _testContainer = blobClient.GetContainerReference(nameResolver.ResolveInString(ContainerName));
             Assert.False(_testContainer.Exists());
             _testContainer.Create();
@@ -53,7 +55,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         public void Dispose()
         {
-            _testContainer.Delete();
+            CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
+            foreach (var testContainer in blobClient.ListContainers(TestArtifactPrefix))
+            {
+                testContainer.Delete();
+            }
         }
 
         [Fact]

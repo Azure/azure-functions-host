@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Configuration;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
@@ -14,13 +13,33 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
     /// <summary>
     /// Tests for the lease expiration tests
     /// </summary>
-    public class LeaseExpirationTests
+    public class LeaseExpirationTests : IDisposable
     {
-        private const string TestQueueName = "queueleaserenew%rnd%";
+        private const string TestArtifactPrefix = "e2etestqueueleaserenew";
+        private const string TestQueueName = TestArtifactPrefix + "%rnd%";
 
         private static bool _messageFoundAgain;
 
         private static CancellationTokenSource _tokenSource;
+        private readonly CloudQueueClient _queueClient;
+        private readonly CloudQueue _queue;
+        private readonly JobHostConfiguration _config;
+
+        public LeaseExpirationTests()
+        {
+            RandomNameResolver nameResolver = new RandomNameResolver();
+            _config = new JobHostConfiguration()
+            {
+                NameResolver = nameResolver,
+                TypeLocator = new FakeTypeLocator(typeof(LeaseExpirationTests))
+            };
+
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(_config.StorageConnectionString);
+            _queueClient = storageAccount.CreateCloudQueueClient();
+
+            _queue = _queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
+            _queue.CreateIfNotExists();
+        }
 
         /// <summary>
         /// The function used to test the renewal. Whenever it is invoked, a counter increases
@@ -56,34 +75,22 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             _messageFoundAgain = false;
 
-            RandomNameResolver nameResolver = new RandomNameResolver();
+            _queue.AddMessage(new CloudQueueMessage("Test"));
 
-            JobHostConfiguration hostConfig = new JobHostConfiguration()
+            _tokenSource = new CancellationTokenSource();
+            JobHost host = new JobHost(_config);
+
+            _tokenSource.Token.Register(host.Stop);
+            host.RunAndBlock();
+
+            Assert.False(_messageFoundAgain);
+        }
+
+        public void Dispose()
+        {
+            foreach (var testqueue in _queueClient.ListQueues(TestArtifactPrefix))
             {
-                NameResolver = nameResolver,
-                TypeLocator = new FakeTypeLocator(typeof(LeaseExpirationTests))
-            };
-
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfig.StorageConnectionString);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
-
-            try
-            {
-                queue.CreateIfNotExists();
-                queue.AddMessage(new CloudQueueMessage("Test"));
-
-                _tokenSource = new CancellationTokenSource();
-                JobHost host = new JobHost(hostConfig);
-
-                _tokenSource.Token.Register(host.Stop);
-                host.RunAndBlock();
-
-                Assert.False(_messageFoundAgain);
-            }
-            finally
-            {
-                queue.DeleteIfExists();
+                testqueue.Delete();
             }
         }
     }

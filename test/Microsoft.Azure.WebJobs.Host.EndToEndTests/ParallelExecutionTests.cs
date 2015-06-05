@@ -7,13 +7,13 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
-    public class ParallelExecutionTests
+    public class ParallelExecutionTests : IDisposable
     {
-        private const string TestQueueName = "parallelqueue-%rnd%";
+        private const string TestArtifactPrefix = "e2etestparallelqueue";
+        private const string TestQueueName = TestArtifactPrefix + "-%rnd%";
 
         private static readonly object _lock = new object();
 
@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static int _maxSimultaneouslyRunningFunctions;
 
         private static ManualResetEvent _allMessagesProcessed;
+        private CloudQueueClient _queueClient;
 
         public static void ParallelQueueTrigger([QueueTrigger(TestQueueName)] int sleepTimeInSeconds)
         {
@@ -71,34 +72,38 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             hostConfiguration.Queues.BatchSize = batchSize;
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
-            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
-            CloudQueue queue = queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
+            _queueClient = storageAccount.CreateCloudQueueClient();
+            CloudQueue queue = _queueClient.GetQueueReference(nameResolver.ResolveInString(TestQueueName));
 
             queue.CreateIfNotExists();
 
-            try
+            for (int i = 0; i < _numberOfQueueMessages; i++)
             {
-                for (int i = 0; i < _numberOfQueueMessages; i++)
-                {
-                    int sleepTimeInSeconds = i % 2 == 0 ? 5 : 1;
-                    queue.AddMessage(new CloudQueueMessage(sleepTimeInSeconds.ToString()));
-                }
-
-                using (_allMessagesProcessed = new ManualResetEvent(initialState: false))
-                using (JobHost host = new JobHost(hostConfiguration))
-                {
-                    host.Start();
-                    _allMessagesProcessed.WaitOne(TimeSpan.FromSeconds(90));
-                    host.Stop();
-                }
-
-                Assert.Equal(_numberOfQueueMessages, _receivedMessages);
-                Assert.Equal(0, _currentSimultaneouslyRunningFunctions);
-                Assert.Equal(maxExpectedParallelism, _maxSimultaneouslyRunningFunctions);
+                int sleepTimeInSeconds = i % 2 == 0 ? 5 : 1;
+                queue.AddMessage(new CloudQueueMessage(sleepTimeInSeconds.ToString()));
             }
-            finally
+
+            using (_allMessagesProcessed = new ManualResetEvent(initialState: false))
+            using (JobHost host = new JobHost(hostConfiguration))
             {
-                queue.DeleteIfExists();
+                host.Start();
+                _allMessagesProcessed.WaitOne(TimeSpan.FromSeconds(90));
+                host.Stop();
+            }
+
+            Assert.Equal(_numberOfQueueMessages, _receivedMessages);
+            Assert.Equal(0, _currentSimultaneouslyRunningFunctions);
+            Assert.Equal(maxExpectedParallelism, _maxSimultaneouslyRunningFunctions);
+        }
+
+        public void Dispose()
+        {
+            if (_queueClient != null)
+            {
+                foreach (var testQueue in _queueClient.ListQueues(TestArtifactPrefix))
+                {
+                    testQueue.Delete();
+                }
             }
         }
     }

@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 {
-    public class AsyncChainEndToEndTests
+    public class AsyncChainEndToEndTests : IClassFixture<AsyncChainEndToEndTests.TestFixture>
     {
         private const string TestArtifactsPrefix = "asynce2e";
 
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private static string _finalBlobContent;
 
-        public AsyncChainEndToEndTests()
+        public AsyncChainEndToEndTests(TestFixture fixture)
         {
             _resolver = new RandomNameResolver();
             _hostConfig = new JobHostConfiguration()
@@ -49,46 +49,32 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(typeof(AsyncChainEndToEndTests))
             };
 
-            _storageAccount = CloudStorageAccount.Parse(_hostConfig.StorageConnectionString);
+            _storageAccount = fixture.StorageAccount;
         }
 
         [Fact]
         public async Task AsyncChainEndToEnd()
         {
-            try
+            using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
-                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
-                {
-                    await AsyncChainEndToEndInternal();
-                }
-            }
-            finally
-            {
-                Cleanup();
+                await AsyncChainEndToEndInternal();
             }
         }
 
         [Fact]
         public async Task AsyncChainEndToEnd_CustomQueueProcessor()
         {
-            try
+            using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
-                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
-                {
-                    _hostConfig.Queues.QueueProcessorFactory = new CustomQueueProcessorFactory();
+                _hostConfig.Queues.QueueProcessorFactory = new CustomQueueProcessorFactory();
 
-                    await AsyncChainEndToEndInternal();
+                await AsyncChainEndToEndInternal();
 
-                    Assert.Equal(2, CustomQueueProcessorFactory.CustomQueueProcessorCount);
-                    Assert.Equal(2, CustomQueueProcessorFactory.CustomQueues.Count);
-                    Assert.True(CustomQueueProcessorFactory.CustomQueues.All(p => p.StartsWith("asynce2eq")));
-                    Assert.Equal(2, CustomQueueProcessor.BeginProcessingCount);
-                    Assert.Equal(2, CustomQueueProcessor.CompleteProcessingCount);
-                }
-            }
-            finally
-            {
-                Cleanup();
+                Assert.Equal(2, CustomQueueProcessorFactory.CustomQueueProcessorCount);
+                Assert.Equal(2, CustomQueueProcessorFactory.CustomQueues.Count);
+                Assert.True(CustomQueueProcessorFactory.CustomQueues.All(p => p.StartsWith("asynce2eq")));
+                Assert.Equal(2, CustomQueueProcessor.BeginProcessingCount);
+                Assert.Equal(2, CustomQueueProcessor.CompleteProcessingCount);
             }
         }
 
@@ -199,25 +185,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));
         }
 
-        private void Cleanup()
-        {
-            if (_storageAccount != null)
-            {
-                CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
-                blobClient
-                    .GetContainerReference(_resolver.ResolveInString(ContainerName))
-                    .DeleteIfExists();
-
-                CloudQueueClient queueClient = _storageAccount.CreateCloudQueueClient();
-                queueClient
-                    .GetQueueReference(_resolver.ResolveInString(Queue1Name))
-                    .DeleteIfExists();
-                queueClient
-                    .GetQueueReference(_resolver.ResolveInString(Queue2Name))
-                    .DeleteIfExists();
-            }
-        }
-
         private class CustomQueueProcessorFactory : IQueueProcessorFactory
         {
             public static int CustomQueueProcessorCount = 0;
@@ -266,6 +233,36 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 visibilityTimeout = TimeSpan.FromSeconds(message.DequeueCount);
 
                 await base.ReleaseMessageAsync(message, result, visibilityTimeout, cancellationToken);
+            }
+        }
+
+        public class TestFixture : IDisposable
+        {
+            public TestFixture()
+            {
+                JobHostConfiguration config = new JobHostConfiguration();
+                StorageAccount = CloudStorageAccount.Parse(config.StorageConnectionString);
+            }
+
+            public CloudStorageAccount StorageAccount
+            {
+                get;
+                private set;
+            }
+
+            public void Dispose()
+            {
+                CloudBlobClient blobClient = StorageAccount.CreateCloudBlobClient();
+                foreach (var testContainer in blobClient.ListContainers(TestArtifactsPrefix))
+                {
+                    testContainer.Delete();
+                }
+
+                CloudQueueClient queueClient = StorageAccount.CreateCloudQueueClient();
+                foreach (var testQueue in queueClient.ListQueues(TestArtifactsPrefix))
+                {
+                    testQueue.Delete();
+                }
             }
         }
     }
