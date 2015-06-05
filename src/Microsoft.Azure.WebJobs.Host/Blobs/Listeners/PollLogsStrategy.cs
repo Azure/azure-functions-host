@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
@@ -153,7 +154,8 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (!await registration.ExecuteAsync(blob, cancellationToken))
+                FunctionResult result = await registration.ExecuteAsync(blob, cancellationToken);
+                if (!result.Succeeded)
                 {
                     // If notification failed, try again on the next iteration.
                     _blobsFoundFromScanOrNotification.Enqueue(blob);

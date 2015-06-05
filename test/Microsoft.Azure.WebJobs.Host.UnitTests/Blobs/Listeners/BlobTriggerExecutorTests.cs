@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         // The tests that return false reset the notification (to be provided again later).
 
         [Fact]
-        public void ExecuteAsync_IfBlobDoesNotMatchPattern_ReturnsTrue()
+        public void ExecuteAsync_IfBlobDoesNotMatchPattern_ReturnsSuccessfulResult()
         {
             // Arrange
             IStorageAccount account = CreateAccount();
@@ -39,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IStorageBlob blob = otherContainer.GetBlockBlobReference("nonmatch");
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
-        public void ExecuteAsync_IfBlobDoesNotExist_ReturnsTrue()
+        public void ExecuteAsync_IfBlobDoesNotExist_ReturnsSuccessfulResult()
         {
             // Arrange
             IStorageBlob blob = CreateBlobReference();
@@ -56,14 +57,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
-        public void ExecuteAsync_IfCompletedBlobReceiptExists_ReturnsTrue()
+        public void ExecuteAsync_IfCompletedBlobReceiptExists_ReturnsSuccessfulResult()
         {
             // Arrange
             IStorageBlob blob = CreateBlobReference();
@@ -74,10 +75,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
@@ -99,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.GetAwaiter().GetResult();
@@ -125,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.GetAwaiter().GetResult();
@@ -133,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfTryCreateReceiptFails_ReturnsFalse()
+        public void ExecuteAsync_IfTryCreateReceiptFails_ReturnsUnsuccessfulResult()
         {
             // Arrange
             IStorageBlob blob = CreateBlobReference();
@@ -150,10 +151,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
-            Assert.False(task.Result);
+            Assert.False(task.Result.Succeeded);
         }
 
         [Fact]
@@ -177,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.GetAwaiter().GetResult();
@@ -185,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfTryAcquireLeaseFails_ReturnsFalse()
+        public void ExecuteAsync_IfTryAcquireLeaseFails_ReturnsFailureResult()
         {
             // Arrange
             IStorageBlob blob = CreateBlobReference();
@@ -202,10 +203,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
-            Assert.False(task.Result);
+            Assert.False(task.Result.Succeeded);
         }
 
         [Fact]
@@ -233,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.GetAwaiter().GetResult();
@@ -241,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfLeasedReceiptBecameCompleted_ReleasesLeaseAndReturnsTrue()
+        public void ExecuteAsync_IfLeasedReceiptBecameCompleted_ReleasesLeaseAndReturnsSuccessResult()
         {
             // Arrange
             IStorageBlob blob = CreateBlobReference();
@@ -267,12 +268,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             ITriggerExecutor<IStorageBlob> product = CreateProductUnderTest(input, eTagReader, receiptManager);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.WaitUntilCompleted();
             mock.Verify();
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
@@ -305,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                 queueWriter);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.WaitUntilCompleted();
@@ -316,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfLeasedIncompleteReceipt_EnqueuesMessageMarksCompletedReleasesLeaseAndReturnsTrue()
+        public void ExecuteAsync_IfLeasedIncompleteReceipt_EnqueuesMessageMarksCompletedReleasesLeaseAndReturnsSuccessResult()
         {
             // Arrange
             string expectedFunctionId = "FunctionId";
@@ -354,7 +355,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                 receiptManager, queueWriter);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(blob, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(blob, CancellationToken.None);
 
             // Assert
             task.WaitUntilCompleted();
@@ -366,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                         It.IsAny<CancellationToken>()),
                     Times.Once());
             managerMock.Verify();
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         private static IStorageAccount CreateAccount()

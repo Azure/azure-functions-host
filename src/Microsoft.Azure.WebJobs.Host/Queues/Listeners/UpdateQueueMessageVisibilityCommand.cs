@@ -49,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             try
             {
-                await _queue.UpdateMessageAsync(_message, _visibilityTimeout, MessageUpdateFields.Visibility,
-                    cancellationToken);
+                await _queue.UpdateMessageAsync(_message, _visibilityTimeout, MessageUpdateFields.Visibility, cancellationToken);
                 // The next execution should occur after a normal delay.
                 delay = _speedupStrategy.GetNextDelay(executionSucceeded: true);
             }

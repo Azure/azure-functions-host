@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
@@ -490,7 +491,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                     new string[] { typeof(MaxDequeueCountProgram).FullName + ".PutInPoisonQueue" });
 
                 // Assert
-                Assert.Equal(new FakeQueueConfiguration().MaxDequeueCount, MaxDequeueCountProgram.DequeueCount);
+                IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider();
+                Assert.Equal(new FakeQueueConfiguration(storageAccountProvider).MaxDequeueCount, MaxDequeueCountProgram.DequeueCount);
 
             }
             finally

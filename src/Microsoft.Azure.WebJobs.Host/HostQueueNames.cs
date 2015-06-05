@@ -30,5 +30,16 @@ namespace Microsoft.Azure.WebJobs.Host
         {
             return HostQueuePrefix + hostId;
         }
+
+        public static bool IsHostQueue(string queueName)
+        {
+            if (string.IsNullOrEmpty(queueName))
+            {
+                throw new ArgumentNullException("queueName");
+            }
+
+            return queueName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase) ||
+                   queueName.StartsWith(BlobTriggerPoisonQueue, StringComparison.OrdinalIgnoreCase);
+        }
     }
 }

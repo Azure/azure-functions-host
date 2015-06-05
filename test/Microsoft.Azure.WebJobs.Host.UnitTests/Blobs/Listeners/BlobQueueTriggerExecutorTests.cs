@@ -68,17 +68,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfMessageIsFunctionIdIsNotRegistered_ReturnsTrue()
+        public void ExecuteAsync_IfMessageIsFunctionIdIsNotRegistered_ReturnsSuccessResult()
         {
             // Arrange
             BlobQueueTriggerExecutor product = CreateProductUnderTest();
             IStorageQueueMessage message = CreateMessage(new BlobTriggerMessage { FunctionId = "Missing" });
 
             // Act
-            Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Theory]
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
         }
 
         [Fact]
-        public void ExecuteAsync_IfBlobHasBeenDeleted_ReturnsTrue()
+        public void ExecuteAsync_IfBlobHasBeenDeleted_ReturnsSuccessResult()
         {
             // Arrange
             string functionId = "FunctionId";
@@ -133,14 +133,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
             // Act
-            Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
-        public void ExecuteAsync_IfBlobHasChanged_NotifiesWatcherAndReturnsTrue()
+        public void ExecuteAsync_IfBlobHasChanged_NotifiesWatcherAndReturnsSuccessResult()
         {
             // Arrange
             string functionId = "FunctionId";
@@ -156,12 +156,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IStorageQueueMessage message = CreateMessage(functionId, "OriginalETag");
 
             // Act
-            Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
             task.WaitUntilCompleted();
             mock.Verify();
-            Assert.True(task.Result);
+            Assert.True(task.Result.Succeeded);
         }
 
         [Fact]
@@ -175,6 +175,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader(matchingETag);
             IBlobCausalityReader causalityReader = CreateStubCausalityReader(expectedParentId);
 
+            FunctionResult expectedResult = new FunctionResult(true);
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
             mock.Setup(e => e.TryExecuteAsync(It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
                 .Callback<TriggeredFunctionData<IStorageBlob>, CancellationToken>(
@@ -185,25 +186,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
                     StorageBlockBlob resultBlob = (StorageBlockBlob)mockInput.TriggerValue;
                     Assert.Equal(TestBlobName, resultBlob.Name);
                 })
-                .ReturnsAsync(true)
+                .ReturnsAsync(expectedResult)
                 .Verifiable();
 
             ITriggeredFunctionExecutor<IStorageBlob> innerExecutor = mock.Object;
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
 
-            
             product.Register(functionId, innerExecutor);
 
             // Act
-            bool result = await product.ExecuteAsync(message, CancellationToken.None);
+            FunctionResult result = await product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
-            Assert.True(result);
+            Assert.Same(expectedResult, result);
             mock.Verify();
         }
 
         [Fact]
-        public void ExecuteAsync_IfInnerExecutorSucceeds_ReturnsTrue()
+        public void ExecuteAsync_IfInnerExecutorSucceeds_ReturnsSuccessResult()
         {
             // Arrange
             string functionId = "FunctionId";
@@ -211,10 +211,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader(matchingETag);
             IBlobCausalityReader causalityReader = CreateStubCausalityReader();
 
+            FunctionResult expectedResult = new FunctionResult(true);
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
             mock.Setup(e => e.TryExecuteAsync(
                 It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true)
+                .ReturnsAsync(expectedResult)
                 .Verifiable();
 
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
@@ -225,14 +226,14 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
-            Assert.True(task.Result);
+            Assert.Same(expectedResult, task.Result);
         }
 
         [Fact]
-        public void ExecuteAsync_IfInnerExecutorFails_ReturnsFalse()
+        public void ExecuteAsync_IfInnerExecutorFails_ReturnsFailureResult()
         {
             // Arrange
             string functionId = "FunctionId";
@@ -240,10 +241,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IBlobETagReader eTagReader = CreateStubETagReader(matchingETag);
             IBlobCausalityReader causalityReader = CreateStubCausalityReader();
 
+            FunctionResult expectedResult = new FunctionResult(false);
             Mock<ITriggeredFunctionExecutor<IStorageBlob>> mock = new Mock<ITriggeredFunctionExecutor<IStorageBlob>>(MockBehavior.Strict);
             mock.Setup(e => e.TryExecuteAsync(
                 It.IsAny<TriggeredFunctionData<IStorageBlob>>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false)
+                .ReturnsAsync(expectedResult)
                 .Verifiable();
 
             BlobQueueTriggerExecutor product = CreateProductUnderTest(eTagReader, causalityReader);
@@ -254,10 +256,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Blobs.Listeners
             IStorageQueueMessage message = CreateMessage(functionId, matchingETag);
 
             // Act
-            Task<bool> task = product.ExecuteAsync(message, CancellationToken.None);
+            Task<FunctionResult> task = product.ExecuteAsync(message, CancellationToken.None);
 
             // Assert
-            Assert.False(task.Result);
+            Assert.False(task.Result.Succeeded);
         }
 
         private static IStorageBlobClient CreateClient()

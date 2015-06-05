@@ -7,6 +7,7 @@ using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
@@ -28,9 +29,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly int _batchSize;
         private readonly uint _newBatchThreshold;
-        private readonly uint _maxDequeueCount;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
+        private readonly IQueueConfiguration _queueConfiguration;
+        private readonly QueueProcessor _queueProcessor;
 
         private bool _foundMessageSinceLastDelay;
         private bool _disposed;
@@ -43,22 +45,26 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             TextWriter log,
             SharedQueueWatcher sharedWatcher,
-            int batchSize,
-            int maxDequeueCount)
+            IQueueConfiguration queueConfiguration)
         {
             if (log == null)
             {
                 throw new ArgumentNullException("log");
             }
 
-            if (batchSize <= 0)
+            if (queueConfiguration == null)
             {
-                throw new ArgumentOutOfRangeException("batchSize");
+                throw new ArgumentNullException("queueConfiguration");
             }
 
-            if (maxDequeueCount <= 0)
+            if (queueConfiguration.BatchSize <= 0)
             {
-                throw new ArgumentOutOfRangeException("maxDequeueCount");
+                throw new ArgumentException("BatchSize must be greater than zero.");
+            }
+
+            if (queueConfiguration.MaxDequeueCount <= 0)
+            {
+                throw new ArgumentException("MaxDequeueCount must be greater than zero.");
             }
 
             _timer = new TaskSeriesTimer(this, backgroundExceptionDispatcher, Task.Delay(0));
@@ -68,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _delayStrategy = delayStrategy;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _log = log;
+            _queueConfiguration = queueConfiguration;
 
             if (sharedWatcher != null)
             {
@@ -76,9 +83,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 _sharedWatcher = sharedWatcher;
             }
 
-            _batchSize = batchSize;
+            _batchSize = _queueConfiguration.BatchSize;
             _newBatchThreshold = (uint)_batchSize / 2;
-            _maxDequeueCount = (uint)maxDequeueCount;
+
+            EventHandler poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler)null;
+            _queueProcessor = CreateQueueProcessor(
+                _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
+                _log, _queueConfiguration, poisonMessageEventHandler);
         }
 
         public void Cancel()
@@ -232,49 +243,26 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        private async Task ProcessMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout,
-            CancellationToken cancellationToken)
+        internal async Task ProcessMessageAsync(IStorageQueueMessage message, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
         {
             try
             {
-                bool succeeded;
+                if (!await _queueProcessor.BeginProcessingMessageAsync(message.SdkObject, cancellationToken))
+                {
+                    return;
+                }
 
-                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout,
-                    _backgroundExceptionDispatcher))
+                FunctionResult result = null;
+                using (ITaskSeriesTimer timer = CreateUpdateMessageVisibilityTimer(_queue, message, visibilityTimeout, _backgroundExceptionDispatcher))
                 {
                     timer.Start();
 
-                    succeeded = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
+                    result = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
 
                     await timer.StopAsync(cancellationToken);
                 }
 
-                // Need to call Delete message only if function succeeded.
-                if (succeeded)
-                {
-                    await DeleteMessageAsync(message, cancellationToken);
-                }
-                else if (_poisonQueue != null)
-                {
-                    if (message.DequeueCount >= _maxDequeueCount)
-                    {
-                        _log.WriteLine("Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.",
-                            _maxDequeueCount,
-                            _poisonQueue.Name);
-                        await CopyToPoisonQueueAsync(message, cancellationToken);
-                        await DeleteMessageAsync(message, cancellationToken);
-                    }
-                    else
-                    {
-                        await ReleaseMessageAsync(message, cancellationToken);
-                    }
-                }
-                else
-                {
-                    // For queues without a corresponding poison queue, leave the message invisible when processing
-                    // fails to prevent a fast infinite loop.
-                    // Specifically, don't call ReleaseMessage(message)
-                }
+                await _queueProcessor.CompleteProcessingMessageAsync(message.SdkObject, result, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -289,6 +277,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
+        private void OnMessageAddedToPoisonQueue(object sender, EventArgs e)
+        {
+            _sharedWatcher.Notify(_poisonQueue.Name);
+        }
+
         private static ITaskSeriesTimer CreateUpdateMessageVisibilityTimer(IStorageQueue queue,
             IStorageQueueMessage message, TimeSpan visibilityTimeout,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
@@ -297,73 +290,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             TimeSpan normalUpdateInterval = new TimeSpan(visibilityTimeout.Ticks / 2);
 
             IDelayStrategy speedupStrategy = new LinearSpeedupStrategy(normalUpdateInterval, TimeSpan.FromMinutes(1));
-            ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout,
-                speedupStrategy);
+            ITaskSeriesCommand command = new UpdateQueueMessageVisibilityCommand(queue, message, visibilityTimeout, speedupStrategy);
             return new TaskSeriesTimer(command, backgroundExceptionDispatcher, Task.Delay(normalUpdateInterval));
-        }
-
-        private async Task DeleteMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
-        {
-            try
-            {
-                await _queue.DeleteMessageAsync(message, cancellationToken);
-            }
-            catch (StorageException exception)
-            {
-                // For consistency, the exceptions handled here should match UpdateQueueMessageVisibilityCommand.
-                if (exception.IsBadRequestPopReceiptMismatch())
-                {
-                    // If someone else took over the message; let them delete it.
-                    return;
-                }
-                else if (exception.IsNotFoundMessageOrQueueNotFound() ||
-                    exception.IsConflictQueueBeingDeletedOrDisabled())
-                {
-                    // The message or queue is gone, or the queue is down; no need to delete the message.
-                    return;
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
-
-        private async Task ReleaseMessageAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
-        {
-            try
-            {
-                // We couldn't process the message. Let someone else try.
-                await _queue.UpdateMessageAsync(message, TimeSpan.Zero, MessageUpdateFields.Visibility, cancellationToken);
-            }
-            catch (StorageException exception)
-            {
-                if (exception.IsBadRequestPopReceiptMismatch())
-                {
-                    // Someone else already took over the message; no need to do anything.
-                    return;
-                }
-                else if (exception.IsNotFoundMessageOrQueueNotFound() ||
-                    exception.IsConflictQueueBeingDeletedOrDisabled())
-                {
-                    // The message or queue is gone, or the queue is down; no need to release the message.
-                    return;
-                }
-                else
-                {
-                    throw;
-                }
-            }
-        }
-
-        private async Task CopyToPoisonQueueAsync(IStorageQueueMessage message, CancellationToken cancellationToken)
-        {
-            await _poisonQueue.AddMessageAndCreateIfNotExistsAsync(message, cancellationToken);
-
-            if (_sharedWatcher != null)
-            {
-                _sharedWatcher.Notify(_poisonQueue.Name);
-            }
         }
 
         private void ThrowIfDisposed()
@@ -372,6 +300,32 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             {
                 throw new ObjectDisposedException(null);
             }
+        }
+
+        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TextWriter log, IQueueConfiguration queueConfig, EventHandler poisonQueueMessageAddedHandler)
+        {
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queueConfig.MaxDequeueCount, poisonQueue);
+
+            QueueProcessor queueProcessor = null;
+            if (HostQueueNames.IsHostQueue(queue.Name) && 
+                string.Compare(queue.Uri.Host, "localhost", StringComparison.OrdinalIgnoreCase) != 0)
+            {
+                // We only delegate to the processor factory for application queues,
+                // not our built in control queues
+                // We bypass this check for local testing though
+                queueProcessor = new QueueProcessor(context);
+            }
+            else
+            {
+                queueProcessor = queueConfig.QueueProcessorFactory.Create(context);
+            }
+
+            if (poisonQueueMessageAddedHandler != null)
+            {
+                queueProcessor.MessageAddedToPoisonQueue += poisonQueueMessageAddedHandler;
+            }
+
+            return queueProcessor;
         }
     }
 }

@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <summary>Initializes a new instance of the <see cref="JobHostQueuesConfiguration"/> class.</summary>
         internal JobHostQueuesConfiguration()
         {
+            QueueProcessorFactory = new DefaultQueueProcessorFactory();
         }
 
         /// <summary>
@@ -93,6 +94,17 @@ namespace Microsoft.Azure.WebJobs.Host
 
                 _maxDequeueCount = value;
             }
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="IQueueProcessorFactory"/> that will be used to create
+        /// <see cref="QueueProcessor"/> instances.
+        /// </summary>
+        [CLSCompliant(false)]
+        public IQueueProcessorFactory QueueProcessorFactory 
+        { 
+            get; 
+            set; 
         }
     }
 }

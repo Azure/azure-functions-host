@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.WindowsAzure.Storage.Auth;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 #if PUBLICSTORAGE
 namespace Microsoft.Azure.WebJobs.Storage.Queue
@@ -20,6 +21,9 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
     {
         /// <summary>Gets the credentials used to connect to the account.</summary>
         StorageCredentials Credentials { get; }
+
+        /// <summary>Gets the underlying SDK client.</summary>
+        CloudQueueClient SdkObject { get; }
 
         /// <summary>Gets a queue reference.</summary>
         /// <param name="queueName">The queue name.</param>

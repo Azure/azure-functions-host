@@ -29,5 +29,13 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
         {
             get { return _maxDequeueCount; }
         }
+
+        public IQueueProcessorFactory QueueProcessorFactory
+        {
+            get
+            {
+                return new DefaultQueueProcessorFactory();
+            }
+        }
     }
 }

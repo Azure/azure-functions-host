@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _receiptManager = receiptManager;
         }
 
-        public async Task<bool> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
+        public async Task<FunctionResult> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
         {
             // Avoid unnecessary network calls for non-matches. First, check to see if the blob matches this trigger.
             IReadOnlyDictionary<string, object> bindingData = _input.CreateBindingData(value.ToBlobPath());
@@ -40,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (bindingData == null)
             {
                 // Blob is not a match for this trigger.
-                return true;
+                return new FunctionResult(true);
             }
 
             // Next, check to see if the blob currently exists (and, if so, what the current ETag is).
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (possibleETag == null)
             {
                 // If the blob doesn't exist and have an ETag, don't trigger on it.
-                return true;
+                return new FunctionResult(true);
             }
 
             IStorageBlockBlob receiptBlob = _receiptManager.CreateReference(_hostId, _functionId, value.Container.Name,
@@ -60,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
 
             if (unleasedReceipt != null && unleasedReceipt.IsCompleted)
             {
-                return true;
+                return new FunctionResult(true);
             }
             else if (unleasedReceipt == null)
             {
@@ -70,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                     // Someone else just created the receipt; wait to try to trigger until later.
                     // Alternatively, we could just ignore the return result and see who wins the race to acquire the
                     // lease.
-                    return false;
+                    return new FunctionResult(false);
                 }
             }
 
@@ -80,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             {
                 // If someone else owns the lease and just took over this receipt or deleted it;
                 // wait to try to trigger until later.
-                return false;
+                return new FunctionResult(false);
             }
 
             ExceptionDispatchInfo exceptionInfo;
@@ -94,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 if (receipt.IsCompleted)
                 {
                     await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
-                    return true;
+                    return new FunctionResult(true);
                 }
 
                 // We've successfully acquired a lease to enqueue the message for this blob trigger. Enqueue the message,
@@ -115,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 await _receiptManager.MarkCompletedAsync(receiptBlob, leaseId, cancellationToken);
                 await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
 
-                return true;
+                return new FunctionResult(true);
             }
             catch (Exception exception)
             {
@@ -125,7 +126,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             Debug.Assert(exceptionInfo != null);
             await _receiptManager.ReleaseLeaseAsync(receiptBlob, leaseId, cancellationToken);
             exceptionInfo.Throw();
-            return false; // Keep the compiler happy; we'll never get here.
+
+            FunctionResult result = new FunctionResult(exceptionInfo.SourceException);
+            return result; // Keep the compiler happy; we'll never get here.
         }
     }
 }

@@ -46,6 +46,17 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             Assert.Equal(expectedQueueName, queueName);
         }
 
+        [Theory]
+        [InlineData("azure-webjobs-blah", true)]
+        [InlineData("azure-webjobs-host-12345", true)]
+        [InlineData("azure-webjobs-blobtrigger-12345", true)]
+        [InlineData("webjobs-blobtrigger-poison", true)]
+        [InlineData("myapplicationqueue", false)]
+        public void IsHostQueue_ReturnsExpectedValue(string queueName, bool expectedValue)
+        {
+            Assert.Equal(expectedValue, HostQueueNames.IsHostQueue(queueName));
+        }
+
         private static Guid CreateGuid()
         {
             return Guid.NewGuid();

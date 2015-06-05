@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Blobs.Listeners;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage;
@@ -63,9 +64,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.Blobs.Listeners
         {
             public Func<IStorageBlob, bool> ExecuteLambda { get; set; }
 
-            public Task<bool> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
+            public Task<FunctionResult> ExecuteAsync(IStorageBlob value, CancellationToken cancellationToken)
             {
-                return Task.FromResult(ExecuteLambda.Invoke(value));
+                bool succeeded = ExecuteLambda.Invoke(value);
+                FunctionResult result = new FunctionResult(succeeded);
+                return Task.FromResult(result);
             }
         }
     }

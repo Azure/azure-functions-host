@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _registrations.AddOrUpdate(functionId, executor, (i1, i2) => executor);
         }
 
-        public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
+        public async Task<FunctionResult> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             BlobTriggerMessage message = JsonConvert.DeserializeObject<BlobTriggerMessage>(value.AsString, JsonSerialization.Settings);
 
@@ -59,10 +59,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             // Ensure that the function ID is still valid. Otherwise, ignore this message.
+            FunctionResult successResult = new FunctionResult(true);
             ITriggeredFunctionExecutor<IStorageBlob> executor;
             if (!_registrations.TryGetValue(functionId, out executor))
             {
-                return true;
+                return successResult;
             }
 
             IStorageBlobContainer container = _client.GetContainerReference(message.ContainerName);
@@ -87,14 +88,14 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             if (possibleETag == null)
             {
                 // If the blob no longer exists, just ignore this message.
-                return true;
+                return successResult;
             }
 
             // If the blob still exists but the ETag is different, delete the message but do a fast path notification.
             if (!String.Equals(message.ETag, possibleETag, StringComparison.Ordinal))
             {
                 _blobWrittenWatcher.Notify(blob);
-                return true;
+                return successResult;
             }
 
             //// If the blob still exists and its ETag is still valid, execute.
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 ParentId = parentId,
                 TriggerValue = blob
             };
+
             return await executor.TryExecuteAsync(input, cancellationToken);
         }
     }

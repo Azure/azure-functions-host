@@ -3,11 +3,12 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
 {
     internal interface ITriggerExecutor<TTriggerValue>
     {
-        Task<bool> ExecuteAsync(TTriggerValue value, CancellationToken cancellationToken);
+        Task<FunctionResult> ExecuteAsync(TTriggerValue value, CancellationToken cancellationToken);
     }
 }

@@ -96,9 +96,10 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 return messages;
             }
 
-            public void UpdateMessage(MutableStorageQueueMessage message, TimeSpan visibilityTimeout,
-                MessageUpdateFields updateFields)
+            public void UpdateMessage(MutableStorageQueueMessage message, TimeSpan visibilityTimeout, MessageUpdateFields updateFields)
             {
+                MutableStorageQueueMessage storedMessage = LookupMessage(message.PopReceipt);
+
                 if ((updateFields & MessageUpdateFields.Content) == MessageUpdateFields.Content)
                 {
                     // No-op; queue messages already provide in-memory content updating.
@@ -106,7 +107,8 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
 
                 if ((updateFields & MessageUpdateFields.Visibility) == MessageUpdateFields.Visibility)
                 {
-                    message.NextVisibleTime = DateTimeOffset.Now.Add(visibilityTimeout);
+                    DateTimeOffset nextVisibleTime = DateTimeOffset.Now.Add(visibilityTimeout);
+                    storedMessage.NextVisibleTime = message.NextVisibleTime = nextVisibleTime;
                 }
             }
 
@@ -117,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                 IEnumerable<string> expiredInvisibleMessagePopReceipts =
                     invisibleMessagesSnapshot.Where(
                     p => p.Value.NextVisibleTime.Value.UtcDateTime < DateTimeOffset.UtcNow).Select(p => p.Key);
+
                 foreach (string popReceipt in expiredInvisibleMessagePopReceipts)
                 {
                     MutableStorageQueueMessage message;
@@ -126,6 +129,16 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
                         _visibleMessages.Enqueue(message);
                     }
                 }
+            }
+
+            private MutableStorageQueueMessage LookupMessage(string popReceipt)
+            {
+                MutableStorageQueueMessage message = _visibleMessages.FirstOrDefault(p => p.PopReceipt == popReceipt);
+                if (message == null)
+                {
+                    message = _invisibleMessages[popReceipt];
+                }
+                return message;
             }
         }
     }

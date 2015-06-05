@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
@@ -214,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             };
             IHostIdProvider hostIdProvider = new FakeHostIdProvider();
             INameResolver nameResolver = null;
-            IQueueConfiguration queueConfiguration = new FakeQueueConfiguration();
+            IQueueConfiguration queueConfiguration = new FakeQueueConfiguration(storageAccountProvider);
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher =
                 new TaskBackgroundExceptionDispatcher<TResult>(taskSource);
             ContextAccessor<IMessageEnqueuedWatcher> messageEnqueuedWatcherAccessor =
@@ -257,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
                 FunctionInstanceLoggerProvider = functionInstanceLoggerProvider,
                 FunctionOutputLoggerProvider = functionOutputLoggerProvider,
                 HostIdProvider = hostIdProvider,
-                QueueConfiguration = new FakeQueueConfiguration()
+                QueueConfiguration = queueConfiguration
             };
 
             return new FakeServiceProvider

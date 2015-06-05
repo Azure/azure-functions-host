@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -31,10 +34,63 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private static CloudStorageAccount _storageAccount;
 
         private static RandomNameResolver _resolver;
+        private static JobHostConfiguration _hostConfig;
 
         private static EventWaitHandle _functionCompletedEvent;
 
         private static string _finalBlobContent;
+
+        public AsyncChainEndToEndTests()
+        {
+            _resolver = new RandomNameResolver();
+            _hostConfig = new JobHostConfiguration()
+            {
+                NameResolver = _resolver,
+                TypeLocator = new FakeTypeLocator(typeof(AsyncChainEndToEndTests))
+            };
+
+            _storageAccount = CloudStorageAccount.Parse(_hostConfig.StorageConnectionString);
+        }
+
+        [Fact]
+        public async Task AsyncChainEndToEnd()
+        {
+            try
+            {
+                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+                {
+                    await AsyncChainEndToEndInternal();
+                }
+            }
+            finally
+            {
+                Cleanup();
+            }
+        }
+
+        [Fact]
+        public async Task AsyncChainEndToEnd_CustomQueueProcessor()
+        {
+            try
+            {
+                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+                {
+                    _hostConfig.Queues.QueueProcessorFactory = new CustomQueueProcessorFactory();
+
+                    await AsyncChainEndToEndInternal();
+
+                    Assert.Equal(2, CustomQueueProcessorFactory.CustomQueueProcessorCount);
+                    Assert.Equal(2, CustomQueueProcessorFactory.CustomQueues.Count);
+                    Assert.True(CustomQueueProcessorFactory.CustomQueues.All(p => p.StartsWith("asynce2eq")));
+                    Assert.Equal(2, CustomQueueProcessor.BeginProcessingCount);
+                    Assert.Equal(2, CustomQueueProcessor.CompleteProcessingCount);
+                }
+            }
+            finally
+            {
+                Cleanup();
+            }
+        }
 
         [NoAutomaticTrigger]
         public static void WriteStartDataMessageToQueue(
@@ -102,38 +158,12 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _finalBlobContent = blob;
         }
 
-        [Fact]
-        public async Task AsyncChainEndToEnd()
-        {
-            try
-            {
-                using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
-                {
-                    await AsyncChainEndToEndInternal();
-                }
-            }
-            finally
-            {
-                Cleanup();
-            }
-        }
-
         private async Task AsyncChainEndToEndInternal()
         {
             StringWriter consoleOutput = new StringWriter();
             Console.SetOut(consoleOutput);
 
-            _resolver = new RandomNameResolver();
- 
-            JobHostConfiguration hostConfiguration = new JobHostConfiguration()
-            {
-                NameResolver = _resolver,
-                TypeLocator = new FakeTypeLocator(typeof(AsyncChainEndToEndTests))
-            };
-
-            _storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
-
-            JobHost host = new JobHost(hostConfiguration);
+            JobHost host = new JobHost(_hostConfig);
 
             await host.StartAsync();
             await host.CallAsync(typeof(AsyncChainEndToEndTests).GetMethod("WriteStartDataMessageToQueue"));
@@ -185,6 +215,57 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 queueClient
                     .GetQueueReference(_resolver.ResolveInString(Queue2Name))
                     .DeleteIfExists();
+            }
+        }
+
+        private class CustomQueueProcessorFactory : IQueueProcessorFactory
+        {
+            public static int CustomQueueProcessorCount = 0;
+            public static List<string> CustomQueues = new List<string>();
+
+            public QueueProcessor Create(QueueProcessorFactoryContext context)
+            {
+                CustomQueueProcessorCount++;
+                CustomQueues.Add(context.Queue.Name);
+
+                // demonstrates how the Queue.ServiceClient options can be configured
+                context.Queue.ServiceClient.DefaultRequestOptions.ServerTimeout = TimeSpan.FromSeconds(30);
+
+                // demonstrates how queue options can be customized
+                context.Queue.EncodeMessage = true;
+
+                return new CustomQueueProcessor(context);
+            }
+        }
+
+        public class CustomQueueProcessor : QueueProcessor
+        {
+            public static int BeginProcessingCount = 0;
+            public static int CompleteProcessingCount = 0;
+
+            public CustomQueueProcessor(QueueProcessorFactoryContext context) : base (context)
+            {
+            }
+
+            public override Task<bool> BeginProcessingMessageAsync(CloudQueueMessage message, CancellationToken cancellationToken)
+            {
+                Interlocked.Increment(ref BeginProcessingCount);
+                return base.BeginProcessingMessageAsync(message, cancellationToken);
+            }
+
+            public override Task CompleteProcessingMessageAsync(CloudQueueMessage message, FunctionResult result, CancellationToken cancellationToken)
+            {
+                Interlocked.Increment(ref CompleteProcessingCount);
+                return base.CompleteProcessingMessageAsync(message, result, cancellationToken);
+            }
+
+            protected override async Task ReleaseMessageAsync(CloudQueueMessage message, FunctionResult result, TimeSpan visibilityTimeout, CancellationToken cancellationToken)
+            {
+                // demonstrates how visibility timeout for failed messages can be customized
+                // the logic here could implement exponential backoff, etc.
+                visibilityTimeout = TimeSpan.FromSeconds(message.DequeueCount);
+
+                await base.ReleaseMessageAsync(message, result, visibilityTimeout, cancellationToken);
             }
         }
     }

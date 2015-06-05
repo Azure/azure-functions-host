@@ -35,6 +35,15 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Queue
         }
 
         /// <inheritdoc />
+        public CloudQueueClient SdkObject
+        {
+            get
+            {
+                return _sdk;
+            }
+        }
+
+        /// <inheritdoc />
         public IStorageQueue GetQueueReference(string queueName)
         {
             CloudQueue sdkQueue = _sdk.GetQueueReference(queueName);

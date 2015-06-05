@@ -21,6 +21,7 @@
       <Value>dequeued</Value>
       <Value>eTag</Value>
       <Value>bindable</Value>
+	  <Value>dequeue</Value>
     </CollectionProperty>
   </GlobalSettings>
   <Parsers>

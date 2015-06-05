@@ -30,15 +30,19 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             }
         }
 
-        public async Task<bool> TryExecuteAsync(TriggeredFunctionData<TTriggerValue> input, CancellationToken cancellationToken)
+        public async Task<FunctionResult> TryExecuteAsync(TriggeredFunctionData<TTriggerValue> input, CancellationToken cancellationToken)
         {
             IFunctionInstance instance = _instanceFactory.Create(input.TriggerValue, input.ParentId);
             IDelayedException exception = await _executor.TryExecuteAsync(instance, cancellationToken);
 
-            return exception == null;
+            FunctionResult result = exception != null ?
+                new FunctionResult(exception.Exception) 
+                : new FunctionResult(true);
+
+            return result;
         }
 
-        public async Task<bool> TryExecuteAsync(TriggeredFunctionData input, CancellationToken cancellationToken)
+        public async Task<FunctionResult> TryExecuteAsync(TriggeredFunctionData input, CancellationToken cancellationToken)
         {
             return await TryExecuteAsync(input, cancellationToken);
         }

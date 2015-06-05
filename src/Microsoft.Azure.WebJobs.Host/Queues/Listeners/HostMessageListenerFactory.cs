@@ -96,8 +96,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 backgroundExceptionDispatcher: _backgroundExceptionDispatcher,
                 log: _log,
                 sharedWatcher: null,
-                batchSize: _queueConfiguration.BatchSize,
-                maxDequeueCount: _queueConfiguration.MaxDequeueCount);
+                queueConfiguration: _queueConfiguration);
 
             return Task.FromResult(listener);
         }

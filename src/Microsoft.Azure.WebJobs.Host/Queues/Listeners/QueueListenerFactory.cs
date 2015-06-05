@@ -89,8 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                _backgroundExceptionDispatcher, _log, sharedWatcher, _queueConfiguration.BatchSize,
-                _queueConfiguration.MaxDequeueCount);
+                _backgroundExceptionDispatcher, _log, sharedWatcher, _queueConfiguration);
 
             return Task.FromResult(listener);
         }

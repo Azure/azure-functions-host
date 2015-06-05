@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         /// </summary>
         /// <param name="input">The trigger invocation details.</param>
         /// <param name="cancellationToken">The cancellation token</param>
-        /// <returns>True if the invocation succeeded, false otherwise.</returns>
-        Task<bool> TryExecuteAsync(TriggeredFunctionData<TTriggerValue> input, CancellationToken cancellationToken);
+        /// <returns>A <see cref="FunctionResult"/> describing the results of the invocation.</returns>
+        Task<FunctionResult> TryExecuteAsync(TriggeredFunctionData<TTriggerValue> input, CancellationToken cancellationToken);
     }
 }

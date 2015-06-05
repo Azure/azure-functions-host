@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _innerExecutor = innerExecutor;
         }
 
-        public async Task<bool> ExecuteAsync(BrokeredMessage value, CancellationToken cancellationToken)
+        public async Task<FunctionResult> ExecuteAsync(BrokeredMessage value, CancellationToken cancellationToken)
         {
             Guid? parentId = ServiceBusCausalityHelper.GetOwner(value);
             TriggeredFunctionData<BrokeredMessage> input = new TriggeredFunctionData<BrokeredMessage>

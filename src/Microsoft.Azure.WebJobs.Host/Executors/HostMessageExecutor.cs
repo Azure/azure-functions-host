@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _functionInstanceLogger = functionInstanceLogger;
         }
 
-        public async Task<bool> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
+        public async Task<FunctionResult> ExecuteAsync(IStorageQueueMessage value, CancellationToken cancellationToken)
         {
             HostMessage model = JsonConvert.DeserializeObject<HostMessage>(value.AsString, JsonSerialization.Settings);
 
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (callAndOverrideModel != null)
             {
                 await ProcessCallAndOverrideMessage(callAndOverrideModel, cancellationToken);
-                return true;
+                return new FunctionResult(true);
             }
 
             AbortHostInstanceMessage abortModel = model as AbortHostInstanceMessage;
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             if (abortModel != null)
             {
                 ProcessAbortHostInstanceMessage();
-                return true;
+                return new FunctionResult(true);
             }
 
             string error = String.Format(CultureInfo.InvariantCulture, "Unsupported invocation type '{0}'.", model.Type);

@@ -12,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         TimeSpan MaxPollingInterval { get; }
 
         int MaxDequeueCount { get; }
+
+        IQueueProcessorFactory QueueProcessorFactory { get; }
     }
 }

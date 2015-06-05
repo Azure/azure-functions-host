@@ -14,6 +14,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             _exception = exception;
         }
 
+        public Exception Exception
+        {
+            get
+            {
+                return _exception;
+            }
+        }
+
         public void Throw()
         {
             throw _exception;

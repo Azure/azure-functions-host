@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.ServiceBus.Messaging;
 
@@ -105,7 +106,8 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
 
         private async Task ProcessMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
         {
-            if (!await _triggerExecutor.ExecuteAsync(message, cancellationToken))
+            FunctionResult result = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
+            if (!result.Succeeded)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await message.AbandonAsync();

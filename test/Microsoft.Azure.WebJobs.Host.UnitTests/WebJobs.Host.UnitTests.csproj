@@ -132,11 +132,13 @@
     <Compile Include="Executors\FunctionInvokerTests.cs" />
     <Compile Include="Executors\FunctionInvokerFactoryTests.cs" />
     <Compile Include="Executors\ActivatorInstanceFactoryTests.cs" />
+    <Compile Include="Executors\FunctionResultTests.cs" />
     <Compile Include="Executors\NullInstanceFactoryTests.cs" />
     <Compile Include="FunctionIndexerFactory.cs" />
     <Compile Include="NullExtensionTypeLocator.cs" />
     <Compile Include="Protocols\FunctionStartedMessageExtensionsTests.cs" />
     <Compile Include="Protocols\ProtocolSerializationTests.cs" />
+    <Compile Include="Queues\QueueListenerTests.cs" />
     <Compile Include="StructPropertySetterTests.cs" />
     <Compile Include="StructPropertyGetterTests.cs" />
     <Compile Include="Converters\CultureInfoContext.cs" />

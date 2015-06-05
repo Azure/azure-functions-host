@@ -126,7 +126,11 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "BindingTemplateSource",
                 "TriggeredFunctionData",
                 "TriggeredFunctionData`1",
-                "ExtensionConfigContext"
+                "ExtensionConfigContext",
+                "IQueueProcessorFactory",
+                "QueueProcessorFactoryContext",
+                "QueueProcessor",
+                "FunctionResult"
             };
 
             AssertPublicTypes(expected, assembly);
