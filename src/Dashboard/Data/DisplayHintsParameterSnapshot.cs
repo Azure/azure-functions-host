@@ -5,33 +5,39 @@ using Microsoft.Azure.WebJobs.Protocols;
 
 namespace Dashboard.Data
 {
+    [JsonTypeName("DisplayHints")]
     public class DisplayHintsParameterSnapshot : ParameterSnapshot
     {
-        private ParameterDisplayHints _uiDescriptor;
-
-        public DisplayHintsParameterSnapshot(ParameterDisplayHints uiDescriptor)
+        public DisplayHintsParameterSnapshot()
         {
-            _uiDescriptor = uiDescriptor;
+            DisplayHints = new ParameterDisplayHints();
         }
+
+        public DisplayHintsParameterSnapshot(ParameterDisplayHints displayHints)
+        {
+            DisplayHints = displayHints;
+        }
+
+        public ParameterDisplayHints DisplayHints { get; set; }
 
         public override string Description
         {
-            get { return _uiDescriptor.Description; }
+            get { return DisplayHints.Description; }
         }
 
         public override string AttributeText
         {
-            get { return _uiDescriptor.AttributeText; }
+            get { return DisplayHints.AttributeText; }
         }
 
         public override string Prompt
         {
-            get { return _uiDescriptor.Prompt; }
+            get { return DisplayHints.Prompt; }
         }
 
         public override string DefaultValue
         {
-            get { return _uiDescriptor.DefaultValue; }
+            get { return DisplayHints.DefaultValue; }
         }
     }
 }
