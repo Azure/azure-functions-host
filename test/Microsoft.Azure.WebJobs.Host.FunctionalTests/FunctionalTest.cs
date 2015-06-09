@@ -155,31 +155,31 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         public static IServiceProvider CreateServiceProviderForInstanceSuccess(IStorageAccount storageAccount,
-            Type programType, TaskCompletionSource<object> taskSource)
+            Type programType, TaskCompletionSource<object> taskSource, IExtensionRegistry extensions = null)
         {
             return CreateServiceProvider<object>(storageAccount, programType, new NullExtensionTypeLocator(),
-                taskSource, new ExpectInstanceSuccessTaskFunctionInstanceLogger(taskSource));
+                taskSource, new ExpectInstanceSuccessTaskFunctionInstanceLogger(taskSource), extensions);
         }
 
         public static IServiceProvider CreateServiceProviderForManualCompletion<TResult>(IStorageAccount storageAccount,
-            Type programType, TaskCompletionSource<TResult> taskSource, params Type[] cloudBlobStreamBinderTypes)
+            Type programType, TaskCompletionSource<TResult> taskSource, IExtensionRegistry extensions = null, params Type[] cloudBlobStreamBinderTypes)
         {
             IEnumerable<string> ignoreFailureFunctionIds = null;
             return CreateServiceProviderForManualCompletion<TResult>(storageAccount, programType, taskSource,
-                ignoreFailureFunctionIds, cloudBlobStreamBinderTypes);
+                ignoreFailureFunctionIds, extensions, cloudBlobStreamBinderTypes);
         }
 
         private static IServiceProvider CreateServiceProviderForManualCompletion<TResult>(
             IStorageAccount storageAccount, Type programType, TaskCompletionSource<TResult> taskSource,
-            IEnumerable<string> ignoreFailureFunctions, params Type[] cloudBlobStreamBinderTypes)
+            IEnumerable<string> ignoreFailureFunctions, IExtensionRegistry extensions = null, params Type[] cloudBlobStreamBinderTypes)
         {
             return CreateServiceProviderForManualCompletion<TResult>(storageAccount, programType,
-                DefaultJobActivator.Instance, taskSource, ignoreFailureFunctions, cloudBlobStreamBinderTypes);
+                DefaultJobActivator.Instance, taskSource, ignoreFailureFunctions, extensions, cloudBlobStreamBinderTypes);
         }
 
         private static IServiceProvider CreateServiceProviderForManualCompletion<TResult>(
             IStorageAccount storageAccount, Type programType, IJobActivator activator,
-            TaskCompletionSource<TResult> taskSource, IEnumerable<string> ignoreFailureFunctions,
+            TaskCompletionSource<TResult> taskSource, IEnumerable<string> ignoreFailureFunctions, IExtensionRegistry extensions = null,
             params Type[] cloudBlobStreamBinderTypes)
         {
             IExtensionTypeLocator extensionTypeLocator;
@@ -194,20 +194,20 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
 
             return CreateServiceProvider<TResult>(storageAccount, programType, extensionTypeLocator, activator, taskSource,
-                new ExpectManualCompletionFunctionInstanceLogger<TResult>(taskSource, ignoreFailureFunctions));
+                new ExpectManualCompletionFunctionInstanceLogger<TResult>(taskSource, ignoreFailureFunctions), extensions);
         }
 
         private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
             IExtensionTypeLocator extensionTypeLocator, TaskCompletionSource<TResult> taskSource,
-            IFunctionInstanceLogger functionInstanceLogger)
+            IFunctionInstanceLogger functionInstanceLogger, IExtensionRegistry extensions = null)
         {
             return CreateServiceProvider<TResult>(storageAccount, programType, extensionTypeLocator,
-                DefaultJobActivator.Instance, taskSource, functionInstanceLogger);
+                DefaultJobActivator.Instance, taskSource, functionInstanceLogger, extensions);
         }
 
         private static IServiceProvider CreateServiceProvider<TResult>(IStorageAccount storageAccount, Type programType,
             IExtensionTypeLocator extensionTypeLocator, IJobActivator activator,
-            TaskCompletionSource<TResult> taskSource, IFunctionInstanceLogger functionInstanceLogger)
+            TaskCompletionSource<TResult> taskSource, IFunctionInstanceLogger functionInstanceLogger, IExtensionRegistry extensions = null)
         {
             IStorageAccountProvider storageAccountProvider = new FakeStorageAccountProvider
             {
@@ -223,7 +223,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
-            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+            
+            if (extensions == null)
+            {
+                extensions = new DefaultExtensionRegistry();
+            }
 
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
@@ -243,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ITypeLocator typeLocator = new FakeTypeLocator(programType);
             FunctionIndexProvider functionIndexProvider = new FunctionIndexProvider(
                 typeLocator, triggerBindingProvider, bindingProvider,
-                activator, executor, new DefaultExtensionRegistry());
+                activator, executor, extensions);
 
             IJobHostContextFactory contextFactory = new FakeJobHostContextFactory
             {
@@ -268,12 +272,11 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         }
 
         // Stops running the host as soon as the first function logs completion.
-        public static void RunTrigger(IStorageAccount account, Type programType)
+        public static void RunTrigger(IStorageAccount account, Type programType, IExtensionRegistry extensions = null)
         {
             // Arrange
             TaskCompletionSource<object> taskSource = new TaskCompletionSource<object>();
-            IServiceProvider serviceProvider = CreateServiceProviderForInstanceSuccess(account, programType,
-                taskSource);
+            IServiceProvider serviceProvider = CreateServiceProviderForInstanceSuccess(account, programType, taskSource, extensions);
 
             // Act & Assert
             RunTrigger<object>(serviceProvider, taskSource.Task);

@@ -2,27 +2,28 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableEntityArgumentBindingProvider : ITableEntityArgumentBindingProvider
     {
-        public IArgumentBinding<TableEntityContext> TryCreate(Type parameterType)
+        public IArgumentBinding<TableEntityContext> TryCreate(ParameterInfo parameter)
         {
-            if (parameterType.ContainsGenericParameters)
+            if (parameter.ParameterType.ContainsGenericParameters)
             {
                 return null;
             }
 
-            if (!TableClient.ImplementsITableEntity(parameterType))
+            if (!TableClient.ImplementsITableEntity(parameter.ParameterType))
             {
                 return null;
             }
 
-            TableClient.VerifyDefaultConstructor(parameterType);
+            TableClient.VerifyDefaultConstructor(parameter.ParameterType);
 
-            return CreateBinding(parameterType);
+            return CreateBinding(parameter.ParameterType);
         }
 
         private static IArgumentBinding<TableEntityContext> CreateBinding(Type entityType)

@@ -21,8 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
         private readonly IBindableTablePath _path;
         private readonly IObjectToTypeConverter<IStorageTable> _converter;
 
-        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, IStorageTableClient client,
-            IBindableTablePath path)
+        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, IStorageTableClient client, IBindableTablePath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -50,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             }
         }
 
-        private static IObjectToTypeConverter<IStorageTable> CreateConverter(IStorageTableClient client,
-            IBindableTablePath path)
+        private static IObjectToTypeConverter<IStorageTable> CreateConverter(IStorageTableClient client, IBindableTablePath path)
         {
             return new CompositeObjectToTypeConverter<IStorageTable>(
                 new OutputConverter<IStorageTable>(new IdentityConverter<IStorageTable>()),

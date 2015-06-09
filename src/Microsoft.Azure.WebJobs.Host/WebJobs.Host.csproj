@@ -595,6 +595,9 @@
     <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\TableArgumentBindingExtensionProvider.cs" />
+    <Compile Include="Tables\ITableArgumentBindingExtension.cs" />
+    <Compile Include="Tables\ITableArgumentBindingExtensionProvider.cs" />
     <Compile Include="Tables\StorageTableArgumentBindingProvider.cs" />
     <Compile Include="Tables\ConverterPropertyGetter.cs" />
     <Compile Include="Tables\ConverterPropertySetter.cs" />
@@ -646,6 +649,7 @@
     <Compile Include="Tables\PocoEntityWriter.cs" />
     <Compile Include="Tables\PocoToTableEntityConverter.cs" />
     <Compile Include="Tables\PropertyInfoExtensions.cs" />
+    <Compile Include="Tables\TableEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\TableEntityCollectorBinder.cs" />
     <Compile Include="Tables\TableEntityToPocoConverter.cs" />
     <Compile Include="Tables\TableEntityValueBinder.cs" />
@@ -809,7 +813,6 @@
     <Compile Include="Tables\PocoEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\TableEntityBinding.cs" />
     <Compile Include="Tables\TableBinding.cs" />
-    <Compile Include="Tables\TableEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\QueryableArgumentBindingProvider.cs" />
     <Compile Include="Tables\CloudTableArgumentBindingProvider.cs" />
     <Compile Include="Tables\CompositeEntityArgumentBindingProvider.cs" />

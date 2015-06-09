@@ -50,8 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             get { return _path.RowKeyPattern; }
         }
 
-        private static IObjectToTypeConverter<TableEntityContext> CreateConverter(IStorageTableClient client,
-            IBindableTableEntityPath path)
+        private static IObjectToTypeConverter<TableEntityContext> CreateConverter(IStorageTableClient client, IBindableTableEntityPath path)
         {
             return new CompositeObjectToTypeConverter<TableEntityContext>(
                 new EntityOutputConverter<TableEntityContext>(new IdentityConverter<TableEntityContext>()),

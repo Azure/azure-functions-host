@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Tables;
 using Xunit;
@@ -11,6 +11,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
 {
     public class PocoEntityArgumentBindingProviderTests
     {
+        private ParameterInfo[] _parameters;
+
+        public PocoEntityArgumentBindingProviderTests()
+        {
+            _parameters = this.GetType().GetMethod("Parameters", BindingFlags.NonPublic | BindingFlags.Static).GetParameters();
+        }
+
         [Fact]
         public void Create_ReturnsNull_IfByRefParameter()
         {
@@ -20,22 +27,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Type parameterType = typeof(SimpleTableEntity).MakeByRefType();
 
             // Act
-            IArgumentBinding<TableEntityContext> binding = product.TryCreate(parameterType);
-
-            // Assert
-            Assert.Null(binding);
-        }
-
-        [Fact]
-        public void Create_ReturnsNull_IfContainsUnresolvedGenericParameter()
-        {
-            // Arrange
-            ITableEntityArgumentBindingProvider product = new PocoEntityArgumentBindingProvider();
-
-            Type parameterType = typeof(GenericClass<>);
-
-            // Act
-            IArgumentBinding<TableEntityContext> binding = product.TryCreate(parameterType);
+            IArgumentBinding<TableEntityContext> binding = product.TryCreate(_parameters[0]);
 
             // Assert
             Assert.Null(binding);
@@ -50,11 +42,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Type parameterType = typeof(GenericClass<SimpleTableEntity>);
             
             // Act
-            IArgumentBinding<TableEntityContext> binding = product.TryCreate(parameterType);
+            IArgumentBinding<TableEntityContext> binding = product.TryCreate(_parameters[1]);
 
             // Assert
             Assert.NotNull(binding);
         }
+
+        private static void Parameters(ref SimpleTableEntity byRef, GenericClass<SimpleTableEntity> generic) { }
 
         private class SimpleTableEntity
         {

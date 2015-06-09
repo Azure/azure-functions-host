@@ -1,10 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.WindowsAzure.Storage.Table;
+using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
@@ -17,11 +15,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _providers = providers;
         }
 
-        public ITableArgumentBinding TryCreate(Type parameterType)
+        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
         {
             foreach (ITableArgumentBindingProvider provider in _providers)
             {
-                ITableArgumentBinding binding = provider.TryCreate(parameterType);
+                ITableArgumentBinding binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {

@@ -14,30 +14,39 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableAttributeBindingProvider : IBindingProvider
     {
-        private static readonly ITableArgumentBindingProvider TableProvider = new CompositeArgumentBindingProvider(
-            new StorageTableArgumentBindingProvider(),
-            new CloudTableArgumentBindingProvider(),
-            new QueryableArgumentBindingProvider(),
-            new CollectorArgumentBindingProvider(),
-            new AsyncCollectorArgumentBindingProvider());
-
-        private static readonly ITableEntityArgumentBindingProvider EntityProvider =
-            new CompositeEntityArgumentBindingProvider(
-                new TableEntityArgumentBindingProvider(),
-                new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
+        private readonly ITableArgumentBindingProvider _tableProvider;
+        private readonly ITableEntityArgumentBindingProvider _entityProvider;
 
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
 
-        public TableAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider)
+        public TableAttributeBindingProvider(INameResolver nameResolver, IStorageAccountProvider accountProvider, IExtensionRegistry extensions)
         {
             if (accountProvider == null)
             {
                 throw new ArgumentNullException("accountProvider");
             }
 
+            if (extensions == null)
+            {
+                throw new ArgumentNullException("extensions");
+            }
+
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
+
+            _tableProvider = new CompositeArgumentBindingProvider(
+                new StorageTableArgumentBindingProvider(),
+                new CloudTableArgumentBindingProvider(),
+                new QueryableArgumentBindingProvider(),
+                new CollectorArgumentBindingProvider(),
+                new AsyncCollectorArgumentBindingProvider(),
+                new TableArgumentBindingExtensionProvider(extensions));
+
+            _entityProvider =
+                new CompositeEntityArgumentBindingProvider(
+                new TableEntityArgumentBindingProvider(),
+                new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
         }
 
         public async Task<IBinding> TryCreateAsync(BindingProviderContext context)
@@ -53,7 +62,6 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             string tableName = Resolve(tableAttribute.TableName);
             IStorageAccount account = await _accountProvider.GetStorageAccountAsync(context.CancellationToken);
             IStorageTableClient client = account.CreateTableClient();
-            Type parameterType = parameter.ParameterType;
 
             bool bindsToEntireTable = tableAttribute.RowKey == null;
             IBinding binding;
@@ -63,11 +71,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTablePath path = BindableTablePath.Create(tableName);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                ITableArgumentBinding argumentBinding = TableProvider.TryCreate(parameterType);
+                ITableArgumentBinding argumentBinding = _tableProvider.TryCreate(parameter);
 
                 if (argumentBinding == null)
                 {
-                    throw new InvalidOperationException("Can't bind Table to type '" + parameterType + "'.");
+                    throw new InvalidOperationException("Can't bind Table to type '" + parameter.ParameterType + "'.");
                 }
 
                 binding = new TableBinding(parameter.Name, argumentBinding, client, path);
@@ -79,11 +87,11 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                IArgumentBinding<TableEntityContext> argumentBinding = EntityProvider.TryCreate(parameterType);
+                IArgumentBinding<TableEntityContext> argumentBinding = _entityProvider.TryCreate(parameter);
 
                 if (argumentBinding == null)
                 {
-                    throw new InvalidOperationException("Can't bind Table entity to type '" + parameterType + "'.");
+                    throw new InvalidOperationException("Can't bind Table entity to type '" + parameter.ParameterType + "'.");
                 }
 
                 binding = new TableEntityBinding(parameter.Name, argumentBinding, client, path);

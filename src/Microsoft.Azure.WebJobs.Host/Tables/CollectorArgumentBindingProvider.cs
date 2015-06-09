@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
@@ -12,15 +13,15 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class CollectorArgumentBindingProvider : ITableArgumentBindingProvider
     {
-        public ITableArgumentBinding TryCreate(Type parameterType)
+        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
         {
-            if (!parameterType.IsGenericType ||
-                (parameterType.GetGenericTypeDefinition() != typeof(ICollector<>)))
+            if (!parameter.ParameterType.IsGenericType ||
+                (parameter.ParameterType.GetGenericTypeDefinition() != typeof(ICollector<>)))
             {
                 return null;
             }
 
-            Type entityType = GetCollectorItemType(parameterType);
+            Type entityType = GetCollectorItemType(parameter.ParameterType);
 
             if (!TableClient.ImplementsOrEqualsITableEntity(entityType))
             {

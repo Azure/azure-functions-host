@@ -3,12 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
+using Microsoft.Azure.WebJobs.Host.Tables;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
@@ -23,6 +28,27 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private const string PartitionKey = "PK";
         private const string RowKey = "RK";
         private const string PropertyName = "Property";
+
+        [Fact]
+        public void Table_IfBoundToCustomTableBindingExtension_BindsCorrectly()
+        {
+            // Arrange
+            IStorageAccount account = CreateFakeStorageAccount();
+            IStorageQueue triggerQueue = CreateQueue(account, TriggerQueueName);
+            triggerQueue.AddMessage(triggerQueue.CreateMessage("ignore"));
+
+            // register our custom table binding extension provider
+            DefaultExtensionRegistry extensions = new DefaultExtensionRegistry();
+            extensions.RegisterExtension<ITableArgumentBindingExtensionProvider>(new CustomTableArgumentBindingExtensionProvider());
+
+            // Act
+            RunTrigger(account, typeof(CustomTableBindingExtensionProgram), extensions);
+
+            // Assert
+            Assert.Equal(TableName, CustomTableBinding<Poco>.Table.Name);
+            Assert.True(CustomTableBinding<Poco>.AddInvoked);
+            Assert.True(CustomTableBinding<Poco>.DeleteInvoked);
+        }
 
         [Fact]
         public void Table_IfBoundToCloudTable_BindsAndCreatesTable()
@@ -289,9 +315,9 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             return queue;
         }
 
-        private static void RunTrigger(IStorageAccount account, Type programType)
+        private static void RunTrigger(IStorageAccount account, Type programType, IExtensionRegistry extensions = null)
         {
-            FunctionalTest.RunTrigger(account, programType);
+            FunctionalTest.RunTrigger(account, programType, extensions);
         }
 
         private static TResult RunTrigger<TResult>(IStorageAccount account, Type programType,
@@ -354,6 +380,17 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             }
         }
 
+        private class CustomTableBindingExtensionProgram
+        {
+            public static void Run([QueueTrigger(TriggerQueueName)] CloudQueueMessage ignore,
+                [Table(TableName)] CustomTableBinding<Poco> table)
+            {
+                Poco entity = new Poco();
+                table.Add(entity);
+                table.Delete(entity);
+            }
+        }
+
         private class Poco
         {
             public string PartitionKey { get; set; }
@@ -402,6 +439,131 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             public string StringProperty { get; set; }
 
             public Poco PocoProperty { get; set; }
+        }
+
+        /// <summary>
+        /// Binding type demonstrating how custom binding extensions can be used to bind to
+        /// arbitrary types
+        /// </summary>
+        /// <typeparam name="TEntity"></typeparam>
+        public class CustomTableBinding<TEntity>
+        {
+            public static bool AddInvoked;
+            public static bool DeleteInvoked;
+            public static CloudTable Table;
+
+            public CustomTableBinding(CloudTable table)
+            {
+                // this custom binding has the table, so can perform whatever storage
+                // operations it needs to
+                Table = table;
+            }
+
+            public void Add(TEntity entity)
+            {
+                // storage operations here
+                AddInvoked = true;
+            }
+
+            public void Delete(TEntity entity)
+            {
+                // storage operations here
+                DeleteInvoked = true;
+            }
+
+            internal Task FlushAsync(CancellationToken cancellationToken)
+            {
+                // complete and flush all storage operations
+                return Task.FromResult(true);
+            }
+        }
+
+        /// <summary>
+        /// Demonstrates an example binding extension provider for Tables
+        /// </summary>
+        private class CustomTableArgumentBindingExtensionProvider : ITableArgumentBindingExtensionProvider
+        {
+            public ITableArgumentBindingExtension TryCreate(ParameterInfo parameter)
+            {
+                if (!parameter.ParameterType.IsGenericType ||
+                    (parameter.ParameterType.GetGenericTypeDefinition() != typeof(CustomTableBinding<>)))
+                {
+                    return null;
+                }
+
+                Type elementType = GetItemType(parameter.ParameterType);
+                Type bindingType = typeof(CustomTableArgumentBinding<>).MakeGenericType(elementType);
+
+                return (ITableArgumentBindingExtension)Activator.CreateInstance(bindingType);
+            }
+
+            private static Type GetItemType(Type queryableType)
+            {
+                Type[] genericArguments = queryableType.GetGenericArguments();
+                var itemType = genericArguments[0];
+                return itemType;
+            }
+
+            /// <summary>
+            /// Custom Table binding extension, responsible for binding a <see cref="CloudTable"/> to a
+            /// <see cref="CustomTableBinding<TElement>"/>
+            /// </summary>
+            /// <typeparam name="TElement"></typeparam>
+            private class CustomTableArgumentBinding<TElement> : ITableArgumentBindingExtension
+            {
+                public FileAccess Access
+                {
+                    get { return FileAccess.ReadWrite; }
+                }
+
+                public Type ValueType
+                {
+                    get { return typeof(CustomTableBinding<TElement>); }
+                }
+
+                public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
+                {
+                    CustomTableBinding<TElement> tableBinding = new CustomTableBinding<TElement>(value);
+                    IValueProvider valueProvider = new CustomTableValueBinder<TElement>(tableBinding, ValueType, value.Name);
+
+                    return Task.FromResult(valueProvider);
+                }
+            }
+
+            private class CustomTableValueBinder<TElement> : IValueBinder
+            {
+                private CustomTableBinding<TElement> _value;
+                private Type _valueType;
+                private string _invokeString;
+
+                public CustomTableValueBinder(CustomTableBinding<TElement> value, Type valueType, string invokeString)
+                {
+                    _value = value;
+                    _valueType = valueType;
+                    _invokeString = invokeString;
+                }
+
+                public Type Type
+                {
+                    get { return _valueType; }
+                }
+
+                public object GetValue()
+                {
+                    return _value;
+                }
+
+                public Task SetValueAsync(object value, CancellationToken cancellationToken)
+                {
+                    // this is where any queued up storage operations can be flushed
+                    return _value.FlushAsync(cancellationToken);
+                }
+
+                public string ToInvokeString()
+                {
+                    return _invokeString;
+                }
+            }
         }
     }
 }
