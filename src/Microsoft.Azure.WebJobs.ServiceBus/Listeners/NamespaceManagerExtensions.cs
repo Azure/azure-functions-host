@@ -13,8 +13,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
     {
         private const string DeadLetterQueueSuffix = "$DeadLetterQueue";
 
-        public static async Task CreateQueueIfNotExistsAsync(this NamespaceManager manager, string path,
-            CancellationToken cancellationToken)
+        public static async Task CreateQueueIfNotExistsAsync(this NamespaceManager manager, string path, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -57,8 +56,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             return new string[] { path };
         }
 
-        public static async Task CreateTopicIfNotExistsAsync(this NamespaceManager manager, string path,
-            CancellationToken cancellationToken)
+        public static async Task CreateTopicIfNotExistsAsync(this NamespaceManager manager, string path, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

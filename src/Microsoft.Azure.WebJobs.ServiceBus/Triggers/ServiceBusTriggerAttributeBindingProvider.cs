@@ -51,9 +51,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             }
 
             ParameterInfo parameter = context.Parameter;
-            ServiceBusTriggerAttribute serviceBusTrigger = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>(inherit: false);
+            ServiceBusTriggerAttribute attribute = parameter.GetCustomAttribute<ServiceBusTriggerAttribute>(inherit: false);
 
-            if (serviceBusTrigger == null)
+            if (attribute == null)
             {
                 return Task.FromResult<ITriggerBinding>(null);
             }
@@ -62,14 +62,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             string topicName = null;
             string subscriptionName = null;
 
-            if (serviceBusTrigger.QueueName != null)
+            if (attribute.QueueName != null)
             {
-                queueName = Resolve(serviceBusTrigger.QueueName);
+                queueName = Resolve(attribute.QueueName);
             }
             else
             {
-                topicName = Resolve(serviceBusTrigger.TopicName);
-                subscriptionName = Resolve(serviceBusTrigger.SubscriptionName);
+                topicName = Resolve(attribute.TopicName);
+                subscriptionName = Resolve(attribute.SubscriptionName);
             }
 
             ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding = InnerProvider.TryCreate(parameter);
@@ -84,13 +84,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (queueName != null)
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding,
-                    account, queueName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, queueName, attribute.Access);
             }
             else
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName,
-                    subscriptionName);
+                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access);
             }
 
             return Task.FromResult(binding);

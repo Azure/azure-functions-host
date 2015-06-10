@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs
         public ServiceBusTriggerAttribute(string queueName)
         {
             _queueName = queueName;
+            Access = AccessRights.Manage;
         }
 
         /// <summary>Initializes a new instance of the <see cref="ServiceBusTriggerAttribute"/> class.</summary>
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.WebJobs
         {
             _topicName = topicName;
             _subscriptionName = subscriptionName;
+            Access = AccessRights.Manage;
         }
 
         /// <summary>Gets the name of the queue to which to bind.</summary>
@@ -63,6 +66,12 @@ namespace Microsoft.Azure.WebJobs
         {
             get { return _subscriptionName; }
         }
+
+        /// <summary>
+        /// Gets or sets the <see cref="AccessRights"/> the client has to the queue or topic.
+        /// The default is "Manage".
+        /// </summary>
+        public AccessRights Access { get; set; }
 
         private string DebuggerDisplay
         {

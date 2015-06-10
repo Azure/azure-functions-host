@@ -12,7 +12,11 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
     {
         private readonly CancellationToken _cancellationToken;
 
-        internal ListenerFactoryContext(CancellationToken cancellationToken)
+        /// <summary>
+        /// Constructs a new instance.
+        /// </summary>
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use.</param>
+        public ListenerFactoryContext(CancellationToken cancellationToken)
         {
             _cancellationToken = cancellationToken;
         }

@@ -17,23 +17,28 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private readonly string _topicName;
         private readonly string _subscriptionName;
         private readonly ITriggeredFunctionExecutor<BrokeredMessage> _executor;
+        private readonly AccessRights _accessRights;
 
-        public ServiceBusSubscriptionListenerFactory(ServiceBusAccount account, string topicName, string subscriptionName, ITriggeredFunctionExecutor<BrokeredMessage> executor)
+        public ServiceBusSubscriptionListenerFactory(ServiceBusAccount account, string topicName, string subscriptionName, ITriggeredFunctionExecutor<BrokeredMessage> executor, AccessRights accessRights)
         {
             _namespaceManager = account.NamespaceManager;
             _messagingFactory = account.MessagingFactory;
             _topicName = topicName;
             _subscriptionName = subscriptionName;
             _executor = executor;
+            _accessRights = accessRights;
         }
 
         public async Task<IListener> CreateAsync(ListenerFactoryContext context)
         {
-            // Must create all messaging entities before creating message receivers and calling OnMessage.
-            // Otherwise, some function could start to execute and try to output messages to entities that don't yet
-            // exist.
-            await _namespaceManager.CreateTopicIfNotExistsAsync(_topicName, context.CancellationToken);
-            await _namespaceManager.CreateSubscriptionIfNotExistsAsync(_topicName, _subscriptionName, context.CancellationToken);
+            if (_accessRights == AccessRights.Manage)
+            {
+                // Must create all messaging entities before creating message receivers and calling OnMessage.
+                // Otherwise, some function could start to execute and try to output messages to entities that don't yet
+                // exist.
+                await _namespaceManager.CreateTopicIfNotExistsAsync(_topicName, context.CancellationToken);
+                await _namespaceManager.CreateSubscriptionIfNotExistsAsync(_topicName, _subscriptionName, context.CancellationToken);
+            }
 
             string entityPath = SubscriptionClient.FormatSubscriptionPath(_topicName, _subscriptionName);
 

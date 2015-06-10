@@ -14,11 +14,12 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
 
         public MessageSender MessageSender { get; set; }
 
-        public Task SendAndCreateQueueIfNotExistsAsync(BrokeredMessage message, Guid functionInstanceId,
-            CancellationToken cancellationToken)
+        public AccessRights AccessRights { get; set; }
+
+        public Task SendAndCreateQueueIfNotExistsAsync(BrokeredMessage message, Guid functionInstanceId, CancellationToken cancellationToken)
         {
             return MessageSender.SendAndCreateQueueIfNotExistsAsync(message, functionInstanceId,
-                Account.NamespaceManager, cancellationToken);
+                Account.NamespaceManager, AccessRights, cancellationToken);
         }
     }
 }

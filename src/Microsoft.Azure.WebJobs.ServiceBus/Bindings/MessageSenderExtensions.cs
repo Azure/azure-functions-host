@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
     internal static class MessageSenderExtensions
     {
         public static async Task SendAndCreateQueueIfNotExistsAsync(this MessageSender sender, BrokeredMessage message,
-            Guid functionInstanceId, NamespaceManager namespaceManager, CancellationToken cancellationToken)
+            Guid functionInstanceId, NamespaceManager namespaceManager, AccessRights accessRights, CancellationToken cancellationToken)
         {
             if (sender == null)
             {
@@ -37,6 +37,13 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
             }
             catch (MessagingEntityNotFoundException)
             {
+                if (accessRights != AccessRights.Manage)
+                {
+                    // if we don't have the required rights to create the queue,
+                    // rethrow the exception
+                    throw;
+                }
+
                 threwMessgingEntityNotFoundException = true;
             }
 

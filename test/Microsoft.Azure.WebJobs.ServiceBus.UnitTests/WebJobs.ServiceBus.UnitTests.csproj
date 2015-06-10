@@ -100,8 +100,10 @@
     <Compile Include="Bindings\ParameterizedServiceBusPathTests.cs" />
     <Compile Include="Config\ServiceBusJobHostConfigurationExtensionsTests.cs" />
     <Compile Include="Config\ServiceBusExtensionConfigTests.cs" />
+    <Compile Include="Listeners\ServiceBusQueueListenerFactoryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensionsTests.cs" />
+    <Compile Include="Triggers\ServiceBusSubscriptionListenerFactoryTests.cs" />
     <Compile Include="Triggers\ServiceBusTriggerBindingIntegrationTests.cs" />
   </ItemGroup>
   <ItemGroup>

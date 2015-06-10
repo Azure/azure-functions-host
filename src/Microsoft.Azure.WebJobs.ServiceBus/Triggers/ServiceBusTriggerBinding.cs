@@ -28,9 +28,10 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         private readonly string _topicName;
         private readonly string _subscriptionName;
         private readonly string _entityPath;
+        private readonly AccessRights _accessRights;
 
         public ServiceBusTriggerBinding(string parameterName, Type parameterType, 
-            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName)
+            ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, ServiceBusAccount account, string queueName, AccessRights accessRights)
         {
             _parameterName = parameterName;
             _converter = CreateConverter(parameterType);
@@ -39,10 +40,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _namespaceName = ServiceBusClient.GetNamespaceName(account);
             _queueName = queueName;
             _entityPath = queueName;
+            _accessRights = accessRights;
         }
 
-        public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding, 
-            ServiceBusAccount account, string topicName, string subscriptionName)
+        public ServiceBusTriggerBinding(string parameterName, ITriggerDataArgumentBinding<BrokeredMessage> argumentBinding,
+            ServiceBusAccount account, string topicName, string subscriptionName, AccessRights accessRights)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;
@@ -51,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             _topicName = topicName;
             _subscriptionName = subscriptionName;
             _entityPath = SubscriptionClient.FormatSubscriptionPath(topicName, subscriptionName);
+            _accessRights = accessRights;
         }
 
         public Type TriggerValueType
@@ -113,11 +116,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
         {
             if (_queueName != null)
             {
-                return new ServiceBusQueueListenerFactory(_account, _queueName, executor);
+                return new ServiceBusQueueListenerFactory(_account, _queueName, executor, _accessRights);
             }
             else
             {
-                return new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, executor);
+                return new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, executor, _accessRights);
             }
         }
 

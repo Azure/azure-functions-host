@@ -16,21 +16,26 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private readonly MessagingFactory _messagingFactory;
         private readonly string _queueName;
         private readonly ITriggeredFunctionExecutor<BrokeredMessage> _executor;
+        private readonly AccessRights _accessRights;
 
-        public ServiceBusQueueListenerFactory(ServiceBusAccount account, string queueName, ITriggeredFunctionExecutor<BrokeredMessage> executor)
+        public ServiceBusQueueListenerFactory(ServiceBusAccount account, string queueName, ITriggeredFunctionExecutor<BrokeredMessage> executor, AccessRights accessRights)
         {
             _namespaceManager = account.NamespaceManager;
             _messagingFactory = account.MessagingFactory;
             _queueName = queueName;
             _executor = executor;
+            _accessRights = accessRights;
         }
 
         public async Task<IListener> CreateAsync(ListenerFactoryContext context)
         {
-            // Must create all messaging entities before creating message receivers and calling OnMessage.
-            // Otherwise, some function could start to execute and try to output messages to entities that don't yet
-            // exist.
-            await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, context.CancellationToken);
+            if (_accessRights == AccessRights.Manage)
+            {
+                // Must create all messaging entities before creating message receivers and calling OnMessage.
+                // Otherwise, some function could start to execute and try to output messages to entities that don't yet
+                // exist.
+                await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, context.CancellationToken);
+            }
 
             ServiceBusTriggerExecutor triggerExecutor = new ServiceBusTriggerExecutor(_executor);
             return new ServiceBusListener(_messagingFactory, _queueName, triggerExecutor);

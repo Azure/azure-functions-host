@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
+using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -25,19 +25,25 @@ namespace Microsoft.Azure.WebJobs
     [DebuggerDisplay("{QueueOrTopicName,nq}")]
     public sealed class ServiceBusAttribute : Attribute
     {
-        private readonly string _queueOrTopicName;
-
-        /// <summary>Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.</summary>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
+        /// </summary>
         /// <param name="queueOrTopicName">The name of the queue or topic to which to bind.</param>
         public ServiceBusAttribute(string queueOrTopicName)
         {
-            _queueOrTopicName = queueOrTopicName;
+            QueueOrTopicName = queueOrTopicName;
+            Access = AccessRights.Manage;
         }
 
-        /// <summary>Gets the name of the queue or topic to which to bind.</summary>
-        public string QueueOrTopicName
-        {
-            get { return _queueOrTopicName; }
-        }
+        /// <summary>
+        /// Gets the name of the queue or topic to bind to.
+        /// </summary>
+        public string QueueOrTopicName { get; private set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="AccessRights"/> the client has to the queue or topic.
+        /// The default is "Manage".
+        /// </summary>
+        public AccessRights Access { get; set; }
     }
 }
