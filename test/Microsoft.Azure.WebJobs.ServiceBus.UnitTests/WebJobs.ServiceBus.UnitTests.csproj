@@ -103,6 +103,8 @@
     <Compile Include="Listeners\ServiceBusQueueListenerFactoryTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Listeners\NamespaceManagerExtensionsTests.cs" />
+    <Compile Include="ServiceBusAttributeTests.cs" />
+    <Compile Include="ServiceBusTriggerAttributeTests.cs" />
     <Compile Include="Triggers\ServiceBusSubscriptionListenerFactoryTests.cs" />
     <Compile Include="Triggers\ServiceBusTriggerBindingIntegrationTests.cs" />
   </ItemGroup>

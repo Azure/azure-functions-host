@@ -294,30 +294,30 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         {
             // Passes  service bus message from a queue to another queue
             public static void SBQueue2SBQueue(
-                [ServiceBusTrigger(StartQueueName, Access = AccessRights.Listen)] string start,
-                [ServiceBus(QueueNamePrefix + "1", Access = AccessRights.Send)] out string message)
+                [ServiceBusTrigger(StartQueueName, AccessRights.Listen)] string start,
+                [ServiceBus(QueueNamePrefix + "1", AccessRights.Send)] out string message)
             {
                 message = SBQueue2SBQueue_GetOutputMessage(start);
             }
 
             // Passes a service bus message from a queue to topic using a brokered message
             public static void SBQueue2SBTopic(
-                [ServiceBusTrigger(QueueNamePrefix + "1", Access = AccessRights.Listen)] string message,
-                [ServiceBus(TopicName, Access = AccessRights.Send)] out BrokeredMessage output)
+                [ServiceBusTrigger(QueueNamePrefix + "1", AccessRights.Listen)] string message,
+                [ServiceBus(TopicName, AccessRights.Send)] out BrokeredMessage output)
             {
                 output = SBQueue2SBTopic_GetOutputMessage(message);
             }
 
             // First listener for the topic
             public static void SBTopicListener1(
-                [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-1", Access = AccessRights.Listen)] string message)
+                [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-1", AccessRights.Listen)] string message)
             {
                 SBTopicListener1Impl(message);
             }
 
             // Second listerner for the topic
             public static void SBTopicListener2(
-                [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2", Access = AccessRights.Listen)] BrokeredMessage message)
+                [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2", AccessRights.Listen)] BrokeredMessage message)
             {
                 SBTopicListener2Impl(message);
             }

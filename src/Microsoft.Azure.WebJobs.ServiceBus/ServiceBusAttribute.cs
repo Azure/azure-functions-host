@@ -28,11 +28,22 @@ namespace Microsoft.Azure.WebJobs
         /// <summary>
         /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
         /// </summary>
-        /// <param name="queueOrTopicName">The name of the queue or topic to which to bind.</param>
+        /// <param name="queueOrTopicName">The name of the queue or topic to bind to.</param>
         public ServiceBusAttribute(string queueOrTopicName)
         {
             QueueOrTopicName = queueOrTopicName;
             Access = AccessRights.Manage;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ServiceBusAttribute"/> class.
+        /// </summary>
+        /// <param name="queueOrTopicName">The name of the queue or topic to bind to.</param>
+        /// <param name="access">The <see cref="AccessRights"/> the client has to the queue or topic.</param>
+        public ServiceBusAttribute(string queueOrTopicName, AccessRights access)
+        {
+            QueueOrTopicName = queueOrTopicName;
+            Access = access;
         }
 
         /// <summary>
@@ -41,9 +52,9 @@ namespace Microsoft.Azure.WebJobs
         public string QueueOrTopicName { get; private set; }
 
         /// <summary>
-        /// Gets or sets the <see cref="AccessRights"/> the client has to the queue or topic.
+        /// Gets the <see cref="AccessRights"/> the client has to the queue or topic.
         /// The default is "Manage".
         /// </summary>
-        public AccessRights Access { get; set; }
+        public AccessRights Access { get; private set; }
     }
 }
