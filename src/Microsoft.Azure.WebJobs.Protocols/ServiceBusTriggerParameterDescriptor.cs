@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 path = string.Format(CultureInfo.CurrentCulture, "{0}/Subscriptions/{1}", TopicName, SubscriptionName);
             }
 
-            return string.Format(CultureInfo.CurrentCulture, "New service bus message detected on '{0}.", path);
+            return string.Format(CultureInfo.CurrentCulture, "New ServiceBus message detected on '{0}'.", path);
         }
     }
 }
