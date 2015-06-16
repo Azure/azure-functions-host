@@ -3,19 +3,13 @@
   <PropertyGroup>
     <DirectoryProjectFile>..\AzureJobs.Directory\AzureJobs.Directory.proj</DirectoryProjectFile>
     <SiteExtensionName>AzureJobs</SiteExtensionName>
-    <OutputPath>bin</OutputPath>
   </PropertyGroup>
 
+  <Import Project="..\..\tools\DashboardPackaging.targets"/>
+  
   <Target Name="GetTargetPath" Returns="$(_FullTargetPath)">
-    <MSBuild Projects="$(DirectoryProjectFile)"
-             Targets="GetVersion"
-             Properties="$(SetConfiguration); $(SetPlatform)"
-             BuildInParallel="$(BuildInParallel)">
-      <Output TaskParameter="TargetOutputs" PropertyName="Version"/>
-    </MSBuild>
-
     <PropertyGroup>
-      <TargetPath>$(OutputPath)\$(SiteExtensionName).$(Version).zip</TargetPath>
+      <TargetPath>$(OutputPath)\$(SiteExtensionName).$(SiteExtensionVersion).zip</TargetPath>
       <_FullTargetPath>$(MSBuildThisFileDirectory)$(TargetPath)</_FullTargetPath>
     </PropertyGroup>
   </Target>

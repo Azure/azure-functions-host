@@ -2,9 +2,10 @@
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <WebsiteProjectFile>..\Dashboard\Dashboard.csproj</WebsiteProjectFile>
-    <OutputPath>bin</OutputPath>
   </PropertyGroup>
 
+  <Import Project="..\..\tools\DashboardPackaging.targets"/>
+	
   <ItemGroup>
     <Content Include="applicationHost.xdt"/>
   </ItemGroup>
@@ -13,15 +14,9 @@
     <UnversionedContent Include="extension.xml"/>
   </ItemGroup>
 
-  <Target Name="GetVersion" Returns="$(Version)">
-    <ReadLinesFromFile File="Version.txt">
-      <Output TaskParameter="Lines" PropertyName="Version"/>
-    </ReadLinesFromFile>
-  </Target>
-
-  <Target Name="GetPublishPath" DependsOnTargets="GetVersion">
+  <Target Name="GetPublishPath">
     <PropertyGroup>
-      <PublishPath>$(MSBuildThisFileDirectory)$(OutputPath)\$(Version)</PublishPath>
+      <PublishPath>$(MSBuildThisFileDirectory)$(OutputPath)\$(SiteExtensionVersion)</PublishPath>
     </PropertyGroup>
   </Target>
 
