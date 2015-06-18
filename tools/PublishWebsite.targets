@@ -19,7 +19,11 @@
               ExcludeGeneratedDebugSymbol=false"
              BuildInParallel="$(BuildInParallel)"/>
     
+	<ItemGroup>
+		<FilesToDelete Include="$(PublishPath)\xunit*"/>
+	</ItemGroup>
     <Copy SourceFiles="@(Content)" DestinationFolder="$(PublishPath)"/>
+    <Delete Files="@(FilesToDelete)" />
   </Target>
 
   <Target Name="CleanWebsiteProject">
