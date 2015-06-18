@@ -293,15 +293,13 @@ namespace Dashboard.UnitTests.Indexers
             {
                 Description = "My custom description",
                 Prompt = "Enter your value please",
-                DefaultValue = "1234",
-                AttributeText = "[Custom(1234)]"
+                DefaultValue = "1234"
             };
 
             ParameterSnapshot shapshot = HostIndexer.CreateParameterSnapshot(descriptor);
             Assert.Equal(descriptor.DisplayHints.Description, shapshot.Description);
             Assert.Equal(descriptor.DisplayHints.Prompt, shapshot.Prompt);
             Assert.Equal(descriptor.DisplayHints.DefaultValue, shapshot.DefaultValue);
-            Assert.Equal(descriptor.DisplayHints.AttributeText, shapshot.AttributeText);
         }
 
         private static void AddFunctionToIndex(IFunctionIndexManager functionIndexManager, string hostId,

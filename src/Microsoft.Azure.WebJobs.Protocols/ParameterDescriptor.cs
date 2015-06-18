@@ -34,14 +34,15 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         public string Name { get; set; }
 
         /// <summary>
-        /// Gets or sets the parameter display descriptor.
+        /// Gets or sets the parameter display hints.
         /// </summary>
         public ParameterDisplayHints DisplayHints { get; set; }
 
         /// <summary>
         /// Dictionary of all properties that were in a deserialized
         /// json payload but didn't have corresponding properties on
-        /// the deserialized type.
+        /// the deserialized type. This ensures that we don't lose any
+        /// data provided by extension bindings.
         /// </summary>
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly"), JsonExtensionData]
         public Dictionary<string, JToken> ExtendedProperties { get; set; }

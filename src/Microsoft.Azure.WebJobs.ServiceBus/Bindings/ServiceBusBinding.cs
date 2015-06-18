@@ -95,8 +95,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Bindings
                 string.Format(CultureInfo.CurrentCulture, "dequeue from '{0}'", entityPath) :
                 string.Format(CultureInfo.CurrentCulture, "enqueue to '{0}'", entityPath);
 
-            descriptor.AttributeText = string.Format(CultureInfo.CurrentCulture, "[ServiceBus(\"{0}\")]", entityPath);
-
             descriptor.Prompt = isInput ?
                 "Enter the queue message body" :
                 "Enter the output entity name";

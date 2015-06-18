@@ -35,10 +35,5 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
         /// Gets or sets the default value.
         /// </summary>
         public virtual string DefaultValue { get; set; }
-
-        /// <summary>
-        /// Gets or sets the attribute text.
-        /// </summary>
-        public virtual string AttributeText { get; set; }
     }
 }

@@ -74,7 +74,11 @@ namespace Dashboard
                         }
 
                         ParameterSnapshot itemSnapshot = HostIndexer.CreateParameterSnapshot(item.Descriptor);
-                        string itemName = parameterName + ": " + itemSnapshot.AttributeText;
+                        string itemName = parameterName;
+                        if (!string.IsNullOrEmpty(itemSnapshot.AttributeText))
+                        {
+                            itemName += ": " + itemSnapshot.AttributeText;
+                        }
                         FunctionInstanceArgument itemArgument = FunctionIndexer.CreateFunctionInstanceArgument(item.Value, item.Descriptor);
 
                         AddParameterModels(itemName, itemArgument, item.Log, snapshot, parameterModels);
