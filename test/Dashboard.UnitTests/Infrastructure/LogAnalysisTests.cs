@@ -3,14 +3,13 @@
 
 using System;
 using System.Globalization;
-using System.Text;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Protocols;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Dashboard.UnitTests.Infrastructure
 {
-    public class LogAnalysisTests
+    public class LogAnalysisTests : IClassFixture<InvariantCultureFixture>
     {
         [Fact]
         public void FormatTime_ZeroTime_NoOutput()

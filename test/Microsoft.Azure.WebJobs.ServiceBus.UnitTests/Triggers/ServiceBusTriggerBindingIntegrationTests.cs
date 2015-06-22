@@ -7,16 +7,16 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.ServiceBus.Triggers;
 using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json;
 using Xunit;
-using Xunit.Extensions;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
 {
-    public class ServiceBusTriggerBindingIntegrationTests
+    public class ServiceBusTriggerBindingIntegrationTests : IClassFixture<InvariantCultureFixture>
     {
         private ITriggerBinding<BrokeredMessage> _binding;
 
