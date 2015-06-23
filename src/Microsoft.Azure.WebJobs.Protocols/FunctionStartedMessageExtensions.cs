@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
                 case ExecutionReason.AutomaticTrigger:
                     return GetAutomaticTriggerReason(message);
                 case ExecutionReason.HostCall:
-                    return "This was function was programmatically called via the host APIs.";
+                    return "This function was programmatically called via the host APIs.";
                 case ExecutionReason.Dashboard:
                     return message.ParentId.HasValue ? "Replayed from Dashboard." : "Ran from Dashboard.";
                 default:
