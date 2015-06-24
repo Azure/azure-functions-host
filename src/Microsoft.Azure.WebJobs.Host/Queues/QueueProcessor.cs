@@ -43,12 +43,24 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             _poisonQueue = context.PoisonQueue;
             _log = context.Log;
             _maxDequeueCount = context.MaxDequeueCount;
+            BatchSize = context.BatchSize;
+            NewBatchThreshold = context.NewBatchThreshold;
         }
 
         /// <summary>
         /// Event raised when a message is added to the poison queue.
         /// </summary>
         public event EventHandler MessageAddedToPoisonQueue;
+
+        /// <summary>
+        /// Gets or sets the number of queue messages to retrieve and process in parallel.
+        /// </summary>
+        public int BatchSize { get; private set; }
+
+        /// <summary>
+        /// Gets the threshold at which a new batch of messages will be fetched.
+        /// </summary>
+        public int NewBatchThreshold { get; private set; }
 
         /// <summary>
         /// This method is called when there is a new message to process, before the job function is invoked.

@@ -70,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(typeof(ParallelExecutionTests)),
             };
             hostConfiguration.Queues.BatchSize = batchSize;
+            //hostConfiguration.Queues.NewBatchThreshold = Math.Max(1, batchSize / 2);
 
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(hostConfiguration.StorageConnectionString);
             _queueClient = storageAccount.CreateCloudQueueClient();

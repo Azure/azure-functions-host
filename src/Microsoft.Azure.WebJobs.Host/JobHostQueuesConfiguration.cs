@@ -19,12 +19,16 @@ namespace Microsoft.Azure.WebJobs.Host
         private const int MaxBatchSize = 32;
 
         private int _batchSize = DefaultBatchSize;
+        private int _newBatchThreshold = DefaultBatchSize;
         private TimeSpan _maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
         private int _maxDequeueCount = DefaultMaxDequeueCount;
 
-        /// <summary>Initializes a new instance of the <see cref="JobHostQueuesConfiguration"/> class.</summary>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="JobHostQueuesConfiguration"/> class.
+        /// </summary>
         internal JobHostQueuesConfiguration()
         {
+            _newBatchThreshold = -1;
             QueueProcessorFactory = new DefaultQueueProcessorFactory();
         }
 
@@ -48,6 +52,32 @@ namespace Microsoft.Azure.WebJobs.Host
                 }
 
                 _batchSize = value;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the threshold at which a new batch of messages will be fetched.
+        /// </summary>
+        public int NewBatchThreshold
+        {
+            get 
+            { 
+                if (_newBatchThreshold == -1)
+                {
+                    // if this hasn't been set explicitly, default it
+                    return _batchSize / 2;
+                }
+                return _newBatchThreshold; 
+            }
+
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("value");
+                }
+
+                _newBatchThreshold = value;
             }
         }
 

@@ -201,6 +201,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 // demonstrates how queue options can be customized
                 context.Queue.EncodeMessage = true;
 
+                // demonstrates how batch processing behavior can be customized
+                context.BatchSize = 30;
+                context.NewBatchThreshold = 100;
+
                 return new CustomQueueProcessor(context);
             }
         }

@@ -20,6 +20,14 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             get { return 16; }
         }
 
+        public int NewBatchThreshold
+        {
+            get
+            {
+                return BatchSize / 2;
+            }
+        }
+
         public TimeSpan MaxPollingInterval
         {
             get { return TimeSpan.FromMinutes(10); }

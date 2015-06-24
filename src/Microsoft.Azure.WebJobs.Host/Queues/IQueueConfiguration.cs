@@ -9,6 +9,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     {
         int BatchSize { get; }
 
+        int NewBatchThreshold { get; }
+
         TimeSpan MaxPollingInterval { get; }
 
         int MaxDequeueCount { get; }

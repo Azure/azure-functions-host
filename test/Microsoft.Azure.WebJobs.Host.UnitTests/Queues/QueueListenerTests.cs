@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             Mock<IBackgroundExceptionDispatcher> mockExceptionDispatcher = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
             TextWriter log = new StringWriter();
             Mock<IQueueProcessorFactory> mockQueueProcessorFactory = new Mock<IQueueProcessorFactory>(MockBehavior.Strict);
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, 5);
+            JobHostQueuesConfiguration queuesConfig = new JobHostQueuesConfiguration();
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queuesConfig);
+
             _mockQueueProcessor = new Mock<QueueProcessor>(MockBehavior.Strict, context);
             JobHostQueuesConfiguration queueConfig = new JobHostQueuesConfiguration
             {

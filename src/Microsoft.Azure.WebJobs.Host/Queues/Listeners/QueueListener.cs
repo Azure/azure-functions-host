@@ -27,8 +27,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly TextWriter _log;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
-        private readonly int _batchSize;
-        private readonly uint _newBatchThreshold;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
         private readonly IQueueConfiguration _queueConfiguration;
@@ -82,9 +80,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 sharedWatcher.Register(queue.Name, this);
                 _sharedWatcher = sharedWatcher;
             }
-
-            _batchSize = _queueConfiguration.BatchSize;
-            _newBatchThreshold = (uint)_batchSize / 2;
 
             EventHandler poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler)null;
             _queueProcessor = CreateQueueProcessor(
@@ -146,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
             try
             {
-                batch = await _queue.GetMessagesAsync(_batchSize,
+                batch = await _queue.GetMessagesAsync(_queueProcessor.BatchSize,
                     visibilityTimeout,
                     options: null,
                     operationContext: null,
@@ -236,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         private async Task WaitForNewBatchThreshold()
         {
-            while (_processing.Count > _newBatchThreshold)
+            while (_processing.Count > _queueProcessor.NewBatchThreshold)
             {
                 Task processed = await Task.WhenAny(_processing);
                 _processing.Remove(processed);
@@ -304,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
 
         internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TextWriter log, IQueueConfiguration queueConfig, EventHandler poisonQueueMessageAddedHandler)
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queueConfig.MaxDequeueCount, poisonQueue);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queueConfig, poisonQueue);
 
             QueueProcessor queueProcessor = null;
             if (HostQueueNames.IsHostQueue(queue.Name) && 

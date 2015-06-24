@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private CloudQueue _poisonQueue;
         private QueueProcessor _processor;
         private TextWriter _log;
+        private JobHostQueuesConfiguration _queuesConfig;
 
         public QueueProcessorTests(TestFixture fixture)
         {
@@ -27,8 +28,18 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             _queue = fixture.Queue;
             _poisonQueue = fixture.PoisonQueue;
 
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, 5);
+            _queuesConfig = new JobHostQueuesConfiguration();
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig);
             _processor = new QueueProcessor(context);
+        }
+
+        [Fact]
+        public void Constructor_DefaultsValues()
+        {
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig);
+            QueueProcessor localProcessor = new QueueProcessor(context);
+            Assert.Equal(_queuesConfig.BatchSize, localProcessor.BatchSize);
+            Assert.Equal(_queuesConfig.NewBatchThreshold, localProcessor.NewBatchThreshold);
         }
 
         [Fact]
@@ -69,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [Fact]
         public async Task CompleteProcessingMessageAsync_MaxDequeueCountExceeded_MovesMessageToPoisonQueue()
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, 3, _poisonQueue);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig, _poisonQueue);
             QueueProcessor localProcessor = new QueueProcessor(context);
 
             bool poisonMessageHandlerCalled = false;

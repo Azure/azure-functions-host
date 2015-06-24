@@ -18,10 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// </summary>
         /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
         /// <param name="log">The log to write to.</param>
-        /// <param name="maxDequeueCount">The maximum number of times to try processing a message before moving
-        /// it to the poison queue (if a poison queue is configured for the queue).</param>
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
-        public QueueProcessorFactoryContext(CloudQueue queue, TextWriter log, int maxDequeueCount, CloudQueue poisonQueue = null)
+        public QueueProcessorFactoryContext(CloudQueue queue, TextWriter log, CloudQueue poisonQueue = null)         
         {
             if (queue == null)
             {
@@ -35,7 +33,21 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
             Queue = queue;
             PoisonQueue = poisonQueue;
             Log = log;
-            MaxDequeueCount = maxDequeueCount;
+        }
+
+        /// <summary>
+        /// Constructs a new instance
+        /// </summary>
+        /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
+        /// <param name="log">The log to write to.</param>
+        /// <param name="queueConfiguration">The queue configuration.</param>
+        /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
+        internal QueueProcessorFactoryContext(CloudQueue queue, TextWriter log, IQueueConfiguration queueConfiguration, CloudQueue poisonQueue = null)
+            : this(queue, log, poisonQueue)
+        {
+            BatchSize = queueConfiguration.BatchSize;
+            MaxDequeueCount = queueConfiguration.MaxDequeueCount;
+            NewBatchThreshold = queueConfiguration.NewBatchThreshold;
         }
 
         /// <summary>
@@ -57,9 +69,19 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         public TextWriter Log { get; private set; }
 
         /// <summary>
+        /// Gets or sets the number of queue messages to retrieve and process in parallel (per job method).
+        /// </summary>
+        public int BatchSize { get; set; }
+
+        /// <summary>
         /// Gets or sets the maximum number of times to try processing a message before moving
         /// it to the poison queue (if a poison queue is configured for the queue).
         /// </summary>
-        public int MaxDequeueCount { get; private set; }
+        public int MaxDequeueCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the threshold at which a new batch of messages will be fetched.
+        /// </summary>
+        public int NewBatchThreshold { get; set; }
     }
 }
