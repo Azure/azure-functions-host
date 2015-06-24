@@ -55,12 +55,12 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <summary>
         /// Gets or sets the number of queue messages to retrieve and process in parallel.
         /// </summary>
-        public int BatchSize { get; private set; }
+        public int BatchSize { get; protected set; }
 
         /// <summary>
         /// Gets the threshold at which a new batch of messages will be fetched.
         /// </summary>
-        public int NewBatchThreshold { get; private set; }
+        public int NewBatchThreshold { get; protected set; }
 
         /// <summary>
         /// This method is called when there is a new message to process, before the job function is invoked.
