@@ -18,7 +18,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 {
-    internal class QueueTriggerBinding : ITriggerBinding<IStorageQueueMessage>
+    internal class QueueTriggerBinding : ITriggerBinding
     {
         private readonly string _parameterName;
         private readonly IStorageQueue _queue;
@@ -136,15 +136,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 new OutputConverter<string>(new StringToStorageQueueMessageConverter(queue)));
         }
 
-        public async Task<ITriggerData> BindAsync(IStorageQueueMessage value, ValueBindingContext context)
-        {
-            ITriggerData triggerData = await _argumentBinding.BindAsync(value, context);
-            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value, triggerData.BindingData);
-
-            return new TriggerData(triggerData.ValueProvider, bindingData);
-        }
-
-        public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
+        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
             IStorageQueueMessage message = null;
 
@@ -153,7 +145,10 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new InvalidOperationException("Unable to convert trigger to IStorageQueueMessage.");
             }
 
-            return BindAsync(message, context);
+            ITriggerData triggerData = await _argumentBinding.BindAsync(message, context);
+            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(message, triggerData.BindingData);
+
+            return new TriggerData(triggerData.ValueProvider, bindingData);
         }
 
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)

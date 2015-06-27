@@ -93,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IListenerFactory",
                 "IOrderedValueBinder",
                 "ITriggerBinding",
-                "ITriggerBinding`1",
                 "ITriggerBindingProvider",
                 "ITriggerData",
                 "IValueBinder",

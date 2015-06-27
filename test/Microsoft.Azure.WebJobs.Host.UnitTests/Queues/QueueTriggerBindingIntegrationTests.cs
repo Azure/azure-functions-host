@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
 {
     public class QueueTriggerBindingIntegrationTests : IClassFixture<InvariantCultureFixture>
     {
-        private ITriggerBinding<IStorageQueueMessage> _binding;
+        private ITriggerBinding _binding;
 
         public QueueTriggerBindingIntegrationTests()
         {

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
 {
     public class ServiceBusTriggerBindingIntegrationTests : IClassFixture<InvariantCultureFixture>
     {
-        private ITriggerBinding<BrokeredMessage> _binding;
+        private ITriggerBinding _binding;
 
         public ServiceBusTriggerBindingIntegrationTests()
         {

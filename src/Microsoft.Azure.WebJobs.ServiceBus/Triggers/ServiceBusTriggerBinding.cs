@@ -17,7 +17,7 @@ using Microsoft.ServiceBus.Messaging;
 
 namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 {
-    internal class ServiceBusTriggerBinding : ITriggerBinding<BrokeredMessage>
+    internal class ServiceBusTriggerBinding : ITriggerBinding
     {
         private readonly string _parameterName;
         private readonly IObjectToTypeConverter<BrokeredMessage> _converter;
@@ -89,22 +89,15 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             get { return _entityPath; }
         }
 
-        public async Task<ITriggerData> BindAsync(BrokeredMessage value, ValueBindingContext context)
+        public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            ITriggerData triggerData = await _argumentBinding.BindAsync(value, context);
-            return triggerData;
-        }
-
-        public Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
-        {
-            BrokeredMessage message = null;
-
-            if (!_converter.TryConvert(value, out message))
+            BrokeredMessage message = value as BrokeredMessage;
+            if (message == null && !_converter.TryConvert(value, out message))
             {
                 throw new InvalidOperationException("Unable to convert trigger to BrokeredMessage.");
             }
 
-            return BindAsync(message, context);
+            return await _argumentBinding.BindAsync(message, context);
         }
 
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)

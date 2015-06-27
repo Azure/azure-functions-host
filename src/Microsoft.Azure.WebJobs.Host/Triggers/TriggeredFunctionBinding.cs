@@ -11,10 +11,10 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     internal class TriggeredFunctionBinding<TTriggerValue> : ITriggeredFunctionBinding<TTriggerValue>
     {
         private readonly string _triggerParameterName;
-        private readonly ITriggerBinding<TTriggerValue> _triggerBinding;
+        private readonly ITriggerBinding _triggerBinding;
         private readonly IReadOnlyDictionary<string, IBinding> _nonTriggerBindings;
 
-        public TriggeredFunctionBinding(string triggerParameterName, ITriggerBinding<TTriggerValue> triggerBinding,
+        public TriggeredFunctionBinding(string triggerParameterName, ITriggerBinding triggerBinding,
             IReadOnlyDictionary<string, IBinding> nonTriggerBindings)
         {
             _triggerParameterName = triggerParameterName;

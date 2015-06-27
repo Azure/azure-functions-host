@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         }
 
         private static FunctionDefinition CreateTriggeredFunctionDefinitionImpl<TTriggerValue>(
-            ITriggerBinding<TTriggerValue> triggerBinding, string parameterName, IFunctionExecutor executor, FunctionDescriptor descriptor,
+            ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, FunctionDescriptor descriptor,
             IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker)
         {
             ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(parameterName, triggerBinding, nonTriggerBindings);

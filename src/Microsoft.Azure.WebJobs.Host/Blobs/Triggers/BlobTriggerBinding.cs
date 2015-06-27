@@ -20,7 +20,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 {
-    internal class BlobTriggerBinding : ITriggerBinding<IStorageBlob>
+    internal class BlobTriggerBinding : ITriggerBinding
     {
         private readonly string _parameterName;
         private readonly IArgumentBinding<IStorageBlob> _argumentBinding;
@@ -183,25 +183,19 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 new OutputConverter<string>(new StringToStorageBlobConverter(client)));
         }
 
-        public async Task<ITriggerData> BindAsync(IStorageBlob value, ValueBindingContext context)
-        {
-            IValueProvider valueProvider = await _argumentBinding.BindAsync(value, context);
-            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(value);
-
-            return new TriggerData(valueProvider, bindingData);
-        }
-
         public async Task<ITriggerData> BindAsync(object value, ValueBindingContext context)
         {
-            ConversionResult<IStorageBlob> conversionResult = await _converter.TryConvertAsync(value,
-                context.CancellationToken);
+            ConversionResult<IStorageBlob> conversionResult = await _converter.TryConvertAsync(value, context.CancellationToken);
 
             if (!conversionResult.Succeeded)
             {
                 throw new InvalidOperationException("Unable to convert trigger to IStorageBlob.");
             }
 
-            return await BindAsync(conversionResult.Result, context);
+            IValueProvider valueProvider = await _argumentBinding.BindAsync(conversionResult.Result, context);
+            IReadOnlyDictionary<string, object> bindingData = CreateBindingData(conversionResult.Result);
+
+            return new TriggerData(valueProvider, bindingData);
         }
 
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
