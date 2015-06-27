@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Used to create binding data for a particular type.
     /// </summary>
-    public class BindingDataProvider : IBindingDataProvider
+    internal class BindingDataProvider : IBindingDataProvider
     {
         private readonly Type _type;
         private readonly IReadOnlyDictionary<string, Type> _contract;

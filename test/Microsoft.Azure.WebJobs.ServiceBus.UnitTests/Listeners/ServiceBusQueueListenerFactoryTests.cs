@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
         public async Task CreateAsync_AccessRightsNotManage_DoesNotCreateQueue(AccessRights accessRights)
         {
             ServiceBusAccount account = new ServiceBusAccount();
-            Mock<ITriggeredFunctionExecutor<BrokeredMessage>> mockExecutor = new Mock<ITriggeredFunctionExecutor<BrokeredMessage>>(MockBehavior.Strict);
+            Mock<ITriggeredFunctionExecutor> mockExecutor = new Mock<ITriggeredFunctionExecutor>(MockBehavior.Strict);
             ServiceBusQueueListenerFactory factory = new ServiceBusQueueListenerFactory(account, "testqueue", mockExecutor.Object, accessRights);
         
             ListenerFactoryContext context = new ListenerFactoryContext(CancellationToken.None);

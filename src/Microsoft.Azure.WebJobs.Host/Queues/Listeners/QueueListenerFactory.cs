@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
         private readonly TextWriter _log;
-        private readonly ITriggeredFunctionExecutor<IStorageQueueMessage> _executor;
+        private readonly ITriggeredFunctionExecutor _executor;
 
         public QueueListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             TextWriter log,
-            ITriggeredFunctionExecutor<IStorageQueueMessage> executor)
+            ITriggeredFunctionExecutor executor)
         {
             if (queue == null)
             {

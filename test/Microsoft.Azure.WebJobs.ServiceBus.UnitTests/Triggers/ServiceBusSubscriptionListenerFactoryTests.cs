@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
         public async Task CreateAsync_AccessRightsNotManage_DoesNotCreateTopicOrSubscription(AccessRights accessRights)
         {
             ServiceBusAccount account = new ServiceBusAccount();
-            Mock<ITriggeredFunctionExecutor<BrokeredMessage>> mockExecutor = new Mock<ITriggeredFunctionExecutor<BrokeredMessage>>(MockBehavior.Strict);
+            Mock<ITriggeredFunctionExecutor> mockExecutor = new Mock<ITriggeredFunctionExecutor>(MockBehavior.Strict);
             ServiceBusSubscriptionListenerFactory factory = new ServiceBusSubscriptionListenerFactory(account, "testtopic", "testsubscription", mockExecutor.Object, accessRights);
 
             ListenerFactoryContext context = new ListenerFactoryContext(CancellationToken.None);

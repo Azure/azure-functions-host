@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// Interface for performing bind operations on job function arguments.
     /// </summary>
     /// <typeparam name="TArgument">The argument type.</typeparam>
-    public interface IArgumentBinding<TArgument>
+    internal interface IArgumentBinding<TArgument>
     {
         /// <summary>
         /// The <see cref="Type"/> of the argument value.

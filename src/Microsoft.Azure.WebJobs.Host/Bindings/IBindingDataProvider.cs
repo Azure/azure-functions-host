@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Interface defining methods used to create binding data.
     /// </summary>
-    public interface IBindingDataProvider
+    internal interface IBindingDataProvider
     {
         /// <summary>
         /// Gets the binding contract.

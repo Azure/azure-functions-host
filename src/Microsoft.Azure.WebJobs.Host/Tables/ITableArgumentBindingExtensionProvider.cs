@@ -11,8 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     /// Extensions can be registered using the <see cref="IExtensionRegistry"/> service
     /// from the <see cref="JobHostConfiguration"/>.
     /// </summary>
-    [CLSCompliant(false)]
-    public interface ITableArgumentBindingExtensionProvider
+    internal interface ITableArgumentBindingExtensionProvider
     {
         /// <summary>
         /// Attempts to create a <see cref="ITableArgumentBindingExtension"/> for the specified parameter type.

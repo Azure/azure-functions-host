@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
     /// Interface providing the capability to bind to trigger parameter values.
     /// </summary>
     /// <typeparam name="TTriggerValue">The type of the trigger value.</typeparam>
-    public interface ITriggerDataArgumentBinding<TTriggerValue>
+    internal interface ITriggerDataArgumentBinding<TTriggerValue>
     {
         /// <summary>
         /// Gets the type of the trigger value.

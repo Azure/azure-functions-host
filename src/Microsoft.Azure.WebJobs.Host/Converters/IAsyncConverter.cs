@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// </summary>
     /// <typeparam name="TInput">The type to convert from.</typeparam>
     /// <typeparam name="TOutput">The type to convert to.</typeparam>
-    public interface IAsyncConverter<TInput, TOutput>
+    internal interface IAsyncConverter<TInput, TOutput>
     {
         /// <summary>
         /// Convert the specified input value to the output type.

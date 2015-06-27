@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageAccount _account;
         private readonly IStorageBlobContainer _container;
         private readonly IBlobPathSource _input;
-        private readonly ITriggeredFunctionExecutor<IStorageBlob> _executor;
+        private readonly ITriggeredFunctionExecutor _executor;
 
         public BlobListenerFactory(IHostIdProvider hostIdProvider,
             IQueueConfiguration queueConfiguration,
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageAccount account,
             IStorageBlobContainer container,
             IBlobPathSource input,
-            ITriggeredFunctionExecutor<IStorageBlob> executor)
+            ITriggeredFunctionExecutor executor)
         {
             if (hostIdProvider == null)
             {

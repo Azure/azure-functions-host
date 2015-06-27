@@ -109,11 +109,6 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
         {
-            return CreateListenerFactory(descriptor, (ITriggeredFunctionExecutor<BrokeredMessage>)executor);
-        }
-
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor<BrokeredMessage> executor)
-        {
             if (_queueName != null)
             {
                 return new ServiceBusQueueListenerFactory(_account, _queueName, executor, _accessRights);

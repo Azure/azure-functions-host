@@ -11,8 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     /// <summary>
     /// Defines an interface for Table argument binding extensions.
     /// </summary>
-    [CLSCompliant(false)]
-    public interface ITableArgumentBindingExtension : IArgumentBinding<CloudTable>
+    internal interface ITableArgumentBindingExtension : IArgumentBinding<CloudTable>
     {
         /// <summary>
         /// Gets the <see cref="FileAccess"/> value indicating what types of storage

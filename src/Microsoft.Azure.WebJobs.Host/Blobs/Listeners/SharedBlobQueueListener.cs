@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _executor = executor;
         }
 
-        public void Register(string functionId, ITriggeredFunctionExecutor<IStorageBlob> executor)
+        public void Register(string functionId, ITriggeredFunctionExecutor executor)
         {
             if (_started)
             {

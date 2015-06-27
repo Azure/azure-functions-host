@@ -159,12 +159,6 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
         {
             return new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher, 
-                _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, (ITriggeredFunctionExecutor<IStorageQueueMessage>)executor);
-        }
-
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor<IStorageQueueMessage> executor)
-        {
-            return new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher,
                 _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, executor);
         }
 

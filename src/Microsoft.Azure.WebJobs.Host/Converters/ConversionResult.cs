@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// </summary>
     /// <typeparam name="TResult">The <see cref="System.Type"/> of the conversion result.</typeparam>
     [SuppressMessage("Microsoft.Performance", "CA1815:OverrideEqualsAndOperatorEqualsOnValueTypes")]
-    public struct ConversionResult<TResult>
+    internal struct ConversionResult<TResult>
     {
         /// <summary>
         /// Gets a value indicating whether the conversion succeeded.

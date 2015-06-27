@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// Defines methods for converting objects to another <see cref="System.Type"/>.
     /// </summary>
     /// <typeparam name="TOutput">The output <see cref="System.Type"/>.</typeparam>
-    public interface IObjectToTypeConverter<TOutput>
+    internal interface IObjectToTypeConverter<TOutput>
     {
         /// <summary>
         /// Try to convert the specified object to the output <see cref="System.Type"/>.

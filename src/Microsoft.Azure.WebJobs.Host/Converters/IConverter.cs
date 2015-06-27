@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// </summary>
     /// <typeparam name="TInput">The input value type.</typeparam>
     /// <typeparam name="TOutput">The output value type.</typeparam>
-    public interface IConverter<TInput, TOutput>
+    internal interface IConverter<TInput, TOutput>
     {
         /// <summary>
         /// Convert the specified input value.

@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             return await BindAsync(conversionResult.Result, context);
         }
 
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor<IStorageBlob> executor)
+        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
         {
             if (descriptor == null)
             {
@@ -218,11 +218,6 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 _sharedContextProvider, _log, descriptor.Id, _account, container, _path, executor);
 
             return listenerFactory;
-        }
-
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
-        {
-            return CreateListenerFactory(descriptor, (ITriggeredFunctionExecutor<IStorageBlob>)executor);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

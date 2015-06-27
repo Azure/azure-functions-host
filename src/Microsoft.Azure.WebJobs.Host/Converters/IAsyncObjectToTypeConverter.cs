@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// an object to a particular type.
     /// </summary>
     /// <typeparam name="TOutput">The type to convert to.</typeparam>
-    public interface IAsyncObjectToTypeConverter<TOutput>
+    internal interface IAsyncObjectToTypeConverter<TOutput>
     {
         /// <summary>
         /// Try to convert the specified input object.

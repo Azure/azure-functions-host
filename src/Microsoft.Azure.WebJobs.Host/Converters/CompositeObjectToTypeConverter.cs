@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// An object converter that encapsulates a set of inner converters.
     /// </summary>
     /// <typeparam name="T">The output <see cref="Type"/></typeparam>
-    public class CompositeObjectToTypeConverter<T> : IObjectToTypeConverter<T>
+    internal class CompositeObjectToTypeConverter<T> : IObjectToTypeConverter<T>
     {
         private readonly IEnumerable<IObjectToTypeConverter<T>> _converters;
 

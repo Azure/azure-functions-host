@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Host.Converters
     /// </summary>
     /// <typeparam name="TInput">The type to convert from.</typeparam>
     /// <typeparam name="TOutput">The type to convert to.</typeparam>
-    public class AsyncConverter<TInput, TOutput> : IAsyncConverter<TInput, TOutput>
+    internal class AsyncConverter<TInput, TOutput> : IAsyncConverter<TInput, TOutput>
     {
         private readonly IConverter<TInput, TOutput> _innerConverter;
 

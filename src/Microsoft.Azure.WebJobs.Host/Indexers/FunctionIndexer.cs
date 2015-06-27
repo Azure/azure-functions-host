@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         {
             ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(parameterName, triggerBinding, nonTriggerBindings);
             ITriggeredFunctionInstanceFactory<TTriggerValue> instanceFactory = new TriggeredFunctionInstanceFactory<TTriggerValue>(functionBinding, invoker, descriptor);
-            ITriggeredFunctionExecutor<TTriggerValue> triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
+            ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
             IListenerFactory listenerFactory = triggerBinding.CreateListenerFactory(descriptor, triggerExecutor);
 
             return new FunctionDefinition(instanceFactory, listenerFactory);

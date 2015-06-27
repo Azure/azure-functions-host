@@ -88,6 +88,45 @@
     <Compile Include="..\Common\CommonAssemblyInfo.cs">
       <Link>Properties\CommonAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\BindingDataProvider.cs">
+      <Link>Bindings\BindingDataProvider.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\IArgumentBinding.cs">
+      <Link>Bindings\IArgumentBinding.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\IBindingDataProvider.cs">
+      <Link>Bindings\IBindingDataProvider.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\AsyncConverter.cs">
+      <Link>Converters\AsyncConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\CompositeObjectToTypeConverter.cs">
+      <Link>Converters\CompositeObjectToTypeConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\ConversionResult.cs">
+      <Link>Converters\ConversionResult.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IAsyncConverter.cs">
+      <Link>Converters\IAsyncConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IAsyncObjectToTypeConverter.cs">
+      <Link>Converters\IAsyncObjectToTypeConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IConverter.cs">
+      <Link>Converters\IConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IdentityConverter.cs">
+      <Link>Converters\IdentityConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IObjectToTypeConverter.cs">
+      <Link>Converters\IObjectToTypeConverter.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\PropertyHelper.cs">
+      <Link>Bindings\PropertyHelper.cs</Link>
+    </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Triggers\ITriggerDataArgumentBinding.cs">
+      <Link>Triggers\ITriggerDataArgumentBinding.cs</Link>
+    </Compile>
     <Compile Include="Bindings\BindableServiceBusPath.cs" />
     <Compile Include="Bindings\BoundServiceBusPath.cs" />
     <Compile Include="Bindings\ByteArrayToBrokeredMessageConverter.cs" />
