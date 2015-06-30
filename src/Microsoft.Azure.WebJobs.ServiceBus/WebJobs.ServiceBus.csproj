@@ -91,9 +91,6 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\BindingDataProvider.cs">
       <Link>Bindings\BindingDataProvider.cs</Link>
     </Compile>
-    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\IArgumentBinding.cs">
-      <Link>Bindings\IArgumentBinding.cs</Link>
-    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Bindings\IBindingDataProvider.cs">
       <Link>Bindings\IBindingDataProvider.cs</Link>
     </Compile>

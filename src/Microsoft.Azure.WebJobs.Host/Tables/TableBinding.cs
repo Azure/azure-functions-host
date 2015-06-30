@@ -15,13 +15,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
     internal class TableBinding : IBinding
     {
         private readonly string _parameterName;
-        private readonly ITableArgumentBinding _argumentBinding;
+        private readonly IStorageTableArgumentBinding _argumentBinding;
         private readonly IStorageTableClient _client;
         private readonly string _accountName;
         private readonly IBindableTablePath _path;
         private readonly IObjectToTypeConverter<IStorageTable> _converter;
 
-        public TableBinding(string parameterName, ITableArgumentBinding argumentBinding, IStorageTableClient client, IBindableTablePath path)
+        public TableBinding(string parameterName, IStorageTableArgumentBinding argumentBinding, IStorageTableClient client, IBindableTablePath path)
         {
             _parameterName = parameterName;
             _argumentBinding = argumentBinding;

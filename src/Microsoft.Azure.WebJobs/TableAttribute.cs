@@ -75,16 +75,19 @@ namespace Microsoft.Azure.WebJobs
         }
 
         [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
-        private string DebuggerDisplay()
+        private string DebuggerDisplay
         {
-            if (_rowKey == null)
+            get
             {
-                return _tableName;
-            }
-            else
-            {
-                return String.Format(CultureInfo.InvariantCulture, "{0}(PK={1}, RK={2})",
-                    _tableName, _partitionKey, _rowKey);
+                if (_rowKey == null)
+                {
+                    return _tableName;
+                }
+                else
+                {
+                    return String.Format(CultureInfo.InvariantCulture, "{0}(PK={1}, RK={2})",
+                        _tableName, _partitionKey, _rowKey);
+                }
             }
         }
     }

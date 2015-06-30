@@ -5,8 +5,8 @@ using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal interface ITableArgumentBindingProvider
+    internal interface IStorageTableArgumentBindingProvider
     {
-        ITableArgumentBinding TryCreate(ParameterInfo parameter);
+        IStorageTableArgumentBinding TryCreate(ParameterInfo parameter);
     }
 }

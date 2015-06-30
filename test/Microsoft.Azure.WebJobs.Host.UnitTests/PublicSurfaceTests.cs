@@ -115,7 +115,10 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IQueueProcessorFactory",
                 "QueueProcessorFactoryContext",
                 "QueueProcessor",
-                "FunctionResult"
+                "FunctionResult",
+                "IArgumentBinding`1",
+                "IArgumentBindingProvider`1",
+                "ITableArgumentBinding"
             };
 
             AssertPublicTypes(expected, assembly);

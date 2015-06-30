@@ -39,13 +39,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Assert.Null(provider.TryCreate(_parameters[2]));
 
             // register the binding extensions
-            FooBarTableArgumentBindingExtensionProvider fooBarExtensionProvider = new FooBarTableArgumentBindingExtensionProvider();
-            BazTableArgumentBindingExtensionProvider bazExtensionProvider = new BazTableArgumentBindingExtensionProvider();
-            extensions.RegisterExtension<ITableArgumentBindingExtensionProvider>(fooBarExtensionProvider);
-            extensions.RegisterExtension<ITableArgumentBindingExtensionProvider>(bazExtensionProvider);
+            FooBarTableArgumentBindingProvider fooBarExtensionProvider = new FooBarTableArgumentBindingProvider();
+            BazTableArgumentBindingProvider bazExtensionProvider = new BazTableArgumentBindingProvider();
+            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(fooBarExtensionProvider);
+            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(bazExtensionProvider);
             provider = new TableArgumentBindingExtensionProvider(extensions);
 
-            ITableArgumentBinding binding = provider.TryCreate(_parameters[0]);
+            IStorageTableArgumentBinding binding = provider.TryCreate(_parameters[0]);
             Assert.Same(typeof(IFoo), binding.ValueType);
 
             binding = provider.TryCreate(_parameters[1]);
@@ -59,12 +59,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         public async Task TryCreate_ReturnsTableArgumentBindingExtensionWrapper()
         {
             DefaultExtensionRegistry extensions = new DefaultExtensionRegistry();
-            FooBarTableArgumentBindingExtensionProvider fooBarExtensionProvider = new FooBarTableArgumentBindingExtensionProvider();
-            extensions.RegisterExtension<ITableArgumentBindingExtensionProvider>(fooBarExtensionProvider);
+            FooBarTableArgumentBindingProvider fooBarExtensionProvider = new FooBarTableArgumentBindingProvider();
+            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(fooBarExtensionProvider);
 
             TableArgumentBindingExtensionProvider provider = new TableArgumentBindingExtensionProvider(extensions);
 
-            ITableArgumentBinding binding = provider.TryCreate(_parameters[0]);
+            IStorageTableArgumentBinding binding = provider.TryCreate(_parameters[0]);
             Assert.Equal(typeof(TableArgumentBindingExtensionProvider.TableArgumentBindingExtension), binding.GetType());
 
             Assert.Null(BoundTable);
@@ -91,9 +91,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
         {
         }
 
-        private class FooBarTableArgumentBindingExtensionProvider : ITableArgumentBindingExtensionProvider
+        private class FooBarTableArgumentBindingProvider : IArgumentBindingProvider<ITableArgumentBinding>
         {
-            public ITableArgumentBindingExtension TryCreate(ParameterInfo parameter)
+            public ITableArgumentBinding TryCreate(ParameterInfo parameter)
             {
                 if (parameter.ParameterType == typeof(IFoo) ||
                     parameter.ParameterType == typeof(IBar))
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
                 return null;
             }
 
-            internal class FooBarTableArgumentBinding : ITableArgumentBindingExtension
+            internal class FooBarTableArgumentBinding : ITableArgumentBinding
             {
                 private Type _valueType;
 
@@ -151,9 +151,9 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             }
         }
 
-        private class BazTableArgumentBindingExtensionProvider : ITableArgumentBindingExtensionProvider
+        private class BazTableArgumentBindingProvider : IArgumentBindingProvider<ITableArgumentBinding>
         {
-            public ITableArgumentBindingExtension TryCreate(ParameterInfo parameter)
+            public ITableArgumentBinding TryCreate(ParameterInfo parameter)
             {
                 if (parameter.ParameterType == typeof(IBaz))
                 {
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
                 return null;
             }
 
-            internal class BazTableArgumentBinding : ITableArgumentBindingExtension
+            internal class BazTableArgumentBinding : ITableArgumentBinding
             {
                 public FileAccess Access
                 {

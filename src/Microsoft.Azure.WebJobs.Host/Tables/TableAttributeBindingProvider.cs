@@ -14,8 +14,8 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
 {
     internal class TableAttributeBindingProvider : IBindingProvider
     {
-        private readonly ITableArgumentBindingProvider _tableProvider;
-        private readonly ITableEntityArgumentBindingProvider _entityProvider;
+        private readonly IStorageTableArgumentBindingProvider _tableBindingProvider;
+        private readonly ITableEntityArgumentBindingProvider _entityBindingProvider;
 
         private readonly INameResolver _nameResolver;
         private readonly IStorageAccountProvider _accountProvider;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             _nameResolver = nameResolver;
             _accountProvider = accountProvider;
 
-            _tableProvider = new CompositeArgumentBindingProvider(
+            _tableBindingProvider = new CompositeArgumentBindingProvider(
                 new StorageTableArgumentBindingProvider(),
                 new CloudTableArgumentBindingProvider(),
                 new QueryableArgumentBindingProvider(),
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 new AsyncCollectorArgumentBindingProvider(),
                 new TableArgumentBindingExtensionProvider(extensions));
 
-            _entityProvider =
+            _entityBindingProvider =
                 new CompositeEntityArgumentBindingProvider(
                 new TableEntityArgumentBindingProvider(),
                 new PocoEntityArgumentBindingProvider()); // Supports all types; must come after other providers
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTablePath path = BindableTablePath.Create(tableName);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                ITableArgumentBinding argumentBinding = _tableProvider.TryCreate(parameter);
+                IStorageTableArgumentBinding argumentBinding = _tableBindingProvider.TryCreate(parameter);
 
                 if (argumentBinding == null)
                 {
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
                 IBindableTableEntityPath path = BindableTableEntityPath.Create(tableName, partitionKey, rowKey);
                 path.ValidateContractCompatibility(context.BindingDataContract);
 
-                IArgumentBinding<TableEntityContext> argumentBinding = _entityProvider.TryCreate(parameter);
+                IArgumentBinding<TableEntityContext> argumentBinding = _entityBindingProvider.TryCreate(parameter);
 
                 if (argumentBinding == null)
                 {

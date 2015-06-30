@@ -6,20 +6,20 @@ using System.Reflection;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class CompositeArgumentBindingProvider : ITableArgumentBindingProvider
+    internal class CompositeArgumentBindingProvider : IStorageTableArgumentBindingProvider
     {
-        private readonly IEnumerable<ITableArgumentBindingProvider> _providers;
+        private readonly IEnumerable<IStorageTableArgumentBindingProvider> _providers;
 
-        public CompositeArgumentBindingProvider(params ITableArgumentBindingProvider[] providers)
+        public CompositeArgumentBindingProvider(params IStorageTableArgumentBindingProvider[] providers)
         {
             _providers = providers;
         }
 
-        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
+        public IStorageTableArgumentBinding TryCreate(ParameterInfo parameter)
         {
-            foreach (ITableArgumentBindingProvider provider in _providers)
+            foreach (IStorageTableArgumentBindingProvider provider in _providers)
             {
-                ITableArgumentBinding binding = provider.TryCreate(parameter);
+                IStorageTableArgumentBinding binding = provider.TryCreate(parameter);
 
                 if (binding != null)
                 {

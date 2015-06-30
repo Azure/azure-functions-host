@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
 
             // register our custom table binding extension provider
             DefaultExtensionRegistry extensions = new DefaultExtensionRegistry();
-            extensions.RegisterExtension<ITableArgumentBindingExtensionProvider>(new CustomTableArgumentBindingExtensionProvider());
+            extensions.RegisterExtension<IArgumentBindingProvider<ITableArgumentBinding>>(new CustomTableArgumentBindingProvider());
 
             // Act
             RunTrigger(account, typeof(CustomTableBindingExtensionProgram), extensions);
@@ -481,20 +481,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         /// <summary>
         /// Demonstrates an example binding extension provider for Tables
         /// </summary>
-        private class CustomTableArgumentBindingExtensionProvider : ITableArgumentBindingExtensionProvider
+        private class CustomTableArgumentBindingProvider : IArgumentBindingProvider<ITableArgumentBinding>
         {
-            public ITableArgumentBindingExtension TryCreate(ParameterInfo parameter)
+            public ITableArgumentBinding TryCreate(ParameterInfo parameter)
             {
-                if (!parameter.ParameterType.IsGenericType ||
+                // Determine whether the target is a Table paramter that we should bind to
+                TableAttribute tableAttribute = parameter.GetCustomAttribute<TableAttribute>(inherit: false);
+                if (tableAttribute == null ||
+                    !parameter.ParameterType.IsGenericType ||
                     (parameter.ParameterType.GetGenericTypeDefinition() != typeof(CustomTableBinding<>)))
                 {
                     return null;
                 }
 
+                // create the binding
                 Type elementType = GetItemType(parameter.ParameterType);
-                Type bindingType = typeof(CustomTableArgumentBinding<>).MakeGenericType(elementType);
+                Type bindingType = typeof(CustomTableBindingExtension<>).MakeGenericType(elementType);
 
-                return (ITableArgumentBindingExtension)Activator.CreateInstance(bindingType);
+                return (ITableArgumentBinding)Activator.CreateInstance(bindingType);
             }
 
             private static Type GetItemType(Type queryableType)
@@ -509,59 +513,52 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             /// <see cref="CustomTableBinding<TElement>"/>
             /// </summary>
             /// <typeparam name="TElement"></typeparam>
-            private class CustomTableArgumentBinding<TElement> : ITableArgumentBindingExtension
+            private class CustomTableBindingExtension<TElement> : ITableArgumentBinding
             {
                 public FileAccess Access
                 {
                     get { return FileAccess.ReadWrite; }
                 }
 
-                public Type ValueType
-                {
-                    get { return typeof(CustomTableBinding<TElement>); }
-                }
+                public Type ValueType { get { return typeof(CustomTableBinding<TElement>); } }
 
                 public Task<IValueProvider> BindAsync(CloudTable value, ValueBindingContext context)
                 {
-                    CustomTableBinding<TElement> tableBinding = new CustomTableBinding<TElement>(value);
-                    IValueProvider valueProvider = new CustomTableValueBinder<TElement>(tableBinding, ValueType, value.Name);
-
-                    return Task.FromResult(valueProvider);
-                }
-            }
-
-            private class CustomTableValueBinder<TElement> : IValueBinder
-            {
-                private CustomTableBinding<TElement> _value;
-                private Type _valueType;
-                private string _invokeString;
-
-                public CustomTableValueBinder(CustomTableBinding<TElement> value, Type valueType, string invokeString)
-                {
-                    _value = value;
-                    _valueType = valueType;
-                    _invokeString = invokeString;
+                    return Task.FromResult<IValueProvider>(new CustomTableValueBinder(value, ValueType));
                 }
 
-                public Type Type
+                private class CustomTableValueBinder : IValueBinder
                 {
-                    get { return _valueType; }
-                }
+                    private readonly CloudTable _table;
+                    private readonly Type _valueType;
 
-                public object GetValue()
-                {
-                    return _value;
-                }
+                    public CustomTableValueBinder(CloudTable table, Type valueType)
+                    {
+                        _table = table;
+                        _valueType = valueType;
+                    }
 
-                public Task SetValueAsync(object value, CancellationToken cancellationToken)
-                {
-                    // this is where any queued up storage operations can be flushed
-                    return _value.FlushAsync(cancellationToken);
-                }
+                    public Type Type
+                    {
+                        get { return typeof(CustomTableBinding<TElement>); }
+                    }
 
-                public string ToInvokeString()
-                {
-                    return _invokeString;
+                    public object GetValue()
+                    {
+                        return new CustomTableBinding<TElement>(_table);
+                    }
+
+                    public Task SetValueAsync(object value, CancellationToken cancellationToken)
+                    {
+                        // this is where any queued up storage operations can be flushed
+                        CustomTableBinding<TElement> tableBinding = value as CustomTableBinding<TElement>;
+                        return tableBinding.FlushAsync(cancellationToken);
+                    }
+
+                    public string ToInvokeString()
+                    {
+                        return _table.Name;
+                    }
                 }
             }
         }

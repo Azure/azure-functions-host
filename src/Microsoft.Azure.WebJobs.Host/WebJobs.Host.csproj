@@ -353,6 +353,7 @@
       <Link>Storage\Table\TypeEntityResolver.cs</Link>
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
+    <Compile Include="Bindings\IArgumentBindingProvider.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
     <Compile Include="ContextAccessor.cs" />
@@ -593,9 +594,10 @@
     <Compile Include="Queues\Triggers\StorageQueueMessageToCloudQueueMessageConverter.cs" />
     <Compile Include="Queues\Triggers\CloudQueueMessageToStorageQueueMessageConverter.cs" />
     <Compile Include="Tables\AsyncCollectorArgumentBindingProvider.cs" />
+    <Compile Include="Tables\ITableArgumentBinding.cs" />
+    <Compile Include="Tables\IStorageTableArgumentBindingProvider.cs" />
+    <Compile Include="Tables\ITableEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\TableArgumentBindingExtensionProvider.cs" />
-    <Compile Include="Tables\ITableArgumentBindingExtension.cs" />
-    <Compile Include="Tables\ITableArgumentBindingExtensionProvider.cs" />
     <Compile Include="Tables\StorageTableArgumentBindingProvider.cs" />
     <Compile Include="Tables\ConverterPropertyGetter.cs" />
     <Compile Include="Tables\ConverterPropertySetter.cs" />
@@ -640,7 +642,7 @@
     <Compile Include="Tables\CloudQueueToStorageQueueConverter.cs" />
     <Compile Include="Tables\CollectorArgumentBindingProvider.cs" />
     <Compile Include="Tables\EntityPropertyToTConverterFactory.cs" />
-    <Compile Include="Tables\ITableArgumentBinding.cs" />
+    <Compile Include="Tables\IStorageTableArgumentBinding.cs" />
     <Compile Include="Tables\PocoEntityValueBinder.cs" />
     <Compile Include="Tables\PocoEntityArgumentBinding.cs" />
     <Compile Include="Tables\PocoEntityCollectorBinder.cs" />
@@ -815,8 +817,6 @@
     <Compile Include="Tables\CloudTableArgumentBindingProvider.cs" />
     <Compile Include="Tables\CompositeEntityArgumentBindingProvider.cs" />
     <Compile Include="Tables\CompositeArgumentBindingProvider.cs" />
-    <Compile Include="Tables\ITableEntityArgumentBindingProvider.cs" />
-    <Compile Include="Tables\ITableArgumentBindingProvider.cs" />
     <Compile Include="Tables\TableEntityContext.cs" />
     <Compile Include="Tables\BindableTableEntityPath.cs" />
     <Compile Include="Tables\BoundTableEntityPath.cs" />

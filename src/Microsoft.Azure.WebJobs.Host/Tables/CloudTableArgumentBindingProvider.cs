@@ -11,9 +11,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class CloudTableArgumentBindingProvider : ITableArgumentBindingProvider
+    internal class CloudTableArgumentBindingProvider : IStorageTableArgumentBindingProvider
     {
-        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
+        public IStorageTableArgumentBinding TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(CloudTable))
             {
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return new CloudTableArgumentBinding();
         }
 
-        private class CloudTableArgumentBinding : ITableArgumentBinding
+        private class CloudTableArgumentBinding : IStorageTableArgumentBinding
         {
             public Type ValueType
             {

@@ -12,9 +12,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class QueryableArgumentBindingProvider : ITableArgumentBindingProvider
+    internal class QueryableArgumentBindingProvider : IStorageTableArgumentBindingProvider
     {
-        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
+        public IStorageTableArgumentBinding TryCreate(ParameterInfo parameter)
         {
             if (!parameter.ParameterType.IsGenericType || parameter.ParameterType.GetGenericTypeDefinition() != typeof(IQueryable<>))
             {
@@ -40,13 +40,13 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return itemType;
         }
 
-        private static ITableArgumentBinding CreateBinding(Type entityType)
+        private static IStorageTableArgumentBinding CreateBinding(Type entityType)
         {
             Type genericType = typeof(QueryableArgumentBinding<>).MakeGenericType(entityType);
-            return (ITableArgumentBinding)Activator.CreateInstance(genericType);
+            return (IStorageTableArgumentBinding)Activator.CreateInstance(genericType);
         }
 
-        private class QueryableArgumentBinding<TElement> : ITableArgumentBinding
+        private class QueryableArgumentBinding<TElement> : IStorageTableArgumentBinding
             where TElement : ITableEntity, new()
         {
             public Type ValueType

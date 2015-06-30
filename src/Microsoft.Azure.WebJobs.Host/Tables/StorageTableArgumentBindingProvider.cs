@@ -10,9 +10,9 @@ using Microsoft.Azure.WebJobs.Host.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Host.Tables
 {
-    internal class StorageTableArgumentBindingProvider : ITableArgumentBindingProvider
+    internal class StorageTableArgumentBindingProvider : IStorageTableArgumentBindingProvider
     {
-        public ITableArgumentBinding TryCreate(ParameterInfo parameter)
+        public IStorageTableArgumentBinding TryCreate(ParameterInfo parameter)
         {
             if (parameter.ParameterType != typeof(IStorageTable))
             {
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Tables
             return new StorageTableArgumentBinding();
         }
 
-        private class StorageTableArgumentBinding : ITableArgumentBinding
+        private class StorageTableArgumentBinding : IStorageTableArgumentBinding
         {
             public Type ValueType
             {
