@@ -22,8 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IDelayedException result;
 
-            ListenerFactoryContext context = new ListenerFactoryContext(cancellationToken);
-            using (IListener listener = await _abortListenerFactory.CreateAsync(context))
+            using (IListener listener = await _abortListenerFactory.CreateAsync(cancellationToken))
             {
                 await listener.StartAsync(cancellationToken);
 

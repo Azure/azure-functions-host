@@ -151,10 +151,17 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             return new TriggerData(triggerData.ValueProvider, bindingData);
         }
 
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
+        public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
-            return new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher, 
-                _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, executor);
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            var factory = new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher, 
+                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, context.Executor);
+
+            return factory.CreateAsync(context.CancellationToken);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

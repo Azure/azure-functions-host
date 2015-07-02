@@ -23,8 +23,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Listeners
             Mock<ITriggeredFunctionExecutor> mockExecutor = new Mock<ITriggeredFunctionExecutor>(MockBehavior.Strict);
             ServiceBusSubscriptionListenerFactory factory = new ServiceBusSubscriptionListenerFactory(account, "testtopic", "testsubscription", mockExecutor.Object, accessRights);
 
-            ListenerFactoryContext context = new ListenerFactoryContext(CancellationToken.None);
-            IListener listener = await factory.CreateAsync(context);
+            IListener listener = await factory.CreateAsync(CancellationToken.None);
             Assert.NotNull(listener);
         }
     }

@@ -8,8 +8,8 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     /// <summary>
     /// Defines a provider of argument bindings of the specified type.
     /// </summary>
-    /// <typeparam name="TBinding">The argument binding type.</typeparam>
-    public interface IArgumentBindingProvider<TBinding>
+    /// <typeparam name="TArgumentBinding">The argument binding type.</typeparam>
+    public interface IArgumentBindingProvider<TArgumentBinding>
     {
         /// <summary>
         /// Attempt to create an argument binding for the specified parameter.
@@ -17,6 +17,6 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         /// <param name="parameter">The property create a binding for.</param>
         /// <returns>A binding extension if this provider can bind to
         /// the parameter, false otherwise.</returns>
-        TBinding TryCreate(ParameterInfo parameter);
+        TArgumentBinding TryCreate(ParameterInfo parameter);
     }
 }

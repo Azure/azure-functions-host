@@ -35,14 +35,11 @@ namespace Microsoft.Azure.WebJobs.Host.Triggers
         Task<ITriggerData> BindAsync(object value, ValueBindingContext context);
 
         /// <summary>
-        /// Create an <see cref="IListenerFactory"/> for the trigger parameter.
+        /// Creates a <see cref="IListener"/> for the trigger parameter.
         /// </summary>
-        /// <param name="descriptor">The <see cref="FunctionDescriptor"/> of the function to create
-        /// a listener for.</param>
-        /// <param name="executor">The <see cref="ITriggeredFunctionExecutor"/> that should be used
-        /// to invoke the target job function when the trigger fires.</param>
-        /// <returns>The <see cref="IListenerFactory"/></returns>
-        IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor);
+        /// <param name="context">The <see cref="ListenerFactoryContext"/> to use.</param>
+        /// <returns>The <see cref="IListener"/>.</returns>
+        Task<IListener> CreateListenerAsync(ListenerFactoryContext context);
 
         /// <summary>
         /// Get a description of the binding.

@@ -118,6 +118,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\Converters\IObjectToTypeConverter.cs">
       <Link>Converters\IObjectToTypeConverter.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Host\Listeners\IListenerFactory.cs">
+      <Link>Listeners\IListenerFactory.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Host\PropertyHelper.cs">
       <Link>Bindings\PropertyHelper.cs</Link>
     </Compile>

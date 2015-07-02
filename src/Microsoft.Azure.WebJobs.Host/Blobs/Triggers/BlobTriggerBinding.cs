@@ -198,20 +198,20 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             return new TriggerData(valueProvider, bindingData);
         }
 
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
+        public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
-            if (descriptor == null)
+            if (context == null)
             {
-                throw new ArgumentNullException("descriptor");
+                throw new ArgumentNullException("context");
             }
 
             IStorageBlobContainer container = _client.GetContainerReference(_path.ContainerNamePattern);
 
-            IListenerFactory listenerFactory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
+            var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _log, descriptor.Id, _account, container, _path, executor);
+                _sharedContextProvider, _log, context.Descriptor.Id, _account, container, _path, context.Executor);
 
-            return listenerFactory;
+            return factory.CreateAsync(context.CancellationToken);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

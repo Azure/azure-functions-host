@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(parameterName, triggerBinding, nonTriggerBindings);
             ITriggeredFunctionInstanceFactory<TTriggerValue> instanceFactory = new TriggeredFunctionInstanceFactory<TTriggerValue>(functionBinding, invoker, descriptor);
             ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
-            IListenerFactory listenerFactory = triggerBinding.CreateListenerFactory(descriptor, triggerExecutor);
+            IListenerFactory listenerFactory = new ListenerFactory(descriptor, triggerExecutor, triggerBinding);
 
             return new FunctionDefinition(instanceFactory, listenerFactory);
         }
@@ -314,6 +314,26 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 ShortName = method.GetShortName(),
                 Parameters = parameters
             };
+        }
+
+        private class ListenerFactory : IListenerFactory
+        {
+            private readonly FunctionDescriptor _descriptor;
+            private readonly ITriggeredFunctionExecutor _executor;
+            private readonly ITriggerBinding _binding;
+
+            public ListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor, ITriggerBinding binding)
+            {
+                _descriptor = descriptor;
+                _executor = executor;
+                _binding = binding;
+            }
+
+            public Task<IListener> CreateAsync(CancellationToken cancellationToken)
+            {
+                ListenerFactoryContext context = new ListenerFactoryContext(_descriptor, _executor, cancellationToken);
+                return _binding.CreateListenerAsync(context);
+            }
         }
     }
 }

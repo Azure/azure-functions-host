@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 
 namespace Microsoft.Azure.WebJobs.Host.Listeners
@@ -18,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
             _functionDefinitions = functionDefinitions;
         }
 
-        public async Task<IListener> CreateAsync(ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
             List<IListener> listeners = new List<IListener>();
 
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
                     continue;
                 }
 
-                IListener listener = await listenerFactory.CreateAsync(context);
+                IListener listener = await listenerFactory.CreateAsync(cancellationToken);
                 listeners.Add(listener);
             }
 

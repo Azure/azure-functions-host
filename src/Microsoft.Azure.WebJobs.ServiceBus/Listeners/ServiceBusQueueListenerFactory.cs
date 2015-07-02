@@ -27,14 +27,14 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             _accessRights = accessRights;
         }
 
-        public async Task<IListener> CreateAsync(ListenerFactoryContext context)
+        public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
             if (_accessRights == AccessRights.Manage)
             {
                 // Must create all messaging entities before creating message receivers and calling OnMessage.
                 // Otherwise, some function could start to execute and try to output messages to entities that don't yet
                 // exist.
-                await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, context.CancellationToken);
+                await _namespaceManager.CreateQueueIfNotExistsAsync(_queueName, cancellationToken);
             }
 
             ServiceBusTriggerExecutor triggerExecutor = new ServiceBusTriggerExecutor(_executor);

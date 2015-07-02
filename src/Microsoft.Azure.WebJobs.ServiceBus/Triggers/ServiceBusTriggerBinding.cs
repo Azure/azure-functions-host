@@ -100,16 +100,23 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             return await _argumentBinding.BindAsync(message, context);
         }
 
-        public IListenerFactory CreateListenerFactory(FunctionDescriptor descriptor, ITriggeredFunctionExecutor executor)
+        public Task<IListener> CreateListenerAsync(ListenerFactoryContext context)
         {
+            if (context == null)
+            {
+                throw new ArgumentNullException("context");
+            }
+
+            IListenerFactory factory = null;
             if (_queueName != null)
             {
-                return new ServiceBusQueueListenerFactory(_account, _queueName, executor, _accessRights);
+                factory = new ServiceBusQueueListenerFactory(_account, _queueName, context.Executor, _accessRights);           
             }
             else
             {
-                return new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, executor, _accessRights);
+                factory = new ServiceBusSubscriptionListenerFactory(_account, _topicName, _subscriptionName, context.Executor, _accessRights);
             }
+            return factory.CreateAsync(context.CancellationToken);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

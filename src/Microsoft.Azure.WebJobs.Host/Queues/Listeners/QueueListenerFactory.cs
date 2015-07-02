@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _executor = executor;
         }
 
-        public Task<IListener> CreateAsync(ListenerFactoryContext context)
+        public Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_executor);
 

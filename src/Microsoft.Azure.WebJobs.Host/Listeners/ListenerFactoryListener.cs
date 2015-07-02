@@ -38,8 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Listeners
 
         private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            ListenerFactoryContext context = new ListenerFactoryContext(cancellationToken);
-            _listener = await _factory.CreateAsync(context);
+            _listener = await _factory.CreateAsync(cancellationToken);
             _cancellationRegistration = _cancellationSource.Token.Register(_listener.Cancel);
             await _listener.StartAsync(cancellationToken);
         }

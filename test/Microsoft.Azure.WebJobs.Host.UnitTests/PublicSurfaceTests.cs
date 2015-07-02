@@ -90,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IExtensionConfigProvider",
                 "IExtensionRegistry",
                 "IListener",
-                "IListenerFactory",
                 "IOrderedValueBinder",
                 "ITriggerBinding",
                 "ITriggerBindingProvider",
