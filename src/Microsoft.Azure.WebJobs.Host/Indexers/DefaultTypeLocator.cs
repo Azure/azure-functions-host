@@ -15,31 +15,47 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private static readonly string WebJobsAssemblyName = typeof(TableAttribute).Assembly.GetName().Name;
 
         private readonly TextWriter _log;
+        private readonly IExtensionRegistry _extensions;
 
-        public DefaultTypeLocator(TextWriter log)
+        public DefaultTypeLocator(TextWriter log, IExtensionRegistry extensions)
         {
             if (log == null)
             {
                 throw new ArgumentNullException("log");
             }
+            if (extensions == null)
+            {
+                throw new ArgumentNullException("extensions");
+            }
 
             _log = log;
+            _extensions = extensions;
         }
 
-        // Helper to filter out assemblies that don't even reference this SDK.
-        private static bool DoesAssemblyReferenceSdk(Assembly a)
+        // Helper to filter out assemblies that don't reference the SDK or
+        // binding extension assemblies (i.e. possible sources of binding attributes, etc.)
+        private static bool AssemblyReferencesSdkOrExtension(Assembly assembly, IEnumerable<Assembly> extensionAssemblies)
         {
             // Don't index methods in our assemblies.
-            if (typeof(DefaultTypeLocator).Assembly == a)
+            if (typeof(DefaultTypeLocator).Assembly == assembly)
             {
                 return false;
             }
 
-            AssemblyName[] referencedAssemblyNames = a.GetReferencedAssemblies();
+            AssemblyName[] referencedAssemblyNames = assembly.GetReferencedAssemblies();  
             foreach (var referencedAssemblyName in referencedAssemblyNames)
             {
                 if (String.Equals(referencedAssemblyName.Name, WebJobsAssemblyName, StringComparison.OrdinalIgnoreCase))
                 {
+                    // the assembly references our core SDK assembly
+                    // containing our built in attribute types
+                    return true;
+                }
+
+                if (extensionAssemblies.Any(p => string.Equals(referencedAssemblyName.Name, p.GetName().Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    // the assembly references an extension assembly that may
+                    // contain extension attributes
                     return true;
                 }
             }
@@ -52,10 +68,10 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             List<Type> allTypes = new List<Type>();
 
             var assemblies = GetUserAssemblies();
+            IEnumerable<Assembly> extensionAssemblies = _extensions.GetExtensionAssemblies();
             foreach (var assembly in assemblies)
             {
-                var assemblyTypes = FindTypes(assembly);
-
+                var assemblyTypes = FindTypes(assembly, extensionAssemblies);
                 if (assemblyTypes != null)
                 {
                     allTypes.AddRange(assemblyTypes.Where(IsJobClass));
@@ -87,11 +103,12 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return AppDomain.CurrentDomain.GetAssemblies();
         }
 
-        public Type[] FindTypes(Assembly a)
+        private Type[] FindTypes(Assembly assembly, IEnumerable<Assembly> extensionAssemblies)
         {
-            // Only try to index assemblies that reference this SDK.
-            // This avoids trying to index through a bunch of FX assemblies that reflection may not be able to load anyways.
-            if (!DoesAssemblyReferenceSdk(a))
+            // Only try to index assemblies that reference the core SDK assembly containing
+            // binding attributes (or any registered extension assemblies). This ensures we
+            // don't do more inspection work that is necessary during function indexing.
+            if (!AssemblyReferencesSdkOrExtension(assembly, extensionAssemblies))
             {
                 return null;
             }
@@ -100,12 +117,12 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             try
             {
-                types = a.GetTypes();
+                types = assembly.GetTypes();
             }
             catch (ReflectionTypeLoadException ex)
             {
                 // TODO: Log this somewhere?
-                _log.WriteLine("Warning: Only got partial types from assembly: {0}", a.FullName);
+                _log.WriteLine("Warning: Only got partial types from assembly: {0}", assembly.FullName);
                 _log.WriteLine("Exception message: {0}", ex.ToString());
 
                 // In case of a type load exception, at least get the types that did succeed in loading
@@ -114,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             catch (Exception ex)
             {
                 // TODO: Log this somewhere?
-                _log.WriteLine("Warning: Failed to get types from assembly: {0}", a.FullName);
+                _log.WriteLine("Warning: Failed to get types from assembly: {0}", assembly.FullName);
                 _log.WriteLine("Exception message: {0}", ex.ToString());
             }
 

@@ -4,6 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Bindings;
+using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Triggers;
 
 namespace Microsoft.Azure.WebJobs.Host
 {
@@ -12,6 +16,14 @@ namespace Microsoft.Azure.WebJobs.Host
     /// </summary>
     public static class IExtensionRegistryExtensions
     {
+        private static readonly Type[] ExtensionTypes = new Type[]
+            {
+                typeof(ITriggerBindingProvider), 
+                typeof(IBindingProvider), 
+                typeof(IExtensionConfigProvider), 
+                typeof(IArgumentBindingProvider<>)
+            };
+
         /// <summary>
         /// Registers the specified instance. 
         /// </summary>
@@ -42,6 +54,23 @@ namespace Microsoft.Azure.WebJobs.Host
             }
 
             return registry.GetExtensions(typeof(TExtension)).Cast<TExtension>();
+        }
+
+        /// <summary>
+        /// Returns the set of assemblies that have registered extensions.
+        /// </summary>
+        /// <param name="registry">The registry instance.</param>
+        /// <returns>The unique set of assemblies.</returns>
+        internal static IEnumerable<Assembly> GetExtensionAssemblies(this IExtensionRegistry registry)
+        {
+            HashSet<Assembly> assemblies = new HashSet<Assembly>();
+            foreach (Type extensionType in ExtensionTypes)
+            {
+                var currAssemblies = registry.GetExtensions(extensionType).Select(p => p.GetType().Assembly);
+                assemblies.UnionWith(currAssemblies);
+            }
+
+            return assemblies;
         }
     }
 }

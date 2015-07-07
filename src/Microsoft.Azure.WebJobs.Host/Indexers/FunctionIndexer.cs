@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly IBindingProvider _bindingProvider;
         private readonly IJobActivator _activator;
         private readonly IFunctionExecutor _executor;
-        private readonly HashSet<Assembly> _jobTypeAssemblies;
+        private readonly HashSet<Assembly> _jobAttributeAssemblies;
 
         public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions)
         {
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             _bindingProvider = bindingProvider;
             _activator = activator;
             _executor = executor;
-            _jobTypeAssemblies = new HashSet<Assembly>(GetJobTypeAssemblies(extensions, typeof(ITriggerBindingProvider), typeof(IBindingProvider)));
+            _jobAttributeAssemblies = GetJobAttributeAssemblies(extensions);
         }
 
         public async Task IndexTypeAsync(Type type, IFunctionIndexCollector index, CancellationToken cancellationToken)
@@ -95,25 +95,21 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return false;
         }
 
-        private static HashSet<Assembly> GetJobTypeAssemblies(IExtensionRegistry extensions, params Type[] extensionTypes)
+        private static HashSet<Assembly> GetJobAttributeAssemblies(IExtensionRegistry extensions)
         {
             // create a set containing our own core assemblies
             HashSet<Assembly> assemblies = new HashSet<Assembly>();
             assemblies.Add(typeof(BlobAttribute).Assembly);
        
             // add any extension assemblies
-            foreach (Type extensionType in extensionTypes)
-            {
-                var currAssemblies = extensions.GetExtensions(extensionType).Select(p => p.GetType().Assembly);
-                assemblies.UnionWith(currAssemblies);
-            }
+            assemblies.UnionWith(extensions.GetExtensionAssemblies());
 
             return assemblies;
         }
 
         private bool HasJobAttribute(CustomAttributeData attributeData)
         {
-            return _jobTypeAssemblies.Contains(attributeData.AttributeType.Assembly);
+            return _jobAttributeAssemblies.Contains(attributeData.AttributeType.Assembly);
         }
 
         public async Task IndexMethodAsync(MethodInfo method, IFunctionIndexCollector index, CancellationToken cancellationToken)

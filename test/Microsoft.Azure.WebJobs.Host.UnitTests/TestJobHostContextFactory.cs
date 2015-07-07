@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
-            ITypeLocator typeLocator = new DefaultTypeLocator(new StringWriter());
+            ITypeLocator typeLocator = new DefaultTypeLocator(new StringWriter(), new DefaultExtensionRegistry());
             INameResolver nameResolver = new RandomNameResolver();
             JobHostConfiguration config = new JobHostConfiguration
             {

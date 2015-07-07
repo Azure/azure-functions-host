@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs
         private string _serviceBusConnectionString;
 
         private string _hostId;
-        private ITypeLocator _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out);
+        private ITypeLocator _typeLocator;
         private INameResolver _nameResolver = new DefaultNameResolver();
         private IJobActivator _activator = DefaultJobActivator.Instance;
 
@@ -54,8 +54,11 @@ namespace Microsoft.Azure.WebJobs
         {
             _storageAccountProvider = storageAccountProvider;
 
+            IExtensionRegistry extensions = new DefaultExtensionRegistry();
+            _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
+
             // add our built in services here
-            AddService<IExtensionRegistry>(new DefaultExtensionRegistry());
+            AddService<IExtensionRegistry>(extensions);
         }
 
         /// <summary>Gets or sets the host ID.</summary>
