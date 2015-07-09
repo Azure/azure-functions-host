@@ -8,10 +8,14 @@
   </PropertyGroup>
   <Choose>
     <When Condition=" '$(IncludeBuildNumberInVersion)' == '1'">
-      <WebJobsPackageVersion>$(Version)$(PrereleaseTag)-$(BUILD_NUMBER)</WebJobsPackageVersion>
+      <PropertyGroup>
+        <WebJobsPackageVersion>$(Version)$(PrereleaseTag)-$(BUILD_NUMBER)</WebJobsPackageVersion>
+      </PropertyGroup>
     </When>
     <Otherwise>
-      <WebJobsPackageVersion>$(Version)$(PrereleaseTag)</WebJobsPackageVersion>
+      <PropertyGroup>
+        <WebJobsPackageVersion>$(Version)$(PrereleaseTag)</WebJobsPackageVersion>
+      </PropertyGroup>
     </Otherwise>
   </Choose>
 </Project>
