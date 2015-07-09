@@ -3,9 +3,15 @@
   <PropertyGroup>
     <WebJobsRootPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</WebJobsRootPath>
     <WebJobsToolsPath>$(MSBuildThisFileDirectory)</WebJobsToolsPath>
-    
     <WebJobsPackageEULA>http://www.microsoft.com/web/webpi/eula/aspnetcomponent_rtw_enu.htm</WebJobsPackageEULA>
-    <BUILD_NUMBER Condition=" '$(BUILD_NUMBER)' == '' ">local</BUILD_NUMBER>
-    <WebJobsPackageVersion>1.1.0-alpha1-$(BUILD_NUMBER)</WebJobsPackageVersion>
+    <Version>1.1.0</Version>
   </PropertyGroup>
+  <Choose>
+    <When Condition=" '$(IncludeBuildNumberInVersion)' == '1'">
+      <WebJobsPackageVersion>$(Version)$(PrereleaseTag)-$(BUILD_NUMBER)</WebJobsPackageVersion>
+    </When>
+    <Otherwise>
+      <WebJobsPackageVersion>$(Version)$(PrereleaseTag)</WebJobsPackageVersion>
+    </Otherwise>
+  </Choose>
 </Project>
