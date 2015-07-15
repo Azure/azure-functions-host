@@ -21,26 +21,27 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             }
 
             List<IStorageListBlobItem> allResults = new List<IStorageListBlobItem>();
-            BlobContinuationToken currentToken = null;
+            BlobContinuationToken continuationToken = null;
             IStorageBlobResultSegment result;
 
             do
             {
                 result = await container.ListBlobsSegmentedAsync(prefix: null, useFlatBlobListing: useFlatBlobListing,
-                    blobListingDetails: BlobListingDetails.None, maxResults: null, currentToken: currentToken,
+                    blobListingDetails: BlobListingDetails.None, maxResults: null, currentToken: continuationToken,
                     options: null, operationContext: null, cancellationToken: cancellationToken);
 
                 if (result != null)
                 {
                     IEnumerable<IStorageListBlobItem> currentResults = result.Results;
-
                     if (currentResults != null)
                     {
                         allResults.AddRange(currentResults);
                     }
+
+                    continuationToken = result.ContinuationToken;
                 }
             } 
-            while (result != null && result.ContinuationToken != null);
+            while (result != null && continuationToken != null);
 
             return allResults;
         }
