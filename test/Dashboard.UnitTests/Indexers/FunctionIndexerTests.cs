@@ -34,9 +34,9 @@ namespace Dashboard.UnitTests.Indexers
                 InstanceQueueName = "InstanceQueueName",
                 Reason = ExecutionReason.AutomaticTrigger,
                 ReasonDetails = "A trigger fired!",
-                Heartbeat = new HeartbeatDescriptor 
-                {   
-                    InstanceBlobName = "InstanceBlobName", 
+                Heartbeat = new HeartbeatDescriptor
+                {
+                    InstanceBlobName = "InstanceBlobName",
                     SharedContainerName = "SharedContainerName",
                     SharedDirectoryName = "SharedDirectoryName",
                     ExpirationInSeconds = 5
@@ -77,6 +77,31 @@ namespace Dashboard.UnitTests.Indexers
             Assert.Equal(message.WebJobRunIdentifier.JobType.ToString(), snapshot.WebJobType);
             Assert.Equal(message.WebJobRunIdentifier.JobName, snapshot.WebJobName);
             Assert.Equal(message.WebJobRunIdentifier.RunId, snapshot.WebJobRunId);
+        }
+
+        [Theory]
+        //test string with newline starting at char 19, which causes \r to remain in the final DisplayTitle string
+        [InlineData("XXXXXX\r\nXXXXXXXXX\r\nYYYYYYY", " (XXXXXXXXXXXXXXXYYY ...)")]
+        [InlineData("{\r\n  \"QRPoint\": {\r\n    \"X\": 0,\r\n    \"Y\": 0\r\n  },\r\n  \"TimesheetId\": 0,\r\n  \"HasReadableQrCode\": false,\r\n  \"HasSignature\": false,\r\n  \"BlobAddress\": \"https://myaccount.blob.core.windows.net/container/file.png\",\r\n  \"$AzureWebJobsParentId\": \"511f605d-14bf-46ca-b321-96b59d9e81d6\"\r\n}", " ({  \"QRPoint\": {    ...)")]
+        [InlineData("\r\n\r\n", " ()")]
+        [InlineData("", " ()")]
+        [InlineData("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", " (XXXXXXXXXXXXXXXXXX ...)")]
+        [InlineData("XXXXXX", " (XXXXXX)")]
+        public void FunctionInstanceSnapshot_BuildDisplayTitle_CompletelyRemovesLineBreaks(string argumentValue, string expectedDisplayTitle)
+        {
+            FunctionInstanceSnapshot message = new FunctionInstanceSnapshot
+            {
+                Arguments = new Dictionary<string, FunctionInstanceArgument> 
+                {
+                    { "message", new FunctionInstanceArgument() { Value = argumentValue } }
+                },
+            };
+
+            string displayTitle = message.DisplayTitle;
+
+            Assert.Equal(expectedDisplayTitle, displayTitle);
+            Assert.DoesNotContain("\r", displayTitle);
+            Assert.DoesNotContain("\n", displayTitle);        
         }
     }
 }
