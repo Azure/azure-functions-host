@@ -464,7 +464,7 @@
     <Compile Include="Loggers\IConsoleProvider.cs" />
     <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\IQueueProcessorFactory.cs" />
-    <Compile Include="Queues\Listeners\SingletonListener.cs" />
+    <Compile Include="Singleton\SingletonListener.cs" />
     <Compile Include="Queues\QueueProcessor.cs" />
     <Compile Include="Queues\DefaultQueueProcessorFactory.cs" />
     <Compile Include="Queues\QueueProcessorFactoryContext.cs" />
