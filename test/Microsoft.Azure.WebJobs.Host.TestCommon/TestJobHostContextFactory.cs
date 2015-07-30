@@ -21,6 +21,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
 
         public IStorageAccountProvider StorageAccountProvider { get; set; }
 
+        public SingletonManager SingletonManager { get; set; }
+
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
             ITypeLocator typeLocator = new DefaultTypeLocator(new StringWriter(), new DefaultExtensionRegistry());
@@ -34,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             return JobHostContextFactory.CreateAndLogHostStartedAsync(
                 StorageAccountProvider, Queues, typeLocator, DefaultJobActivator.Instance, nameResolver,
                 new NullConsoleProvider(), new JobHostConfiguration(), shutdownToken, cancellationToken,
-                functionIndexProvider: FunctionIndexProvider);
+                functionIndexProvider: FunctionIndexProvider, singletonManager: SingletonManager);
         }
     }
 }

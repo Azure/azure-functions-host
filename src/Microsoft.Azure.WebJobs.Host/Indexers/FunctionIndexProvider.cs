@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly IJobActivator _activator;
         private readonly IFunctionExecutor _executor;
         private readonly IExtensionRegistry _extensions;
+        private readonly SingletonManager _singletonManager;
 
         private IFunctionIndex _index;
 
@@ -28,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IBindingProvider bindingProvider,
             IJobActivator activator,
             IFunctionExecutor executor,
-            IExtensionRegistry extensions)
+            IExtensionRegistry extensions,
+            SingletonManager singletonManager)
         {
             if (typeLocator == null)
             {
@@ -60,12 +62,18 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 throw new ArgumentNullException("extensions");
             }
 
+            if (singletonManager == null)
+            {
+                throw new ArgumentNullException("singletonManager");
+            }
+
             _typeLocator = typeLocator;
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
             _activator = activator;
             _executor = executor;
             _extensions = extensions;
+            _singletonManager = singletonManager;
         }
 
         public async Task<IFunctionIndex> GetAsync(CancellationToken cancellationToken)
@@ -81,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private async Task<IFunctionIndex> CreateAsync(CancellationToken cancellationToken)
         {
             FunctionIndex index = new FunctionIndex();
-            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions);
+            FunctionIndexer indexer = new FunctionIndexer(_triggerBindingProvider, _bindingProvider, _activator, _executor, _extensions, _singletonManager);
             IReadOnlyList<Type> types = _typeLocator.GetTypes();
 
             foreach (Type type in types)

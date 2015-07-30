@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Moq;
 using Xunit;
@@ -37,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Indexers
                     new Mock<IBindingProvider>(MockBehavior.Strict).Object,
                     new Mock<IJobActivator>(MockBehavior.Strict).Object,
                     executorMock.Object,
-                    extensionsMock.Object);
+                    extensionsMock.Object,
+                    new SingletonManager());
 
                 Assert.Throws<FunctionIndexingException>(() => indexer.IndexMethodAsync(method, stubIndex, CancellationToken.None).GetAwaiter().GetResult());
             }

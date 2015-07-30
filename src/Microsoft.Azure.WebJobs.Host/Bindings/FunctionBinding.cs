@@ -3,25 +3,38 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
     internal class FunctionBinding : IFunctionBinding
     {
+        private readonly FunctionDescriptor _descriptor;
         private readonly IReadOnlyDictionary<string, IBinding> _bindings;
+        private readonly SingletonManager _singletonManager;
 
-        public FunctionBinding(IReadOnlyDictionary<string, IBinding> bindings)
+        public FunctionBinding(FunctionDescriptor descriptor, IReadOnlyDictionary<string, IBinding> bindings, SingletonManager singletonManager)
         {
+            _descriptor = descriptor;
             _bindings = bindings;
+            _singletonManager = singletonManager;
         }
 
         public async Task<IReadOnlyDictionary<string, IValueProvider>> BindAsync(ValueBindingContext context, IDictionary<string, object> parameters)
         {
             Dictionary<string, IValueProvider> results = new Dictionary<string, IValueProvider>();
-            IReadOnlyDictionary<string, object> bindingData = null;
 
-            BindingContext bindingContext = new BindingContext(context, bindingData);
+            BindingContext bindingContext = new BindingContext(context, null);
+
+            // bind Singleton if specified
+            SingletonAttribute singletonAttribute = _descriptor.Method.GetCustomAttribute<SingletonAttribute>();
+            if (singletonAttribute != null)
+            {
+                IValueProvider singletonValueProvider = new SingletonValueProvider(_descriptor.Method, singletonAttribute.Scope, context.FunctionInstanceId.ToString(), singletonAttribute, _singletonManager);
+                results.Add(SingletonValueProvider.SingletonParameterName, singletonValueProvider);
+            }
 
             foreach (KeyValuePair<string, IBinding> item in _bindings)
             {

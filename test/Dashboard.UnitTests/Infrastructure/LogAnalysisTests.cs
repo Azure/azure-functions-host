@@ -3,6 +3,7 @@
 
 using System;
 using System.Globalization;
+using System.Text;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Protocols;
 using Xunit;
@@ -182,6 +183,52 @@ namespace Dashboard.UnitTests.Infrastructure
             string result = LogAnalysis.Format(log);
 
             Assert.Null(result);
+        }
+
+        [Fact]
+        public void Format_SingletonParameterLog()
+        {
+            SingletonParameterLog log = new SingletonParameterLog
+            {
+                LockAcquired = false
+            };
+            StringBuilder expected = new StringBuilder();
+            expected.AppendLine("Waiting for lock...");
+            Assert.Equal(expected.ToString(), LogAnalysis.Format(log));
+
+            log = new SingletonParameterLog
+            {
+                LockAcquired = false,
+                TimeToAcquireLock = TimeSpan.FromSeconds(4),
+                LockOwner = "8F4DA397-4EF4-428E-9043-FC240376165E"
+            };
+            expected = new StringBuilder();
+            expected.AppendLine("Waiting for lock...");
+            expected.AppendLine("Lock Owner: 8F4DA397-4EF4-428E-9043-FC240376165E.");
+            expected.AppendLine("Wait time: About 4 seconds.");
+            Assert.Equal(expected.ToString(), LogAnalysis.Format(log));
+
+            log = new SingletonParameterLog
+            {
+                LockAcquired = true,
+                TimeToAcquireLock = TimeSpan.FromSeconds(4)
+            };
+            expected = new StringBuilder();
+            expected.AppendLine("Lock acquired.");
+            expected.AppendLine("Wait time: About 4 seconds.");
+            Assert.Equal(expected.ToString(), LogAnalysis.Format(log));
+
+            log = new SingletonParameterLog
+            {
+                LockAcquired = true,
+                TimeToAcquireLock = TimeSpan.FromSeconds(4),
+                LockDuration = TimeSpan.FromSeconds(2)
+            };
+            expected = new StringBuilder();
+            expected.AppendLine("Lock acquired.");
+            expected.AppendLine("Wait time: About 4 seconds.");
+            expected.AppendLine("Lock duration: About 2 seconds.");
+            Assert.Equal(expected.ToString(), LogAnalysis.Format(log));
         }
     }
 }

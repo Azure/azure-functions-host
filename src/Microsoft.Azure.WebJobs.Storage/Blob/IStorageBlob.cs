@@ -80,6 +80,17 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         Task ReleaseLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken);
 
+        /// <summary>Renews the lease on the blob.</summary>
+        /// <param name="accessCondition">
+        /// The condition containing the current lease ID that must be met for the request to succeed.
+        /// </param>
+        /// <param name="options">The options for the request.</param>
+        /// <param name="operationContext">The operation context for the request.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task that will renew the lease on the blob.</returns>
+        Task RenewLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken);
+
         /// <summary>Updates the blob's metadata.</summary>
         /// <param name="accessCondition">The condition that must be met for the request to succeed.</param>
         /// <param name="options">The options for the request.</param>

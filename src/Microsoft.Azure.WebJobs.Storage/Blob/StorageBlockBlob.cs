@@ -131,6 +131,13 @@ namespace Microsoft.Azure.WebJobs.Host.Storage.Blob
         }
 
         /// <inheritdoc />
+        public Task RenewLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            return _sdk.RenewLeaseAsync(accessCondition, options, operationContext, cancellationToken);
+        } 
+
+        /// <inheritdoc />
         public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken)
         {

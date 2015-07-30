@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Reflection;
+using Newtonsoft.Json;
 
 #if PUBLICPROTOCOL
 namespace Microsoft.Azure.WebJobs.Protocols
@@ -27,5 +29,11 @@ namespace Microsoft.Azure.WebJobs.Host.Protocols
 
         /// <summary>Gets or sets the function's parameters.</summary>
         public IEnumerable<ParameterDescriptor> Parameters { get; set; }
+
+        /// <summary>
+        /// Gets the <see cref="MethodInfo"/> for this function
+        /// </summary>
+        [JsonIgnore]
+        internal MethodInfo Method { get; set; }
     }
 }

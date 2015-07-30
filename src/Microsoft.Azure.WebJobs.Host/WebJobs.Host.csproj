@@ -187,6 +187,9 @@
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\ParameterDescriptor.cs">
       <Link>Protocols\ParameterDescriptor.cs</Link>
     </Compile>
+    <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\SingletonParameterLog.cs">
+      <Link>Protocols\SingletonParameterLog.cs</Link>
+    </Compile>
     <Compile Include="..\Microsoft.Azure.WebJobs.Protocols\TriggerParameterDescriptor.cs">
       <Link>Protocols\TriggerParameterDescriptor.cs</Link>
     </Compile>
@@ -461,9 +464,14 @@
     <Compile Include="Loggers\IConsoleProvider.cs" />
     <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\IQueueProcessorFactory.cs" />
+    <Compile Include="Queues\Listeners\SingletonListener.cs" />
     <Compile Include="Queues\QueueProcessor.cs" />
     <Compile Include="Queues\DefaultQueueProcessorFactory.cs" />
     <Compile Include="Queues\QueueProcessorFactoryContext.cs" />
+    <Compile Include="Singleton\SingletonConfiguration.cs" />
+    <Compile Include="Singleton\SingletonLock.cs" />
+    <Compile Include="Singleton\SingletonManager.cs" />
+    <Compile Include="Singleton\SingletonValueProvider.cs" />
     <Compile Include="StructPropertySetter.cs" />
     <Compile Include="StructPropertyAccessorFactory.cs" />
     <Compile Include="ClassPropertyAccessorFactory.cs" />

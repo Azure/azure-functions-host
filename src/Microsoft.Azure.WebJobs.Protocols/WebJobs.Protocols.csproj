@@ -54,6 +54,7 @@
     <Compile Include="JTokenExtensions.cs" />
     <Compile Include="ParameterDisplayHints.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SingletonParameterLog.cs" />
     <Compile Include="TriggerParameterDescriptor.cs" />
     <Compile Include="WriteBlobParameterLog.cs" />
     <Compile Include="ReadBlobParameterLog.cs" />

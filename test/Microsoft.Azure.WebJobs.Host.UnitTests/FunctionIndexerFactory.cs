@@ -11,10 +11,12 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.WindowsAzure.Storage;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
@@ -53,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 extensionRegistry = new DefaultExtensionRegistry();
             }
 
-            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry);
+            return new FunctionIndexer(triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, extensionRegistry, new SingletonManager());
         }
     }
 }

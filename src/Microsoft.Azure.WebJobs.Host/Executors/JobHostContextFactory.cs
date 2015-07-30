@@ -66,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IHostInstanceLoggerProvider hostInstanceLogerProvider = null,
             IFunctionInstanceLoggerProvider functionInstanceLoggerProvider = null,
             IFunctionOutputLoggerProvider functionOutputLoggerProvider = null,
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher = null,
+            SingletonManager singletonManager = null)
         {
             if (hostIdProvider == null)
             {
@@ -103,6 +104,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
 
+            if (singletonManager == null)
+            {
+                IStorageAccount storageAccount = await storageAccountProvider.GetStorageAccountAsync(cancellationToken);
+                singletonManager = new SingletonManager(storageAccount.CreateBlobClient(), backgroundExceptionDispatcher, config.Singleton);
+            }
+            
             using (CancellationTokenSource combinedCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, shutdownToken))
             {
                 CancellationToken combinedCancellationToken = combinedCancellationSource.Token;
@@ -148,11 +155,11 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (functionIndexProvider == null)
                 {
-                    functionIndexProvider = new FunctionIndexProvider(typeLocator, triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions);
+                    functionIndexProvider = new FunctionIndexProvider(typeLocator, triggerBindingProvider, bindingProvider, activator, functionExecutor, extensions, singletonManager);
                 }
 
                 IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
-                IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll());
+                IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll(), singletonManager);
 
                 TextWriter consoleOut = consoleProvider.Out;
                 IFunctionExecutor hostCallExecutor;

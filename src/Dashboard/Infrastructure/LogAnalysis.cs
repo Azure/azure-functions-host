@@ -216,34 +216,68 @@ namespace Dashboard
         internal static string Format(ParameterLog log)
         {
             ReadBlobParameterLog readBlobLog = log as ReadBlobParameterLog;
-
             if (readBlobLog != null)
             {
                 return Format(readBlobLog);
             }
 
             WriteBlobParameterLog writeBlobLog = log as WriteBlobParameterLog;
-
             if (writeBlobLog != null)
             {
                 return Format(writeBlobLog);
             }
 
             TableParameterLog tableLog = log as TableParameterLog;
-
             if (tableLog != null)
             {
                 return Format(tableLog);
             }
 
-            TextParameterLog textLog = log as TextParameterLog;
+            SingletonParameterLog singletonLog = log as SingletonParameterLog;
+            if (singletonLog != null)
+            {
+                return Format(singletonLog);
+            }
 
+            TextParameterLog textLog = log as TextParameterLog;
             if (textLog != null)
             {
                 return textLog.Value;
             }
 
             return null;
+        }
+
+        private static string Format(SingletonParameterLog log)
+        {
+            Debug.Assert(log != null);
+            StringBuilder builder = new StringBuilder();
+
+            if (log.LockAcquired)
+            {
+                builder.AppendLine("Lock acquired."); 
+            }
+            else
+            {
+                builder.AppendLine("Waiting for lock...");
+            }
+
+            if (log.LockOwner != null)
+            {
+                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "Lock Owner: {0}.", log.LockOwner));
+            }
+
+            if (log.TimeToAcquireLock != null)
+            {
+                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "Wait time: {0}.", Format(log.TimeToAcquireLock.Value)));
+            }
+
+            if (log.LockDuration != null)
+            {
+                builder.AppendLine(string.Format(CultureInfo.InvariantCulture, "Lock duration: {0}.", Format(log.LockDuration.Value)));
+            }
+
+            return builder.ToString();
         }
 
         private static string Format(ReadBlobParameterLog log)

@@ -484,7 +484,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             {
                 ContextFactory = new TestJobHostContextFactory
                 {
-                    StorageAccountProvider = storageAccountProvider
+                    StorageAccountProvider = storageAccountProvider,
+                    SingletonManager = new SingletonManager()
                 }
             };
         }

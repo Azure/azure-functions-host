@@ -143,6 +143,10 @@
     <Compile Include="Protocols\ProtocolSerializationTests.cs" />
     <Compile Include="Queues\QueueListenerTests.cs" />
     <Compile Include="Queues\QueueProcessorFactoryContextTests.cs" />
+    <Compile Include="Singleton\SingletonListenerTests.cs" />
+    <Compile Include="Singleton\SingletonLockTests.cs" />
+    <Compile Include="Singleton\SingletonManagerTests.cs" />
+    <Compile Include="Singleton\SingletonValueProviderTests.cs" />
     <Compile Include="StructPropertySetterTests.cs" />
     <Compile Include="StructPropertyGetterTests.cs" />
     <Compile Include="Converters\CultureInfoContext.cs" />

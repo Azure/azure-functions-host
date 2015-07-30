@@ -16,5 +16,7 @@ namespace Microsoft.Azure.WebJobs.Host
         public const string Ids = "ids";
 
         public const string OutputLogs = "output-logs";
+
+        public const string SingletonLocks = "locks";
     }
 }

@@ -135,8 +135,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 using (ValueProviderDisposable.Create(parameters))
                 {
-                    startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters,
-                        cancellationToken);
+                    startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
 
                     try
                     {
@@ -168,6 +167,13 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (exceptionInfo != null)
                 {
+                    // release any held singleton lock immediately
+                    SingletonLock singleton = null;
+                    if (TryGetSingletonLock(parameters, out singleton) && singleton.IsHeld)
+                    {
+                        await singleton.ReleaseAsync(cancellationToken);
+                    }
+
                     exceptionInfo.Throw();
                 }
 
@@ -230,11 +236,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         {
             IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
-            IRecurrentCommand updateParameterLogCommand =
-                outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
+            IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
 
-            using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand,
-                _backgroundExceptionDispatcher))
+            using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand, _backgroundExceptionDispatcher))
             {
                 try
                 {
@@ -289,16 +293,21 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 delayedBindingException.Throw();
             }
 
+            // if the function is a Singleton, aquire the lock
+            SingletonLock singleton = null;
+            if (TryGetSingletonLock(parameters, out singleton))
+            {
+                await singleton.AcquireAsync(cancellationToken);
+            }
+
             // Cancellation token is provide by invokeParameters (if the method binds to CancellationToken).
             await invoker.InvokeAsync(invokeParameters);
 
             // Process any out parameters and persist any pending values.
-
             // Ensure IValueBinder.SetValue is called in BindOrder. This ordering is particularly important for
             // ensuring queue outputs occur last. That way, all other function side-effects are guaranteed to have
             // occurred by the time messages are enqueued.
             string[] parameterNamesInBindOrder = SortParameterNamesInStepOrder(parameters);
-
             foreach (string name in parameterNamesInBindOrder)
             {
                 IValueProvider provider = parameters[name];
@@ -325,6 +334,24 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     }
                 }
             }
+
+            if (singleton != null)
+            {
+                await singleton.ReleaseAsync(cancellationToken);
+            }
+        }
+
+        private static bool TryGetSingletonLock(IReadOnlyDictionary<string, IValueProvider> parameters, out SingletonLock singleton)
+        {
+            IValueProvider singletonValueProvider = null;
+            singleton = null;
+            if (parameters.TryGetValue(SingletonValueProvider.SingletonParameterName, out singletonValueProvider))
+            {
+                singleton = (SingletonLock)singletonValueProvider.GetValue();
+                return true;
+            }
+
+            return false;
         }
 
         private static object[] PrepareParameters(IReadOnlyList<string> parameterNames,

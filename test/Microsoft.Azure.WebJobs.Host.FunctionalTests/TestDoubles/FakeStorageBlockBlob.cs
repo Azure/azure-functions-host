@@ -155,6 +155,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             return Task.FromResult(0);
         }
 
+        public Task RenewLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(0);
+        }
+
         public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken)
         {

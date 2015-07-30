@@ -63,6 +63,7 @@
     <Compile Include="ICollector.cs" />
     <Compile Include="QueueAttribute.cs" />
     <Compile Include="QueueTriggerAttribute.cs" />
+    <Compile Include="SingletonAttribute.cs" />
     <Compile Include="TableAttribute.cs" />
     <Compile Include="NoAutomaticTriggerAttribute.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

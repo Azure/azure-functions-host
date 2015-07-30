@@ -27,8 +27,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
         private readonly IJobActivator _activator;
         private readonly IFunctionExecutor _executor;
         private readonly HashSet<Assembly> _jobAttributeAssemblies;
+        private readonly SingletonManager _singletonManager;
 
-        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions)
+        public FunctionIndexer(ITriggerBindingProvider triggerBindingProvider, IBindingProvider bindingProvider, IJobActivator activator, IFunctionExecutor executor, IExtensionRegistry extensions, SingletonManager singletonManager)
         {
             if (triggerBindingProvider == null)
             {
@@ -55,10 +56,16 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
                 throw new ArgumentNullException("extensions");
             }
 
+            if (singletonManager == null)
+            {
+                throw new ArgumentNullException("singletonManager");
+            }
+
             _triggerBindingProvider = triggerBindingProvider;
             _bindingProvider = bindingProvider;
             _activator = activator;
             _executor = executor;
+            _singletonManager = singletonManager;
             _jobAttributeAssemblies = GetJobAttributeAssemblies(extensions);
         }
 
@@ -246,42 +253,42 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
 
             if (triggerBinding != null)
             {
-                functionDefinition = CreateTriggeredFunctionDefinition(triggerBinding, triggerParameterName, _executor, functionDescriptor, nonTriggerBindings, invoker);
+                functionDefinition = CreateTriggeredFunctionDefinition(triggerBinding, triggerParameterName, _executor, functionDescriptor, nonTriggerBindings, invoker, _singletonManager);
 
                 if (hasNoAutomaticTriggerAttribute && functionDefinition != null)
                 {
-                    functionDefinition = new FunctionDefinition(functionDefinition.InstanceFactory, listenerFactory: null);
+                    functionDefinition = new FunctionDefinition(functionDescriptor, functionDefinition.InstanceFactory, listenerFactory: null);
                 }
             }
             else
             {
-                IFunctionInstanceFactory instanceFactory = new FunctionInstanceFactory(new FunctionBinding(nonTriggerBindings), invoker, functionDescriptor);
-                functionDefinition = new FunctionDefinition(instanceFactory, listenerFactory: null);
+                IFunctionInstanceFactory instanceFactory = new FunctionInstanceFactory(new FunctionBinding(functionDescriptor, nonTriggerBindings, _singletonManager), invoker, functionDescriptor);
+                functionDefinition = new FunctionDefinition(functionDescriptor, instanceFactory, listenerFactory: null);
             }
 
             index.Add(functionDefinition, functionDescriptor, method);
         }
 
         private static FunctionDefinition CreateTriggeredFunctionDefinition(ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, 
-            FunctionDescriptor descriptor, IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker)
+            FunctionDescriptor descriptor, IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
         {
             Type triggerValueType = triggerBinding.TriggerValueType;
             MethodInfo createTriggeredFunctionDefinitionMethodInfo = typeof(FunctionIndexer).GetMethod("CreateTriggeredFunctionDefinitionImpl", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(triggerValueType);
-            FunctionDefinition functionDefinition = (FunctionDefinition)createTriggeredFunctionDefinitionMethodInfo.Invoke(null, new object[] { triggerBinding, parameterName, executor, descriptor, nonTriggerBindings, invoker });
+            FunctionDefinition functionDefinition = (FunctionDefinition)createTriggeredFunctionDefinitionMethodInfo.Invoke(null, new object[] { triggerBinding, parameterName, executor, descriptor, nonTriggerBindings, invoker, singletonManager });
 
             return functionDefinition;
         }
 
         private static FunctionDefinition CreateTriggeredFunctionDefinitionImpl<TTriggerValue>(
             ITriggerBinding triggerBinding, string parameterName, IFunctionExecutor executor, FunctionDescriptor descriptor,
-            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker)
+            IReadOnlyDictionary<string, IBinding> nonTriggerBindings, IFunctionInvoker invoker, SingletonManager singletonManager)
         {
-            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(parameterName, triggerBinding, nonTriggerBindings);
+            ITriggeredFunctionBinding<TTriggerValue> functionBinding = new TriggeredFunctionBinding<TTriggerValue>(descriptor, parameterName, triggerBinding, nonTriggerBindings, singletonManager);
             ITriggeredFunctionInstanceFactory<TTriggerValue> instanceFactory = new TriggeredFunctionInstanceFactory<TTriggerValue>(functionBinding, invoker, descriptor);
             ITriggeredFunctionExecutor triggerExecutor = new TriggeredFunctionExecutor<TTriggerValue>(descriptor, executor, instanceFactory);
             IListenerFactory listenerFactory = new ListenerFactory(descriptor, triggerExecutor, triggerBinding);
 
-            return new FunctionDefinition(instanceFactory, listenerFactory);
+            return new FunctionDefinition(descriptor, instanceFactory, listenerFactory);
         }
 
         private static FunctionDescriptor CreateFunctionDescriptor(MethodInfo method, string triggerParameterName,
@@ -306,6 +313,7 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             return new FunctionDescriptor
             {
                 Id = method.GetFullName(),
+                Method = method,
                 FullName = method.GetFullName(),
                 ShortName = method.GetShortName(),
                 Parameters = parameters

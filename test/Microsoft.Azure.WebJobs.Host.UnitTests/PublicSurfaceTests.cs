@@ -58,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "NoAutomaticTriggerAttribute",
                 "QueueAttribute",
                 "QueueTriggerAttribute",
-                "TableAttribute"
+                "TableAttribute",
+                "SingletonAttribute"
             };
 
             AssertPublicTypes(expected, assembly);
@@ -117,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "FunctionResult",
                 "IArgumentBinding`1",
                 "IArgumentBindingProvider`1",
-                "ITableArgumentBinding"
+                "ITableArgumentBinding",
+                "SingletonConfiguration"
             };
 
             AssertPublicTypes(expected, assembly);

@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs
 
             IExtensionRegistry extensions = new DefaultExtensionRegistry();
             _typeLocator = new DefaultTypeLocator(ConsoleProvider.Out, extensions);
+            Singleton = new SingletonConfiguration();
 
             // add our built in services here
             AddService<IExtensionRegistry>(extensions);
@@ -186,6 +187,15 @@ namespace Microsoft.Azure.WebJobs
         public JobHostQueuesConfiguration Queues
         {
             get { return _queueConfiguration; }
+        }
+
+        /// <summary>
+        /// Gets the configuration used by <see cref="SingletonAttribute"/>.
+        /// </summary>
+        public SingletonConfiguration Singleton
+        {
+            get;
+            private set;
         }
 
         private IJobHostContextFactory ContextFactory

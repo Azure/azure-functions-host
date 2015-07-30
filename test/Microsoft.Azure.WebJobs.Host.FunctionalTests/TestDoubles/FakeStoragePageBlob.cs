@@ -104,6 +104,12 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests.TestDoubles
             throw new NotImplementedException();
         }
 
+        public Task RenewLeaseAsync(AccessCondition accessCondition, BlobRequestOptions options,
+            OperationContext operationContext, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task SetMetadataAsync(AccessCondition accessCondition, BlobRequestOptions options,
             OperationContext operationContext, CancellationToken cancellationToken)
         {

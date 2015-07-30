@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
     {
         public IStorageAccountProvider StorageAccountProvider { get; set; }
 
+        public SingletonManager SingletonManager { get; set; }
+
         public Task<JobHostContext> CreateAndLogHostStartedAsync(CancellationToken shutdownToken, CancellationToken cancellationToken)
         {
             ITypeLocator typeLocator = new DefaultTypeLocator(new StringWriter(), new DefaultExtensionRegistry());
@@ -33,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 new NullConsoleProvider(), new JobHostConfiguration(), shutdownToken, cancellationToken,
                 new FixedHostIdProvider(Guid.NewGuid().ToString("N")),
                 null, new EmptyFunctionIndexProvider(),
-                null, new NullHostInstanceLoggerProvider(), new NullFunctionInstanceLoggerProvider(), new NullFunctionOutputLoggerProvider());
+                null, new NullHostInstanceLoggerProvider(), new NullFunctionInstanceLoggerProvider(), new NullFunctionOutputLoggerProvider(), null, SingletonManager);
         }
 
         public class NullFunctionExecutor : IFunctionExecutor

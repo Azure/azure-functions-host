@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -52,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
             IExtensionRegistry extensions = new DefaultExtensionRegistry();
 
+            SingletonManager singletonManager = new SingletonManager();
+
             IFunctionOutputLoggerProvider outputLoggerProvider = new NullFunctionOutputLoggerProvider();
             var task = outputLoggerProvider.GetAsync(CancellationToken.None);
             task.Wait();
@@ -66,13 +70,14 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
 
-            var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry());
+            var functionIndexProvider = new FunctionIndexProvider(new FakeTypeLocator(typeof(TProgram)), triggerBindingProvider, bindingProvider, DefaultJobActivator.Instance, executor, new DefaultExtensionRegistry(), singletonManager);
 
             IJobHostContextFactory contextFactory = new TestJobHostContextFactory
             {
                 FunctionIndexProvider = functionIndexProvider,
                 StorageAccountProvider = storageAccountProvider,
-                Queues = queueConfiguration
+                Queues = queueConfiguration,
+                SingletonManager = singletonManager
             };
 
             IServiceProvider serviceProvider = new TestJobHostConfiguration
