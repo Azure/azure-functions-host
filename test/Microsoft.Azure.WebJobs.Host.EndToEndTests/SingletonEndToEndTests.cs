@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 WorkItem workItem = new WorkItem
                 {
                     ID = i + 1,
-                    Region = "West",
+                    Region = "Central",
                     Zone = zone,
                     Category = 3,
                     Description = "Test Work Item " + i
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 JObject workItem = new JObject
                 {
                     { "ID", i + 1 },
-                    { "Region", "West" },
+                    { "Region", "Central" },
                     { "Zone", zone },
                     { "Category", 3 },
                     { "Description", "Test Work Item " + i }
@@ -162,9 +162,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             Assert.False(TestJobs.FailureDetected);
             Assert.Equal(numMessages, TestJobs.JobInvocations[1]);
 
-            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "West/1", LeaseState.Available, LeaseStatus.Unlocked);
-            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "West/2", LeaseState.Available, LeaseStatus.Unlocked);
-            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "West/3", LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "Central/1", LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "Central/2", LeaseState.Available, LeaseStatus.Unlocked);
+            VerifyLeaseState(typeof(TestJobs).GetMethod("SingletonTriggerJob"), "Central/3", LeaseState.Available, LeaseStatus.Unlocked);
 
             host.Stop();
             host.Dispose();
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             WorkItem workItem = new WorkItem
             {
                 ID = 1,
-                Region = "West",
+                Region = "Central",
                 Zone = 3,
                 Category = -1,
                 Description = "Test Work Item"
