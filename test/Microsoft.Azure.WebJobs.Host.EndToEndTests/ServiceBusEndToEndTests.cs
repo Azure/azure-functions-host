@@ -123,9 +123,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private void ServiceBusEndToEndInternal(Type jobContainerType, bool verifyLogs = true)
         {
             StringWriter consoleOutput = null;
+            TextWriter hold = null;
             if (verifyLogs)
             {
                 consoleOutput = new StringWriter();
+                hold = Console.Out;
                 Console.SetOut(consoleOutput);
             }
 
@@ -162,6 +164,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             if (verifyLogs)
             {
+                Console.SetOut(hold);
+
                 string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                 string[] expectedOutputLines = new string[]
                 {

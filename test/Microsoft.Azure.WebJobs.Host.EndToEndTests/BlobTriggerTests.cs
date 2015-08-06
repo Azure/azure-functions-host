@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         [Fact]
         public void BlobGetsProcessedOnlyOnce_SingleHost()
         {
+            TextWriter hold = Console.Out;
             StringWriter consoleOutput = new StringWriter();
             Console.SetOut(consoleOutput);
 
@@ -85,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 timeToProcess = (int)(DateTime.Now - startTime).TotalMilliseconds;
 
                 host.Stop();
+
+                Console.SetOut(hold);
 
                 string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
                 string[] expectedOutputLines = new string[]
