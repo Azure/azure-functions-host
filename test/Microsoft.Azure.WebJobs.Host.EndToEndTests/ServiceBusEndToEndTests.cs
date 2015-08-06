@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.ServiceBus;
 using Microsoft.ServiceBus;
@@ -42,11 +43,11 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
-        public void ServiceBusEndToEnd()
+        public async Task ServiceBusEndToEnd()
         {
             try
             {
-                ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs));
+                await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs));
             }
             finally
             {
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [Fact]
-        public void ServiceBusEndToEnd_RestrictedAccess()
+        public async Task ServiceBusEndToEnd_RestrictedAccess()
         {
             try
             {
@@ -64,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 MessagingEntityNotFoundException expectedException = null;
                 try
                 {
-                    ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess));
+                    await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess));
                 }
                 catch (MessagingEntityNotFoundException e)
                 {
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 _namespaceManager.CreateSubscription(topicName, subscription2);
 
                 // Test should now succeed
-                ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess), verifyLogs: false);
+                await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs_RestrictedAccess), verifyLogs: false);
             }
             finally
             {
@@ -120,7 +121,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
-        private void ServiceBusEndToEndInternal(Type jobContainerType, bool verifyLogs = true)
+        private async Task ServiceBusEndToEndInternal(Type jobContainerType, bool verifyLogs = true)
         {
             StringWriter consoleOutput = null;
             TextWriter hold = null;
@@ -150,14 +151,17 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             _topicSubscriptionCalled1 = new ManualResetEvent(initialState: false);
             _topicSubscriptionCalled2 = new ManualResetEvent(initialState: false);
 
-            _host.Start();
+            await _host.StartAsync();
 
             int timeout = 1 * 60 * 1000;
             _topicSubscriptionCalled1.WaitOne(timeout);
             _topicSubscriptionCalled2.WaitOne(timeout);
 
+            // ensure all logs have had a chance to flush
+            await Task.Delay(3000);
+
             // Wait for the host to terminate
-            _host.Stop();
+            await _host.StopAsync();
 
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
@@ -166,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             {
                 Console.SetOut(hold);
 
-                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None).OrderBy(p => p).ToArray();
                 string[] expectedOutputLines = new string[]
                 {
                     "Found the following functions:",
@@ -184,8 +188,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     string.Format("Executing: '{0}.SBTopicListener2' - Reason: 'New ServiceBus message detected on '{1}'.'", jobContainerType.Name, secondTopicName),
                     string.Format("Executed: '{0}.SBTopicListener2' (Succeeded)", jobContainerType.Name),
                     "Job host stopped"
-                };
-                Assert.True(expectedOutputLines.OrderBy(p => p).SequenceEqual(consoleOutputLines.OrderBy(p => p)));
+                }.OrderBy(p => p).ToArray();
+
+                Assert.Equal(expectedOutputLines.Length, consoleOutputLines.Length);
+                for (int i = 0; i < expectedOutputLines.Length; i++)
+                {
+                    Assert.Equal(expectedOutputLines[i], consoleOutputLines[i]);
+                }
             }
         }
 

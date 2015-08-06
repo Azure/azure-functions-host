@@ -101,6 +101,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 _functionCompletedEvent.WaitOne();
 
+                // ensure all logs have had a chance to flush
+                await Task.Delay(3000);
+
                 await host.StopAsync();
 
                 Assert.Equal(14, trace.Traces.Count);
@@ -204,6 +207,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
             _functionCompletedEvent.WaitOne();
 
+            // ensure all logs have had a chance to flush
+            await Task.Delay(3000);
+
             // Stop async waits for the function to complete
             await host.StopAsync();
 
@@ -213,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             string firstQueueName = _resolver.ResolveInString(Queue1Name);
             string secondQueueName = _resolver.ResolveInString(Queue2Name);
             string blobContainerName = _resolver.ResolveInString(ContainerName);
-            string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None).OrderBy(p => p).ToArray();
             string[] expectedOutputLines = new string[]
                 {
                     "Found the following functions:",
@@ -234,8 +240,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Job host stopped",
                     "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
                     "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
-                };
-            Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));
+                }.OrderBy(p => p).ToArray();
+
+            Assert.Equal(expectedOutputLines.Length, consoleOutputLines.Length);
+            for (int i = 0; i < expectedOutputLines.Length; i++)
+            {
+                Assert.Equal(expectedOutputLines[i], consoleOutputLines[i]);
+            }
 
             Console.SetOut(hold);
         }
