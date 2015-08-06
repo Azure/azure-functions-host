@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             _traceWriter.Info("Test Information", source: "TestSource");  // don't expect this to be logged
             _traceWriter.Warning("Test Warning", source: "TestSource");
-            _traceWriter.Error("Test Error", null, source: "TestSource");
+            _traceWriter.Error("Test Error", source: "TestSource");
             _traceWriter.Error("Test Error With Exception", ex, source: "TestSource");
 
             _mockTextWriter.VerifyAll();

@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             // don't expect these to be logged to text writer (based on level filter)
             _traceWriter.Warning("Test Warning");
-            _traceWriter.Error("Test Error", null);
+            _traceWriter.Error("Test Error");
             _traceWriter.Error("Test Error With Exception", ex);
 
             // don't expect these to be logged to text writer (based on source filter)

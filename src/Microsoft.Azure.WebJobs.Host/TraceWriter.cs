@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Host
         /// <param name="message">The trace message.</param>
         /// <param name="ex">The optional <see cref="Exception"/> for the error.</param>
         /// <param name="source">The source of the message.</param>
-        public void Error(string message, Exception ex, string source = null)
+        public void Error(string message, Exception ex = null, string source = null)
         {
             Trace(TraceLevel.Error, source, message, ex);
         }
