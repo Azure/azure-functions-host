@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Moq;
@@ -33,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
             _mockTriggerExecutor = new Mock<ITriggerExecutor<IStorageQueueMessage>>(MockBehavior.Strict);
             Mock<IDelayStrategy> mockDelayStrategy = new Mock<IDelayStrategy>(MockBehavior.Strict);
             Mock<IBackgroundExceptionDispatcher> mockExceptionDispatcher = new Mock<IBackgroundExceptionDispatcher>(MockBehavior.Strict);
-            TextWriter log = new StringWriter();
+            TestTraceWriter log = new TestTraceWriter(TraceLevel.Verbose);
             Mock<IQueueProcessorFactory> mockQueueProcessorFactory = new Mock<IQueueProcessorFactory>(MockBehavior.Strict);
             JobHostQueuesConfiguration queuesConfig = new JobHostQueuesConfiguration();
             QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queuesConfig);
@@ -57,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
         public void CreateQueueProcessor_CreatesProcessorCorrectly()
         {
             CloudQueue poisonQueue = null;
-            TextWriter log = new StringWriter();
+            TestTraceWriter log = new TestTraceWriter(TraceLevel.Verbose);
             bool poisonMessageHandlerInvoked = false;
             EventHandler poisonMessageEventHandler = (sender, e) => { poisonMessageHandlerInvoked = true; };
             Mock<IQueueProcessorFactory> mockQueueProcessorFactory = new Mock<IQueueProcessorFactory>(MockBehavior.Strict);
@@ -86,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Queues
                     Assert.Same(queue, mockProcessorContext.Queue);
                     Assert.Same(poisonQueue, mockProcessorContext.PoisonQueue);
                     Assert.Equal(queueConfig.MaxDequeueCount, mockProcessorContext.MaxDequeueCount);
-                    Assert.Same(log, mockProcessorContext.Log);
+                    Assert.Same(log, mockProcessorContext.Trace);
 
                     processorFactoryContext = mockProcessorContext;
                 })

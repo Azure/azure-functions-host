@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Bindings.Cancellation;
-using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.WebJobs.Host.Bindings.Data;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
 using Microsoft.Azure.WebJobs.Host.Bindings.StorageAccount;
@@ -41,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             innerProviders.Add(new CloudStorageAccountBindingProvider(storageAccountProvider));
             innerProviders.Add(new CancellationTokenBindingProvider());
 
-            // The console output binder below will handle all remaining TextWriter parameters. It must come after the
+            // The TraceWriter binder handles all remaining TraceWriter/TextWriter parameters. It must come after the
             // Blob binding provider; otherwise bindings like Do([Blob("a/b")] TextWriter blob) wouldn't work.
-            innerProviders.Add(new ConsoleOutputBindingProvider());
+            innerProviders.Add(new TraceWriterBindingProvider());
 
             ContextAccessor<IBindingProvider> bindingProviderAccessor = new ContextAccessor<IBindingProvider>();
             innerProviders.Add(new RuntimeBindingProvider(bindingProviderAccessor));

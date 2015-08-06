@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
 
         public QueueTriggerAttributeBindingProvider(INameResolver nameResolver,
             IStorageAccountProvider accountProvider,
@@ -39,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TextWriter log)
+            TraceWriter trace)
         {
             if (accountProvider == null)
             {
@@ -66,9 +65,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             _nameResolver = nameResolver;
@@ -77,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
-            _log = log;
+            _trace = trace;
         }
 
         public async Task<ITriggerBinding> TryCreateAsync(TriggerBindingProviderContext context)
@@ -107,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
 
             ITriggerBinding binding = new QueueTriggerBinding(parameter.Name, queue, argumentBinding,
                 _queueConfiguration, _backgroundExceptionDispatcher, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _log);
+                _sharedContextProvider, _trace);
             return binding;
         }
 

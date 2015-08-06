@@ -3,7 +3,6 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -23,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly ITriggeredFunctionExecutor _executor;
 
         public QueueListenerFactory(IStorageQueue queue,
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TextWriter log,
+            TraceWriter trace,
             ITriggeredFunctionExecutor executor)
         {
             if (queue == null)
@@ -59,9 +58,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             if (executor == null)
@@ -75,10 +74,11 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
-            _log = log;
+            _trace = trace;
             _executor = executor;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
             QueueTriggerExecutor triggerExecutor = new QueueTriggerExecutor(_executor);
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 new SharedQueueWatcherFactory(_messageEnqueuedWatcherSetter));
 
             IListener listener = new QueueListener(_queue, _poisonQueue, triggerExecutor, delayStrategy,
-                _backgroundExceptionDispatcher, _log, sharedWatcher, _queueConfiguration);
+                _backgroundExceptionDispatcher, _trace, sharedWatcher, _queueConfiguration);
 
             return Task.FromResult(listener);
         }

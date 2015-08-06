@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs
 {
@@ -197,6 +198,18 @@ namespace Microsoft.Azure.WebJobs
             get;
             private set;
         }
+
+        /// <summary>
+        /// Gets or sets the <see cref="TraceWriter"/> that the <see cref="JobHost"/> will
+        /// trace logs to. 
+        /// <remarks>
+        /// When set, in addition to the default Dashboard/Console logging
+        /// that is done, those logs will also be routed through this <see cref="TraceWriter"/>.
+        /// This would allow you to intercept the logs that are written to the Dashboard/Console,
+        /// so you can persist/inspect as needed.
+        /// </remarks>
+        /// </summary>
+        public TraceWriter Trace { get; set; }
 
         private IJobHostContextFactory ContextFactory
         {

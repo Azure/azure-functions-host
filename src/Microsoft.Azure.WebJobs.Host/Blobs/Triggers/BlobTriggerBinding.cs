@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly IAsyncObjectToTypeConverter<IStorageBlob> _converter;
         private readonly IReadOnlyDictionary<string, Type> _bindingDataContract;
 
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TextWriter log)
+            TraceWriter trace)
         {
             if (argumentBinding == null)
             {
@@ -95,9 +95,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             _parameterName = parameterName;
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
-            _log = log;
+            _trace = trace;
             _converter = CreateConverter(_client);
             _bindingDataContract = CreateBindingDataContract(path);
         }
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
                 throw new InvalidOperationException("Unable to convert trigger to IStorageBlob.");
             }
 
-            IValueProvider valueProvider = await _argumentBinding.BindAsync(conversionResult.Result, context);
+            Host.Bindings.IValueProvider valueProvider = await _argumentBinding.BindAsync(conversionResult.Result, context);
             IReadOnlyDictionary<string, object> bindingData = CreateBindingData(conversionResult.Result);
 
             return new TriggerData(valueProvider, bindingData);
@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Triggers
 
             var factory = new BlobListenerFactory(_hostIdProvider, _queueConfiguration,
                 _backgroundExceptionDispatcher, _blobWrittenWatcherSetter, _messageEnqueuedWatcherSetter,
-                _sharedContextProvider, _log, context.Descriptor.Id, _account, container, _path, context.Executor);
+                _sharedContextProvider, _trace, context.Descriptor.Id, _account, container, _path, context.Executor);
 
             return factory.CreateAsync(context.CancellationToken);
         }

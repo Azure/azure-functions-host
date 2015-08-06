@@ -1,10 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
-using System.IO;
-using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Blobs;
 using Microsoft.Azure.WebJobs.Host.Blobs.Triggers;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -28,15 +25,15 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             ISharedContextProvider sharedContextProvider,
             IExtensionRegistry extensions,
-            TextWriter log)
+            TraceWriter trace)
         {
             List<ITriggerBindingProvider> innerProviders = new List<ITriggerBindingProvider>();
             innerProviders.Add(new QueueTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherSetter,
-                sharedContextProvider, log));
+                sharedContextProvider, trace));
             innerProviders.Add(new BlobTriggerAttributeBindingProvider(nameResolver, storageAccountProvider,
                 extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
-                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, log));
+                blobWrittenWatcherSetter, messageEnqueuedWatcherSetter, sharedContextProvider, trace));
 
             // add any registered extension binding providers
             foreach (ITriggerBindingProvider provider in extensions.GetExtensions(typeof(ITriggerBindingProvider)))

@@ -3,11 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.Azure.WebJobs.Host.Timers;
@@ -19,20 +17,20 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
     {
         private readonly IReadOnlyDictionary<string, IWatcher> _watches;
         private readonly IStorageBlockBlob _parameterLogBlob;
-        private readonly TextWriter _consoleOutput;
+        private readonly TraceWriter _trace;
 
         private string _lastContent;
 
         public UpdateParameterLogCommand(IReadOnlyDictionary<string, IWatcher> watches,
-            IStorageBlockBlob parameterLogBlob, TextWriter consoleOutput)
+            IStorageBlockBlob parameterLogBlob, TraceWriter trace)
         {
             if (parameterLogBlob == null)
             {
                 throw new ArgumentNullException("parameterLogBlob");
             }
-            else if (consoleOutput == null)
+            else if (trace == null)
             {
-                throw new ArgumentNullException("consoleOutput");
+                throw new ArgumentNullException("trace");
             }
             else if (watches == null)
             {
@@ -40,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             }
 
             _parameterLogBlob = parameterLogBlob;
-            _consoleOutput = consoleOutput;
+            _trace = trace;
             _watches = watches;
         }
 
@@ -92,10 +90,8 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             catch (Exception e)
             {
                 // Not fatal if we can't update parameter status. 
-                // But at least log what happened for diagnostics in case it's an infrastructure bug.                 
-                _consoleOutput.WriteLine("---- Parameter status update failed ---");
-                _consoleOutput.WriteLine(e.ToDetails());
-                _consoleOutput.WriteLine("-------------------------");
+                // But at least log what happened for diagnostics in case it's an infrastructure bug.
+                _trace.Error("---- Parameter status update failed ----", e, TraceSource.Execution);
                 return false;
             }
         }

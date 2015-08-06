@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -35,11 +36,12 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor =
                 new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
+            TestTraceWriter logger = new TestTraceWriter(TraceLevel.Verbose);
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator,
                 new FixedHostIdProvider("test"), new SimpleQueueConfiguration(maxDequeueCount: 5),
                 BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                sharedContextProvider, new DefaultExtensionRegistry(), TextWriter.Null);
+                sharedContextProvider, new DefaultExtensionRegistry(), logger);
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, new DefaultExtensionRegistry());
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
             var task = outputLoggerProvider.GetAsync(CancellationToken.None);
             task.Wait();
             IFunctionOutputLogger outputLogger = task.Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance);
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, new TestTraceWriter(TraceLevel.Verbose));
 
             if (extensionRegistry == null)
             {

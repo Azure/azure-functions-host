@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.WindowsAzure.Storage;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
+using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Host.TestCommon
 {
@@ -60,12 +61,12 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
             var task = outputLoggerProvider.GetAsync(CancellationToken.None);
             task.Wait();
             IFunctionOutputLogger outputLogger = task.Result;
-            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance);
+            IFunctionExecutor executor = new FunctionExecutor(new NullFunctionInstanceLogger(), outputLogger, BackgroundExceptionDispatcher.Instance, new TestTraceWriter(TraceLevel.Verbose));
 
             var triggerBindingProvider = DefaultTriggerBindingProvider.Create(
                     nameResolver, storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration,
                     BackgroundExceptionDispatcher.Instance, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor,
-                    sharedContextProvider, extensions, TextWriter.Null);
+                    sharedContextProvider, extensions, new TestTraceWriter(TraceLevel.Verbose));
 
             var bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator,
                         messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);

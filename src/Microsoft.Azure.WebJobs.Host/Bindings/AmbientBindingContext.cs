@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -34,9 +33,9 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
             get { return _functionContext.FunctionCancellationToken; }
         }
 
-        public TextWriter ConsoleOutput
+        public TraceWriter Trace
         {
-            get { return _functionContext.ConsoleOutput; }
+            get { return _functionContext.Trace; }
         }
 
         public IReadOnlyDictionary<string, object> BindingData

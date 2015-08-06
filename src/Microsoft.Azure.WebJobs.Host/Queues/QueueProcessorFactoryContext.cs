@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Microsoft.Azure.WebJobs.Host.Queues
@@ -17,33 +16,33 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// Constructs a new instance
         /// </summary>
         /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
-        /// <param name="log">The log to write to.</param>
+        /// <param name="trace">The <see cref="TraceWriter"/> to write to.</param>
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
-        public QueueProcessorFactoryContext(CloudQueue queue, TextWriter log, CloudQueue poisonQueue = null)         
+        public QueueProcessorFactoryContext(CloudQueue queue, TraceWriter trace, CloudQueue poisonQueue = null)         
         {
             if (queue == null)
             {
                 throw new ArgumentNullException("queue");
             }
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             Queue = queue;
             PoisonQueue = poisonQueue;
-            Log = log;
+            Trace = trace;
         }
 
         /// <summary>
         /// Constructs a new instance
         /// </summary>
         /// <param name="queue">The <see cref="CloudQueue"/> the <see cref="QueueProcessor"/> will operate on.</param>
-        /// <param name="log">The log to write to.</param>
+        /// <param name="trace">The <see cref="TraceWriter"/> to write to.</param>
         /// <param name="queueConfiguration">The queue configuration.</param>
         /// <param name="poisonQueue">The queue to move messages to when unable to process a message after the maximum dequeue count has been exceeded. May be null.</param>
-        internal QueueProcessorFactoryContext(CloudQueue queue, TextWriter log, IQueueConfiguration queueConfiguration, CloudQueue poisonQueue = null)
-            : this(queue, log, poisonQueue)
+        internal QueueProcessorFactoryContext(CloudQueue queue, TraceWriter trace, IQueueConfiguration queueConfiguration, CloudQueue poisonQueue = null)
+            : this(queue, trace, poisonQueue)
         {
             BatchSize = queueConfiguration.BatchSize;
             MaxDequeueCount = queueConfiguration.MaxDequeueCount;
@@ -64,9 +63,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         public CloudQueue PoisonQueue { get; private set; }
 
         /// <summary>
-        /// Gets or sets the log writer.
+        /// Gets or sets the <see cref="TraceWriter"/>.
         /// </summary>
-        public TextWriter Log { get; private set; }
+        public TraceWriter Trace { get; private set; }
 
         /// <summary>
         /// Gets or sets the number of queue messages to retrieve and process in parallel (per job method).

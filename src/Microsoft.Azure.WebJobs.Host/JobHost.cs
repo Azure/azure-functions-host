@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
@@ -118,7 +119,7 @@ namespace Microsoft.Azure.WebJobs
             await EnsureHostStartedAsync(cancellationToken);
 
             await _listener.StartAsync(cancellationToken);
-            _context.Log.WriteLine("Job host started");
+            _context.Trace.Info("Job host started", Host.TraceSource.Host);
 
             _state = StateStarted;
         }
@@ -159,7 +160,7 @@ namespace Microsoft.Azure.WebJobs
         {
             await _listener.StopAsync(cancellationToken);
 
-            _context.Log.WriteLine("Job host stopped");
+            _context.Trace.Info("Job host stopped", Host.TraceSource.Host);
         }
 
         /// <summary>Runs the host and blocks the current thread while the host remains running.</summary>

@@ -102,6 +102,7 @@
     <Compile Include="NullHostInstanceLoggerProvider.cs" />
     <Compile Include="TestHelpers.cs" />
     <Compile Include="TestJobHostContextFactory.cs" />
+    <Compile Include="TestTraceWriter.cs" />
     <Compile Include="WebJobsShutdownContext.cs" />
     <Compile Include="ExceptionAssert.cs" />
     <Compile Include="TaskExtensions.cs" />

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -232,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider,
                 queueConfiguration, backgroundExceptionDispatcher, messageEnqueuedWatcherAccessor,
-                blobWrittenWatcherAccessor, sharedContextProvider, extensions, TextWriter.Null);
+                blobWrittenWatcherAccessor, sharedContextProvider, extensions, new TestTraceWriter(TraceLevel.Verbose));
             IBindingProvider bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider,
                 extensionTypeLocator, messageEnqueuedWatcherAccessor,
                 blobWrittenWatcherAccessor, extensions);
@@ -242,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
             Task<IFunctionOutputLogger> task = functionOutputLoggerProvider.GetAsync(CancellationToken.None);
             task.Wait();
             IFunctionOutputLogger functionOutputLogger = task.Result;
-            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher);
+            FunctionExecutor executor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, new TestTraceWriter(TraceLevel.Verbose));
 
             Task<IStorageAccount> storageAccountTask = storageAccountProvider.GetStorageAccountAsync(CancellationToken.None);
             storageAccountTask.Wait();

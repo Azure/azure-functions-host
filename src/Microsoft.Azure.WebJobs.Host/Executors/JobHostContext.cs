@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 
@@ -13,27 +12,27 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionExecutor _executor;
         private readonly IListener _listener;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
 
         private bool _disposed;
 
         public JobHostContext(IFunctionIndexLookup functionLookup,
             IFunctionExecutor executor,
             IListener listener,
-            TextWriter log)
+            TraceWriter trace)
         {
             _functionLookup = functionLookup;
             _executor = executor;
             _listener = listener;
-            _log = log;
+            _trace = trace;
         }
 
-        public TextWriter Log
+        public TraceWriter Trace
         {
             get
             {
                 ThrowIfDisposed();
-                return _log;
+                return _trace;
             }
         }
 

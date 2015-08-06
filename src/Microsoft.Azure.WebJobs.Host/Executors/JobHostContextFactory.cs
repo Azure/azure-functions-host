@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -22,6 +24,7 @@ using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Host.Triggers;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
@@ -83,6 +86,10 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             ContextAccessor<IBlobWrittenWatcher> blobWrittenWatcherAccessor = new ContextAccessor<IBlobWrittenWatcher>();
             ISharedContextProvider sharedContextProvider = new SharedContextProvider();
 
+            // Create the a wrapper TraceWriter that delegates to both the user 
+            // TraceWriter specified on Config (if present), as well as to Console
+            TraceWriter trace = new ConsoleTraceWriter(config.Trace, consoleProvider.Out);
+
             // Register system services with the service container
             config.AddService<INameResolver>(nameResolver);
 
@@ -95,14 +102,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             IExtensionRegistry extensions = config.GetExtensions();
             ITriggerBindingProvider triggerBindingProvider = DefaultTriggerBindingProvider.Create(nameResolver,
                 storageAccountProvider, extensionTypeLocator, hostIdProvider, queueConfiguration, backgroundExceptionDispatcher,
-                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, consoleProvider.Out);
+                messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, sharedContextProvider, extensions, trace);
 
             if (bindingProvider == null)
             {
                 bindingProvider = DefaultBindingProvider.Create(nameResolver, storageAccountProvider, extensionTypeLocator, messageEnqueuedWatcherAccessor, blobWrittenWatcherAccessor, extensions);
             }
 
-            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(storageAccountProvider);
+            DefaultLoggerProvider loggerProvider = new DefaultLoggerProvider(storageAccountProvider, trace);
 
             if (singletonManager == null)
             {
@@ -150,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (functionExecutor == null)
                 {
-                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher);
+                    functionExecutor = new FunctionExecutor(functionInstanceLogger, functionOutputLogger, backgroundExceptionDispatcher, trace);
                 }
 
                 if (functionIndexProvider == null)
@@ -161,7 +168,6 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 IFunctionIndex functions = await functionIndexProvider.GetAsync(combinedCancellationToken);
                 IListenerFactory functionsListenerFactory = new HostListenerFactory(functions.ReadAll(), singletonManager);
 
-                TextWriter consoleOut = consoleProvider.Out;
                 IFunctionExecutor hostCallExecutor;
                 IListener listener;
                 HostOutputMessage hostOutputMessage;
@@ -174,14 +180,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     IStorageQueueClient dashboardQueueClient = dashboardAccount.CreateQueueClient();
                     IStorageQueue sharedQueue = dashboardQueueClient.GetQueueReference(sharedQueueName);
                     IListenerFactory sharedQueueListenerFactory = new HostMessageListenerFactory(sharedQueue,
-                        queueConfiguration, backgroundExceptionDispatcher, consoleOut, functions,
+                        queueConfiguration, backgroundExceptionDispatcher, trace, functions,
                         functionInstanceLogger, functionExecutor);
 
                     Guid hostInstanceId = Guid.NewGuid();
                     string instanceQueueName = HostQueueNames.GetHostQueueName(hostInstanceId.ToString("N"));
                     IStorageQueue instanceQueue = dashboardQueueClient.GetQueueReference(instanceQueueName);
                     IListenerFactory instanceQueueListenerFactory = new HostMessageListenerFactory(instanceQueue,
-                        queueConfiguration, backgroundExceptionDispatcher, consoleOut, functions,
+                        queueConfiguration, backgroundExceptionDispatcher, trace, functions,
                         functionInstanceLogger, functionExecutor);
 
                     HeartbeatDescriptor heartbeatDescriptor = new HeartbeatDescriptor
@@ -237,19 +243,22 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
                 if (descriptorsCount == 0)
                 {
-                    consoleOut.WriteLine("No functions found. Try making job classes and methods public.");
+                    trace.Warning("No functions found. Try making job classes and methods public.", TraceSource.Indexing);
                 }
                 else
                 {
-                    consoleOut.WriteLine("Found the following functions:");
-
+                    StringBuilder functionsTrace = new StringBuilder();
+                    functionsTrace.AppendLine("Found the following functions:");
+                    
                     foreach (FunctionDescriptor descriptor in descriptors)
                     {
-                        consoleOut.WriteLine(descriptor.FullName);
+                        functionsTrace.AppendLine(descriptor.FullName);
                     }
+
+                    trace.Info(functionsTrace.ToString(), TraceSource.Indexing);
                 }
 
-                return new JobHostContext(functions, hostCallExecutor, listener, consoleOut);
+                return new JobHostContext(functions, hostCallExecutor, listener, trace);
             }
         }
 

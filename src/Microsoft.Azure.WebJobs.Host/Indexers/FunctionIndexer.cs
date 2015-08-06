@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
-using Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput;
 using Microsoft.Azure.WebJobs.Host.Bindings.Invoke;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -241,9 +240,9 @@ namespace Microsoft.Azure.WebJobs.Host.Indexers
             }
 
             // Validation: prevent multiple ConsoleOutputs
-            if (nonTriggerBindings.OfType<ConsoleOutputBinding>().Count() > 1)
+            if (nonTriggerBindings.OfType<TraceWriterBinding>().Count() > 1)
             {
-                throw new InvalidOperationException("Can't have multiple console output TextWriter parameters on a single function.");
+                throw new InvalidOperationException("Can't have multiple TraceWriter/TextWriter parameters in a single function.");
             }
 
             string triggerParameterName = triggerParameter != null ? triggerParameter.Name : null;

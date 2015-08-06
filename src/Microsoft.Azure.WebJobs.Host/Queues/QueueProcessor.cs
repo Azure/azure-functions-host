@@ -3,7 +3,7 @@
 
 using System;
 using System.Diagnostics;
-using System.IO;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
     {
         private readonly CloudQueue _queue;
         private readonly CloudQueue _poisonQueue;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly int _maxDequeueCount;
 
         /// <summary>
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
 
             _queue = context.Queue;
             _poisonQueue = context.PoisonQueue;
-            _log = context.Log;
+            _trace = context.Trace;
             _maxDequeueCount = context.MaxDequeueCount;
             BatchSize = context.BatchSize;
             NewBatchThreshold = context.NewBatchThreshold;
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues
         /// <returns></returns>
         protected virtual async Task CopyMessageToPoisonQueueAsync(CloudQueueMessage message, CancellationToken cancellationToken)
         {
-            _log.WriteLine("Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", _maxDequeueCount, _poisonQueue.Name);
+            _trace.Warning(string.Format(CultureInfo.InvariantCulture, "Message has reached MaxDequeueCount of {0}. Moving message to queue '{1}'.", _maxDequeueCount, _poisonQueue.Name), TraceSource.Execution);
 
             await AddMessageAndCreateIfNotExistsAsync(_poisonQueue, message, cancellationToken);
 

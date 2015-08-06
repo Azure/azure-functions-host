@@ -8,11 +8,14 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
+    /// <summary>
+    /// This logger only exists to log error messages in color for failed invocations.
+    /// Executing/Executed logs are already written to Console by <see cref="TraceWriterFunctionInstanceLogger"/>.
+    /// </summary>
     internal class ConsoleFunctionInstanceLogger : IFunctionInstanceLogger
     {
         public Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
-            Console.WriteLine("Executing: '{0}' - Reason: '{1}'", message.Function.ShortName, message.FormatReason());
             return Task.FromResult<string>(null);
         }
 
@@ -22,8 +25,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             {
                 var oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'",
-                    message.FunctionInstanceId);
+                Console.WriteLine("  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId);
                 Console.ForegroundColor = oldColor;
             }
 

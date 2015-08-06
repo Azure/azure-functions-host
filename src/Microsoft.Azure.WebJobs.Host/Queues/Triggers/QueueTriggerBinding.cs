@@ -3,11 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Converters;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
@@ -28,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly IObjectToTypeConverter<IStorageQueueMessage> _converter;
 
         public QueueTriggerBinding(string parameterName,
@@ -38,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TextWriter log)
+            TraceWriter trace)
         {
             if (queue == null)
             {
@@ -70,9 +68,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             _parameterName = parameterName;
@@ -83,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
-            _log = log;
+            _trace = trace;
             _converter = CreateConverter(queue);
         }
 
@@ -159,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Triggers
             }
 
             var factory = new QueueListenerFactory(_queue, _queueConfiguration, _backgroundExceptionDispatcher, 
-                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _log, context.Executor);
+                    _messageEnqueuedWatcherSetter, _sharedContextProvider, _trace, context.Executor);
 
             return factory.CreateAsync(context.CancellationToken);
         }

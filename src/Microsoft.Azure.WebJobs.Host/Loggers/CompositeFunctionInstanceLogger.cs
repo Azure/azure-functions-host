@@ -17,8 +17,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             _loggers = loggers;
         }
 
-        public async Task<string> LogFunctionStartedAsync(FunctionStartedMessage message,
-            CancellationToken cancellationToken)
+        public async Task<string> LogFunctionStartedAsync(FunctionStartedMessage message, CancellationToken cancellationToken)
         {
             string startedMessageId = null;
 
@@ -41,8 +40,7 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return startedMessageId;
         }
 
-        public async Task LogFunctionCompletedAsync(FunctionCompletedMessage message,
-            CancellationToken cancellationToken)
+        public async Task LogFunctionCompletedAsync(FunctionCompletedMessage message, CancellationToken cancellationToken)
         {
             foreach (IFunctionInstanceLogger logger in _loggers)
             {

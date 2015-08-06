@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Storage.Queue;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Queue;
 using Xunit;
 
@@ -19,24 +19,24 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         private CloudQueue _queue;
         private CloudQueue _poisonQueue;
         private QueueProcessor _processor;
-        private TextWriter _log;
+        private TraceWriter _trace;
         private JobHostQueuesConfiguration _queuesConfig;
 
         public QueueProcessorTests(TestFixture fixture)
         {
-            _log = new StringWriter();
+            _trace = new TestTraceWriter(TraceLevel.Verbose);
             _queue = fixture.Queue;
             _poisonQueue = fixture.PoisonQueue;
 
             _queuesConfig = new JobHostQueuesConfiguration();
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, _queuesConfig);
             _processor = new QueueProcessor(context);
         }
 
         [Fact]
         public void Constructor_DefaultsValues()
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, _queuesConfig);
             QueueProcessor localProcessor = new QueueProcessor(context);
             Assert.Equal(_queuesConfig.BatchSize, localProcessor.BatchSize);
             Assert.Equal(_queuesConfig.NewBatchThreshold, localProcessor.NewBatchThreshold);
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Host.FunctionalTests
         [Fact]
         public async Task CompleteProcessingMessageAsync_MaxDequeueCountExceeded_MovesMessageToPoisonQueue()
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _log, _queuesConfig, _poisonQueue);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(_queue, _trace, _queuesConfig, _poisonQueue);
             QueueProcessor localProcessor = new QueueProcessor(context);
 
             bool poisonMessageHandlerCalled = false;

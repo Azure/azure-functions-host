@@ -3,10 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Host.Blobs;
-using Microsoft.Azure.WebJobs.Host.Queues;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
@@ -70,11 +67,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         }
 
         /// <summary>
-        /// Gets the console output.
+        /// Gets the output <see cref="TraceWriter"/>.
         /// </summary>
-        public TextWriter ConsoleOutput
+        public TraceWriter Trace
         {
-            get { return _functionContext.ConsoleOutput; }
+            get { return _functionContext.Trace; }
         }
 
         /// <summary>

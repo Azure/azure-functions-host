@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Storage.Table;
 using Microsoft.Azure.WebJobs.Host.Tables;
+using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage.Table;
 using Xunit;
 
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Tables
             Assert.Null(BoundTable);
             CloudTable table = new CloudTable(new Uri("http://localhost:10000/test/table"));
             IStorageTable storageTable = new StorageTable(table);
-            FunctionBindingContext functionContext = new FunctionBindingContext(Guid.NewGuid(), CancellationToken.None, new StringWriter());
+            FunctionBindingContext functionContext = new FunctionBindingContext(Guid.NewGuid(), CancellationToken.None, new TestTraceWriter(TraceLevel.Verbose));
             ValueBindingContext context = new ValueBindingContext(functionContext, CancellationToken.None);
             IValueProvider valueProvider = await binding.BindAsync(storageTable, context);
             Assert.NotNull(valueProvider);

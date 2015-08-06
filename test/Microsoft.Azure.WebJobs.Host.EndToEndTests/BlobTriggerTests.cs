@@ -93,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.BlobTriggerTests.SingleBlobTrigger",
                     "Job host started",
                     string.Format("Executing: 'BlobTriggerTests.SingleBlobTrigger' - Reason: 'New blob detected: {0}/{1}'", blob.Container.Name, blob.Name),
+                    "Executed: 'BlobTriggerTests.SingleBlobTrigger' (Succeeded)",
                     "Job host stopped",
                 };
                 Assert.True(consoleOutputLines.SequenceEqual(expectedOutputLines));

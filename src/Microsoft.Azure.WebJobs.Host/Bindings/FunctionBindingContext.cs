@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Host.Bindings
@@ -15,19 +14,19 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
     {
         private readonly Guid _functionInstanceId;
         private readonly CancellationToken _functionCancellationToken;
-        private readonly TextWriter _consoleOutput;
+        private readonly TraceWriter _trace;
 
         /// <summary>
         /// Creates a new instance.
         /// </summary>
         /// <param name="functionInstanceId">The instance ID of the function being bound to.</param>
         /// <param name="functionCancellationToken">The <see cref="CancellationToken"/> to use.</param>
-        /// <param name="consoleOutput">The console output.</param>
-        public FunctionBindingContext(Guid functionInstanceId, CancellationToken functionCancellationToken, TextWriter consoleOutput)
+        /// <param name="trace">The trace writer.</param>
+        public FunctionBindingContext(Guid functionInstanceId, CancellationToken functionCancellationToken, TraceWriter trace)
         {
             _functionInstanceId = functionInstanceId;
             _functionCancellationToken = functionCancellationToken;
-            _consoleOutput = consoleOutput;
+            _trace = trace;
         }
 
         /// <summary>
@@ -47,11 +46,11 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings
         }
 
         /// <summary>
-        /// Gets the console output.
+        /// Gets the output <see cref="TraceWriter"/>.
         /// </summary>
-        public TextWriter ConsoleOutput
+        public TraceWriter Trace
         {
-            get { return _consoleOutput; }
+            get { return _trace; }
         }
     }
 }

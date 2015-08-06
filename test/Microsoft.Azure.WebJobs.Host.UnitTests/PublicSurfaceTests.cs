@@ -119,7 +119,8 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
                 "IArgumentBinding`1",
                 "IArgumentBindingProvider`1",
                 "ITableArgumentBinding",
-                "SingletonConfiguration"
+                "SingletonConfiguration",
+                "TraceWriter"
             };
 
             AssertPublicTypes(expected, assembly);

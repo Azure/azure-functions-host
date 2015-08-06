@@ -6,9 +6,14 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
+namespace Microsoft.Azure.WebJobs.Host.Bindings
 {
-    internal class ConsoleOutputBindingProvider : IBindingProvider
+    /// <summary>
+    /// Binding provider handling bindings to both <see cref="TraceWriter"/> and <see cref="TextWriter"/>.
+    /// <remarks>
+    /// </remarks>
+    /// </summary>
+    internal class TraceWriterBindingProvider : IBindingProvider
     {
         public Task<IBinding> TryCreateAsync(BindingProviderContext context)
         {
@@ -18,13 +23,13 @@ namespace Microsoft.Azure.WebJobs.Host.Bindings.ConsoleOutput
             }
 
             ParameterInfo parameter = context.Parameter;
-
-            if (parameter.ParameterType != typeof(TextWriter))
+            if (parameter.ParameterType != typeof(TraceWriter) &&
+                parameter.ParameterType != typeof(TextWriter))
             {
                 return Task.FromResult<IBinding>(null);
             }
 
-            IBinding binding = new ConsoleOutputBinding(parameter.Name);
+            IBinding binding = new TraceWriterBinding(parameter);
             return Task.FromResult(binding);
         }
     }

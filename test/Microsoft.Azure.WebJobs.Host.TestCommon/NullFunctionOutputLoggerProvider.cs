@@ -49,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Host.TestCommon
                 return Task.FromResult(output);
             }
 
-            public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
-                TextWriter consoleOutput)
+            public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)
             {
                 return null;
             }

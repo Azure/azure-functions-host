@@ -357,8 +357,13 @@
     </Compile>
     <Compile Include="Bindings\AmbientBindingContext.cs" />
     <Compile Include="Bindings\IArgumentBindingProvider.cs" />
+    <Compile Include="Bindings\TraceWriter\TextWriterTraceAdapter.cs" />
+    <Compile Include="Bindings\TraceWriter\TraceWriterBinding.cs" />
+    <Compile Include="Bindings\TraceWriter\TraceWriterBindingProvider.cs" />
+    <Compile Include="CompositeTraceWriter.cs" />
     <Compile Include="Config\ExtensionConfigContext.cs" />
     <Compile Include="Config\IExtensionConfigProvider.cs" />
+    <Compile Include="ConsoleTraceWriter.cs" />
     <Compile Include="ContextAccessor.cs" />
     <Compile Include="Bindings\Data\TToStringArgumentBindingProvider.cs" />
     <Compile Include="Bindings\IBindingDataProvider.cs" />
@@ -391,9 +396,6 @@
     <Compile Include="Bindings\Cancellation\CancellationTokenBinding.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenBindingProvider.cs" />
     <Compile Include="Bindings\Cancellation\CancellationTokenValueProvider.cs" />
-    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBinding.cs" />
-    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputBindingProvider.cs" />
-    <Compile Include="Bindings\ConsoleOutput\ConsoleOutputValueProvider.cs" />
     <Compile Include="Bindings\Data\StructDataBindingProvider.cs" />
     <Compile Include="Bindings\Data\ClassDataBindingProvider.cs" />
     <Compile Include="Bindings\Data\CompositeArgumentBindingProvider.cs" />
@@ -462,6 +464,7 @@
     <Compile Include="Loggers\IFunctionInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IHostInstanceLoggerProvider.cs" />
     <Compile Include="Loggers\IConsoleProvider.cs" />
+    <Compile Include="Loggers\TraceWriterFunctionInstanceLogger.cs" />
     <Compile Include="Queues\Bindings\StorageQueueArgumentBindingProvider.cs" />
     <Compile Include="Queues\IQueueProcessorFactory.cs" />
     <Compile Include="Singleton\SingletonListener.cs" />
@@ -676,6 +679,8 @@
     <Compile Include="Timers\RandomExtensions.cs" />
     <Compile Include="Timers\RecurrentTaskSeriesCommand.cs" />
     <Compile Include="Timers\TaskSeriesCommandResult.cs" />
+    <Compile Include="TraceSource.cs" />
+    <Compile Include="TraceWriter.cs" />
     <Compile Include="Triggers\ITriggerDataArgumentBinding.cs" />
     <Compile Include="Triggers\TriggeredFunctionInstanceFactory.cs" />
     <Compile Include="Executors\HostMessageExecutor.cs" />

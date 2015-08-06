@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -21,15 +22,21 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
         private IHostInstanceLogger _hostInstanceLogger;
         private IFunctionInstanceLogger _functionInstanceLogger;
         private IFunctionOutputLogger _functionOutputLogger;
+        private TraceWriter _trace;
 
-        public DefaultLoggerProvider(IStorageAccountProvider storageAccountProvider)
+        public DefaultLoggerProvider(IStorageAccountProvider storageAccountProvider, TraceWriter trace)
         {
             if (storageAccountProvider == null)
             {
                 throw new ArgumentNullException("storageAccountProvider");
             }
+            if (trace == null)
+            {
+                throw new ArgumentNullException("trace");
+            }
 
             _storageAccountProvider = storageAccountProvider;
+            _trace = trace;
         }
 
         async Task<IHostInstanceLogger> IHostInstanceLoggerProvider.GetAsync(CancellationToken cancellationToken)
@@ -57,8 +64,8 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 return;
             }
 
-            IStorageAccount dashboardAccount =
-                await _storageAccountProvider.GetDashboardAccountAsync(cancellationToken);
+            IStorageAccount dashboardAccount = await _storageAccountProvider.GetDashboardAccountAsync(cancellationToken);
+            IFunctionInstanceLogger traceWriterFunctionLogger = new TraceWriterFunctionInstanceLogger(_trace);
 
             if (dashboardAccount != null)
             {
@@ -69,14 +76,17 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                 PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
                 _hostInstanceLogger = queueLogger;
                 _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger,
-                    new ConsoleFunctionInstanceLogger());
+                    new ConsoleFunctionInstanceLogger(),
+                    traceWriterFunctionLogger);
                 _functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
             }
             else
             {
                 // No auxillary logging. Logging interfaces are nops or in-memory.
                 _hostInstanceLogger = new NullHostInstanceLogger();
-                _functionInstanceLogger = new ConsoleFunctionInstanceLogger();
+                _functionInstanceLogger = new CompositeFunctionInstanceLogger(
+                    new ConsoleFunctionInstanceLogger(),
+                    traceWriterFunctionLogger);
                 _functionOutputLogger = new ConsoleFunctionOutputLogger();
             }
 

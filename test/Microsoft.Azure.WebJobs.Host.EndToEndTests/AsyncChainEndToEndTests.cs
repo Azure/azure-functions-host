@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.TestCommon;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage.Queue;
+using Newtonsoft.Json.Serialization;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
@@ -49,6 +52,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 TypeLocator = new FakeTypeLocator(typeof(AsyncChainEndToEndTests))
             };
 
+            _hostConfig.Queues.MaxPollingInterval = TimeSpan.FromSeconds(2);
+
             _storageAccount = fixture.StorageAccount;
         }
 
@@ -78,6 +83,41 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
+        [Fact]
+        public async Task TraceWriterLogging()
+        {
+            TextWriter hold = Console.Out;
+            StringWriter consoleOutput = new StringWriter();
+            Console.SetOut(consoleOutput);
+            
+            using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
+            {
+                TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
+                _hostConfig.Trace = trace;
+                JobHost host = new JobHost(_hostConfig);
+
+                await host.StartAsync();
+                await host.CallAsync(typeof(AsyncChainEndToEndTests).GetMethod("WriteStartDataMessageToQueue"));
+
+                _functionCompletedEvent.WaitOne();
+
+                await host.StopAsync();
+
+                Assert.Equal(14, trace.Traces.Count);
+                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TraceWriter log")));
+                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+                Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("Another User TextWriter log")));
+
+                consoleOutput.Flush();
+                string[] consoleOutputLines = consoleOutput.ToString().Trim().Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+                Assert.Equal(16, consoleOutputLines.Length);
+                Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TraceWriter log")));
+                Assert.Null(consoleOutputLines.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
+            }
+
+            Console.SetOut(hold);
+        }
+
         [NoAutomaticTrigger]
         public static void WriteStartDataMessageToQueue(
             [Queue(Queue1Name)] ICollector<string> queueMessages,
@@ -93,12 +133,15 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public static async Task QueueToQueueAsync(
             [QueueTrigger(Queue1Name)] string message,
             [Queue(Queue2Name)] IAsyncCollector<string> output,
-            CancellationToken token)
+            CancellationToken token,
+            TraceWriter trace)
         {
             CloudBlobClient blobClient = _storageAccount.CreateCloudBlobClient();
             CloudBlobContainer container = blobClient.GetContainerReference(_resolver.ResolveInString(ContainerName));
             CloudBlockBlob blob = container.GetBlockBlobReference(NonWebJobsBlobName);
             string blobContent = await blob.DownloadTextAsync();
+
+            trace.Info("User TraceWriter log");
 
             await output.AddAsync(blobContent + message);
         }
@@ -106,9 +149,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         public static async Task QueueToBlobAsync(
             [QueueTrigger(Queue2Name)] string message,
             [Blob(ContainerName + "/" + Blob1Name, FileAccess.Write)] Stream blobStream,
-            CancellationToken token)
+            CancellationToken token,
+            TextWriter log)
         {
             byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+
+            log.WriteLine("User TextWriter log ({0})", "TestParam");
+            log.Write("Another User TextWriter log");
 
             await blobStream.WriteAsync(messageBytes, 0, messageBytes.Length);
         }
@@ -146,6 +193,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
         private async Task AsyncChainEndToEndInternal()
         {
+            TextWriter hold = Console.Out;
             StringWriter consoleOutput = new StringWriter();
             Console.SetOut(consoleOutput);
 
@@ -176,13 +224,20 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Microsoft.Azure.WebJobs.Host.EndToEndTests.AsyncChainEndToEndTests.ReadResultBlob",
                     "Job host started",
                     "Executing: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' - Reason: 'This function was programmatically called via the host APIs.'",
+                    "Executed: 'AsyncChainEndToEndTests.WriteStartDataMessageToQueue' (Succeeded)",
                     string.Format("Executing: 'AsyncChainEndToEndTests.QueueToQueueAsync' - Reason: 'New queue message detected on '{0}'.'", firstQueueName),
+                    "Executed: 'AsyncChainEndToEndTests.QueueToQueueAsync' (Succeeded)",
                     string.Format("Executing: 'AsyncChainEndToEndTests.QueueToBlobAsync' - Reason: 'New queue message detected on '{0}'.'", secondQueueName),
+                    "Executed: 'AsyncChainEndToEndTests.QueueToBlobAsync' (Succeeded)",
                     string.Format("Executing: 'AsyncChainEndToEndTests.BlobToBlobAsync' - Reason: 'New blob detected: {0}/Blob1'", blobContainerName),
+                    "Executed: 'AsyncChainEndToEndTests.BlobToBlobAsync' (Succeeded)",
                     "Job host stopped",
-                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'"
+                    "Executing: 'AsyncChainEndToEndTests.ReadResultBlob' - Reason: 'This function was programmatically called via the host APIs.'",
+                    "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
                 };
             Assert.True(consoleOutputLines.OrderBy(p => p).SequenceEqual(expectedOutputLines.OrderBy(p => p)));
+
+            Console.SetOut(hold);
         }
 
         private class CustomQueueProcessorFactory : IQueueProcessorFactory

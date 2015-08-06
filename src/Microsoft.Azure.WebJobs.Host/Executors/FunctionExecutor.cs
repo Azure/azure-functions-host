@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,11 +21,12 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionOutputLogger _functionOutputLogger;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
+        private readonly TraceWriter _trace;
 
         private HostOutputMessage _hostOutputMessage;
 
         public FunctionExecutor(IFunctionInstanceLogger functionInstanceLogger, IFunctionOutputLogger functionOutputLogger, 
-            IBackgroundExceptionDispatcher backgroundExceptionDispatcher)
+            IBackgroundExceptionDispatcher backgroundExceptionDispatcher, TraceWriter trace)
         {
             if (functionInstanceLogger == null)
             {
@@ -43,9 +43,15 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
+            if (trace == null)
+            {
+                throw new ArgumentNullException("trace");
+            }
+
             _functionInstanceLogger = functionInstanceLogger;
             _functionOutputLogger = functionOutputLogger;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
+            _trace = trace;
         }
 
         public HostOutputMessage HostOutputMessage
@@ -124,22 +130,23 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
             using (IFunctionOutput outputLog = await outputDefinition.CreateOutputAsync(cancellationToken))
             using (ITaskSeriesTimer updateOutputLogTimer = StartOutputTimer(outputLog.UpdateCommand, _backgroundExceptionDispatcher))
             {
-                TextWriter consoleOutput = outputLog.Output;
-                FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, cancellationToken, consoleOutput);
+                // We create a new composite trace writer that will also forward
+                // output to the function output log (in addition to console, user TraceWriter, etc.).
+                TraceWriter traceWriter = new CompositeTraceWriter(_trace, outputLog.Output);
+                FunctionBindingContext functionContext = new FunctionBindingContext(instance.Id, cancellationToken, traceWriter);
 
                 // Must bind before logging (bound invoke string is included in log message).
                 IReadOnlyDictionary<string, IValueProvider> parameters =
                     await instance.BindingSource.BindAsync(new ValueBindingContext(functionContext, cancellationToken));
 
                 ExceptionDispatchInfo exceptionInfo;
-
                 using (ValueProviderDisposable.Create(parameters))
                 {
                     startedMessageId = await LogFunctionStartedAsync(message, outputDefinition, parameters, cancellationToken);
 
                     try
                     {
-                        await ExecuteWithOutputLogsAsync(instance, parameters, consoleOutput, outputDefinition,
+                        await ExecuteWithOutputLogsAsync(instance, parameters, traceWriter, outputDefinition,
                             parameterLogCollector, cancellationToken);
                         exceptionInfo = null;
                     }
@@ -149,9 +156,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                     }
                     catch (Exception exception)
                     {
-                        consoleOutput.WriteLine("--------");
-                        consoleOutput.WriteLine("Exception while executing:");
-                        consoleOutput.Write(exception.ToDetails());
+                        traceWriter.Error("Exception while executing:", exception, TraceSource.Execution);
                         exceptionInfo = ExceptionDispatchInfo.Capture(exception);
                     }
                 }
@@ -160,6 +165,9 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
                 {
                     await updateOutputLogTimer.StopAsync(cancellationToken);
                 }
+
+                // after all execution is complete, flush the TraceWriter
+                traceWriter.Flush();
 
                 // We save the exception info rather than doing throw; above to ensure we always write console output,
                 // even if the function fails or was canceled.
@@ -229,14 +237,14 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
         private async Task ExecuteWithOutputLogsAsync(IFunctionInstance instance,
             IReadOnlyDictionary<string, IValueProvider> parameters,
-            TextWriter consoleOutput,
+            TraceWriter trace,
             IFunctionOutputDefinition outputDefinition,
             IDictionary<string, ParameterLog> parameterLogCollector,
             CancellationToken cancellationToken)
         {
             IFunctionInvoker invoker = instance.Invoker;
             IReadOnlyDictionary<string, IWatcher> watches = CreateWatches(parameters);
-            IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(watches, consoleOutput);
+            IRecurrentCommand updateParameterLogCommand = outputDefinition.CreateParameterLogUpdateCommand(watches, trace);
 
             using (ITaskSeriesTimer updateParameterLogTimer = StartParameterLogTimer(updateParameterLogCommand, _backgroundExceptionDispatcher))
             {

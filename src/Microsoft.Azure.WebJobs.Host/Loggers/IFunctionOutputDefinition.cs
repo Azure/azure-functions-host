@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
@@ -19,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
 
         Task<IFunctionOutput> CreateOutputAsync(CancellationToken cancellationToken);
 
-        IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
-            TextWriter consoleOutput);
+        IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace);
     }
 }

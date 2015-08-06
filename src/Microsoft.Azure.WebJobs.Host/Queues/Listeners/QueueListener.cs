@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _poisonQueue;
         private readonly ITriggerExecutor<IStorageQueueMessage> _triggerExecutor;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly IMessageEnqueuedWatcher _sharedWatcher;
         private readonly List<Task> _processing = new List<Task>();
         private readonly object _stopWaitingTaskSourceLock = new object();
@@ -41,13 +40,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor,
             IDelayStrategy delayStrategy,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            TextWriter log,
+            TraceWriter trace,
             SharedQueueWatcher sharedWatcher,
             IQueueConfiguration queueConfiguration)
         {
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             if (queueConfiguration == null)
@@ -71,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _triggerExecutor = triggerExecutor;
             _delayStrategy = delayStrategy;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _log = log;
+            _trace = trace;
             _queueConfiguration = queueConfiguration;
 
             if (sharedWatcher != null)
@@ -84,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             EventHandler poisonMessageEventHandler = _sharedWatcher != null ? OnMessageAddedToPoisonQueue : (EventHandler)null;
             _queueProcessor = CreateQueueProcessor(
                 _queue.SdkObject, _poisonQueue != null ? _poisonQueue.SdkObject : null,
-                _log, _queueConfiguration, poisonMessageEventHandler);
+                _trace, _queueConfiguration, poisonMessageEventHandler);
         }
 
         public void Cancel()
@@ -297,9 +296,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             }
         }
 
-        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TextWriter log, IQueueConfiguration queueConfig, EventHandler poisonQueueMessageAddedHandler)
+        internal static QueueProcessor CreateQueueProcessor(CloudQueue queue, CloudQueue poisonQueue, TraceWriter trace, IQueueConfiguration queueConfig, EventHandler poisonQueueMessageAddedHandler)
         {
-            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, log, queueConfig, poisonQueue);
+            QueueProcessorFactoryContext context = new QueueProcessorFactoryContext(queue, trace, queueConfig, poisonQueue);
 
             QueueProcessor queueProcessor = null;
             if (HostQueueNames.IsHostQueue(queue.Name) && 

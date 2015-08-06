@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -24,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IContextSetter<IBlobWrittenWatcher> _blobWrittenWatcherSetter;
         private readonly IContextSetter<IMessageEnqueuedWatcher> _messageEnqueuedWatcherSetter;
         private readonly ISharedContextProvider _sharedContextProvider;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly string _functionId;
         private readonly IStorageAccount _account;
         private readonly IStorageBlobContainer _container;
@@ -37,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IContextSetter<IBlobWrittenWatcher> blobWrittenWatcherSetter,
             IContextSetter<IMessageEnqueuedWatcher> messageEnqueuedWatcherSetter,
             ISharedContextProvider sharedContextProvider,
-            TextWriter log,
+            TraceWriter trace,
             string functionId,
             IStorageAccount account,
             IStorageBlobContainer container,
@@ -74,9 +73,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("sharedContextProvider");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             if (account == null)
@@ -105,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _blobWrittenWatcherSetter = blobWrittenWatcherSetter;
             _messageEnqueuedWatcherSetter = messageEnqueuedWatcherSetter;
             _sharedContextProvider = sharedContextProvider;
-            _log = log;
+            _trace = trace;
             _functionId = functionId;
             _account = account;
             _container = container;
@@ -165,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         {
             SharedBlobQueueListener sharedListener = sharedContextProvider.GetOrCreate<SharedBlobQueueListener>(
                 new SharedBlobQueueListenerFactory(sharedQueueWatcher, queueClient, hostBlobTriggerQueue,
-                    blobClient, _queueConfiguration, _backgroundExceptionDispatcher, _log, blobWrittenWatcher));
+                    blobClient, _queueConfiguration, _backgroundExceptionDispatcher, _trace, blobWrittenWatcher));
 
             sharedListener.Register(_functionId, _executor);
 

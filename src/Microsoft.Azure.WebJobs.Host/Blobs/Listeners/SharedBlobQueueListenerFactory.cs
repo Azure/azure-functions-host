@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Queues;
 using Microsoft.Azure.WebJobs.Host.Queues.Listeners;
@@ -21,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
         private readonly IStorageBlobClient _blobClient;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly IBlobWrittenWatcher _blobWrittenWatcher;
 
         public SharedBlobQueueListenerFactory(
@@ -31,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IStorageBlobClient blobClient,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            TextWriter log,
+            TraceWriter trace,
             IBlobWrittenWatcher blobWrittenWatcher)
         {
             if (sharedQueueWatcher == null)
@@ -64,9 +62,9 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             if (blobWrittenWatcher == null)
@@ -80,10 +78,11 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             _blobClient = blobClient;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _log = log;
+            _trace = trace;
             _blobWrittenWatcher = blobWrittenWatcher;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public SharedBlobQueueListener Create()
         {
             IStorageQueue blobTriggerPoisonQueue =
@@ -93,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Host.Blobs.Listeners
             IDelayStrategy delayStrategy = new RandomizedExponentialBackoffStrategy(QueuePollingIntervals.Minimum,
                 _queueConfiguration.MaxPollingInterval);
             IListener listener = new QueueListener(_hostBlobTriggerQueue, blobTriggerPoisonQueue, triggerExecutor,
-                delayStrategy, _backgroundExceptionDispatcher, _log, _sharedQueueWatcher, _queueConfiguration);
+                delayStrategy, _backgroundExceptionDispatcher, _trace, _sharedQueueWatcher, _queueConfiguration);
             return new SharedBlobQueueListener(listener, triggerExecutor);
         }
     }

@@ -15,7 +15,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
     // Wrap facilities for logging a function's output. 
-    // This means capturing console out, redirecting to a textwriter that is available at a blob.
+    // This means capturing console out, redirecting to a TraceWriter that is available at a blob.
     // Handle incremental updates to get real-time updates for long running functions. 
     internal sealed class BlobFunctionOutputDefinition : IFunctionOutputDefinition
     {
@@ -48,10 +48,9 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             return await UpdateOutputLogCommand.CreateAsync(blob, existingContents, cancellationToken);
         }
 
-        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches,
-            TextWriter consoleOutput)
+        public IRecurrentCommand CreateParameterLogUpdateCommand(IReadOnlyDictionary<string, IWatcher> watches, TraceWriter trace)
         {
-            return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), consoleOutput);
+            return new UpdateParameterLogCommand(watches, GetBlockBlobReference(_parameterLogBlob), trace);
         }
 
         private IStorageBlockBlob GetBlockBlobReference(LocalBlobDescriptor descriptor)

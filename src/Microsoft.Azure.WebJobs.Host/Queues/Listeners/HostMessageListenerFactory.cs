@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -22,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         private readonly IStorageQueue _queue;
         private readonly IQueueConfiguration _queueConfiguration;
         private readonly IBackgroundExceptionDispatcher _backgroundExceptionDispatcher;
-        private readonly TextWriter _log;
+        private readonly TraceWriter _trace;
         private readonly IFunctionIndexLookup _functionLookup;
         private readonly IFunctionInstanceLogger _functionInstanceLogger;
         private readonly IFunctionExecutor _executor;
@@ -30,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
         public HostMessageListenerFactory(IStorageQueue queue,
             IQueueConfiguration queueConfiguration,
             IBackgroundExceptionDispatcher backgroundExceptionDispatcher,
-            TextWriter log,
+            TraceWriter trace,
             IFunctionIndexLookup functionLookup,
             IFunctionInstanceLogger functionInstanceLogger,
             IFunctionExecutor executor)
@@ -50,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 throw new ArgumentNullException("backgroundExceptionDispatcher");
             }
 
-            if (log == null)
+            if (trace == null)
             {
-                throw new ArgumentNullException("log");
+                throw new ArgumentNullException("trace");
             }
 
             if (functionLookup == null)
@@ -73,12 +72,13 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
             _queue = queue;
             _queueConfiguration = queueConfiguration;
             _backgroundExceptionDispatcher = backgroundExceptionDispatcher;
-            _log = log;
+            _trace = trace;
             _functionLookup = functionLookup;
             _functionInstanceLogger = functionInstanceLogger;
             _executor = executor;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
         public Task<IListener> CreateAsync(CancellationToken cancellationToken)
         {
             ITriggerExecutor<IStorageQueueMessage> triggerExecutor = new HostMessageExecutor(_executor, _functionLookup, _functionInstanceLogger);
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Host.Queues.Listeners
                 triggerExecutor: triggerExecutor,
                 delayStrategy: delayStrategy,
                 backgroundExceptionDispatcher: _backgroundExceptionDispatcher,
-                log: _log,
+                trace: _trace,
                 sharedWatcher: null,
                 queueConfiguration: _queueConfiguration);
 
