@@ -106,6 +106,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
 
                 await host.StopAsync();
 
+                string error = string.Join(Environment.NewLine, trace.Traces.Where(p => p.Contains("Error")));
+                Assert.Equal(string.Empty, error);
+
                 Assert.Equal(14, trace.Traces.Count);
                 Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TraceWriter log")));
                 Assert.NotNull(trace.Traces.SingleOrDefault(p => p.Contains("User TextWriter log (TestParam)")));
@@ -122,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         }
 
         [NoAutomaticTrigger]
-        public static void WriteStartDataMessageToQueue(
+        public static async Task WriteStartDataMessageToQueue(
             [Queue(Queue1Name)] ICollector<string> queueMessages,
             [Blob(ContainerName + "/" + NonWebJobsBlobName, FileAccess.Write)] Stream nonSdkBlob,
             CancellationToken token)
@@ -130,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             queueMessages.Add(" works");
 
             byte[] messageBytes = Encoding.UTF8.GetBytes("async");
-            nonSdkBlob.Write(messageBytes, 0, messageBytes.Length);
+            await nonSdkBlob.WriteAsync(messageBytes, 0, messageBytes.Length);
         }
 
         public static async Task QueueToQueueAsync(
@@ -242,11 +245,13 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                     "Executed: 'AsyncChainEndToEndTests.ReadResultBlob' (Succeeded)"
                 }.OrderBy(p => p).ToArray();
 
-            Assert.Equal(expectedOutputLines.Length, consoleOutputLines.Length);
-            for (int i = 0; i < expectedOutputLines.Length; i++)
-            {
-                Assert.Equal(expectedOutputLines[i], consoleOutputLines[i]);
-            }
+            string error = consoleOutputLines.SingleOrDefault(p => p.Contains("Function had errors"));
+            Assert.Equal(null, error);
+
+            Assert.Equal(
+                string.Join(Environment.NewLine, expectedOutputLines), 
+                string.Join(Environment.NewLine, consoleOutputLines)
+                );
 
             Console.SetOut(hold);
         }
