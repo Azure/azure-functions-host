@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             // Create the a wrapper TraceWriter that delegates to both the user 
             // TraceWriter specified on Config (if present), as well as to Console
-            TraceWriter trace = new ConsoleTraceWriter(config.Tracing.Trace, config.Tracing.ConsoleLevel, consoleProvider.Out);
+            TraceWriter trace = new ConsoleTraceWriter(config.Tracing, consoleProvider.Out);
 
             // Register system services with the service container
             config.AddService<INameResolver>(nameResolver);

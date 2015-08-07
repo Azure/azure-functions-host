@@ -13,17 +13,17 @@ namespace Microsoft.Azure.WebJobs.Host
     /// </summary>
     internal class ConsoleTraceWriter : CompositeTraceWriter
     {
-        private readonly TraceLevel _consoleTraceLevel;
+        private readonly JobHostTraceConfiguration _traceConfig;
 
-        public ConsoleTraceWriter(TraceWriter userTraceWriter, TraceLevel consoleTraceLevel, TextWriter console)
-            : base(userTraceWriter, console)
+        public ConsoleTraceWriter(JobHostTraceConfiguration traceConfig, TextWriter console)
+            : base(traceConfig.Trace, console)
         {
-            _consoleTraceLevel = consoleTraceLevel;
+            _traceConfig = traceConfig;
         }
 
         protected override void InvokeTextWriter(TraceLevel level, string source, string message, Exception ex)
         {
-            if (MapTraceLevel(source, level) <= _consoleTraceLevel)
+            if (MapTraceLevel(source, level) <= _traceConfig.ConsoleLevel)
             {
                 // For Errors/Warnings we change the Console color
                 // for visibility

@@ -14,12 +14,18 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         private readonly Mock<TraceWriter> _mockTraceWriter;
         private readonly Mock<TextWriter> _mockTextWriter;
         private readonly ConsoleTraceWriter _traceWriter;
+        private readonly JobHostTraceConfiguration _traceConfig;
 
         public ConsoleTraceWriterTests()
         {
             _mockTextWriter = new Mock<TextWriter>(MockBehavior.Strict);
             _mockTraceWriter = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Info);
-            _traceWriter = new ConsoleTraceWriter(_mockTraceWriter.Object, TraceLevel.Info, _mockTextWriter.Object);
+            _traceConfig = new JobHostTraceConfiguration
+            {
+                ConsoleLevel = TraceLevel.Info,
+                Trace = _mockTraceWriter.Object
+            };
+            _traceWriter = new ConsoleTraceWriter(_traceConfig, _mockTextWriter.Object);
         }
 
         [Fact]
@@ -67,6 +73,21 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         public void MapTraceLevel_PerformsCorrectMapping(string source, TraceLevel level, TraceLevel expected)
         {
             Assert.Equal(expected, ConsoleTraceWriter.MapTraceLevel(source, level));
+        }
+
+        [Fact]
+        public void ConsoleLevel_CanBeChangedWhileRunning()
+        {
+            _mockTextWriter.Setup(p => p.WriteLine("Test Information"));
+            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, null, "Test Information", null));
+
+            _traceWriter.Info("Test Information");
+
+            _traceConfig.ConsoleLevel = TraceLevel.Verbose;
+            _traceWriter.Info("Test Information");
+
+            _mockTextWriter.VerifyAll();
+            _mockTraceWriter.VerifyAll();
         }
     }
 }
