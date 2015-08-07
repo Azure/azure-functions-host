@@ -27,16 +27,5 @@ namespace Microsoft.Azure.WebJobs.Host
         /// Trace message coming from function execution.
         /// </summary>
         public const string Execution = SdkPrefix + "Execution";
-
-        /// <summary>
-        /// Returns true if the specified source is an internal SDK source.
-        /// </summary>
-        /// <param name="source">The source to check.</param>
-        /// <returns>True if the source is internal SDK, false otherwise.</returns>
-        public static bool IsSdkSource(string source)
-        {
-            return !string.IsNullOrEmpty(source) &&
-                    source.StartsWith(SdkPrefix, StringComparison.OrdinalIgnoreCase);
-        }
     }
 }

@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs
 
         private readonly DefaultStorageAccountProvider _storageAccountProvider;
         private readonly JobHostQueuesConfiguration _queueConfiguration = new JobHostQueuesConfiguration();
+        private readonly JobHostTraceConfiguration _traceConfiguration = new JobHostTraceConfiguration();
         private readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
         private IJobHostContextFactory _contextFactory;
 
@@ -184,7 +185,9 @@ namespace Microsoft.Azure.WebJobs
             }
         }
 
-        /// <summary>Gets the configuration used by <see cref="QueueTriggerAttribute"/>.</summary>
+        /// <summary>
+        /// Gets the configuration used by <see cref="QueueTriggerAttribute"/>.
+        /// </summary>
         public JobHostQueuesConfiguration Queues
         {
             get { return _queueConfiguration; }
@@ -200,16 +203,15 @@ namespace Microsoft.Azure.WebJobs
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="TraceWriter"/> that the <see cref="JobHost"/> will
-        /// trace logs to. 
-        /// <remarks>
-        /// When set, in addition to the default Dashboard/Console logging
-        /// that is done, those logs will also be routed through this <see cref="TraceWriter"/>.
-        /// This would allow you to intercept the logs that are written to the Dashboard/Console,
-        /// so you can persist/inspect as needed.
-        /// </remarks>
+        /// Gets the configuration for log tracing.
         /// </summary>
-        public TraceWriter Trace { get; set; }
+        public JobHostTraceConfiguration Tracing
+        {
+            get
+            {
+                return _traceConfiguration;
+            }
+        }
 
         private IJobHostContextFactory ContextFactory
         {

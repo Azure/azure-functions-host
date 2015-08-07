@@ -58,11 +58,13 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests.Loggers
             FunctionCompletedMessage failureMessage = new FunctionCompletedMessage
             {
                 Function = descriptor,
-                Failure = new FunctionFailure { Exception = ex }
+                Failure = new FunctionFailure { Exception = ex },
+                FunctionInstanceId = new Guid("8d71c9e3-e809-4cfb-bb78-48ae25c7d26d")
             };
 
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Info, Host.TraceSource.Execution, "Executed: 'TestJob' (Succeeded)", null));
             _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, Host.TraceSource.Execution, "Executed: 'TestJob' (Failed)", ex));
+            _mockTraceWriter.Setup(p => p.Trace(TraceLevel.Error, Host.TraceSource.Host, "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '8d71c9e3-e809-4cfb-bb78-48ae25c7d26d'", null));
 
             await _logger.LogFunctionCompletedAsync(successMessage, CancellationToken.None);
             await _logger.LogFunctionCompletedAsync(failureMessage, CancellationToken.None);

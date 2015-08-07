@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             using (_functionCompletedEvent = new ManualResetEvent(initialState: false))
             {
                 TestTraceWriter trace = new TestTraceWriter(TraceLevel.Verbose);
-                _hostConfig.Trace = trace;
+                _hostConfig.Tracing.Trace = trace;
                 JobHost host = new JobHost(_hostConfig);
 
                 await host.StartAsync();

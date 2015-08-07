@@ -8,8 +8,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Host.Loggers
 {
@@ -75,18 +73,14 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
                     new PersistentQueueWriter<PersistentQueueMessage>(dashboardBlobClient);
                 PersistentQueueLogger queueLogger = new PersistentQueueLogger(queueWriter);
                 _hostInstanceLogger = queueLogger;
-                _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger,
-                    new ConsoleFunctionInstanceLogger(),
-                    traceWriterFunctionLogger);
+                _functionInstanceLogger = new CompositeFunctionInstanceLogger(queueLogger, traceWriterFunctionLogger);
                 _functionOutputLogger = new BlobFunctionOutputLogger(dashboardBlobClient);
             }
             else
             {
                 // No auxillary logging. Logging interfaces are nops or in-memory.
                 _hostInstanceLogger = new NullHostInstanceLogger();
-                _functionInstanceLogger = new CompositeFunctionInstanceLogger(
-                    new ConsoleFunctionInstanceLogger(),
-                    traceWriterFunctionLogger);
+                _functionInstanceLogger = traceWriterFunctionLogger;
                 _functionOutputLogger = new ConsoleFunctionOutputLogger();
             }
 

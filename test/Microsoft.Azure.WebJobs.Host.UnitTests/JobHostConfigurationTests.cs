@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.TestCommon;
@@ -11,6 +12,22 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 {
     public class JobHostConfigurationTests
     {
+        [Fact]
+        public void ConstructorDefaults()
+        {
+            JobHostConfiguration config = new JobHostConfiguration();
+
+            Assert.NotNull(config.Singleton);
+            Assert.Equal(TimeSpan.FromSeconds(15), config.Singleton.LockPeriod);
+            Assert.Equal(TimeSpan.FromMinutes(1), config.Singleton.LockAcquisitionTimeout);
+            Assert.Equal(TimeSpan.FromSeconds(1), config.Singleton.LockAcquisitionPollingInterval);
+
+            Assert.NotNull(config.Tracing);
+            Assert.Equal(TraceLevel.Info, config.Tracing.ConsoleLevel);
+            Assert.Null(config.Tracing.Trace);
+
+        }
+
         [Fact]
         public void HostId_IfNull_DoesNotThrow()
         {

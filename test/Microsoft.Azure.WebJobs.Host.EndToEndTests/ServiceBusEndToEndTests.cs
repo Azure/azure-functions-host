@@ -108,9 +108,9 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 JobHostConfiguration config = new JobHostConfiguration()
                 {
                     NameResolver = _nameResolver,
-                    TypeLocator = new FakeTypeLocator(typeof(ServiceBusTestJobs)),
-                    Trace = trace
+                    TypeLocator = new FakeTypeLocator(typeof(ServiceBusTestJobs))
                 };
+                config.Tracing.Trace = trace;
                 config.UseServiceBus(_serviceBusConfig);
                 JobHost host = new JobHost(config);
 

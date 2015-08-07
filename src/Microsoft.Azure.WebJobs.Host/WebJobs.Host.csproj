@@ -455,6 +455,7 @@
     <Compile Include="Indexers\IExtensionTypeLocator.cs" />
     <Compile Include="Indexers\IFunctionIndexCollector.cs" />
     <Compile Include="Indexers\IFunctionIndexProvider.cs" />
+    <Compile Include="JobHostTraceConfiguration.cs" />
     <Compile Include="Listeners\CompositeListenerFactory.cs" />
     <Compile Include="Listeners\ISharedContextProvider.cs" />
     <Compile Include="Listeners\ListenerFactoryContext.cs" />
@@ -852,7 +853,6 @@
     <Compile Include="INameResolver.cs" />
     <Compile Include="JobHostConfiguration.cs" />
     <Compile Include="Loggers\CompositeFunctionInstanceLogger.cs" />
-    <Compile Include="Loggers\ConsoleFunctionInstanceLogger.cs" />
     <Compile Include="Executors\AmbientConnectionStringProvider.cs" />
     <Compile Include="ServiceProviderExtensions.cs" />
     <Compile Include="Loggers\PersistentQueueLogger.cs" />

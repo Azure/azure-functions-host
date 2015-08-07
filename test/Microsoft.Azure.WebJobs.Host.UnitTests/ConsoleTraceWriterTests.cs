@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
         {
             _mockTextWriter = new Mock<TextWriter>(MockBehavior.Strict);
             _mockTraceWriter = new Mock<TraceWriter>(MockBehavior.Strict, TraceLevel.Info);
-            _traceWriter = new ConsoleTraceWriter(_mockTraceWriter.Object, _mockTextWriter.Object);
+            _traceWriter = new ConsoleTraceWriter(_mockTraceWriter.Object, TraceLevel.Info, _mockTextWriter.Object);
         }
 
         [Fact]
@@ -49,6 +49,24 @@ namespace Microsoft.Azure.WebJobs.Host.UnitTests
 
             _mockTextWriter.VerifyAll();
             _mockTraceWriter.VerifyAll();
+        }
+
+        [Theory]
+        [InlineData(TraceSource.Host, TraceLevel.Info, TraceLevel.Info)]
+        [InlineData(TraceSource.Host, TraceLevel.Warning, TraceLevel.Warning)]
+        [InlineData(TraceSource.Host, TraceLevel.Error, TraceLevel.Error)]
+        [InlineData(TraceSource.Indexing, TraceLevel.Info, TraceLevel.Info)]
+        [InlineData(TraceSource.Indexing, TraceLevel.Warning, TraceLevel.Warning)]
+        [InlineData(TraceSource.Indexing, TraceLevel.Error, TraceLevel.Error)]
+        [InlineData(TraceSource.Execution, TraceLevel.Info, TraceLevel.Info)]
+        [InlineData(TraceSource.Execution, TraceLevel.Warning, TraceLevel.Verbose)]
+        [InlineData(TraceSource.Execution, TraceLevel.Error, TraceLevel.Verbose)]
+        [InlineData("Custom", TraceLevel.Info, TraceLevel.Verbose)]
+        [InlineData("Custom", TraceLevel.Warning, TraceLevel.Verbose)]
+        [InlineData("Custom", TraceLevel.Error, TraceLevel.Verbose)]
+        public void MapTraceLevel_PerformsCorrectMapping(string source, TraceLevel level, TraceLevel expected)
+        {
+            Assert.Equal(expected, ConsoleTraceWriter.MapTraceLevel(source, level));
         }
     }
 }

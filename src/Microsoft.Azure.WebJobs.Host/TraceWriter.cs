@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Host
 {
     /// <summary>
     /// Base class for trace writers used by <see cref="JobHost"/>. 
-    /// See <see cref="JobHostConfiguration.Trace"/> for details.
+    /// See <see cref="JobHostConfiguration.Tracing"/> for details.
     /// </summary>
     public abstract class TraceWriter
     {

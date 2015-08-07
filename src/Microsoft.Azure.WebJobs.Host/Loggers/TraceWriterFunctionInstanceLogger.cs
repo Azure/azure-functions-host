@@ -37,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Host.Loggers
             else
             {
                 _trace.Error(string.Format(CultureInfo.InvariantCulture, "Executed: '{0}' (Failed)", message.Function.ShortName), message.Failure.Exception, TraceSource.Execution);
+
+                // Also log the eror message using TraceSource.Host, to ensure
+                // it gets written to Console
+                _trace.Error(string.Format(CultureInfo.InvariantCulture, 
+                    "  Function had errors. See Azure WebJobs SDK dashboard for details. Instance ID is '{0}'", message.FunctionInstanceId), source: TraceSource.Host);
             }
             return Task.FromResult(0);
         }
