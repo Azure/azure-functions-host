@@ -26,13 +26,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
                 new UserTypeArgumentBindingProvider()); // Must come last, because it will attempt to bind all types.
 
         private readonly INameResolver _nameResolver;
+        private readonly TraceWriter _trace;
         private readonly ServiceBusConfiguration _config;
 
-        public ServiceBusTriggerAttributeBindingProvider(INameResolver nameResolver, ServiceBusConfiguration config)
+        public ServiceBusTriggerAttributeBindingProvider(INameResolver nameResolver, TraceWriter trace, ServiceBusConfiguration config)
         {
             if (nameResolver == null)
             {
                 throw new ArgumentNullException("nameResolver");
+            }
+            if (trace == null)
+            {
+                throw new ArgumentNullException("trace");
             }
             if (config == null)
             {
@@ -40,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
             }
 
             _nameResolver = nameResolver;
+            _trace = trace;
             _config = config;
         }
 
@@ -84,11 +90,11 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Triggers
 
             if (queueName != null)
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, queueName, attribute.Access);
+                binding = new ServiceBusTriggerBinding(parameter.Name, parameter.ParameterType, argumentBinding, account, queueName, attribute.Access, _trace, _config);
             }
             else
             {
-                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access);
+                binding = new ServiceBusTriggerBinding(parameter.Name, argumentBinding, account, topicName, subscriptionName, attribute.Access, _trace, _config);
             }
 
             return Task.FromResult(binding);

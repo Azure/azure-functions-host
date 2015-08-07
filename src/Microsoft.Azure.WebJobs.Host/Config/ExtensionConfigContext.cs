@@ -10,8 +10,13 @@ namespace Microsoft.Azure.WebJobs.Host.Config
     public class ExtensionConfigContext
     {
         /// <summary>
-        /// Gets or sets the <see cref="JobHostConfiguration"/>
+        /// Gets or sets the <see cref="JobHostConfiguration"/>.
         /// </summary>
         public JobHostConfiguration Config { get; set; }
+
+        /// <summary>
+        /// Gets or sets the <see cref="TraceWriter"/>.
+        /// </summary>
+        public TraceWriter Trace { get; set; }
     }
 }

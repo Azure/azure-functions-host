@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -25,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.UnitTests.Triggers
             IQueueTriggerArgumentBindingProvider provider = new UserTypeArgumentBindingProvider();
             ParameterInfo pi = new StubParameterInfo("parameterName", typeof(UserDataType));
             var argumentBinding = provider.TryCreate(pi);
-            _binding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null, "queueName", AccessRights.Manage);
+            _binding = new ServiceBusTriggerBinding("parameterName", typeof(UserDataType), argumentBinding, null, "queueName", AccessRights.Manage, new TestTraceWriter(TraceLevel.Verbose), new ServiceBusConfiguration());
         }
 
         [Theory]

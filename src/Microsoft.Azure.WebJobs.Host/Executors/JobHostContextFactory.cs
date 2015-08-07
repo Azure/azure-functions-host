@@ -95,7 +95,8 @@ namespace Microsoft.Azure.WebJobs.Host.Executors
 
             ExtensionConfigContext context = new ExtensionConfigContext
             {
-                Config = config
+                Config = config,
+                Trace = trace
             };
             InvokeExtensionConfigProviders(context);
 

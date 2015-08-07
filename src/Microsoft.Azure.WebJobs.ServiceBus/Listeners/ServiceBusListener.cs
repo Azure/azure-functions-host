@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.ServiceBus.Messaging;
@@ -17,16 +18,20 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private readonly string _entityPath;
         private readonly ServiceBusTriggerExecutor _triggerExecutor;
         private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly MessageProcessor _messageProcessor;
+        private readonly TraceWriter _trace;
 
         private MessageReceiver _receiver;
         private bool _disposed;
 
-        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor)
+        public ServiceBusListener(MessagingFactory messagingFactory, string entityPath, ServiceBusTriggerExecutor triggerExecutor, TraceWriter trace, ServiceBusConfiguration config)
         {
             _messagingFactory = messagingFactory;
             _entityPath = entityPath;
             _triggerExecutor = triggerExecutor;
             _cancellationTokenSource = new CancellationTokenSource();
+            _trace = trace;
+            _messageProcessor = CreateMessageProcessor(config, entityPath);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -44,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private async Task StartAsyncCore(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            _receiver = await _messagingFactory.CreateMessageReceiverAsync(_entityPath);
 
-            _receiver.OnMessageAsync(ProcessMessageAsync, new OnMessageOptions());
+            _receiver = await _messagingFactory.CreateMessageReceiverAsync(_entityPath);
+            _receiver.OnMessageAsync(ProcessMessageAsync, _messageProcessor.MessageOptions);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -104,14 +109,22 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             return ProcessMessageAsync(message, _cancellationTokenSource.Token);
         }
 
-        private async Task ProcessMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
+        internal async Task ProcessMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
         {
-            FunctionResult result = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
-            if (!result.Succeeded)
+            if (!await _messageProcessor.BeginProcessingMessageAsync(message, cancellationToken))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await message.AbandonAsync();
+                return;
             }
+
+            FunctionResult result = await _triggerExecutor.ExecuteAsync(message, cancellationToken);
+
+            await _messageProcessor.CompleteProcessingMessageAsync(message, result, cancellationToken);
+        }
+
+        private MessageProcessor CreateMessageProcessor(ServiceBusConfiguration config, string entityPath)
+        {
+            MessageProcessorFactoryContext context = new MessageProcessorFactoryContext(config.MessageOptions, entityPath, _trace);
+            return config.MessageProcessorFactory.Create(context);
         }
 
         private void ThrowIfDisposed()

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Host
         private const int MaxBatchSize = 32;
 
         private int _batchSize = DefaultBatchSize;
-        private int _newBatchThreshold = DefaultBatchSize;
+        private int _newBatchThreshold;
         private TimeSpan _maxPollingInterval = QueuePollingIntervals.DefaultMaximum;
         private int _maxDequeueCount = DefaultMaxDequeueCount;
 

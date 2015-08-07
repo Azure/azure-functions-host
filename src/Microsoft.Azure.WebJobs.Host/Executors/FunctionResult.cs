@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Host.Executors
 {
     /// <summary>
     /// Represents the result of a job function invocation.
     /// </summary>
+    [DebuggerDisplay("Succeeded = {Succeeded}")]
     public class FunctionResult
     {
         /// <summary>

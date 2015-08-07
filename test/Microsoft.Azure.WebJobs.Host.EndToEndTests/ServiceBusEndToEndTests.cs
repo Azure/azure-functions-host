@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -33,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
         private NamespaceManager _namespaceManager;
         private ServiceBusConfiguration _serviceBusConfig;
         private RandomNameResolver _nameResolver;
-        private JobHost _host;
 
         public ServiceBusEndToEndTests()
         {
@@ -95,13 +95,40 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
+        [Fact]
+        public async Task CustomMessageProcessorTest()
+        {
+            try
+            {
+                _serviceBusConfig = new ServiceBusConfiguration
+                {
+                    MessageProcessorFactory = new CustomMessageProcessorFactory()
+                };
+                TestTraceWriter trace = new TestTraceWriter(TraceLevel.Info);
+                JobHostConfiguration config = new JobHostConfiguration()
+                {
+                    NameResolver = _nameResolver,
+                    TypeLocator = new FakeTypeLocator(typeof(ServiceBusTestJobs)),
+                    Trace = trace
+                };
+                config.UseServiceBus(_serviceBusConfig);
+                JobHost host = new JobHost(config);
+
+                await ServiceBusEndToEndInternal(typeof(ServiceBusTestJobs), host: host);
+
+                // in addition to verifying that our custom processor was called, we're also
+                // verifying here that extensions can log to the TraceWriter
+                Assert.Equal(4, trace.Traces.Count(p => p.Contains("Custom processor Begin called!")));
+                Assert.Equal(4, trace.Traces.Count(p => p.Contains("Custom processor End called!")));
+            }
+            finally
+            {
+                Cleanup();
+            }
+        }
+
         private void Cleanup()
         {
-            if (_host != null)
-            {
-                _host.Dispose();
-            }
-
             string elementName = ResolveName(StartQueueName);
             if (_namespaceManager.QueueExists(elementName))
             {
@@ -121,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             }
         }
 
-        private async Task ServiceBusEndToEndInternal(Type jobContainerType, bool verifyLogs = true)
+        private async Task ServiceBusEndToEndInternal(Type jobContainerType, JobHost host = null, bool verifyLogs = true)
         {
             StringWriter consoleOutput = null;
             TextWriter hold = null;
@@ -132,12 +159,16 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 Console.SetOut(consoleOutput);
             }
 
-            JobHostConfiguration config = new JobHostConfiguration()
+            if (host == null)
             {
-                NameResolver = _nameResolver,
-                TypeLocator = new FakeTypeLocator(jobContainerType)
-            };
-            config.UseServiceBus(_serviceBusConfig);
+                JobHostConfiguration config = new JobHostConfiguration()
+                {
+                    NameResolver = _nameResolver,
+                    TypeLocator = new FakeTypeLocator(jobContainerType)
+                };
+                config.UseServiceBus(_serviceBusConfig);
+                host = new JobHost(config);
+            }
 
             string startQueueName = ResolveName(StartQueueName);
             string secondQueueName = startQueueName.Replace("start", "1");
@@ -146,12 +177,10 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             string secondTopicName = string.Format("{0}-topic/Subscriptions/{0}-queue-topic-2", queuePrefix);
             CreateStartMessage(_serviceBusConfig.ConnectionString, startQueueName);
 
-            _host = new JobHost(config);
-
             _topicSubscriptionCalled1 = new ManualResetEvent(initialState: false);
             _topicSubscriptionCalled2 = new ManualResetEvent(initialState: false);
 
-            await _host.StartAsync();
+            await host.StartAsync();
 
             int timeout = 1 * 60 * 1000;
             _topicSubscriptionCalled1.WaitOne(timeout);
@@ -161,7 +190,8 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
             await Task.Delay(3000);
 
             // Wait for the host to terminate
-            await _host.StopAsync();
+            await host.StopAsync();
+            host.Dispose();
 
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-1", _resultMessage1);
             Assert.Equal("E2E-SBQueue2SBQueue-SBQueue2SBTopic-topic-2", _resultMessage2);
@@ -337,6 +367,44 @@ namespace Microsoft.Azure.WebJobs.Host.EndToEndTests
                 [ServiceBusTrigger(TopicName, QueueNamePrefix + "topic-2", AccessRights.Listen)] BrokeredMessage message)
             {
                 SBTopicListener2Impl(message);
+            }
+        }
+
+        private class CustomMessageProcessorFactory : IMessageProcessorFactory
+        {
+            public MessageProcessor Create(MessageProcessorFactoryContext context)
+            {
+                // demonstrate overriding the defalult messgae options
+                context.MessageOptions = new OnMessageOptions
+                {
+                    MaxConcurrentCalls = 3,
+                    AutoRenewTimeout = TimeSpan.FromMinutes(1)
+                };
+
+                return new CustomMessageProcessor(context);
+            }
+
+            private class CustomMessageProcessor : MessageProcessor
+            {
+                private readonly TraceWriter _trace;
+
+                public CustomMessageProcessor(MessageProcessorFactoryContext context)
+                    : base(context)
+                {
+                    _trace = context.Trace;
+                }
+
+                public override async Task<bool> BeginProcessingMessageAsync(BrokeredMessage message, CancellationToken cancellationToken)
+                {
+                    _trace.Info("Custom processor Begin called!");
+                    return await base.BeginProcessingMessageAsync(message, cancellationToken);
+                }
+
+                public override async Task CompleteProcessingMessageAsync(BrokeredMessage message, Executors.FunctionResult result, CancellationToken cancellationToken)
+                {
+                    _trace.Info("Custom processor End called!");
+                    await base.CompleteProcessingMessageAsync(message, result, cancellationToken);
+                }
             }
         }
     }

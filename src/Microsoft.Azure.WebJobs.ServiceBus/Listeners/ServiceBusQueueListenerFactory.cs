@@ -3,6 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.ServiceBus;
@@ -17,14 +18,18 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
         private readonly string _queueName;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly AccessRights _accessRights;
+        private readonly TraceWriter _trace;
+        private readonly ServiceBusConfiguration _config;
 
-        public ServiceBusQueueListenerFactory(ServiceBusAccount account, string queueName, ITriggeredFunctionExecutor executor, AccessRights accessRights)
+        public ServiceBusQueueListenerFactory(ServiceBusAccount account, string queueName, ITriggeredFunctionExecutor executor, AccessRights accessRights, TraceWriter trace, ServiceBusConfiguration config)
         {
             _namespaceManager = account.NamespaceManager;
             _messagingFactory = account.MessagingFactory;
             _queueName = queueName;
             _executor = executor;
             _accessRights = accessRights;
+            _trace = trace;
+            _config = config;
         }
 
         public async Task<IListener> CreateAsync(CancellationToken cancellationToken)
@@ -38,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.ServiceBus.Listeners
             }
 
             ServiceBusTriggerExecutor triggerExecutor = new ServiceBusTriggerExecutor(_executor);
-            return new ServiceBusListener(_messagingFactory, _queueName, triggerExecutor);
+            return new ServiceBusListener(_messagingFactory, _queueName, triggerExecutor, _trace, _config);
         }
     }
 }
